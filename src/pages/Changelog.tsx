@@ -148,8 +148,8 @@ const Changelog = () => {
 
 
   const handleImageUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler er tillatt"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Maks 5 MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error(t("changelog.dialog.imageUploadError")); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(t("changelog.dialog.imageTooLarge")); return; }
     setUploadingImage(true);
     const ext = file.name.split(".").pop() || "png";
     const path = `entries/${crypto.randomUUID()}.${ext}`;
@@ -159,7 +159,7 @@ const Changelog = () => {
       contentType: file.type,
     });
     setUploadingImage(false);
-    if (error) { toast.error("Kunne ikke laste opp bilde"); return; }
+    if (error) { toast.error(t("changelog.dialog.imageUploadFailed")); return; }
     setFormImageUrls(prev => [...prev, path]);
     const { data } = await supabase.storage.from("changelog-images").createSignedUrl(path, 3600);
     if (data?.signedUrl) setSignedUrls(prev => ({ ...prev, [path]: data.signedUrl }));
@@ -531,13 +531,13 @@ const Changelog = () => {
               <Input type="date" value={formCompletedAt} onChange={(e) => setFormCompletedAt(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Bilder (valgfritt)</Label>
+              <Label>{t("changelog.dialog.imagesLabel")}</Label>
               {formImageUrls.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {formImageUrls.map((p) => (
                     <div key={p} className="relative inline-block">
                       {signedUrls[p] ? (
-                        <img src={signedUrls[p]} alt="Forhåndsvisning" className="max-h-40 rounded-md border border-border/50" />
+                        <img src={signedUrls[p]} alt={t("changelog.dialog.previewAlt")} className="max-h-40 rounded-md border border-border/50" />
                       ) : (
                         <div className="h-24 w-24 rounded-md border border-border/50 flex items-center justify-center">
                           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -558,7 +558,7 @@ const Changelog = () => {
               )}
               <label className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground border border-dashed border-border rounded-md px-3 py-2 hover:bg-accent w-fit">
                 {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                <span>{uploadingImage ? "Laster opp..." : (formImageUrls.length > 0 ? "Legg til flere bilder" : "Last opp bilde")}</span>
+                <span>{uploadingImage ? t("changelog.dialog.uploading") : (formImageUrls.length > 0 ? t("changelog.dialog.addMoreImages") : t("changelog.dialog.uploadImage"))}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -606,7 +606,7 @@ const Changelog = () => {
           <button
             type="button"
             onClick={() => setLightboxUrl(null)}
-            aria-label="Lukk"
+            aria-label={t("changelog.dialog.close")}
             className="absolute top-2 right-2 z-10 rounded-full bg-background/80 hover:bg-background border border-border/50 p-1.5 shadow-md"
           >
             <X className="w-4 h-4" />

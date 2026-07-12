@@ -2754,24 +2754,6 @@
       "top10CompaniesHours": "Top 10 companies – flight hours",
       "top10CompaniesMissions": "Top 10 companies – missions"
     },
-    "pricing": {
-      "back": "Back",
-      "subtitle": "Choose a plan and add-ons that suit your company. Price per user/month.",
-      "safeSkyBadge": "SafeSky map layers and publishing are available on all subscriptions",
-      "mostPopular": "Most popular",
-      "yourPlan": "Your plan",
-      "perUserMonth": "NOK/user/month",
-      "addonsTitle": "Add-on modules – 199 NOK/month per module",
-      "addonExtra": "+ {{amount}} NOK add-ons/month",
-      "trialIncluded": "Includes a 5-day free trial",
-      "activeSubscription": "✓ You have an active subscription",
-      "startSubscription": "Start subscription",
-      "loginToSubscribe": "Log in to subscribe",
-      "needAccount": "You need an account to subscribe.",
-      "loginRegister": "Log in / Sign up",
-      "couldNotStartPayment": "Could not start payment: ",
-      "unknownError": "Unknown error"
-    },
     "marketing": {
       "sidebarTitle": "Marketing",
       "overview": "Overview",
@@ -2978,7 +2960,16 @@
       "low": "Low",
       "areYouSure": "Are you sure?",
       "cannotUndo": "This action cannot be undone.",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "imageUploadError": "Only image files are allowed",
+      "imageTooLarge": "Max 5 MB",
+      "imageUploadFailed": "Could not upload image",
+      "imagesLabel": "Images (optional)",
+      "previewAlt": "Preview",
+      "uploading": "Uploading...",
+      "addMoreImages": "Add more images",
+      "uploadImage": "Upload image",
+      "close": "Close"
     },
     "entryStatus": {
       "notStarted": "Not started",
@@ -6207,5 +6198,50 @@
       "unknownValue": "–",
       "unknownName": "Unknown"
     }
+  },
+  "pricing": {
+    "back": "Back",
+    "subtitle": "Choose a plan and add-ons that suit your company. Price per user/month.",
+    "safeSkyBadge": "SafeSky map layers and publishing are available on all subscriptions",
+    "mostPopular": "Most popular",
+    "yourPlan": "Your plan",
+    "perUserMonth": "NOK/user/month",
+    "addonsTitle": "Add-on modules – 199 NOK/month per module",
+    "addonExtra": "+ {{amount}} NOK add-ons/month",
+    "trialIncluded": "Includes a 5-day free trial",
+    "activeSubscription": "✓ You have an active subscription",
+    "startSubscription": "Start subscription",
+    "loginToSubscribe": "Log in to subscribe",
+    "needAccount": "You need an account to subscribe.",
+    "loginRegister": "Log in / Sign up",
+    "couldNotStartPayment": "Could not start payment: ",
+    "unknownError": "Unknown error"
+  },
+  "installer": {
+    "title": "Install AviSafe",
+    "subtitle": "Add AviSafe to your home screen for quick access",
+    "alreadyInstalled": "AviSafe is already installed!",
+    "installNow": "Install now",
+    "oneClickInstall": "One click to install the app",
+    "installButton": "Install AviSafe",
+    "iosTitle": "Install on iPhone/iPad",
+    "iosDescription": "Follow these steps to add the app",
+    "iosStep1": "Tap the Share button",
+    "iosStep1Desc": "in the Safari menu bar",
+    "iosStep2": "Choose “Add to Home Screen”",
+    "iosStep2Desc": "in the menu that appears",
+    "iosStep3": "Tap “Add”",
+    "iosStep3Desc": "AviSafe now appears on your home screen",
+    "androidTitle": "Install on Android",
+    "androidDescription": "Follow these steps to add the app",
+    "androidStep1": "Tap the menu button",
+    "androidStep1Desc": "top right in Chrome",
+    "androidStep2": "Choose “Install app” or “Add to Home screen”",
+    "androidStep2Desc": "in the menu that appears",
+    "androidStep3": "Confirm the installation",
+    "androidStep3Desc": "AviSafe now appears on your home screen",
+    "desktopTitle": "Install on desktop",
+    "desktopDescription": "Use your browser's install option",
+    "desktopInstructions": "Look for the install icon in the address bar, or use the browser menu to install the app."
   }
 }
