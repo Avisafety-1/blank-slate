@@ -443,7 +443,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   variant={showWarnings ? "default" : "secondary"}
                   className="h-8 w-8 rounded-lg shadow-md"
                   onClick={() => setShowWarnings(v => !v)}
-                  title="Vis advarsler på kart"
+                  title={t('dashboard.flightAnalysis.showAlerts')}
                 >
                   <AlertTriangle className="w-4 h-4" />
                 </Button>
