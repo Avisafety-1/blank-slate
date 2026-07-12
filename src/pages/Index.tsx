@@ -64,11 +64,11 @@ const Index = () => {
   useEffect(() => {
     const checkout = searchParams.get('checkout');
     if (checkout === 'success') {
-      toast.success('Abonnement aktivert! Velkommen til AviSafe.');
+      toast.success(t('dashboard.checkoutSuccess'));
       checkSubscription();
       setSearchParams({}, { replace: true });
     } else if (checkout === 'cancelled') {
-      toast.info('Betaling ble avbrutt.');
+      toast.info(t('dashboard.checkoutCancelled'));
       setSearchParams({}, { replace: true });
     }
   }, [searchParams]);
