@@ -2519,7 +2519,7 @@ export const ProfileDialog = () => {
                           <>
                             <Separator />
                             <div>
-                              <p className="text-sm font-medium mb-2">Bytt plan</p>
+                              <p className="text-sm font-medium mb-2">{t('profile.subscription.switchPlan')}</p>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                 {PLANS.map((plan) => {
                                   const shortFeatures = plan.features.slice(0, 4);
@@ -2532,8 +2532,8 @@ export const ProfileDialog = () => {
                                       onClick={async () => {
                                         if (isCurrent || changingPlan) return;
                                         const action = (subscriptionPlan === 'starter' || (subscriptionPlan === 'grower' && plan.id === 'professional'))
-                                          ? 'oppgradere' : 'nedgradere';
-                                        if (!confirm(`Er du sikker på at du vil ${action} til ${plan.name} (${plan.price} NOK/bruker/mnd)?`)) return;
+                                          ? t('profile.subscription.upgrade') : t('profile.subscription.downgrade');
+                                        if (!confirm(t('profile.subscription.confirmChange', { action, name: plan.name, price: plan.price }))) return;
                                         setChangingPlan(plan.id);
                                         try {
                                           const { data, error } = await supabase.functions.invoke('change-plan', {
@@ -2541,10 +2541,10 @@ export const ProfileDialog = () => {
                                           });
                                           if (error) throw error;
                                           if (data?.error) throw new Error(data.error);
-                                          toast.success(`Plan endret til ${plan.name}`);
+                                          toast.success(t('profile.subscription.planChangedTo', { name: plan.name }));
                                           await checkSubscription();
                                         } catch (e: any) {
-                                          toast.error('Kunne ikke endre plan: ' + (e.message || 'Ukjent feil'));
+                                          toast.error(t('profile.subscription.changePlanError') + ': ' + (e.message || t('common.unknownError')));
                                         } finally {
                                           setChangingPlan(null);
                                         }
@@ -2557,13 +2557,13 @@ export const ProfileDialog = () => {
                                     >
                                       {isCurrent && (
                                         <span className="absolute -top-2 left-2 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-medium">
-                                          Nåværende
+                                          {t('profile.subscription.current')}
                                         </span>
                                       )}
                                       <div className="flex items-center justify-between sm:flex-col sm:items-start">
                                         <div>
                                           <p className="text-sm font-semibold">{plan.name}</p>
-                                          <p className="text-xs text-muted-foreground">{plan.price} NOK/bruker/mnd</p>
+                                          <p className="text-xs text-muted-foreground">{plan.price} {t('profile.subscription.currency')}</p>
                                         </div>
                                         {isChanging && <Loader2 className="h-4 w-4 animate-spin" />}
                                       </div>
@@ -2577,19 +2577,19 @@ export const ProfileDialog = () => {
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
-                                Endring trer i kraft umiddelbart. Prorata-justering på neste faktura.
+                                {t('profile.subscription.planChangeImmediate')}
                               </p>
                             </div>
 
                             {/* Addon management */}
                             <Separator />
                             <div>
-                              <p className="text-sm font-medium mb-2">Tilleggsmoduler</p>
+                              <p className="text-sm font-medium mb-2">{t('profile.subscription.addonsTitle')}</p>
                               <div className="space-y-2">
                                 {([
-                                  { id: 'sora_admin', name: 'SORA Admin', desc: 'Avansert SORA risikoanalyse', price: 99 },
-                                  { id: 'dji', name: 'DJI-integrasjon', desc: 'Automatisk import av DJI-flightlogs', price: 99 },
-                                  { id: 'eccairs', name: 'ECCAIRS-integrasjon', desc: 'E2-rapportering til Luftfartstilsynet', price: 99 },
+                                  { id: 'sora_admin', name: t('profile.subscription.addons.soraName'), desc: t('profile.subscription.addons.soraDesc'), price: 99 },
+                                  { id: 'dji', name: t('profile.subscription.addons.djiName'), desc: t('profile.subscription.addons.djiDesc'), price: 99 },
+                                  { id: 'eccairs', name: t('profile.subscription.addons.eccairsName'), desc: t('profile.subscription.addons.eccairsDesc'), price: 99 },
                                 ] as const).map((addon) => {
                                   const isActive = subscriptionAddons.includes(addon.id);
                                   return (
@@ -2603,11 +2603,11 @@ export const ProfileDialog = () => {
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <p className="text-sm font-medium">{addon.name}</p>
                                           {isActive && (
-                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">Aktiv</Badge>
+                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">{t('profile.subscription.addonActive')}</Badge>
                                           )}
                                         </div>
                                         <p className="text-xs text-muted-foreground break-words">{addon.desc}</p>
-                                        <p className="text-xs font-medium mt-0.5">{addon.price} NOK/mnd</p>
+                                        <p className="text-xs font-medium mt-0.5">{addon.price} {t('profile.subscription.addonUnit')}</p>
                                       </div>
                                       {isBillingOwner && (
                                         <Switch
@@ -2621,10 +2621,10 @@ export const ProfileDialog = () => {
                                               });
                                               if (error) throw error;
                                               if (data?.error) throw new Error(data.error);
-                                              toast.success(checked ? `${addon.name} aktivert` : `${addon.name} deaktivert`);
+                                              toast.success(checked ? t('profile.subscription.addonEnabled', { name: addon.name }) : t('profile.subscription.addonDisabled', { name: addon.name }));
                                               await checkSubscription();
                                             } catch (e: any) {
-                                              toast.error('Kunne ikke oppdatere tilleggsmodul: ' + (e.message || 'Ukjent feil'));
+                                              toast.error(t('profile.subscription.addonUpdateError') + ': ' + (e.message || t('common.unknownError')));
                                             } finally {
                                               setTogglingAddon(null);
                                             }
@@ -2636,7 +2636,7 @@ export const ProfileDialog = () => {
                                 })}
                               </div>
                               <p className="text-xs text-muted-foreground mt-2">
-                                {isBillingOwner ? 'Endring trer i kraft umiddelbart med prorata-justering.' : 'Kontakt betalingsansvarlig for å endre tilleggsmoduler.'}
+                                {isBillingOwner ? t('profile.subscription.addonChangeImmediate') : t('profile.subscription.contactBillingForAddons')}
                               </p>
                             </div>
                           </>
@@ -2651,17 +2651,17 @@ export const ProfileDialog = () => {
                                 if (error) throw error;
                                 if (data?.url) window.open(data.url, '_blank');
                               } catch (e: any) {
-                                toast.error('Kunne ikke åpne administrasjon: ' + (e.message || 'Ukjent feil'));
+                                toast.error(t('profile.subscription.portalError') + ': ' + (e.message || t('common.unknownError')));
                               }
                             }}
                           >
-                            Administrer abonnement
+                            {t('profile.subscription.manageSubscription')}
                           </Button>
                         )}
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <p className="text-sm text-muted-foreground">Du har ikke et aktivt abonnement.</p>
+                        <p className="text-sm text-muted-foreground">{t('profile.subscription.noSubscription')}</p>
                         {isBillingOwner || !subscriptionPlan ? (
                           <Button
                             onClick={async () => {
@@ -2672,16 +2672,16 @@ export const ProfileDialog = () => {
                                 if (error) throw error;
                                 if (data?.url) window.open(data.url, '_blank');
                               } catch (e: any) {
-                                toast.error('Kunne ikke starte betaling: ' + (e.message || 'Ukjent feil'));
+                                toast.error(t('profile.subscription.checkoutError') + ': ' + (e.message || t('common.unknownError')));
                               }
                             }}
                           >
                             <CreditCard className="h-4 w-4 mr-2" />
-                            Abonner nå
+                            {t('profile.subscription.subscribeNow')}
                           </Button>
                         ) : (
                           <p className="text-xs text-muted-foreground">
-                            Kontakt betalingsansvarlig i selskapet for å aktivere abonnement.
+                            {t('profile.subscription.contactBillingOwner')}
                           </p>
                         )}
                       </div>
@@ -2692,7 +2692,7 @@ export const ProfileDialog = () => {
             </Tabs>
           )}
           <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
-            App versjon v{appVersion}
+            {t('profile.appVersion', { version: appVersion })}
           </p>
         </ScrollArea>
       </DialogContent>
