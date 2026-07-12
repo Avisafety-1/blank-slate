@@ -585,7 +585,7 @@ export const MissionCard = ({
       {/* Description */}
       {mission.beskrivelse && (
         <div className="pt-2 border-t border-border/50">
-          <p className="text-xs font-semibold text-muted-foreground mb-2">BESKRIVELSE</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-2">{t('pages.missions.card.descriptionHeader')}</p>
           <p className="text-sm text-foreground whitespace-pre-wrap">{mission.beskrivelse}</p>
         </div>
       )}
