@@ -932,12 +932,12 @@ export function PersonCompetencyDialog({
                   onCheckedChange={setNewAffectsStatus}
                 />
                 <Label htmlFor="new-affects-status" className="text-xs">
-                  Påvirker status
+                  {t('resourceDialogs.personCompetency.affectsStatus')}
                 </Label>
               </div>
 
               <Button type="submit" className="w-full h-10">
-                Legg til
+                {t('resourceDialogs.personCompetency.add')}
               </Button>
             </form>
           </ScrollArea>
