@@ -508,7 +508,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                     onClick={handleOpenDocument}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Åpne nettside
+                    {t('dashboard.documents.openWebsite')}
                   </Button>
                 )}
                 {document.fil_url && !document.nettside_url && (
