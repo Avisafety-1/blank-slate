@@ -484,23 +484,23 @@ export function ResourceTimeline() {
           {selectedMaintenanceEvent && (
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ressurs</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.resource')}</span>
                 <span className="font-medium">{selectedMaintenanceEvent.resourceName || "—"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.type')}</span>
                 <Badge variant="outline" className="capitalize">
-                  {selectedMaintenanceEvent.resourceType === "drone" ? "Drone" : "Utstyr"}
+                  {selectedMaintenanceEvent.resourceType === "drone" ? t('pages.calendar.resourceTimeline.drone') : t('pages.calendar.resourceTimeline.equipment')}
                 </Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Dato</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.date')}</span>
                 <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: dateLocale })}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kategori</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.category')}</span>
                 <Badge className="bg-orange-500/80 text-white border-orange-500">
-                  {selectedMaintenanceEvent.title.includes("Inspeksjon") ? "Inspeksjon" : "Vedlikehold"}
+                  {selectedMaintenanceEvent.title.includes("Inspeksjon") ? t('pages.calendar.resourceTimeline.inspection') : t('pages.calendar.resourceTimeline.maintenance')}
                 </Badge>
               </div>
             </div>
