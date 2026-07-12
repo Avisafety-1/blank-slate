@@ -5028,7 +5028,132 @@
       "metaIucn": "IUCN:",
       "linkFactSheet": "📄 Open fact sheet",
       "linkSecureMessage": "✉️ Send application via secure message",
-      "linkDroneRules": "ℹ️ Drone rules"
+      "linkDroneRules": "ℹ️ Drone rules",
+      "rules": {
+        "Nasjonalpark": {
+          "label": "National park",
+          "legalBasis": "Nature Diversity Act § 35, protection regulation for the park",
+          "pilotAdvice": "Drone flying is generally prohibited. Requires an exemption from the management authority."
+        },
+        "NasjonalparkSvalbard": {
+          "label": "National park (Svalbard)",
+          "legalBasis": "Svalbard Environmental Act, protection regulation for the park",
+          "pilotAdvice": "Drone flying is prohibited without permission from the Governor of Svalbard."
+        },
+        "Naturreservat": {
+          "label": "Nature reserve",
+          "legalBasis": "Nature Diversity Act § 37, protection regulation for the reserve",
+          "pilotAdvice": "Drone flying is normally prohibited. Requires an exemption from the management authority."
+        },
+        "NaturreservatSvalbard": {
+          "label": "Nature reserve (Svalbard)",
+          "legalBasis": "Svalbard Environmental Act, protection regulation for the reserve",
+          "pilotAdvice": "Drone flying is prohibited without permission from the Governor of Svalbard."
+        },
+        "NaturreservatJanMayen": {
+          "label": "Nature reserve (Jan Mayen)",
+          "legalBasis": "Protection regulation for Jan Mayen nature reserve",
+          "pilotAdvice": "Drone flying is prohibited without special permission."
+        },
+        "Landskapsvernomraade": {
+          "label": "Protected landscape area",
+          "legalBasis": "Nature Diversity Act § 36, protection regulation for the area",
+          "pilotAdvice": "Drone flying is often restricted and may require an exemption. Check the protection regulation."
+        },
+        "LandskapsvernomraadeDyrelivsfredning": {
+          "label": "Protected landscape area with wildlife protection",
+          "legalBasis": "Nature Diversity Act § 36, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted, especially during the breeding season. Often requires an exemption."
+        },
+        "LandskapsvernomraadePlantelivsfredning": {
+          "label": "Protected landscape area with plant protection",
+          "legalBasis": "Nature Diversity Act § 36, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted. Check the protection regulation."
+        },
+        "LandskapsvernomraadePlanteOgDyrelivsfredning": {
+          "label": "Protected landscape area with plant and wildlife protection",
+          "legalBasis": "Nature Diversity Act § 36, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted, especially during the breeding season. Often requires an exemption."
+        },
+        "LandskapsvernomraadeBiotopvern": {
+          "label": "Protected landscape area with biotope protection",
+          "legalBasis": "Nature Diversity Act § 36, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted. Often requires an exemption."
+        },
+        "Biotopvern": {
+          "label": "Protected biotope",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is prohibited or heavily restricted, especially during breeding/nesting season."
+        },
+        "BiotopvernVilt": {
+          "label": "Protected biotope (wildlife)",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is prohibited or heavily restricted, especially during breeding/nesting season."
+        },
+        "MarintVerneomraade": {
+          "label": "Marine protected area",
+          "legalBasis": "Nature Diversity Act § 39, protection regulation for the area",
+          "pilotAdvice": "No specific drone rules, but check nearby protected areas."
+        },
+        "Dyrefredningsomrade": {
+          "label": "Wildlife protection area",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is generally prohibited during breeding/nesting season. Requires an exemption."
+        },
+        "Dyrelivsfredning": {
+          "label": "Wildlife protection",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted, especially during breeding/nesting season."
+        },
+        "Plantefredningsomraade": {
+          "label": "Plant protection area",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Landing and take-off are often prohibited. Overflight may be permitted."
+        },
+        "Plantelivsfredning": {
+          "label": "Plant protection",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Landing and take-off are often prohibited. Check the protection regulation."
+        },
+        "PlanteOgDyrefredningsomraade": {
+          "label": "Plant and wildlife protection area",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted, especially during breeding/nesting season. Often requires an exemption."
+        },
+        "PlanteOgDyrelivsfredning": {
+          "label": "Plant and wildlife protection",
+          "legalBasis": "Nature Diversity Act § 38, protection regulation for the area",
+          "pilotAdvice": "Drone flying is restricted, especially during breeding/nesting season."
+        },
+        "Naturminne": {
+          "label": "Natural monument",
+          "legalBasis": "Nature Diversity Act § 39, protection regulation for the area",
+          "pilotAdvice": "The area is protected — check the protection regulation before drone flying."
+        },
+        "GeotopvernSvalbard": {
+          "label": "Geotope protection (Svalbard)",
+          "legalBasis": "Svalbard Environmental Act, protection regulation for the area",
+          "pilotAdvice": "Drone flying requires permission from the Governor of Svalbard."
+        },
+        "MidlertidigVernaOmraade": {
+          "label": "Temporarily protected area",
+          "legalBasis": "Nature Diversity Act, temporary protection regulation",
+          "pilotAdvice": "The area has temporary protection — assumed to have the same restrictions as corresponding permanent protection."
+        }
+      },
+      "defaultRule": {
+        "label": "Protected area",
+        "legalBasis": "Nature Diversity Act, protection regulation for the area",
+        "pilotAdvice": "Check the protection regulation before drone flying in this area."
+      },
+      "dispensasjon": {
+        "sysselmester": "Guidance from the Governor of Svalbard",
+        "veiledningHosAuthority": "Guidance from {{authority}}",
+        "veiledningHosVerneomraadestyret": "Guidance from the protected area board",
+        "veiledningHosStatsforvalteren": "Guidance from the County Governor",
+        "kontaktMed": "Contact {{authority}}",
+        "kontaktForvaltningsmyndighet": "Contact management authority"
+      }
     },
     "routeProximity": {
       "autoShownBadge": "📍 Auto-shown along the route",
@@ -5081,7 +5206,17 @@
         "elevationMsl": "Elevation (MSL)",
         "elevationAgl": "Height (AGL)",
         "unknownType": "Unknown"
-      }
+      },
+      "powerLineLabels": {
+        "transmisjonsnett": "Transmission grid",
+        "regionalnett": "Regional grid",
+        "sjokabel": "Submarine cable",
+        "distribusjonsnett": "Distribution grid",
+        "transformatorstasjon": "Transformer station"
+      },
+      "powerLineVoltage": "Voltage: {{value}} kV",
+      "unknownValue": "–",
+      "unknownName": "Unknown"
     }
   }
 }

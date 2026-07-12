@@ -5030,7 +5030,132 @@
       "metaIucn": "IUCN:",
       "linkFactSheet": "📄 Åpne faktaark",
       "linkSecureMessage": "✉️ Send søknad via sikker melding",
-      "linkDroneRules": "ℹ️ Regler for droner"
+      "linkDroneRules": "ℹ️ Regler for droner",
+      "rules": {
+        "Nasjonalpark": {
+          "label": "Nasjonalpark",
+          "legalBasis": "Naturmangfoldloven § 35, verneforskrift for nasjonalparken",
+          "pilotAdvice": "Droneflyging er som hovedregel forbudt. Krever dispensasjon fra forvaltningsmyndigheten."
+        },
+        "NasjonalparkSvalbard": {
+          "label": "Nasjonalpark (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for nasjonalparken",
+          "pilotAdvice": "Droneflyging er forbudt uten tillatelse fra Sysselmesteren."
+        },
+        "Naturreservat": {
+          "label": "Naturreservat",
+          "legalBasis": "Naturmangfoldloven § 37, verneforskrift for naturreservatet",
+          "pilotAdvice": "Droneflyging er normalt forbudt. Krever dispensasjon fra forvaltningsmyndigheten."
+        },
+        "NaturreservatSvalbard": {
+          "label": "Naturreservat (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for naturreservatet",
+          "pilotAdvice": "Droneflyging er forbudt uten tillatelse fra Sysselmesteren."
+        },
+        "NaturreservatJanMayen": {
+          "label": "Naturreservat (Jan Mayen)",
+          "legalBasis": "Verneforskrift for Jan Mayen naturreservat",
+          "pilotAdvice": "Droneflyging er forbudt uten særskilt tillatelse."
+        },
+        "Landskapsvernomraade": {
+          "label": "Landskapsvernområde",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er ofte begrenset og kan kreve dispensasjon. Sjekk verneforskriften."
+        },
+        "LandskapsvernomraadeDyrelivsfredning": {
+          "label": "Landskapsvernområde med dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon."
+        },
+        "LandskapsvernomraadePlantelivsfredning": {
+          "label": "Landskapsvernområde med plantelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset. Sjekk verneforskriften."
+        },
+        "LandskapsvernomraadePlanteOgDyrelivsfredning": {
+          "label": "Landskapsvernområde med plante- og dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekkesesongen. Krever ofte dispensasjon."
+        },
+        "LandskapsvernomraadeBiotopvern": {
+          "label": "Landskapsvernområde med biotopvern",
+          "legalBasis": "Naturmangfoldloven § 36, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset. Krever ofte dispensasjon."
+        },
+        "Biotopvern": {
+          "label": "Biotopvernområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid."
+        },
+        "BiotopvernVilt": {
+          "label": "Biotopvernområde (vilt)",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er forbudt eller sterkt begrenset, særlig i hekke-/yngletid."
+        },
+        "MarintVerneomraade": {
+          "label": "Marint verneområde",
+          "legalBasis": "Naturmangfoldloven § 39, verneforskrift for området",
+          "pilotAdvice": "Ingen egne droneregler, men sjekk nærliggende verneområder."
+        },
+        "Dyrefredningsomrade": {
+          "label": "Dyrefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er som hovedregel forbudt i hekke-/yngletid. Krever dispensasjon."
+        },
+        "Dyrelivsfredning": {
+          "label": "Dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid."
+        },
+        "Plantefredningsomraade": {
+          "label": "Plantefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Landing og oppstart er ofte forbudt. Overflyging kan være tillatt."
+        },
+        "Plantelivsfredning": {
+          "label": "Plantelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Landing og oppstart er ofte forbudt. Sjekk verneforskriften."
+        },
+        "PlanteOgDyrefredningsomraade": {
+          "label": "Plante- og dyrefredningsområde",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid. Krever ofte dispensasjon."
+        },
+        "PlanteOgDyrelivsfredning": {
+          "label": "Plante- og dyrelivsfredning",
+          "legalBasis": "Naturmangfoldloven § 38, verneforskrift for området",
+          "pilotAdvice": "Droneflyging er begrenset, særlig i hekke-/yngletid."
+        },
+        "Naturminne": {
+          "label": "Naturminne",
+          "legalBasis": "Naturmangfoldloven § 39, verneforskrift for området",
+          "pilotAdvice": "Området er fredet — sjekk verneforskriften før droneflyging."
+        },
+        "GeotopvernSvalbard": {
+          "label": "Geotopvern (Svalbard)",
+          "legalBasis": "Svalbardmiljøloven, verneforskrift for området",
+          "pilotAdvice": "Droneflyging krever tillatelse fra Sysselmesteren."
+        },
+        "MidlertidigVernaOmraade": {
+          "label": "Midlertidig vernet område",
+          "legalBasis": "Naturmangfoldloven, midlertidig verneforskrift",
+          "pilotAdvice": "Området har midlertidig vern — antas å ha samme restriksjoner som tilsvarende permanente vern."
+        }
+      },
+      "defaultRule": {
+        "label": "Verneområde",
+        "legalBasis": "Naturmangfoldloven, verneforskrift for området",
+        "pilotAdvice": "Sjekk verneforskriften før droneflyging i dette området."
+      },
+      "dispensasjon": {
+        "sysselmester": "Veiledning hos Sysselmesteren",
+        "veiledningHosAuthority": "Veiledning hos {{authority}}",
+        "veiledningHosVerneomraadestyret": "Veiledning hos verneområdestyret",
+        "veiledningHosStatsforvalteren": "Veiledning hos Statsforvalteren",
+        "kontaktMed": "Kontakt med {{authority}}",
+        "kontaktForvaltningsmyndighet": "Kontakt forvaltningsmyndighet"
+      }
     },
     "routeProximity": {
       "autoShownBadge": "📍 Auto-vist langs ruten",
@@ -5083,7 +5208,17 @@
         "elevationMsl": "Høyde (MSL)",
         "elevationAgl": "Høyde (AGL)",
         "unknownType": "Ukjent"
-      }
+      },
+      "powerLineLabels": {
+        "transmisjonsnett": "Transmisjonsnett",
+        "regionalnett": "Regionalnett",
+        "sjokabel": "Sjøkabel",
+        "distribusjonsnett": "Distribusjonsnett",
+        "transformatorstasjon": "Transformatorstasjon"
+      },
+      "powerLineVoltage": "Spenning: {{value}} kV",
+      "unknownValue": "–",
+      "unknownName": "Ukjent"
     }
   }
 }

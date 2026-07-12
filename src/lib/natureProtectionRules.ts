@@ -10,6 +10,9 @@
  *   - vernedato (ms epoch), iucn, kommune, verneplan, verneforskrift, faktaark
  */
 
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`safety.natureProtection.${k}`, opts) as string;
+
 export const MILJODIR_DRONE_RULES_URL =
   'https://www.miljodirektoratet.no/ansvarsomrader/vernet-natur/regler-for-droner-i-naturen/';
 
