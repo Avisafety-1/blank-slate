@@ -1485,7 +1485,7 @@ const Admin = () => {
                                   <Popover>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" size="sm" className="h-7 text-xs px-2">
-                                        {profile.approval_company_ids?.includes('all') ? 'Alle' : `${(profile.approval_company_ids || []).length} avd.`}
+                                        {profile.approval_company_ids?.includes('all') ? t('admin.page.all') : `${(profile.approval_company_ids || []).length} ${t('admin.page.deptShort')}`}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
