@@ -43,6 +43,7 @@ import {
   shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 import { useTranslation } from "react-i18next";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Mission = any;
 
@@ -629,7 +630,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             onMissionUpdated?.();
             if (companyId) {
               try {
-                await supabase.functions.invoke('send-notification-email', {
+                await invokeEmailFunction('send-notification-email', {
                   body: {
                     type: 'notify_mission_approval',
                     companyId,

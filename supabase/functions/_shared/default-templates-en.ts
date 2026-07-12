@@ -1,77 +1,10 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { defaultTemplatesEn } from "./default-templates-en.ts";
-import type { EmailLanguage } from "./email-i18n.ts";
+// English default e-mail templates. Same structure and template variables as the
+// Norwegian ones in template-utils.ts – must be kept in sync when new variables
+// are introduced. See mem://preferences/i18n-mandatory.
 
-export interface EmailTemplateResult {
-  subject: string;
-  content: string;
-  isCustom: boolean;
-}
-
-/**
- * Fetches an email template from the database or returns null if not found.
- * Filters on `language` – falls back to the same template in the default language
- * ('no') if a language-specific row is missing.
- */
-export async function getEmailTemplate(
-  companyId: string,
-  templateType: string,
-  language: EmailLanguage = "no"
-): Promise<{ subject: string; content: string } | null> {
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  const { data, error } = await supabase
-    .from('email_templates')
-    .select('subject, content, language')
-    .eq('company_id', companyId)
-    .eq('template_type', templateType)
-    .in('language', language === 'no' ? ['no'] : [language, 'no']);
-
-  if (error) {
-    console.error(`Error fetching email template ${templateType}:`, error);
-    return null;
-  }
-
-  if (!data || data.length === 0) return null;
-  // Prefer the requested language; fall back to 'no'
-  const match = data.find((r) => r.language === language) || data.find((r) => r.language === 'no');
-  return match ? { subject: match.subject, content: match.content } : null;
-}
-
-/**
- * Replaces template variables with actual values
- */
-export function replaceTemplateVariables(
-  content: string,
-  variables: Record<string, string>
-): string {
-  let result = content;
-  for (const [key, value] of Object.entries(variables)) {
-    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-    result = result.replace(regex, value || '');
-  }
-  return result;
-}
-
-const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
-
-/**
- * Returns a standard AviSafe logo header for emails
- */
-export function getEmailLogoHeader(): string {
-  return `<div style="text-align:center;padding:20px 20px 10px 20px;">
-  <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
-</div>`;
-}
-
-/**
- * Default email templates for each notification type
- */
-export const defaultTemplates: Record<string, { subject: string; content: string }> = {
+export const defaultTemplatesEn: Record<string, { subject: string; content: string }> = {
   password_reset: {
-    subject: 'Tilbakestill passord - AviSafe',
+    subject: "Reset your password – AviSafe",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -87,25 +20,25 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Tilbakestill passord</h1>
+<h1>Reset your password</h1>
 </div>
 <div class="content">
-<p>Hei {{user_name}},</p>
-<p>Vi har mottatt en forespørsel om å tilbakestille passordet ditt. Klikk på knappen nedenfor for å fortsette:</p>
-<a href="{{reset_link}}" class="button">Tilbakestill passord</a>
+<p>Hi {{user_name}},</p>
+<p>We received a request to reset your password. Click the button below to continue:</p>
+<a href="{{reset_link}}" class="button">Reset password</a>
 <div class="warning">
-<p><strong>Viktig:</strong> Denne lenken utløper om 1 time av sikkerhetsgrunner.</p>
+<p><strong>Important:</strong> This link expires in 1 hour for security reasons.</p>
 </div>
-<p>Hvis du ikke har bedt om å tilbakestille passordet ditt, kan du ignorere denne e-posten.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>If you did not request a password reset, you can safely ignore this email.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   admin_new_user: {
-    subject: 'Ny bruker venter på godkjenning',
+    subject: "New user awaiting approval",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -120,24 +53,24 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Ny bruker venter på godkjenning</h1>
+<h1>New user awaiting approval</h1>
 </div>
 <div class="content">
-<p>En ny bruker har registrert seg og venter på godkjenning.</p>
+<p>A new user has signed up and is awaiting approval.</p>
 <div class="user-info">
-<p><strong>Navn:</strong> {{new_user_name}}</p>
-<p><strong>E-post:</strong> {{new_user_email}}</p>
-<p><strong>Selskap:</strong> {{company_name}}</p>
+<p><strong>Name:</strong> {{new_user_name}}</p>
+<p><strong>Email:</strong> {{new_user_email}}</p>
+<p><strong>Company:</strong> {{company_name}}</p>
 </div>
-<p style="margin-top: 20px;">Logg inn i AviSafe for å godkjenne eller avslå denne brukeren.</p>
+<p style="margin-top: 20px;">Log in to AviSafe to approve or reject this user.</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   incident_notification: {
-    subject: 'Ny hendelse: {{incident_title}}',
+    subject: "New incident: {{incident_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -153,26 +86,26 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Ny hendelse rapportert</h1>
+<h1>New incident reported</h1>
 </div>
 <div class="content">
 <div class="incident-box">
 <h2 style="margin-top: 0;">{{incident_title}}</h2>
-<p><strong>Alvorlighetsgrad:</strong> <span class="severity" style="background: #f59e0b;">{{incident_severity}}</span></p>
-<p><strong>Lokasjon:</strong> {{incident_location}}</p>
-<p><strong>Beskrivelse:</strong></p>
+<p><strong>Severity:</strong> <span class="severity" style="background: #f59e0b;">{{incident_severity}}</span></p>
+<p><strong>Location:</strong> {{incident_location}}</p>
+<p><strong>Description:</strong></p>
 <p>{{incident_description}}</p>
 </div>
-<p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Log in to AviSafe to see details and follow up on the incident.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   mission_notification: {
-    subject: 'Nytt oppdrag: {{mission_title}}',
+    subject: "New mission: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -187,29 +120,29 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Nytt oppdrag planlagt</h1>
+<h1>New mission scheduled</h1>
 </div>
 <div class="content">
 <div class="mission-box">
 <h2 style="margin-top: 0;">{{mission_title}}</h2>
 <table style="width: 100%;">
 <tr><td style="padding: 8px 0; color: #666;"><strong>Status:</strong></td><td>{{mission_status}}</td></tr>
-<tr><td style="padding: 8px 0; color: #666;"><strong>Lokasjon:</strong></td><td>{{mission_location}}</td></tr>
-<tr><td style="padding: 8px 0; color: #666;"><strong>Tidspunkt:</strong></td><td>{{mission_date}}</td></tr>
+<tr><td style="padding: 8px 0; color: #666;"><strong>Location:</strong></td><td>{{mission_location}}</td></tr>
+<tr><td style="padding: 8px 0; color: #666;"><strong>Time:</strong></td><td>{{mission_date}}</td></tr>
 </table>
-<p style="margin-top: 15px;"><strong>Beskrivelse:</strong></p>
+<p style="margin-top: 15px;"><strong>Description:</strong></p>
 <p>{{mission_description}}</p>
 </div>
-<p>Logg inn i AviSafe for mer informasjon.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Log in to AviSafe for more information.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   user_welcome: {
-    subject: 'Velkommen til {{company_name}}',
+    subject: "Welcome to {{company_name}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -223,21 +156,21 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Velkommen til {{company_name}}!</h1>
+<h1>Welcome to {{company_name}}!</h1>
 </div>
 <div class="content">
-<p>Hei {{user_name}},</p>
-<p>Velkommen som bruker hos {{company_name}}. Din konto er nå opprettet og venter på godkjenning av en administrator.</p>
-<p>Du vil motta en e-post når kontoen din er godkjent.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Hi {{user_name}},</p>
+<p>Welcome as a user at {{company_name}}. Your account has been created and is awaiting approval from an administrator.</p>
+<p>You will receive an email once your account is approved.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   followup_assigned: {
-    subject: 'Du er tildelt som oppfølgingsansvarlig: {{incident_title}}',
+    subject: "You have been assigned as follow-up owner: {{incident_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -253,28 +186,28 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Oppfølgingsansvarlig tildelt</h1>
+<h1>Follow-up owner assigned</h1>
 </div>
 <div class="content">
-<p>Hei {{user_name}},</p>
-<p>Du har blitt tildelt som oppfølgingsansvarlig for følgende hendelse:</p>
+<p>Hi {{user_name}},</p>
+<p>You have been assigned as follow-up owner for the following incident:</p>
 <div class="incident-box">
 <h2 style="margin-top: 0;">{{incident_title}}</h2>
-<p><strong>Alvorlighetsgrad:</strong> <span class="severity">{{incident_severity}}</span></p>
-<p><strong>Lokasjon:</strong> {{incident_location}}</p>
-<p><strong>Beskrivelse:</strong></p>
+<p><strong>Severity:</strong> <span class="severity">{{incident_severity}}</span></p>
+<p><strong>Location:</strong> {{incident_location}}</p>
+<p><strong>Description:</strong></p>
 <p>{{incident_description}}</p>
 </div>
-<p>Logg inn i AviSafe for å se detaljer og følge opp hendelsen.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Log in to AviSafe to see details and follow up on the incident.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   user_approved: {
-    subject: 'Din konto er godkjent - {{company_name}}',
+    subject: "Your account has been approved – {{company_name}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -292,28 +225,28 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="container">
 <div class="header">
 <div class="success-icon">✓</div>
-<h1 style="margin: 0;">Velkommen til {{company_name}}!</h1>
+<h1 style="margin: 0;">Welcome to {{company_name}}!</h1>
 </div>
 <div class="content">
-<h2>Hei {{user_name}}!</h2>
-<p>Vi er glade for å informere deg om at brukerkontoen din hos <strong>{{company_name}}</strong> nå er godkjent.</p>
-<p>Du har nå full tilgang til systemet og kan begynne å bruke alle funksjonene som er tilgjengelige for deg.</p>
+<h2>Hi {{user_name}}!</h2>
+<p>We are pleased to inform you that your user account at <strong>{{company_name}}</strong> has been approved.</p>
+<p>You now have full access to the system and can start using all the features available to you.</p>
 <p style="text-align: center;">
-<a href="https://app.avisafe.no" class="button">Logg inn nå</a>
+<a href="https://app.avisafe.no" class="button">Log in now</a>
 </p>
-<p>Hvis du har spørsmål eller trenger hjelp med å komme i gang, ikke nøl med å kontakte oss.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>If you have any questions or need help getting started, please don't hesitate to contact us.</p>
+<p>Best regards,<br>{{company_name}}</p>
 <div class="footer">
-<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+<p>This is an automated email from AviSafe.</p>
 </div>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   customer_welcome: {
-    subject: 'Velkommen som kunde hos {{company_name}}',
+    subject: "Welcome as a customer at {{company_name}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -329,27 +262,27 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1 style="margin: 0;">Velkommen som kunde!</h1>
+<h1 style="margin: 0;">Welcome as a customer!</h1>
 </div>
 <div class="content">
-<h2>Hei {{customer_name}}!</h2>
-<p>Vi er glade for å ønske deg velkommen som kunde hos <strong>{{company_name}}</strong>.</p>
+<h2>Hi {{customer_name}}!</h2>
+<p>We are pleased to welcome you as a customer at <strong>{{company_name}}</strong>.</p>
 <div class="welcome-box">
-<p style="margin: 0;">Du er nå registrert i vårt system. Vi ser frem til et godt samarbeid og vil gjøre vårt beste for å levere tjenester av høy kvalitet.</p>
+<p style="margin: 0;">You are now registered in our system. We look forward to a good collaboration and will do our best to deliver high-quality services.</p>
 </div>
-<p>Hvis du har spørsmål eller trenger mer informasjon, er du hjertelig velkommen til å ta kontakt med oss.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>If you have any questions or need more information, please feel free to contact us.</p>
+<p>Best regards,<br>{{company_name}}</p>
 <div class="footer">
-<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+<p>This is an automated email from AviSafe.</p>
 </div>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   mission_confirmation: {
-    subject: 'Oppdragsbekreftelse: {{mission_title}}',
+    subject: "Mission confirmation: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -368,32 +301,32 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1>Oppdragsbekreftelse</h1>
+<h1>Mission confirmation</h1>
 </div>
 <div class="content">
-<p>Dette bekrefter følgende oppdrag:</p>
+<p>This confirms the following mission:</p>
 <div class="mission-box">
 <h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
 <div class="detail-row">
 <span class="label">Status:</span> <span class="status">{{mission_status}}</span>
 </div>
 <div class="detail-row">
-<span class="label">Lokasjon:</span> {{mission_location}}
+<span class="label">Location:</span> {{mission_location}}
 </div>
 <div class="detail-row">
-<span class="label">Tidspunkt:</span> {{mission_date}}
+<span class="label">Time:</span> {{mission_date}}
 </div>
 </div>
-<p>Logg inn i AviSafe for mer informasjon og detaljer om oppdraget.</p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Log in to AviSafe for more information and details about the mission.</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   document_reminder: {
-    subject: 'Dokument utløper snart: {{document_title}}',
+    subject: "Document expiring soon: {{document_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -412,27 +345,27 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="container">
 <div class="header">
 <div class="warning-icon">⚠️</div>
-<h1 style="margin: 0;">Dokument utløper snart</h1>
+<h1 style="margin: 0;">Document expiring soon</h1>
 </div>
 <div class="content">
-<p>Dette er en påminnelse om at følgende dokument snart utløper:</p>
+<p>This is a reminder that the following document is expiring soon:</p>
 <div class="document-box">
 <h2 style="margin-top: 0;">{{document_title}}</h2>
-<p><strong>Utløpsdato:</strong> <span class="expiry-date">{{expiry_date}}</span></p>
+<p><strong>Expiry date:</strong> <span class="expiry-date">{{expiry_date}}</span></p>
 </div>
-<p>Vi anbefaler at du fornyer eller oppdaterer dette dokumentet så snart som mulig for å unngå avbrudd i driften.</p>
+<p>We recommend that you renew or update this document as soon as possible to avoid operational disruptions.</p>
 <p style="text-align: center;">
-<a href="https://app.avisafe.no" class="button">Gå til dokumenter</a>
+<a href="https://app.avisafe.no" class="button">Go to documents</a>
 </p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   mission_approved: {
-    subject: 'Oppdrag godkjent: {{mission_title}}',
+    subject: "Mission approved: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -449,24 +382,24 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1 style="margin: 0;">Oppdrag godkjent</h1>
+<h1 style="margin: 0;">Mission approved</h1>
 </div>
 <div class="content">
 <div class="mission-box">
 <h2 style="margin-top: 0;">{{mission_title}}</h2>
-<p><strong>Lokasjon:</strong> {{mission_location}}</p>
-<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+<p><strong>Location:</strong> {{mission_location}}</p>
+<p><strong>Time:</strong> {{mission_date}}</p>
 </div>
 {{comments_section}}
-<p>Logg inn i appen for å se oppdraget.</p>
+<p>Log in to the app to see the mission.</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   mission_approval_request: {
-    subject: 'Oppdrag venter på godkjenning: {{mission_title}}',
+    subject: "Mission awaiting approval: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -485,28 +418,28 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="container">
 <div class="header">
 <div class="pending-icon">⏳</div>
-<h1 style="margin: 0;">Oppdrag venter på godkjenning</h1>
+<h1 style="margin: 0;">Mission awaiting approval</h1>
 </div>
 <div class="content">
-<p>Et oppdrag har blitt sendt til godkjenning og venter på din vurdering.</p>
+<p>A mission has been submitted for approval and is awaiting your review.</p>
 <div class="mission-box">
 <h2 style="margin-top: 0;">{{mission_title}}</h2>
-<p><strong>Lokasjon:</strong> {{mission_location}}</p>
-<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
-<p><strong>Beskrivelse:</strong> {{mission_description}}</p>
+<p><strong>Location:</strong> {{mission_location}}</p>
+<p><strong>Time:</strong> {{mission_date}}</p>
+<p><strong>Description:</strong> {{mission_description}}</p>
 </div>
 <p style="text-align: center;">
-<a href="https://app.avisafe.no" class="button">Gå til godkjenning</a>
+<a href="https://app.avisafe.no" class="button">Go to approval</a>
 </p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   pilot_comment_notification: {
-    subject: 'Kommentar til oppdrag: {{mission_title}}',
+    subject: "Comment on mission: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -524,30 +457,30 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1 style="margin: 0;">Kommentar til oppdrag</h1>
+<h1 style="margin: 0;">Comment on mission</h1>
 </div>
 <div class="content">
-<p>Du har mottatt en kommentar fra <strong>{{sender_name}}</strong> angående følgende oppdrag:</p>
+<p>You have received a comment from <strong>{{sender_name}}</strong> regarding the following mission:</p>
 <div class="mission-info">
 <h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
-<p><strong>Lokasjon:</strong> {{mission_location}}</p>
-<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+<p><strong>Location:</strong> {{mission_location}}</p>
+<p><strong>Time:</strong> {{mission_date}}</p>
 </div>
 <div class="comment-box">
-<p style="margin: 0;"><strong>Kommentar:</strong></p>
+<p style="margin: 0;"><strong>Comment:</strong></p>
 <p style="margin: 5px 0 0 0;">{{comment}}</p>
 </div>
 <p style="text-align: center;">
-<a href="https://app.avisafe.no" class="button">Gå til oppdraget</a>
+<a href="https://app.avisafe.no" class="button">Go to mission</a>
 </p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   mission_mention_notification: {
-    subject: 'Du er tagget i et oppdrag: {{mission_title}}',
+    subject: "You have been mentioned in a mission: {{mission_title}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -565,33 +498,33 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1 style="margin: 0;">Du er tagget i et oppdrag</h1>
+<h1 style="margin: 0;">You have been mentioned in a mission</h1>
 </div>
 <div class="content">
-<p>Hei {{user_name}},</p>
-<p><strong>{{sender_name}}</strong> har tagget deg i merknader på et oppdrag i AviSafe.</p>
+<p>Hi {{user_name}},</p>
+<p><strong>{{sender_name}}</strong> has mentioned you in notes on a mission in AviSafe.</p>
 <div class="mission-info">
 <h2 style="margin-top: 0; color: #1e40af;">{{mission_title}}</h2>
-<p><strong>Lokasjon:</strong> {{mission_location}}</p>
-<p><strong>Tidspunkt:</strong> {{mission_date}}</p>
+<p><strong>Location:</strong> {{mission_location}}</p>
+<p><strong>Time:</strong> {{mission_date}}</p>
 </div>
 <div class="note-box">
-<p style="margin: 0 0 8px 0;"><strong>Merknad:</strong></p>
+<p style="margin: 0 0 8px 0;"><strong>Note:</strong></p>
 <p style="margin: 0;">{{mission_note}}</p>
 </div>
-<p>Logg inn i appen for å se oppdraget, rute, ressurser og øvrig kontekst.</p>
+<p>Log in to the app to see the mission, route, resources, and other context.</p>
 <p style="text-align: center;">
-<a href="{{app_url}}" class="button">Åpne oppdraget i AviSafe</a>
+<a href="{{app_url}}" class="button">Open mission in AviSafe</a>
 </p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
-  
+
   maintenance_reminder: {
-    subject: 'Vedlikeholdspåminnelse: {{item_count}} ressurser krever oppmerksomhet',
+    subject: "Maintenance reminder: {{item_count}} resources require attention",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -611,28 +544,28 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <div class="container">
 <div class="header">
 <div class="tool-icon">🔧</div>
-<h1 style="margin: 0;">Vedlikeholdspåminnelse</h1>
+<h1 style="margin: 0;">Maintenance reminder</h1>
 </div>
 <div class="content">
-<p>Hei {{user_name}},</p>
-<p>Følgende ressurser har vedlikehold eller inspeksjon som nærmer seg:</p>
+<p>Hi {{user_name}},</p>
+<p>The following resources have maintenance or inspection due soon:</p>
 <div class="items-box">
-<p><span class="count-badge">{{item_count}} ressurser</span></p>
+<p><span class="count-badge">{{item_count}} resources</span></p>
 <div class="items-list">{{items_list}}</div>
 </div>
-<p>Vi anbefaler at du planlegger nødvendig vedlikehold for å sikre at utstyret er i optimal stand.</p>
+<p>We recommend that you schedule the required maintenance to ensure the equipment stays in optimal condition.</p>
 <p style="text-align: center;">
-<a href="https://app.avisafe.no" class="button">Gå til ressurser</a>
+<a href="https://app.avisafe.no" class="button">Go to resources</a>
 </p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Best regards,<br>{{company_name}}</p>
 </div>
 </div>
 </body>
-</html>`
+</html>`,
   },
 
   user_invite: {
-    subject: 'Du er invitert til {{company_name}}',
+    subject: "You have been invited to {{company_name}}",
     content: `<!DOCTYPE html>
 <html>
 <head>
@@ -655,127 +588,32 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <body>
 <div class="container">
 <div class="header">
-<h1 style="margin: 0;">Du er invitert!</h1>
+<h1 style="margin: 0;">You are invited!</h1>
 </div>
 <div class="content">
-<p>Hei!</p>
-<p>Du har blitt invitert til å bli med i <strong>{{company_name}}</strong> sitt droneoperasjonssystem.</p>
+<p>Hi!</p>
+<p>You have been invited to join <strong>{{company_name}}</strong>'s drone operations system.</p>
 <div class="code-box">
-<p style="margin: 0 0 10px 0; color: #666;">Din registreringskode:</p>
+<p style="margin: 0 0 10px 0; color: #666;">Your registration code:</p>
 <div class="code">{{registration_code}}</div>
 </div>
 <div class="steps">
-<p style="margin-top: 0;"><strong>Slik kommer du i gang:</strong></p>
-<div class="step"><span class="step-number">1</span> Gå til <a href="{{app_url}}">{{app_url}}</a></div>
-<div class="step"><span class="step-number">2</span> Klikk «Opprett konto»</div>
-<div class="step"><span class="step-number">3</span> Skriv inn registreringskoden ovenfor</div>
-<div class="step"><span class="step-number">4</span> Fyll ut navn, e-post og passord</div>
+<p style="margin-top: 0;"><strong>How to get started:</strong></p>
+<div class="step"><span class="step-number">1</span> Go to <a href="{{app_url}}">{{app_url}}</a></div>
+<div class="step"><span class="step-number">2</span> Click "Create account"</div>
+<div class="step"><span class="step-number">3</span> Enter the registration code above</div>
+<div class="step"><span class="step-number">4</span> Fill in name, email, and password</div>
 </div>
 <p style="text-align: center;">
-<a href="{{app_url}}" class="button">Gå til AviSafe</a>
+<a href="{{app_url}}" class="button">Go to AviSafe</a>
 </p>
-<p>Med vennlig hilsen,<br>{{company_name}}</p>
+<p>Best regards,<br>{{company_name}}</p>
 <div class="footer">
-<p>Dette er en automatisk generert e-post fra AviSafe.</p>
+<p>This is an automated email from AviSafe.</p>
 </div>
 </div>
 </div>
 </body>
-</html>`
-  }
+</html>`,
+  },
 };
-
-// Alias kept for readability — Norwegian is the default language.
-export const defaultTemplatesNo = defaultTemplates;
-
-/**
- * Default templates per language. New template keys must be added to BOTH
- * `defaultTemplates` (norsk, above) and `defaultTemplatesEn`.
- * See mem://preferences/i18n-mandatory.
- */
-export const defaultTemplatesByLang: Record<EmailLanguage, Record<string, { subject: string; content: string }>> = {
-  no: defaultTemplates,
-  en: defaultTemplatesEn,
-};
-
-/**
- * Gets email template with fallback: custom (DB, requested language) →
- * custom (DB, 'no') → default (requested language) → default ('no') → empty.
- */
-export async function getEmailTemplateWithFallback(
-  companyId: string,
-  templateType: string,
-  variables: Record<string, string>,
-  language: EmailLanguage = "no"
-): Promise<EmailTemplateResult> {
-  const customTemplate = await getEmailTemplate(companyId, templateType, language);
-
-  if (customTemplate) {
-    const content = replaceTemplateVariables(customTemplate.content, variables);
-    return {
-      subject: replaceTemplateVariables(customTemplate.subject, variables),
-      content: fixEmailImages(content),
-      isCustom: true
-    };
-  }
-
-  const langDefaults = defaultTemplatesByLang[language] || defaultTemplatesByLang.no;
-  const defaultTemplate = langDefaults[templateType] || defaultTemplatesByLang.no[templateType];
-  if (defaultTemplate) {
-    let content = replaceTemplateVariables(defaultTemplate.content, variables);
-    // Inject logo header into default templates
-    content = injectLogoHeader(content);
-    return {
-      subject: replaceTemplateVariables(defaultTemplate.subject, variables),
-      content: fixEmailImages(content),
-      isCustom: false
-    };
-  }
-
-  // Return empty template if no default exists
-  return {
-    subject: '',
-    content: '',
-    isCustom: false
-  };
-}
-
-/**
- * Injects the AviSafe logo header into email HTML.
- * Inserts right after the opening of .container div.
- */
-export function injectLogoHeader(html: string): string {
-  const logo = getEmailLogoHeader();
-  // Insert logo right after <div class="container"> 
-  const containerPattern = /(<div\s+class="container"[^>]*>)/i;
-  if (containerPattern.test(html)) {
-    return html.replace(containerPattern, `$1\n${logo}`);
-  }
-  // Fallback: insert after <body>
-  return html.replace(/<body[^>]*>/i, `$&\n${logo}`);
-}
-
-/**
- * Fixes images in email HTML to ensure they display correctly in email clients.
- * Adds proper styling, width constraints, and display properties to <img> tags.
- */
-export function fixEmailImages(html: string): string {
-  // Match img tags without proper styling
-  return html.replace(/<img\s+([^>]*?)>/gi, (match, attributes) => {
-    // Skip if already has inline width/style with max-width
-    if (attributes.includes('max-width')) {
-      return match;
-    }
-    
-    // Extract src attribute
-    const srcMatch = attributes.match(/src=["']([^"']+)["']/i);
-    if (!srcMatch) return match;
-    
-    // Build new attributes, preserving src and alt
-    const altMatch = attributes.match(/alt=["']([^"']*)["']/i);
-    const alt = altMatch ? altMatch[1] : 'Bilde';
-    
-    // Create properly styled image tag for email clients
-    return `<img src="${srcMatch[1]}" alt="${alt}" width="560" style="max-width:100%;height:auto;display:block;border:0;" />`;
-  });
-}

@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import i18n from "@/i18n";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type NotificationType = 
   | 'email_new_incident' 
@@ -24,7 +25,7 @@ export const sendNotificationEmail = async ({
   companyId,
 }: SendNotificationParams) => {
   try {
-    const { data, error } = await supabase.functions.invoke('send-notification-email', {
+    const { data, error } = await invokeEmailFunction('send-notification-email', {
       body: {
         recipientId,
         notificationType,

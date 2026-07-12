@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { resolveLanguage, t } from "../_shared/email-i18n.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,10 +17,12 @@ serve(async (req: Request): Promise<Response> => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-    const { email } = await req.json();
+    const body = await req.json();
+    const { email } = body;
+    const language = resolveLanguage(req, body);
 
     if (!email) {
-      return new Response(JSON.stringify({ error: "E-post er påkrevd" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: t(language, 'emailRequired') }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const lowerEmail = email.toLowerCase();
@@ -40,24 +43,29 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!user) {
       console.log(`No user matched ${lowerEmail} after pagination`);
-      return new Response(JSON.stringify({ message: "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ message: t(language, 'passwordResetGeneric') }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     console.log(`Found user ${user.id} for ${lowerEmail}, generating reset link...`);
 
     const { data: profile } = await supabase.from('profiles').select('company_id, full_name').eq('id', user.id).maybeSingle();
-    if (!profile) throw new Error("Kunne ikke hente brukerinfo");
+    if (!profile) throw new Error(t(language, 'couldNotFetchUser'));
 
     const { data: company } = await supabase.from('companies').select('navn').eq('id', profile.company_id).single();
 
     const { data } = await supabase.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo: 'https://app.avisafe.no/reset-password' } });
-    if (!data?.properties?.action_link) throw new Error("Kunne ikke generere tilbakestillingslenke");
+    if (!data?.properties?.action_link) throw new Error(t(language, 'couldNotGenerateResetLink'));
 
     const actionUrl = new URL(data.properties.action_link);
     const tokenHash = actionUrl.searchParams.get("token") || actionUrl.searchParams.get("token_hash");
-    if (!tokenHash) throw new Error("Kunne ikke ekstrahere token fra lenke");
+    if (!tokenHash) throw new Error(t(language, 'couldNotExtractToken'));
     const resetLink = `https://app.avisafe.no/reset-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
 
-    const templateResult = await getEmailTemplateWithFallback(profile.company_id, 'password_reset', { user_name: profile.full_name || '', reset_link: resetLink, company_name: company?.navn || 'AviSafe' });
+    const templateResult = await getEmailTemplateWithFallback(
+      profile.company_id,
+      'password_reset',
+      { user_name: profile.full_name || '', reset_link: resetLink, company_name: company?.navn || 'AviSafe' },
+      language,
+    );
 
     const emailConfig = await getEmailConfig(profile.company_id);
     const fromName = emailConfig.fromName || "AviSafe";
@@ -65,9 +73,9 @@ serve(async (req: Request): Promise<Response> => {
 
     await sendEmail({ from: senderAddress, to: email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
 
-    return new Response(JSON.stringify({ message: "Hvis e-posten finnes i systemet, vil du motta en tilbakestillingslenke" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ message: t(language, 'passwordResetGeneric') }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message || "En feil oppstod" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: error.message || "An error occurred" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

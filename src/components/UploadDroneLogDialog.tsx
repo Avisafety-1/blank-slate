@@ -28,6 +28,7 @@ import { usePlanGating } from "@/hooks/usePlanGating";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 const parseFlightDate = (raw: string): Date | null => {
   const d = new Date(raw);
@@ -2177,7 +2178,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const flightDate = parsedResult.startTime ? format(parseFlightDate(parsedResult.startTime) || new Date(), 'dd.MM.yyyy HH:mm') : format(new Date(), 'dd.MM.yyyy HH:mm');
 
       try {
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_flight_alert',
             companyId,

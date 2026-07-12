@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { getIncidentReporterDisplayName } from "@/lib/incidentVisibility";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Incident = Tables<"incidents">;
 
@@ -286,7 +287,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
       if (newUserId) {
         const recipientUser = users.find(u => u.id === newUserId);
         
-        await supabase.functions.invoke('send-notification-email', {
+        await invokeEmailFunction('send-notification-email', {
           body: {
             type: 'notify_followup_assigned',
             companyId: incident.company_id,

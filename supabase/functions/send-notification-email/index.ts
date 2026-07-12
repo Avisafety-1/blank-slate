@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
+import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shared/email-i18n.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
 import { assertUserInCompany } from "../_shared/companyScope.ts";
@@ -109,6 +110,14 @@ serve(async (req: Request): Promise<Response> => {
     const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, flightAlert, dry_run: dryRun } = body;
     // sentBy is server-set from authenticated caller below — body value is ignored.
     let sentBy: string | undefined;
+    const requestLanguage: EmailLanguage = resolveLanguage(req, body as any);
+    // Helper: look up recipient's preferred language, falling back to request language
+    const getRecipientLanguage = async (uid: string | undefined | null): Promise<EmailLanguage> => {
+      if (!uid) return requestLanguage;
+      const { data } = await supabase.from('profiles').select('preferred_language').eq('id', uid).maybeSingle();
+      const lang = (data as any)?.preferred_language;
+      return lang ? normalizeLanguage(lang) : requestLanguage;
+    };
 
     // ============================================================
     // AUTH GATE — PT-2 hardening (pentest 2026-05-08)
@@ -283,7 +292,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       if (!notificationUserIds.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'incident_notification', { incident_title: incident.tittel, incident_severity: incident.alvorlighetsgrad, incident_location: incident.lokasjon || 'Ikke oppgitt', incident_description: incident.beskrivelse || '', company_name: company?.navn || '' });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'incident_notification', { incident_title: incident.tittel, incident_severity: incident.alvorlighetsgrad, incident_location: incident.lokasjon || 'Ikke oppgitt', incident_description: incident.beskrivelse || '', company_name: company?.navn || '' },
+      requestLanguage);
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -315,7 +325,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: mission.tittel, mission_location: mission.lokasjon, mission_date: missionDate, mission_status: mission.status || 'Planlagt', mission_description: mission.beskrivelse || '', company_name: company?.navn || '' });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: mission.tittel, mission_location: mission.lokasjon, mission_date: missionDate, mission_status: mission.status || 'Planlagt', mission_description: mission.beskrivelse || '', company_name: company?.navn || '' },
+      requestLanguage);
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -405,7 +416,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       const notificationUserIds = [...notificationUserIdsSet];
       if (!notificationUserIds.length) return new Response(JSON.stringify({ message: 'No admins with notifications' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'admin_new_user', { new_user_name: newUser.fullName, new_user_email: newUser.email, company_name: newUser.companyName },
+      requestLanguage);
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -430,7 +442,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       if (!user?.email) throw new Error("User email not found");
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'followup_assigned', { user_name: followupAssigned.recipientName, incident_title: followupAssigned.incidentTitle, incident_severity: followupAssigned.incidentSeverity, incident_location: followupAssigned.incidentLocation || '', incident_description: followupAssigned.incidentDescription || '', company_name: company?.navn || '' });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'followup_assigned', { user_name: followupAssigned.recipientName, incident_title: followupAssigned.incidentTitle, incident_severity: followupAssigned.incidentSeverity, incident_location: followupAssigned.incidentLocation || '', incident_description: followupAssigned.incidentDescription || '', company_name: company?.navn || '' },
+      requestLanguage);
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -480,7 +493,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const missionDate = new Date(missionData!.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: missionData!.tittel, mission_location: missionData!.lokasjon || 'Ikke oppgitt', mission_date: missionDate, mission_description: missionData!.beskrivelse || '', company_name: company?.navn || '' });
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: missionData!.tittel, mission_location: missionData!.lokasjon || 'Ikke oppgitt', mission_date: missionDate, mission_description: missionData!.beskrivelse || '', company_name: company?.navn || '' },
+      requestLanguage);
 
       if (!templateResult.content) {
         console.warn('Empty template content for mission_approval_request, using inline fallback');
@@ -523,7 +537,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         comment: pilotComment.comment,
         sender_name: pilotComment.senderName,
         company_name: company?.navn || '',
-      });
+      },
+      requestLanguage);
 
       if (!templateResult.content) {
         templateResult.content = `<html><head><meta charset="utf-8"></head><body><h2>Kommentar til oppdrag: ${pilotComment.missionTitle}</h2><p><strong>Fra:</strong> ${pilotComment.senderName}</p><p><strong>Lokasjon:</strong> ${pilotComment.missionLocation}</p><p><strong>Tidspunkt:</strong> ${missionDate}</p><p><strong>Kommentar:</strong></p><p>${pilotComment.comment}</p></body></html>`;
@@ -573,7 +588,8 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         mission_note: escapeHtml(missionMention.missionNote || ''),
         company_name: company?.navn || '',
         app_url: appUrl,
-      });
+      },
+      requestLanguage);
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
@@ -663,7 +679,8 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
         mission_location: missionData.lokasjon || 'Ikke oppgitt',
         mission_date: missionDate,
         comments_section: commentsHtml,
-      });
+      },
+      requestLanguage);
 
       if (!templateResult.content) {
         console.warn('Empty template content for mission_approved, using inline fallback');
