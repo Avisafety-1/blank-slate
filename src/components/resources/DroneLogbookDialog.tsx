@@ -553,10 +553,10 @@ export const DroneLogbookDialog = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Book className="w-5 h-5 text-primary" />
-              Loggbok - {droneModell}
+              {t('resourceDialogs.droneLogbook.title', { model: droneModell })}
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Totalt {Number(flyvetimer).toFixed(2)} flyvetimer
+              {t('resourceDialogs.droneLogbook.totalHours', { hours: Number(flyvetimer).toFixed(2) })}
             </p>
           </DialogHeader>
 
@@ -569,7 +569,7 @@ export const DroneLogbookDialog = ({
               className="w-full sm:w-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Legg til innlegg
+              {t('resourceDialogs.droneLogbook.addEntry')}
             </Button>
             <Button 
               variant="outline" 
@@ -579,7 +579,7 @@ export const DroneLogbookDialog = ({
               className="w-full sm:w-auto"
             >
               <FileText className="w-4 h-4 mr-2" />
-              Eksporter PDF
+              {t('resourceDialogs.droneLogbook.exportPdf')}
             </Button>
           </div>
 
