@@ -310,9 +310,9 @@ export default function KartPage() {
     try {
       const parsed = await parseKmlOrKmz(file);
       setCurrentRoute(parsed);
-      toast.success(`KML importert: ${parsed.coordinates.length} punkter · ${parsed.totalDistance.toFixed(2)} km`);
+      toast.success(t('pages.map.kmlImported', { count: parsed.coordinates.length, distance: parsed.totalDistance.toFixed(2) }));
     } catch (err: any) {
-      toast.error(err?.message || 'Import feilet');
+      toast.error(err?.message || t('pages.map.importFailed'));
     } finally {
       setImportingKml(false);
       if (kmlInputRef.current) kmlInputRef.current.value = '';
