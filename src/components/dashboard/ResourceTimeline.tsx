@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, AlertTriangle, Plane, Users, Wrench, Calendar, FileText } from "lucide-react";
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, getWeek } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useTranslation } from "react-i18next";
 
 type TimelineEventType = "mission" | "maintenance" | "document" | "calendar";
 
@@ -47,6 +48,8 @@ const checkOverlap = (a: TimelineEvent, b: TimelineEvent): boolean => {
 
 export function ResourceTimeline() {
   const isMobile = useIsMobile();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [resourceRows, setResourceRows] = useState<ResourceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -317,16 +320,16 @@ export function ResourceTimeline() {
           <TooltipContent side="top" className="max-w-xs">
             <p className="font-semibold">{event.title}</p>
             <p className="text-xs text-muted-foreground">
-              {format(event.start, "EEE dd.MM HH:mm", { locale: nb })} – {format(event.end, "HH:mm", { locale: nb })}
+              {format(event.start, "EEE dd.MM HH:mm", { locale: dateLocale })} – {format(event.end, "HH:mm", { locale: dateLocale })}
             </p>
             {event.eventType !== "mission" && (
               <Badge variant="outline" className="text-[10px] mt-1 capitalize">
-                {event.eventType === "maintenance" ? "Vedlikehold" : event.eventType}
+                {event.eventType === "maintenance" ? t('pages.calendar.resourceTimeline.maintenance') : event.eventType}
               </Badge>
             )}
             {hasConflict && (
               <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-                <AlertTriangle className="w-3 h-3" /> Ressurskonflikt
+                <AlertTriangle className="w-3 h-3" /> {t('pages.calendar.resourceTimeline.resourceConflict')}
               </p>
             )}
           </TooltipContent>
@@ -401,7 +404,7 @@ export function ResourceTimeline() {
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
-            I dag
+            {t('pages.calendar.resourceTimeline.today')}
           </Button>
           <Button variant="outline" size="icon" onClick={() => setWeekStart((w) => addWeeks(w, 1))}>
             <ChevronRight className="w-4 h-4" />
@@ -409,21 +412,21 @@ export function ResourceTimeline() {
         </div>
         {isMobile ? (
           <div className="text-right">
-            <div className="text-sm font-semibold text-foreground">Uke {weekNumber}, {format(weekStart, "yyyy")}</div>
-            <div className="text-xs text-muted-foreground">{format(weekStart, "d. MMMM", { locale: nb })} – {format(weekEnd, "d. MMMM", { locale: nb })}</div>
+            <div className="text-sm font-semibold text-foreground">{t('pages.calendar.resourceTimeline.week', { num: weekNumber, year: format(weekStart, "yyyy") })}</div>
+            <div className="text-xs text-muted-foreground">{format(weekStart, "d. MMMM", { locale: dateLocale })} – {format(weekEnd, "d. MMMM", { locale: dateLocale })}</div>
           </div>
         ) : (
           <div className="text-sm font-medium text-muted-foreground">
-            Uke {weekNumber}, {format(weekStart, "yyyy")} — {format(weekStart, "d. MMM", { locale: nb })} – {format(weekEnd, "d. MMM", { locale: nb })}
+            {t('pages.calendar.resourceTimeline.week', { num: weekNumber, year: format(weekStart, "yyyy") })} — {format(weekStart, "d. MMM", { locale: dateLocale })} – {format(weekEnd, "d. MMM", { locale: dateLocale })}
           </div>
         )}
       </div>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/80 inline-block" /> Oppdrag</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-orange-500/80 inline-block" /> Vedlikehold</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-purple-500/80 inline-block" /> Kalender</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-primary/80 inline-block" /> {t('pages.calendar.resourceTimeline.missions')}</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-orange-500/80 inline-block" /> {t('pages.calendar.resourceTimeline.maintenance')}</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-purple-500/80 inline-block" /> {t('pages.calendar.resourceTimeline.calendar')}</span>
       </div>
 
       {/* Day headers */}
@@ -438,7 +441,7 @@ export function ResourceTimeline() {
                 isSameDay(day, new Date()) ? "text-primary font-bold" : "text-muted-foreground"
               )}
             >
-              {isMobile ? format(day, "EEEEE", { locale: nb }) : format(day, "EEE d.", { locale: nb })}
+              {isMobile ? format(day, "EEEEE", { locale: dateLocale }) : format(day, "EEE d.", { locale: dateLocale })}
             </div>
           ))}
         </div>
@@ -446,21 +449,22 @@ export function ResourceTimeline() {
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-          Laster ressurskalender…
+          {t('pages.calendar.resourceTimeline.loading')}
         </div>
       ) : isEmpty ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-sm">Ingen ressurser med hendelser denne uken</p>
-          <p className="text-xs mt-1">Opprett oppdrag og tildel droner, utstyr eller personell for å se dem her</p>
+          <p className="text-sm">{t('pages.calendar.resourceTimeline.empty')}</p>
+          <p className="text-xs mt-1">{t('pages.calendar.resourceTimeline.emptyHint')}</p>
         </div>
       ) : (
         <>
-          {renderSection("Droner", <Plane className="w-4 h-4 text-primary" />, droneResources)}
-          {renderSection("Personell", <Users className="w-4 h-4 text-blue-500" />, personnelResources)}
-          {renderSection("Utstyr", <Wrench className="w-4 h-4 text-orange-500" />, equipmentResources)}
-          {renderSection("Kalender", <Calendar className="w-4 h-4 text-purple-500" />, calendarResources)}
+          {renderSection(t('pages.calendar.resourceTimeline.drones'), <Plane className="w-4 h-4 text-primary" />, droneResources)}
+          {renderSection(t('pages.calendar.resourceTimeline.personnel'), <Users className="w-4 h-4 text-blue-500" />, personnelResources)}
+          {renderSection(t('pages.calendar.resourceTimeline.equipment'), <Wrench className="w-4 h-4 text-orange-500" />, equipmentResources)}
+          {renderSection(t('pages.calendar.resourceTimeline.calendar'), <Calendar className="w-4 h-4 text-purple-500" />, calendarResources)}
         </>
       )}
+
 
       <MissionDetailDialog
         open={missionDetailOpen}
@@ -480,23 +484,23 @@ export function ResourceTimeline() {
           {selectedMaintenanceEvent && (
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Ressurs</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.resource')}</span>
                 <span className="font-medium">{selectedMaintenanceEvent.resourceName || "—"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.type')}</span>
                 <Badge variant="outline" className="capitalize">
-                  {selectedMaintenanceEvent.resourceType === "drone" ? "Drone" : "Utstyr"}
+                  {selectedMaintenanceEvent.resourceType === "drone" ? t('pages.calendar.resourceTimeline.drone') : t('pages.calendar.resourceTimeline.equipment')}
                 </Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Dato</span>
-                <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: nb })}</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.date')}</span>
+                <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: dateLocale })}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Kategori</span>
+                <span className="text-muted-foreground">{t('pages.calendar.resourceTimeline.category')}</span>
                 <Badge className="bg-orange-500/80 text-white border-orange-500">
-                  {selectedMaintenanceEvent.title.includes("Inspeksjon") ? "Inspeksjon" : "Vedlikehold"}
+                  {selectedMaintenanceEvent.title.includes("Inspeksjon") ? t('pages.calendar.resourceTimeline.inspection') : t('pages.calendar.resourceTimeline.maintenance')}
                 </Badge>
               </div>
             </div>
