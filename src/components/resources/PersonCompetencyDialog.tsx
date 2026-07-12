@@ -804,10 +804,10 @@ export function PersonCompetencyDialog({
             <form onSubmit={handleAddCompetency} className="space-y-3 min-w-0 pr-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="new-type" className="text-xs">Type *</Label>
+                  <Label htmlFor="new-type" className="text-xs">{t('resourceDialogs.personCompetency.typeRequired')}</Label>
                   <Select value={newType} onValueChange={setNewType}>
                     <SelectTrigger id="new-type" className="h-9">
-                      <SelectValue placeholder="Velg type" />
+                      <SelectValue placeholder={t('resourceDialogs.personCompetency.selectType')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Kurs">Kurs</SelectItem>
@@ -821,7 +821,7 @@ export function PersonCompetencyDialog({
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="new-name" className="text-xs">Navn *</Label>
+                  <Label htmlFor="new-name" className="text-xs">{t('resourceDialogs.personCompetency.nameRequired')}</Label>
                   {newType === "Kurs" ? (
                     <>
                       <Select
@@ -829,13 +829,13 @@ export function PersonCompetencyDialog({
                         onValueChange={(v) => setNewName(v === "__custom__" ? "" : v)}
                       >
                         <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Velg kurs..." />
+                          <SelectValue placeholder={t('resourceDialogs.personCompetency.selectCourse')} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="STS">STS</SelectItem>
                           <SelectItem value="A1/A3">A1/A3</SelectItem>
                           <SelectItem value="A2">A2</SelectItem>
-                          <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                          <SelectItem value="__custom__">{t('resourceDialogs.personCompetency.otherEnter')}</SelectItem>
                         </SelectContent>
                       </Select>
                       {!["STS", "A1/A3", "A2"].includes(newName) && (
