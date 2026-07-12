@@ -747,7 +747,7 @@ export function PersonCompetencyDialog({
                       <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 hover:bg-muted/50 px-3 py-2 text-sm font-medium transition-colors group">
                         <span className="flex items-center gap-2 text-muted-foreground">
                           <Compass className="h-4 w-4 text-primary" />
-                          Fullførte veiledede tour-er
+                          {t('resourceDialogs.personCompetency.completedTours')}
                           <span className="text-xs text-muted-foreground/80">({tourComps.length})</span>
                         </span>
                         <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
