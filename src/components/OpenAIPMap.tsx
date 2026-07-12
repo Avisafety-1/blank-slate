@@ -1020,31 +1020,37 @@ export function OpenAIPMap({
     // ============================================================
 
     // Luftrom
-    layerConfigs.push({ id: "rpas", name: "RPAS 5 km", layer: rpasLayer, enabled: true, icon: "radio", group: "Luftrom" });
-    layerConfigs.push({ id: "nsm", name: "NSM forbudsområder", layer: nsmLayer, enabled: true, icon: "ban", group: "Luftrom" });
-    layerConfigs.push({ id: "aip", name: "P/R/D-soner", layer: aipLayer, enabled: false, icon: "shield", group: "Luftrom" });
-    layerConfigs.push({ id: "rmz_tmz_atz", name: "RMZ / TMZ / ATZ", layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: "Luftrom" });
+    const gAir = t('pages.map.layers.groups.airspace');
+    const gRes = t('pages.map.layers.groups.restrictions');
+    const gNat = t('pages.map.layers.groups.natureAndPopulation');
+    const gInf = t('pages.map.layers.groups.infrastructure');
+    const gMis = t('pages.map.layers.groups.missions');
+    const gLive = t('pages.map.layers.groups.liveTraffic');
+    layerConfigs.push({ id: "rpas", name: t('pages.map.layers.rpas'), layer: rpasLayer, enabled: true, icon: "radio", group: gAir });
+    layerConfigs.push({ id: "nsm", name: t('pages.map.layers.nsm'), layer: nsmLayer, enabled: true, icon: "ban", group: gAir });
+    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: aipLayer, enabled: false, icon: "shield", group: gAir });
+    layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: gAir });
 
     // Restriksjoner — slått sammen NO + DK
-    layerConfigs.push({ id: "restriksjonsomrader", name: "Restriksjonsområder", layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: "Restriksjoner" });
-    layerConfigs.push({ id: "fareomrader", name: "Fareområder", layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: "Restriksjoner" });
-    layerConfigs.push({ id: "sikringsobjekter", name: "Sikringsobjekter", layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: "Restriksjoner" });
-    layerConfigs.push({ id: "notam", name: "NOTAM", layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: "Restriksjoner" });
+    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: gRes });
+    layerConfigs.push({ id: "fareomrader", name: t('pages.map.layers.dangerAreas'), layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: gRes });
+    layerConfigs.push({ id: "sikringsobjekter", name: t('pages.map.layers.securityObjects'), layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: gRes });
+    layerConfigs.push({ id: "notam", name: t('pages.map.layers.notam'), layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: gRes });
 
     // Natur & befolkning
-    layerConfigs.push({ id: "verneomrader", name: "Verneområder", layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "befolkning", name: "Befolkning", layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "tettsteder", name: "Tettsteder", layer: tettstederLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
-    layerConfigs.push({ id: "arealbruk", name: "Arealbruk", layer: arealbrukLayer, enabled: false, icon: "users", group: "Natur & befolkning" });
+    layerConfigs.push({ id: "verneomrader", name: t('pages.map.layers.protectedAreas'), layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: gNat });
+    layerConfigs.push({ id: "befolkning", name: t('pages.map.layers.population'), layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: gNat });
+    layerConfigs.push({ id: "tettsteder", name: t('pages.map.layers.urbanAreas'), layer: tettstederLayer, enabled: false, icon: "users", group: gNat });
+    layerConfigs.push({ id: "arealbruk", name: t('pages.map.layers.landUse'), layer: arealbrukLayer, enabled: false, icon: "users", group: gNat });
 
     // Infrastruktur
-    layerConfigs.push({ id: "luftfartshindre", name: "Luftfartshindre", layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: "Infrastruktur" });
-    layerConfigs.push({ id: "kraftledninger", name: "Kraftledninger", layer: kraftledningerLayer, enabled: false, icon: "zap", group: "Infrastruktur" });
-    layerConfigs.push({ id: "eiendomsgrenser", name: "Eiendomsgrenser", layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: "Infrastruktur" });
+    layerConfigs.push({ id: "luftfartshindre", name: t('pages.map.layers.aviationObstacles'), layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: gInf });
+    layerConfigs.push({ id: "kraftledninger", name: t('pages.map.layers.powerLines'), layer: kraftledningerLayer, enabled: false, icon: "zap", group: gInf });
+    layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
     if (tensioLuftnettLayer) {
-      layerConfigs.push({ id: "tensio_luftnett", name: "Luftnett Tensio", layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: "Infrastruktur" });
+      layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
     }
-    layerConfigs.push({ id: "flyplasser", name: "Flyplasser", layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: "Infrastruktur" });
+    layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: gInf });
 
     // Geolocation
     if (navigator.geolocation) {
