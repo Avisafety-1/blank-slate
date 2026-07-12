@@ -440,6 +440,7 @@ export default function Map3D({
   soraSettings,
   routeUndoToken,
 }: Map3DProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const fetchTimerRef = useRef<number | null>(null);
