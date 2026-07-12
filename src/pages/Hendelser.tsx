@@ -1045,14 +1045,14 @@ const Hendelser = () => {
                     <div className="flex items-start gap-2">
                       <Calendar className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                       <span>
-                        {format(new Date(incident.hendelsestidspunkt), "d. MMMM yyyy 'kl.' HH:mm", { locale: nb })}
+                        {format(new Date(incident.hendelsestidspunkt), "d. MMMM yyyy 'kl.' HH:mm", { locale: dateLocale })}
                       </span>
                     </div>
                     {incident.rapportert_av && (
                       <div className="flex items-start gap-2">
                         <User className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
                         <span>
-                          Rapportert av: {getIncidentReporterDisplayName({
+                          {t('incidents.card.reportedByPrefix')}{getIncidentReporterDisplayName({
                             incident,
                             hideReporterIdentity: companySettings.hide_reporter_identity,
                             isAdmin,
@@ -1065,13 +1065,13 @@ const Hendelser = () => {
                     {incident.company_name && incident.company_id !== companyId && (
                       <div className="flex items-start gap-2">
                         <Building2 className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Avdeling: {incident.company_name}</span>
+                        <span>{t('incidents.card.departmentPrefix')}{incident.company_name}</span>
                       </div>
                     )}
                     {incident.oppfolgingsansvarlig_id && oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id] && (
                       <div className="flex items-start gap-2">
                         <Bell className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                        <span>Ansvarlig: {oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>
+                        <span>{t('incidents.card.responsiblePrefix')}{oppfolgingsansvarlige[incident.oppfolgingsansvarlig_id]}</span>
                       </div>
                     )}
                   </div>
@@ -1080,7 +1080,7 @@ const Hendelser = () => {
                   {incident.beskrivelse && (
                     <div className="pt-3 border-t border-border/50">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Beskrivelse
+                        {t('incidents.card.descriptionLabel')}
                       </p>
                       <p className="text-sm whitespace-pre-wrap">{incident.beskrivelse}</p>
                     </div>
