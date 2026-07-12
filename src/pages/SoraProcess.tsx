@@ -94,7 +94,9 @@ interface PhaseCardProps {
   glow?: boolean;
 }
 
-const PhaseCard = ({ phase, icon, title, subtitle, accentColor, dimColor, midColor, items, glow }: PhaseCardProps) => (
+const PhaseCard = ({ phase, icon, title, subtitle, accentColor, dimColor, midColor, items, glow }: PhaseCardProps) => {
+  const { t } = useTranslation();
+  return (
   <div
     className="relative rounded-2xl border w-full overflow-hidden"
     style={{
