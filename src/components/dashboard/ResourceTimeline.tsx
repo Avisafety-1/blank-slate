@@ -320,7 +320,7 @@ export function ResourceTimeline() {
           <TooltipContent side="top" className="max-w-xs">
             <p className="font-semibold">{event.title}</p>
             <p className="text-xs text-muted-foreground">
-              {format(event.start, "EEE dd.MM HH:mm", { locale: nb })} – {format(event.end, "HH:mm", { locale: nb })}
+              {format(event.start, "EEE dd.MM HH:mm", { locale: dateLocale })} – {format(event.end, "HH:mm", { locale: dateLocale })}
             </p>
             {event.eventType !== "mission" && (
               <Badge variant="outline" className="text-[10px] mt-1 capitalize">
@@ -413,11 +413,11 @@ export function ResourceTimeline() {
         {isMobile ? (
           <div className="text-right">
             <div className="text-sm font-semibold text-foreground">Uke {weekNumber}, {format(weekStart, "yyyy")}</div>
-            <div className="text-xs text-muted-foreground">{format(weekStart, "d. MMMM", { locale: nb })} – {format(weekEnd, "d. MMMM", { locale: nb })}</div>
+            <div className="text-xs text-muted-foreground">{format(weekStart, "d. MMMM", { locale: dateLocale })} – {format(weekEnd, "d. MMMM", { locale: dateLocale })}</div>
           </div>
         ) : (
           <div className="text-sm font-medium text-muted-foreground">
-            Uke {weekNumber}, {format(weekStart, "yyyy")} — {format(weekStart, "d. MMM", { locale: nb })} – {format(weekEnd, "d. MMM", { locale: nb })}
+            Uke {weekNumber}, {format(weekStart, "yyyy")} — {format(weekStart, "d. MMM", { locale: dateLocale })} – {format(weekEnd, "d. MMM", { locale: dateLocale })}
           </div>
         )}
       </div>
@@ -441,7 +441,7 @@ export function ResourceTimeline() {
                 isSameDay(day, new Date()) ? "text-primary font-bold" : "text-muted-foreground"
               )}
             >
-              {isMobile ? format(day, "EEEEE", { locale: nb }) : format(day, "EEE d.", { locale: nb })}
+              {isMobile ? format(day, "EEEEE", { locale: dateLocale }) : format(day, "EEE d.", { locale: dateLocale })}
             </div>
           ))}
         </div>
@@ -494,7 +494,7 @@ export function ResourceTimeline() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Dato</span>
-                <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: nb })}</span>
+                <span className="font-medium">{format(selectedMaintenanceEvent.start, "d. MMMM yyyy", { locale: dateLocale })}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Kategori</span>
