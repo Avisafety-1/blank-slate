@@ -12,6 +12,7 @@ import { addDays, format } from "date-fns";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface EquipmentDefaultValues {
   type?: string;
@@ -31,6 +32,7 @@ interface AddEquipmentDialogProps {
 }
 
 export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userId, defaultValues, onEquipmentCreated }: AddEquipmentDialogProps) => {
+  const { t } = useTranslation();
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vedlikeholdStartdato, setVedlikeholdStartdato] = useState<string>("");
@@ -109,14 +111,14 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
     const formData = new FormData(form);
     
     if (!companyId) {
-      toast.error("Kunne ikke hente brukerinformasjon");
+      toast.error(t('resourceDialogs.addEquipment.kunneIkkeHenteBruker'));
       setIsSubmitting(false);
       return;
     }
 
     const typeValue = selectedType === "__other__" ? customType.trim() : selectedType;
     if (!typeValue) {
-      toast.error("Du må velge eller skrive inn en type");
+      toast.error(t('resourceDialogs.addEquipment.maVelgeType'));
       setIsSubmitting(false);
       return;
     }
@@ -149,12 +151,12 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
       if (error) {
         console.error("Error adding equipment:", error);
         if (error.code === "42501" || error.message?.includes("policy")) {
-          toast.error("Du har ikke tillatelse til å legge til utstyr");
+          toast.error(t('resourceDialogs.addEquipment.ikkeTillatelse'));
         } else {
-          toast.error(`Kunne ikke legge til utstyr: ${error.message || "Ukjent feil"}`);
+          toast.error(t('resourceDialogs.addEquipment.kunneIkkeLeggeTil', { message: error.message || t('resourceDialogs.addEquipment.ukjentFeil') }));
         }
       } else {
-        toast.success("Utstyr lagt til");
+        toast.success(t('resourceDialogs.addEquipment.utstyrLagtTil'));
         if (insertedData && onEquipmentCreated) {
           onEquipmentCreated(insertedData);
         }
@@ -178,31 +180,31 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <span data-tour="add-equipment-marker" className="hidden" /><DialogHeader>
-          <DialogTitle>Legg til nytt utstyr</DialogTitle>
+          <DialogTitle>{t('resourceDialogs.addEquipment.title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddEquipment} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="navn">Navn</Label>
+              <Label htmlFor="navn">{t('resourceDialogs.addEquipment.navn')}</Label>
               <Input id="navn" name="navn" required defaultValue={defaultValues?.navn || ""} />
             </div>
             <div>
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">{t('resourceDialogs.addEquipment.type')}</Label>
               <Select value={selectedType} onValueChange={(val) => { setSelectedType(val); if (val !== "__other__") setCustomType(""); }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg type" />
+                  <SelectValue placeholder={t('resourceDialogs.addEquipment.velgType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectableEquipmentTypes.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  {selectableEquipmentTypes.map((tp) => (
+                    <SelectItem key={tp} value={tp}>{tp}</SelectItem>
                   ))}
-                  <SelectItem value="__other__">Annet...</SelectItem>
+                  <SelectItem value="__other__">{t('resourceDialogs.addEquipment.annet')}</SelectItem>
                 </SelectContent>
               </Select>
               {selectedType === "__other__" && (
                 <Input
                   className="mt-2"
-                  placeholder="Skriv inn ny type"
+                  placeholder={t('resourceDialogs.addEquipment.skrivInnNyType')}
                   value={customType}
                   onChange={(e) => setCustomType(e.target.value)}
                   required
@@ -212,41 +214,41 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="serienummer">Serienummer</Label>
+              <Label htmlFor="serienummer">{t('resourceDialogs.addEquipment.serienummer')}</Label>
               <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ""} />
             </div>
             <div>
-              <Label htmlFor="internal_serial">Internt serienummer</Label>
+              <Label htmlFor="internal_serial">{t('resourceDialogs.addEquipment.internalSerial')}</Label>
               <Input 
                 id="internal_serial" 
                 value={internalSerial}
                 onChange={(e) => setInternalSerial(e.target.value)}
-                placeholder="Valgfritt"
+                placeholder={t('resourceDialogs.addEquipment.valgfritt')}
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="vekt">Vekt (kg)</Label>
+              <Label htmlFor="vekt">{t('resourceDialogs.addEquipment.vekt')}</Label>
               <Input id="vekt" name="vekt" type="number" step="0.01" min="0" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t('resourceDialogs.addEquipment.status')}</Label>
               <Select name="status" defaultValue="Grønn">
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Grønn">Grønn</SelectItem>
-                  <SelectItem value="Gul">Gul</SelectItem>
-                  <SelectItem value="Rød">Rød</SelectItem>
+                  <SelectItem value="Grønn">{t('resourceDialogs.addEquipment.green')}</SelectItem>
+                  <SelectItem value="Gul">{t('resourceDialogs.addEquipment.yellow')}</SelectItem>
+                  <SelectItem value="Rød">{t('resourceDialogs.addEquipment.red')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="flyvetimer">Flyvetimer</Label>
+              <Label htmlFor="flyvetimer">{t('resourceDialogs.addEquipment.flyvetimer')}</Label>
               <Input id="flyvetimer" name="flyvetimer" type="number" step="0.01" min="0" defaultValue="0" />
             </div>
           </div>
@@ -255,13 +257,13 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
             <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
               <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
-              <span className="text-sm font-medium">Vedlikeholdsintervall</span>
+              <span className="text-sm font-medium">{t('resourceDialogs.addEquipment.vedlikeholdsintervall')}</span>
             </CollapsibleTrigger>
-            <p className="text-xs text-muted-foreground mt-1 ml-6">Status trigges av det som kommer først av dager, timer eller oppdrag</p>
+            <p className="text-xs text-muted-foreground mt-1 ml-6">{t('resourceDialogs.addEquipment.vedlikeholdHint')}</p>
             <CollapsibleContent className="space-y-4 pt-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="vedlikehold_startdato">Startdato</Label>
+                  <Label htmlFor="vedlikehold_startdato">{t('resourceDialogs.addEquipment.startdato')}</Label>
                   <Input 
                     id="vedlikehold_startdato" 
                     name="vedlikehold_startdato" 
@@ -271,7 +273,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                   />
                 </div>
                 <div>
-                  <Label htmlFor="vedlikeholdsintervall_dager">Intervall (dager)</Label>
+                  <Label htmlFor="vedlikeholdsintervall_dager">{t('resourceDialogs.addEquipment.intervallDager')}</Label>
                   <Input 
                     id="vedlikeholdsintervall_dager" 
                     name="vedlikeholdsintervall_dager" 
@@ -284,46 +286,46 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
               </div>
               {nesteVedlikehold && (
                 <p className="text-xs text-muted-foreground">
-                  Neste vedlikehold: {format(new Date(nesteVedlikehold), "dd.MM.yyyy")}
+                  {t('resourceDialogs.addEquipment.nesteVedlikehold', { date: format(new Date(nesteVedlikehold), "dd.MM.yyyy") })}
                 </p>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="inspection_interval_hours">Intervall (timer)</Label>
-                  <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder="F.eks. 50" />
+                  <Label htmlFor="inspection_interval_hours">{t('resourceDialogs.addEquipment.intervallTimer')}</Label>
+                  <Input id="inspection_interval_hours" name="inspection_interval_hours" type="number" step="0.1" min="0" placeholder={t('resourceDialogs.addEquipment.intervallTimerPlaceholder')} />
                 </div>
                 <div>
-                  <Label htmlFor="inspection_interval_missions">Intervall (oppdrag)</Label>
-                  <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder="F.eks. 100" />
+                  <Label htmlFor="inspection_interval_missions">{t('resourceDialogs.addEquipment.intervallOppdrag')}</Label>
+                  <Input id="inspection_interval_missions" name="inspection_interval_missions" type="number" min="1" placeholder={t('resourceDialogs.addEquipment.intervallOppdragPlaceholder')} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="varsel_timer">Varsel timer</Label>
-                  <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder="Timer før gul" />
+                  <Label htmlFor="varsel_timer">{t('resourceDialogs.addEquipment.varselTimer')}</Label>
+                  <Input id="varsel_timer" name="varsel_timer" type="number" step="0.1" min="0" placeholder={t('resourceDialogs.addEquipment.varselTimerPlaceholder')} />
                 </div>
                 <div>
-                  <Label htmlFor="varsel_oppdrag">Varsel oppdrag</Label>
-                  <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder="Oppdrag før gul" />
+                  <Label htmlFor="varsel_oppdrag">{t('resourceDialogs.addEquipment.varselOppdrag')}</Label>
+                  <Input id="varsel_oppdrag" name="varsel_oppdrag" type="number" min="1" placeholder={t('resourceDialogs.addEquipment.varselOppdragPlaceholder')} />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="sist_vedlikeholdt">Sist vedlikeholdt</Label>
+                <Label htmlFor="sist_vedlikeholdt">{t('resourceDialogs.addEquipment.sistVedlikeholdt')}</Label>
                 <Input id="sist_vedlikeholdt" name="sist_vedlikeholdt" type="date" />
               </div>
 
               {/* Checklist selection */}
               {checklists.length > 0 && (
                 <div>
-                  <Label htmlFor="sjekkliste">Sjekkliste for vedlikehold</Label>
+                  <Label htmlFor="sjekkliste">{t('resourceDialogs.addEquipment.sjekklisteVedlikehold')}</Label>
                   <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg sjekkliste (valgfritt)" />
+                      <SelectValue placeholder={t('resourceDialogs.addEquipment.velgSjekkliste')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Ingen sjekkliste</SelectItem>
+                      <SelectItem value="none">{t('resourceDialogs.addEquipment.ingenSjekkliste')}</SelectItem>
                       {checklists.map((checklist) => (
                         <SelectItem key={checklist.id} value={checklist.id}>
                           {checklist.tittel}
@@ -332,7 +334,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Hvis valgt, må sjekklisten fullføres før vedlikehold registreres
+                    {t('resourceDialogs.addEquipment.sjekklisteHint')}
                   </p>
                 </div>
               )}
@@ -340,11 +342,11 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
           </Collapsible>
 
           <div>
-            <Label htmlFor="merknader">Merknader</Label>
+            <Label htmlFor="merknader">{t('resourceDialogs.addEquipment.merknader')}</Label>
             <Textarea id="merknader" name="merknader" defaultValue={defaultValues?.merknader || ""} />
           </div>
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Legger til..." : "Legg til utstyr"}
+            {isSubmitting ? t('resourceDialogs.addEquipment.leggerTil') : t('resourceDialogs.addEquipment.leggTil')}
           </Button>
         </form>
       </DialogContent>
