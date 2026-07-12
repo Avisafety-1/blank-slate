@@ -330,25 +330,25 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="vekt">MTOW (kg)</Label>
+              <Label htmlFor="vekt">{t('resourceDialogs.addDrone.mtow')}</Label>
               <Input 
                 id="vekt" 
                 name="vekt" 
                 type="number" 
                 step="0.001" 
-                placeholder="f.eks. 0.9" 
+                placeholder={t('resourceDialogs.addDrone.mtowPlaceholder')} 
                 value={vekt}
                 onChange={(e) => setVekt(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="payload">Payload (kg)</Label>
+              <Label htmlFor="payload">{t('resourceDialogs.addDrone.payload')}</Label>
               <Input 
                 id="payload" 
                 name="payload" 
                 type="number" 
                 step="0.001" 
-                placeholder="f.eks. 0.5" 
+                placeholder={t('resourceDialogs.addDrone.payloadPlaceholder')} 
                 value={payload}
                 onChange={(e) => setPayload(e.target.value)}
               />
