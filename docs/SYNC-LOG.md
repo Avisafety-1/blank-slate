@@ -134,3 +134,22 @@ med `Short`/`Abbr`-mønster for engelske strenger som ellers ville sprengt knapp
 - Nye nøkler (no/en): `add`, `save`, `saving`, `confirm`, `noEventsThisDay`, `markAsCompleted`, `confirmMaintenanceDesc`, `missionCreated`, `documentSaved`, `documentUpdated`, `documentDeleted`.
 
 **Verifisering:** `tsgo --noEmit` OK.
+
+
+## 2026-07-12 — i18n Fase 1.4: Map popups (2D + 3D delt)
+
+**Komponenter:**
+- `src/lib/zonePopups.ts` (CAA NO + DK dronesoner)
+- `src/lib/aipPopups.ts` (OpenAIP soner: CTR/TIZ/TMZ/RMZ/P/R/D/ATZ)
+- `src/lib/rpas5kmPopup.ts` (Avinor RPAS 5 km-soner)
+- `src/lib/mapTrafficPopup.ts` (SafeSky + DroneTag + FH2 trafikk-popup)
+- `src/components/Map3D.tsx` (base-toggle title/aria-label)
+
+**Endringer:**
+- Nytt namespace `pages.map.popups.*` med underseksjoner: `caa`, `dk`, `aip`, `rpas`, `traffic`, `map3d`.
+- Popup-byggere er rene funksjoner uten React-kontekst → importerer `i18n` direkte fra `@/i18n` og bruker `i18n.t(...)` inline (`tp('...')`-helper).
+- `CAA_LAYER_STYLES`, `DK_LAYER_STYLES` og `AIP_ZONE_STYLES` gjort til Proxy-baserte lookup-tabeller slik at `iconLabel`/`label` alltid leses fra gjeldende i18n-språk (i stedet for å være låst ved modul-init).
+- Traffic-popup: `formatBeaconType` og `formatSource` bruker nå oversettelser; `toLocaleTimeString` bytter mellom `no-NO` og `en-US` basert på `i18n.language`.
+- Map3D grunnkart-toggle bruker `useTranslation` og `pages.map.popups.map3d.*`.
+
+**Verifisering:** `tsgo --noEmit` OK.
