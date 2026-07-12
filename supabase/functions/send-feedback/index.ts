@@ -1,6 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
+import { resolveLanguage } from "../_shared/email-i18n.ts";
+
+// NOTE: Denne funksjonen sender tilbakemeldinger til AviSafes support-adresse
+// (support@avisafe.no). Innholdet i selve e-posten er alltid på norsk siden
+// mottaker er intern. Klient-vendte feilmeldinger er tospråklige.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,19 +70,36 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { subject, message, imageUrl, missionId } = await req.json();
+    const body = await req.json();
+    const { subject, message, imageUrl, missionId } = body;
+    const language = resolveLanguage(req, body);
+    const errStrings = language === 'en'
+      ? {
+          subjectRequired: 'Subject is required',
+          messageRequired: 'Message is required',
+          subjectTooLong: 'Subject cannot be longer than 200 characters',
+          messageTooLong: 'Message cannot be longer than 5000 characters',
+          sendFailed: 'Could not send feedback',
+        }
+      : {
+          subjectRequired: 'Overskrift er påkrevd',
+          messageRequired: 'Melding er påkrevd',
+          subjectTooLong: 'Overskrift kan ikke være lengre enn 200 tegn',
+          messageTooLong: 'Melding kan ikke være lengre enn 5000 tegn',
+          sendFailed: 'Kunne ikke sende tilbakemelding',
+        };
 
     if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
-      return new Response(JSON.stringify({ error: 'Overskrift er påkrevd' }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: errStrings.subjectRequired }), { status: 400, headers: corsHeaders });
     }
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return new Response(JSON.stringify({ error: 'Melding er påkrevd' }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: errStrings.messageRequired }), { status: 400, headers: corsHeaders });
     }
     if (subject.length > 200) {
-      return new Response(JSON.stringify({ error: 'Overskrift kan ikke være lengre enn 200 tegn' }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: errStrings.subjectTooLong }), { status: 400, headers: corsHeaders });
     }
     if (message.length > 5000) {
-      return new Response(JSON.stringify({ error: 'Melding kan ikke være lengre enn 5000 tegn' }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: errStrings.messageTooLong }), { status: 400, headers: corsHeaders });
     }
 
     let missionLine = '';
