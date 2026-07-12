@@ -8,6 +8,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@
 import { Badge } from "@/components/ui/badge";
 import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface EccairsMultiSelectProps {
   valueListKey: string;
@@ -28,6 +29,7 @@ function SelectedItemBadge({
   valueId: string; 
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: item, isLoading } = useEccairsTaxonomyItem(valueListKey, valueId, true);
   
   return (
@@ -36,7 +38,7 @@ function SelectedItemBadge({
         <span className="animate-pulse">...</span>
       ) : (
         <span className="truncate max-w-[150px]">
-          {item?.value_description || `ID: ${valueId}`}
+          {item?.value_description || t("eccairs.common.idLabel", { id: valueId })}
         </span>
       )}
       <button
@@ -57,10 +59,12 @@ export function EccairsMultiSelect({
   valueListKey,
   value,
   onChange,
-  placeholder = "Velg...",
+  placeholder,
   disabled = false,
   maxItems = 5,
 }: EccairsMultiSelectProps) {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t("eccairs.multiSelect.placeholder");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -117,7 +121,7 @@ export function EccairsMultiSelect({
                 />
               ))
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground">{effectivePlaceholder}</span>
             )}
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -130,16 +134,16 @@ export function EccairsMultiSelect({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Søk..."
+              placeholder={t("eccairs.common.search")}
               className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
           <CommandList>
             {isLoadingItems ? (
-              <div className="p-4 text-sm text-muted-foreground">Søker...</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.searching")}</div>
             ) : (
               <>
-                <CommandEmpty>Ingen treff</CommandEmpty>
+                <CommandEmpty>{t("eccairs.common.noResults")}</CommandEmpty>
                 <CommandGroup>
                   {(items || []).map((item) => {
                     const isSelected = selectedValues.includes(item.value_id);

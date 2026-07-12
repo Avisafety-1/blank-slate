@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Search, FileIcon, Loader2, Upload, Check, AlertCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -60,6 +61,7 @@ export function EccairsAttachmentUpload({
   onOpenChange,
   onSuccess,
 }: EccairsAttachmentUploadProps) {
+  const { t } = useTranslation();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,7 +111,7 @@ export function EccairsAttachmentUpload({
       setFilteredDocuments(data || []);
     } catch (err) {
       console.error("Error fetching documents:", err);
-      toast.error("Kunne ikke hente dokumenter");
+      toast.error(t("eccairs.attachmentUpload.errors.fetchDocuments"));
     } finally {
       setIsLoading(false);
     }
@@ -134,18 +136,18 @@ export function EccairsAttachmentUpload({
 
   const uploadSelectedDocuments = async () => {
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL er ikke konfigurert");
+      toast.error(t("eccairs.attachmentUpload.errors.gatewayNotConfigured"));
       return;
     }
 
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      toast.error("Du må være logget inn");
+      toast.error(t("eccairs.attachmentUpload.errors.mustBeLoggedIn"));
       return;
     }
 
     if (selectedDocs.length === 0) {
-      toast.error("Velg minst ett dokument");
+      toast.error(t("eccairs.attachmentUpload.errors.selectAtLeastOne"));
       return;
     }
 
@@ -162,7 +164,7 @@ export function EccairsAttachmentUpload({
       try {
         // Download file from Supabase storage
         if (!item.document.fil_url) {
-          throw new Error("Ingen fil-URL");
+          throw new Error(t("eccairs.attachmentUpload.errors.noFileUrl"));
         }
 
         let fileData: Blob;
@@ -172,7 +174,7 @@ export function EccairsAttachmentUpload({
           // Full URL - use fetch directly
           const response = await fetch(item.document.fil_url);
           if (!response.ok) {
-            throw new Error(`Kunne ikke laste ned fil: HTTP ${response.status}`);
+            throw new Error(t("eccairs.attachmentUpload.errors.downloadFailedHttp", { status: response.status }));
           }
           fileData = await response.blob();
         } else {
@@ -182,7 +184,7 @@ export function EccairsAttachmentUpload({
             .download(item.document.fil_url);
 
           if (downloadError || !data) {
-            throw new Error(`Kunne ikke laste ned fil: ${downloadError?.message || "Ukjent feil"}`);
+            throw new Error(t("eccairs.attachmentUpload.errors.downloadFailed", { message: downloadError?.message || t("eccairs.attachmentUpload.errors.unknownError") }));
           }
           fileData = data;
         }
@@ -209,14 +211,14 @@ export function EccairsAttachmentUpload({
         const json = await res.json().catch(() => ({}));
 
         if (!res.ok || !json?.ok) {
-          throw new Error(json?.error || `Opplasting feilet (${res.status})`);
+          throw new Error(json?.error || t("eccairs.attachmentUpload.errors.uploadFailedStatus", { status: res.status }));
         }
 
         setSelectedDocs((prev) => prev.map((s, idx) => (idx === i ? { ...s, status: "success" } : s)));
       } catch (err: any) {
         console.error("Attachment upload failed:", err);
         setSelectedDocs((prev) =>
-          prev.map((s, idx) => (idx === i ? { ...s, status: "error", error: err?.message || "Ukjent feil" } : s)),
+          prev.map((s, idx) => (idx === i ? { ...s, status: "error", error: err?.message || t("eccairs.attachmentUpload.errors.unknownError") } : s)),
         );
       }
     }
@@ -229,13 +231,13 @@ export function EccairsAttachmentUpload({
       const errorCount = prev.filter((s) => s.status === "error").length;
 
       if (successCount > 0 && errorCount === 0) {
-        toast.success(`${successCount} vedlegg lastet opp til ECCAIRS`);
+        toast.success(t("eccairs.attachmentUpload.success.uploaded", { count: successCount }));
         onSuccess?.();
         setTimeout(() => handleClose(), 0);
       } else if (successCount > 0) {
-        toast.success(`${successCount} vedlegg lastet opp, ${errorCount} feilet`);
+        toast.success(t("eccairs.attachmentUpload.success.partial", { success: successCount, errors: errorCount }));
       } else if (errorCount > 0) {
-        toast.error("Ingen vedlegg ble lastet opp");
+        toast.error(t("eccairs.attachmentUpload.errors.noAttachmentsUploaded"));
       }
       return prev;
     });
@@ -260,8 +262,8 @@ export function EccairsAttachmentUpload({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Velg vedlegg fra dokumenter</DialogTitle>
-          <DialogDescription>Velg dokumenter som skal legges ved ECCAIRS-rapporten ({e2Id})</DialogDescription>
+          <DialogTitle>{t("eccairs.attachmentUpload.title")}</DialogTitle>
+          <DialogDescription>{t("eccairs.attachmentUpload.description", { e2Id })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
@@ -269,7 +271,7 @@ export function EccairsAttachmentUpload({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Søk i dokumenter..."
+              placeholder={t("eccairs.attachmentUpload.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -281,13 +283,13 @@ export function EccairsAttachmentUpload({
             {isLoading ? (
               <div className="p-8 text-center">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Laster dokumenter...</p>
+                <p className="text-sm text-muted-foreground">{t("eccairs.attachmentUpload.loadingDocuments")}</p>
               </div>
             ) : filteredDocuments.length === 0 ? (
               <div className="p-8 text-center">
                 <FileIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery ? "Ingen dokumenter funnet" : "Ingen dokumenter med filer"}
+                  {searchQuery ? t("eccairs.attachmentUpload.noDocumentsFound") : t("eccairs.attachmentUpload.noDocumentsWithFiles")}
                 </p>
               </div>
             ) : (
@@ -332,25 +334,25 @@ export function EccairsAttachmentUpload({
           {/* Selected count */}
           {selectedDocs.length > 0 && (
             <p className="text-sm text-muted-foreground">
-              {selectedDocs.length} dokument{selectedDocs.length > 1 ? "er" : ""} valgt
+              {t("eccairs.attachmentUpload.selectedCount", { count: selectedDocs.length })}
             </p>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-            Avbryt
+            {t("eccairs.attachmentUpload.cancel")}
           </Button>
           <Button onClick={uploadSelectedDocuments} disabled={isUploading || pendingCount === 0}>
             {isUploading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Laster opp...
+                {t("eccairs.attachmentUpload.uploading")}
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Last opp ({pendingCount})
+                {t("eccairs.attachmentUpload.uploadButton", { count: pendingCount })}
               </>
             )}
           </Button>

@@ -4782,5 +4782,120 @@
       "saveButton": "Save SORA settings",
       "parentCompanyFallback": "Parent company"
     }
+  },
+  "eccairs": {
+    "common": {
+      "search": "Search...",
+      "loading": "Loading...",
+      "noResults": "No results",
+      "searching": "Searching...",
+      "idLabel": "ID: {{id}}"
+    },
+    "attachmentUpload": {
+      "title": "Select attachments from documents",
+      "description": "Select documents to attach to the ECCAIRS report ({{e2Id}})",
+      "searchPlaceholder": "Search documents...",
+      "loadingDocuments": "Loading documents...",
+      "noDocumentsFound": "No documents found",
+      "noDocumentsWithFiles": "No documents with files",
+      "selectedCount_one": "{{count}} document selected",
+      "selectedCount_other": "{{count}} documents selected",
+      "cancel": "Cancel",
+      "uploading": "Uploading...",
+      "uploadButton": "Upload ({{count}})",
+      "errors": {
+        "fetchDocuments": "Could not fetch documents",
+        "gatewayNotConfigured": "ECCAIRS gateway URL is not configured",
+        "mustBeLoggedIn": "You must be logged in",
+        "selectAtLeastOne": "Select at least one document",
+        "noFileUrl": "No file URL",
+        "downloadFailedHttp": "Could not download file: HTTP {{status}}",
+        "downloadFailed": "Could not download file: {{message}}",
+        "unknownError": "Unknown error",
+        "uploadFailedStatus": "Upload failed ({{status}})",
+        "noAttachmentsUploaded": "No attachments were uploaded"
+      },
+      "success": {
+        "uploaded_one": "{{count}} attachment uploaded to ECCAIRS",
+        "uploaded_other": "{{count}} attachments uploaded to ECCAIRS",
+        "partial": "{{success}} attachments uploaded, {{errors}} failed"
+      }
+    },
+    "eventTypeSelect": {
+      "placeholder": "Select event type..."
+    },
+    "eventTypeTreeSelect": {
+      "placeholder": "Select event type...",
+      "searchPlaceholder": "Search event type..."
+    },
+    "phaseOfFlightSelect": {
+      "placeholder": "Select flight phase...",
+      "searchPlaceholder": "Search flight phase..."
+    },
+    "multiSelect": {
+      "placeholder": "Select..."
+    },
+    "taxonomySelect": {
+      "placeholder": "Select..."
+    },
+    "settingsDialog": {
+      "title": "ECCAIRS API settings",
+      "description": "Configure connection to the ECCAIRS E2 API for reporting.",
+      "environmentLabel": "Environment",
+      "environmentSandbox": "Sandbox (test)",
+      "environmentProd": "Production",
+      "clientIdLabel": "Client ID (username)",
+      "clientIdPlaceholder": "Your E2 client ID",
+      "clientSecretLabel": "Client Secret (password)",
+      "clientSecretPlaceholder": "Your E2 client secret",
+      "clientSecretExistingPlaceholder": "••••••••",
+      "keepExistingPasswordHint": "Leave field empty to keep existing password",
+      "apiUrlLabel": "API URL:",
+      "testConnection": "Test connection",
+      "testing": "Testing...",
+      "save": "Save",
+      "saving": "Saving...",
+      "errors": {
+        "addonRequired": "ECCAIRS reporting requires the ECCAIRS add-on module",
+        "fetchSettings": "Could not fetch ECCAIRS settings",
+        "noCompany": "No company associated",
+        "clientIdRequired": "Client ID is required",
+        "clientSecretRequired": "Client Secret is required",
+        "encryptionKeyMissing": "Encryption key not configured in Supabase Vault",
+        "saveFailed": "Could not save settings",
+        "gatewayNotConfigured": "ECCAIRS gateway URL not configured",
+        "mustBeLoggedIn": "You must be logged in",
+        "wrongCredentials": "Incorrect username or password",
+        "connectionFailed": "Connection failed",
+        "networkError": "Network error",
+        "clearTokenCacheFailed": "Could not clear token cache:"
+      },
+      "success": {
+        "saved": "ECCAIRS settings saved",
+        "connectionOk": "Connection successful ({{source}})",
+        "sourceDatabase": "per-company credentials",
+        "sourceGlobal": "global credentials"
+      }
+    },
+    "mappingDialog": {
+      "title": "ECCAIRS Classification",
+      "addonRequired": "ECCAIRS reporting requires the ECCAIRS add-on module",
+      "applySuggestions": "Apply automatic suggestions",
+      "suggestionsApplied": "Suggestions applied",
+      "saved": "Classification saved",
+      "saveFailed": "Could not save classification",
+      "cancel": "Cancel",
+      "save": "Save classification",
+      "requiredFieldsWarning": "Occurrence class and Headline are required for ECCAIRS export",
+      "avisafeData": "AviSafe data",
+      "titleLabel": "Title: ",
+      "severityLabel": "Severity: ",
+      "categoryLabel": "Category: ",
+      "locationLabel": "Location: ",
+      "entityBadge": "Entity {{path}}",
+      "selectPlaceholder": "Select {{field}}...",
+      "writePlaceholder": "Write {{field}}...",
+      "commentsHeader": "Comments"
+    }
   }
 }

@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 // Main categories for VL390 - Event Types
 const EVENT_TYPE_CATEGORIES = [
@@ -26,10 +27,12 @@ interface EccairsEventTypeSelectProps {
 export function EccairsEventTypeSelect({
   value,
   onChange,
-  placeholder = "Velg hendelsestype...",
+  placeholder,
   disabled = false,
 }: EccairsEventTypeSelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const effectivePlaceholder = placeholder ?? t("eccairs.eventTypeSelect.placeholder");
 
   const selectedItem = EVENT_TYPE_CATEGORIES.find(item => item.value_id === value);
 
@@ -44,7 +47,7 @@ export function EccairsEventTypeSelect({
           disabled={disabled}
         >
           <span className="truncate">
-            {selectedItem?.label || (value ? `ID: ${value}` : placeholder)}
+            {selectedItem?.label || (value ? t("eccairs.common.idLabel", { id: value }) : effectivePlaceholder)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

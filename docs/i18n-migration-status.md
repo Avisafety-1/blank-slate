@@ -39,7 +39,7 @@ Statuskoder:
 | # | Fil / område | Status |
 |--:|--------------|--------|
 | 3.1 | SORA-flater → namespace `sora` | DONE |
-| 3.2 | ECCAIRS-flater → namespace `eccairs` | TODO |
+| 3.2 | ECCAIRS-flater → namespace `eccairs` | DONE |
 | 3.3 | Safety/airspace → namespace `safety` | TODO |
 
 ## Fase 4 – Admin og backoffice

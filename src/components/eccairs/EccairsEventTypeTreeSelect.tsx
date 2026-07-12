@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronRight, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 
 const SUPABASE_URL = "https://pmucsvrypogtttrajqxq.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdWNzdnJ5cG9ndHR0cmFqcXhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyMjcyMDEsImV4cCI6MjA3OTgwMzIwMX0.DMr5OjalAbZKedx0zqcTBWe5eMTrjlXIw384ycvX8dE";
@@ -174,9 +175,11 @@ function useVL390Items(enabled: boolean) {
 export function EccairsEventTypeTreeSelect({
   value,
   onChange,
-  placeholder = "Velg hendelsestype...",
+  placeholder,
   disabled = false,
 }: EccairsEventTypeTreeSelectProps) {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t("eccairs.eventTypeTreeSelect.placeholder");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['99010158', '2240000', '99010401']));
@@ -356,7 +359,7 @@ export function EccairsEventTypeTreeSelect({
           disabled={disabled}
         >
           <span className="truncate">
-            {selectedItem?.value_description || (value ? `ID: ${value}` : placeholder)}
+            {selectedItem?.value_description || (value ? t("eccairs.common.idLabel", { id: value }) : effectivePlaceholder)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -367,16 +370,16 @@ export function EccairsEventTypeTreeSelect({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Søk hendelsestype..."
+            placeholder={t("eccairs.eventTypeTreeSelect.searchPlaceholder")}
             className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
         <ScrollArea className="h-[300px]">
           <div className="p-1">
             {isLoading ? (
-              <div className="p-4 text-sm text-muted-foreground">Laster...</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.loading")}</div>
             ) : filteredTree.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">Ingen treff</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.noResults")}</div>
             ) : (
               filteredTree.map(node => renderNode(node, 0))
             )}
