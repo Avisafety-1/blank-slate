@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
+import { resolveLanguage, t } from "../_shared/email-i18n.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +41,9 @@ serve(async (req) => {
     }
     const callerId = callerData.user.id;
 
-    const { userId } = await req.json();
+    const body = await req.json();
+    const { userId } = body;
+    const language = resolveLanguage(req, body);
     if (!userId) {
       return new Response(JSON.stringify({ error: 'userId is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -110,8 +113,33 @@ serve(async (req) => {
     const confirmationLink = linkData.properties.action_link;
     console.log(`Generated confirmation link for ${email}`);
 
-    const confirmationSubject = `Bekreft e-postadressen din – ${companyName}`;
+    const confirmationSubject = language === 'en'
+      ? `Confirm your email address – ${companyName}`
+      : `Bekreft e-postadressen din – ${companyName}`;
     const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
+    const strings = language === 'en'
+      ? {
+          heading: 'Confirm your email address',
+          greeting: `Hi ${userName},`,
+          intro: `Click the button below to confirm your email address and activate your account at <strong>${companyName}</strong>.`,
+          button: 'Confirm email',
+          importantLabel: 'Important:',
+          importantText: 'This link is temporary and will expire after some time. If the link does not work, contact your administrator for a new one.',
+          ignore: "If you didn't expect this email, you can safely ignore it.",
+          signoff: `Best regards,<br>${companyName}`,
+          footer: 'This is an automated email from AviSafe.',
+        }
+      : {
+          heading: 'Bekreft e-postadressen din',
+          greeting: `Hei ${userName},`,
+          intro: `Klikk på knappen nedenfor for å bekrefte e-postadressen din og aktivere kontoen din hos <strong>${companyName}</strong>.`,
+          button: 'Bekreft e-postadresse',
+          importantLabel: 'Viktig:',
+          importantText: 'Denne lenken er midlertidig og utløper etter en periode. Hvis lenken ikke fungerer, kan du kontakte administratoren din for en ny.',
+          ignore: 'Hvis du ikke forventet å motta denne e-posten, kan du ignorere den.',
+          signoff: `Med vennlig hilsen,<br>${companyName}`,
+          footer: 'Dette er en automatisk generert e-post fra AviSafe.',
+        };
     const confirmationHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -133,21 +161,21 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     <img src="${LOGO_URL}" alt="AviSafe" width="180" style="display:inline-block;max-width:180px;height:auto;border:0;" />
   </div>
   <div class="header">
-    <h1 style="margin: 0;">Bekreft e-postadressen din</h1>
+    <h1 style="margin: 0;">${strings.heading}</h1>
   </div>
   <div class="content">
-    <p>Hei ${userName},</p>
-    <p>Klikk på knappen nedenfor for å bekrefte e-postadressen din og aktivere kontoen din hos <strong>${companyName}</strong>.</p>
+    <p>${strings.greeting}</p>
+    <p>${strings.intro}</p>
     <p style="text-align: center;">
-      <a href="${confirmationLink}" class="button">Bekreft e-postadresse</a>
+      <a href="${confirmationLink}" class="button">${strings.button}</a>
     </p>
     <div class="info-box">
-      <p style="margin: 0;"><strong>Viktig:</strong> Denne lenken er midlertidig og utløper etter en periode. Hvis lenken ikke fungerer, kan du kontakte administratoren din for en ny.</p>
+      <p style="margin: 0;"><strong>${strings.importantLabel}</strong> ${strings.importantText}</p>
     </div>
-    <p>Hvis du ikke forventet å motta denne e-posten, kan du ignorere den.</p>
-    <p>Med vennlig hilsen,<br>${companyName}</p>
+    <p>${strings.ignore}</p>
+    <p>${strings.signoff}</p>
     <div class="footer">
-      <p>Dette er en automatisk generert e-post fra AviSafe.</p>
+      <p>${strings.footer}</p>
     </div>
   </div>
 </div>
