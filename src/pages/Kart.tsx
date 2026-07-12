@@ -473,7 +473,7 @@ export default function KartPage() {
             if (first) setPendingInitialCenter([first.lat, first.lng]);
           }
           if (!tracks.length) {
-            toast.message("Oppdraget har ingen lagret rute");
+            toast.message(t('pages.map.missionHasNoSavedRoute'));
           }
         } else {
           // Centroid of route coordinates
