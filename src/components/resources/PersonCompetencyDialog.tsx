@@ -436,7 +436,7 @@ export function PersonCompetencyDialog({
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="h-3.5 w-3.5 shrink-0" />
-              Last opp
+              {t('resourceDialogs.personCompetency.upload')}
             </Button>
             <Button
               type="button"
@@ -446,7 +446,7 @@ export function PersonCompetencyDialog({
               onClick={onOpenDocPicker}
             >
               <FileText className="h-3.5 w-3.5 shrink-0" />
-              Dokumenter
+              {t('resourceDialogs.personCompetency.documents')}
             </Button>
             <input
               ref={inputRef}
