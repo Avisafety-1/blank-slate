@@ -571,7 +571,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <div className="grid grid-cols-2 gap-3">
                     {equipment.battery_cycles != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground">Sykluser</p>
+                        <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.battery.cycles')}</p>
                         <p className={`text-sm font-medium ${equipment.battery_cycles > 300 ? 'text-destructive' : equipment.battery_cycles > 200 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
                           {equipment.battery_cycles}
                         </p>
