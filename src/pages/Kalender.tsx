@@ -656,7 +656,7 @@ export default function Kalender() {
 
       if (error) throw error;
 
-      toast.success("Kalenderoppføring lagret");
+      toast.success(t('pages.calendar.entrySaved'));
       setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
       setShowAddEventForm(false);
       setDialogOpen(false);
