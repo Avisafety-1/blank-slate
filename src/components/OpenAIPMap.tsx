@@ -733,13 +733,13 @@ export function OpenAIPMap({
         const isEurostat = cell.source === "eurostat";
         const density = cell.densityPerKm2 ?? (isEurostat ? cell.population : cell.population * 16);
         const isHotspot = index === maxDensityIndex;
-        const densityLabel = `${Math.round(density).toLocaleString('nb-NO')} /km²`;
-        const sourceLabel = isEurostat ? "Eurostat 2021 · 1 km-rute" : "SSB 250 m-rute";
+        const densityLabel = `${Math.round(density).toLocaleString(dateLocale)} /km²`;
+        const sourceLabel = isEurostat ? t('pages.map.density.sourceEurostat') : t('pages.map.density.sourceSsb');
         const densityCalc = isEurostat
-          ? `${density.toLocaleString('nb-NO')} pers/km² (1 km² rute)`
-          : `${density.toLocaleString('nb-NO')} pers/km² (pop × 16, 250 m rute)`;
-        const popup = `<strong>${sourceLabel}</strong><br/>${cell.population.toLocaleString('nb-NO')} personer i ruten<br/>${densityCalc}${isHotspot ? '<br/><strong>Pådriver for utregning</strong>' : ''}`;
-        const tooltip = `Pådriver · ${densityLabel}`;
+          ? t('pages.map.density.eurostatCalc', { n: density.toLocaleString(dateLocale) })
+          : t('pages.map.density.ssbCalc', { n: density.toLocaleString(dateLocale) });
+        const popup = `<strong>${sourceLabel}</strong><br/>${t('pages.map.density.peopleInRoute', { n: cell.population.toLocaleString(dateLocale) })}<br/>${densityCalc}${isHotspot ? `<br/><strong>${t('pages.map.density.driverForCalc')}</strong>` : ''}`;
+        const tooltip = t('pages.map.density.driverTooltip', { label: densityLabel });
         const tooltipOptions: L.TooltipOptions = {
           permanent: true,
           direction: 'center',
