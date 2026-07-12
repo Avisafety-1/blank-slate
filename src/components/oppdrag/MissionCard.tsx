@@ -763,7 +763,7 @@ export const MissionCard = ({
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-primary" />
             <p className="text-xs font-semibold text-muted-foreground">
-              FLYTURER ({mission.flightLogs.length})
+              {t('pages.missions.card.flightsHeader', { count: mission.flightLogs.length })}
             </p>
           </div>
           <div className="space-y-2">
