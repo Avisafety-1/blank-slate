@@ -948,15 +948,15 @@ export function PersonCompetencyDialog({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogTitle>{t('resourceDialogs.personCompetency.areYouSure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Denne handlingen kan ikke angres. Kompetansen vil bli permanent slettet.
+              {t('resourceDialogs.personCompetency.confirmDeleteDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('resourceDialogs.personCompetency.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete}>
-              Slett
+              {t('resourceDialogs.personCompetency.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
