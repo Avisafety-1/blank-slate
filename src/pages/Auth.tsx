@@ -517,7 +517,7 @@ const Auth = () => {
 
         if (error) throw error;
 
-        toast.success('Bekreft e-posten din for å aktivere kontoen.');
+        toast.success(t('auth.signupConfirmEmail'));
         setEmail("");
         setPassword("");
         setFullName("");
