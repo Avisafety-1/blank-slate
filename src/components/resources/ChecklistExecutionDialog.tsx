@@ -580,7 +580,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={() => window.open(fileUrl!, '_blank')}
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Åpne i ny fane
+                    {t('resourceDialogs.checklistExecution.openInNewTab')}
                   </Button>
                 </div>
               ) : fileMode === "docx" ? (
