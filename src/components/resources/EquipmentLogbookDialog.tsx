@@ -324,7 +324,7 @@ export const EquipmentLogbookDialog = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Bildet er for stort (maks 10 MB)");
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.imageTooLarge'));
       return;
     }
     setImageFile(file);
