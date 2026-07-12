@@ -431,10 +431,11 @@ export const EquipmentLogbookDialog = ({
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Innlegg slettet");
+      toast.success(t('resourceDialogs.equipmentLogbook.toasts.entryDeleted'));
       fetchAllLogs();
     } catch (error: any) {
-      toast.error(`Kunne ikke slette: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.deleteError', { message: error.message }));
+
     }
   };
 
