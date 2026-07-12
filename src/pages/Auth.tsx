@@ -905,15 +905,16 @@ const Auth = () => {
         <div className="relative z-10 w-full max-w-md px-4">
           <Card className="bg-card/95 backdrop-blur-sm border-border/50">
             <CardHeader className="text-center space-y-2">
-              <CardTitle>Du er innlogga</CardTitle>
+              <CardTitle>{t('auth.alreadyLoggedInTitle')}</CardTitle>
               <CardDescription>
-                Trykk knappen for å opne appen. (Automatisk vidaresending verkar ikkje på denne nettlesaren.)
+                {t('auth.alreadyLoggedInDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button className="w-full" onClick={() => { window.location.href = 'https://app.avisafe.no/'; }}>
-                Opne AviSafe
+                {t('auth.openAviSafe')}
               </Button>
+
               <Button variant="outline" className="w-full" onClick={async () => {
                 await supabase.auth.signOut();
                 sessionStorage.removeItem('avisafe_redirecting_to_app');
