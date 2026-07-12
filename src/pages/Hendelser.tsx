@@ -1133,7 +1133,7 @@ const Hendelser = () => {
                   {incident.mission_id && missions[incident.mission_id] && (
                     <div className="pt-3 border-t border-border/50">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                        Tilknyttet oppdrag
+                        {t('incidents.card.linkedMissionLabel')}
                       </p>
                       <button
                         onClick={() => {
