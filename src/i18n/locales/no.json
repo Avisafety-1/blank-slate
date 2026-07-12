@@ -263,7 +263,8 @@
       "criticalIncident": "Kritisk hendelse",
       "highSeverity": "Høy alvorlighetsgrad",
       "urgentAttention": "Denne hendelsen krever umiddelbar oppmerksomhet og oppfølging.",
-      "noComments": "Ingen kommentarer ennå"
+      "noComments": "Ingen kommentarer ennå",
+      "comments": "Kommentarer"
     },
     "news": {
       "title": "Nyheter",

@@ -261,7 +261,8 @@
       "criticalIncident": "Critical incident",
       "highSeverity": "High severity",
       "urgentAttention": "This incident requires immediate attention and follow-up.",
-      "noComments": "No comments yet"
+      "noComments": "No comments yet",
+      "comments": "Comments"
     },
     "news": {
       "title": "News",
