@@ -1245,7 +1245,20 @@
       "title": "Oppdrag",
       "noMissionsFound": "Ingen oppdrag funnet",
       "noMissions": "Ingen oppdrag",
-      "loadMore": "Last flere oppdrag"
+      "loadMore": "Last flere oppdrag",
+      "filterBar": {
+        "ongoingAndUpcoming": "Pågående og kommende",
+        "completed": "Fullførte",
+        "addMission": "Legg til oppdrag",
+        "newMission": "Nytt oppdrag",
+        "searchPlaceholder": "Søk etter oppdrag...",
+        "customer": "Kunde",
+        "allCustomers": "Alle kunder",
+        "pilot": "Pilot",
+        "allPilots": "Alle piloter",
+        "drone": "Drone",
+        "allDrones": "Alle droner"
+      }
     },
     "incidents": {
       "title": "Hendelser",
