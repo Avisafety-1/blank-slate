@@ -2,6 +2,7 @@ import { AlertTriangle, Phone, Mail } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
 import type { RouteData } from "@/types/map";
 
@@ -41,6 +42,7 @@ export const AirspaceConflictWarning = ({
   status,
   compact = false,
 }: Props) => {
+  const { t } = useTranslation();
   // Only check active/upcoming missions
   const enabled =
     !!tidspunkt &&
@@ -78,7 +80,7 @@ export const AirspaceConflictWarning = ({
       >
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle className="font-semibold text-xs sm:text-sm mb-0">
-          Luftromsadvarsel – overlappende planlagt oppdrag
+          {t('airspaceConflict.title')}
           {conflicts.length > 1 ? ` (${conflicts.length})` : ""}
         </AlertTitle>
       </Alert>
@@ -92,16 +94,16 @@ export const AirspaceConflictWarning = ({
     >
       <AlertTriangle className="h-4 w-4" />
       <AlertTitle className="font-semibold">
-        Luftromsadvarsel – overlappende planlagt oppdrag
+        {t('airspaceConflict.title')}
       </AlertTitle>
       <AlertDescription className="space-y-2 mt-2">
         <p className="text-xs">
           {conflicts.length === 1
-            ? "En annen operatør har"
-            : `${conflicts.length} andre operatører har`}{" "}
-          publisert planlagt oppdrag som overlapper i tid og område.{" "}
+            ? t('airspaceConflict.oneOperator')
+            : t('airspaceConflict.multipleOperators', { count: conflicts.length })}{" "}
+          {t('airspaceConflict.overlaps')}{" "}
           <strong>
-            Ta kontakt med operatøren under for å koordinere før flyging.
+            {t('airspaceConflict.contactPrompt')}
           </strong>
         </p>
         <ul className="space-y-1.5">
@@ -117,8 +119,8 @@ export const AirspaceConflictWarning = ({
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
                   <span className="font-medium">
                     {c.anonymous_publish
-                      ? "Anonymt publisert oppdrag"
-                      : c.public_title || "Planlagt oppdrag"}
+                      ? t('airspaceConflict.anonymousMission')
+                      : c.public_title || t('airspaceConflict.plannedMission')}
                   </span>
                   <span className="text-muted-foreground tabular-nums">
                     {(() => {
@@ -128,14 +130,14 @@ export const AirspaceConflictWarning = ({
                         Number.isFinite(endMs) &&
                         Math.abs(endMs - startMs - 24 * 3600 * 1000) < 60_000;
                       return isFallback || !c.ends_at
-                        ? `${fmt(c.starts_at)} (ukjent sluttid)`
+                        ? t('airspaceConflict.unknownEnd', { start: fmt(c.starts_at) })
                         : `${fmt(c.starts_at)} – ${fmt(c.ends_at)}`;
                     })()}
                   </span>
                 </div>
                 {c.anonymous_publish ? (
                   <p className="text-muted-foreground mt-1">
-                    Operatør har valgt anonym publisering – kontaktinfo ikke tilgjengelig.
+                    {t('airspaceConflict.anonymousNote')}
                   </p>
                 ) : showContact ? (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
@@ -165,7 +167,7 @@ export const AirspaceConflictWarning = ({
                   </div>
                 ) : (
                   <p className="text-muted-foreground mt-1">
-                    Kontaktinfo ikke delt av operatøren.
+                    {t('airspaceConflict.noContact')}
                   </p>
                 )}
               </li>
@@ -173,7 +175,7 @@ export const AirspaceConflictWarning = ({
           })}
         </ul>
         {extra > 0 && (
-          <p className="text-xs text-muted-foreground">+{extra} flere</p>
+          <p className="text-xs text-muted-foreground">{t('airspaceConflict.moreCount', { count: extra })}</p>
         )}
       </AlertDescription>
     </Alert>
