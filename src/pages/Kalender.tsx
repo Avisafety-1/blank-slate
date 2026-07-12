@@ -1182,13 +1182,13 @@ export default function Kalender() {
       <AlertDialog open={confirmCalendarMaintenance} onOpenChange={setConfirmCalendarMaintenance}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft vedlikehold</AlertDialogTitle>
+            <AlertDialogTitle>{t('pages.calendar.confirmMaintenance')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil markere vedlikehold som utført for {pendingConfirmEvent?.title}?
+              {t('pages.calendar.confirmMaintenanceDesc', { title: pendingConfirmEvent?.title })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t('pages.calendar.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 if (pendingConfirmEvent) {
@@ -1197,7 +1197,7 @@ export default function Kalender() {
                 }
               }}
             >
-              Bekreft
+              {t('pages.calendar.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
