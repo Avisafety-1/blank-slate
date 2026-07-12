@@ -163,9 +163,10 @@ export const addSignatureToPdf = async (
       img.src = signatureUrl;
     });
     
+    const resolvedLabel = label ?? getFixedT(language, "pdf")("common.signatureLabel", "Signatur:");
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(sanitizeForPdf(label), 14, yPos);
+    doc.text(sanitizeForPdf(resolvedLabel), 14, yPos);
     
     // Calculate proportional dimensions
     const maxWidth = 60;
