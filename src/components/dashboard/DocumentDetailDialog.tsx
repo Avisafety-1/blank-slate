@@ -390,10 +390,10 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                         : "text-muted-foreground"
                     }`}>
                       {daysUntilExpiry < 0 
-                        ? `Utløpt for ${Math.abs(daysUntilExpiry)} dager siden`
+                        ? t('dashboard.documents.expiredDaysAgo', { days: Math.abs(daysUntilExpiry) })
                         : daysUntilExpiry === 0
-                        ? "Utløper i dag"
-                        : `${daysUntilExpiry} dager igjen`}
+                        ? t('dashboard.documents.expiresToday')
+                        : t('dashboard.documents.daysRemaining', { days: daysUntilExpiry })}
                     </p>
                   )}
                 </div>
