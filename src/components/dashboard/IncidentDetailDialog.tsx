@@ -427,7 +427,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="responsible-select">Oppfølgingsansvarlig (Admin)</Label>
+                <Label htmlFor="responsible-select">{t('dashboard.incidents.responsibleAdmin')}</Label>
                 <SearchablePersonSelect
                   persons={users}
                   value={selectedResponsibleId}
