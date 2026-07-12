@@ -1,4 +1,5 @@
 import { translateApprovalStatus, translateAIRiskRecommendation } from "@/lib/i18nHelpers";
+import i18n from "@/i18n";
 
 export const statusColors: Record<string, string> = {
   Planlagt: "bg-blue-500/20 text-blue-900 border-blue-500/30",
@@ -82,7 +83,7 @@ export const getAIRiskBadgeColor = (recommendation: string) => {
 };
 
 export const getAIRiskLabel = (recommendation: string) =>
-  translateAIRiskRecommendation(recommendation) || recommendation || "Ukjent";
+  translateAIRiskRecommendation(recommendation) || recommendation || i18n.t("common.unknown");
 
 
 export const formatAIRiskScore = (score: unknown) => {
