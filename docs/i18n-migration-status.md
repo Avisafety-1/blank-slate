@@ -17,7 +17,7 @@ Statuskoder:
 |--:|--------------|--------|-------|
 | 1.1 | `src/pages/Index.tsx` | DONE | Toasts + checkout-meldinger migrert 2026-07-12 |
 | 1.1 | `src/components/dashboard/*` (widgets) | DONE | Alle dashboard-widgets migrert 2026-07-12: DocumentDetailDialog, IncidentDetailDialog, AddMissionDialog, CalendarExportDialog, CalendarSubscriptionSection, FlightAnalysisTimeline, MissionMapPreview, ExpandedMapDialog, RiskAssessmentDialog (manuell SORA-fane under `riskAssessment.manualSora`). SORA-spesifikke dialoger (SoraAnalysisDialog/SoraResultView/MissionSoraRouteDocumentation) håndteres i Fase 3 (SORA-namespace). |
-| 1.2 | `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` | WIP | Oppdrag.tsx, OppdragFilterBar, MissionCard migrert 2026-07-12 (nøkler under `pages.missions.*` + `pages.missions.card.*`). Gjenstår: dialoger i `src/components/oppdrag/dialogs/*` og AirspaceConflictWarning/ChecklistBadges. |
+| 1.2 | `src/pages/Oppdrag.tsx` + `src/components/oppdrag/*` | DONE | Oppdrag.tsx, OppdragFilterBar, MissionCard, AirspaceConflictWarning migrert 2026-07-12. `OppdragDialogs.tsx` var allerede migrert (`oppdragDialogs.*`). ChecklistBadges har ingen brukervendte strenger. Nye nøkler: `pages.missions.*`, `airspaceConflict.*`. |
 | 1.3 | `src/pages/Kalender.tsx` | TODO | |
 | 1.4 | `src/pages/Kart.tsx` + kart-popups | TODO | Nytt namespace `map` |
 | 1.5 | `src/pages/Resources.tsx` + `src/components/resources/*` | TODO | Mange dialoger |

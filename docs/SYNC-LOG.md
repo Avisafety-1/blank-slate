@@ -87,3 +87,15 @@ med `Short`/`Abbr`-mønster for engelske strenger som ellers ville sprengt knapp
 **Gjenstår i 1.2:** `src/components/oppdrag/dialogs/*`, `AirspaceConflictWarning.tsx`, `ChecklistBadges.tsx`.
 
 **Verifisering:** `tsgo --noEmit` OK.
+
+
+## 2026-07-12 — i18n Fase 1.2 fullført
+
+**Komponent:** `src/components/oppdrag/AirspaceConflictWarning.tsx`
+
+**Endringer:**
+- Nytt namespace `airspaceConflict.*` (no/en) for varslingstittel, kontaktprompt, anonym-notat og "+N flere"-tekst med interpolasjon.
+- `OppdragDialogs.tsx` var allerede migrert til `oppdragDialogs.*`; ingen endringer nødvendig.
+- `ChecklistBadges.tsx` inneholder ingen brukervendte strenger.
+
+**Verifisering:** `tsgo --noEmit` OK. Fase 1.2 markert DONE i migration-status.

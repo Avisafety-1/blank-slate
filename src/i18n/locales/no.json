@@ -1687,6 +1687,19 @@
     "saveFailed": "Kunne ikke lagre",
     "saved": "Lagret"
   },
+  "airspaceConflict": {
+    "title": "Luftromsadvarsel – overlappende planlagt oppdrag",
+    "oneOperator": "En annen operatør har",
+    "multipleOperators": "{{count}} andre operatører har",
+    "overlaps": "publisert planlagt oppdrag som overlapper i tid og område.",
+    "contactPrompt": "Ta kontakt med operatøren under for å koordinere før flyging.",
+    "anonymousMission": "Anonymt publisert oppdrag",
+    "plannedMission": "Planlagt oppdrag",
+    "unknownEnd": "{{start}} (ukjent sluttid)",
+    "anonymousNote": "Operatør har valgt anonym publisering – kontaktinfo ikke tilgjengelig.",
+    "noContact": "Kontaktinfo ikke delt av operatøren.",
+    "moreCount": "+{{count}} flere"
+  },
   "oppdragDialogs": {
     "deleteTitle": "Er du sikker på at du vil slette gjeldende oppdrag?",
     "deleteDesc": "Denne handlingen kan ikke angres. Oppdraget \"{{title}}\" og alle tilknyttede data vil bli permanent slettet.",

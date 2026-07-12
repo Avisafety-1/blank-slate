@@ -1685,6 +1685,19 @@
     "saveFailed": "Could not save",
     "saved": "Saved"
   },
+  "airspaceConflict": {
+    "title": "Airspace warning – overlapping planned mission",
+    "oneOperator": "Another operator has",
+    "multipleOperators": "{{count}} other operators have",
+    "overlaps": "published a planned mission that overlaps in time and area.",
+    "contactPrompt": "Contact the operator below to coordinate before flying.",
+    "anonymousMission": "Anonymously published mission",
+    "plannedMission": "Planned mission",
+    "unknownEnd": "{{start}} (unknown end time)",
+    "anonymousNote": "The operator chose anonymous publishing – contact info not available.",
+    "noContact": "Contact info not shared by the operator.",
+    "moreCount": "+{{count}} more"
+  },
   "oppdragDialogs": {
     "deleteTitle": "Are you sure you want to delete this mission?",
     "deleteDesc": "This action cannot be undone. The mission \"{{title}}\" and all related data will be permanently deleted.",
