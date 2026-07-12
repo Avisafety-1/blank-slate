@@ -510,7 +510,7 @@ export function PersonCompetencyDialog({
                 className="gap-2 w-full sm:w-auto"
               >
                 <Book className="w-4 h-4" />
-                Loggbok
+                {t('resourceDialogs.personCompetency.logbook')}
               </Button>
               {canEdit && (
                 <Button
@@ -519,7 +519,7 @@ export function PersonCompetencyDialog({
                   className="gap-2 w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4" />
-                  Legg til kompetanse
+                  {t('resourceDialogs.personCompetency.addCompetency')}
                 </Button>
               )}
             </div>
