@@ -819,7 +819,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="flyvetimer" className="text-xs sm:text-sm">Flyvetimer</Label>
+                  <Label htmlFor="flyvetimer" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.flightHours')}</Label>
                   <Input
                     id="flyvetimer"
                     type="number"
