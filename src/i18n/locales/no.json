@@ -1499,7 +1499,7 @@
     "readonly": "Bruker"
   },
   "admin": {
-    "title": "SMS Admin",
+    "title": "AviSafe Admin",
     "users": "Brukere",
     "customers": "Kunder",
     "emailTemplates": "E-postmaler",

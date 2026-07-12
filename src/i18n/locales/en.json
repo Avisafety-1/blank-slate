@@ -1497,7 +1497,7 @@
     "readonly": "User"
   },
   "admin": {
-    "title": "SMS Admin",
+    "title": "AviSafe Admin",
     "users": "Users",
     "customers": "Customers",
     "emailTemplates": "Email templates",
