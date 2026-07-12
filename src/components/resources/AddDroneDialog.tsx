@@ -226,12 +226,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       if (error) {
         console.error("Error adding drone:", error);
         if (error.code === "42501" || error.message?.includes("policy")) {
-          toast.error(`Du har ikke tillatelse til å legge til ${terminology.vehicleLower}`);
+          toast.error(t('resourceDialogs.addDrone.ikkeTillatelse', { vehicle: terminology.vehicleLower }));
         } else {
-          toast.error(`Kunne ikke legge til ${terminology.vehicleLower}: ${error.message || "Ukjent feil"}`);
+          toast.error(t('resourceDialogs.addDrone.kunneIkkeLeggeTil', { vehicle: terminology.vehicleLower, message: error.message || t('resourceDialogs.addDrone.ukjentFeil') }));
         }
       } else {
-        toast.success(`${terminology.vehicle} lagt til`);
+        toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
         form.reset();
         setInspectionStartDate("");
         setInspectionIntervalDays("");
