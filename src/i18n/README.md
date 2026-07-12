@@ -144,6 +144,40 @@ PDF på engelsk selv om UI står på norsk – uten å bytte UI-språk.
 - Ikke bruk `i18n.language` direkte – bruk `getCurrentLanguage()`.
 - Ikke kast feil ved manglende nøkkel – bibilioteket fallback-er trygt.
 
+## Length-sensitive strings (kort-plass-kontekst)
+
+Engelsk er ofte 20-40 % lengre enn norsk og sprenger knapper, tabs, badges,
+tabellheadere og andre trange UI-flater. For å unngå at layout brekker på EN
+uten å nedgradere norsk-språket, bruker vi et fast mønster med to nøkler:
+
+- `foo.action` – full form (menyer, dialoger, tooltips, aria-label).
+- `foo.actionShort` – forkortet variant (knapp/tab/badge/tabellheader).
+
+Regelen: hvis EN-strengen ville bli mer enn ~30 % lengre enn NO-strengen i
+en trang kontekst, **må** komponenten bruke `Short`-varianten der og
+`title`/`aria-label` med full form for tilgjengelighet.
+
+For standard bransjeforkortelser (FH, Reg., Maint.) bruk suffikset `Abbr`
+i stedet for `Short` – det signaliserer at forkortelsen er fastlagt og
+gjelder begge språk (f.eks. `flightHoursAbbr: "FH"` i både no og en).
+
+### Godkjente engelske forkortelser (levende liste)
+
+| Full | Short/Abbr | Brukskontekst |
+|------|------------|----------------|
+| Risk assessment | Risk assmt. | Knapp/badge |
+| Maintenance | Maint. | Tabellheader/badge |
+| Equipment | Equip. | Badge |
+| Personnel | People | Tab/knapp |
+| Documents | Docs | Sidebar/tab |
+| Flight hours | FH | Tabellheader/KPI |
+| Last inspection | Last insp. | Tabellheader |
+| Next inspection | Next insp. | Tabellheader |
+| Registration | Reg. | Tabellheader |
+
+Utvid listen når nye forkortelser vedtas i en migrasjons-PR. Ikke bruk CSS
+(`truncate`, `text-xs`) som primær fiks – teksten skal passe uten å kuttes.
+
 ## Legge til et nytt språk
 
 1. Lag `src/i18n/locales/<lang>.json` ved å kopiere `no.json` som mal.
