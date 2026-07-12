@@ -399,7 +399,7 @@ export const EquipmentLogbookDialog = ({
       fetchAllLogs();
     } catch (error: any) {
       console.error("Error saving entry:", error);
-      toast.error(`Kunne ikke lagre innlegg: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.saveError', { message: error.message }));
     } finally {
       setIsSaving(false);
     }
