@@ -71,6 +71,8 @@ const hasData = (positions: TelemetryPoint[], key: keyof TelemetryPoint) =>
   positions.some(p => p[key] !== undefined && p[key] !== null);
 
 export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange, events, showWarnings = true, batterySummary }: FlightAnalysisTimelineProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const [activeChart, setActiveChart] = useState("altitude");
   const [selectedEventIdx, setSelectedEventIdx] = useState<number | null>(null);
 
