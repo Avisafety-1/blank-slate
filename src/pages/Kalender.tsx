@@ -663,7 +663,7 @@ export default function Kalender() {
       fetchCustomEvents();
     } catch (error: any) {
       console.error("Error adding custom event:", error);
-      toast.error("Kunne ikke lagre oppføring");
+      toast.error(t('pages.calendar.couldNotSaveEntry'));
     } finally {
       setSavingEvent(false);
     }
