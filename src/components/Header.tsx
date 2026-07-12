@@ -272,7 +272,8 @@ export const Header = () => {
                     style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
                   >
                     <span aria-hidden className="text-lg leading-none">×</span>
-                    <span className="sr-only">Lukk</span>
+                    <span className="sr-only">{t('header.close')}</span>
+
                   </SheetPrimitive.Close>
                 </SheetPrimitive.Content>
               </SheetPortal>
