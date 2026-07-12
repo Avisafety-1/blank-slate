@@ -361,51 +361,51 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
                 {model.weight_without_payload_kg != null && (
                   <div>
-                    <span className="font-medium">Vekt uten payload:</span> {model.weight_without_payload_kg} kg
+                    <span className="font-medium">{t('resourceDialogs.addDrone.vektUtenPayload')}</span> {model.weight_without_payload_kg} kg
                   </div>
                 )}
                 {model.standard_takeoff_weight_kg != null && (
                   <div>
-                    <span className="font-medium">Standard takeoff:</span> {model.standard_takeoff_weight_kg} kg
+                    <span className="font-medium">{t('resourceDialogs.addDrone.standardTakeoff')}</span> {model.standard_takeoff_weight_kg} kg
                   </div>
                 )}
                 {model.endurance_min != null && (
                   <div>
-                    <span className="font-medium">Flygetid:</span> {model.endurance_min} min
+                    <span className="font-medium">{t('resourceDialogs.addDrone.flygetid')}</span> {model.endurance_min} min
                   </div>
                 )}
                 {model.max_wind_mps != null && (
                   <div>
-                    <span className="font-medium">Maks vind:</span> {model.max_wind_mps} m/s
+                    <span className="font-medium">{t('resourceDialogs.addDrone.maksVind')}</span> {model.max_wind_mps} m/s
                   </div>
                 )}
                 {model.sensor_type && (
                   <div>
-                    <span className="font-medium">Sensor:</span> {model.sensor_type}
+                    <span className="font-medium">{t('resourceDialogs.addDrone.sensor')}</span> {model.sensor_type}
                   </div>
                 )}
                 {model.category && (
                   <div>
-                    <span className="font-medium">Kategori:</span> {model.category}
+                    <span className="font-medium">{t('resourceDialogs.addDrone.kategori')}</span> {model.category}
                   </div>
                 )}
               </div>
             );
           })()}
           <div>
-            <Label htmlFor="kjøpsdato">Kjøpsdato</Label>
+            <Label htmlFor="kjøpsdato">{t('resourceDialogs.addDrone.kjopsdato')}</Label>
             <Input id="kjøpsdato" name="kjøpsdato" type="date" />
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t('resourceDialogs.addDrone.status')}</Label>
             <Select name="status" defaultValue="Grønn">
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Grønn">Grønn</SelectItem>
-                <SelectItem value="Gul">Gul</SelectItem>
-                <SelectItem value="Rød">Rød</SelectItem>
+                <SelectItem value="Grønn">{t('resourceDialogs.addDrone.green')}</SelectItem>
+                <SelectItem value="Gul">{t('resourceDialogs.addDrone.yellow')}</SelectItem>
+                <SelectItem value="Rød">{t('resourceDialogs.addDrone.red')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -414,7 +414,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             <Input id="flyvetimer" name="flyvetimer" type="number" defaultValue={0} />
           </div>
           <div>
-            <Label htmlFor="sist_inspeksjon">Sist inspeksjon</Label>
+            <Label htmlFor="sist_inspeksjon">{t('resourceDialogs.addDrone.sistInspeksjon')}</Label>
             <Input id="sist_inspeksjon" name="sist_inspeksjon" type="date" />
           </div>
           
