@@ -827,10 +827,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const ready = await waitForArduPilotPending(r.syntheticLogId!);
         toast.dismiss(toastId);
         if (ready) {
-          toast.success('ArduPilot-logg klar – velg den under "Ventende flylogger" for å fullføre import.', { duration: 7000 });
+          toast.success(t('dronelog.ardupilotReadySelect'), { duration: 7000 });
           pendingLogsRef.current?.refresh();
         } else {
-          toast.message('ArduPilot-logg ligger i kø og behandles i bakgrunnen. Den dukker opp under "Ventende flylogger" om kort tid.', { duration: 7000 });
+          toast.message(t('dronelog.ardupilotQueued'), { duration: 7000 });
         }
         onOpenChange(false);
         setFile(null);
@@ -1196,7 +1196,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           setHasSavedCredentials(true);
           setSavedDjiEmail(djiEmail);
           toast.success('DJI-innlogging lagret');
-          if (enableAutoSync) toast.success('Automatisk sync aktivert for din konto');
+          if (enableAutoSync) toast.success(t('dronelog.autoSyncEnabled'));
         } catch (saveErr) {
           console.error('Failed to save DJI credentials:', saveErr);
           toast.warning('Innlogging OK, men kunne ikke lagre legitimasjon');
@@ -3507,7 +3507,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Klikk for å velge filer (TXT eller ZIP, maks 10)</p>
+                    <p className="text-sm text-muted-foreground">{t('dronelog.clickToSelectFiles')}</p>
                   </div>
                 )}
               </div>
@@ -3520,18 +3520,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   setTimeout(() => fallbackFileInputRef.current?.click(), 100);
                 }}
               >
-                Problemer med filvelgeren? Prøv uten filtype-filter
+                {t('dronelog.filePickerIssues')}
               </button>
               <input ref={fallbackFileInputRef} type="file" accept="*/*" multiple className="hidden" onChange={handleFileSelect} />
             </div>
 
             {djiEnabled && ardupilotEnabled && (
             <div className="space-y-2">
-              <Label>Loggtype</Label>
+              <Label>{t('dronelog.logType')}</Label>
               <RadioGroup value={logType} onValueChange={(v) => setLogType(v as 'auto' | 'dji' | 'ardupilot')} className="flex gap-4">
                 <div className="flex items-center gap-1.5">
                   <RadioGroupItem value="auto" id="lt-auto" />
-                  <Label htmlFor="lt-auto" className="cursor-pointer text-sm font-normal">Automatisk</Label>
+                  <Label htmlFor="lt-auto" className="cursor-pointer text-sm font-normal">{t('dronelog.auto')}</Label>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <RadioGroupItem value="dji" id="lt-dji" />
@@ -3542,7 +3542,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <Label htmlFor="lt-ardu" className="cursor-pointer text-sm font-normal">ArduPilot</Label>
                 </div>
               </RadioGroup>
-              <p className="text-xs text-muted-foreground">Velg ArduPilot for .zip med .bin-filer. Automatisk gjenkjenner .bin-filer.</p>
+              <p className="text-xs text-muted-foreground">{t('dronelog.logTypeHint')}</p>
             </div>
             )}
 
@@ -3688,7 +3688,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     checked={saveCredentials}
                     onCheckedChange={(checked) => setSaveCredentials(checked === true)}
                   />
-                  <span className="text-sm">Husk innlogging</span>
+                  <span className="text-sm">{t('dronelog.rememberLogin')}</span>
                 </label>
                 {saveCredentials && (
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -3700,7 +3700,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </label>
                 )}
                 <p className="text-xs text-muted-foreground -mt-2">
-                  Passordet lagres kryptert på serveren. Du kan logge ut når som helst.
+                  {t('dronelog.passwordEncryptedNote')}
                 </p>
 
                 <DialogFooter>
