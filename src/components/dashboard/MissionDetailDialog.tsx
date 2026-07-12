@@ -223,7 +223,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 >
                   {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
                   {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                  {approvalStatus === 'pending_approval' ? 'Venter godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
+                  {approvalStatus === 'pending_approval' ? t('dashboard.missionDetail.pendingApproval') : approvalStatus === 'approved' ? t('dashboard.missionDetail.approved') : t('dashboard.missionDetail.notApproved')}
                 </Badge>
               );
             })()}
