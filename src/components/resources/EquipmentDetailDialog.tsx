@@ -855,7 +855,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">Varsel dager før gul</Label>
+                      <Label htmlFor="varsel_dager" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.warnDaysField')}</Label>
                       <Input
                         id="varsel_dager"
                         type="number"
