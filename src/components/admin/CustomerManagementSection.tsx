@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "react-i18next";
 
 interface Customer {
   id: string;
@@ -52,6 +53,7 @@ interface Customer {
 
 export const CustomerManagementSection = () => {
   const { companyId, isSuperAdmin } = useAuth();
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +100,7 @@ export const CustomerManagementSection = () => {
       setCustomers(data || []);
     } catch (error: any) {
       console.error("Error fetching customers:", error);
-      toast.error("Kunne ikke laste kunder");
+      toast.error(t("admin.customerManagement.toastFetchError"));
     } finally {
       setLoading(false);
     }
@@ -129,12 +131,12 @@ export const CustomerManagementSection = () => {
       if (error) throw error;
       toast.success(
         customer.aktiv
-          ? "Kunde deaktivert"
-          : "Kunde aktivert"
+          ? t("admin.customerManagement.toastDeactivated")
+          : t("admin.customerManagement.toastActivated")
       );
     } catch (error: any) {
       console.error("Error toggling customer status:", error);
-      toast.error("Kunne ikke oppdatere status");
+      toast.error(t("admin.customerManagement.toastActivateError"));
     }
   };
 
@@ -153,12 +155,12 @@ export const CustomerManagementSection = () => {
         .eq("id", customerToDelete.id);
 
       if (error) throw error;
-      toast.success("Kunde slettet");
+      toast.success(t("admin.customerManagement.toastDeleted"));
       setDeleteDialogOpen(false);
       setCustomerToDelete(null);
     } catch (error: any) {
       console.error("Error deleting customer:", error);
-      toast.error("Kunne ikke slette kunde: " + error.message);
+      toast.error(t("admin.customerManagement.toastDeleteError", { error: error.message }));
     }
   };
 
@@ -178,7 +180,7 @@ export const CustomerManagementSection = () => {
     return (
       <GlassCard className="p-6">
         <div className="flex items-center justify-center py-8">
-          <p className="text-muted-foreground">Laster kunder...</p>
+          <p className="text-muted-foreground">{t("admin.customerManagement.loading")}</p>
         </div>
       </GlassCard>
     );
@@ -190,11 +192,11 @@ export const CustomerManagementSection = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h2 className="text-base sm:text-xl font-semibold">Kundeadministrasjon</h2>
+            <h2 className="text-base sm:text-xl font-semibold">{t("admin.customerManagement.title")}</h2>
           </div>
           <Button onClick={handleAddCustomer} size={isMobile ? "sm" : "default"}>
             <Plus className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} />
-            {isMobile ? "Ny" : "Ny kunde"}
+            {isMobile ? t("admin.customerManagement.newMobile") : t("admin.customerManagement.newFull")}
           </Button>
         </div>
 
@@ -203,7 +205,7 @@ export const CustomerManagementSection = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={isMobile ? "Søk etter kunde..." : "Søk etter kunde (navn, kontaktperson, e-post)..."}
+            placeholder={isMobile ? t("admin.customerManagement.searchPlaceholderMobile") : t("admin.customerManagement.searchPlaceholderFull")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`pl-9 sm:pl-10 ${isMobile ? 'text-sm h-9' : ''}`}
@@ -212,11 +214,11 @@ export const CustomerManagementSection = () => {
 
         {customers.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
-            Ingen kunder funnet. Opprett din første kunde.
+            {t("admin.customerManagement.empty")}
           </div>
         ) : filteredCustomers.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
-            Ingen kunder matcher søket "{searchQuery}"
+            {t("admin.customerManagement.noSearchResults", { query: searchQuery })}
           </div>
         ) : isMobile ? (
           /* Mobile: Clickable cards */
@@ -236,7 +238,7 @@ export const CustomerManagementSection = () => {
                     variant={customer.aktiv ? "default" : "secondary"} 
                     className="text-[10px] px-1.5 py-0.5 flex-shrink-0"
                   >
-                    {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                    {customer.aktiv ? t("admin.customerManagement.active") : t("admin.customerManagement.inactive")}
                   </Badge>
                 </div>
 
@@ -251,7 +253,7 @@ export const CustomerManagementSection = () => {
                 {customer.intern_poc?.full_name && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1.5">
                     <User className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">POC: {customer.intern_poc.full_name}</span>
+                    <span className="truncate">{t("admin.customerManagement.poc", { name: customer.intern_poc.full_name })}</span>
                   </p>
                 )}
 
@@ -283,7 +285,7 @@ export const CustomerManagementSection = () => {
                       className="scale-[0.65]"
                     />
                     <span className="text-[10px] text-muted-foreground">
-                      {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                      {customer.aktiv ? t("admin.customerManagement.active") : t("admin.customerManagement.inactive")}
                     </span>
                   </div>
                   <div className="flex gap-1.5">
@@ -301,7 +303,7 @@ export const CustomerManagementSection = () => {
                       className="h-7 px-2 text-[10px]"
                       onClick={() => handleDeleteClick(customer)}
                     >
-                      Slett
+                      {t("admin.customerManagement.delete")}
                     </Button>
                   </div>
                 </div>
@@ -315,12 +317,12 @@ export const CustomerManagementSection = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs sm:text-sm">Navn</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Kontaktperson</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Intern POC</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Kontaktinfo</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Status</TableHead>
-                    <TableHead className="text-right text-xs sm:text-sm">Handlinger</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.customerManagement.columnName")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.customerManagement.columnContactPerson")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.customerManagement.columnInternPoc")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.customerManagement.columnContactInfo")}</TableHead>
+                    <TableHead className="text-xs sm:text-sm">{t("admin.customerManagement.columnStatus")}</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">{t("admin.customerManagement.columnActions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -373,7 +375,7 @@ export const CustomerManagementSection = () => {
                             </div>
                           )}
                           {!customer.epost && !customer.telefon && !customer.adresse && (
-                            <span className="text-muted-foreground text-xs">Ingen kontaktinfo</span>
+                            <span className="text-muted-foreground text-xs">{t("admin.customerManagement.noContactInfo")}</span>
                           )}
                         </div>
                       </TableCell>
@@ -388,7 +390,7 @@ export const CustomerManagementSection = () => {
                               variant={customer.aktiv ? "default" : "secondary"}
                               className="text-xs"
                             >
-                              {customer.aktiv ? "Aktiv" : "Inaktiv"}
+                              {customer.aktiv ? t("admin.customerManagement.active") : t("admin.customerManagement.inactive")}
                             </Badge>
                           </Label>
                         </div>
@@ -399,7 +401,7 @@ export const CustomerManagementSection = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleViewCustomer(customer)}
-                            title="Vis historikk"
+                            title={t("admin.customerManagement.viewHistory")}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -407,7 +409,7 @@ export const CustomerManagementSection = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditCustomer(customer)}
-                            title="Rediger"
+                            title={t("admin.customerManagement.edit")}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -415,9 +417,9 @@ export const CustomerManagementSection = () => {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteClick(customer)}
-                            title="Slett"
+                            title={t("admin.customerManagement.delete")}
                           >
-                            Slett
+                            {t("admin.customerManagement.delete")}
                           </Button>
                         </div>
                       </TableCell>
@@ -446,19 +448,18 @@ export const CustomerManagementSection = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bekreft sletting</AlertDialogTitle>
+            <AlertDialogTitle>{t("admin.customerManagement.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil slette kunden "
-              {customerToDelete?.navn}"? Denne handlingen kan ikke angres.
+              {t("admin.customerManagement.deleteConfirmDesc", { name: customerToDelete?.navn })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("admin.customerManagement.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Slett kunde
+              {t("admin.customerManagement.deleteConfirmAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Customer {
   id: string;
@@ -88,6 +89,7 @@ export const CustomerManagementDialog = ({
   onSuccess,
 }: CustomerManagementDialogProps) => {
   const { user, companyId } = useAuth();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(false);
   const [internPocId, setInternPocId] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export const CustomerManagementDialog = ({
 
   const onSubmit = async (data: CustomerFormData) => {
     if (!user || !companyId) {
-      toast.error("Du må være logget inn for å legge til kunder");
+      toast.error(t("admin.customerDialog.toastMustBeLoggedIn"));
       return;
     }
 
@@ -207,11 +209,11 @@ export const CustomerManagementDialog = ({
             console.log("Welcome email sent to customer");
           } catch (emailError) {
             console.error("Failed to send welcome email:", emailError);
-            toast.warning("Kunde opprettet, men velkomst-e-post kunne ikke sendes. Sjekk at vedlegg ikke er for store.");
+            toast.warning(t("admin.customerDialog.toastWelcomeEmailWarning"));
           }
         }
 
-        toast.success("Kunde opprettet");
+        toast.success(t("admin.customerDialog.toastCreated"));
       } else {
         const { error } = await supabase
           .from("customers")
@@ -227,14 +229,14 @@ export const CustomerManagementDialog = ({
           .eq("id", customer.id);
 
         if (error) throw error;
-        toast.success("Kunde oppdatert");
+        toast.success(t("admin.customerDialog.toastUpdated"));
       }
 
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving customer:", error);
-      toast.error("Kunne ikke lagre kunde: " + error.message);
+      toast.error(t("admin.customerDialog.toastSaveError", { error: error.message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +247,7 @@ export const CustomerManagementDialog = ({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isCreating ? "Opprett ny kunde" : "Rediger kunde"}
+            {isCreating ? t("admin.customerDialog.createTitle") : t("admin.customerDialog.editTitle")}
           </DialogTitle>
         </DialogHeader>
 
@@ -256,9 +258,9 @@ export const CustomerManagementDialog = ({
               name="navn"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kundenavn *</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.nameLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn kundenavn" />
+                    <Input {...field} placeholder={t("admin.customerDialog.namePlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -270,9 +272,9 @@ export const CustomerManagementDialog = ({
               name="kontaktperson"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kontaktperson</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.contactPersonLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn kontaktperson" />
+                    <Input {...field} placeholder={t("admin.customerDialog.contactPersonPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -280,16 +282,16 @@ export const CustomerManagementDialog = ({
             />
 
             <div className="space-y-2">
-              <FormLabel>Intern POC</FormLabel>
+              <FormLabel>{t("admin.customerDialog.internPocLabel")}</FormLabel>
               <SearchablePersonSelect
                 persons={persons}
                 value={internPocId}
                 onValueChange={setInternPocId}
-                placeholder="Velg intern kontaktperson..."
-                searchPlaceholder="Søk person..."
-                emptyText="Ingen personer funnet."
+                placeholder={t("admin.customerDialog.internPocPlaceholder")}
+                searchPlaceholder={t("admin.customerDialog.internPocSearchPlaceholder")}
+                emptyText={t("admin.customerDialog.internPocEmpty")}
                 allowNone
-                noneLabel="Ingen"
+                noneLabel={t("admin.customerDialog.internPocNone")}
               />
             </div>
 
@@ -298,7 +300,7 @@ export const CustomerManagementDialog = ({
               name="epost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>E-post</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.emailLabel")}</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -322,7 +324,7 @@ export const CustomerManagementDialog = ({
                   htmlFor="sendWelcomeEmail"
                   className="text-sm font-medium leading-none cursor-pointer"
                 >
-                  Send velkomst-e-post til kunde
+                  {t("admin.customerDialog.sendWelcomeEmail")}
                 </label>
               </div>
             )}
@@ -332,9 +334,9 @@ export const CustomerManagementDialog = ({
               name="telefon"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Telefon</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.phoneLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="+47 123 45 678" />
+                    <Input {...field} placeholder={t("admin.customerDialog.phonePlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -346,9 +348,9 @@ export const CustomerManagementDialog = ({
               name="adresse"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Adresse</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.addressLabel")}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Skriv inn adresse" />
+                    <Input {...field} placeholder={t("admin.customerDialog.addressPlaceholder")} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -360,11 +362,11 @@ export const CustomerManagementDialog = ({
               name="merknader"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Merknader</FormLabel>
+                  <FormLabel>{t("admin.customerDialog.notesLabel")}</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
-                      placeholder="Eventuelle merknader..."
+                      placeholder={t("admin.customerDialog.notesPlaceholder")}
                       rows={3}
                     />
                   </FormControl>
@@ -380,11 +382,11 @@ export const CustomerManagementDialog = ({
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                Avbryt
+                {t("admin.customerDialog.cancel")}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isCreating ? "Opprett" : "Lagre"}
+                {isCreating ? t("admin.customerDialog.create") : t("admin.customerDialog.save")}
               </Button>
             </DialogFooter>
           </form>
