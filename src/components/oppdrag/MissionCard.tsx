@@ -363,14 +363,14 @@ export const MissionCard = ({
         <div className="flex items-start gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
           <div>
-            <p className="text-muted-foreground">Tidspunkt</p>
+            <p className="text-muted-foreground">{t('pages.missions.card.time')}</p>
             <p className="text-foreground">
-              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : "Ikke angitt"}
+              {mission.tidspunkt ? format(new Date(mission.tidspunkt), "dd. MMMM yyyy HH:mm", { locale: nb }) : t('pages.missions.card.notSet')}
             </p>
             {mission.slutt_tidspunkt && (() => {
               try {
                 return <p className="text-xs text-muted-foreground">
-                  til {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
+                  {t('pages.missions.card.until')} {format(new Date(mission.slutt_tidspunkt), "dd. MMMM HH:mm", { locale: nb })}
                 </p>;
               } catch { return null; }
             })()}
