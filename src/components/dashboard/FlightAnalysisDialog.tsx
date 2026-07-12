@@ -419,7 +419,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Tile error fallback */}
           {tileError && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded-lg z-[5]">
-              <p className="text-sm text-muted-foreground">Kartet kunne ikke lastes – prøv å åpne analysen på nytt</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.flightAnalysis.mapLoadError')}</p>
             </div>
           )}
 
