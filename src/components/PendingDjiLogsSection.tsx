@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Clock, Plane, CheckCircle, XCircle, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { usePlanGating } from "@/hooks/usePlanGating";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -54,6 +55,8 @@ const PAGE_SIZE = 200;
 
 export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, PendingDjiLogsSectionProps>(({ onSelectLog, expanded, selectedIds, onToggleSelect }, ref) => {
   const { companyId, user } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === 'en' ? enUS : nb;
   const { hasAddon } = usePlanGating();
   const [logs, setLogs] = useState<PendingDjiLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,19 +166,19 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     <div className={`space-y-2 min-w-0 w-full max-w-full overflow-x-hidden ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
       <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Clock className="w-4 h-4 text-primary shrink-0" />
-        <p className="text-sm font-medium min-w-0 break-words">Ventende flylogger fra auto-sync</p>
+        <p className="text-sm font-medium min-w-0 break-words">{t('dronelog.pendingAutoSync')}</p>
         <Badge variant="secondary" className="text-xs shrink-0">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
-          <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">Kun mine</Label>
+          <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">{t('dronelog.onlyMine')}</Label>
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground -mt-1 break-words">
-        Finner du ikke riktig logg? Enkelte loggtyper støttes ikke av auto-sync og må lastes opp manuelt.
+        {t('dronelog.cantFindLog')}
       </p>
       {displayedLogs.length === 0 && (
         <p className="text-xs text-muted-foreground py-1 break-words">
-          {onlyMine ? "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres." : "Ingen logger til behandling"}
+          {onlyMine ? t('dronelog.noPendingMine') : t('dronelog.noPending')}
         </p>
       )}
       <div className={`space-y-1.5 overflow-y-auto overflow-x-hidden min-w-0 max-w-full ${expanded ? 'flex-1 min-h-0' : 'max-h-[200px] sm:max-h-[260px]'}`}>
@@ -249,7 +252,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
 
                 <p className="text-[11px] text-muted-foreground truncate">
                   {log.flight_date
-                    ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: nb })
+                    ? format(new Date(log.flight_date), "dd. MMM yyyy HH:mm", { locale: dateLocale })
                     : "Ukjent dato"}
                   {log.duration_seconds
                     ? ` · ${Math.round(log.duration_seconds / 60)} min`

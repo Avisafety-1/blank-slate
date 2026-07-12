@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { useState, useMemo, useEffect } from "react";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { calculatePersonnelAggregatedStatus } from "@/lib/maintenanceStatus";
@@ -11,6 +11,8 @@ import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { X, Building2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { translateResourceStatus } from "@/lib/i18nHelpers";
 
 interface PersonnelListDialogProps {
   open: boolean;
@@ -26,8 +28,9 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { isOnline } = usePresence();
   const { companyId } = useAuth();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "en" ? enUS : nb;
 
-  // Use precomputed status (includes flight time when enabled), fallback to competency calc
   const personnelWithStatus = useMemo(() => {
     return personnel.map(person => ({
       ...person,
@@ -54,7 +57,6 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
     }
   };
 
-  // Sync selectedPerson when personnel prop changes
   useEffect(() => {
     if (selectedPerson && personnel.length > 0) {
       const updated = personnel.find(p => p.id === selectedPerson.id);
@@ -64,17 +66,17 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
     }
   }, [personnel]);
 
-  const titleSuffix = statusFilter ? ` – ${statusFilter} (${filteredPersonnel.length})` : ` (${personnel.length})`;
+  const titleSuffix = statusFilter ? ` – ${translateResourceStatus(statusFilter)} (${filteredPersonnel.length})` : ` (${personnel.length})`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 flex-wrap">
-            Personell{titleSuffix}
+            {t("resources.cards.personnelTitle")}{titleSuffix}
             {statusFilter && (
               <button type="button" onClick={() => onStatusFilterChange?.(null)} className="inline-flex items-center gap-0.5 text-xs bg-muted rounded-full px-2 py-0.5 hover:bg-muted/80">
-                Vis alle <X className="w-3 h-3" />
+                {t("resources.cards.showAll")} <X className="w-3 h-3" />
               </button>
             )}
           </DialogTitle>
@@ -91,10 +93,10 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
                 <div className="flex items-center gap-2">
                   <OnlineIndicator isOnline={isOnline(person.id)} />
                   <div>
-                    <h3 className="font-semibold text-lg">{person.full_name || "Ukjent navn"}</h3>
+                    <h3 className="font-semibold text-lg">{person.full_name || t("resources.cards.unknownName")}</h3>
                     {person.created_at && (
                       <p className="text-sm text-muted-foreground">
-                        Opprettet: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: nb })}
+                        {t("resources.cards.created")}: {format(new Date(person.created_at), "dd.MM.yyyy", { locale: dateLocale })}
                       </p>
                     )}
                     {person.company_id !== companyId && person.companies?.navn && (
@@ -110,7 +112,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
               
               {person.personnel_competencies && person.personnel_competencies.length > 0 && (
                 <div className="text-sm">
-                  <span className="text-muted-foreground">Kompetanser:</span>
+                  <span className="text-muted-foreground">{t("resources.cards.competencies")}:</span>
                   <div className="space-y-2 mt-2">
                     {person.personnel_competencies.map((comp: any) => (
                       <div key={comp.id} className="flex justify-between items-start p-2 bg-muted/50 rounded">
@@ -120,7 +122,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
                         </div>
                         {comp.utloper_dato && (
                           <span className="text-xs text-muted-foreground">
-                            Utløper: {format(new Date(comp.utloper_dato), "dd.MM.yyyy")}
+                            {t("resources.cards.expires")}: {format(new Date(comp.utloper_dato), "dd.MM.yyyy")}
                           </span>
                         )}
                       </div>
@@ -131,7 +133,7 @@ export const PersonnelListDialog = ({ open, onOpenChange, personnel, onPersonnel
               
               {(!person.personnel_competencies || person.personnel_competencies.length === 0) && (
                 <div className="text-sm text-muted-foreground">
-                  Ingen kompetanser registrert
+                  {t("resources.cards.noCompetenciesRegistered")}
                 </div>
               )}
             </div>
