@@ -31,6 +31,7 @@ import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecut
 import { DeviationReportDialog } from "./DeviationReportDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 interface FlightTrackPosition {
   lat: number;
