@@ -432,7 +432,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   variant={showSpeedTrail ? "default" : "secondary"}
                   className="h-8 w-8 rounded-lg shadow-md"
                   onClick={() => setShowSpeedTrail(v => !v)}
-                  title="Fargelegg rute etter hastighet"
+                  title={t('dashboard.flightAnalysis.colorRouteBySpeed')}
                 >
                   <Gauge className="w-4 h-4" />
                 </Button>
