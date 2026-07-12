@@ -36,5 +36,447 @@
       "title": "Hendelsesrapport - {{title}} - {{date}}",
       "description": "Automatisk generert rapport for hendelse: {{title}}"
     }
+  },
+  "mission": {
+    "title": "Oppdragsrapport",
+    "map": {
+      "title": "Kartutsnitt",
+      "legend": {
+        "plannedRoute": "Planlagt flyrute",
+        "actualRoute": "Faktisk fløyet rute",
+        "flightGeography": "Flight Geography (SORA)",
+        "contingencyArea": "Contingency Area (SORA)",
+        "groundRiskBuffer": "Ground Risk Buffer (SORA)"
+      }
+    },
+    "airspaceWarnings": {
+      "title": "Luftromsadvarsler",
+      "levels": {
+        "warning": "ADVARSEL",
+        "caution": "FORSIKTIGHET",
+        "note": "INFORMASJON"
+      },
+      "zoneTypePrefix": "Sone type: {{type}}",
+      "insideZone": "Innenfor sone",
+      "distanceAway": "{{distance}}m unna",
+      "headers": {
+        "level": "Nivå",
+        "zone": "Sone",
+        "distance": "Avstand",
+        "message": "Melding"
+      }
+    },
+    "route": {
+      "title": "Planlagt flyrute",
+      "pointCount": "Antall punkter",
+      "totalDistance": "Total avstand",
+      "headers": {
+        "point": "Punkt",
+        "lat": "Breddegrad",
+        "lng": "Lengdegrad"
+      }
+    },
+    "basicInfo": {
+      "title": "Grunnleggende informasjon",
+      "labels": {
+        "status": "Status",
+        "riskLevel": "Risikonivå",
+        "location": "Lokasjon",
+        "dateTime": "Dato/tid",
+        "endTime": "Sluttid",
+        "coordinates": "Koordinater"
+      }
+    },
+    "customer": {
+      "title": "Kundeinformasjon",
+      "labels": {
+        "name": "Navn",
+        "contactPerson": "Kontaktperson",
+        "phone": "Telefon",
+        "email": "E-post"
+      }
+    },
+    "personnel": {
+      "title": "Personell",
+      "headers": {
+        "name": "Navn"
+      }
+    },
+    "drones": {
+      "title": "Droner",
+      "headers": {
+        "model": "Modell",
+        "serialNumber": "Serienummer"
+      }
+    },
+    "equipment": {
+      "title": "Utstyr",
+      "headers": {
+        "name": "Navn",
+        "type": "Type"
+      }
+    },
+    "soraBuffer": {
+      "title": "SORA buffer og tilstøtende områder",
+      "rows": {
+        "soraVolume": "SORA volum",
+        "flightGeography": "Flight Geography",
+        "contingencyBuffer": "Contingency buffer",
+        "contingencyHeight": "Contingency høyde",
+        "groundRiskBuffer": "Ground Risk Buffer",
+        "flightAltitude": "Flyhøyde",
+        "bufferMode": "Buffermodus",
+        "convexHull": "Konveks",
+        "routeCorridor": "Rute-korridor",
+        "drone": "Drone",
+        "selectedInRoutePlanner": "Valgt i ruteplanlegger",
+        "notSelected": "Ikke valgt",
+        "cd": "CD",
+        "groundSpeed": "V0 / bakkehastighet",
+        "adjacentAreas": "Tilstøtende områder",
+        "adjacentRadius": "Tilstøtende radius",
+        "area": "Areal",
+        "populationFound": "Innbyggere funnet",
+        "avgDensity": "Gj.snitt tetthet",
+        "densityCategory": "Grense/kategori",
+        "uaSize": "UA Size",
+        "sail": "SAIL",
+        "outdoorAssemblies": "Outdoor assemblies",
+        "requiredContainment": "Required containment",
+        "result": "Resultat",
+        "withinBasis": "Innenfor beregningsgrunnlaget",
+        "requiresFurtherAssessment": "Krever nærmere vurdering",
+        "calculated": "Beregnet"
+      }
+    },
+    "sora": {
+      "title": "SORA-analyse",
+      "status": {
+        "draft": "Utkast",
+        "completed": "Fullført",
+        "approved": "Godkjent"
+      },
+      "labels": {
+        "status": "Status",
+        "sailLevel": "SAIL-nivå",
+        "residualRiskLevel": "Rest-risikonivå",
+        "preparedBy": "Utarbeidet av",
+        "approvedBy": "Godkjent av",
+        "environment": "Miljø",
+        "conopsSummary": "ConOps-beskrivelse",
+        "igrc": "iGRC (grunnrisiko)",
+        "fgrc": "fGRC (endelig)",
+        "groundMitigations": "Bakkemitigeringer",
+        "initialArc": "Initial ARC",
+        "residualArc": "Residual ARC",
+        "airspaceMitigations": "Luftromsmitigeringer",
+        "residualRiskComment": "Rest-risiko kommentar",
+        "operationalLimits": "Operative begrensninger"
+      },
+      "grcHeader": "Bakkebasert risiko (GRC)",
+      "arcHeader": "Luftromsrisiko (ARC)"
+    },
+    "aiRisk": {
+      "title": "AI Risikovurdering",
+      "recommendation": {
+        "proceed": "Anbefalt",
+        "proceed_with_caution": "Forsiktighet anbefalt",
+        "not_recommended": "Ikke anbefalt"
+      },
+      "labels": {
+        "recommendation": "Anbefaling",
+        "overallScore": "Total score",
+        "weatherScore": "Vær-score",
+        "airspaceScore": "Luftrom-score",
+        "pilotScore": "Pilot-score",
+        "equipmentScore": "Utstyr-score",
+        "complexityScore": "Kompleksitet-score",
+        "assessedAt": "Vurdert"
+      },
+      "summaryLabel": "Oppsummering:",
+      "recommendationsLabel": "Anbefalinger:",
+      "priority": {
+        "high": "Høy",
+        "medium": "Medium",
+        "low": "Lav"
+      }
+    },
+    "incidents": {
+      "title": "Tilknyttede hendelser",
+      "headers": {
+        "title": "Tittel",
+        "severity": "Alvorlighet",
+        "status": "Status",
+        "rootCause": "Hovedårsak",
+        "occurredAt": "Tidspunkt"
+      }
+    },
+    "flightLogs": {
+      "title": "Flyturer",
+      "headers": {
+        "date": "Dato",
+        "duration": "Flytid",
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "safesky": "SafeSky",
+        "checklists": "Sjekklister"
+      },
+      "safesky": {
+        "off": "Av",
+        "advisory": "Advisory (rute)",
+        "liveUav": "Live posisjon"
+      }
+    },
+    "flightLogsDetailed": {
+      "manualDisclaimer": "Manuelt loggført flytur — telemetri (distanse, høyde, fart, batteri, GPS, koordinater, advarsler) er ikke tilgjengelig. Importer en dronelogg for å få detaljert data.",
+      "source": {
+        "manual": "Manuell",
+        "dji": "DJI",
+        "dronelogapi": "DJI (dronelog)",
+        "ardupilot": "ArduPilot",
+        "dronetag": "DroneTag"
+      },
+      "flightTitle": "Flytur {{index}}: {{date}}",
+      "summaryHeaders": {
+        "summary": "Sammendrag",
+        "value": "Verdi"
+      },
+      "summaryLabels": {
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "source": "Kilde",
+        "duration": "Varighet",
+        "departure": "Avgang",
+        "landing": "Landing",
+        "totalDistance": "Total distanse",
+        "maxDistance": "Maks avstand",
+        "maxHeight": "Maks høyde",
+        "maxHorizSpeed": "Maks horisontal fart",
+        "maxVertSpeed": "Maks vertikal fart",
+        "rthTriggered": "RTH utløst"
+      },
+      "batteryGpsHeader": "Batteri og GPS",
+      "batteryLabels": {
+        "batterySn": "Batteri SN",
+        "cycles": "Sykluser",
+        "health": "Helse",
+        "fullCapacity": "Full kapasitet",
+        "minVoltage": "Min spenning",
+        "maxCellDeviation": "Maks celleavvik",
+        "tempMin": "Temp min",
+        "tempMax": "Temp maks",
+        "gpsSatMin": "GPS satellitter min",
+        "gpsSatMax": "GPS satellitter maks"
+      },
+      "graphs": {
+        "heightOverTime": "Høyde over tid",
+        "speedOverTime": "Hastighet over tid",
+        "batteryOverTime": "Batterinivå over tid",
+        "batteryTempOverTime": "Batteritemperatur over tid",
+        "rcStickOverTime": "RC stikkeinput over tid",
+        "windSpeedOverTime": "Vindhastighet over tid"
+      },
+      "series": {
+        "height": "Høyde (m)",
+        "speed": "Fart (m/s)",
+        "battery1": "Batteri 1 (%)",
+        "battery2": "Batteri 2 (%)",
+        "battery": "Batteri (%)",
+        "batteryTemp1": "Batt 1 temp (°C)",
+        "batteryTemp2": "Batt 2 temp (°C)",
+        "batteryTemp": "Batt temp (°C)",
+        "wind": "Vind (m/s)",
+        "maxWind": "Maks vind (m/s)",
+        "rcThrottle": "Gass",
+        "rcElevator": "Elevator",
+        "rcAileron": "Aileron",
+        "rcRudder": "Ror"
+      },
+      "appWarningsTitle": "App-advarsler",
+      "noAppWarnings": "Ingen app-advarsler",
+      "warningsHeaders": {
+        "type": "Type",
+        "time": "Tid",
+        "message": "Melding",
+        "value": "Verdi"
+      },
+      "moreWarningsNotShown": "+ {{count}} flere advarsler ikke vist",
+      "sampledCoordinatesTitle": "Koordinater fra fløyet rute ({{shown}} av {{total}} punkter)",
+      "coordHeaders": {
+        "lat": "Lat",
+        "lng": "Lng",
+        "alt": "Alt (m)"
+      }
+    },
+    "descriptionNotes": {
+      "descriptionTitle": "Beskrivelse",
+      "notesTitle": "Merknader"
+    },
+    "toasts": {
+      "exportSuccess": "PDF eksportert og lagret i dokumenter",
+      "exportError": "Kunne ikke eksportere PDF"
+    },
+    "document": {
+      "title": "Oppdragsrapport - {{title}}",
+      "description": "Eksportert rapport for oppdrag {{title}}"
+    }
+  },
+  "riskAssessment": {
+    "categories": {
+      "weather": "Vær",
+      "airspace": "Luftrom",
+      "pilot_experience": "Piloterfaring",
+      "mission_complexity": "Oppdragskompleksitet",
+      "equipment": "Utstyr",
+      "regulatory": "Regelverk",
+      "environment": "Miljø",
+      "population": "Befolkning",
+      "terrain": "Terreng",
+      "communications": "Kommunikasjon"
+    },
+    "go": {
+      "go": "GO",
+      "conditional": "BETINGET GO",
+      "noGo": "NO-GO",
+      "notGo": "IKKE GO",
+      "notApplicable": "N/A"
+    },
+    "mitigations": {
+      "m1aSheltering": "M1(A) Skjerming",
+      "m1bOperationalRestrictions": "M1(B) Operasjonelle restriksjoner",
+      "m1cGroundObservation": "M1(C) Bakkeobservasjon",
+      "m2ImpactReduction": "M2 Konsekvensreduksjon"
+    },
+    "sections": {
+      "operationClassification": "OPERASJONSKATEGORISERING (STEG 0)",
+      "groundRisk": "BAKKEBASERT RISIKO (GRC)",
+      "airRisk": "LUFTROMSRISIKO (ARC)",
+      "soraAnalysis": "SORA-ANALYSE (STEG 2 - RE-VURDERING)",
+      "sailLookup": "STEG 7: SAIL-OPPSLAG",
+      "containment": "STEG 8: CONTAINMENT",
+      "osoRequirements": "STEG 9: OSO-KRAV",
+      "missionOverview": "OPPDRAGSOVERSIKT",
+      "assessmentMethod": "VURDERINGSMETODE",
+      "overallAssessment": "SAMLET VURDERING",
+      "categoryScores": "KATEGORISCORER",
+      "recommendedActions": "ANBEFALTE TILTAK",
+      "prerequisites": "FORUTSETNINGER"
+    },
+    "labels": {
+      "category": "Kategori",
+      "requiresSora": "Krever SORA",
+      "alosMax": "ALOS maks (m)",
+      "alosCalculation": "ALOS beregning",
+      "sts": "STS",
+      "soraBuffersCalculated": "SORA-buffere beregnet",
+      "characteristicDimension": "Karakteristisk dimensjon",
+      "speedCategory": "Hastighetskategori",
+      "droneWeight": "Dronevekt (kg)",
+      "populationDensity": "Befolkningstetthet",
+      "populationDensityPerKm2": "Befolkningstetthet (per km2)",
+      "avgDensityPerKm2": "Gj.snitt tetthet (per km2)",
+      "ssbGridPopulation": "Dimensjonerende SSB-rute",
+      "grcMethod": "GRC-metode",
+      "tableBasis": "Tabellgrunnlag",
+      "igrc": "iGRC",
+      "documentedReduction": "Dokumentert reduksjon",
+      "fgrc": "fGRC (endelig)",
+      "igrcReasoning": "iGRC begrunnelse:",
+      "ssbCalculationTitle": "SSB-beregning (befolkningstetthet):",
+      "fgrcReasoning": "fGRC begrunnelse:",
+      "aec": "AEC (Air Encounter Category)",
+      "initialArc": "Initial ARC",
+      "residualArc": "Residual ARC",
+      "tmprLevel": "TMPR nivå",
+      "vlosExemption": "VLOS unntak",
+      "aecReasoning": "AEC begrunnelse:",
+      "arcReductionReasoning": "ARC-reduksjon begrunnelse:",
+      "strategicMitigationsApplied": "Strategiske mitigeringer (anvendt):",
+      "strategicMitigationsNotApplied": "Strategiske mitigeringer (ikke anvendt):",
+      "tmprRequirements": "TMPR-krav:",
+      "environment": "Miljø",
+      "conops": "ConOps:",
+      "groundMitigations": "Bakkemitigeringer:",
+      "airspaceMitigations": "Luftromsmitigeringer:",
+      "robustnessLevel": "Robusthetsnivå: {{level}}",
+      "ftsRequired": "FTS påkrevd",
+      "residualRiskComment": "Rest-risiko kommentar:",
+      "operationalLimits": "Operative begrensninger:",
+      "sail": "SAIL",
+      "residualRisk": "Rest-risiko",
+      "recommendation": "Anbefaling",
+      "fgrcUsed": "fGRC brukt",
+      "arcUsed": "ARC brukt",
+      "sailResult": "SAIL-resultat",
+      "adjustments": "Justeringer",
+      "actualConditions": "Faktiske forhold",
+      "droneStatus": "Dronestatus",
+      "experienceSummary": "Erfaringssammendrag",
+      "complexityFactors": "Kompleksitetsfaktorer",
+      "positiveFactors": "Positive faktorer:",
+      "concerns": "Bekymringer:",
+      "priority": "{{priority}} prioritet:",
+      "reasoning": "Begrunnelse: {{reason}}",
+      "riskAddressed": "Adresserer risiko: {{risk}}",
+      "assessedAt": "Vurdert: {{date}}"
+    },
+    "tmpr": {
+      "detect": "Deteksjon",
+      "decide": "Beslutning",
+      "command": "Kommando",
+      "execute": "Utførelse",
+      "feedback_loop": "Tilbakemelding"
+    },
+    "priority": {
+      "high": "Høy",
+      "medium": "Medium",
+      "low": "Lav"
+    },
+    "headers": {
+      "mitigation": "Mitigering",
+      "applied": "Anvendt",
+      "robustness": "Robusthet",
+      "reduction": "Reduksjon",
+      "reasoning": "Begrunnelse",
+      "criterion": "Kriterium",
+      "requirement": "Krav",
+      "documentation": "Dokumentasjon",
+      "oso": "OSO",
+      "description": "Beskrivelse",
+      "categoryLabel": "Kategori",
+      "score": "Score",
+      "decision": "Beslutning",
+      "pilotComment": "Pilotkommentar",
+      "sailMatrixCol": "fGRC \\ ARC"
+    },
+    "titleSora": "SORA-ANALYSE",
+    "titleAi": "RISIKOVURDERING",
+    "hardStop": "HARD STOP: {{reason}}",
+    "disclaimerSora": "Denne SORA-analysen er generert som beslutningsstøtte. Pilot-in-command er ansvarlig for å vurdere risiko knyttet til oppdraget.",
+    "disclaimerAi": "AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid pilot-in-command som selv må vurdere risikoen knyttet til oppdraget.",
+    "filenamePrefixSora": "sora-analyse",
+    "filenamePrefixAi": "risikovurdering",
+    "documentCategoryTitle": {
+      "sora": "SORA-analyse - {{title}} - {{date}}",
+      "ai": "Risikovurdering - {{title}} - {{date}}"
+    },
+    "documentDescription": {
+      "sora": "Automatisk generert SORA-analyse for oppdrag: {{title}}",
+      "ai": "Automatisk generert risikovurdering for oppdrag: {{title}}"
+    }
+  },
+  "userManual": {
+    "docTitle": "AviSafe",
+    "subtitle": "Bruksanvisning",
+    "subtitle2": "Droneoperasjoner og Flysikkerhet",
+    "version": "Versjon 1.0 - {{date}}",
+    "toc": "Innholdsfortegnelse",
+    "footer": "AviSafe Bruksanvisning - Side {{page}} av {{total}}"
+  },
+  "common": {
+    "exportedAt": "Eksportert: {{date}}",
+    "unknown": "Ukjent",
+    "yes": "Ja",
+    "no": "Nei"
   }
 }

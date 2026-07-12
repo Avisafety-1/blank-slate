@@ -1,4 +1,5 @@
 import autoTable from "jspdf-autotable";
+import i18n from "@/i18n";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -24,36 +25,30 @@ interface RiskExportOptions {
   exportType?: 'ai' | 'sora';
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  weather: "Vær",
-  airspace: "Luftrom",
-  pilot_experience: "Piloterfaring",
-  mission_complexity: "Oppdragskompleksitet",
-  equipment: "Utstyr",
-  regulatory: "Regelverk",
-  environment: "Miljø",
-  population: "Befolkning",
-  terrain: "Terreng",
-  communications: "Kommunikasjon",
-};
+function getCategoryLabels(): Record<string, string> {
+  return i18n.t('pdf.riskAssessment.categories', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
+}
 
-const GO_LABELS: Record<string, string> = {
-  GO: "GO",
-  BETINGET: "BETINGET GO",
-  "NO-GO": "NO-GO",
-  go: "GO",
-  caution: "BETINGET GO",
-  "no-go": "NO-GO",
-};
+function getGoLabels(): Record<string, string> {
+  const go: Record<string, string> = {
+    GO: i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }),
+    BETINGET: i18n.t('pdf.riskAssessment.go.conditional', { ns: 'pdf' }),
+    "NO-GO": i18n.t('pdf.riskAssessment.go.noGo', { ns: 'pdf' }),
+    go: i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }),
+    caution: i18n.t('pdf.riskAssessment.go.conditional', { ns: 'pdf' }),
+    "no-go": i18n.t('pdf.riskAssessment.go.noGo', { ns: 'pdf' }),
+  };
+  return go;
+}
 
 function getCategoryLabel(key: string): string {
-  return CATEGORY_LABELS[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  return getCategoryLabels()[key] || key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function getGoLabel(decision: any): string {
-  if (typeof decision === "boolean") return decision ? "GO" : "IKKE GO";
-  if (typeof decision === "string") return GO_LABELS[decision] || decision;
-  return "N/A";
+  if (typeof decision === "boolean") return decision ? i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }) : i18n.t('pdf.riskAssessment.go.notGo', { ns: 'pdf' });
+  if (typeof decision === "string") return getGoLabels()[decision] || decision;
+  return i18n.t('pdf.riskAssessment.go.notApplicable', { ns: 'pdf' });
 }
 
 function getCategoryEntries(categories: any): [string, any][] {
@@ -64,12 +59,14 @@ function getCategoryEntries(categories: any): [string, any][] {
   return Object.entries(categories);
 }
 
-const MITIGATION_LABELS: Record<string, string> = {
-  m1a_sheltering: "M1(A) Skjerming",
-  m1b_operational_restrictions: "M1(B) Operasjonelle restriksjoner",
-  m1c_ground_observation: "M1(C) Bakkeobservasjon",
-  m2_impact_reduction: "M2 Konsekvensreduksjon",
-};
+function getMitigationLabels(): Record<string, string> {
+  return {
+    m1a_sheltering: i18n.t('pdf.riskAssessment.mitigations.m1aSheltering', { ns: 'pdf' }),
+    m1b_operational_restrictions: i18n.t('pdf.riskAssessment.mitigations.m1bOperationalRestrictions', { ns: 'pdf' }),
+    m1c_ground_observation: i18n.t('pdf.riskAssessment.mitigations.m1cGroundObservation', { ns: 'pdf' }),
+    m2_impact_reduction: i18n.t('pdf.riskAssessment.mitigations.m2ImpactReduction', { ns: 'pdf' }),
+  };
+}
 
 function addOperationClassification(doc: any, data: any, yPos: number, pageWidth: number): number {
   if (!data || (!data.category && data.requires_sora === undefined)) return yPos;
@@ -173,7 +170,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
     for (const [key, mit] of Object.entries(data.mitigations) as [string, any][]) {
       if (!mit) continue;
       mitigationBody.push([
-        sanitizeForPdf(MITIGATION_LABELS[key] || key),
+        sanitizeForPdf(getMitigationLabels()[key] || key),
         mit.applicable ? "Ja" : "Nei",
         mit.robustness || "—",
         String(mit.reduction || 0),

@@ -36,5 +36,447 @@
       "title": "Incident report - {{title}} - {{date}}",
       "description": "Automatically generated report for incident: {{title}}"
     }
+  },
+  "mission": {
+    "title": "Mission Report",
+    "map": {
+      "title": "Map snapshot",
+      "legend": {
+        "plannedRoute": "Planned flight route",
+        "actualRoute": "Actual flown route",
+        "flightGeography": "Flight Geography (SORA)",
+        "contingencyArea": "Contingency Area (SORA)",
+        "groundRiskBuffer": "Ground Risk Buffer (SORA)"
+      }
+    },
+    "airspaceWarnings": {
+      "title": "Airspace warnings",
+      "levels": {
+        "warning": "WARNING",
+        "caution": "CAUTION",
+        "note": "INFORMATION"
+      },
+      "zoneTypePrefix": "Zone type: {{type}}",
+      "insideZone": "Inside zone",
+      "distanceAway": "{{distance}}m away",
+      "headers": {
+        "level": "Level",
+        "zone": "Zone",
+        "distance": "Distance",
+        "message": "Message"
+      }
+    },
+    "route": {
+      "title": "Planned flight route",
+      "pointCount": "Number of points",
+      "totalDistance": "Total distance",
+      "headers": {
+        "point": "Point",
+        "lat": "Latitude",
+        "lng": "Longitude"
+      }
+    },
+    "basicInfo": {
+      "title": "Basic information",
+      "labels": {
+        "status": "Status",
+        "riskLevel": "Risk level",
+        "location": "Location",
+        "dateTime": "Date/time",
+        "endTime": "End time",
+        "coordinates": "Coordinates"
+      }
+    },
+    "customer": {
+      "title": "Customer information",
+      "labels": {
+        "name": "Name",
+        "contactPerson": "Contact person",
+        "phone": "Phone",
+        "email": "Email"
+      }
+    },
+    "personnel": {
+      "title": "Personnel",
+      "headers": {
+        "name": "Name"
+      }
+    },
+    "drones": {
+      "title": "Drones",
+      "headers": {
+        "model": "Model",
+        "serialNumber": "Serial number"
+      }
+    },
+    "equipment": {
+      "title": "Equipment",
+      "headers": {
+        "name": "Name",
+        "type": "Type"
+      }
+    },
+    "soraBuffer": {
+      "title": "SORA buffer and adjacent areas",
+      "rows": {
+        "soraVolume": "SORA volume",
+        "flightGeography": "Flight Geography",
+        "contingencyBuffer": "Contingency buffer",
+        "contingencyHeight": "Contingency height",
+        "groundRiskBuffer": "Ground Risk Buffer",
+        "flightAltitude": "Flight altitude",
+        "bufferMode": "Buffer mode",
+        "convexHull": "Convex",
+        "routeCorridor": "Route corridor",
+        "drone": "Drone",
+        "selectedInRoutePlanner": "Selected in route planner",
+        "notSelected": "Not selected",
+        "cd": "CD",
+        "groundSpeed": "V0 / ground speed",
+        "adjacentAreas": "Adjacent areas",
+        "adjacentRadius": "Adjacent radius",
+        "area": "Area",
+        "populationFound": "Population found",
+        "avgDensity": "Average density",
+        "densityCategory": "Density category",
+        "uaSize": "UA Size",
+        "sail": "SAIL",
+        "outdoorAssemblies": "Outdoor assemblies",
+        "requiredContainment": "Required containment",
+        "result": "Result",
+        "withinBasis": "Within calculation basis",
+        "requiresFurtherAssessment": "Requires further assessment",
+        "calculated": "Calculated"
+      }
+    },
+    "sora": {
+      "title": "SORA analysis",
+      "status": {
+        "draft": "Draft",
+        "completed": "Completed",
+        "approved": "Approved"
+      },
+      "labels": {
+        "status": "Status",
+        "sailLevel": "SAIL level",
+        "residualRiskLevel": "Residual risk level",
+        "preparedBy": "Prepared by",
+        "approvedBy": "Approved by",
+        "environment": "Environment",
+        "conopsSummary": "ConOps description",
+        "igrc": "iGRC (initial ground risk)",
+        "fgrc": "fGRC (final)",
+        "groundMitigations": "Ground mitigations",
+        "initialArc": "Initial ARC",
+        "residualArc": "Residual ARC",
+        "airspaceMitigations": "Airspace mitigations",
+        "residualRiskComment": "Residual risk comment",
+        "operationalLimits": "Operational limits"
+      },
+      "grcHeader": "Ground risk (GRC)",
+      "arcHeader": "Airspace risk (ARC)"
+    },
+    "aiRisk": {
+      "title": "AI Risk Assessment",
+      "recommendation": {
+        "proceed": "Recommended",
+        "proceed_with_caution": "Caution recommended",
+        "not_recommended": "Not recommended"
+      },
+      "labels": {
+        "recommendation": "Recommendation",
+        "overallScore": "Overall score",
+        "weatherScore": "Weather score",
+        "airspaceScore": "Airspace score",
+        "pilotScore": "Pilot score",
+        "equipmentScore": "Equipment score",
+        "complexityScore": "Complexity score",
+        "assessedAt": "Assessed"
+      },
+      "summaryLabel": "Summary:",
+      "recommendationsLabel": "Recommendations:",
+      "priority": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      }
+    },
+    "incidents": {
+      "title": "Related incidents",
+      "headers": {
+        "title": "Title",
+        "severity": "Severity",
+        "status": "Status",
+        "rootCause": "Root cause",
+        "occurredAt": "Occurred"
+      }
+    },
+    "flightLogs": {
+      "title": "Flights",
+      "headers": {
+        "date": "Date",
+        "duration": "Duration",
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "safesky": "SafeSky",
+        "checklists": "Checklists"
+      },
+      "safesky": {
+        "off": "Off",
+        "advisory": "Advisory (route)",
+        "liveUav": "Live position"
+      }
+    },
+    "flightLogsDetailed": {
+      "manualDisclaimer": "Manually logged flight — telemetry (distance, altitude, speed, battery, GPS, coordinates, warnings) is not available. Import a drone log to get detailed data.",
+      "source": {
+        "manual": "Manual",
+        "dji": "DJI",
+        "dronelogapi": "DJI (dronelog)",
+        "ardupilot": "ArduPilot",
+        "dronetag": "DroneTag"
+      },
+      "flightTitle": "Flight {{index}}: {{date}}",
+      "summaryHeaders": {
+        "summary": "Summary",
+        "value": "Value"
+      },
+      "summaryLabels": {
+        "pilot": "Pilot",
+        "drone": "Drone",
+        "source": "Source",
+        "duration": "Duration",
+        "departure": "Departure",
+        "landing": "Landing",
+        "totalDistance": "Total distance",
+        "maxDistance": "Max distance",
+        "maxHeight": "Max altitude",
+        "maxHorizSpeed": "Max horizontal speed",
+        "maxVertSpeed": "Max vertical speed",
+        "rthTriggered": "RTH triggered"
+      },
+      "batteryGpsHeader": "Battery and GPS",
+      "batteryLabels": {
+        "batterySn": "Battery SN",
+        "cycles": "Cycles",
+        "health": "Health",
+        "fullCapacity": "Full capacity",
+        "minVoltage": "Min voltage",
+        "maxCellDeviation": "Max cell deviation",
+        "tempMin": "Min temp",
+        "tempMax": "Max temp",
+        "gpsSatMin": "Min GPS satellites",
+        "gpsSatMax": "Max GPS satellites"
+      },
+      "graphs": {
+        "heightOverTime": "Altitude over time",
+        "speedOverTime": "Speed over time",
+        "batteryOverTime": "Battery level over time",
+        "batteryTempOverTime": "Battery temperature over time",
+        "rcStickOverTime": "RC stick input over time",
+        "windSpeedOverTime": "Wind speed over time"
+      },
+      "series": {
+        "height": "Altitude (m)",
+        "speed": "Speed (m/s)",
+        "battery1": "Battery 1 (%)",
+        "battery2": "Battery 2 (%)",
+        "battery": "Battery (%)",
+        "batteryTemp1": "Batt 1 temp (°C)",
+        "batteryTemp2": "Batt 2 temp (°C)",
+        "batteryTemp": "Batt temp (°C)",
+        "wind": "Wind (m/s)",
+        "maxWind": "Max wind (m/s)",
+        "rcThrottle": "Throttle",
+        "rcElevator": "Elevator",
+        "rcAileron": "Aileron",
+        "rcRudder": "Rudder"
+      },
+      "appWarningsTitle": "App warnings",
+      "noAppWarnings": "No app warnings",
+      "warningsHeaders": {
+        "type": "Type",
+        "time": "Time",
+        "message": "Message",
+        "value": "Value"
+      },
+      "moreWarningsNotShown": "+ {{count}} more warnings not shown",
+      "sampledCoordinatesTitle": "Coordinates from flown route ({{shown}} of {{total}} points)",
+      "coordHeaders": {
+        "lat": "Lat",
+        "lng": "Lng",
+        "alt": "Alt (m)"
+      }
+    },
+    "descriptionNotes": {
+      "descriptionTitle": "Description",
+      "notesTitle": "Notes"
+    },
+    "toasts": {
+      "exportSuccess": "PDF exported and saved to documents",
+      "exportError": "Could not export PDF"
+    },
+    "document": {
+      "title": "Mission report - {{title}}",
+      "description": "Exported report for mission {{title}}"
+    }
+  },
+  "riskAssessment": {
+    "categories": {
+      "weather": "Weather",
+      "airspace": "Airspace",
+      "pilot_experience": "Pilot experience",
+      "mission_complexity": "Mission complexity",
+      "equipment": "Equipment",
+      "regulatory": "Regulatory",
+      "environment": "Environment",
+      "population": "Population",
+      "terrain": "Terrain",
+      "communications": "Communications"
+    },
+    "go": {
+      "go": "GO",
+      "conditional": "CONDITIONAL GO",
+      "noGo": "NO-GO",
+      "notGo": "NOT GO",
+      "notApplicable": "N/A"
+    },
+    "mitigations": {
+      "m1aSheltering": "M1(A) Sheltering",
+      "m1bOperationalRestrictions": "M1(B) Operational restrictions",
+      "m1cGroundObservation": "M1(C) Ground observation",
+      "m2ImpactReduction": "M2 Impact reduction"
+    },
+    "sections": {
+      "operationClassification": "OPERATION CLASSIFICATION (STEP 0)",
+      "groundRisk": "GROUND RISK (GRC)",
+      "airRisk": "AIRSPACE RISK (ARC)",
+      "soraAnalysis": "SORA ANALYSIS (STEP 2 - RE-ASSESSMENT)",
+      "sailLookup": "STEP 7: SAIL LOOKUP",
+      "containment": "STEP 8: CONTAINMENT",
+      "osoRequirements": "STEP 9: OSO REQUIREMENTS",
+      "missionOverview": "MISSION OVERVIEW",
+      "assessmentMethod": "ASSESSMENT METHOD",
+      "overallAssessment": "OVERALL ASSESSMENT",
+      "categoryScores": "CATEGORY SCORES",
+      "recommendedActions": "RECOMMENDED ACTIONS",
+      "prerequisites": "PREREQUISITES"
+    },
+    "labels": {
+      "category": "Category",
+      "requiresSora": "Requires SORA",
+      "alosMax": "ALOS max (m)",
+      "alosCalculation": "ALOS calculation",
+      "sts": "STS",
+      "soraBuffersCalculated": "SORA buffers calculated",
+      "characteristicDimension": "Characteristic dimension",
+      "speedCategory": "Speed category",
+      "droneWeight": "Drone weight (kg)",
+      "populationDensity": "Population density",
+      "populationDensityPerKm2": "Population density (per km2)",
+      "avgDensityPerKm2": "Average density (per km2)",
+      "ssbGridPopulation": "Dimensioning SSB grid",
+      "grcMethod": "GRC method",
+      "tableBasis": "Table basis",
+      "igrc": "iGRC",
+      "documentedReduction": "Documented reduction",
+      "fgrc": "fGRC (final)",
+      "igrcReasoning": "iGRC reasoning:",
+      "ssbCalculationTitle": "SSB calculation (population density):",
+      "fgrcReasoning": "fGRC reasoning:",
+      "aec": "AEC (Air Encounter Category)",
+      "initialArc": "Initial ARC",
+      "residualArc": "Residual ARC",
+      "tmprLevel": "TMPR level",
+      "vlosExemption": "VLOS exemption",
+      "aecReasoning": "AEC reasoning:",
+      "arcReductionReasoning": "ARC reduction reasoning:",
+      "strategicMitigationsApplied": "Strategic mitigations (applied):",
+      "strategicMitigationsNotApplied": "Strategic mitigations (not applied):",
+      "tmprRequirements": "TMPR requirements:",
+      "environment": "Environment",
+      "conops": "ConOps:",
+      "groundMitigations": "Ground mitigations:",
+      "airspaceMitigations": "Airspace mitigations:",
+      "robustnessLevel": "Robustness level: {{level}}",
+      "ftsRequired": "FTS required",
+      "residualRiskComment": "Residual risk comment:",
+      "operationalLimits": "Operational limits:",
+      "sail": "SAIL",
+      "residualRisk": "Residual risk",
+      "recommendation": "Recommendation",
+      "fgrcUsed": "fGRC used",
+      "arcUsed": "ARC used",
+      "sailResult": "SAIL result",
+      "adjustments": "Adjustments",
+      "actualConditions": "Actual conditions",
+      "droneStatus": "Drone status",
+      "experienceSummary": "Experience summary",
+      "complexityFactors": "Complexity factors",
+      "positiveFactors": "Positive factors:",
+      "concerns": "Concerns:",
+      "priority": "{{priority}} priority:",
+      "reasoning": "Reasoning: {{reason}}",
+      "riskAddressed": "Addresses risk: {{risk}}",
+      "assessedAt": "Assessed: {{date}}"
+    },
+    "tmpr": {
+      "detect": "Detect",
+      "decide": "Decide",
+      "command": "Command",
+      "execute": "Execute",
+      "feedback_loop": "Feedback loop"
+    },
+    "priority": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "headers": {
+      "mitigation": "Mitigation",
+      "applied": "Applied",
+      "robustness": "Robustness",
+      "reduction": "Reduction",
+      "reasoning": "Reasoning",
+      "criterion": "Criterion",
+      "requirement": "Requirement",
+      "documentation": "Documentation",
+      "oso": "OSO",
+      "description": "Description",
+      "categoryLabel": "Category",
+      "score": "Score",
+      "decision": "Decision",
+      "pilotComment": "Pilot comment",
+      "sailMatrixCol": "fGRC \\ ARC"
+    },
+    "titleSora": "SORA ANALYSIS",
+    "titleAi": "RISK ASSESSMENT",
+    "hardStop": "HARD STOP: {{reason}}",
+    "disclaimerSora": "This SORA analysis is generated as decision support. The pilot-in-command is responsible for assessing the risk associated with the mission.",
+    "disclaimerAi": "AI risk assessment can be used as decision support. The pilot-in-command must always assess the risk associated with the mission.",
+    "filenamePrefixSora": "sora-analysis",
+    "filenamePrefixAi": "risk-assessment",
+    "documentCategoryTitle": {
+      "sora": "SORA analysis - {{title}} - {{date}}",
+      "ai": "Risk assessment - {{title}} - {{date}}"
+    },
+    "documentDescription": {
+      "sora": "Automatically generated SORA analysis for mission: {{title}}",
+      "ai": "Automatically generated risk assessment for mission: {{title}}"
+    }
+  },
+  "userManual": {
+    "docTitle": "AviSafe",
+    "subtitle": "User Manual",
+    "subtitle2": "Drone Operations and Flight Safety",
+    "version": "Version 1.0 - {{date}}",
+    "toc": "Table of contents",
+    "footer": "AviSafe User Manual - Page {{page}} of {{total}}"
+  },
+  "common": {
+    "exportedAt": "Exported: {{date}}",
+    "unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No"
   }
 }
