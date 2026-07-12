@@ -324,7 +324,7 @@ export function ResourceTimeline() {
             </p>
             {event.eventType !== "mission" && (
               <Badge variant="outline" className="text-[10px] mt-1 capitalize">
-                {event.eventType === "maintenance" ? "Vedlikehold" : event.eventType}
+                {event.eventType === "maintenance" ? t('pages.calendar.resourceTimeline.maintenance') : event.eventType}
               </Badge>
             )}
             {hasConflict && (
