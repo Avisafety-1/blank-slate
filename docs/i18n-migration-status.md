@@ -30,7 +30,7 @@ Statuskoder:
 | # | Fil / område | Status |
 |--:|--------------|--------|
 | 2.1 | `src/pages/Hendelser.tsx` + incident-dialoger | DONE – Hendelser.tsx: alle ECCAIRS-relaterte toasts/labels/knapper/AlertDialog migrert til `incidents.eccairs.*`; `getEccairsStatusLabel` tar nå `t`-funksjon. IncidentsSection/IncidentDetailDialog/AddIncidentDialog: kun enum-verdier igjen, ingen migrering nødvendig. |
-| 2.2 | `src/pages/Documents.tsx` + `src/components/documents/*` | TODO |
+| 2.2 | `src/pages/Documents.tsx` + `src/components/documents/*` | DONE – DocumentUploadDialog, DocumentCardModal, FolderDetailDialog, FolderGrid migrert til `documents.uploadDialog.*`/`cardModal.*`/`folderDetail.*`/`folderGrid.*`. Documents.tsx var allerede migrert av tidligere agent. Kun DB-enum-status ("Grønn"/"Gul"/"Rød") gjenstår som intern identifikator. |
 | 2.3 | Training-flater (`src/components/training/*`, admin-Training*) | TODO |
 | 2.4 | Guided tours (`src/tours/*`) | TODO |
 

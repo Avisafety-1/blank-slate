@@ -50,6 +50,8 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 interface ChecklistItem {
   id: string;
@@ -67,24 +69,24 @@ interface DocumentCardModalProps {
   isOwnerCompany?: boolean;
 }
 
-const CATEGORIES: { value: DocumentCategory; label: string }[] = [
-  { value: "regelverk", label: "Regelverk" },
-  { value: "prosedyrer", label: "Prosedyrer" },
-  { value: "sjekklister", label: "Sjekklister" },
-  { value: "rapporter", label: "Rapporter" },
-  { value: "nettsider", label: "Nettsider" },
-  { value: "oppdrag", label: "Oppdrag" },
-  { value: "loggbok", label: "Loggbok" },
-  { value: "kml-kmz", label: "KML/KMZ" },
-  { value: "dokumentstyring", label: "Dokumentstyring" },
-  { value: "risikovurderinger", label: "Risikovurderinger" },
-  { value: "operasjonsmanual", label: "Operasjonsmanual" },
-  { value: "annet", label: "Annet" },
+const CATEGORIES: { value: DocumentCategory; labelKey: string }[] = [
+  { value: "regelverk", labelKey: "documents.categories.regelverk" },
+  { value: "prosedyrer", labelKey: "documents.categories.prosedyrer" },
+  { value: "sjekklister", labelKey: "documents.categories.sjekklister" },
+  { value: "rapporter", labelKey: "documents.categories.rapporter" },
+  { value: "nettsider", labelKey: "documents.categories.nettsider" },
+  { value: "oppdrag", labelKey: "documents.categories.oppdrag" },
+  { value: "loggbok", labelKey: "documents.categories.loggbok" },
+  { value: "kml-kmz", labelKey: "documents.categories.kmlKmz" },
+  { value: "dokumentstyring", labelKey: "documents.categories.dokumentstyring" },
+  { value: "risikovurderinger", labelKey: "documents.categories.risikovurderinger" },
+  { value: "operasjonsmanual", labelKey: "documents.categories.operasjonsmanual" },
+  { value: "annet", labelKey: "documents.categories.annet" },
 ];
 
 const formSchema = z.object({
-  tittel: z.string().min(1, "Tittel er påkrevd").max(200, "Tittel må være under 200 tegn"),
-  beskrivelse: z.string().max(100000, "Beskrivelse er for lang").optional(),
+  tittel: z.string().min(1, i18n.t("documents.cardModal.validation.titleRequired")).max(200, i18n.t("documents.cardModal.validation.titleTooLong")),
+  beskrivelse: z.string().max(100000, i18n.t("documents.cardModal.validation.descriptionTooLong")).optional(),
   kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "operasjonsmanual", "annet"]),
   gyldig_til: z.date().optional(),
   varsel_dager_for_utløp: z.coerce.number().int().min(0).max(365).optional(),
@@ -98,7 +100,7 @@ const formSchema = z.object({
       type: "string",
       inclusive: true,
       path: ["beskrivelse"],
-      message: "Beskrivelse må være under 1000 tegn",
+      message: i18n.t("documents.cardModal.validation.descriptionTooLong1000"),
     });
   }
 });
@@ -115,6 +117,7 @@ const DocumentCardModal = ({
   isCreating,
   isOwnerCompany = true,
 }: DocumentCardModalProps) => {
+  const { t } = useTranslation();
   const { companyId, isSuperAdmin } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -236,7 +239,7 @@ const DocumentCardModal = ({
       }
     } catch (error) {
       console.error('Error opening file:', error);
-      toast.error('Du har tilgang til dokumentkortet, men filtilgangen mangler. Kontakt administrator.');
+      toast.error(t('documents.toasts.accessErrorOpen'));
     }
   };
 
@@ -363,14 +366,14 @@ const DocumentCardModal = ({
         
         // Show version update message if file was updated
         if (isUpdatingFile) {
-          toast.success(`Dokument oppdatert til versjon ${newVersion}`);
+          toast.success(t("documents.toasts.updatedToVersion", { version: newVersion }));
         }
       }
 
       onSaveSuccess();
     } catch (error) {
       console.error("Error saving document:", error);
-      toast.error("Kunne ikke lagre dokumentet");
+      toast.error(t("documents.toasts.saveFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -386,7 +389,7 @@ const DocumentCardModal = ({
       onDeleteSuccess();
     } catch (error) {
       console.error("Error deleting document:", error);
-      toast.error("Kunne ikke slette dokumentet");
+      toast.error(t("documents.toasts.deleteFailed"));
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
@@ -403,12 +406,12 @@ const DocumentCardModal = ({
         <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isCreating ? "Nytt dokument" : readOnly ? "Dokument" : "Rediger dokument"}
+              {isCreating ? t("documents.cardModal.newTitle") : readOnly ? t("documents.cardModal.viewTitle") : t("documents.cardModal.editTitle")}
             </DialogTitle>
             {document && !isCreating && (
               <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4">
-                {document.opprettet_av && <span>Opprettet av: {document.opprettet_av}</span>}
-                {document.opprettet_dato && <span>Opprettet: {format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb })}</span>}
+                {document.opprettet_av && <span>{t("documents.cardModal.createdBy", { name: document.opprettet_av })}</span>}
+                {document.opprettet_dato && <span>{t("documents.cardModal.createdOn", { date: format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb }) })}</span>}
               </div>
             )}
           </DialogHeader>
@@ -419,7 +422,7 @@ const DocumentCardModal = ({
                 <Alert>
                   <Building2 className="h-4 w-4" />
                   <AlertDescription>
-                    Dette dokumentet er delt fra {(document as any).company_name || "et annet selskap"} og kan ikke endres eller slettes her.
+                    {t("documents.cardModal.sharedNotice", { company: (document as any).company_name || t("documents.cardModal.otherCompanyFallback") })}
                   </AlertDescription>
                 </Alert>
               )}
@@ -429,7 +432,7 @@ const DocumentCardModal = ({
                 name="kategori"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kategori</FormLabel>
+                    <FormLabel>{t("documents.cardModal.categoryLabel")}</FormLabel>
                     <Select
                       onValueChange={(value) => {
                         const prev = field.value;
@@ -446,13 +449,13 @@ const DocumentCardModal = ({
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Velg kategori" />
+                          <SelectValue placeholder={t("documents.cardModal.categoryPlaceholder")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {CATEGORIES.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                            {t(cat.labelKey)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -467,7 +470,7 @@ const DocumentCardModal = ({
                 name="tittel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tittel *</FormLabel>
+                    <FormLabel>{t("documents.cardModal.titleLabel")}</FormLabel>
                     <FormControl>
                       <Input {...field} disabled={readOnly} />
                     </FormControl>
@@ -482,7 +485,7 @@ const DocumentCardModal = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("kategori") === "sjekklister" ? "Sjekkliste-punkter" : "Beskrivelse"}
+                      {form.watch("kategori") === "sjekklister" ? t("documents.cardModal.checklistItemsLabel") : t("documents.cardModal.descriptionLabel")}
                     </FormLabel>
                     <FormControl>
                       {form.watch("kategori") === "sjekklister" ? (
@@ -503,7 +506,7 @@ const DocumentCardModal = ({
                               <Input
                                 value={item.text}
                                 onChange={(e) => handleChecklistItemChange(item.id, e.target.value)}
-                                placeholder="Skriv inn sjekkpunkt..."
+                                placeholder={t("documents.cardModal.checklistItemPlaceholder")}
                                 disabled={readOnly}
                                 className="flex-1"
                               />
@@ -522,7 +525,7 @@ const DocumentCardModal = ({
                           ))}
                           {checklistItems.length === 0 && (
                             <p className="text-sm text-muted-foreground py-2">
-                              Ingen sjekkpunkter lagt til ennå.
+                              {t("documents.cardModal.noChecklistItems")}
                             </p>
                           )}
                           {!readOnly && (
@@ -534,14 +537,14 @@ const DocumentCardModal = ({
                               className="mt-2"
                             >
                               <Plus className="h-4 w-4 mr-2" />
-                              Legg til punkt
+                              {t("documents.cardModal.addItem")}
                             </Button>
                           )}
                         </div>
                       ) : readOnly && field.value ? (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap p-3 rounded-md border bg-muted/50">{field.value}</p>
                       ) : (
-                        <Textarea {...field} rows={4} disabled={readOnly} placeholder="Legg til beskrivelse..." />
+                        <Textarea {...field} rows={4} disabled={readOnly} placeholder={t("documents.cardModal.descriptionPlaceholder")} />
                       )}
                     </FormControl>
                     <FormMessage />
@@ -554,7 +557,7 @@ const DocumentCardModal = ({
                 name="gyldig_til"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Utløpsdato</FormLabel>
+                    <FormLabel>{t("documents.cardModal.expiryDateLabel")}</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -569,7 +572,7 @@ const DocumentCardModal = ({
                             {field.value ? (
                               format(field.value, "dd.MM.yyyy", { locale: nb })
                             ) : (
-                              <span>Velg dato</span>
+                              <span>{t("documents.cardModal.chooseDate")}</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -595,7 +598,7 @@ const DocumentCardModal = ({
                 name="varsel_dager_for_utløp"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Varsling (antall dager før utløp)</FormLabel>
+                    <FormLabel>{t("documents.cardModal.notificationDaysLabel")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -614,13 +617,13 @@ const DocumentCardModal = ({
                 name="nettside_url"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nettside URL</FormLabel>
+                    <FormLabel>{t("documents.cardModal.websiteUrlLabel")}</FormLabel>
                     <FormControl>
                       <Input {...field} disabled={readOnly} placeholder="https://..." />
                     </FormControl>
                     {!readOnly && document?.nettside_url && (
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span className="break-all min-w-0">Eksisterende URL:</span>
+                        <span className="break-all min-w-0">{t("documents.cardModal.existingUrl")}</span>
                         <Button
                           type="button"
                           variant="link"
@@ -628,7 +631,7 @@ const DocumentCardModal = ({
                           className="h-auto p-0"
                           onClick={() => openUrl(document.nettside_url!)}
                         >
-                          Åpne eksisterende URL
+                          {t("documents.cardModal.openExistingUrl")}
                         </Button>
                       </div>
                     )}
@@ -640,7 +643,7 @@ const DocumentCardModal = ({
               {!readOnly && (
                 <div className="space-y-2">
                   <FormLabel>
-                    {isCreating ? "Opplasting av dokument" : "Oppdater dokument"}
+                    {isCreating ? t("documents.cardModal.uploadDocument") : t("documents.cardModal.updateDocument")}
                   </FormLabel>
                   <div className="flex items-center gap-2">
                     <Input
@@ -662,7 +665,7 @@ const DocumentCardModal = ({
                   </div>
                   {!isCreating && selectedFile && document?.versjon && (
                     <p className="text-sm text-muted-foreground">
-                      Ved lagring økes versjon fra {document.versjon} til {(() => {
+                      {t("documents.cardModal.versionUpdateNotice", { from: document.versjon, to: (() => {
                         const parts = document.versjon.split('.');
                         if (parts.length === 2) {
                           const major = parseInt(parts[0]) || 1;
@@ -670,12 +673,12 @@ const DocumentCardModal = ({
                           return `${major}.${minor + 1}`;
                         }
                         return "1.1";
-                      })()}
+                      })() })}
                     </p>
                   )}
                   {document?.fil_url && !selectedFile && (
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                      <span className="break-all min-w-0">Eksisterende fil ({document.fil_navn || "fil"}):</span>
+                      <span className="break-all min-w-0">{t("documents.cardModal.existingFile", { fileName: document.fil_navn || t("documents.cardModal.existingFileFallback") })}</span>
                       <Button
                         type="button"
                         variant="link"
@@ -683,7 +686,7 @@ const DocumentCardModal = ({
                         className="h-auto p-0"
                         onClick={() => handleOpenFile(document.fil_url!)}
                       >
-                        Åpne eksisterende fil
+                        {t("documents.cardModal.openExistingFile")}
                       </Button>
                     </div>
                   )}
@@ -692,7 +695,7 @@ const DocumentCardModal = ({
 
               {document?.fil_url && readOnly && (
                 <div className="space-y-2">
-                  <FormLabel>Dokument</FormLabel>
+                  <FormLabel>{t("documents.cardModal.documentLabel")}</FormLabel>
                   <Button
                     type="button"
                     variant="outline"
@@ -700,14 +703,14 @@ const DocumentCardModal = ({
                     className="w-full"
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    Åpne dokument
+                    {t("documents.cardModal.openDocument")}
                   </Button>
                 </div>
               )}
 
               {document?.nettside_url && readOnly && (
                 <div className="space-y-2">
-                  <FormLabel>Nettside</FormLabel>
+                  <FormLabel>{t("documents.cardModal.websiteLabel")}</FormLabel>
                   <Button
                     type="button"
                     variant="outline"
@@ -715,7 +718,7 @@ const DocumentCardModal = ({
                     className="w-full"
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    Åpne nettside
+                    {t("documents.cardModal.openWebsite")}
                   </Button>
                 </div>
               )}
@@ -725,9 +728,9 @@ const DocumentCardModal = ({
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-muted-foreground" />
                     <div className="space-y-0.5">
-                      <Label htmlFor="edit-visible-children-doc">Synlig for alle avdelinger</Label>
+                      <Label htmlFor="edit-visible-children-doc">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
                       <p className="text-xs text-muted-foreground">
-                        Deles automatisk med alle underavdelinger
+                        {t("documents.cardModal.visibleToChildrenDescription")}
                       </p>
                     </div>
                   </div>
@@ -748,15 +751,15 @@ const DocumentCardModal = ({
                     disabled={isDeleting}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Slett
+                    {t("documents.cardModal.delete")}
                   </Button>
                 )}
                 <Button type="button" variant="outline" onClick={onClose}>
-                  {readOnly ? "Lukk" : "Avbryt"}
+                  {readOnly ? t("documents.cardModal.close") : t("documents.cardModal.cancel")}
                 </Button>
                 {canManageDocument && (
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Lagrer..." : "Lagre"}
+                    {isSubmitting ? t("documents.cardModal.saving") : t("documents.cardModal.save")}
                   </Button>
                 )}
               </DialogFooter>
@@ -768,15 +771,15 @@ const DocumentCardModal = ({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogTitle>{t("documents.cardModal.confirmDeleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Er du sikker på at du vil slette dette dokumentet? Denne handlingen kan ikke angres.
+              {t("documents.cardModal.confirmDeleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogCancel>{t("documents.cardModal.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? "Sletter..." : "Slett"}
+              {isDeleting ? t("documents.cardModal.deleting") : t("documents.cardModal.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
