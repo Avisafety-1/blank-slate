@@ -944,15 +944,15 @@ export const ProfileDialog = () => {
               <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
-                  <span>{t('profile.title').replace('Min ', '').replace('My ', '')}</span>
+                  <span>{t('profile.tabs.profile')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="security" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Lock className="h-3 w-3" />
-                  <span>{t('profile.security')}</span>
+                  <span>{t('profile.tabs.security')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="competencies" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Award className="h-3 w-3" />
-                  <span>{t('profile.competencies')}</span>
+                  <span>{t('profile.tabs.competencies')}</span>
                   {pendingTraining.length > 0 && (
                     <Badge
                       variant="destructive"
@@ -964,16 +964,16 @@ export const ProfileDialog = () => {
                 </TabsTrigger>
                 <TabsTrigger value="emergency" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Heart className="h-3 w-3" />
-                  <span>{t('profile.emergency')}</span>
+                  <span>{t('profile.tabs.emergency')}</span>
                 </TabsTrigger>
                 <TabsTrigger value="notifications" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <Bell className="h-3 w-3" />
-                  <span>{t('profile.notifications')}</span>
+                  <span>{t('profile.tabs.notifications')}</span>
                 </TabsTrigger>
                 {canBeIncidentResponsible && (
                 <TabsTrigger value="incidents" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0" style={{ touchAction: 'manipulation' }}>
                   <ClipboardCheck className="h-3 w-3" />
-                  <span>Oppfølging</span>
+                  <span>{t('profile.tabs.incidents')}</span>
                   {(followUpIncidents.length + pendingApprovalMissions.length) > 0 && (
                     <Badge
                       variant="destructive"
@@ -986,7 +986,7 @@ export const ProfileDialog = () => {
                 )}
                 <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <CreditCard className="h-3 w-3" />
-                  <span>Abonnement</span>
+                  <span>{t('profile.tabs.subscription')}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -1086,19 +1086,19 @@ export const ProfileDialog = () => {
                           )}
                         </div>
                         <div className="grid gap-1">
-                          <Label className="text-xs">UAS operatørnummer</Label>
+                          <Label className="text-xs">{t('profile.uasOperatorNumber')}</Label>
                           {isEditing ? (
                             <Input
                               value={editedProfile.uas_operator_number || ""}
                               onChange={(e) => setEditedProfile({ ...editedProfile, uas_operator_number: e.target.value })}
-                              placeholder="f.eks. NOR87astrdge12k"
+                              placeholder={t('profile.uasOperatorNumberPlaceholder')}
                               className="h-8 text-sm"
                             />
                           ) : (
                             <p className="text-sm text-muted-foreground">{profile?.uas_operator_number || t('common.notSpecified')}</p>
                           )}
                           <p className="text-[10px] text-muted-foreground/70">
-                            Fra Luftfartstilsynets flydrone-tjeneste. De siste sifrene er hemmelige og skal ikke tas med i merkingen.
+                            {t('profile.uasOperatorNumberHint')}
                           </p>
                         </div>
                       </div>
@@ -1157,7 +1157,7 @@ export const ProfileDialog = () => {
                           {(() => {
                             const formatScope = (ids: string[] | null | undefined): string => {
                               if (!ids || ids.length === 0) return '';
-                              if (ids.includes('all')) return ' (Alle avdelinger)';
+                              if (ids.includes('all')) return ` (${t('profile.roleBadges.allDepartments')})`;
                               const names = ids.map(id => companyNameMap[id]).filter(Boolean);
                               return names.length > 0 ? ` (${names.join(', ')})` : '';
                             };
@@ -1165,28 +1165,28 @@ export const ProfileDialog = () => {
                             if ((profile as any)?.can_approve_missions) {
                               extras.push({
                                 key: 'approver',
-                                label: `Godkjenner oppdrag${formatScope((profile as any)?.approval_company_ids)}`,
+                                label: `${t('profile.roleBadges.approver')}${formatScope((profile as any)?.approval_company_ids)}`,
                                 className: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30 dark:text-emerald-300 hover:bg-emerald-500/20',
                               });
                             }
                             if ((profile as any)?.can_be_incident_responsible) {
                               extras.push({
                                 key: 'incident',
-                                label: `Oppfølgingsansvarlig hendelser${formatScope((profile as any)?.incident_responsible_company_ids)}`,
+                                label: `${t('profile.roleBadges.incidentResponsible')}${formatScope((profile as any)?.incident_responsible_company_ids)}`,
                                 className: 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300 hover:bg-amber-500/20',
                               });
                             }
                             if ((profile as any)?.can_access_eccairs) {
                               extras.push({
                                 key: 'eccairs',
-                                label: 'ECCAIRS-tilgang',
+                                label: t('profile.roleBadges.eccairs'),
                                 className: 'bg-violet-500/15 text-violet-700 border-violet-500/30 dark:text-violet-300 hover:bg-violet-500/20',
                               });
                             }
                             if ((profile as any)?.is_technical_responsible) {
                               extras.push({
                                 key: 'technical',
-                                label: 'Teknisk ansvarlig',
+                                label: t('profile.roleBadges.technicalResponsible'),
                                 className: 'bg-cyan-500/15 text-cyan-700 border-cyan-500/30 dark:text-cyan-300 hover:bg-cyan-500/20',
                               });
                             }
