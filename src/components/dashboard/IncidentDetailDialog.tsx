@@ -532,7 +532,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
               <div className="flex items-start gap-3">
                 <User className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Oppfølgingsansvarlig</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('dashboard.incidents.responsible')}</p>
                   <p className="text-base">{oppfolgingsansvarlig.full_name || 'Ukjent bruker'}</p>
                 </div>
               </div>
