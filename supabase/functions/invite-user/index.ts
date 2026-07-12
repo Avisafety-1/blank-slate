@@ -71,9 +71,9 @@ serve(async (req) => {
       console.warn('Could not resolve target company language:', resolveErr);
     }
 
-    // Explicit body.language wins; otherwise use the target company's default; else header/default.
-    const bodyForLang = { ...body, language: body?.language ?? targetCompanyLang ?? undefined };
-    const language = resolveLanguage(req, bodyForLang);
+    // Target company's default language wins over the inviter's UI language,
+    // since the email is sent to a recipient in that company.
+    const language = targetCompanyLang ?? resolveLanguage(req, body);
 
     const { data: profile } = await supabase
       .from('profiles')
