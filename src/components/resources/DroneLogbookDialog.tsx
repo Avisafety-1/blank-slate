@@ -723,7 +723,7 @@ export const DroneLogbookDialog = ({
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
-                                    title="Rediger"
+                                    title={t('resourceDialogs.droneLogbook.edit')}
                                     onClick={() => handleEditManualEntry(log)}
                                   >
                                     <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
