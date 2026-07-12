@@ -20,6 +20,7 @@ import { isPasskeyLogin } from "@/lib/authMethod";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
 import { TurnstileWidget, resetTurnstile } from "@/components/auth/TurnstileWidget";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import i18n from "@/i18n";
 
 // Feature flag: skru av captcha-verifisering uten å fjerne kode.
 // Sett til true igjen for å reaktivere Turnstile-flyten.
