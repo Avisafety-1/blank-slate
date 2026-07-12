@@ -159,6 +159,7 @@ export const CompanyManagementDialog = ({
           kontakt_epost: "",
           kontakt_telefon: "",
           parent_company_id: null,
+          default_language: 'no',
         });
       }
     }
