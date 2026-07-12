@@ -1489,9 +1489,9 @@ const Admin = () => {
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-72 p-3 z-[1300]" align="start">
-                                      <p className="text-xs font-medium mb-2">Godkjenner for avdelinger</p>
+                                      <p className="text-xs font-medium mb-2">{t('admin.page.approverForDepartments')}</p>
                                       <DepartmentChecklist
-                                        departments={[{ id: companyId || '', navn: companyName || 'Hovedselskap' }, ...childCompanies]}
+                                        departments={[{ id: companyId || '', navn: companyName || t('admin.page.mainCompany') }, ...childCompanies]}
                                         selectedIds={profile.approval_company_ids?.filter(id => id !== 'all') || []}
                                         allSelected={profile.approval_company_ids?.includes('all') || false}
                                         onToggleAll={(checked) => {
