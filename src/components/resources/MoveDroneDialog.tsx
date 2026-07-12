@@ -360,20 +360,20 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         ) : (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{drone.modell}</span> ({drone.serienummer}) – fra{" "}
+              <span className="font-medium text-foreground">{drone.modell}</span> ({drone.serienummer}) – {t('resourceDialogs.moveDrone.fromLine')}{" "}
               <span className="font-medium text-foreground">{fromCompanyName}</span>
             </div>
 
             <div className="space-y-2">
-              <Label>Til avdeling</Label>
+              <Label>{t('resourceDialogs.moveDrone.toDept')}</Label>
               {departments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Ingen andre avdelinger i samme hierarki tilgjengelig.
+                  {t('resourceDialogs.moveDrone.noOtherDepts')}
                 </p>
               ) : (
                 <Select value={targetCompanyId} onValueChange={setTargetCompanyId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Velg målavdeling" />
+                    <SelectValue placeholder={t('resourceDialogs.moveDrone.selectTarget')} />
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((d) => (
@@ -387,22 +387,22 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
             </div>
 
             <div className="space-y-2">
-              <Label>Notat (valgfritt)</Label>
-              <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Begrunnelse, referanse e.l." />
+              <Label>{t('resourceDialogs.moveDrone.note')}</Label>
+              <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={t('resourceDialogs.moveDrone.notePlaceholder')} />
             </div>
 
             <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Loggbok, inspeksjoner og utstyrshistorikk følger drona automatisk.</span>
+                <span>{t('resourceDialogs.moveDrone.infoHistoricalFollows')}</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Flygelogger, hendelser og DJI-synkjobber beholdes på {fromCompanyName} som historikk.</span>
+                <span>{t('resourceDialogs.moveDrone.infoLogsKept', { from: fromCompanyName })}</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Eksisterende delings-rader for drona fjernes — sett opp deling på nytt etter behov.</span>
+                <span>{t('resourceDialogs.moveDrone.infoSharesRemoved')}</span>
               </div>
             </div>
 
@@ -414,11 +414,11 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Avbryt
+            {t('resourceDialogs.moveDrone.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || loading || !targetCompanyId}>
             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Bekreft flytting
+            {t('resourceDialogs.moveDrone.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>
