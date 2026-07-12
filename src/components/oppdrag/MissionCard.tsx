@@ -464,7 +464,7 @@ export const MissionCard = ({
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Plane className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs font-semibold text-muted-foreground">DRONER</p>
+            <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.dronesHeader')}</p>
           </div>
           {mission.drones?.length > 0 ? (
             <ul className="space-y-2">
