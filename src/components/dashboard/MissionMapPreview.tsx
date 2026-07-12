@@ -276,7 +276,7 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
               L.geoJSON(rpasData, {
                 style: { color: '#f97316', weight: 2, fillColor: '#f97316', fillOpacity: 0.15 },
                 onEachFeature: (feature, layer) => {
-                  const name = feature.properties?.navn || feature.properties?.name || 'RPAS 5km sone';
+                  const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.rpasZoneDefault");
                   layer.bindPopup(`<strong>RPAS 5km</strong><br/>${name}`);
                 }
               }).addTo(zonesLayer);
