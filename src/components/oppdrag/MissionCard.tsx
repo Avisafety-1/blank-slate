@@ -381,7 +381,7 @@ export const MissionCard = ({
       {/* Created By */}
       {mission.created_by_name && (
         <div className="text-sm">
-          <span className="text-muted-foreground">Opprettet av: </span>
+          <span className="text-muted-foreground">{t('pages.missions.card.createdBy')}</span>
           <span className="text-foreground">{mission.created_by_name}</span>
         </div>
       )}
