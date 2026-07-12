@@ -940,7 +940,7 @@ export default function Kalender() {
                                   htmlFor={`maintenance-${event.id}`}
                                   className="text-xs text-muted-foreground cursor-pointer"
                                 >
-                                  Marker som utført
+                                  {t('pages.calendar.markAsCompleted')}
                                 </Label>
                               </div>
                             )}
