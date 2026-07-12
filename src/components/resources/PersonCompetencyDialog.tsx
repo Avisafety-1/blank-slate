@@ -861,19 +861,19 @@ export function PersonCompetencyDialog({
               </div>
 
               <div>
-                <Label htmlFor="new-description" className="text-xs">Beskrivelse</Label>
+                <Label htmlFor="new-description" className="text-xs">{t('resourceDialogs.personCompetency.description')}</Label>
                 <Textarea
                   id="new-description"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Valgfri"
+                  placeholder={t('resourceDialogs.personCompetency.optional')}
                   className="min-h-[60px]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="min-w-0">
-                  <Label htmlFor="new-issue-date" className="text-xs">Utstedt</Label>
+                  <Label htmlFor="new-issue-date" className="text-xs">{t('resourceDialogs.personCompetency.issued')}</Label>
                   <Input
                     id="new-issue-date"
                     type="date"
@@ -883,7 +883,7 @@ export function PersonCompetencyDialog({
                   />
                 </div>
                 <div className="min-w-0">
-                  <Label htmlFor="new-expiry-date" className="text-xs">Utløper</Label>
+                  <Label htmlFor="new-expiry-date" className="text-xs">{t('resourceDialogs.personCompetency.expires')}</Label>
                   <Input
                     id="new-expiry-date"
                     type="date"
