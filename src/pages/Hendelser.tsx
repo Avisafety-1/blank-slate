@@ -1190,7 +1190,7 @@ const Hendelser = () => {
                               <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground">{t('incidents.eccairs.lastAttemptLabel')}</span>
                                 <span>
-                                  {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: nb })}
+                                  {format(new Date(exp.last_attempt_at), 'd. MMM HH:mm', { locale: dateLocale })}
                                 </span>
                               </div>
                             )}
