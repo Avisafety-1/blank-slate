@@ -2159,7 +2159,88 @@
       "colActions": "Actions",
       "deleteChildTitle": "Delete department",
       "cancel": "Cancel",
-      "delete": "Delete"
+      "delete": "Delete",
+      "sectionTitle": "Company settings — {{name}}",
+      "sectionSubtitle": "Settings that apply to your company",
+      "inheritedBanner": "You are viewing settings for {{name}}",
+      "inheritedBannerDesc": "Fields marked with a lock \"Inherited from {{name}}\" are managed by the parent company and cannot be changed here. You can override other fields yourself.",
+      "inheritedFrom": "Inherited from {{name}}",
+      "managedBy": "Managed by {{name}}",
+      "managedByParent": "Managed by the parent company ({{name}})",
+      "generalSettings": "General settings",
+      "showAllAirspaceWarnings": "Show all airspace warnings on mission cards",
+      "showAllAirspaceWarningsDesc": "When enabled, all warnings are shown directly instead of only the most important with the rest in an expandable list",
+      "hideReporterIdentity": "Hide identity of incident reporter",
+      "hideReporterIdentityDesc": "When enabled, the name of the person who reported the incident is hidden. Administrators in the parent company can still see the reporter's identity.",
+      "incidentReportsVisibleAll": "Incident reports visible to all companies",
+      "incidentReportsVisibleAllDesc": "When enabled, the parent company and all departments can see incident reports from each other.",
+      "requireMissionApproval": "Missions require approval",
+      "requireMissionApprovalDesc": "SORA-specific approval logic overrides this choice",
+      "preventSelfApproval": "Cannot approve own missions",
+      "preventSelfApprovalDesc": "When missions are sent for approval, pilots/personnel on the mission cannot approve it themselves.",
+      "allUsersCanAckMaintenance": "All users can sign off maintenance on resources",
+      "allUsersCanAckMaintenanceDesc": "When enabled, all users with access to the resource can perform maintenance/inspection even if a technical manager is set. The technical manager still controls who in the department receives maintenance alerts.",
+      "currencyTitle": "Flight time currency requirement",
+      "currencyDesc": "Set minimum flight hours over one or two periods. Affects green/yellow/red status on personnel (red = requirement not met, yellow = within but close to the threshold).",
+      "ruleN": "Rule {{n}}",
+      "propagateCurrencyDesc": "When enabled, this requirement overrides the departments' own values — changes here update automatically in the departments.",
+      "requireSora": "Require SORA on all missions",
+      "requireSoraDesc": "All missions must have a completed SORA analysis to be started or approved. Does not apply when SORA-based approval is enabled.",
+      "settingsApplyDesc": "When enabled, the settings above are applied to all departments and departments cannot override them",
+      "deviationReport": "Enable deviation report",
+      "deviationReportDescLocked": "The department inherits settings and categories from the parent company and cannot be changed here.",
+      "deviationReportDescUnlocked": "When enabled, the pilot gets a pop-up after a completed flight with the option to report deviations via a hierarchical dropdown.",
+      "categoriesUnlimited": "Categories (unlimited number of levels):",
+      "categoriesInherited": "Categories (inherited — read-only):",
+      "chooseBufferMode": "Choose buffer mode",
+      "chooseBufferModeDesc": "Choose default buffer mode for new missions and route planner",
+      "flightGeoTooltip": "The distance is added on each side of the route. E.g. 30m means 30m out from the route on both sides (60m total width).",
+      "flightAltTooltip": "Planned flight altitude above ground (AGL). The buffer altitude (contingency volume) comes in addition on top of this value.",
+      "soraDefaultsApplyDesc": "When enabled, SORA default values are copied to all departments and locked",
+      "safeskyDesc": "Determine which callsign is published to SafeSky for this company's missions.",
+      "callsignPrefixPlaceholder": "e.g. nordavind (empty = use company name)",
+      "testModeDesc": "All traffic is published to SafeSky at altitude 0 ft and status \"on ground\". Use for testing without showing the drone in the air.",
+      "propagatePrefixVariable": "Propagate prefix and variable to all departments",
+      "savingCallsign": "Saving…",
+      "saveCallsign": "Save callsign settings",
+      "newRolePlaceholder": "New role (e.g. Pilot in command)",
+      "addRole": "Add",
+      "rolesPropagateDesc": "When enabled, the roles are copied to all departments in the company",
+      "soraStep1Label": "1 step (AI assessment)",
+      "soraStep2Label": "2 steps (+ reassessment)",
+      "addRecipientPlaceholder": "Add recipient...",
+      "searchPerson": "Search person...",
+      "noAvailablePersons": "No available persons.",
+      "unknownUser": "Unknown user",
+      "alertsPropagateDesc": "When enabled, alerts and recipients are copied to all departments",
+      "mapPublication": "Map publication",
+      "defaultMapLayers": "Default map layers",
+      "missionTypes": "Mission types",
+      "fh2Desc": "Send route files and SORA corridors to DJI FlightHub 2",
+      "fh2Connected": "Connected",
+      "fh2ConnectedInherited": "Inherited connection",
+      "fh2OrgKeyLabel": "Organization key (FlightHub Sync)",
+      "fh2InheritedPlaceholder": "Inherited from parent company",
+      "fh2Placeholder": "Paste FlightHub Sync key...",
+      "hide": "Hide",
+      "show": "Show",
+      "fh2Hint": "Use the key from FlightHub 2 → Organization settings → FlightHub Sync → Organization key.",
+      "saving": "Saving...",
+      "save": "Save",
+      "testing": "Testing...",
+      "testConnection": "Test connection",
+      "delete2": "Delete",
+      "fh2PropagateDesc": "When enabled, sub-departments inherit the FlightHub 2 key from the parent company and cannot override it.",
+      "fh2SuccessInherited": "Connected via parent company with {{count}} projects",
+      "fh2SuccessOwn": "Congratulations! You are connected to your FH2 account with {{count}} projects",
+      "departments": "Departments",
+      "departmentsDesc": "Create and manage departments linked to your company",
+      "newDepartment": "New department",
+      "noDepartments": "No departments created yet.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "edit": "Edit",
+      "deleteConfirmDesc": "Are you sure you want to delete «{{name}}»? This action cannot be undone."
     },
     "revenueCalculator": {
       "toastSaved": "Scenarios saved",
@@ -6098,55 +6179,204 @@
       "birdstrike": "Birdstrike"
     },
     "fields": {
-      "438": { "label": "File Number", "helpText": "Local reference number for the occurrence (auto-generated)" },
-      "601": { "label": "Headline", "helpText": "Short description of the occurrence in English (auto-filled from title)" },
-      "433": { "label": "Local date", "helpText": "Local date of the occurrence (YYYY-MM-DD)" },
-      "477": { "label": "UTC date", "helpText": "UTC date calculated from local date" },
-      "457": { "label": "Local time", "helpText": "Time of the occurrence (HH:MM)" },
-      "440": { "label": "Location Name", "helpText": "Name of the place where the occurrence took place" },
-      "454": { "label": "State/area of occurrence", "helpText": "Country/region where the occurrence took place (VL454)" },
-      "453": { "label": "Responsible Entity", "helpText": "Authority responsible for occurrence follow-up (2133 = Norway CAA)" },
-      "431": { "label": "Occurrence class", "helpText": "Mandatory for all ECCAIRS reports" },
-      "430": { "label": "Occurrence category (CICTT)", "helpText": "CICTT category such as CFIT, LOC-I, MAC, etc. (VL430)" },
-      "390": { "label": "Event type", "helpText": "Select event type from the ECCAIRS VL390 list (Events entity)" },
-      "1072": { "label": "Detection phase", "helpText": "Phase in which the occurrence was detected" },
-      "1088": { "label": "Aviation Sector", "helpText": "Related aviation sector (VL1088)" },
-      "455": { "label": "Occurrence Status", "helpText": "Status of the occurrence (VL455)" },
-      "32": { "label": "Aircraft category", "helpText": "Aircraft category (VL32)" },
-      "244": { "label": "Aircraft Serial Number", "helpText": "ECCAIRS requires a numeric serial number, max 11 digits. Taken from the linked drone when possible, otherwise a numeric default value is used." },
-      "1376": { "label": "UAS Operation Authorization type", "helpText": "Type of operation authorization for the UAS operation (VL1376)" },
-      "1388": { "label": "RPAS/UAS Control Mode", "helpText": "Control mode of the RPAS/UAS during the occurrence (VL1388)" },
-      "1238": { "label": "RPAS/UAS characteristic dimension", "helpText": "Characteristic dimension of the RPAS/UAS (VL1238)" },
-      "1243": { "label": "RPAS/UAS Operations Category", "helpText": "EU operations category: Open, Specific, Certified (VL1243)" },
-      "1246": { "label": "RPAS/UAS Type of Operation", "helpText": "Type of operation: VLOS, BVLOS, EVLOS, FPV (VL1246)" },
-      "215": { "label": "Operator", "helpText": "Operator (VL215) — default: Norway → Other. Enter the operator name in the text field.", "additionalTextField": "Operator name" },
-      "13": { "label": "Airspace Class", "helpText": "Airspace class — G (uncontrolled) is the default. Use C for occurrences within TIZ/CTR." },
-      "15": { "label": "Airspace Type", "helpText": "Type of airspace (TMA, CTA, ATZ, RMZ, TMZ, etc.)" },
-      "1241": { "label": "RPAS/UAS airspace type", "helpText": "Type of airspace for the RPAS/UAS operation (VL1241)" },
-      "432": { "label": "Damage to Aircraft", "helpText": "Damage level of the aircraft (Destroyed, Substantial, Minor, None, Unknown)" },
-      "448": { "label": "3rd Party Damage", "helpText": "Damage to third parties (Substantial, Minor, None)" },
-      "456": { "label": "Third party affected", "helpText": "Whether third parties were affected by the occurrence (VL456)" },
-      "451": { "label": "Injury Level", "helpText": "Severity of personal injury (VL451)" },
-      "424": { "label": "Narrative language", "helpText": "Language the narrative is written in (VL424) — Norwegian = 43" },
-      "425": { "label": "Narrative (description)", "helpText": "Detailed description of the occurrence" },
-      "1091": { "label": "Reporter's language", "helpText": "Language the reporter's description is written in (VL1091)" },
-      "1092": { "label": "Reporter's description", "helpText": "The reporter's own description of the occurrence" },
-      "447": { "label": "Reporting Entity", "helpText": "Organization/entity reporting the occurrence (VL447) — the operator submitting the report. Enter the company name in the text field.", "additionalTextField": "Company name" },
-      "476": { "label": "Report Source", "helpText": "Source of the report (VL476)" },
-      "495": { "label": "Reporting Form Type", "helpText": "Type of reporting form (VL495)" },
-      "800": { "label": "Report Status", "helpText": "Status of the report (VL800) — Draft = 7" },
-      "801": { "label": "Reporting Date", "helpText": "Date of reporting" },
-      "802": { "label": "Report (attachments)", "helpText": "Attachments/resource links for the report (Eccairs Resource Locator)" },
-      "1064": { "label": "Parties Informed", "helpText": "Parties informed about the occurrence (VL1064)" },
-      "391": { "label": "Risk Classification", "helpText": "Risk classification of the occurrence — only RPAS-relevant values (VL391)" },
-      "1065": { "label": "Risk classification (internal)", "helpText": "Internal risk classification from the reporting organization (max 200 characters)" },
-      "1068": { "label": "Risk Assessment", "helpText": "Detailed risk assessment of the occurrence" },
-      "1070": { "label": "Conclusions", "helpText": "Conclusions from the organization" },
-      "1069": { "label": "Risk Mitigation Action", "helpText": "Preventive, corrective or remedial actions to reduce risk" },
-      "646": { "label": "Birds/wildlife seen", "helpText": "Number of birds/wildlife observed (VL646)" },
-      "647": { "label": "Birds/wildlife struck", "helpText": "Number of birds/wildlife struck (VL647)" },
-      "648": { "label": "Bird size", "helpText": "Estimated bird size (VL648)" },
-      "649": { "label": "Pilot advised of birds", "helpText": "Whether the pilot was advised about birds (VL649)" }
+      "438": {
+        "label": "File Number",
+        "helpText": "Local reference number for the occurrence (auto-generated)"
+      },
+      "601": {
+        "label": "Headline",
+        "helpText": "Short description of the occurrence in English (auto-filled from title)"
+      },
+      "433": {
+        "label": "Local date",
+        "helpText": "Local date of the occurrence (YYYY-MM-DD)"
+      },
+      "477": {
+        "label": "UTC date",
+        "helpText": "UTC date calculated from local date"
+      },
+      "457": {
+        "label": "Local time",
+        "helpText": "Time of the occurrence (HH:MM)"
+      },
+      "440": {
+        "label": "Location Name",
+        "helpText": "Name of the place where the occurrence took place"
+      },
+      "454": {
+        "label": "State/area of occurrence",
+        "helpText": "Country/region where the occurrence took place (VL454)"
+      },
+      "453": {
+        "label": "Responsible Entity",
+        "helpText": "Authority responsible for occurrence follow-up (2133 = Norway CAA)"
+      },
+      "431": {
+        "label": "Occurrence class",
+        "helpText": "Mandatory for all ECCAIRS reports"
+      },
+      "430": {
+        "label": "Occurrence category (CICTT)",
+        "helpText": "CICTT category such as CFIT, LOC-I, MAC, etc. (VL430)"
+      },
+      "390": {
+        "label": "Event type",
+        "helpText": "Select event type from the ECCAIRS VL390 list (Events entity)"
+      },
+      "1072": {
+        "label": "Detection phase",
+        "helpText": "Phase in which the occurrence was detected"
+      },
+      "1088": {
+        "label": "Aviation Sector",
+        "helpText": "Related aviation sector (VL1088)"
+      },
+      "455": {
+        "label": "Occurrence Status",
+        "helpText": "Status of the occurrence (VL455)"
+      },
+      "32": {
+        "label": "Aircraft category",
+        "helpText": "Aircraft category (VL32)"
+      },
+      "244": {
+        "label": "Aircraft Serial Number",
+        "helpText": "ECCAIRS requires a numeric serial number, max 11 digits. Taken from the linked drone when possible, otherwise a numeric default value is used."
+      },
+      "1376": {
+        "label": "UAS Operation Authorization type",
+        "helpText": "Type of operation authorization for the UAS operation (VL1376)"
+      },
+      "1388": {
+        "label": "RPAS/UAS Control Mode",
+        "helpText": "Control mode of the RPAS/UAS during the occurrence (VL1388)"
+      },
+      "1238": {
+        "label": "RPAS/UAS characteristic dimension",
+        "helpText": "Characteristic dimension of the RPAS/UAS (VL1238)"
+      },
+      "1243": {
+        "label": "RPAS/UAS Operations Category",
+        "helpText": "EU operations category: Open, Specific, Certified (VL1243)"
+      },
+      "1246": {
+        "label": "RPAS/UAS Type of Operation",
+        "helpText": "Type of operation: VLOS, BVLOS, EVLOS, FPV (VL1246)"
+      },
+      "215": {
+        "label": "Operator",
+        "helpText": "Operator (VL215) — default: Norway → Other. Enter the operator name in the text field.",
+        "additionalTextField": "Operator name"
+      },
+      "13": {
+        "label": "Airspace Class",
+        "helpText": "Airspace class — G (uncontrolled) is the default. Use C for occurrences within TIZ/CTR."
+      },
+      "15": {
+        "label": "Airspace Type",
+        "helpText": "Type of airspace (TMA, CTA, ATZ, RMZ, TMZ, etc.)"
+      },
+      "1241": {
+        "label": "RPAS/UAS airspace type",
+        "helpText": "Type of airspace for the RPAS/UAS operation (VL1241)"
+      },
+      "432": {
+        "label": "Damage to Aircraft",
+        "helpText": "Damage level of the aircraft (Destroyed, Substantial, Minor, None, Unknown)"
+      },
+      "448": {
+        "label": "3rd Party Damage",
+        "helpText": "Damage to third parties (Substantial, Minor, None)"
+      },
+      "456": {
+        "label": "Third party affected",
+        "helpText": "Whether third parties were affected by the occurrence (VL456)"
+      },
+      "451": {
+        "label": "Injury Level",
+        "helpText": "Severity of personal injury (VL451)"
+      },
+      "424": {
+        "label": "Narrative language",
+        "helpText": "Language the narrative is written in (VL424) — Norwegian = 43"
+      },
+      "425": {
+        "label": "Narrative (description)",
+        "helpText": "Detailed description of the occurrence"
+      },
+      "1091": {
+        "label": "Reporter's language",
+        "helpText": "Language the reporter's description is written in (VL1091)"
+      },
+      "1092": {
+        "label": "Reporter's description",
+        "helpText": "The reporter's own description of the occurrence"
+      },
+      "447": {
+        "label": "Reporting Entity",
+        "helpText": "Organization/entity reporting the occurrence (VL447) — the operator submitting the report. Enter the company name in the text field.",
+        "additionalTextField": "Company name"
+      },
+      "476": {
+        "label": "Report Source",
+        "helpText": "Source of the report (VL476)"
+      },
+      "495": {
+        "label": "Reporting Form Type",
+        "helpText": "Type of reporting form (VL495)"
+      },
+      "800": {
+        "label": "Report Status",
+        "helpText": "Status of the report (VL800) — Draft = 7"
+      },
+      "801": {
+        "label": "Reporting Date",
+        "helpText": "Date of reporting"
+      },
+      "802": {
+        "label": "Report (attachments)",
+        "helpText": "Attachments/resource links for the report (Eccairs Resource Locator)"
+      },
+      "1064": {
+        "label": "Parties Informed",
+        "helpText": "Parties informed about the occurrence (VL1064)"
+      },
+      "391": {
+        "label": "Risk Classification",
+        "helpText": "Risk classification of the occurrence — only RPAS-relevant values (VL391)"
+      },
+      "1065": {
+        "label": "Risk classification (internal)",
+        "helpText": "Internal risk classification from the reporting organization (max 200 characters)"
+      },
+      "1068": {
+        "label": "Risk Assessment",
+        "helpText": "Detailed risk assessment of the occurrence"
+      },
+      "1070": {
+        "label": "Conclusions",
+        "helpText": "Conclusions from the organization"
+      },
+      "1069": {
+        "label": "Risk Mitigation Action",
+        "helpText": "Preventive, corrective or remedial actions to reduce risk"
+      },
+      "646": {
+        "label": "Birds/wildlife seen",
+        "helpText": "Number of birds/wildlife observed (VL646)"
+      },
+      "647": {
+        "label": "Birds/wildlife struck",
+        "helpText": "Number of birds/wildlife struck (VL647)"
+      },
+      "648": {
+        "label": "Bird size",
+        "helpText": "Estimated bird size (VL648)"
+      },
+      "649": {
+        "label": "Pilot advised of birds",
+        "helpText": "Whether the pilot was advised about birds (VL649)"
+      }
     }
   },
   "safety": {
