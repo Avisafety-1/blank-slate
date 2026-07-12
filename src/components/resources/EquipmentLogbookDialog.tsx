@@ -574,12 +574,13 @@ export const EquipmentLogbookDialog = ({
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-2">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">Alle</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">Flyturer</TabsTrigger>
-              <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">Droner</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">Manuelt</TabsTrigger>
-              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">Batt</span><span className="hidden sm:inline">Batteritrend</span></TabsTrigger>}
+              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.all')}</TabsTrigger>
+              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.flights')}</TabsTrigger>
+              <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.drones')}</TabsTrigger>
+              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.manual')}</TabsTrigger>
+              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">{t('resourceDialogs.equipmentLogbook.tabs.batteryShort')}</span><span className="hidden sm:inline">{t('resourceDialogs.equipmentLogbook.tabs.battery')}</span></TabsTrigger>}
             </TabsList>
+
 
             {showAddEntry && (
               <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3 max-h-[60vh] overflow-y-auto">
