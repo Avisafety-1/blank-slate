@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import droneBackground from "@/assets/drone-background.png";
 import { format, isSameDay } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
@@ -64,7 +64,8 @@ const getColorForType = (type: string): string => {
 };
 
 export default function Kalender() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const navigate = useNavigate();
   const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
@@ -775,7 +776,7 @@ export default function Kalender() {
                     month={month}
                     onMonthChange={setMonth}
                     onDayClick={handleDateClick}
-                    locale={nb}
+                    locale={dateLocale}
                     className={cn("rounded-md border-0 pointer-events-auto w-full")}
                     classNames={{
                       months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
@@ -898,7 +899,7 @@ export default function Kalender() {
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
-              {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: nb })}
+              {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: dateLocale })}
             </DialogTitle>
           </DialogHeader>
 
@@ -1034,7 +1035,7 @@ export default function Kalender() {
                         disabled={savingEvent}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP", { locale: nb }) : <span>{t('pages.calendar.pickDate')}</span>}
+                        {selectedDate ? format(selectedDate, "PPP", { locale: dateLocale }) : <span>{t('pages.calendar.pickDate')}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -1043,7 +1044,7 @@ export default function Kalender() {
                         selected={selectedDate || undefined}
                         onSelect={(date) => date && setSelectedDate(date)}
                         initialFocus
-                        locale={nb}
+                        locale={dateLocale}
                         className="pointer-events-auto"
                       />
                     </PopoverContent>
