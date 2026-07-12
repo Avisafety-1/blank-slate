@@ -47,7 +47,7 @@ Statuskoder:
 | # | Fil / område | Status |
 |--:|--------------|--------|
 | 4.1 | `src/pages/Admin.tsx` + `src/components/admin/*` | DONE – EmailTemplateEditor.tsx: alle `t()`-kall i `admin.emailTemplate.*` verifisert/manglende nøkler lagt til. FH2DevicesSection.tsx: manglende `admin.fh2Devices.*` nøkler (kamera, lagring, fastvare, HMS-felter, debug-sandkasse, legg-til-medlem-dialog) lagt til. ChildCompaniesSection.tsx (~2300 linjer): fullt migrert til `admin.childCompanies.*` med `useTranslation`, `t` skygges aldri. Alle nye nøkler lagt til i both no.json og en.json. RevenueCalculator er bevisst hoppet over per brukerens ønske (utenfor denne økten). Gjenstår ellers: CompanyManagementSection/Dialog, CustomerManagementSection/Dialog, CustomerDetailDialog, MissionTypesSection, BulkEmailSender (om ikke allerede dekket).
-| 4.2 | `src/pages/Status.tsx` + `useStatusData.ts` | TODO |
+| 4.2 | `src/pages/Status.tsx` + `useStatusData.ts` | DONE | Status.tsx migrert 2026-07-12: CSV/PDF-eksport, page-header, KPI-kort, chart-titler, deviation-view og tabellheadere bruker `status.*`-nøkler. `useStatusData.ts` har ingen brukervendte strenger (kun DB-enums Grønn/Gul/Rød beholdes). |
 | 4.3 | `src/pages/Priser.tsx`, `Installer.tsx`, `Changelog.tsx` | TODO |
 | 4.4 | `src/pages/Marketing.tsx` + `src/components/marketing/*` | TODO |
 
