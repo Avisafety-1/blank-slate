@@ -964,25 +964,25 @@ export default function Kalender() {
                 <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2 mt-4">
                     <Plus className="w-4 h-4" />
-                    Legg til
+                    {t('pages.calendar.add')}
                     <ChevronDown className="w-4 h-4 ml-auto" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={() => handleAddEntry('oppdrag', true)}>
-                    Oppdrag
+                    {t('pages.calendar.mission')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('hendelse', true)}>
-                    Hendelse
+                    {t('pages.calendar.incident')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('dokument', true)}>
-                    Dokument
+                    {t('pages.calendar.document')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('nyhet', true)}>
-                    Nyhet
+                    {t('pages.calendar.news')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAddEntry('annet', false)}>
-                    Annet
+                    {t('pages.calendar.other')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
