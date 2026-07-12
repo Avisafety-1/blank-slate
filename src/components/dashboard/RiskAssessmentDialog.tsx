@@ -990,13 +990,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                   {/* Mission Selector - only show when no mission prop */}
                   {!mission && (
                     <div className="space-y-2">
-                      <Label>Oppdrag *</Label>
+                      <Label>{t("riskAssessment.manualSora.missionRequired")}</Label>
                       <Select
                         value={currentMissionId || ""}
                         onValueChange={(v) => setSelectedMissionId(v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Velg et oppdrag" />
+                          <SelectValue placeholder={t("riskAssessment.manualSora.selectMissionPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {missions.map((m) => (
@@ -1015,20 +1015,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       <CardContent className="pt-6">
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="font-semibold">Oppdrag:</span> {soraMissionDetails.tittel}
+                            <span className="font-semibold">{t("riskAssessment.manualSora.missionLabel")}</span> {soraMissionDetails.tittel}
                           </div>
                           <div>
-                            <span className="font-semibold">Dato/tid:</span>{" "}
+                            <span className="font-semibold">{t("riskAssessment.manualSora.dateTimeLabel")}</span>{" "}
                             {format(new Date(soraMissionDetails.tidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
                             {soraMissionDetails.slutt_tidspunkt &&
                               ` - ${format(new Date(soraMissionDetails.slutt_tidspunkt), "HH:mm", { locale: nb })}`
                             }
                           </div>
                           <div>
-                            <span className="font-semibold">Sted:</span> {soraMissionDetails.lokasjon}
+                            <span className="font-semibold">{t("riskAssessment.manualSora.locationLabel")}</span> {soraMissionDetails.lokasjon}
                           </div>
                           <div>
-                            <span className="font-semibold">Risk-nivå:</span> {soraMissionDetails.risk_nivå}
+                            <span className="font-semibold">{t("riskAssessment.manualSora.riskLevelLabel")}</span> {soraMissionDetails.risk_nivå}
                           </div>
                         </div>
                       </CardContent>
@@ -1039,30 +1039,30 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                   <Accordion type="multiple" defaultValue={["section1", "section2", "section3", "section4", "section5"]} className="w-full">
                     {/* Section 1: Operasjonsmiljø og ConOps */}
                     <AccordionItem value="section1">
-                      <AccordionTrigger>Operasjonsmiljø og ConOps</AccordionTrigger>
+                      <AccordionTrigger>{t("riskAssessment.manualSora.section1Title")}</AccordionTrigger>
                       <AccordionContent className="space-y-4 pt-4">
                         <div className="space-y-2">
-                          <Label>Miljø</Label>
+                          <Label>{t("riskAssessment.manualSora.environmentLabel")}</Label>
                           <Select value={soraFormData.environment} onValueChange={(value) => setSoraFormData({ ...soraFormData, environment: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg miljø" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.environmentPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Tettbygd">Tettbygd</SelectItem>
-                              <SelectItem value="Landlig">Landlig</SelectItem>
-                              <SelectItem value="Sjø">Sjø</SelectItem>
-                              <SelectItem value="Industriområde">Industriområde</SelectItem>
-                              <SelectItem value="Annet">Annet</SelectItem>
+                              <SelectItem value="Tettbygd">{t("riskAssessment.manualSora.envUrban")}</SelectItem>
+                              <SelectItem value="Landlig">{t("riskAssessment.manualSora.envRural")}</SelectItem>
+                              <SelectItem value="Sjø">{t("riskAssessment.manualSora.envSea")}</SelectItem>
+                              <SelectItem value="Industriområde">{t("riskAssessment.manualSora.envIndustrial")}</SelectItem>
+                              <SelectItem value="Annet">{t("riskAssessment.manualSora.envOther")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Kort ConOps-beskrivelse</Label>
+                          <Label>{t("riskAssessment.manualSora.conopsLabel")}</Label>
                           <Textarea
                             value={soraFormData.conops_summary}
                             onChange={(e) => setSoraFormData({ ...soraFormData, conops_summary: e.target.value })}
-                            placeholder="Kort beskrivelse av hva som skal gjøres, hvor og hvordan (3–5 linjer)."
+                            placeholder={t("riskAssessment.manualSora.conopsPlaceholder")}
                             rows={4}
                           />
                         </div>
@@ -1071,13 +1071,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Section 2: Bakkebasert risiko (GRC) */}
                     <AccordionItem value="section2">
-                      <AccordionTrigger>Bakkebasert risiko (GRC)</AccordionTrigger>
+                      <AccordionTrigger>{t("riskAssessment.manualSora.section2Title")}</AccordionTrigger>
                       <AccordionContent className="space-y-4 pt-4">
                         <div className="space-y-2">
-                          <Label>iGRC (grunnrisiko på bakken)</Label>
+                          <Label>{t("riskAssessment.manualSora.igrcLabel")}</Label>
                           <Select value={soraFormData.igrc} onValueChange={(value) => setSoraFormData({ ...soraFormData, igrc: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg iGRC" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.igrcPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -1088,20 +1088,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Tiltak for bakkebasert risiko</Label>
+                          <Label>{t("riskAssessment.manualSora.groundMitigationsLabel")}</Label>
                           <Textarea
                             value={soraFormData.ground_mitigations}
                             onChange={(e) => setSoraFormData({ ...soraFormData, ground_mitigations: e.target.value })}
-                            placeholder="Beskriv sperringer, buffersoner, fallskjerm, ERP osv."
+                            placeholder={t("riskAssessment.manualSora.groundMitigationsPlaceholder")}
                             rows={4}
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label>fGRC (endelig risiko på bakken)</Label>
+                          <Label>{t("riskAssessment.manualSora.fgrcLabel")}</Label>
                           <Select value={soraFormData.fgrc} onValueChange={(value) => setSoraFormData({ ...soraFormData, fgrc: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg fGRC" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.fgrcPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -1115,13 +1115,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Section 3: Luftromsrisiko (ARC) */}
                     <AccordionItem value="section3">
-                      <AccordionTrigger>Luftromsrisiko (ARC)</AccordionTrigger>
+                      <AccordionTrigger>{t("riskAssessment.manualSora.section3Title")}</AccordionTrigger>
                       <AccordionContent className="space-y-4 pt-4">
                         <div className="space-y-2">
-                          <Label>Initial ARC</Label>
+                          <Label>{t("riskAssessment.manualSora.arcInitialLabel")}</Label>
                           <Select value={soraFormData.arc_initial} onValueChange={(value) => setSoraFormData({ ...soraFormData, arc_initial: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg initial ARC" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.arcInitialPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="ARC-A">ARC-A</SelectItem>
@@ -1133,20 +1133,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Tiltak for luftromsrisiko</Label>
+                          <Label>{t("riskAssessment.manualSora.airspaceMitigationsLabel")}</Label>
                           <Textarea
                             value={soraFormData.airspace_mitigations}
                             onChange={(e) => setSoraFormData({ ...soraFormData, airspace_mitigations: e.target.value })}
-                            placeholder="Beskriv strategiske og taktiske tiltak (NOTAM, ATC-koordinering, observatører osv.)."
+                            placeholder={t("riskAssessment.manualSora.airspaceMitigationsPlaceholder")}
                             rows={4}
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Residual ARC</Label>
+                          <Label>{t("riskAssessment.manualSora.arcResidualLabel")}</Label>
                           <Select value={soraFormData.arc_residual} onValueChange={(value) => setSoraFormData({ ...soraFormData, arc_residual: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg residual ARC" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.arcResidualPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="ARC-A">ARC-A</SelectItem>
@@ -1161,13 +1161,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Section 4: SAIL og rest-risiko */}
                     <AccordionItem value="section4">
-                      <AccordionTrigger>SAIL og rest-risiko</AccordionTrigger>
+                      <AccordionTrigger>{t("riskAssessment.manualSora.section4Title")}</AccordionTrigger>
                       <AccordionContent className="space-y-4 pt-4">
                         <div className="space-y-2">
-                          <Label>SAIL-nivå</Label>
+                          <Label>{t("riskAssessment.manualSora.sailLabel")}</Label>
                           <Select value={soraFormData.sail} onValueChange={(value) => setSoraFormData({ ...soraFormData, sail: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg SAIL-nivå" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.sailPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="SAIL I">SAIL I</SelectItem>
@@ -1181,21 +1181,21 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Vurdering av rest-risiko</Label>
+                          <Label>{t("riskAssessment.manualSora.residualRiskLabel")}</Label>
                           <Select value={soraFormData.residual_risk_level} onValueChange={(value) => setSoraFormData({ ...soraFormData, residual_risk_level: value })}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Velg rest-risiko" />
+                              <SelectValue placeholder={t("riskAssessment.manualSora.residualRiskPlaceholder")} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Lav">Lav</SelectItem>
-                              <SelectItem value="Moderat">Moderat</SelectItem>
-                              <SelectItem value="Høy">Høy</SelectItem>
+                              <SelectItem value="Lav">{t("riskAssessment.manualSora.riskLow")}</SelectItem>
+                              <SelectItem value="Moderat">{t("riskAssessment.manualSora.riskModerate")}</SelectItem>
+                              <SelectItem value="Høy">{t("riskAssessment.manualSora.riskHigh")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Begrunnelse for rest-risiko</Label>
+                          <Label>{t("riskAssessment.manualSora.residualCommentLabel")}</Label>
                           <Textarea
                             value={soraFormData.residual_risk_comment}
                             onChange={(e) => setSoraFormData({ ...soraFormData, residual_risk_comment: e.target.value })}
@@ -1204,11 +1204,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Operative begrensninger</Label>
+                          <Label>{t("riskAssessment.manualSora.operationalLimitsLabel")}</Label>
                           <Textarea
                             value={soraFormData.operational_limits}
                             onChange={(e) => setSoraFormData({ ...soraFormData, operational_limits: e.target.value })}
-                            placeholder="F.eks. maks vind, min. sikt, min. avstand til folk, bare dagslys osv."
+                            placeholder={t("riskAssessment.manualSora.operationalLimitsPlaceholder")}
                             rows={3}
                           />
                         </div>
@@ -1217,41 +1217,41 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                     {/* Section 5: Status og godkjenning */}
                     <AccordionItem value="section5">
-                      <AccordionTrigger>Status og godkjenning</AccordionTrigger>
+                      <AccordionTrigger>{t("riskAssessment.manualSora.section5Title")}</AccordionTrigger>
                       <AccordionContent className="space-y-4 pt-4">
                         <div className="space-y-2">
-                          <Label>SORA-status *</Label>
+                          <Label>{t("riskAssessment.manualSora.soraStatusLabel")}</Label>
                           <Select value={soraFormData.sora_status} onValueChange={(value) => setSoraFormData({ ...soraFormData, sora_status: value })}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Ikke startet">Ikke startet</SelectItem>
-                              <SelectItem value="Under arbeid">Under arbeid</SelectItem>
-                              <SelectItem value="Ferdig">Ferdig</SelectItem>
-                              <SelectItem value="Revidert">Revidert</SelectItem>
+                              <SelectItem value="Ikke startet">{t("riskAssessment.manualSora.statusNotStarted")}</SelectItem>
+                              <SelectItem value="Under arbeid">{t("riskAssessment.manualSora.statusInProgress")}</SelectItem>
+                              <SelectItem value="Ferdig">{t("riskAssessment.manualSora.statusFinished")}</SelectItem>
+                              <SelectItem value="Revidert">{t("riskAssessment.manualSora.statusRevised")}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Utført av</Label>
+                          <Label>{t("riskAssessment.manualSora.preparedByLabel")}</Label>
                           <Input
                             value={
                               existingSora?.prepared_by
-                                ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
+                                ? (preparedByProfile?.full_name || preparedByProfile?.email || t("riskAssessment.manualSora.unknown"))
                                 : (user?.email || "")
                             }
                             disabled
                           />
                           {!existingSora?.prepared_by && (
-                            <p className="text-xs text-muted-foreground">Dette feltet settes automatisk til innlogget bruker</p>
+                            <p className="text-xs text-muted-foreground">{t("riskAssessment.manualSora.preparedByHint")}</p>
                           )}
                         </div>
 
                         {existingSora?.prepared_at && (
                           <div className="space-y-2">
-                            <Label>Dato utført</Label>
+                            <Label>{t("riskAssessment.manualSora.preparedAtLabel")}</Label>
                             <Input
                               value={format(new Date(existingSora.prepared_at), "d. MMM yyyy HH:mm", { locale: nb })}
                               disabled
@@ -1260,19 +1260,19 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         )}
 
                         <div className="space-y-2">
-                          <Label>Godkjent av</Label>
+                          <Label>{t("riskAssessment.manualSora.approvedByLabel")}</Label>
                           <SearchablePersonSelect
                             persons={soraProfiles}
                             value={soraFormData.approved_by || null}
                             onValueChange={(val) => setSoraFormData({ ...soraFormData, approved_by: val || "" })}
-                            placeholder="Velg godkjenner (valgfritt)"
-                            searchPlaceholder="Søk person..."
+                            placeholder={t("riskAssessment.manualSora.approverPlaceholder")}
+                            searchPlaceholder={t("riskAssessment.manualSora.searchPersonPlaceholder")}
                           />
                         </div>
 
                         {existingSora?.approved_at && (
                           <div className="space-y-2">
-                            <Label>Dato godkjent</Label>
+                            <Label>{t("riskAssessment.manualSora.approvedAtLabel")}</Label>
                             <Input
                               value={format(new Date(existingSora.approved_at), "d. MMM yyyy HH:mm", { locale: nb })}
                               disabled
@@ -1286,10 +1286,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                   {/* Action Buttons */}
                   <div className="flex justify-end gap-2 pt-4">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
-                      Avbryt
+                      {t("riskAssessment.manualSora.cancel")}
                     </Button>
                     <Button onClick={handleSoraSave} disabled={soraSaving}>
-                      {soraSaving ? "Lagrer..." : "Lagre"}
+                      {soraSaving ? t("riskAssessment.manualSora.saving") : t("riskAssessment.manualSora.save")}
                     </Button>
                   </div>
                 </div>

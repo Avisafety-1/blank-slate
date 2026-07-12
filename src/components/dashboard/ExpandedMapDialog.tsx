@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -79,6 +80,8 @@ export const ExpandedMapDialog = ({
   onSoraUpdated,
   notam,
 }: ExpandedMapDialogProps) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === "en" ? "en-GB" : "nb-NO";
   const { companyId } = useAuth();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
@@ -148,9 +151,9 @@ export const ExpandedMapDialog = ({
 
     setSoraSaving(false);
     if (error) {
-      toast.error("Kunne ikke lagre SORA-innstillinger");
+      toast.error(t("dashboard.expandedMap.soraSaveError"));
     } else {
-      toast.success("SORA-innstillinger lagret");
+      toast.success(t("dashboard.expandedMap.soraSaved"));
       setSoraDirty(false);
       onSoraUpdated?.();
     }
@@ -343,7 +346,7 @@ export const ExpandedMapDialog = ({
 
         L.marker([latitude, longitude], { icon })
           .addTo(map)
-          .bindPopup("Oppdragsposisjon");
+          .bindPopup(t("dashboard.missionMapPreview.missionPosition"));
 
         const allPoints: [number, number][] = [[latitude, longitude]];
 
@@ -393,7 +396,7 @@ export const ExpandedMapDialog = ({
                 iconSize: [28, 28],
                 iconAnchor: [14, 14],
               }),
-            }).addTo(routeLayer).bindPopup(`Rutepunkt ${index + 1}`);
+            }).addTo(routeLayer).bindPopup(t("dashboard.expandedMap.waypoint", { n: index + 1 }));
           });
         }
 
@@ -432,7 +435,7 @@ export const ExpandedMapDialog = ({
 
         // Fetch airspace zones
         const zonesLayer = L.layerGroup().addTo(map);
-        fetchZones(zonesLayer, map);
+        fetchZones(zonesLayer, map, t);
 
         // Force size recalculation
         [300, 500, 800].forEach((d) => {
@@ -548,14 +551,14 @@ export const ExpandedMapDialog = ({
         const aglValue = altitude != null && terrainElev != null ? altitude - terrainElev : null;
         const content = `
           <div style="font-size:12px;line-height:1.6">
-            <strong>Punkt ${nearestIdx + 1} av ${track.positions.length}</strong><hr style="margin:4px 0"/>
-            ${altitude != null ? `Høyde (MSL): ${Math.round(altitude)} m<br/>` : ''}
-            ${aglValue != null ? `<strong>Høyde (AGL): ${Math.round(aglValue)} m</strong><br/>` : ''}
-            ${terrainElev != null ? `Terreng: ${Math.round(terrainElev)} m<br/>` : ''}
-            ${pos.speed != null ? `Hastighet: ${pos.speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.heading != null ? `Retning: ${Math.round(pos.heading)}°<br/>` : ''}
-            ${pos.vert_speed != null ? `Vert. hast.: ${pos.vert_speed.toFixed(1)} m/s<br/>` : ''}
-            ${pos.timestamp ? `Tid: ${new Date(pos.timestamp).toLocaleTimeString('nb-NO')}` : ''}
+            <strong>${t("dashboard.missionMapPreview.pointOf", { n: nearestIdx + 1, total: track.positions.length })}</strong><hr style="margin:4px 0"/>
+            ${altitude != null ? t("dashboard.missionMapPreview.heightMsl", { m: Math.round(altitude) }) + '<br/>' : ''}
+            ${aglValue != null ? '<strong>' + t("dashboard.missionMapPreview.heightAgl", { m: Math.round(aglValue) }) + '</strong><br/>' : ''}
+            ${terrainElev != null ? t("dashboard.missionMapPreview.terrain", { m: Math.round(terrainElev) }) + '<br/>' : ''}
+            ${pos.speed != null ? t("dashboard.missionMapPreview.speed", { v: pos.speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.heading != null ? t("dashboard.missionMapPreview.heading", { deg: Math.round(pos.heading) }) + '<br/>' : ''}
+            ${pos.vert_speed != null ? t("dashboard.missionMapPreview.vertSpeed", { v: pos.vert_speed.toFixed(1) }) + '<br/>' : ''}
+            ${pos.timestamp ? t("dashboard.missionMapPreview.time", { t: new Date(pos.timestamp).toLocaleTimeString(locale) }) : ''}
           </div>`;
         L.popup().setLatLng([pos.lat, pos.lng]).setContent(content).openOn(map);
       });
@@ -570,7 +573,7 @@ export const ExpandedMapDialog = ({
         fillOpacity: 1,
         pane: 'flightTrackPane',
       }).addTo(tracksLayer).bindPopup(
-        `<strong>Flytur ${trackIndex + 1} - Start</strong>${track.flightDate ? `<br/>${track.flightDate}` : ""}`
+        `<strong>${t("dashboard.expandedMap.flightStartWithDate", { n: trackIndex + 1 })}</strong>${track.flightDate ? `<br/>${track.flightDate}` : ""}`
       );
 
       // End marker
@@ -582,7 +585,7 @@ export const ExpandedMapDialog = ({
         weight: 2,
         fillOpacity: 1,
         pane: 'flightTrackPane',
-      }).addTo(tracksLayer).bindPopup(`<strong>Flytur ${trackIndex + 1} - Slutt</strong>`);
+      }).addTo(tracksLayer).bindPopup(`<strong>${t("dashboard.expandedMap.flightEnd", { n: trackIndex + 1 })}</strong>`);
     });
 
     if (maxAlt > 0 || maxSpeed > 0) {
@@ -631,7 +634,7 @@ export const ExpandedMapDialog = ({
         aria-describedby={undefined}
       >
         <DialogHeader className="px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top,0.5rem))]">
-          <DialogTitle>{missionTitle || "Oppdragskart"}</DialogTitle>
+          <DialogTitle>{missionTitle || t("dashboard.expandedMap.titleFallback")}</DialogTitle>
         </DialogHeader>
 
         {route?.coordinates && route.coordinates.length >= 3 && (
@@ -649,7 +652,7 @@ export const ExpandedMapDialog = ({
                   disabled={soraSaving}
                   className="w-full py-1.5 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
-                  {soraSaving ? "Lagrer…" : "Lagre SORA-innstillinger"}
+                  {soraSaving ? t("dashboard.expandedMap.savingSora") : t("dashboard.expandedMap.saveSora")}
                 </button>
               </div>
             )}
@@ -674,7 +677,7 @@ export const ExpandedMapDialog = ({
               tileLayerRef.current = L.tileLayer(url, { attribution: attr }).addTo(map);
             }}
             className="absolute top-2 right-2 z-[1000] bg-background/80 backdrop-blur-sm border border-border rounded-md p-1.5 shadow-md hover:bg-background transition-colors"
-            title={mapType === 'standard' ? 'Satellitt' : 'Standard kart'}
+            title={mapType === 'standard' ? t("dashboard.expandedMap.satellite") : t("dashboard.expandedMap.standardMap")}
           >
             {mapType === 'standard' ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
@@ -704,20 +707,20 @@ export const ExpandedMapDialog = ({
                 borderColor: "#3b82f6",
               }}
             />
-            <span>Planlagt rute</span>
+            <span>{t("dashboard.expandedMap.plannedRoute")}</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-6 h-0.5" style={{ background: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)" }} />
-            <span>Faktisk flytur (farge = høyde)</span>
+            <span>{t("dashboard.expandedMap.actualFlight")}</span>
           </div>
           {flightStats && flightStats.maxAlt > 0 && (
             <>
               <div className="flex items-center gap-1 ml-auto">
-                <span>Maks høyde: <strong>{Math.round(flightStats.maxAlt)} m MSL</strong></span>
+                <span dangerouslySetInnerHTML={{ __html: t("dashboard.expandedMap.maxAltitude", { v: `<strong>${Math.round(flightStats.maxAlt)}</strong>` }) }} />
               </div>
               {flightStats.maxSpeed > 0 && (
                 <div className="flex items-center gap-1">
-                  <span>Maks hastighet: <strong>{flightStats.maxSpeed.toFixed(1)} m/s</strong></span>
+                  <span dangerouslySetInnerHTML={{ __html: t("dashboard.expandedMap.maxSpeed", { v: `<strong>${flightStats.maxSpeed.toFixed(1)}</strong>` }) }} />
                 </div>
               )}
             </>
@@ -725,11 +728,11 @@ export const ExpandedMapDialog = ({
           {maxAgl != null && (
             <>
               <div className="flex items-center gap-1">
-                <span>Maks AGL: <strong>{Math.round(maxAgl)} m</strong></span>
+                <span dangerouslySetInnerHTML={{ __html: t("dashboard.expandedMap.maxAgl", { v: `<strong>${Math.round(maxAgl)}</strong>` }) }} />
               </div>
               {avgAgl != null && (
                 <div className="flex items-center gap-1">
-                  <span>Snitt AGL: <strong>{Math.round(avgAgl)} m</strong></span>
+                  <span dangerouslySetInnerHTML={{ __html: t("dashboard.expandedMap.avgAgl", { v: `<strong>${Math.round(avgAgl)}</strong>` }) }} />
                 </div>
               )}
             </>
@@ -741,7 +744,7 @@ export const ExpandedMapDialog = ({
 };
 
 // ── Airspace zone fetching (extracted for clarity) ──
-async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
+async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map, t: (k: string, opts?: any) => string) {
   try {
     // NSM zones (red)
     const nsmResponse = await fetch(
@@ -754,7 +757,7 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
           L.geoJSON(nsmData, {
             style: { color: "#ef4444", weight: 2, fillColor: "#ef4444", fillOpacity: 0.15 },
             onEachFeature: (feature, layer) => {
-              const name = feature.properties?.navn || feature.properties?.name || "NSM Forbudsområde";
+              const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.nsmZoneDefault");
               layer.bindPopup(`<strong>NSM</strong><br/>${name}`);
             },
           }).addTo(zonesLayer);
@@ -797,7 +800,7 @@ async function fetchZones(zonesLayer: L.LayerGroup, map: L.Map) {
           L.geoJSON(ctrData, {
             style: { color: "#ec4899", weight: 2, fillColor: "#ec4899", fillOpacity: 0.15 },
             onEachFeature: (feature, layer) => {
-              const name = feature.properties?.navn || feature.properties?.name || "CTR/TIZ";
+              const name = feature.properties?.navn || feature.properties?.name || t("dashboard.missionMapPreview.ctrTizDefault");
               layer.bindPopup(`<strong>RPAS CTR/TIZ</strong><br/>${name}`);
             },
           }).addTo(zonesLayer);
