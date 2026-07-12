@@ -26,41 +26,30 @@ export interface TrafficPopupData {
   source: TrafficSource;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  UAV: "Drone",
-  AIRCRAFT: "Fly",
-  LIGHT_AIRCRAFT: "Lett fly",
-  HEAVY_AIRCRAFT: "Tungt fly",
-  HELICOPTER: "Helikopter",
-  GLIDER: "Seilfly",
-  PARAGLIDER: "Paraglider",
-  HANG_GLIDER: "Hangglider",
-  BALLOON: "Ballong",
-  AIRSHIP: "Luftskip",
-  SKYDIVER: "Fallskjermhopper",
-  TOW_PLANE: "Slepefly",
-  DOT: "Ukjent fartøy",
-  UNKNOWN: "Ukjent",
-};
+const TYPE_KEYS = new Set([
+  'UAV','AIRCRAFT','LIGHT_AIRCRAFT','HEAVY_AIRCRAFT','HELICOPTER','GLIDER','PARAGLIDER',
+  'HANG_GLIDER','BALLOON','AIRSHIP','SKYDIVER','TOW_PLANE','DOT','UNKNOWN',
+]);
 
 export function formatBeaconType(t?: string | null): string {
-  if (!t) return "Ukjent";
+  if (!t) return tp('unknown');
   const upper = t.toUpperCase();
-  return TYPE_LABELS[upper] ?? t;
+  if (TYPE_KEYS.has(upper)) return tp(`types.${upper}`);
+  return t;
 }
 
 function formatSource(src: TrafficSource): string {
   switch (src.kind) {
     case "safesky":
-      return src.subSource ? `SafeSky (${src.subSource})` : "SafeSky";
+      return src.subSource ? tp('sources.safeskyWith', { sub: src.subSource }) : tp('sources.safesky');
     case "avisafe-advisory":
-      return "AviSafe → SafeSky";
+      return tp('sources.avisafeAdvisory');
     case "avisafe-dronetag":
-      return "AviSafe (DroneTag)";
+      return tp('sources.avisafeDronetag');
     case "avisafe-flighthub2":
-      return "Live · DJI FlightHub 2";
+      return tp('sources.avisafeFlighthub2');
     case "avisafe":
-      return "AviSafe";
+      return tp('sources.avisafe');
   }
 }
 
