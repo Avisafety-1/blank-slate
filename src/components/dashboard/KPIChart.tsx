@@ -113,7 +113,7 @@ export const KPIChart = () => {
               borderRadius: "8px",
             }}
           />
-          <Bar dataKey="hendelser" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+          <Bar dataKey="hendelser" name={t('nav.incidents')} fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </GlassCard>
