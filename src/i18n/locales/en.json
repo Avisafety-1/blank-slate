@@ -195,8 +195,13 @@
     },
     "languageNotPersisted": "Language switched, but not saved to your profile.",
     "languageChangeFailed": "Could not switch language.",
-    "switchToLanguage": "Switch to {{lang}}"
+    "switchToLanguage": "Switch to {{lang}}",
+    "platformStatistics": "Platform statistics",
+    "marketing": "Marketing",
+    "operationalStatus": "Operational status",
+    "close": "Close"
   },
+
   "dashboard": {
     "search": {
       "placeholder": "Search (missions, incidents, documents, equipment...)",

@@ -197,8 +197,13 @@
     },
     "languageNotPersisted": "Språket ble byttet, men ikke lagret på profilen.",
     "languageChangeFailed": "Kunne ikke bytte språk.",
-    "switchToLanguage": "Bytt til {{lang}}"
+    "switchToLanguage": "Bytt til {{lang}}",
+    "platformStatistics": "Plattformstatistikk",
+    "marketing": "Marketing",
+    "operationalStatus": "Driftstatus",
+    "close": "Lukk"
   },
+
   "dashboard": {
     "search": {
       "placeholder": "Søk (oppdrag, hendelser, dokumenter, utstyr...)",
