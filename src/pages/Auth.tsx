@@ -1270,30 +1270,31 @@ const Auth = () => {
             ) : (
               <div className="space-y-2">
                 <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
-                  <p className="font-semibold mb-1">Selv-registrering midlertidig stengt</p>
-                  <p>På grunn av stor pågang har vi midlertidig stengt muligheten for selv-registrering av nye selskap. Ta kontakt på <a href="mailto:kontakt@avisafe.no" className="underline">kontakt@avisafe.no</a> så hjelper vi deg i gang.</p>
+                  <p className="font-semibold mb-1">{t('auth.selfRegisterClosedTitle')}</p>
+                  <p><span dangerouslySetInnerHTML={{ __html: t('auth.selfRegisterClosedDesc', { email: '<a href="mailto:kontakt@avisafe.no" class="underline">kontakt@avisafe.no</a>' }) }} /></p>
                 </div>
-                <Label htmlFor="googleCompanyName">Selskapsnavn *</Label>
+                <Label htmlFor="googleCompanyName">{t('auth.companyNameLabel')}</Label>
                 <Input 
                   id="googleCompanyName" 
                   type="text" 
-                  placeholder="Mitt Droneselskap AS" 
+                  placeholder={t('auth.companyNamePlaceholder')} 
                   value={googleNewCompanyName} 
                   onChange={e => setGoogleNewCompanyName(e.target.value)} 
                   disabled
                 />
-                <Label htmlFor="googleOrgNr">Organisasjonsnummer (valgfritt)</Label>
+                <Label htmlFor="googleOrgNr">{t('auth.orgNumberOptional')}</Label>
                 <Input 
                   id="googleOrgNr" 
                   type="text" 
-                  placeholder="123 456 789" 
+                  placeholder={t('auth.orgNumberPlaceholder')} 
                   value={googleNewCompanyOrgNr} 
                   onChange={e => setGoogleNewCompanyOrgNr(e.target.value)} 
                   disabled
                 />
                 <p className="text-xs text-muted-foreground">
-                  Du blir administrator for det nye selskapet. 5 dager gratis prøveperiode.
+                  {t('auth.newCompanyAdminHint')}
                 </p>
+
               </div>
             )}
 
