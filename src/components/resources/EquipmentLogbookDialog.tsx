@@ -826,15 +826,16 @@ export const EquipmentLogbookDialog = ({
                             </p>
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> Maks temp</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.maxTemp')}</p>
                             <p className={`text-lg font-bold ${tempColor}`}>
                               {latestTempMax != null ? `${latestTempMax}°C` : '—'}
                             </p>
                             {latest?.tempMin != null && (
                               <p className="text-[10px] text-muted-foreground">
-                                Min: {latest.tempMin}°C
+                                {t('resourceDialogs.equipmentLogbook.battery.minTempLabel', { temp: latest.tempMin })}
                               </p>
                             )}
+
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Min spenning</p>
