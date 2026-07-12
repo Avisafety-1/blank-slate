@@ -1,14 +1,8 @@
 /**
  * Bygger HTML for popup som vises når brukeren klikker på en RPAS 5km-sone.
- *
- * Data kommer fra `rpas_5km_zones.properties` som synces fra Avinors
- * "Dronerestriksjonsomraader_gdb" feature service. Inneholder typisk:
- *  - NAVN, ICAO, CTR_TIZ, STED
- *  - TEKST1..TEKST6 — beskrivelse + godkjenningsprosess (NINOX m.m.)
- *  - KONTAKTDETALJER2 — telefon / kontaktinfo
- *
- * Faller tilbake på enklere felter dersom dataen mangler (eldre rader).
  */
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.${k}`, opts) as string;
 
 function escapeHtml(value: unknown): string {
   if (value === null || value === undefined) return "";
