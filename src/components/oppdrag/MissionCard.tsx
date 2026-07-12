@@ -273,7 +273,7 @@ export const MissionCard = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="w-full sm:w-auto">
-              <span>Flere valg</span>
+              <span>{t('pages.missions.card.moreOptions')}</span>
               <ChevronDown className="h-4 w-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
