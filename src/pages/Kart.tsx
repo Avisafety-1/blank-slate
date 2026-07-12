@@ -1150,8 +1150,8 @@ export default function KartPage() {
               size="icon"
               onClick={() => setIs3D((v) => !v)}
               className="shadow-lg bg-card hover:bg-accent"
-              aria-label={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart"}
-              title={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart (eksperimentell)"}
+              aria-label={is3D ? t('pages.map.switchTo2D') : t('pages.map.switchTo3D')}
+              title={is3D ? t('pages.map.switchTo2D') : t('pages.map.switchTo3DExperimental')}
             >
               <Box className="h-5 w-5" />
             </Button>
