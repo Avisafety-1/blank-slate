@@ -674,7 +674,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
             </div>
           ) : items.length === 0 ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Ingen punkter i sjekklisten</p>
+              <p className="text-muted-foreground">{t('resourceDialogs.checklistExecution.noItems')}</p>
             </div>
           ) : (
             /* JSON-based checklist */
