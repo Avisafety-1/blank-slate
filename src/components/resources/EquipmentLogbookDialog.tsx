@@ -441,7 +441,7 @@ export const EquipmentLogbookDialog = ({
 
   const handleExportPDF = async () => {
     if (!user || !companyId) {
-      toast.error("Du må være innlogget");
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.loginRequired'));
       return;
     }
 
