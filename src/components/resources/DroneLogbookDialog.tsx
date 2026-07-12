@@ -447,10 +447,10 @@ export const DroneLogbookDialog = ({
         .eq("id", id);
 
       if (error) throw error;
-      toast.success("Innlegg slettet");
+      toast.success(t('resourceDialogs.droneLogbook.toasts.entryDeleted'));
       fetchAllLogs();
     } catch (error: any) {
-      toast.error(`Kunne ikke slette: ${error.message}`);
+      toast.error(t('resourceDialogs.droneLogbook.toasts.deleteError', { message: error.message }));
     }
   };
 
