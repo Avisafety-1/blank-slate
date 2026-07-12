@@ -1231,6 +1231,24 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="template-language" className="text-xs sm:text-sm">
+              {t("admin.emailTemplate.language")}
+            </Label>
+            <Select value={selectedLanguage} onValueChange={(v) => setSelectedLanguage(v as "no" | "en")}>
+              <SelectTrigger id="template-language" className={isMobile ? "h-9 text-sm" : ""}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no" className="text-xs sm:text-sm">{t("admin.emailTemplate.languageNo")}</SelectItem>
+                <SelectItem value="en" className="text-xs sm:text-sm">{t("admin.emailTemplate.languageEn")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {t("admin.emailTemplate.languageHelp")}
+            </p>
+          </div>
+
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4">
             <h3 className="font-semibold text-xs sm:text-sm mb-2">{t("admin.emailTemplate.availableVariables")}:</h3>
             <div className="flex flex-wrap gap-1.5 sm:gap-2">
