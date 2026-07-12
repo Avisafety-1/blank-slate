@@ -586,7 +586,7 @@ export const EquipmentLogbookDialog = ({
               <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3 max-h-[60vh] overflow-y-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs sm:text-sm">Type</Label>
+                      <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.type')}</Label>
                       <Select 
                         value={newEntry.entry_type} 
                         onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
@@ -595,16 +595,16 @@ export const EquipmentLogbookDialog = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="merknad">Merknad</SelectItem>
-                          <SelectItem value="hendelse">Hendelse</SelectItem>
-                          <SelectItem value="reparasjon">Reparasjon</SelectItem>
-                          <SelectItem value="vedlikehold">Vedlikehold</SelectItem>
-                          <SelectItem value="annet">Annet</SelectItem>
+                          <SelectItem value="merknad">{t('resourceDialogs.equipmentLogbook.entryTypes.merknad')}</SelectItem>
+                          <SelectItem value="hendelse">{t('resourceDialogs.equipmentLogbook.entryTypes.hendelse')}</SelectItem>
+                          <SelectItem value="reparasjon">{t('resourceDialogs.equipmentLogbook.entryTypes.reparasjon')}</SelectItem>
+                          <SelectItem value="vedlikehold">{t('resourceDialogs.equipmentLogbook.entryTypes.vedlikehold')}</SelectItem>
+                          <SelectItem value="annet">{t('resourceDialogs.equipmentLogbook.entryTypes.annet')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-xs sm:text-sm">Dato</Label>
+                      <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.date')}</Label>
                       <Input
                         type="date"
                         className="h-9"
@@ -614,30 +614,30 @@ export const EquipmentLogbookDialog = ({
                     </div>
                   </div>
                   <div>
-                    <Label>Tittel *</Label>
+                    <Label>{t('resourceDialogs.equipmentLogbook.titleField')}</Label>
                     <Input
                       value={newEntry.title}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Kort beskrivelse"
+                      placeholder={t('resourceDialogs.equipmentLogbook.titlePlaceholder')}
                     />
                   </div>
                   <div>
-                    <Label>Beskrivelse</Label>
+                    <Label>{t('resourceDialogs.equipmentLogbook.description')}</Label>
                     <Textarea
                       value={newEntry.description}
                       onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Utfyllende detaljer (valgfritt)"
+                      placeholder={t('resourceDialogs.equipmentLogbook.descriptionPlaceholder')}
                       rows={2}
                     />
                   </div>
                   {/* Image upload */}
                   <div>
-                    <Label className="text-xs sm:text-sm">Bilde (valgfritt)</Label>
+                    <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.image')}</Label>
                     {imagePreviewUrl ? (
                       <div className="relative inline-block mt-1">
                         <img
                           src={imagePreviewUrl}
-                          alt="Forhåndsvisning"
+                          alt={t('resourceDialogs.equipmentLogbook.imagePreviewAlt')}
                           className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                         />
                         <button
@@ -655,7 +655,7 @@ export const EquipmentLogbookDialog = ({
                         className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
                       >
                         <ImagePlus className="w-4 h-4" />
-                        Last opp bilde
+                        {t('resourceDialogs.equipmentLogbook.uploadImage')}
                       </button>
                     )}
                     <input
@@ -668,11 +668,12 @@ export const EquipmentLogbookDialog = ({
                   </div>
                   <div className="flex gap-2 sticky bottom-0 bg-muted/30 pt-2 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-1">
                     <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
-                      {isSaving ? "Lagrer..." : "Lagre"}
+                      {isSaving ? t('resourceDialogs.equipmentLogbook.saving') : t('resourceDialogs.equipmentLogbook.save')}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>Avbryt</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); clearImage(); }}>{t('resourceDialogs.equipmentLogbook.cancel')}</Button>
                   </div>
                 </div>
+
             )}
 
             {activeTab !== 'battery' && (
