@@ -729,7 +729,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                      <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-300">{t('resourceDialogs.equipmentDetail.notes')}</p>
                       <p className="text-xs sm:text-sm mt-1 text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words">{equipment.merknader}</p>
                     </div>
                   </div>
