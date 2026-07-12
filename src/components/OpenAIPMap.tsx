@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
