@@ -793,6 +793,7 @@
     "reporting": "Reporting...",
     "saveChanges": "Save changes",
     "report": "Report",
+    "addIncident": "Add incident",
     "statusValues": {
       "Åpen": "Open",
       "Under behandling": "Under investigation",
