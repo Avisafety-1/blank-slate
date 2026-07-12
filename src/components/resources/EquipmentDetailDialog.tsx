@@ -836,9 +836,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
                 <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
                   <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
-                  <span className="text-sm font-medium">Vedlikeholdsintervall</span>
+                  <span className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.intervalTitle')}</span>
                 </CollapsibleTrigger>
-                <p className="text-xs text-muted-foreground mt-1 ml-6">Status trigges av det som kommer først av dager, timer eller oppdrag</p>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">{t('resourceDialogs.equipmentDetail.maintenance.intervalHelper')}</p>
+
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
