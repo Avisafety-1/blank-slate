@@ -435,7 +435,7 @@ export const ExpandedMapDialog = ({
 
         // Fetch airspace zones
         const zonesLayer = L.layerGroup().addTo(map);
-        fetchZones(zonesLayer, map);
+        fetchZones(zonesLayer, map, t);
 
         // Force size recalculation
         [300, 500, 800].forEach((d) => {
