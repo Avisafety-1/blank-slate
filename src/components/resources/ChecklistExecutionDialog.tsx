@@ -653,8 +653,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                 <div className="rounded-lg border p-4 flex flex-col items-center gap-3 bg-muted/30">
                   <FileText className="w-12 h-12 text-primary" />
                   <div className="text-center">
-                    <p className="font-medium text-sm">{fileName || "Sjekklistefil"}</p>
-                    <p className="text-xs text-muted-foreground">Last ned dokumentet for å gjennomgå sjekklisten</p>
+                    <p className="font-medium text-sm">{fileName || t('resourceDialogs.checklistExecution.checklistFile')}</p>
+                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.checklistExecution.downloadHint')}</p>
                   </div>
                   <Button
                     variant="outline"
@@ -662,7 +662,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
                     onClick={handleOpenFile}
                   >
                     <Download className="w-4 h-4" />
-                    Last ned sjekkliste
+                    {t('resourceDialogs.checklistExecution.downloadChecklist')}
                   </Button>
                 </div>
               )}
