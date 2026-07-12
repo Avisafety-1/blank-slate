@@ -273,9 +273,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         {isCaution && <AlertCircle className="h-5 w-5" />}
         {isNote && <Info className="h-5 w-5" />}
         <AlertTitle className="font-semibold text-foreground">
-          {isWarning && "ADVARSEL"}
-          {isCaution && "FORSIKTIGHET"}
-          {isNote && "INFORMASJON"}
+          {isWarning && t('dashboard.airspaceWarnings.warning')}
+          {isCaution && t('dashboard.airspaceWarnings.caution')}
+          {isNote && t('dashboard.airspaceWarnings.information')}
         </AlertTitle>
         <AlertDescription className="text-sm mt-1 text-foreground">{warning.message}</AlertDescription>
       </Alert>
