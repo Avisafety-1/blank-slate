@@ -595,7 +595,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     )}
                     {equipment.battery_full_capacity_mah != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Kapasitet</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.capacity')}</p>
                         <p className="text-sm">{equipment.battery_full_capacity_mah} mAh</p>
                       </div>
                     )}
