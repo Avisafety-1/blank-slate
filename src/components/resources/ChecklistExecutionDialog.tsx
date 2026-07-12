@@ -478,7 +478,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         <div className="flex-1 overflow-y-auto pr-4" style={{ maxHeight: 'calc(90vh - 260px)' }}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Laster sjekkliste...</p>
+              <p className="text-muted-foreground">{t('resourceDialogs.checklistExecution.laster')}</p>
             </div>
           ) : isFileMode ? (
             /* File-based checklist (image or document) */
