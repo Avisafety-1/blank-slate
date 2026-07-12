@@ -310,12 +310,12 @@ export const DroneLogbookDialog = ({
             date: new Date(entry.entry_date),
             title: entry.title,
             description: incidentIdMatch ? undefined : (entry.description || undefined),
-            userName: userMap.get(entry.user_id) || 'Ukjent',
+            userName: userMap.get(entry.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: isHendelse ? <AlertTriangle className="w-4 h-4" /> : <Edit className="w-4 h-4" />,
             badgeColor: isHendelse
               ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
               : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-            badgeText: entry.entry_type || 'Merknad',
+            badgeText: entry.entry_type || t('resourceDialogs.droneLogbook.badges.note'),
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
             manualEntryId: entry.id,
