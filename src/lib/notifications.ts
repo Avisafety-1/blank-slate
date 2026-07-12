@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import i18n from "@/i18n";
 
 type NotificationType = 
   | 'email_new_incident' 
