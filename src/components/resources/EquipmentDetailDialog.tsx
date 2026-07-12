@@ -391,7 +391,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            <span className="truncate">{isEditing ? "Rediger utstyr" : equipment.navn}</span>
+            <span className="truncate">{isEditing ? t('resourceDialogs.equipmentDetail.editTitle') : equipment.navn}</span>
           </DialogTitle>
           {(() => {
             const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
@@ -399,7 +399,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <>
                 {isSharedFromParent && (
                   <p className="text-xs text-muted-foreground mt-1 rounded-md bg-muted px-2 py-1.5">
-                    🔒 Dette utstyret er delt fra {equipment.companies?.navn || "mor-selskapet"} og kan kun redigeres derfra.
+                    {t('resourceDialogs.equipmentDetail.sharedFromParent', { company: equipment.companies?.navn || t('resourceDialogs.equipmentDetail.sharedFromParentFallback') })}
                   </p>
                 )}
                 {!isEditing && (
@@ -411,11 +411,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     className="w-full mt-2"
                   >
                     <Book className="w-4 h-4 mr-2" />
-                    Loggbok
+                    {t('resourceDialogs.equipmentDetail.logbook')}
                   </Button>
                 )}
               </>
             );
+
           })()}
         </DialogHeader>
 
