@@ -495,6 +495,30 @@
       "batteryMinVoltage": "Min voltage",
       "batteryMaxTemp": "Max temp",
       "batteryCellDeviation": "Cell deviation"
+    },
+    "missionMapPreview": {
+      "missionPosition": "Mission position",
+      "pointOf": "Point {{n}} of {{total}}",
+      "heightMsl": "Altitude (MSL): {{m}} m",
+      "heightAgl": "Altitude (AGL): {{m}} m",
+      "terrain": "Terrain: {{m}} m",
+      "speed": "Speed: {{v}} m/s",
+      "heading": "Heading: {{deg}}°",
+      "vertSpeed": "V. speed: {{v}} m/s",
+      "time": "Time: {{t}}",
+      "flightStart": "Flight {{n}} - Start",
+      "flightEnd": "Flight {{n}} - End",
+      "nsmZoneDefault": "NSM Prohibited area",
+      "rpasZoneDefault": "RPAS 5km zone",
+      "ctrTizDefault": "CTR/TIZ",
+      "airfieldUnknown": "Unknown airfield",
+      "unknown": "Unknown",
+      "contactAirfield": "Contact the airfield —",
+      "upperLimit": "Upper: {{v}}",
+      "aipDanger": "Danger area",
+      "aipProhibited": "Prohibited area",
+      "aipRestricted": "Restricted area",
+      "aipAtz": "Airfield — 5 km"
     }
   },
   "resources": {

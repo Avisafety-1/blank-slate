@@ -497,6 +497,30 @@
       "batteryMinVoltage": "Min spenning",
       "batteryMaxTemp": "Maks temp",
       "batteryCellDeviation": "Celleavvik"
+    },
+    "missionMapPreview": {
+      "missionPosition": "Oppdragsposisjon",
+      "pointOf": "Punkt {{n}} av {{total}}",
+      "heightMsl": "Høyde (MSL): {{m}} m",
+      "heightAgl": "Høyde (AGL): {{m}} m",
+      "terrain": "Terreng: {{m}} m",
+      "speed": "Hastighet: {{v}} m/s",
+      "heading": "Retning: {{deg}}°",
+      "vertSpeed": "Vert. hast.: {{v}} m/s",
+      "time": "Tid: {{t}}",
+      "flightStart": "Flytur {{n}} - Start",
+      "flightEnd": "Flytur {{n}} - Slutt",
+      "nsmZoneDefault": "NSM Forbudsområde",
+      "rpasZoneDefault": "RPAS 5km sone",
+      "ctrTizDefault": "CTR/TIZ",
+      "airfieldUnknown": "Ukjent småflyplass",
+      "unknown": "Ukjent",
+      "contactAirfield": "Kontakt flyplassen —",
+      "upperLimit": "Øvre: {{v}}",
+      "aipDanger": "Fareområde",
+      "aipProhibited": "Forbudsområde",
+      "aipRestricted": "Restriksjonsområde",
+      "aipAtz": "Småflyplass — 5 km"
     }
   },
   "resources": {
