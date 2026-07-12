@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DocumentCategory, DocumentSortOption, DocumentStatusFilter } from "@/pages/Documents";
 
 interface DocumentsFilterBarProps {
@@ -15,34 +16,27 @@ interface DocumentsFilterBarProps {
   onSortChange: (option: DocumentSortOption) => void;
 }
 
-const CATEGORIES: { value: DocumentCategory; label: string }[] = [
-  { value: "regelverk", label: "Regelverk" },
-  { value: "prosedyrer", label: "Prosedyrer" },
-  { value: "sjekklister", label: "Sjekklister" },
-  { value: "rapporter", label: "Rapporter" },
-  { value: "nettsider", label: "Nettsider" },
-  { value: "oppdrag", label: "Oppdrag" },
-  { value: "loggbok", label: "Loggbok" },
-  { value: "kml-kmz", label: "KML/KMZ" },
-  { value: "dokumentstyring", label: "Dokumentstyring" },
-  { value: "risikovurderinger", label: "Risikovurderinger" },
-  { value: "operasjonsmanual", label: "Operasjonsmanual" },
-  { value: "annet", label: "Annet" },
+const CATEGORY_KEYS: { value: DocumentCategory; key: string }[] = [
+  { value: "regelverk", key: "regelverk" },
+  { value: "prosedyrer", key: "prosedyrer" },
+  { value: "sjekklister", key: "sjekklister" },
+  { value: "rapporter", key: "rapporter" },
+  { value: "nettsider", key: "nettsider" },
+  { value: "oppdrag", key: "oppdrag" },
+  { value: "loggbok", key: "loggbok" },
+  { value: "kml-kmz", key: "kmlKmz" },
+  { value: "dokumentstyring", key: "dokumentstyring" },
+  { value: "risikovurderinger", key: "risikovurderinger" },
+  { value: "operasjonsmanual", key: "operasjonsmanual" },
+  { value: "annet", key: "annet" },
 ];
 
-const STATUS_FILTERS: { value: DocumentStatusFilter; label: string; dot: string }[] = [
-  { value: "expired", label: "Utgått", dot: "bg-destructive" },
-  { value: "expiring_soon", label: "Utgår snart", dot: "bg-yellow-500" },
-  { value: "valid", label: "Gyldig", dot: "bg-green-500" },
-  { value: "no_expiry", label: "Uten utløp", dot: "bg-muted-foreground" },
-];
-
-const SORT_OPTIONS: { value: DocumentSortOption; label: string }[] = [
-  { value: "newest", label: "Nyeste først" },
-  { value: "oldest", label: "Eldste først" },
-  { value: "expiry", label: "Utgår snart" },
-  { value: "alpha_asc", label: "Alfabetisk A–Å" },
-  { value: "alpha_desc", label: "Alfabetisk Å–A" },
+const SORT_KEYS: { value: DocumentSortOption; key: string }[] = [
+  { value: "newest", key: "newest" },
+  { value: "oldest", key: "oldest" },
+  { value: "expiry", key: "expiry" },
+  { value: "alpha_asc", key: "alphaAsc" },
+  { value: "alpha_desc", key: "alphaDesc" },
 ];
 
 const DocumentsFilterBar = ({
@@ -55,6 +49,7 @@ const DocumentsFilterBar = ({
   sortOption,
   onSortChange,
 }: DocumentsFilterBarProps) => {
+  const { t } = useTranslation();
   const toggleCategory = (category: DocumentCategory) => {
     if (selectedCategories.includes(category)) {
       onCategoriesChange(selectedCategories.filter(c => c !== category));
@@ -79,7 +74,7 @@ const DocumentsFilterBar = ({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Søk i dokumenter..."
+            placeholder={t('documents.filterBar.searchPlaceholder')}
             value={searchQuery}
             onChange={e => onSearchChange(e.target.value)}
             className="pl-10"
@@ -90,8 +85,8 @@ const DocumentsFilterBar = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {SORT_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            {SORT_KEYS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{t(`documents.sort.${opt.key}`)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -99,14 +94,14 @@ const DocumentsFilterBar = ({
 
       {/* Category filter badges */}
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map(category => (
+        {CATEGORY_KEYS.map(category => (
           <Badge
             key={category.value}
             variant={selectedCategories.includes(category.value) ? "default" : "outline"}
             onClick={() => toggleCategory(category.value)}
             className={selectedCategories.includes(category.value) ? "cursor-pointer" : "cursor-pointer bg-secondary"}
           >
-            {category.label}
+            {t(`documents.categories.${category.key}`)}
           </Badge>
         ))}
       </div>
