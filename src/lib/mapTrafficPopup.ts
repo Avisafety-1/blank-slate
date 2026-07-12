@@ -1,10 +1,8 @@
 /**
- * Felles popup-renderer for luftrom-trafikk på kartet (SafeSky beacons,
- * AviSafe advisory-flyturer og live DroneTag-telemetri).
- *
- * Mål: alle markører viser samme felter i samme rekkefølge, med en tydelig
- * "Kilde"-rubrikk som forteller hvor data kommer fra.
+ * Felles popup-renderer for luftrom-trafikk på kartet.
  */
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.traffic.${k}`, opts) as string;
 
 export type TrafficSource =
   | { kind: "safesky"; subSource?: string | null } // f.eks. "flarm", "ogn", "adsb"
