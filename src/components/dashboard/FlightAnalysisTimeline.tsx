@@ -88,8 +88,8 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
   const isDualBattery = useMemo(() => hasData(positions, 'battery1'), [positions]);
 
   const chartData = useMemo(() => 
-    positions.map((p, i) => ({ ...p, idx: i, time: formatTime(i, positions) })),
-    [positions]
+    positions.map((p, i) => ({ ...p, idx: i, time: formatTime(i, positions, locale) })),
+    [positions, locale]
   );
 
   const current = positions[currentIndex];
