@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, formatDurationForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 interface FlightLogbookDialogProps {
   open: boolean;
