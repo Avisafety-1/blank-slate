@@ -57,6 +57,7 @@ const getSpeedColor = (speed: number, maxSpeed: number) => {
 };
 
 export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName }: FlightAnalysisDialogProps) => {
+  const { t, i18n } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mapReady, setMapReady] = useState(false);
   const [tileError, setTileError] = useState(false);
