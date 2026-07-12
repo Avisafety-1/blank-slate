@@ -655,7 +655,7 @@ export const DroneLogbookDialog = ({
                     className="mt-1 flex items-center gap-2 px-3 py-2 border border-dashed rounded-md text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition-colors w-full"
                   >
                     <ImagePlus className="w-4 h-4" />
-                    Last opp bilde
+                    {t('resourceDialogs.droneLogbook.uploadImage')}
                   </button>
                 )}
                 <input
