@@ -118,7 +118,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.population_density_band) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensity', { ns: 'pdf' }), sanitizeForPdf(data.population_density_band)]);
   if (data.population_density_value != null) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensityPerKm2', { ns: 'pdf' }), String(data.population_density_value)]);
   if (data.population_density_average != null) fields.push([i18n.t('pdf.riskAssessment.labels.avgDensityPerKm2', { ns: 'pdf' }), String(data.population_density_average)]);
-  if (data.ssb_grid_population != null) fields.push([i18n.t('pdf.riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), `${data.ssb_grid_population} personer (${data.ssb_grid_resolution_m || 250} m)`]);
+  if (data.ssb_grid_population != null) fields.push([i18n.t('pdf.riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.ssbCalc.gridPopulationValue', { ns: 'pdf', count: data.ssb_grid_population, resolution: data.ssb_grid_resolution_m || 250 })]);
   if (data.grc_calculation_method) fields.push([i18n.t('pdf.riskAssessment.labels.grcMethod', { ns: 'pdf' }), sanitizeForPdf(data.grc_calculation_method)]);
   if (data.igrc_table_basis) fields.push([i18n.t('pdf.riskAssessment.labels.tableBasis', { ns: 'pdf' }), sanitizeForPdf(data.igrc_table_basis)]);
   if (data.igrc != null) fields.push([i18n.t('pdf.riskAssessment.labels.igrc', { ns: 'pdf' }), String(data.igrc)]);
