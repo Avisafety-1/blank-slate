@@ -2469,6 +2469,10 @@
     "auto": "Automatic",
     "logTypeHint": "Choose ArduPilot for .zip with .bin files. Automatic detects .bin files.",
     "autoSyncEnabled": "Automatic sync enabled for your account",
+    "djiLogin": "Sign in",
+    "djiLogout": "Sign out",
+    "loggingIn": "Signing in...",
+    "savedLogin": "Saved login",
     "ardupilotReadySelect": "ArduPilot log ready — select it under \"Pending flight logs\" to finish the import.",
     "ardupilotQueued": "ArduPilot log queued and processing in the background. It will appear under \"Pending flight logs\" shortly."
   },
