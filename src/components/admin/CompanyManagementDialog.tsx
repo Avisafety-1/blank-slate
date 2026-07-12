@@ -144,6 +144,7 @@ export const CompanyManagementDialog = ({
           kontakt_epost: company.kontakt_epost || "",
           kontakt_telefon: company.kontakt_telefon || "",
           parent_company_id: company.parent_company_id || null,
+          default_language: ((company as any).default_language as 'no' | 'en') || 'no',
         });
       } else {
         setStripeExempt(false);
