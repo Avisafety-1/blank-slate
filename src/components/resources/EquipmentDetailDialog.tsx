@@ -345,12 +345,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
         await deptVis.saveVisibility();
       }
 
-      toast.success("Utstyr oppdatert");
+      toast.success(t('resourceDialogs.equipmentDetail.toasts.updated'));
       setIsEditing(false);
       onEquipmentUpdated();
     } catch (error: any) {
       console.error("Error updating equipment:", error);
-      toast.error(`Kunne ikke oppdatere utstyr: ${error.message}`);
+      toast.error(t('resourceDialogs.equipmentDetail.toasts.updateError', { message: error.message }));
+
     } finally {
       setIsSubmitting(false);
     }
