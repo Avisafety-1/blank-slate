@@ -544,7 +544,7 @@ export function PersonCompetencyDialog({
                     // Edit mode
                     <div className="space-y-3">
                       <div>
-                        <Label>Type</Label>
+                        <Label>{t('resourceDialogs.personCompetency.type')}</Label>
                         <Select value={editType} onValueChange={setEditType}>
                           <SelectTrigger>
                             <SelectValue />
