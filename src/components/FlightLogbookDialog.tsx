@@ -544,23 +544,23 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         .delete()
         .eq("id", entry.id);
       if (error) throw error;
-      toast.success(i18n.t("flightLogbook.toasts.entryDeleted"));
+      toast.success(i18n.t("flightLogbook.toasts.entryDeleted", { ns: "pdf") });
       fetchPersonnelLogs();
     } catch (error: any) {
-      toast.error(i18n.t("flightLogbook.toasts.deleteFailed", { message: error.message }));
+      toast.error(i18n.t("flightLogbook.toasts.deleteFailed", { ns: "pdf", { message: error.message }) });
     }
   };
 
   const handleExportPDF = async () => {
     if (!companyId || !user) {
-      toast.error(i18n.t("flightLogbook.toasts.missingInfo"));
+      toast.error(i18n.t("flightLogbook.toasts.missingInfo", { ns: "pdf") });
       return;
     }
 
     setExporting(true);
     try {
       const doc = await createPdfDocument();
-      const title = i18n.t("flightLogbook.title", { name: personName });
+      const title = i18n.t("flightLogbook.title", { ns: "pdf", { name: personName } });
 
       doc.setFontSize(18);
       doc.text(sanitizeForPdf(title), 14, 20);
@@ -574,11 +574,11 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text(`${i18n.t("flightLogbook.totalFlightTime")}: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40);
+      doc.text(`${i18n.t("flightLogbook.totalFlightTime", { ns: "pdf")}: ${formatDurationForPdf(Math.round(totalFlytid))}`, 14, 40 });
       doc.setFontSize(10);
       doc.setTextColor(100);
-      doc.text(`${i18n.t("flightLogbook.fromLogged")}: ${formatDurationForPdf(loggedMinutes)}`, 14, 47);
-      doc.text(`${i18n.t("flightLogbook.manuallyAdded")}: ${formatDurationForPdf(manualMinutes2)}`, 14, 54);
+      doc.text(`${i18n.t("flightLogbook.fromLogged", { ns: "pdf")}: ${formatDurationForPdf(loggedMinutes)}`, 14, 47 });
+      doc.text(`${i18n.t("flightLogbook.manuallyAdded", { ns: "pdf")}: ${formatDurationForPdf(manualMinutes2)}`, 14, 54 });
 
       const tableData = flightLogs.map(log => [
         format(new Date(log.flight_date), "dd.MM.yyyy"),
@@ -592,12 +592,12 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       autoTable(doc, {
         startY: 62,
         head: [[
-          i18n.t("flightLogbook.headers.date"),
-          i18n.t("flightLogbook.headers.departure"),
-          i18n.t("flightLogbook.headers.landing"),
-          i18n.t("flightLogbook.headers.duration"),
-          i18n.t("flightLogbook.headers.drone"),
-          i18n.t("flightLogbook.headers.mission"),
+          i18n.t("flightLogbook.headers.date", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.departure", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.landing", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.duration", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.drone", { ns: "pdf" }),
+          i18n.t("flightLogbook.headers.mission", { ns: "pdf" }),
         ]],
         body: tableData,
         styles: { fontSize: 8, font: getPdfFontName() },
@@ -611,7 +611,7 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
       const safeName = sanitizeFilenameForPdf(personName);
       const dateStr = format(new Date(), "yyyy-MM-dd");
-      const fileName = `${i18n.t("flightLogbook.filenamePrefix")}_${safeName}_${dateStr}.pdf`;
+      const fileName = `${i18n.t("flightLogbook.filenamePrefix", { ns: "pdf" })}_${safeName}_${dateStr}.pdf`;
 
       const pdfBlob = doc.output("blob");
       const filePath = `${companyId}/${fileName}`;
@@ -632,16 +632,16 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         fil_navn: fileName,
         fil_url: filePath,
         fil_storrelse: pdfBlob.size,
-        beskrivelse: sanitizeForPdf(i18n.t("flightLogbook.documentDescription", { date: descDate })),
+        beskrivelse: sanitizeForPdf(i18n.t("flightLogbook.documentDescription", { ns: "pdf", { date: descDate }) }),
       });
 
       if (docError) throw docError;
 
       queryClient.invalidateQueries({ queryKey: ["documents"] });
-      toast.success(i18n.t("flightLogbook.toasts.exported"));
+      toast.success(i18n.t("flightLogbook.toasts.exported", { ns: "pdf") });
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast.error(i18n.t("flightLogbook.toasts.exportFailed"));
+      toast.error(i18n.t("flightLogbook.toasts.exportFailed", { ns: "pdf") });
     } finally {
       setExporting(false);
     }
