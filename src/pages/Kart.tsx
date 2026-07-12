@@ -1128,10 +1128,10 @@ export default function KartPage() {
               size="lg"
               onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true, missionStatus: editingMissionStatus } })}
               className="pointer-events-auto shadow-lg"
-              title="Tilbake til oppdrag"
+              title={t('pages.map.backToMission')}
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
-              Tilbake til oppdrag
+              {t('pages.map.backToMission')}
             </Button>
           )}
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2 pointer-events-auto">
