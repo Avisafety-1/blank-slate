@@ -1240,7 +1240,10 @@
   },
   "pages": {
     "missions": {
-      "title": "Missions"
+      "title": "Missions",
+      "noMissionsFound": "No missions found",
+      "noMissions": "No missions",
+      "loadMore": "Load more missions"
     },
     "incidents": {
       "title": "Incidents",
