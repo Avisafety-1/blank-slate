@@ -545,7 +545,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                   onClick={() => setDeleteDialogOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Slett dokument
+                  {t('dashboard.documents.delete')}
                 </Button>
               )}
             </div>
