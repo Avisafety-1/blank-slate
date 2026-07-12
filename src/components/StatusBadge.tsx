@@ -1,5 +1,6 @@
 import { Status } from "@/types";
 import { cn } from "@/lib/utils";
+import { translateResourceStatus } from "@/lib/i18nHelpers";
 
 interface StatusBadgeProps {
   status: Status;
@@ -16,7 +17,7 @@ export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <div className={cn("w-3 h-3 rounded-full", colors[status])} />
-      <span className="text-sm font-medium">{status}</span>
+      <span className="text-sm font-medium">{translateResourceStatus(status)}</span>
     </div>
   );
 };
