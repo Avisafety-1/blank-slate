@@ -594,7 +594,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
     
     if (formData.flightDurationMinutes <= 0) {
-      toast.error("Flytid må være større enn 0");
+      toast.error(t("logFlight.toastFlightTimePositive"));
       return;
     }
 
@@ -819,12 +819,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         
         if (missionUpdateError) {
           console.error("Error updating mission status:", missionUpdateError);
-          toast.warning("Flytid logget, men kunne ikke oppdatere oppdragsstatus");
+          toast.warning(t("logFlight.toastLoggedButNoStatus"));
         } else {
-          toast.success("Flytid logget og oppdrag markert som fullført!");
+          toast.success(t("logFlight.toastLoggedAndCompleted"));
         }
       } else {
-        toast.success("Flytid logget!");
+        toast.success(t("logFlight.toastLogged"));
       }
 
       // Check if selected drone has a post-flight checklist
@@ -1035,7 +1035,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Logg flytid
+            {t("logFlight.title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -1045,14 +1045,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm">
               <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
               <div className="text-yellow-800 dark:text-yellow-200">
-                <span className="font-medium">Ingen DroneTag-posisjoner funnet.</span>{" "}
-                Sjekk at DroneTag-enheten sender data til SafeSky under flytur.
+                <span className="font-medium">{t("logFlight.noDroneTagPositions")}</span>{" "}
+                {t("logFlight.droneTagWarning")}
               </div>
             </div>
           )}
           {/* Mission selection - NOW AT TOP */}
           <div data-tour="log-flight-mission">
-            <Label htmlFor="mission">Tilknytt oppdrag</Label>
+            <Label htmlFor="mission">{t("logFlight.linkMission")}</Label>
             <Select 
               value={formData.missionId || "none"} 
               onValueChange={(value) => {
@@ -1070,10 +1070,10 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Velg oppdrag" />
+                <SelectValue placeholder={t("logFlight.selectMission")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Ingen</SelectItem>
+                <SelectItem value="none">{t("logFlight.none")}</SelectItem>
                 {missions.map((mission) => (
                   <SelectItem key={mission.id} value={mission.id}>
                     {mission.tittel} - {new Date(mission.tidspunkt).toLocaleDateString('nb-NO')}
@@ -1088,7 +1088,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <Label htmlFor="markCompleted" className="text-sm cursor-pointer">
-                    Sett oppdrag til fullført
+                    {t("logFlight.markMissionCompleted")}
                   </Label>
                 </div>
                 <Switch
@@ -1129,20 +1129,20 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           <div data-tour="log-flight-pilot">
             <Label htmlFor="pilot" className="flex items-center gap-1">
               <User className="w-3 h-3" />
-              Pilot
+              {t("logFlight.pilot")}
             </Label>
             <Select 
               value={formData.pilotId || "none"} 
               onValueChange={(value) => setFormData({ ...formData, pilotId: value === "none" ? "" : value })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Velg pilot" />
+                <SelectValue placeholder={t("logFlight.selectPilot")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Ingen</SelectItem>
                 {personnel.map((person) => (
                   <SelectItem key={person.id} value={person.id}>
-                    {person.full_name || person.email || 'Ukjent'}
+                    {person.full_name || person.email || t("logFlight.unknown")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1153,7 +1153,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           <div>
             <Label className="flex items-center gap-1">
               <Package className="w-3 h-3" />
-              Utstyr
+              {t("logFlight.equipment")}
             </Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -1163,15 +1163,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   className="w-full justify-between font-normal mt-1"
                 >
                   {selectedEquipment.length === 0 
-                    ? "Velg utstyr" 
-                    : `${selectedEquipment.length} utstyr valgt`}
+                    ? t("logFlight.selectEquipment")
+                    : t("logFlight.equipmentSelectedCount", { count: selectedEquipment.length })}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border border-border" align="start">
                 <div className="max-h-48 overflow-y-auto p-2 space-y-1">
                   {equipmentList.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-2">Ingen utstyr tilgjengelig</p>
+                    <p className="text-sm text-muted-foreground p-2">{t("logFlight.noEquipmentAvailable")}</p>
                   ) : (
                     equipmentList.map((equipment) => (
                       <div 
@@ -1200,7 +1200,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
           {/* Flight date */}
           <div>
-            <Label htmlFor="flightDate">Dato *</Label>
+            <Label htmlFor="flightDate">{t("logFlight.date")} *</Label>
             <Input
               id="flightDate"
               type="date"
@@ -1215,15 +1215,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <div>
               <Label htmlFor="departure" className="flex items-center gap-1">
                 <Navigation className="w-3 h-3" />
-                Avgangssted *
-                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">(henter...)</span>}
+                {t("logFlight.departure")} *
+                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">{t("logFlight.fetchingShort")}</span>}
               </Label>
               <div className="flex gap-2">
                 <Input
                   id="departure"
                   value={formData.departureLocation}
                   onChange={(e) => setFormData({ ...formData, departureLocation: e.target.value })}
-                  placeholder={isLoadingLocations ? "Henter posisjon..." : "F.eks. Oslo"}
+                  placeholder={isLoadingLocations ? t("logFlight.fetchingPosition") : t("logFlight.egOslo")}
                   required
                   className="flex-1"
                   disabled={isLoadingLocations}
@@ -1233,7 +1233,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   variant="outline"
                   size="icon"
                   onClick={() => setDeparturePickerOpen(true)}
-                  title="Velg på kart"
+                  title={t("logFlight.selectOnMap")}
                   disabled={isLoadingLocations}
                 >
                   <Map className="w-4 h-4" />
@@ -1243,15 +1243,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <div>
               <Label htmlFor="landing" className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                Landingssted *
-                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">(henter...)</span>}
+                {t("logFlight.landing")} *
+                {isLoadingLocations && <span className="text-xs text-muted-foreground ml-1">{t("logFlight.fetchingShort")}</span>}
               </Label>
               <div className="flex gap-2">
                 <Input
                   id="landing"
                   value={formData.landingLocation}
                   onChange={(e) => setFormData({ ...formData, landingLocation: e.target.value })}
-                  placeholder={isLoadingLocations ? "Henter posisjon..." : "F.eks. Bergen"}
+                  placeholder={isLoadingLocations ? t("logFlight.fetchingPosition") : t("logFlight.egBergen")}
                   required
                   className="flex-1"
                   disabled={isLoadingLocations}
@@ -1275,11 +1275,11 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1">
                 <Timer className="w-3 h-3" />
-                Flytid *
+                {t("logFlight.flightTime")} *
               </Label>
               <div className="flex items-center gap-2">
                 <span className={`text-xs ${!useTimeRange ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                  Minutter
+                  {t("logFlight.minutes")}
                 </span>
                 <Switch
                   checked={useTimeRange}
@@ -1292,7 +1292,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   }}
                 />
                 <span className={`text-xs ${useTimeRange ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                  Klokkeslett
+                  {t("logFlight.clockTime")}
                 </span>
               </div>
             </div>
@@ -1300,7 +1300,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             {useTimeRange ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="startTime" className="text-xs text-muted-foreground">Fra</Label>
+                  <Label htmlFor="startTime" className="text-xs text-muted-foreground">{t("logFlight.from")}</Label>
                   <Input
                     id="startTime"
                     type="time"
@@ -1310,7 +1310,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   />
                 </div>
                 <div>
-                  <Label htmlFor="endTime" className="text-xs text-muted-foreground">Til</Label>
+                  <Label htmlFor="endTime" className="text-xs text-muted-foreground">{t("logFlight.to")}</Label>
                   <Input
                     id="endTime"
                     type="time"
@@ -1334,14 +1334,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
             {formData.flightDurationMinutes > 0 && (
               <p className="text-xs text-muted-foreground">
-                = {formData.flightDurationMinutes} minutter ({(formData.flightDurationMinutes / 60).toFixed(2)} timer)
+                {t("logFlight.durationSummary", { count: formData.flightDurationMinutes, hours: (formData.flightDurationMinutes / 60).toFixed(2) })}
               </p>
             )}
           </div>
 
           {/* Movements */}
           <div data-tour="log-flight-movements">
-            <Label htmlFor="movements">Antall bevegelser</Label>
+            <Label htmlFor="movements">{t("logFlight.movements")}</Label>
             <Input
               id="movements"
               type="number"
@@ -1349,12 +1349,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               value={formData.movements === 0 ? '' : formData.movements}
               onChange={(e) => setFormData({ ...formData, movements: e.target.value === '' ? 0 : parseInt(e.target.value) })}
             />
-            <p className="text-xs text-muted-foreground mt-1">Antall landinger</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("logFlight.landings")}</p>
           </div>
 
           {/* Operation type (VLOS / BVLOS / EVLOS) */}
           <div>
-            <Label htmlFor="operation-type">Operasjonstype</Label>
+            <Label htmlFor="operation-type">{t("logFlight.operationType")}</Label>
             <Select
               value={formData.operationType}
               onValueChange={(v) => setFormData({ ...formData, operationType: v as "VLOS" | "BVLOS" | "EVLOS" })}
@@ -1363,22 +1363,22 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="VLOS">VLOS — visuell siktforbindelse</SelectItem>
-                <SelectItem value="BVLOS">BVLOS — utenfor visuell rekkevidde</SelectItem>
-                <SelectItem value="EVLOS">EVLOS — utvidet med observatør</SelectItem>
+                <SelectItem value="VLOS">{t("logFlight.vlosLong")}</SelectItem>
+                <SelectItem value="BVLOS">{t("logFlight.bvlosLong")}</SelectItem>
+                <SelectItem value="EVLOS">{t("logFlight.evlosLong")}</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground mt-1">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("logFlight.operationDefaultHint")}</p>
           </div>
 
           {/* Notes */}
           <div>
-            <Label htmlFor="notes">Merknad</Label>
+            <Label htmlFor="notes">{t("logFlight.note")}</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Valgfri merknad..."
+              placeholder={t("logFlight.optionalNote")}
               rows={2}
             />
           </div>
@@ -1389,7 +1389,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <span className="font-medium">Flytid logges på:</span>{" "}
+                  <span className="font-medium">{t("logFlight.flightTimeLoggedOn")}</span>{" "}
                   {flightTimeSummary.join(", ")}
                 </p>
               </div>
@@ -1398,10 +1398,10 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
-              Avbryt
+              {t("logFlight.cancel")}
             </Button>
             <Button data-tour="log-flight-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Logger..." : "Logg flytid"}
+              {isSubmitting ? t("logFlight.logging") : t("logFlight.title")}
             </Button>
           </DialogFooter>
         </form>
