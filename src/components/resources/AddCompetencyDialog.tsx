@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { AttachmentPickerDialog } from "@/components/admin/AttachmentPickerDialog";
 
 interface AddCompetencyDialogProps {
@@ -22,6 +23,7 @@ interface AddCompetencyDialogProps {
 }
 
 export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, personnel }: AddCompetencyDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [selectedPersonId, setSelectedPersonId] = useState<string>("");
   const [personSearchOpen, setPersonSearchOpen] = useState(false);
@@ -51,7 +53,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
     const formData = new FormData(e.currentTarget);
     
     if (!selectedPersonId) {
-      toast.error("Vennligst velg en person");
+      toast.error(t('resourceDialogs.addCompetency.selectPersonError'));
       return;
     }
     
@@ -59,7 +61,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
     const navnValue = formData.get("navn") as string;
     
     if (!typeValue || !navnValue) {
-      toast.error("Type og navn er påkrevd");
+      toast.error(t('resourceDialogs.addCompetency.typeAndNameRequired'));
       return;
     }
     
@@ -75,9 +77,9 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
     if (error) {
       console.error("Error adding competency:", error);
       if (error.code === "42501" || error.message?.includes("policy")) {
-        toast.error("Du har ikke tillatelse til å legge til kompetanse for denne personen");
+        toast.error(t('resourceDialogs.addCompetency.noPermission'));
       } else {
-        toast.error(`Kunne ikke legge til kompetanse: ${error.message || "Ukjent feil"}`);
+        toast.error(t('resourceDialogs.addCompetency.addFailed', { msg: error.message || t('resourceDialogs.addCompetency.unknownError') }));
       }
     } else {
       // Upload file if selected
@@ -89,7 +91,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
         await (supabase as any).from("personnel_competencies").update({ fil_url: filUrl }).eq("id", data.id);
       }
 
-      toast.success("Kompetanse lagt til");
+      toast.success(t('resourceDialogs.addCompetency.added'));
       onOpenChange(false);
       setSelectedPersonId("");
       setSelectedType("Kurs");
@@ -108,16 +110,16 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
         <DialogTrigger asChild>
           <Button size="sm" className="gap-2">
             <Plus className="w-4 h-4" />
-            Legg til kompetanse
+            {t('resourceDialogs.addCompetency.trigger')}
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md">
           <span data-tour="add-competency-marker" className="hidden" /><DialogHeader>
-            <DialogTitle>Legg til kompetanse/kurs</DialogTitle>
+            <DialogTitle>{t('resourceDialogs.addCompetency.title')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddCompetency} className="space-y-4 px-2">
             <div>
-              <Label>Person</Label>
+              <Label>{t('resourceDialogs.addCompetency.person')}</Label>
               <Popover open={personSearchOpen} onOpenChange={setPersonSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -127,16 +129,16 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                     className="w-full justify-between"
                   >
                     {selectedPersonId
-                      ? personnel.find((p) => p.id === selectedPersonId)?.full_name || "Velg person..."
-                      : "Velg person..."}
+                      ? personnel.find((p) => p.id === selectedPersonId)?.full_name || t('resourceDialogs.addCompetency.selectPerson')
+                      : t('resourceDialogs.addCompetency.selectPerson')}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[400px] p-0 z-[9999] bg-popover" align="start">
                   <Command className="bg-popover">
-                    <CommandInput placeholder="Søk etter person..." className="h-9" />
+                    <CommandInput placeholder={t('resourceDialogs.addCompetency.searchPerson')} className="h-9" />
                     <CommandList>
-                      <CommandEmpty>Ingen personer funnet.</CommandEmpty>
+                      <CommandEmpty>{t('resourceDialogs.addCompetency.noPersonFound')}</CommandEmpty>
                       <CommandGroup>
                         {personnel.map((person) => (
                           <CommandItem
@@ -153,7 +155,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                                 selectedPersonId === person.id ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {person.full_name || "Ukjent navn"}
+                            {person.full_name || t('resourceDialogs.addCompetency.unknownName')}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -163,24 +165,24 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
               </Popover>
             </div>
             <div>
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type">{t('resourceDialogs.addCompetency.type')}</Label>
               <Select name="type" value={selectedType} onValueChange={(v) => { setSelectedType(v); setNavnValue(""); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Kurs">Kurs</SelectItem>
-                  <SelectItem value="Sertifikat">Sertifikat</SelectItem>
-                  <SelectItem value="Lisens">Lisens</SelectItem>
-                  <SelectItem value="Utdanning">Utdanning</SelectItem>
-                  <SelectItem value="Godkjenning">Godkjenning</SelectItem>
-                  <SelectItem value="Kompetanse">Kompetanse</SelectItem>
-                  <SelectItem value="Annet">Annet</SelectItem>
+                  <SelectItem value="Kurs">{t('resourceDialogs.addCompetency.types.Kurs')}</SelectItem>
+                  <SelectItem value="Sertifikat">{t('resourceDialogs.addCompetency.types.Sertifikat')}</SelectItem>
+                  <SelectItem value="Lisens">{t('resourceDialogs.addCompetency.types.Lisens')}</SelectItem>
+                  <SelectItem value="Utdanning">{t('resourceDialogs.addCompetency.types.Utdanning')}</SelectItem>
+                  <SelectItem value="Godkjenning">{t('resourceDialogs.addCompetency.types.Godkjenning')}</SelectItem>
+                  <SelectItem value="Kompetanse">{t('resourceDialogs.addCompetency.types.Kompetanse')}</SelectItem>
+                  <SelectItem value="Annet">{t('resourceDialogs.addCompetency.types.Annet')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="navn">Navn</Label>
+              <Label htmlFor="navn">{t('resourceDialogs.addCompetency.name')}</Label>
               {selectedType === "Kurs" ? (
                 <>
                   <Select
@@ -188,13 +190,13 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                     onValueChange={(v) => setNavnValue(v === "__custom__" ? "" : v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg kurs..." />
+                      <SelectValue placeholder={t('resourceDialogs.addCompetency.selectCourse')} />
                     </SelectTrigger>
                     <SelectContent>
                       {KURS_PRESETS.map((k) => (
                         <SelectItem key={k} value={k}>{k}</SelectItem>
                       ))}
-                      <SelectItem value="__custom__">Annet (skriv inn)...</SelectItem>
+                      <SelectItem value="__custom__">{t('resourceDialogs.addCompetency.customCourse')}</SelectItem>
                     </SelectContent>
                   </Select>
                   {!KURS_PRESETS.includes(navnValue) && (
@@ -202,7 +204,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                       id="navn"
                       name="navn"
                       className="mt-2"
-                      placeholder="Skriv inn kursnavn"
+                      placeholder={t('resourceDialogs.addCompetency.enterCourseName')}
                       value={navnValue}
                       onChange={(e) => setNavnValue(e.target.value)}
                       required
@@ -223,26 +225,26 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
               )}
             </div>
             <div>
-              <Label htmlFor="beskrivelse">Beskrivelse</Label>
+              <Label htmlFor="beskrivelse">{t('resourceDialogs.addCompetency.description')}</Label>
               <Textarea id="beskrivelse" name="beskrivelse" />
             </div>
             <div>
-              <Label htmlFor="utstedt_dato">Utstedt dato</Label>
+              <Label htmlFor="utstedt_dato">{t('resourceDialogs.addCompetency.issuedDate')}</Label>
               <Input id="utstedt_dato" name="utstedt_dato" type="date" />
             </div>
             <div>
-              <Label htmlFor="utloper_dato">Utløper dato</Label>
+              <Label htmlFor="utloper_dato">{t('resourceDialogs.addCompetency.expiresDate')}</Label>
               <Input id="utloper_dato" name="utloper_dato" type="date" />
             </div>
 
             {/* File attachment section */}
             <div className="space-y-2">
-              <Label className="text-xs">Vedlegg (sertifikat/kompetansebevis)</Label>
+              <Label className="text-xs">{t('resourceDialogs.addCompetency.attachment')}</Label>
               {(file || documentUrl) ? (
                 <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
                   <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="text-xs truncate flex-1">
-                    {file ? file.name : "Dokument fra /dokumenter"}
+                    {file ? file.name : t('resourceDialogs.addCompetency.docFromDocuments')}
                   </span>
                   <Button
                     type="button"
@@ -268,7 +270,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3.5 w-3.5 shrink-0" />
-                    Last opp
+                    {t('resourceDialogs.addCompetency.upload')}
                   </Button>
                   <Button
                     type="button"
@@ -278,7 +280,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
                     onClick={() => setDocPickerOpen(true)}
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0" />
-                    Dokumenter
+                    {t('resourceDialogs.addCompetency.documents')}
                   </Button>
                   <input
                     ref={fileInputRef}
@@ -298,7 +300,7 @@ export const AddCompetencyDialog = ({ open, onOpenChange, onCompetencyAdded, per
               )}
             </div>
 
-            <Button type="submit" className="w-full">Legg til kompetanse</Button>
+            <Button type="submit" className="w-full">{t('resourceDialogs.addCompetency.submit')}</Button>
           </form>
         </DialogContent>
       </Dialog>
