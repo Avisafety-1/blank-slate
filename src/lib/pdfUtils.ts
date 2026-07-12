@@ -188,12 +188,18 @@ export const addSignatureToPdf = async (
 /**
  * Formats a duration in minutes to a human-readable string.
  */
-export const formatDurationForPdf = (minutes: number): string => {
+export const formatDurationForPdf = (
+  minutes: number,
+  language: AppLanguage = getCurrentLanguage(),
+): string => {
+  const t = getFixedT(language, "pdf");
+  const hoursShort = t("common.hoursShort", language === "en" ? "h" : "t");
+  const minutesShort = t("common.minutesShort", "min");
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours === 0) return `${mins} min`;
-  if (mins === 0) return `${hours} t`;
-  return `${hours} t ${mins} min`;
+  if (hours === 0) return `${mins} ${minutesShort}`;
+  if (mins === 0) return `${hours} ${hoursShort}`;
+  return `${hours} ${hoursShort} ${mins} ${minutesShort}`;
 };
 
 /**
@@ -204,7 +210,8 @@ export const addPdfHeader = (
   doc: jsPDF,
   title: string,
   subtitle?: string,
-  companyName?: string
+  companyName?: string,
+  language: AppLanguage = getCurrentLanguage(),
 ): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 16;
@@ -233,7 +240,10 @@ export const addPdfHeader = (
   
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text(`Eksportert: ${formatDateForPdf(new Date(), "dd.MM.yyyy 'kl.' HH:mm")}`, pageWidth / 2, yPos, { align: "center" });
+  const t = getFixedT(language, "pdf");
+  const dateFmt = language === "en" ? "dd.MM.yyyy 'at' HH:mm" : "dd.MM.yyyy 'kl.' HH:mm";
+  const dateStr = formatDateForPdf(new Date(), dateFmt, language);
+  doc.text(t("common.exportedAt", { date: dateStr, defaultValue: `Eksportert: ${dateStr}` }), pageWidth / 2, yPos, { align: "center" });
   doc.setTextColor(0);
   yPos += 15;
   
