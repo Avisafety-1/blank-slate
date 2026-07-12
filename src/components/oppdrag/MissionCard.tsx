@@ -901,13 +901,13 @@ export const MissionCard = ({
       {/* Notes */}
       <div className="pt-2 border-t border-border/50">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <p className="text-xs font-semibold text-muted-foreground">MERKNADER</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t('pages.missions.card.notesHeader')}</p>
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            title="Legg til merknad"
-            aria-label="Legg til merknad"
+            title={t('pages.missions.card.addNote')}
+            aria-label={t('pages.missions.card.addNote')}
             className="h-8 w-8 shrink-0"
             onClick={() => setNotesDialogOpen(true)}
           >
