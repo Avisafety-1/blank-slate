@@ -233,8 +233,8 @@ export const MissionCard = ({
                 {mission.checklist_ids.every((id: string) =>
                   mission.checklist_completed_ids?.includes(id)
                 )
-                  ? 'Sjekkliste utført'
-                  : 'Utfør sjekkliste/r'}
+                  ? t('pages.missions.card.checklistCompleted')
+                  : t('pages.missions.card.executeChecklist')}
               </Badge>
             )}
             {mission.notam_text && (
