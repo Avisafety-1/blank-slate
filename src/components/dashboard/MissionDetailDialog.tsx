@@ -262,7 +262,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
               >
                 <ShieldCheck className="w-3 h-3 mr-1" />
-                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+                {ninoxApproved ? t('dashboard.missionDetail.ninoxApproved') : t('dashboard.missionDetail.ninoxNotApproved')}
               </Badge>
             )}
           </div>
