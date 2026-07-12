@@ -532,7 +532,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                       disabled={downloading}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      {downloading ? "Laster ned..." : "Last ned"}
+                      {downloading ? t('dashboard.documents.downloading') : t('dashboard.documents.download', 'Download')}
                     </Button>
                   </>
                 )}
@@ -545,7 +545,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                   onClick={() => setDeleteDialogOpen(true)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Slett dokument
+                  {t('dashboard.documents.delete')}
                 </Button>
               )}
             </div>
@@ -556,7 +556,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Er du sikker?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dashboard.documents.confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               Dette vil permanent slette dokumentet <span className="break-all [overflow-wrap:anywhere]">"{document.tittel}"</span>. Denne handlingen kan ikke angres.
             </AlertDialogDescription>

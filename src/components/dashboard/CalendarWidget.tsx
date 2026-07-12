@@ -546,7 +546,12 @@ export const CalendarWidget = () => {
                             <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
                           )}
                           <Badge variant="outline" className="text-xs">
-                            {event.type}
+                            {event.type === 'Oppdrag' ? t('dashboard.calendar.eventTypes.mission')
+                              : event.type === 'Vedlikehold' ? t('dashboard.calendar.eventTypes.maintenance')
+                              : event.type === 'Dokument' ? t('dashboard.calendar.eventTypes.document')
+                              : event.type === 'Møte' ? t('dashboard.calendar.eventTypes.meeting')
+                              : event.type === 'Hendelse' ? t('dashboard.calendar.eventTypes.incident')
+                              : event.type}
                           </Badge>
                         </div>
                         <div className={cn("text-xs font-medium", event.color)}>

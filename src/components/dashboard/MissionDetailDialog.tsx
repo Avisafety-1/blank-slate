@@ -158,12 +158,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 {onEditRoute && (
                   <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
                     <Route className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Rediger rute</span>
+                    <span className="hidden sm:inline">{t('dashboard.missionDetail.editRoute')}</span>
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={handleEditClick}>
                   <Pencil className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Rediger</span>
+                  <span className="hidden sm:inline">{t('dashboard.missionDetail.edit')}</span>
                 </Button>
               </div>
             </div>
@@ -174,7 +174,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               className="w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
-              Risikovurdering
+              {t('dashboard.missionDetail.riskAssessment')}
             </Button>
             <Button 
               size="sm" 
@@ -223,7 +223,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 >
                   {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
                   {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                  {approvalStatus === 'pending_approval' ? 'Venter godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
+                  {approvalStatus === 'pending_approval' ? t('dashboard.missionDetail.pendingApproval') : approvalStatus === 'approved' ? t('dashboard.missionDetail.approved') : t('dashboard.missionDetail.notApproved')}
                 </Badge>
               );
             })()}
@@ -262,7 +262,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
               >
                 <ShieldCheck className="w-3 h-3 mr-1" />
-                {ninoxApproved ? 'Godkjent i Ninox' : 'Ikke godkjent i Ninox'}
+                {ninoxApproved ? t('dashboard.missionDetail.ninoxApproved') : t('dashboard.missionDetail.ninoxNotApproved')}
               </Badge>
             )}
           </div>
@@ -271,7 +271,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Lokasjon</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.missionDetail.location')}</p>
                 <p className="text-base break-all">{currentMission.lokasjon}</p>
               </div>
             </div>
@@ -323,7 +323,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Tidspunkt</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('dashboard.missionDetail.time')}</p>
                 <p className="text-base">
                   {format(new Date(currentMission.tidspunkt), "dd. MMMM yyyy, HH:mm", { locale: nb })}
                 </p>
@@ -333,13 +333,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           <div className="border-t border-border pt-4">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-sm font-medium text-muted-foreground">Merknader</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('dashboard.missionDetail.notes')}</p>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                title="Legg til merknad"
-                aria-label="Legg til merknad"
+                title={t('dashboard.missionDetail.addNote')}
+                aria-label={t('dashboard.missionDetail.addNote')}
                 className="h-8 w-8 shrink-0"
                 onClick={() => setNotesDialogOpen(true)}
               >
@@ -349,7 +349,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             {currentMission.merknader ? (
               <p className="text-sm whitespace-pre-wrap">{currentMission.merknader}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">Ingen merknader</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.missionDetail.noNotes')}</p>
             )}
           </div>
 
@@ -360,7 +360,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           {/* Flight log analysis */}
           {missionFlightLogs && missionFlightLogs.length > 0 && (
             <div className="border-t border-border pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Flylogger ({missionFlightLogs.length})</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">{t('dashboard.missionDetail.flightLogs')} ({missionFlightLogs.length})</p>
               <div className="space-y-1.5">
                 {missionFlightLogs.map((log: any) => (
                   <div key={log.id} className="flex items-center justify-between gap-2 bg-muted/50 rounded-md px-3 py-2 overflow-hidden">
@@ -512,7 +512,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('dashboard.missionDetail.notes')}</p>
                   <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">{currentMission.merknader}</p>
                 </div>
               </div>

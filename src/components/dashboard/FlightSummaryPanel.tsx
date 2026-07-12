@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
@@ -35,6 +36,7 @@ const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
 export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelProps) => {
+  const { t } = useTranslation();
   const s = summary;
   const isArdu = s.source === "ardupilot";
 
@@ -45,18 +47,18 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
   const batteryWarn = !showBatteryAsVoltage && s.minBatteryPct != null && s.minBatteryPct >= 0 && s.minBatteryPct < 20;
 
   const primary: Array<{ icon: any; label: string; value: string | null; warn?: boolean }> = [
-    { icon: Clock, label: "Flytid", value: s.durationMinutes != null ? `${s.durationMinutes} min` : null },
-    { icon: Zap, label: "Maks hastighet", value: s.maxSpeedMs != null ? `${s.maxSpeedMs} m/s` : null },
-    { icon: Battery, label: "Min. batteri", value: batteryDisplay, warn: batteryWarn },
-    { icon: MapPin, label: "Datapunkter", value: s.totalRows != null ? `${s.totalRows}` : null },
+    { icon: Clock, label: t('dashboard.flightAnalysis.labels.flightTime'), value: s.durationMinutes != null ? `${s.durationMinutes} min` : null },
+    { icon: Zap, label: t('dashboard.flightAnalysis.labels.maxSpeed'), value: s.maxSpeedMs != null ? `${s.maxSpeedMs} m/s` : null },
+    { icon: Battery, label: t('dashboard.flightAnalysis.labels.minBattery'), value: batteryDisplay, warn: batteryWarn },
+    { icon: MapPin, label: t('dashboard.flightAnalysis.labels.dataPoints'), value: s.totalRows != null ? `${s.totalRows}` : null },
   ];
 
   const extended: Array<{ icon: any; label: string; value: string | null; warn?: boolean }> = [
-    { icon: Route, label: "Distanse", value: s.totalDistanceM != null ? formatDistance(s.totalDistanceM) : null },
-    { icon: Mountain, label: "Maks høyde", value: s.maxAltitudeM != null ? `${s.maxAltitudeM} m` : null },
+    { icon: Route, label: t('dashboard.flightAnalysis.labels.distance'), value: s.totalDistanceM != null ? formatDistance(s.totalDistanceM) : null },
+    { icon: Mountain, label: t('dashboard.flightAnalysis.labels.maxAltitude'), value: s.maxAltitudeM != null ? `${s.maxAltitudeM} m` : null },
     {
       icon: Satellite,
-      label: "GPS sat.",
+      label: t('dashboard.flightAnalysis.labels.gpsSat'),
       value: s.minGpsSat != null
         ? `${s.minGpsSat}${s.maxGpsSat != null ? ` – ${s.maxGpsSat}` : ""}`
         : null,
@@ -64,18 +66,18 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
     },
     {
       icon: Thermometer,
-      label: "Batt. temp",
+      label: t('dashboard.flightAnalysis.labels.batteryTemp'),
       value: s.batteryTempMaxC != null
         ? `${s.batteryTempMinC != null ? `${s.batteryTempMinC} – ` : ""}${s.batteryTempMaxC}°C`
         : null,
       warn: (s.batteryTempMaxC != null && s.batteryTempMaxC > 50) || (s.batteryTempMinC != null && s.batteryTempMinC < 5),
     },
-    { icon: Zap, label: "Min. spenning", value: s.batteryVoltageMinV != null ? `${s.batteryVoltageMinV} V` : null },
-    { icon: Ruler, label: "Maks avstand", value: s.maxDistanceM != null ? formatDistance(s.maxDistanceM) : null },
-    { icon: Mountain, label: "Maks V-fart", value: s.maxVSpeedMs != null ? `${s.maxVSpeedMs} m/s` : null },
+    { icon: Zap, label: t('dashboard.flightAnalysis.labels.minVoltage'), value: s.batteryVoltageMinV != null ? `${s.batteryVoltageMinV} V` : null },
+    { icon: Ruler, label: t('dashboard.flightAnalysis.labels.maxDistance'), value: s.maxDistanceM != null ? formatDistance(s.maxDistanceM) : null },
+    { icon: Mountain, label: t('dashboard.flightAnalysis.labels.maxVSpeed'), value: s.maxVSpeedMs != null ? `${s.maxVSpeedMs} m/s` : null },
     {
       icon: Zap,
-      label: "Celleavvik",
+      label: t('dashboard.flightAnalysis.labels.cellDeviation'),
       value: s.batteryCellDeviationV != null ? `${s.batteryCellDeviationV.toFixed(3)} V` : null,
       warn: s.batteryCellDeviationV != null && s.batteryCellDeviationV > 0.1,
     },
@@ -139,7 +141,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/30">
           <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
           <p className="text-sm font-medium text-destructive">
-            Return to Home (RTH) ble utløst under denne flygingen
+            {t('dashboard.flightAnalysis.rthTriggered')}
           </p>
         </div>
       )}
@@ -148,7 +150,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
             <p className="text-xs font-medium text-muted-foreground">
-              Hendelser under flyging ({mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0)})
+              {t('dashboard.flightAnalysis.flightEvents', { count: mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0) })}
             </p>
             <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
           </CollapsibleTrigger>
@@ -173,7 +175,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
                   <Info className="w-3 h-3 shrink-0" />
-                  <span>APP_WARNING ({appWarningEvents.reduce((s, g) => s + g.count, 0)} hendelser)</span>
+                  <span>{t('dashboard.flightAnalysis.appWarnings', { count: appWarningEvents.reduce((s, g) => s + g.count, 0) })}</span>
                   <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 mt-1">

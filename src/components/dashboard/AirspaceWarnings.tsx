@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -37,6 +38,7 @@ interface AirspaceWarningsProps {
 }
 
 export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarnings, onAirspaceResult, showAll }: AirspaceWarningsProps) => {
+  const { t } = useTranslation();
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -271,9 +273,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         {isCaution && <AlertCircle className="h-5 w-5" />}
         {isNote && <Info className="h-5 w-5" />}
         <AlertTitle className="font-semibold text-foreground">
-          {isWarning && "ADVARSEL"}
-          {isCaution && "FORSIKTIGHET"}
-          {isNote && "INFORMASJON"}
+          {isWarning && t('dashboard.airspaceWarnings.warning')}
+          {isCaution && t('dashboard.airspaceWarnings.caution')}
+          {isNote && t('dashboard.airspaceWarnings.information')}
         </AlertTitle>
         <AlertDescription className="text-sm mt-1 text-foreground">{warning.message}</AlertDescription>
       </Alert>
@@ -306,7 +308,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2 cursor-pointer"
             >
               {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span>+{remainingCount} {remainingCount === 1 ? 'annen advarsel' : 'andre advarsler'}</span>
+              <span>+{remainingCount} {remainingCount === 1 ? t('dashboard.airspaceWarnings.otherWarning') : t('dashboard.airspaceWarnings.otherWarnings')}</span>
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-2 mt-2 overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">

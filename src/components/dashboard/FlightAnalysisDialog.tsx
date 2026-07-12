@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import { FlightAnalysisTimeline } from "./FlightAnalysisTimeline";
 import { FlightSummaryPanel, type FlightSummary } from "./FlightSummaryPanel";
@@ -56,6 +57,7 @@ const getSpeedColor = (speed: number, maxSpeed: number) => {
 };
 
 export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName }: FlightAnalysisDialogProps) => {
+  const { t, i18n } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mapReady, setMapReady] = useState(false);
   const [tileError, setTileError] = useState(false);
@@ -377,26 +379,26 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
         <DialogHeader className="pb-0">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <BarChart3 className="w-5 h-5 text-primary" />
-            Flyanalyse
+            {t('dashboard.flightAnalysis.title')}
             {droneName && <span className="text-muted-foreground font-normal">— {droneName}</span>}
           </DialogTitle>
-          <DialogDescription className="sr-only">Detaljert flyanalyse med kart og telemetri</DialogDescription>
+          <DialogDescription className="sr-only">{t('dashboard.flightAnalysis.description')}</DialogDescription>
           <div className="flex items-center gap-2 flex-wrap">
             {flightDate && (
               <Badge variant="outline" className="text-xs">
-                {new Date(flightDate).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {new Date(flightDate).toLocaleDateString(i18n.language?.startsWith('en') ? 'en-GB' : 'nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
               </Badge>
             )}
-            <Badge variant="outline" className="text-xs">{positions.length} datapunkter</Badge>
+            <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
             {!hasAdvancedData && (
               <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="w-3 h-3 mr-1" />
-                Begrenset telemetri (importert før utvidet analyse)
+                {t('dashboard.flightAnalysis.limitedTelemetry')}
               </Badge>
             )}
             {events.length > 0 && (
               <Badge variant="outline" className="text-xs border-destructive/50 text-destructive">
-                {events.length} hendelser
+                {t('dashboard.flightAnalysis.events', { count: events.length })}
               </Badge>
             )}
           </div>
@@ -417,7 +419,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Tile error fallback */}
           {tileError && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded-lg z-[5]">
-              <p className="text-sm text-muted-foreground">Kartet kunne ikke lastes – prøv å åpne analysen på nytt</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.flightAnalysis.mapLoadError')}</p>
             </div>
           )}
 
@@ -430,7 +432,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   variant={showSpeedTrail ? "default" : "secondary"}
                   className="h-8 w-8 rounded-lg shadow-md"
                   onClick={() => setShowSpeedTrail(v => !v)}
-                  title="Fargelegg rute etter hastighet"
+                  title={t('dashboard.flightAnalysis.colorRouteBySpeed')}
                 >
                   <Gauge className="w-4 h-4" />
                 </Button>
@@ -441,7 +443,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                   variant={showWarnings ? "default" : "secondary"}
                   className="h-8 w-8 rounded-lg shadow-md"
                   onClick={() => setShowWarnings(v => !v)}
-                  title="Vis advarsler på kart"
+                  title={t('dashboard.flightAnalysis.showAlerts')}
                 >
                   <AlertTriangle className="w-4 h-4" />
                 </Button>
@@ -481,18 +483,18 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           {/* Speed legend */}
           {mapReady && showSpeedTrail && (
             <div className="absolute bottom-2 left-2 z-10 bg-background/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1.5 text-[10px] border border-border shadow-sm">
-              <span className="text-muted-foreground">Sakte</span>
+              <span className="text-muted-foreground">{t('dashboard.flightAnalysis.slow')}</span>
               <div className="w-12 h-2 rounded-full" style={{
                 background: 'linear-gradient(to right, hsl(142,76%,36%), hsl(45,93%,47%), hsl(0,84%,60%))'
               }} />
-              <span className="text-muted-foreground">Rask</span>
+              <span className="text-muted-foreground">{t('dashboard.flightAnalysis.fast')}</span>
             </div>
           )}
 
           {/* Attitude indicator overlay — fills map height on sm+ */}
           {mapReady && positions[currentIndex]?.pitch !== undefined && (
             <div className="absolute top-2 right-2 bottom-2 z-10 w-[108px] sm:w-auto">
-              <Suspense fallback={<div className="w-full h-full rounded-lg bg-background/80 animate-pulse flex items-center justify-center"><span className="text-[11px] text-muted-foreground">Laster 3D-modell…</span></div>}>
+              <Suspense fallback={<div className="w-full h-full rounded-lg bg-background/80 animate-pulse flex items-center justify-center"><span className="text-[11px] text-muted-foreground">{t('dashboard.flightAnalysis.loading3DModel')}</span></div>}>
                 <Drone3DViewer
                   pitch={positions[currentIndex]?.pitch ?? 0}
                   roll={positions[currentIndex]?.roll ?? 0}

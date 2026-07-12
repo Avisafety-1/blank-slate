@@ -352,7 +352,10 @@
       "expiringSoonTitle": "Dokumentet nærmer seg utløp",
       "expiringSoonMessage": "Vennligst sørg for fornyelse innen utløpsdato.",
       "openWebsite": "Åpne nettside",
-      "open": "Åpne"
+      "open": "Åpne",
+      "delete": "Slett dokument",
+      "downloading": "Laster ned...",
+      "confirmDeleteTitle": "Er du sikker?"
     },
     "calendar": {
       "title": "Kalender",
@@ -555,7 +558,59 @@
       "batteryCapacity": "Kapasitet",
       "batteryMinVoltage": "Min spenning",
       "batteryMaxTemp": "Maks temp",
-      "batteryCellDeviation": "Celleavvik"
+      "batteryCellDeviation": "Celleavvik",
+      "title": "Flyanalyse",
+      "description": "Detaljert flyanalyse med kart og telemetri",
+      "dataPoints": "{{count}} datapunkter",
+      "events": "{{count}} hendelser",
+      "appWarnings": "APP_WARNING ({{count}} hendelser)",
+      "limitedTelemetry": "Begrenset telemetri (importert før utvidet analyse)",
+      "flightEvents": "Hendelser under flyging ({{count}})",
+      "rthTriggered": "Return to Home (RTH) ble utløst under denne flygingen",
+      "mapLoadError": "Kartet kunne ikke lastes – prøv å åpne analysen på nytt",
+      "colorRouteBySpeed": "Fargelegg rute etter hastighet",
+      "showAlerts": "Vis advarsler på kart",
+      "slow": "Sakte",
+      "fast": "Rask",
+      "loading3DModel": "Laster 3D-modell…",
+      "labels": {
+        "flightTime": "Flytid",
+        "maxSpeed": "Maks hastighet",
+        "minBattery": "Min. batteri",
+        "dataPoints": "Datapunkter",
+        "distance": "Distanse",
+        "maxAltitude": "Maks høyde",
+        "gpsSat": "GPS sat.",
+        "batteryTemp": "Batt. temp",
+        "minVoltage": "Min. spenning",
+        "maxDistance": "Maks avstand",
+        "maxVSpeed": "Maks V-fart",
+        "cellDeviation": "Celleavvik"
+      }
+    },
+    "missionDetail": {
+      "riskAssessment": "Risikovurdering",
+      "notam": "NOTAM",
+      "edit": "Rediger",
+      "editRoute": "Rediger rute",
+      "location": "Lokasjon",
+      "time": "Tidspunkt",
+      "notes": "Merknader",
+      "noNotes": "Ingen merknader",
+      "addNote": "Legg til merknad",
+      "pendingApproval": "Venter godkjenning",
+      "approved": "Godkjent",
+      "notApproved": "Ikke godkjent",
+      "ninoxApproved": "Godkjent i Ninox",
+      "ninoxNotApproved": "Ikke godkjent i Ninox",
+      "flightLogs": "Flylogger"
+    },
+    "airspaceWarnings": {
+      "warning": "ADVARSEL",
+      "caution": "FORSIKTIGHET",
+      "information": "INFORMASJON",
+      "otherWarning": "annen advarsel",
+      "otherWarnings": "andre advarsler"
     },
     "missionMapPreview": {
       "missionPosition": "Oppdragsposisjon",
@@ -2421,6 +2476,11 @@
     }
   },
   "riskAssessment": {
+    "flightMode": "Flygemodus",
+    "vlosDesc": "Visuell kontakt med dronen gjennom hele flygingen",
+    "bvlosDesc": "Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA",
+    "weatherOptions": "Væralternativer",
+    "skipWeather": "Ikke vurder vær",
     "title": "AI Risikovurdering",
     "inputTab": "Input",
     "resultTab": "Resultat",

@@ -405,7 +405,7 @@ export const AISearchBar = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {results.results.missions.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-medium text-sm">Oppdrag ({results.results.missions.length})</h4>
+                <h4 className="font-medium text-sm">{t('nav.missions')} ({results.results.missions.length})</h4>
                 <ul className="space-y-1 text-sm">
                   {results.results.missions.map((m: any) => (
                     <li
