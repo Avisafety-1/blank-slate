@@ -587,7 +587,7 @@ export const DroneLogbookDialog = ({
             <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs sm:text-sm">Type</Label>
+                  <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.type')}</Label>
                   <Select 
                     value={newEntry.entry_type} 
                     onValueChange={(v) => setNewEntry(prev => ({ ...prev, entry_type: v }))}
@@ -596,15 +596,15 @@ export const DroneLogbookDialog = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="merknad">Merknad</SelectItem>
-                      <SelectItem value="hendelse">Hendelse</SelectItem>
-                      <SelectItem value="reparasjon">Reparasjon</SelectItem>
-                      <SelectItem value="annet">Annet</SelectItem>
+                      <SelectItem value="merknad">{t('resourceDialogs.droneLogbook.entryTypes.merknad')}</SelectItem>
+                      <SelectItem value="hendelse">{t('resourceDialogs.droneLogbook.entryTypes.hendelse')}</SelectItem>
+                      <SelectItem value="reparasjon">{t('resourceDialogs.droneLogbook.entryTypes.reparasjon')}</SelectItem>
+                      <SelectItem value="annet">{t('resourceDialogs.droneLogbook.entryTypes.annet')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs sm:text-sm">Dato</Label>
+                  <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.date')}</Label>
                   <Input
                     type="date"
                     className="h-9"
@@ -614,25 +614,25 @@ export const DroneLogbookDialog = ({
                 </div>
               </div>
               <div>
-                <Label>Tittel *</Label>
+                <Label>{t('resourceDialogs.droneLogbook.titleField')}</Label>
                 <Input
                   value={newEntry.title}
                   onChange={(e) => setNewEntry(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Kort beskrivelse"
+                  placeholder={t('resourceDialogs.droneLogbook.titlePlaceholder')}
                 />
               </div>
               <div>
-                <Label>Beskrivelse</Label>
+                <Label>{t('resourceDialogs.droneLogbook.description')}</Label>
                 <Textarea
                   value={newEntry.description}
                   onChange={(e) => setNewEntry(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Utfyllende detaljer (valgfritt)"
+                  placeholder={t('resourceDialogs.droneLogbook.descriptionPlaceholder')}
                   rows={2}
                 />
               </div>
               {/* Image upload */}
               <div>
-                <Label className="text-xs sm:text-sm">Bilde (valgfritt)</Label>
+                <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.image')}</Label>
                 {imagePreviewUrl ? (
                   <div className="relative inline-block mt-1">
                     <img
