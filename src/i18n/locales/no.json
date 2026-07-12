@@ -795,6 +795,7 @@
     "reporting": "Rapporterer...",
     "saveChanges": "Lagre endringer",
     "report": "Rapporter",
+    "addIncident": "Legg til hendelse",
     "statusValues": {
       "Åpen": "Åpen",
       "Under behandling": "Under behandling",
