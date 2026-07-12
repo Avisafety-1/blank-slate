@@ -6755,5 +6755,27 @@
       "descriptionLabel": "Beskrivelse",
       "loginPrompt": "Logg inn i Avisafe for å følge opp denne hendelsen."
     }
+  },
+  "news": {
+    "editTitle": "Rediger nyhet",
+    "addTitle": "Legg til nyhet",
+    "title": "Tittel",
+    "titlePlaceholder": "Skriv tittel...",
+    "description": "Beskrivelse",
+    "descriptionPlaceholder": "Skriv beskrivelse...",
+    "pinOnTop": "Fest øverst (prioritert)",
+    "visibleToDepartments": "Synlig for alle avdelinger",
+    "visibleToDepartmentsDesc": "Deles automatisk med alle underavdelinger",
+    "cancel": "Avbryt",
+    "add": "Legg til",
+    "save": "Lagre",
+    "saving": "Lagrer...",
+    "adding": "Legger til...",
+    "errorRequired": "Tittel og innhold er påkrevd",
+    "mustBeLoggedIn": "Du må være innlogget",
+    "updated": "Nyhet oppdatert",
+    "added": "Nyhet lagt til",
+    "errorAdd": "Kunne ikke legge til nyhet",
+    "unknown": "Ukjent"
   }
 }

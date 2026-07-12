@@ -6753,5 +6753,27 @@
       "descriptionLabel": "Description",
       "loginPrompt": "Sign in to Avisafe to follow up on this incident."
     }
+  },
+  "news": {
+    "editTitle": "Edit news",
+    "addTitle": "Add news",
+    "title": "Title",
+    "titlePlaceholder": "Write title...",
+    "description": "Description",
+    "descriptionPlaceholder": "Write description...",
+    "pinOnTop": "Pin on top (prioritized)",
+    "visibleToDepartments": "Visible to all departments",
+    "visibleToDepartmentsDesc": "Automatically shared with all sub-departments",
+    "cancel": "Cancel",
+    "add": "Add",
+    "save": "Save",
+    "saving": "Saving...",
+    "adding": "Adding...",
+    "errorRequired": "Title and description are required",
+    "mustBeLoggedIn": "You must be logged in",
+    "updated": "News updated",
+    "added": "News added",
+    "errorAdd": "Could not add news",
+    "unknown": "Unknown"
   }
 }
