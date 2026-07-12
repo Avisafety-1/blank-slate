@@ -264,6 +264,15 @@ const ROOT_CAUSE: DbValueMap = {
   "Ukjent": { en: "Unknown" },
 };
 
+const RESOURCE_STATUS: DbValueMap = {
+  "Grønn": { en: "Green" },
+  "Gul": { en: "Yellow" },
+  "Rød": { en: "Red" },
+};
+
+export const translateResourceStatus = (v: string | null | undefined, lang: AppLanguage = getCurrentLanguage()) =>
+  lookup(RESOURCE_STATUS, v, lang);
+
 function lookup(
   map: DbValueMap,
   value: string | null | undefined,
