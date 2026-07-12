@@ -771,7 +771,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             setFormData({ ...formData, medvirkende_aarsak: next.join(", ") });
                           }}
                         />
-                        {cause.navn}
+                        {translateRootCause(cause.navn)}
                       </label>
                     );
                   })}
