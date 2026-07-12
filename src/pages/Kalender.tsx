@@ -845,31 +845,31 @@ export default function Kalender() {
 
                   {/* Legend */}
                   <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
-                    <h3 className="text-sm font-semibold mb-3">Fargeforklaring</h3>
+                    <h3 className="text-sm font-semibold mb-3">{t('pages.calendar.colorLegend')}</h3>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Oppdrag</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.mission')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Hendelse</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.incident')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Dokument</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.document')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Vedlikehold</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.maintenance')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Nyhet</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.news')}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">Annet</span>
+                        <span className="text-xs sm:text-sm">{t('pages.calendar.other')}</span>
                       </div>
                     </div>
                   </div>
