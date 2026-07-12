@@ -3,6 +3,8 @@
  * Brukes av både 2D (Leaflet bindPopup) og 3D (MapLibre Popup.setHTML),
  * slik at info-boksene ser identiske ut på begge kart.
  */
+import i18n from '@/i18n';
+const tp = (k: string, opts?: any) => i18n.t(`pages.map.popups.${k}`, opts);
 
 export const escapePopupHtml = (s: any): string =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({
