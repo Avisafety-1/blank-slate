@@ -967,7 +967,7 @@ const Hendelser = () => {
             <GlassCard>
               <p className="text-center text-muted-foreground py-8">
                 {searchQuery || selectedStatus !== "Alle" 
-                  ? t('incidents.noIncidentsFound', 'Ingen hendelser funnet med valgte filtre') 
+                  ? t('incidents.card.noMatchingFilters')
                   : t('pages.incidents.noIncidentsReported')}
               </p>
             </GlassCard>
