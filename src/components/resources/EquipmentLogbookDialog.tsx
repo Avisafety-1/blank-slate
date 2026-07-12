@@ -339,7 +339,7 @@ export const EquipmentLogbookDialog = ({
 
   const handleAddEntry = async () => {
     if (!user || !companyId || !newEntry.title.trim()) {
-      toast.error("Fyll inn tittel");
+      toast.error(t('resourceDialogs.equipmentLogbook.toasts.titleRequired'));
       return;
     }
     setIsSaving(true);
