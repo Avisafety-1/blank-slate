@@ -655,6 +655,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
   const { isSuperAdmin } = useRoleCheck();
   const isMobile = useIsMobile();
   const [selectedTemplateType, setSelectedTemplateType] = useState("user_approved");
+  const [selectedLanguage, setSelectedLanguage] = useState<"no" | "en">("no");
   const [template, setTemplate] = useState<EmailTemplate | null>(null);
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
