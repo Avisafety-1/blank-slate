@@ -544,11 +544,11 @@ export const EquipmentLogbookDialog = ({
           <span data-tour="equipment-logbook-add" className="hidden" /><DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Book className="w-5 h-5 text-primary shrink-0" />
-              <span className="break-words hyphens-auto">Loggbok - {equipmentNavn}</span>
+              <span className="break-words hyphens-auto">{t('resourceDialogs.equipmentLogbook.title', { name: equipmentNavn })}</span>
             </DialogTitle>
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
-                Totalt {Number(flyvetimer).toFixed(2)} flyvetimer
+                {t('resourceDialogs.equipmentLogbook.totalHours', { hours: Number(flyvetimer).toFixed(2) })}
               </p>
               <div className="flex gap-2">
                 <Button 
@@ -557,7 +557,7 @@ export const EquipmentLogbookDialog = ({
                   onClick={() => setShowAddEntry(!showAddEntry)}
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Legg til
+                  {t('resourceDialogs.equipmentLogbook.addEntry')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -565,11 +565,12 @@ export const EquipmentLogbookDialog = ({
                   onClick={handleExportPDF}
                 >
                   <FileText className="w-4 h-4 mr-1" />
-                  PDF
+                  {t('resourceDialogs.equipmentLogbook.exportPdf')}
                 </Button>
               </div>
             </div>
           </DialogHeader>
+
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
             <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-2">
