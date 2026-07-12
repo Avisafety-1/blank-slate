@@ -1094,8 +1094,8 @@ const Hendelser = () => {
                           <MessageSquare className="w-4 h-4" />
                           <span>
                             {commentCounts[incident.id] 
-                              ? `${commentCounts[incident.id]} kommentar${commentCounts[incident.id] > 1 ? 'er' : ''}`
-                              : 'Ingen kommentarer'
+                              ? t('incidents.card.commentCount', { count: commentCounts[incident.id] })
+                              : t('incidents.card.noCommentsShort')
                             }
                           </span>
                         </div>
@@ -1109,7 +1109,7 @@ const Hendelser = () => {
                               <div className="flex items-center justify-between mb-1">
                                 <span className="font-medium">{comment.created_by_name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                                  {format(new Date(comment.created_at), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                                 </span>
                               </div>
                               <p className="text-muted-foreground">{comment.comment_text}</p>
