@@ -911,7 +911,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       />
                     </div>
                     <div>
-                      <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">Varsel oppdrag før gul</Label>
+                      <Label htmlFor="varsel_oppdrag" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.warnMissionsField')}</Label>
                       <Input
                         id="varsel_oppdrag"
                         type="number"
