@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Building2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AddNewsDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface AddNewsDialogProps {
 }
 
 export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [tittel, setTittel] = useState("");
   const [innhold, setInnhold] = useState("");
@@ -26,7 +28,6 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
   const [isParentCompany, setIsParentCompany] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Check if current company is a parent company
   useEffect(() => {
     if (!companyId) return;
     const check = async () => {
@@ -40,7 +41,6 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
     check();
   }, [companyId]);
 
-  // Initialize form with news data when editing
   useEffect(() => {
     if (news && open) {
       setTittel(news.tittel || "");
@@ -57,20 +57,17 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!tittel.trim() || !innhold.trim()) {
-      toast.error("Tittel og innhold er påkrevd");
+      toast.error(t("news.errorRequired"));
       return;
     }
-
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Du må være innlogget");
+        toast.error(t("news.mustBeLoggedIn"));
         return;
       }
-
       const { data: profile } = await supabase
         .from('profiles')
         .select('full_name, company_id')
@@ -78,7 +75,6 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
         .single();
 
       if (news) {
-        // Update existing news
         const { error } = await (supabase as any)
           .from('news')
           .update({
@@ -89,11 +85,9 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
             oppdatert_dato: new Date().toISOString()
           })
           .eq('id', news.id);
-
         if (error) throw error;
-        toast.success("Nyhet oppdatert");
+        toast.success(t("news.updated"));
       } else {
-        // Insert new news
         const { error } = await (supabase as any)
           .from('news')
           .insert({
@@ -103,11 +97,10 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
             visible_to_children: isParentCompany ? visibleToChildren : false,
             user_id: user.id,
             company_id: profile?.company_id,
-            forfatter: profile?.full_name || 'Ukjent'
+            forfatter: profile?.full_name || t("news.unknown")
           });
-
         if (error) throw error;
-        toast.success("Nyhet lagt til");
+        toast.success(t("news.added"));
       }
       setTittel("");
       setInnhold("");
@@ -116,7 +109,7 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
       onOpenChange(false);
     } catch (error) {
       console.error("Error adding news:", error);
-      toast.error("Kunne ikke legge til nyhet");
+      toast.error(t("news.errorAdd"));
     } finally {
       setSubmitting(false);
     }
@@ -126,28 +119,28 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>{news ? "Rediger nyhet" : "Legg til nyhet"}</DialogTitle>
+          <DialogTitle>{news ? t("news.editTitle") : t("news.addTitle")}</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="tittel">Tittel</Label>
+            <Label htmlFor="tittel">{t("news.title")}</Label>
             <Input
               id="tittel"
               value={tittel}
               onChange={(e) => setTittel(e.target.value)}
-              placeholder="Skriv tittel..."
+              placeholder={t("news.titlePlaceholder")}
               disabled={submitting}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="innhold">Beskrivelse</Label>
+            <Label htmlFor="innhold">{t("news.description")}</Label>
             <Textarea
               id="innhold"
               value={innhold}
               onChange={(e) => setInnhold(e.target.value)}
-              placeholder="Skriv beskrivelse..."
+              placeholder={t("news.descriptionPlaceholder")}
               rows={4}
               disabled={submitting}
             />
@@ -161,7 +154,7 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
               disabled={submitting}
             />
             <Label htmlFor="pin" className="cursor-pointer">
-              Fest øverst (prioritert)
+              {t("news.pinOnTop")}
             </Label>
           </div>
 
@@ -170,9 +163,9 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-muted-foreground" />
                 <div className="space-y-0.5">
-                  <Label htmlFor="visible-children">Synlig for alle avdelinger</Label>
+                  <Label htmlFor="visible-children">{t("news.visibleToDepartments")}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Deles automatisk med alle underavdelinger
+                    {t("news.visibleToDepartmentsDesc")}
                   </p>
                 </div>
               </div>
@@ -192,10 +185,10 @@ export const AddNewsDialog = ({ open, onOpenChange, news }: AddNewsDialogProps) 
               onClick={() => onOpenChange(false)}
               disabled={submitting}
             >
-              Avbryt
+              {t("news.cancel")}
             </Button>
             <Button type="submit" disabled={submitting}>
-              {submitting ? (news ? "Lagrer..." : "Legger til...") : (news ? "Lagre" : "Legg til")}
+              {submitting ? (news ? t("news.saving") : t("news.adding")) : (news ? t("news.save") : t("news.add"))}
             </Button>
           </div>
         </form>
