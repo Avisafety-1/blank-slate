@@ -463,8 +463,8 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         {!isFileMode && !isLoading && items.length > 0 && (
           <div className="space-y-1 flex-shrink-0">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fremgang</span>
-              <span className="font-medium">{checkedCount} av {totalCount}</span>
+              <span className="text-muted-foreground">{t('resourceDialogs.checklistExecution.fremgang')}</span>
+              <span className="font-medium">{t('resourceDialogs.checklistExecution.avTotal', { done: checkedCount, total: totalCount })}</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
