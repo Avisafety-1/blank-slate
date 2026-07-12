@@ -709,8 +709,8 @@ export function PersonCompetencyDialog({
                                 };
                               });
                               toast({
-                                title: "Feil",
-                                description: "Kunne ikke oppdatere innstilling",
+                                title: t('resourceDialogs.personCompetency.error'),
+                                description: t('resourceDialogs.personCompetency.couldNotUpdateSetting'),
                                 variant: "destructive",
                               });
                             } else {
@@ -719,7 +719,7 @@ export function PersonCompetencyDialog({
                           }}
                         />
                         <Label htmlFor={`affects-status-${competency.id}`} className="text-xs text-muted-foreground">
-                          Påvirker status
+                          {t('resourceDialogs.personCompetency.affectsStatus')}
                         </Label>
                       </div>
                     </>
