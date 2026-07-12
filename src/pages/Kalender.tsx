@@ -64,7 +64,8 @@ const getColorForType = (type: string): string => {
 };
 
 export default function Kalender() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
   const navigate = useNavigate();
   const { user, companyId, ensureValidToken, isAdmin } = useAuth();
   const isMobile = useIsMobile();
