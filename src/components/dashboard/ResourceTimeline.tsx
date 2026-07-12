@@ -329,7 +329,7 @@ export function ResourceTimeline() {
             )}
             {hasConflict && (
               <p className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-                <AlertTriangle className="w-3 h-3" /> Ressurskonflikt
+                <AlertTriangle className="w-3 h-3" /> {t('pages.calendar.resourceTimeline.resourceConflict')}
               </p>
             )}
           </TooltipContent>
