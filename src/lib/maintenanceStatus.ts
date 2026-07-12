@@ -1,4 +1,5 @@
 import { Status } from "@/types";
+import i18n from "@/i18n";
 
 /**
  * Calculates maintenance/inspection status based on the next maintenance date.
@@ -263,7 +264,7 @@ export const calculateDroneAggregatedStatus = (
     );
     const accPriority = STATUS_PRIORITY[accStatus];
     if (accPriority > 0) {
-      affectedItems.push((acc as any).navn || "Tilbehør");
+      affectedItems.push((acc as any).navn || i18n.t("resources.accessoryFallback"));
     }
     worstPriority = Math.max(worstPriority, accPriority);
   }
@@ -276,7 +277,7 @@ export const calculateDroneAggregatedStatus = (
     );
     const eqPriority = STATUS_PRIORITY[eqStatus];
     if (eqPriority > 0) {
-      affectedItems.push((eq as any).navn || "Utstyr");
+      affectedItems.push((eq as any).navn || i18n.t("resources.equipmentFallback"));
     }
     worstPriority = Math.max(worstPriority, eqPriority);
   }

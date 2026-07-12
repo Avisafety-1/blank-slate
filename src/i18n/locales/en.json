@@ -60,7 +60,8 @@
     "noResults": "No results for",
     "processing": "Processing...",
     "other": "Other",
-    "missionFallback": "Mission"
+    "missionFallback": "Mission",
+    "unknown": "Unknown"
   },
   "auth": {
     "signIn": "Sign in",
@@ -618,7 +619,9 @@
     "statusGreen": "Green",
     "statusYellow": "Yellow",
     "statusRed": "Red",
-    "noResultsFiltered": "No results with the selected filters"
+    "noResultsFiltered": "No results with the selected filters",
+    "accessoryFallback": "Accessory",
+    "equipmentFallback": "Equipment"
   },
   "missions": {
     "title": "Title",
