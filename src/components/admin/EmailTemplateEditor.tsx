@@ -817,7 +817,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
 
   useEffect(() => {
     fetchTemplate();
-  }, [activeCompanyId, selectedTemplateType]);
+  }, [activeCompanyId, selectedTemplateType, selectedLanguage]);
 
   const fetchTemplate = async () => {
     if (!activeCompanyId) return;
@@ -829,6 +829,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
         .select("*")
         .eq("company_id", activeCompanyId)
         .eq("template_type", selectedTemplateType)
+        .eq("language", selectedLanguage)
         .maybeSingle();
 
       if (error) throw error;
@@ -899,6 +900,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               .select("id")
               .eq("company_id", company.id)
               .eq("template_type", selectedTemplateType)
+              .eq("language", selectedLanguage)
               .maybeSingle();
             
             if (existingTemplate) {
@@ -914,6 +916,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
               const { error } = await supabase.from("email_templates").insert({
                 company_id: company.id,
                 template_type: selectedTemplateType,
+                language: selectedLanguage,
                 subject,
                 content,
               });
