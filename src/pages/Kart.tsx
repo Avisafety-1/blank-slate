@@ -779,7 +779,7 @@ export default function KartPage() {
                     size="sm"
                     onClick={handleCancelRoute}
                     className="h-8 px-2"
-                    title="Avbryt"
+                    title={t('pages.map.cancelTitle')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
