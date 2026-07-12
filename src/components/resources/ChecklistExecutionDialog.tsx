@@ -11,6 +11,8 @@ import { isDjiController } from "@/lib/deviceDetection";
 // Use local worker bundled with react-pdf's nested pdfjs-dist to guarantee version match
 import pdfWorkerUrl from "react-pdf/node_modules/pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+import { useTranslation } from "react-i18next";
+
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 type FileMode = "image" | "pdf" | "docx" | "document" | null;
