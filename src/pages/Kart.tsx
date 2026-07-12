@@ -1072,7 +1072,7 @@ export default function KartPage() {
             <button
               onClick={() => setSoraOpen(false)}
               className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Lukk SORA volum"
+              aria-label={t('pages.map.closeSoraVolume')}
             >
               <X className="h-4 w-4" />
             </button>
