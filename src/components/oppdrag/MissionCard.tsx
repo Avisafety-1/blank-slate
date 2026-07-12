@@ -192,7 +192,7 @@ export const MissionCard = ({
               >
                 {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
                 {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                {approvalStatus === 'pending_approval' ? 'Venter på godkjenning' : approvalStatus === 'approved' ? 'Godkjent' : 'Ikke godkjent'}
+                {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
               </Badge>
             )}
             {shouldShowAIRiskBadge(mission.aiRisk) && (
