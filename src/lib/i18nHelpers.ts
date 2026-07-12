@@ -178,6 +178,7 @@ const INCIDENT_STATUS: DbValueMap = {
   "Under behandling": { en: "In progress" },
   "Under utredning": { en: "Under investigation" },
   "Tiltak iverksatt": { en: "Action taken" },
+  "Ferdigbehandlet": { en: "Resolved" },
   "Ny": { en: "New" },
   "Løst": { en: "Resolved" },
   "Lukket": { en: "Closed" },
@@ -198,6 +199,13 @@ const INCIDENT_CATEGORY: DbValueMap = {
   "Avvik": { en: "Non-conformance" },
   "Nestenulykke": { en: "Near miss" },
   "Observasjon": { en: "Observation" },
+  "Luft": { en: "Air" },
+  "Bakke": { en: "Ground" },
+  "Luftrom": { en: "Airspace" },
+  "Teknisk": { en: "Technical" },
+  "Operativ": { en: "Operational" },
+  "Miljø": { en: "Environment" },
+  "Sikkerhet": { en: "Security" },
 };
 
 const DOC_CATEGORY: DbValueMap = {
