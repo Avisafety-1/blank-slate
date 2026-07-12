@@ -463,6 +463,14 @@
     "documentDescription": {
       "sora": "Automatisk generert SORA-analyse for oppdrag: {{title}}",
       "ai": "Automatisk generert risikovurdering for oppdrag: {{title}}"
+    },
+    "ssbCalc": {
+      "gridPopulationValue": "{{count}} personer ({{resolution}} m)",
+      "dataSource": "Datakilde: {{value}}",
+      "footprint": "Fotavtrykk: {{value}}",
+      "calculation": "Beregning: {{value}}",
+      "avgInFootprint": "Gjennomsnitt i fotavtrykk: {{value}} personer/km2",
+      "dimensioningPart": "Dimensjonerende del av ruten: {{value}}"
     }
   },
   "userManual": {
@@ -1265,6 +1273,32 @@
     "exportedAt": "Eksportert: {{date}}",
     "unknown": "Ukjent",
     "yes": "Ja",
-    "no": "Nei"
+    "no": "Nei",
+    "signatureLabel": "Signatur:",
+    "hoursShort": "t",
+    "minutesShort": "min"
+  },
+  "flightLogbook": {
+    "title": "Loggbok - {{name}}",
+    "totalFlightTime": "Total flytid",
+    "fromLogged": "Fra loggførte flyturer",
+    "manuallyAdded": "Manuelt lagt til",
+    "headers": {
+      "date": "Dato",
+      "departure": "Avgang",
+      "landing": "Landing",
+      "duration": "Varighet",
+      "drone": "Drone",
+      "mission": "Oppdrag"
+    },
+    "filenamePrefix": "loggbok",
+    "documentDescription": "Personlig flyloggbok eksportert {{date}}",
+    "toasts": {
+      "entryDeleted": "Innlegg slettet",
+      "deleteFailed": "Kunne ikke slette: {{message}}",
+      "missingInfo": "Mangler bruker- eller bedriftsinformasjon",
+      "exported": "Loggbok eksportert til dokumenter",
+      "exportFailed": "Kunne ikke eksportere loggbok"
+    }
   }
 }
