@@ -176,12 +176,14 @@ export const DroneLogbookDialog = ({
             id: `flight-${log.id}`,
             type: 'flight',
             date: new Date(log.flight_date),
-            title: `Flytur: ${log.departure_location} -> ${log.landing_location}`,
-            description: `${log.flight_duration_minutes} min, ${log.movements} bevegelser${log.notes ? ` - ${log.notes}` : ''}`,
-            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || 'Ukjent',
+            title: t('resourceDialogs.droneLogbook.logTitles.flight', { from: log.departure_location, to: log.landing_location }),
+            description: log.notes
+              ? t('resourceDialogs.droneLogbook.logTitles.flightDescriptionWithNotes', { minutes: log.flight_duration_minutes, movements: log.movements, notes: log.notes })
+              : t('resourceDialogs.droneLogbook.logTitles.flightDescription', { minutes: log.flight_duration_minutes, movements: log.movements }),
+            userName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: <Plane className="w-4 h-4" />,
             badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            badgeText: 'Flytur',
+            badgeText: t('resourceDialogs.droneLogbook.badges.flight'),
             flightTrack: {
               ...existingTrack,
               events: existingTrack.events || eventsByLogId.get(log.id) || [],
