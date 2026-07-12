@@ -686,19 +686,19 @@ export const MissionCard = ({
             )}
             {mission.sora.igrc && (
               <div>
-                <p className="text-xs text-muted-foreground">Initial GRC</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.initialGrc')}</p>
                 <p className="font-medium text-foreground">{mission.sora.igrc}</p>
               </div>
             )}
             {mission.sora.fgrc && (
               <div>
-                <p className="text-xs text-muted-foreground">Final GRC</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.finalGrc')}</p>
                 <p className="font-medium text-foreground">{mission.sora.fgrc}</p>
               </div>
             )}
             {mission.sora.residual_risk_level && (
               <div>
-                <p className="text-xs text-muted-foreground">Residual Risk</p>
+                <p className="text-xs text-muted-foreground">{t('pages.missions.card.residualRisk')}</p>
                 <p className="font-medium text-foreground">{mission.sora.residual_risk_level}</p>
               </div>
             )}
