@@ -7,6 +7,7 @@ import { ChevronDown, Users, MapPin, CheckCircle2, XCircle, Loader2 } from "luci
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import type { RoutePoint, SoraSettings } from "@/types/map";
+import { useTranslation } from "react-i18next";
 import {
   computeAdjacentAreaDensity,
   calculateAdjacentRadius,
@@ -44,6 +45,7 @@ export function AdjacentAreaPanel({
   onOpenChange,
   missionId,
 }: AdjacentAreaPanelProps) {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -109,8 +111,8 @@ export function AdjacentAreaPanel({
             outdoorAssemblies,
             requiredContainment: "Error",
             containmentLevel: "Error",
-            statusText: "Feil ved henting av data",
-            error: err?.message ?? "Ukjent feil",
+            statusText: t('adjacentAreaPanel.fetchError'),
+            error: err?.message ?? t('adjacentAreaPanel.unknownError'),
           });
           setLoading(false);
         }
@@ -138,18 +140,16 @@ export function AdjacentAreaPanel({
   const contentJsx = (
     <div className="px-3 py-3 space-y-3 text-sm">
         <p className="text-xs text-muted-foreground">
-          SORA 2.5 krever vurdering av gjennomsnittlig befolkningstetthet i tilstøtende område
-          (fra bakkerisikobuffer til {radiusKm} km radius).
-          I Norge brukes SSB 250 m befolkningsrutenett; utenfor Norge brukes Eurostat GEOSTAT 2021 1 km grid.
+          {t('adjacentAreaPanel.description', { radius: radiusKm })}
         </p>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">UA Size</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.uaSize')}</Label>
             <Select value={uaSizeOverride} onValueChange={(v) => setUaSizeOverride(v as UaSizeKey | "auto")}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="auto">Auto: {UA_SIZE_LABELS[autoUaSize]}</SelectItem>
+                <SelectItem value="auto">{t('adjacentAreaPanel.auto', { label: UA_SIZE_LABELS[autoUaSize] })}</SelectItem>
                 {Object.entries(UA_SIZE_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -158,12 +158,12 @@ export function AdjacentAreaPanel({
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">SAIL</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.sail')}</Label>
             <Select value={sail} onValueChange={(v) => setSail(v as SailLevel)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {["I", "II", "III", "IV", "V", "VI"].map((level) => (
-                  <SelectItem key={level} value={level}>SAIL {level}</SelectItem>
+                  <SelectItem key={level} value={level}>{t('adjacentAreaPanel.sailLevel', { level })}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -171,13 +171,13 @@ export function AdjacentAreaPanel({
 
           {autoUaSize.startsWith("3m") && uaSizeOverride === "auto" && (
             <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2 sm:col-span-2">
-              <Label className="text-xs">Shelter: Er personer i området beskyttet (innendørs/under robust struktur)?</Label>
+              <Label className="text-xs">{t('adjacentAreaPanel.shelter')}</Label>
               <Switch checked={shelterApplicable} onCheckedChange={setShelterApplicable} />
             </div>
           )}
 
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs">Outdoor assemblies innen 1 km av OPS volume</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.outdoorAssemblies')}</Label>
             <Select value={outdoorAssemblies} onValueChange={(v) => setOutdoorAssemblies(v as OutdoorAssembliesCategory)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -193,42 +193,42 @@ export function AdjacentAreaPanel({
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-xs">Henter SSB befolkningsdata…</span>
+            <span className="text-xs">{t('adjacentAreaPanel.fetchingSsb')}</span>
           </div>
         ) : result ? (
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <div className="text-muted-foreground">Tilstøtende radius</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.adjacentRadius')}</div>
               <div className="font-medium">{(result.adjacentRadiusM / 1000).toFixed(1)} km</div>
 
-              <div className="text-muted-foreground">Areal (donut)</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.areaDonut')}</div>
               <div className="font-medium">{result.adjacentAreaKm2.toFixed(1)} km²</div>
 
-              <div className="text-muted-foreground">Innbyggere funnet</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.populationFound')}</div>
               <div className="font-medium">{result.totalPopulation.toLocaleString("nb-NO")}</div>
 
-              <div className="text-muted-foreground">Gj.snitt tetthet</div>
-              <div className="font-medium">{result.avgDensity.toFixed(1)} pers/km²</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.avgDensity')}</div>
+              <div className="font-medium">{result.avgDensity.toFixed(1)} {t('adjacentAreaPanel.densityUnit')}</div>
 
               {(result.dataSource || result.gridResolutionM) && (
                 <>
-                  <div className="text-muted-foreground">Datagrunnlag</div>
+                  <div className="text-muted-foreground">{t('adjacentAreaPanel.dataSource')}</div>
                   <div className="font-medium">{result.dataSource ?? `SSB ${result.gridResolutionM} m`}</div>
                 </>
               )}
 
-              <div className="text-muted-foreground">Tetthetskategori</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.densityCategory')}</div>
               <div className="font-medium">
                 {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
               </div>
 
-              <div className="text-muted-foreground">UA Size</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.uaSize')}</div>
               <div className="font-medium">{UA_SIZE_LABELS[result.uaSize]}</div>
 
-              <div className="text-muted-foreground">Required containment</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.requiredContainment')}</div>
               <div className="font-medium">{result.requiredContainment}</div>
 
-              <div className="text-muted-foreground">Outdoor assemblies</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.outdoorAssembliesLabel')}</div>
               <div className="font-medium">
                 {OUTDOOR_ASSEMBLIES_LABELS[result.outdoorAssemblies]}
               </div>
@@ -264,8 +264,7 @@ export function AdjacentAreaPanel({
           </div>
         ) : coordinates.length < 2 ? (
           <p className="text-xs text-muted-foreground italic py-2">
-            Planlegg en rute (minst 2 punkter) for å beregne tilstøtende område.
-            Oppdragets start-/lokasjonspunkt teller ikke som rute.
+            {t('adjacentAreaPanel.planRouteHint')}
           </p>
         ) : null}
     </div>
@@ -279,7 +278,7 @@ export function AdjacentAreaPanel({
         ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
         : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
     )}>
-      {result.pass ? "OK" : "OVER"}
+      {result.pass ? t('adjacentAreaPanel.ok') : t('adjacentAreaPanel.over')}
     </span>
   ) : null;
 
@@ -294,7 +293,7 @@ export function AdjacentAreaPanel({
       <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 bg-muted/60 hover:bg-muted rounded-lg text-sm font-medium transition-colors">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-blue-500" />
-          <span>Tilstøtende område</span>
+          <span>{t('adjacentAreaPanel.title')}</span>
           {badgeJsx}
         </div>
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />

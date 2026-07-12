@@ -1,5 +1,17 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.4 forts.: FH2 + Adjacent Area
+
+**Migrert:**
+- `src/components/FlightHub2SendDialog.tsx` – hele dialogen (prosjektvelger, rutefil-navn, DJI-modell auto/manuell, flyparametre, sendemodus for rute + SORA-annotasjoner, toasts). Nytt namespace `fh2Dialog.*`.
+- `src/components/AdjacentAreaPanel.tsx` – beskrivelse, UA size/SAIL/Shelter/Outdoor assemblies labels, alle result-etiketter (Tilstøtende radius, Areal, Innbyggere, Gj.snitt tetthet, Datagrunnlag, Tetthetskategori, Required containment), badge (OK/OVER), collapsible-tittel, plan-rute-hint og loading/error tekst. Nytt namespace `adjacentAreaPanel.*`.
+
+Bekreftet at `SoraSettingsPanel.tsx` allerede bruker `useTranslation` – kun tekniske akronymer (SCV/SGRB) og numeriske placeholders står igjen som råtekst. `tsgo --noEmit` OK.
+
+Gjenstår i 1.4: `OpenAIPMap.tsx` (~27 strenger) og `Map3D.tsx` (~70 strenger). Disse migreres i egen kjøring pga. filstørrelse.
+
+
+
 ## 2026-07-12 — i18n Fase 1.4 start: Kart.tsx + ResourceTimeline
 
 **Migrert:**

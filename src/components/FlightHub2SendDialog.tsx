@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
 import { generateDJIKMZ, type DJIExportOptions, DJI_DRONE_MODELS, matchDjiDroneModel } from "@/lib/kmzExport";
 import { bufferPolygon, computeConvexHull, mergeBufferedCorridorPolygons, normalizePolygon } from "@/lib/soraGeometry";
+import { useTranslation } from "react-i18next";
 
 interface FlightHub2SendDialogProps {
   open: boolean;
@@ -50,6 +51,7 @@ export const FlightHub2SendDialog = ({
   pilotPosition,
   initialRouteName,
 }: FlightHub2SendDialogProps) => {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<FH2Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [routeName, setRouteName] = useState(initialRouteName || "Avisafe Route");
@@ -134,15 +136,15 @@ export const FlightHub2SendDialog = ({
           setSelectedProject(data.data.list[0].uuid);
         }
         if (data.data.list.length === 0) {
-          toast.info("Ingen prosjekter finnes under denne organisasjonen i FlightHub 2.");
+          toast.info(t('fh2Dialog.noProjectsInOrg'));
         }
       } else if (data?.code === 200401) {
-        toast.error("Ugyldig eller ikke-autorisert organisasjonsnøkkel. Sjekk nøkkelen under Admin → Mitt selskap.");
+        toast.error(t('fh2Dialog.invalidOrgKey'));
       } else {
-        toast.error(data?.error || data?.message || "Kunne ikke hente prosjekter fra FlightHub 2");
+        toast.error(data?.error || data?.message || t('fh2Dialog.couldNotFetch'));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Feil ved tilkobling til FlightHub 2");
+      toast.error(err?.message || t('fh2Dialog.connectionError'));
     } finally {
       setLoadingProjects(false);
     }
@@ -189,7 +191,7 @@ export const FlightHub2SendDialog = ({
   };
 
   const handleSend = async () => {
-    if (!selectedProject) { toast.error("Velg et prosjekt"); return; }
+    if (!selectedProject) { toast.error(t('fh2Dialog.selectProjectError')); return; }
     setLoading(true);
     let routeKmzSuccess = false;
     let routeAnnotationSuccess = false;
@@ -209,7 +211,7 @@ export const FlightHub2SendDialog = ({
           routeKmzSuccess = true;
         } else {
           const detail = data?.message || data?.raw || JSON.stringify(data);
-          toast.error(`Rutefil: ${detail}`);
+          toast.error(t('fh2Dialog.routeFileError', { detail }));
           console.error("[FH2] finish-upload response:", data);
         }
       } else if (routeMode === "annotation" && route.coordinates.length >= 2) {
@@ -219,18 +221,18 @@ export const FlightHub2SendDialog = ({
             action: "create-annotation",
             projectUuid: selectedProject,
             name: routeName,
-            desc: "Planlagt rute generert av Avisafe",
+            desc: t('fh2Dialog.annotationDesc'),
             geoJson,
             annotationType: 1,
           },
         });
         if (error) {
           console.error("[FH2] route annotation error:", error);
-          toast.error(`Rute-annotasjon: ${error.message}`);
+          toast.error(t('fh2Dialog.routeAnnotationError', { detail: error.message }));
         } else if (data?.code === 0) {
           routeAnnotationSuccess = true;
         } else {
-          toast.error(`Rute-annotasjon: ${data?.message || "Feil"}`);
+          toast.error(t('fh2Dialog.routeAnnotationError', { detail: data?.message || t('fh2Dialog.genericError') }));
         }
       }
 
@@ -246,33 +248,33 @@ export const FlightHub2SendDialog = ({
                 action: "create-annotation",
                 projectUuid: selectedProject,
                 name: `${routeName} – ${zone.label}${partLabel}`,
-                desc: `${zone.label} generert av Avisafe. Høyde: ${soraSettings?.flightAltitude || 120}m`,
+                desc: t('fh2Dialog.zoneDescPrefix', { zone: zone.label, alt: soraSettings?.flightAltitude || 120 }),
                 geoJson,
                 annotationType: 2,
               },
             });
             if (error) {
               console.error(`[FH2] annotation error (${zone.label}${partLabel}):`, error);
-              toast.error(`Annotasjon (${zone.label}${partLabel}): ${error.message}`);
+              toast.error(t('fh2Dialog.annotationError', { zone: `${zone.label}${partLabel}`, detail: error.message }));
             } else if (data?.code === 0) {
               annotationCount++;
             } else {
-              toast.error(`Annotasjon (${zone.label}${partLabel}): ${data?.message || "Feil"}`);
+              toast.error(t('fh2Dialog.annotationError', { zone: `${zone.label}${partLabel}`, detail: data?.message || t('fh2Dialog.genericError') }));
             }
           }
         }
       }
 
       if (routeKmzSuccess || routeAnnotationSuccess || annotationCount > 0) {
-        const parts = [];
-        if (routeKmzSuccess) parts.push("rutefil (KMZ)");
-        if (routeAnnotationSuccess) parts.push("rute som annotasjon");
-        if (annotationCount > 0) parts.push(`${annotationCount} SORA-soner`);
-        toast.success(`Sendt til FlightHub 2: ${parts.join(" og ")}`);
+        const parts: string[] = [];
+        if (routeKmzSuccess) parts.push(t('fh2Dialog.itemRouteKmz'));
+        if (routeAnnotationSuccess) parts.push(t('fh2Dialog.itemRouteAnnotation'));
+        if (annotationCount > 0) parts.push(t('fh2Dialog.itemSoraZones', { count: annotationCount }));
+        toast.success(t('fh2Dialog.sentSummary', { items: parts.join(" + ") }));
         onOpenChange(false);
       }
     } catch (err: any) {
-      toast.error(err?.message || "Feil ved sending");
+      toast.error(err?.message || t('fh2Dialog.sendError'));
     } finally {
       setLoading(false);
     }
@@ -286,27 +288,27 @@ export const FlightHub2SendDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Send til FlightHub 2
+            {t('fh2Dialog.title')}
           </DialogTitle>
           <DialogDescription>
-            Send rutefil og SORA-korridor til DJI FlightHub 2
+            {t('fh2Dialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>FlightHub 2-prosjekt</Label>
+            <Label>{t('fh2Dialog.project')}</Label>
             {loadingProjects ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Henter prosjekter...
+                {t('fh2Dialog.loadingProjects')}
               </div>
             ) : projects.length === 0 ? (
-              <p className="text-sm text-destructive">Ingen prosjekter funnet. Sjekk at organisasjonsnøkkelen er gyldig.</p>
+              <p className="text-sm text-destructive">{t('fh2Dialog.noProjectsFound')}</p>
             ) : (
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Velg prosjekt" />
+                  <SelectValue placeholder={t('fh2Dialog.selectProject')} />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
@@ -318,17 +320,17 @@ export const FlightHub2SendDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Navn på rute</Label>
-            <Input value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder="Skriv inn navn..." />
+            <Label>{t('fh2Dialog.routeName')}</Label>
+            <Input value={routeName} onChange={(e) => setRouteName(e.target.value)} placeholder={t('fh2Dialog.routeNamePlaceholder')} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm">DJI-dronemodell</Label>
+            <Label className="text-sm">{t('fh2Dialog.djiModel')}</Label>
             {autoMatch && !manualDjiModel ? (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
-                  <span>Automatisk gjenkjent: <strong className="text-foreground">{autoMatch.label}</strong></span>
-                  <span className="text-xs">(fra {droneModelName})</span>
+                  <span>{t('fh2Dialog.autoDetected')}: <strong className="text-foreground">{autoMatch.label}</strong></span>
+                  <span className="text-xs">({t('fh2Dialog.fromModel', { model: droneModelName })})</span>
                 </div>
                 <button
                   type="button"
@@ -338,7 +340,7 @@ export const FlightHub2SendDialog = ({
                     DJI_DRONE_MODELS[k].subEnumValue === autoMatch.subEnumValue
                   ) || Object.keys(DJI_DRONE_MODELS)[0])}
                 >
-                  Velg annen modell manuelt
+                  {t('fh2Dialog.chooseManual')}
                 </button>
               </div>
             ) : (
@@ -346,21 +348,21 @@ export const FlightHub2SendDialog = ({
                 {!droneModelName && (
                   <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Ingen drone valgt i SORA-panelet. Velg DJI-modell manuelt – dette påvirker hvordan FlightHub 2 viser ruten.</span>
+                    <span>{t('fh2Dialog.noDroneSelected')}</span>
                   </div>
                 )}
                 {droneModelName && !autoMatch && (
                   <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>Kunne ikke matche «{droneModelName}» til en kjent DJI-modell. Velg manuelt.</span>
+                    <span>{t('fh2Dialog.couldNotMatch', { model: droneModelName })}</span>
                   </div>
                 )}
                 <Select value={manualDjiModel || "__default"} onValueChange={(v) => setManualDjiModel(v === "__default" ? "" : v)}>
                   <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Velg DJI-modell" />
+                    <SelectValue placeholder={t('fh2Dialog.selectDjiModel')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__default">Matrice 30 (standard)</SelectItem>
+                    <SelectItem value="__default">{t('fh2Dialog.defaultMatrice30')}</SelectItem>
                     {DJI_MODEL_OPTIONS.map((m) => (
                       <SelectItem key={m.key} value={m.key}>{m.label}</SelectItem>
                     ))}
@@ -372,7 +374,7 @@ export const FlightHub2SendDialog = ({
                     className="text-xs text-primary underline"
                     onClick={() => setManualDjiModel("")}
                   >
-                    Bruk automatisk gjenkjent modell
+                    {t('fh2Dialog.useAutoDetected')}
                   </button>
                 )}
               </div>
@@ -381,35 +383,35 @@ export const FlightHub2SendDialog = ({
 
           {routeMode === "kmz" && (
             <div className="space-y-3 rounded-md border border-border p-3">
-              <p className="text-sm font-medium text-foreground">Flyparametre</p>
+              <p className="text-sm font-medium text-foreground">{t('fh2Dialog.flightParams')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Flyhastighet (m/s)</Label>
+                  <Label className="text-xs">{t('fh2Dialog.flightSpeed')}</Label>
                   <Input type="number" min={1} max={15} value={speed} onChange={(e) => setSpeed(Math.max(1, Math.min(15, Number(e.target.value))))} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Takeoff-høyde (m)</Label>
+                  <Label className="text-xs">{t('fh2Dialog.takeoffHeight')}</Label>
                   <Input type="number" min={1.2} max={1500} step={0.1} value={takeOffHeight} onChange={(e) => setTakeOffHeight(Math.max(1.2, Math.min(1500, Number(e.target.value))))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Høydemodus</Label>
+                  <Label className="text-xs">{t('fh2Dialog.heightMode')}</Label>
                   <Select value={heightMode} onValueChange={(v) => setHeightMode(v as any)}>
                     <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="relativeToStartPoint">Relativ til startpunkt</SelectItem>
-                      <SelectItem value="EGM96">EGM96 (havnivå)</SelectItem>
+                      <SelectItem value="relativeToStartPoint">{t('fh2Dialog.heightRelative')}</SelectItem>
+                      <SelectItem value="EGM96">{t('fh2Dialog.heightEgm96')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Svingmodus</Label>
+                  <Label className="text-xs">{t('fh2Dialog.turnMode')}</Label>
                   <Select value={turnMode} onValueChange={(v) => setTurnMode(v as any)}>
                     <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="toPointAndStopWithDiscontinuityCurvature">Stopp i punkt</SelectItem>
-                      <SelectItem value="toPointAndPassWithContinuityCurvature">Fly gjennom</SelectItem>
+                      <SelectItem value="toPointAndStopWithDiscontinuityCurvature">{t('fh2Dialog.turnStop')}</SelectItem>
+                      <SelectItem value="toPointAndPassWithContinuityCurvature">{t('fh2Dialog.turnPass')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -419,7 +421,7 @@ export const FlightHub2SendDialog = ({
 
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Sending av rute</Label>
+              <Label className="text-sm font-medium">{t('fh2Dialog.routeSending')}</Label>
               <RadioGroup
                 value={routeMode}
                 onValueChange={(v) => setRouteMode(v as "annotation" | "kmz" | "none")}
@@ -428,20 +430,20 @@ export const FlightHub2SendDialog = ({
                 <div className="flex items-start gap-2">
                   <RadioGroupItem value="annotation" id="mode-annotation" disabled={route.coordinates.length < 2} className="mt-0.5" />
                   <Label htmlFor="mode-annotation" className="text-sm cursor-pointer font-normal">
-                    Send rute som kart-annotasjon (visuell linje)
-                    <span className="text-muted-foreground ml-1">– anbefalt</span>
+                    {t('fh2Dialog.modeAnnotation')}
+                    <span className="text-muted-foreground ml-1">– {t('fh2Dialog.recommended')}</span>
                   </Label>
                 </div>
                 <div className="flex items-start gap-2">
                   <RadioGroupItem value="kmz" id="mode-kmz" disabled={route.coordinates.length < 2} className="mt-0.5" />
                   <Label htmlFor="mode-kmz" className="text-sm cursor-pointer font-normal">
-                    Send rutefil (KMZ for autopilot)
+                    {t('fh2Dialog.modeKmz')}
                   </Label>
                 </div>
                 <div className="flex items-start gap-2">
                   <RadioGroupItem value="none" id="mode-none" className="mt-0.5" />
                   <Label htmlFor="mode-none" className="text-sm cursor-pointer font-normal">
-                    Ikke send rute
+                    {t('fh2Dialog.modeNone')}
                   </Label>
                 </div>
               </RadioGroup>
@@ -449,19 +451,19 @@ export const FlightHub2SendDialog = ({
             <div className="flex items-center gap-2">
               <Checkbox id="send-annotation" checked={sendAnnotation && !!hasAnnotation} onCheckedChange={(c) => setSendAnnotation(!!c)} disabled={!hasAnnotation} />
               <Label htmlFor="send-annotation" className="text-sm cursor-pointer">
-                Send SORA-soner som kartannotasjoner
-                {hasAnnotation && <span className="text-muted-foreground ml-1">({soraZones!.length} soner)</span>}
-                {!hasAnnotation && <span className="text-muted-foreground ml-1">(ikke tilgjengelig)</span>}
+                {t('fh2Dialog.sendSoraAsAnnotations')}
+                {hasAnnotation && <span className="text-muted-foreground ml-1">({t('fh2Dialog.zoneCount', { count: soraZones!.length })})</span>}
+                {!hasAnnotation && <span className="text-muted-foreground ml-1">({t('fh2Dialog.notAvailable')})</span>}
               </Label>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Avbryt</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('fh2Dialog.cancel')}</Button>
           <Button onClick={handleSend} disabled={loading || !selectedProject || (routeMode === "none" && !sendAnnotation)}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Send
+            {t('fh2Dialog.send')}
           </Button>
         </DialogFooter>
       </DialogContent>
