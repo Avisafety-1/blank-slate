@@ -34,12 +34,12 @@ function loadPeriods(): [number, number, number] {
   return DEFAULTS;
 }
 
-function formatHours(minutes: number): string {
+function formatHours(minutes: number, hLabel: string, mLabel: string): string {
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}t`;
-  return `${h}t ${m}m`;
+  if (h === 0) return `${m}${mLabel}`;
+  if (m === 0) return `${h}${hLabel}`;
+  return `${h}${hLabel} ${m}${mLabel}`;
 }
 
 function formatShortDate(d: Date): string {
@@ -74,6 +74,9 @@ function bucketize(
 }
 
 export function PersonnelFlightKpi({ personId }: Props) {
+  const { t } = useTranslation();
+  const hLabel = t('resourceDialogs.personnelFlightKpi.hourShort');
+  const mLabel = t('resourceDialogs.personnelFlightKpi.minuteShort');
   const company = useCompanySettings();
   const [userPeriods, setUserPeriods] = useState<[number, number, number]>(loadPeriods);
   const [editOpen, setEditOpen] = useState(false);
