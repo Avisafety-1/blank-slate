@@ -32,6 +32,7 @@ interface CalendarExportDialogProps {
 type TimeRange = "30" | "90" | "365" | "all";
 
 export function CalendarExportDialog({ open, onOpenChange }: CalendarExportDialogProps) {
+  const { t } = useTranslation();
   const { companyName } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>("90");
   const [loading, setLoading] = useState(false);
