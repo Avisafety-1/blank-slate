@@ -2445,10 +2445,10 @@ export const ProfileDialog = () => {
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg flex items-center gap-2">
                         <CreditCard className="h-5 w-5" />
-                        Abonnement
+                        {t('profile.subscription.title')}
                       </CardTitle>
                       <Button variant="link" size="sm" className="text-xs p-0 h-auto" onClick={() => { setProfileDialogOpen(false); navigate('/priser'); }}>
-                        Se alle planer <ArrowUpRight className="h-3 w-3 ml-1" />
+                        {t('profile.subscription.seeAllPlans')} <ArrowUpRight className="h-3 w-3 ml-1" />
                       </Button>
                     </div>
                   </CardHeader>
@@ -2456,38 +2456,38 @@ export const ProfileDialog = () => {
                     {stripeExempt ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-primary/10 text-primary border-primary/20">Faktureres separat</Badge>
+                          <Badge className="bg-primary/10 text-primary border-primary/20">{t('profile.subscription.billedSeparately')}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Ditt selskap faktureres separat og trenger ikke Stripe-abonnement.
+                          {t('profile.subscription.billedSeparatelyDesc')}
                         </p>
                       </div>
                     ) : subscriptionLoading ? (
-                      <p className="text-sm text-muted-foreground">Sjekker abonnementstatus…</p>
+                      <p className="text-sm text-muted-foreground">{t('profile.subscription.checkingStatus')}</p>
                     ) : subscribed ? (
                       <div className="space-y-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             {isTrial ? (
-                              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Prøveperiode</Badge>
+                              <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">{t('profile.subscription.trial')}</Badge>
                             ) : cancelAtPeriodEnd ? (
-                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Avsluttes</Badge>
+                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">{t('profile.subscription.ending')}</Badge>
                             ) : (
-                              <Badge className="bg-primary/10 text-primary border-primary/20">Aktivt</Badge>
+                              <Badge className="bg-primary/10 text-primary border-primary/20">{t('profile.subscription.active')}</Badge>
                             )}
                           </div>
                           <span className="text-sm font-medium">
                             {subscriptionPlan
                               ? `${subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)} – ${
                                   subscriptionPlan === 'starter' ? '99' : subscriptionPlan === 'grower' ? '199' : '299'
-                                } NOK/bruker/mnd`
+                                } ${t('profile.subscription.currency')}`
                               : 'AviSafe Platform'}
-                            {seatCount > 1 && ` × ${seatCount} brukere`}
+                            {seatCount > 1 && ` × ${seatCount} ${t('profile.subscription.users')}`}
                           </span>
                           {subscriptionAddons.length > 0 && (
                             <span className="text-xs text-muted-foreground">
-                              Tillegg: {subscriptionAddons.map(a => 
-                                a === 'sora_admin' ? 'SORA Admin' : a === 'dji' ? 'DJI' : 'ECCAIRS'
+                              {t('profile.subscription.addonsTitle')}: {subscriptionAddons.map(a => 
+                                a === 'sora_admin' ? t('profile.subscription.addons.soraName') : a === 'dji' ? 'DJI' : 'ECCAIRS'
                               ).join(', ')}
                             </span>
                           )}
@@ -2496,21 +2496,21 @@ export const ProfileDialog = () => {
                           const daysLeft = Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
                           return (
                             <p className="text-sm text-blue-600 break-words">
-                              {daysLeft} {daysLeft === 1 ? 'dag' : 'dager'} igjen av prøveperioden
+                              {t('profile.subscription.daysLeft', { count: daysLeft })}
                               <span className="block text-xs text-blue-500">
-                                Utløper {new Date(trialEnd).toLocaleDateString('nb-NO')}
+                                {t('profile.subscription.expiresOn', { date: new Date(trialEnd).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO') })}
                               </span>
                             </p>
                           );
                         })()}
                         {subscriptionEnd && subscriptionEnd !== 'unknown' && !isTrial && (
                           <p className="text-sm text-muted-foreground">
-                            {cancelAtPeriodEnd ? 'Utløper' : 'Neste fornyelse'}: {new Date(subscriptionEnd).toLocaleDateString('nb-NO')}
+                            {cancelAtPeriodEnd ? t('profile.subscription.expires') : t('profile.subscription.nextRenewal')}: {new Date(subscriptionEnd).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO')}
                           </p>
                         )}
                         {cancelAtPeriodEnd && (
                           <p className="text-xs text-orange-600 break-words">
-                            Abonnementet avsluttes ved periodens slutt. Reaktiver via «Administrer abonnement».
+                            {t('profile.subscription.endsAtPeriod')}
                           </p>
                         )}
 
