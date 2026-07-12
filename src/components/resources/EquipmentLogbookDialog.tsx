@@ -838,7 +838,7 @@ export const EquipmentLogbookDialog = ({
 
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> Min spenning</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.minVoltage')}</p>
                             <p className={`text-lg font-bold ${voltageColor}`}>
                               {latestVoltageMin != null ? `${latestVoltageMin.toFixed(2)}V` : '—'}
                             </p>
