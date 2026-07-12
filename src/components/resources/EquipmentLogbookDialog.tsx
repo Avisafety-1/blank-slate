@@ -785,8 +785,9 @@ export const EquipmentLogbookDialog = ({
                     <div className="flex items-center justify-center py-8 text-muted-foreground">
                       <div className="text-center space-y-2">
                         <Battery className="w-8 h-8 mx-auto opacity-50" />
-                        <p>Ingen batterihistorikk funnet</p>
-                        <p className="text-xs">Importer flylogger med dette batteriet for å se trender</p>
+                        <p>{t('resourceDialogs.equipmentLogbook.battery.empty')}</p>
+                        <p className="text-xs">{t('resourceDialogs.equipmentLogbook.battery.emptyHint')}</p>
+
                       </div>
                     </div>
                   ) : (() => {
