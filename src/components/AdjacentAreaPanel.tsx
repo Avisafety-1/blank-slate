@@ -198,37 +198,37 @@ export function AdjacentAreaPanel({
         ) : result ? (
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <div className="text-muted-foreground">Tilstøtende radius</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.adjacentRadius')}</div>
               <div className="font-medium">{(result.adjacentRadiusM / 1000).toFixed(1)} km</div>
 
-              <div className="text-muted-foreground">Areal (donut)</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.areaDonut')}</div>
               <div className="font-medium">{result.adjacentAreaKm2.toFixed(1)} km²</div>
 
-              <div className="text-muted-foreground">Innbyggere funnet</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.populationFound')}</div>
               <div className="font-medium">{result.totalPopulation.toLocaleString("nb-NO")}</div>
 
-              <div className="text-muted-foreground">Gj.snitt tetthet</div>
-              <div className="font-medium">{result.avgDensity.toFixed(1)} pers/km²</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.avgDensity')}</div>
+              <div className="font-medium">{result.avgDensity.toFixed(1)} {t('adjacentAreaPanel.densityUnit')}</div>
 
               {(result.dataSource || result.gridResolutionM) && (
                 <>
-                  <div className="text-muted-foreground">Datagrunnlag</div>
+                  <div className="text-muted-foreground">{t('adjacentAreaPanel.dataSource')}</div>
                   <div className="font-medium">{result.dataSource ?? `SSB ${result.gridResolutionM} m`}</div>
                 </>
               )}
 
-              <div className="text-muted-foreground">Tetthetskategori</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.densityCategory')}</div>
               <div className="font-medium">
                 {POPULATION_DENSITY_LABELS[result.populationDensityCategory]}
               </div>
 
-              <div className="text-muted-foreground">UA Size</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.uaSize')}</div>
               <div className="font-medium">{UA_SIZE_LABELS[result.uaSize]}</div>
 
-              <div className="text-muted-foreground">Required containment</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.requiredContainment')}</div>
               <div className="font-medium">{result.requiredContainment}</div>
 
-              <div className="text-muted-foreground">Outdoor assemblies</div>
+              <div className="text-muted-foreground">{t('adjacentAreaPanel.outdoorAssembliesLabel')}</div>
               <div className="font-medium">
                 {OUTDOOR_ASSEMBLIES_LABELS[result.outdoorAssemblies]}
               </div>
