@@ -310,9 +310,9 @@ export default function KartPage() {
     try {
       const parsed = await parseKmlOrKmz(file);
       setCurrentRoute(parsed);
-      toast.success(`KML importert: ${parsed.coordinates.length} punkter · ${parsed.totalDistance.toFixed(2)} km`);
+      toast.success(t('pages.map.kmlImported', { count: parsed.coordinates.length, distance: parsed.totalDistance.toFixed(2) }));
     } catch (err: any) {
-      toast.error(err?.message || 'Import feilet');
+      toast.error(err?.message || t('pages.map.importFailed'));
     } finally {
       setImportingKml(false);
       if (kmlInputRef.current) kmlInputRef.current.value = '';
@@ -364,12 +364,12 @@ export default function KartPage() {
         .eq("id", editingMissionId);
       
       if (error) {
-        toast.error("Kunne ikke oppdatere ruten");
+        toast.error(t('pages.map.routeUpdateFailed'));
         console.error("Route update error:", error);
         return;
       }
       
-      toast.success("Rute og SORA-grunnlag oppdatert");
+      toast.success(t('pages.map.routeSavedWithSora'));
       // Hold brukeren i route-planning-modus så ruten fortsatt er synlig/redigerbar
       return;
     }
@@ -460,7 +460,7 @@ export default function KartPage() {
       setMissionFlightTracks(tracks.length ? tracks : null);
 
       if (error || !data) {
-        toast.error("Fant ikke oppdraget");
+        toast.error(t('pages.map.missionNotFound'));
       } else {
         setEditingMissionStatus((data as any).status ?? null);
         const route = (data.route as any) as RouteData | null;
@@ -473,7 +473,7 @@ export default function KartPage() {
             if (first) setPendingInitialCenter([first.lat, first.lng]);
           }
           if (!tracks.length) {
-            toast.message("Oppdraget har ingen lagret rute");
+            toast.message(t('pages.map.missionHasNoSavedRoute'));
           }
         } else {
           // Centroid of route coordinates
@@ -549,7 +549,7 @@ export default function KartPage() {
     setPilotPosition(position);
     setIsPlacingPilot(false);
     if (position) {
-      toast.success("Pilotposisjon satt");
+      toast.success(t('pages.map.pilotPositionSet'));
     }
   }, []);
 
@@ -606,7 +606,7 @@ export default function KartPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-foreground">Laster...</p>
+        <p className="text-foreground">{t('pages.map.loading')}</p>
       </div>
     );
   }
@@ -633,10 +633,10 @@ export default function KartPage() {
                 <div className="flex min-w-0 flex-1 items-start gap-1.5">
                   <Route className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
-                    <h1 className="truncate text-sm font-semibold text-foreground">Planlegg flyrute</h1>
+                    <h1 className="truncate text-sm font-semibold text-foreground">{t('pages.map.planRoute')}</h1>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                      {t('pages.map.points', { count: currentRoute.coordinates.length })}
                       {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                     </p>
                   </div>
@@ -650,7 +650,7 @@ export default function KartPage() {
                     onClick={() => kmlInputRef.current?.click()}
                     disabled={importingKml}
                     className="h-8 px-2"
-                    title="Importer KML/KMZ-fil"
+                    title={t('pages.map.importKmlTitle')}
                   >
                     <Upload className="h-4 w-4" />
                   </Button>
@@ -681,7 +681,7 @@ export default function KartPage() {
                       size="sm"
                       onClick={() => setFh2DialogOpen(true)}
                       className="h-8 px-1.5 text-[10px]"
-                      title="Send rute og SORA-korridor til DJI FlightHub 2"
+                      title={t('pages.map.fh2Title')}
                     >
                       <Send className="mr-0.5 h-3 w-3" />
                       FH2
@@ -712,8 +712,8 @@ export default function KartPage() {
                       )}
                       <span className="leading-tight break-words">
                         <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
-                        {currentRoute.areaKm2 > 150 && <span> – for stort for SafeSky</span>}
-                        {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                        {currentRoute.areaKm2 > 150 && <span> – {t('pages.map.tooLargeForSafeSky')}</span>}
+                        {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && ` (${t('pages.map.large')})`}
                       </span>
                     </div>
                   )}
@@ -733,7 +733,7 @@ export default function KartPage() {
                       )}
                       <span className="leading-tight break-words">
                         {vlisInfo.maxDistanceMeters}m
-                        {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                        {!vlisInfo.isWithinVLOS && ` (${t('pages.map.outsideCount', { count: vlisInfo.pointsOutside })})`}
                       </span>
                     </div>
                   )}
@@ -757,7 +757,7 @@ export default function KartPage() {
                     onClick={handleUndoPoint}
                     disabled={currentRoute.coordinates.length === 0}
                     className="h-8 px-2"
-                    title="Angre siste endring"
+                    title={t('pages.map.undoTitle')}
                   >
                     <Undo className="h-4 w-4" />
                   </Button>
@@ -769,7 +769,7 @@ export default function KartPage() {
                     onClick={handleClearRoute}
                     disabled={currentRoute.coordinates.length === 0}
                     className="h-8 px-2"
-                    title="Nullstill rute"
+                    title={t('pages.map.clearTitle')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -779,7 +779,7 @@ export default function KartPage() {
                     size="sm"
                     onClick={handleCancelRoute}
                     className="h-8 px-2"
-                    title="Avbryt"
+                    title={t('pages.map.cancelTitle')}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -789,7 +789,7 @@ export default function KartPage() {
                     onClick={handleSaveRoute}
                     disabled={currentRoute.coordinates.length < 2}
                     className="h-8 px-2"
-                    title="Lagre rute"
+                    title={t('pages.map.saveTitle')}
                   >
                     <Save className="h-4 w-4" />
                   </Button>
@@ -801,9 +801,9 @@ export default function KartPage() {
               <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 mr-auto">
                 <Route className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                 <div className="min-w-0">
-                  <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">Planlegg flyrute</h1>
+                  <h1 className="font-semibold text-foreground text-sm sm:text-base truncate">{t('pages.map.planRoute')}</h1>
                   <p className="text-xs text-muted-foreground">
-                    {currentRoute.coordinates.length} punkt{currentRoute.coordinates.length !== 1 ? 'er' : ''}
+                    {t('pages.map.points', { count: currentRoute.coordinates.length })}
                     {currentRoute.totalDistance > 0 && ` • ${currentRoute.totalDistance.toFixed(2)} km`}
                   </p>
                 </div>
@@ -830,10 +830,10 @@ export default function KartPage() {
                     {currentRoute.areaKm2 > 150 && (
                       <>
                         <span className="hidden sm:inline"> – </span>
-                        <span>for stort for SafeSky</span>
+                        <span>{t('pages.map.tooLargeForSafeSky')}</span>
                       </>
                     )}
-                    {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                    {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && ` (${t('pages.map.large')})`}
                   </span>
                 </div>
               )}
@@ -851,7 +851,7 @@ export default function KartPage() {
                   )}
                   <span className="leading-tight whitespace-nowrap">
                     {vlisInfo.maxDistanceMeters}m
-                    {!vlisInfo.isWithinVLOS && ` (${vlisInfo.pointsOutside} utenfor)`}
+                    {!vlisInfo.isWithinVLOS && ` (${t('pages.map.outsideCount', { count: vlisInfo.pointsOutside })})`}
                   </span>
                 </div>
               )}
@@ -863,10 +863,10 @@ export default function KartPage() {
                 onClick={() => kmlInputRef.current?.click()}
                 disabled={importingKml}
                 className="h-8 px-2 sm:px-3"
-                title="Importer KML/KMZ-fil"
+                title={t('pages.map.importKmlTitle')}
               >
                 <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'KML'}</span>
+                <span className="hidden sm:inline ml-1">{importingKml ? t('pages.map.importingKml') : t('pages.map.kmlLabel')}</span>
               </Button>
               <Button
                 data-tour="map-route-ippc"
@@ -895,7 +895,7 @@ export default function KartPage() {
                   size="sm"
                   onClick={() => setFh2DialogOpen(true)}
                   className="h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs"
-                  title="Send rute og SORA-korridor til DJI FlightHub 2"
+                  title={t('pages.map.fh2Title')}
                 >
                   <Send className="h-3 w-3 mr-0.5 sm:mr-1" />
                   FH2
@@ -914,7 +914,7 @@ export default function KartPage() {
               >
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">
-                  {pilotPosition ? "Fjern pilot" : isPlacingPilot ? "Klikk..." : "Pilot"}
+                  {pilotPosition ? t('pages.map.removePilotShort') : isPlacingPilot ? t('pages.map.clickShort') : t('pages.map.pilot')}
                 </span>
               </Button>
               <Button
@@ -924,10 +924,10 @@ export default function KartPage() {
                 onClick={handleUndoPoint}
                 disabled={currentRoute.coordinates.length === 0}
                 className="h-8 px-2 sm:px-3"
-                title="Angre siste endring"
+                title={t('pages.map.undoTitle')}
               >
                 <Undo className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Angre</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.undo')}</span>
               </Button>
 
               <Button
@@ -937,10 +937,10 @@ export default function KartPage() {
                 onClick={handleClearRoute}
                 disabled={currentRoute.coordinates.length === 0}
                 className="h-8 px-2 sm:px-3"
-                title="Nullstill rute"
+                title={t('pages.map.clearTitle')}
               >
                 <Trash2 className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Nullstill</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.reset')}</span>
               </Button>
               <Button
                 data-tour="map-route-cancel"
@@ -948,10 +948,10 @@ export default function KartPage() {
                 size="sm"
                 onClick={handleCancelRoute}
                 className="h-8 px-2 sm:px-3"
-                title="Avbryt"
+                title={t('pages.map.cancelTitle')}
               >
                 <X className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Avbryt</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.cancel')}</span>
               </Button>
               <Button
                 data-tour="map-route-save"
@@ -959,10 +959,10 @@ export default function KartPage() {
                 onClick={handleSaveRoute}
                 disabled={currentRoute.coordinates.length < 2}
                 className="h-8 px-2 sm:px-3"
-                title="Lagre rute"
+                title={t('pages.map.saveTitle')}
               >
                 <Save className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">Lagre</span>
+                <span className="hidden sm:inline ml-1">{t('pages.map.save')}</span>
               </Button>
             </div>
           </div>
@@ -976,7 +976,7 @@ export default function KartPage() {
                 onClick={() => setSoraOpen((o) => !o)}
                 className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity"
               >
-                <span className="text-sm font-medium text-foreground"><span className="sm:hidden">Buffer</span><span className="hidden sm:inline">SORA volum</span></span>
+                <span className="text-sm font-medium text-foreground"><span className="sm:hidden">{t('pages.map.buffer')}</span><span className="hidden sm:inline">{t('pages.map.soraVolume')}</span></span>
                 <Switch
                   checked={soraSettings.enabled}
                   onCheckedChange={(checked) => {
@@ -1072,7 +1072,7 @@ export default function KartPage() {
             <button
               onClick={() => setSoraOpen(false)}
               className="absolute top-2 right-2 z-10 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Lukk SORA volum"
+              aria-label={t('pages.map.closeSoraVolume')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -1128,14 +1128,14 @@ export default function KartPage() {
               size="lg"
               onClick={() => navigate('/oppdrag', { state: { missionId: editingMissionId, scrollToMission: true, missionStatus: editingMissionStatus } })}
               className="pointer-events-auto shadow-lg"
-              title="Tilbake til oppdrag"
+              title={t('pages.map.backToMission')}
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
-              Tilbake til oppdrag
+              {t('pages.map.backToMission')}
             </Button>
           )}
           <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md flex items-center gap-2 pointer-events-auto">
-            <span className="text-xs text-muted-foreground">Traffic data provided by</span>
+            <span className="text-xs text-muted-foreground">{t('pages.map.trafficDataProvidedBy')}</span>
             <a href="https://www.safesky.app" target="_blank" rel="noopener noreferrer">
               <img src={safeskyLogo} alt="SafeSky" className="h-5 dark:invert" />
             </a>
@@ -1150,8 +1150,8 @@ export default function KartPage() {
               size="icon"
               onClick={() => setIs3D((v) => !v)}
               className="shadow-lg bg-card hover:bg-accent"
-              aria-label={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart"}
-              title={is3D ? "Bytt til 2D-kart" : "Bytt til 3D-kart (eksperimentell)"}
+              aria-label={is3D ? t('pages.map.switchTo2D') : t('pages.map.switchTo3D')}
+              title={is3D ? t('pages.map.switchTo2D') : t('pages.map.switchTo3DExperimental')}
             >
               <Box className="h-5 w-5" />
             </Button>
@@ -1163,7 +1163,7 @@ export default function KartPage() {
               size="icon"
               onClick={() => setRouteInspectMode((v) => !v)}
               className={cn("shadow-lg", routeInspectMode ? "" : "bg-card hover:bg-accent")}
-              title={routeInspectMode ? "Inspeksjons-modus aktiv (klikk for å gå tilbake til tegning)" : "Inspeksjons-modus (klikk geo-soner uten å legge til rutepunkt)"}
+              title={routeInspectMode ? t('pages.map.inspectModeActive') : t('pages.map.inspectModeTitle')}
             >
               <MousePointer2 className="h-5 w-5" />
             </Button>
@@ -1175,7 +1175,7 @@ export default function KartPage() {
               variant="default"
               size="icon"
               className="shadow-lg"
-              title="Planlegg ny rute"
+              title={t('pages.map.planNewRoute')}
             >
               <Route className="h-5 w-5" />
             </Button>

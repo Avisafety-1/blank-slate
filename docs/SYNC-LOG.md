@@ -1,5 +1,16 @@
 # Sync-logg
 
+## 2026-07-12 — i18n Fase 1.4 start: Kart.tsx + ResourceTimeline
+
+**Migrert:**
+- `src/components/dashboard/ResourceTimeline.tsx` – Ressurskalender (I dag, Uke X, Droner/Personell/Utstyr/Kalender, legend, dag-headere, tooltip, vedlikeholds-detaljdialog, loading/empty states). Bruker `pages.calendar.resourceTimeline.*`. date-fns locale bytter mellom `nb` og `enUS` basert på `i18n.language`.
+- `src/pages/Kalender.tsx` – samme språkbaserte date-fns locale-switch (månedsnavn viste tidligere fortsatt norsk selv på engelsk).
+- `src/pages/Kart.tsx` – alle bruker-vendte strenger migrert: KML-import toasts, rute-lagring toasts, planlegg-flyrute-panel (mobil + desktop), knappe-titler (Angre/Nullstill/Avbryt/Lagre/Pilot/KML/IPPC/FH2/Sensor), area-badges («for stort for SafeSky», «(stort)»), VLOS-info («N utenfor»), SORA volum/Buffer/Tilstøtende-toggle, close-buttons, back-to-mission, 2D/3D-toggle og inspeksjonsmodus. Nye nøkler under `pages.map.*`.
+
+Kart-popups (OpenAIPMap, Map3D, SoraSettingsPanel, AdjacentAreaPanel, FlightHub2SendDialog) står igjen i 1.4. `tsgo --noEmit` OK.
+
+
+
 ## 2026-07-12 — i18n Fase 1.1: RiskAssessmentDialog (manuell SORA-fane)
 
 **Migrert:** `src/components/dashboard/RiskAssessmentDialog.tsx` – hele "Manuell SORA"-fanen: oppdragsvelger, kontekstkort (Oppdrag/Dato/Sted/Risk-nivå), alle 5 accordion-seksjoner (Operasjonsmiljø, GRC, ARC, SAIL, Status), Select-alternativer (Tettbygd/Landlig/…, Lav/Moderat/Høy, Ikke startet/Under arbeid/…), textarea-plassholdere, «Utført/Godkjent av» og handlingsknappene (Avbryt/Lagre/Lagrer…). Nye nøkler under `riskAssessment.manualSora.*` i `no.json`+`en.json`. Ingen eksisterende nøkler flyttet. `tsgo --noEmit` OK.
