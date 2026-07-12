@@ -63,10 +63,10 @@ export default function Installer() {
             className="h-16 mx-auto dark:invert"
           />
           <h1 className="text-2xl font-bold text-foreground">
-            {t("installer.title", "Installer AviSafe")}
+            {t("installer.title")}
           </h1>
           <p className="text-muted-foreground">
-            {t("installer.subtitle", "Legg til AviSafe på hjemskjermen for rask tilgang")}
+            {t("installer.subtitle")}
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export default function Installer() {
               <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                 <Check className="w-6 h-6" />
                 <span className="font-medium">
-                  {t("installer.alreadyInstalled", "AviSafe er allerede installert!")}
+                  {t("installer.alreadyInstalled")}
                 </span>
               </div>
             </CardContent>
@@ -86,16 +86,16 @@ export default function Installer() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="w-5 h-5" />
-                {t("installer.installNow", "Installer nå")}
+                {t("installer.installNow")}
               </CardTitle>
               <CardDescription>
-                {t("installer.oneClickInstall", "Ett klikk for å installere appen")}
+                {t("installer.oneClickInstall")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={handleInstallClick} className="w-full" size="lg">
                 <Download className="w-4 h-4 mr-2" />
-                {t("installer.installButton", "Installer AviSafe")}
+                {t("installer.installButton")}
               </Button>
             </CardContent>
           </Card>
@@ -106,10 +106,10 @@ export default function Installer() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Apple className="w-5 h-5" />
-                    {t("installer.iosTitle", "Installer på iPhone/iPad")}
+                    {t("installer.iosTitle")}
                   </CardTitle>
                   <CardDescription>
-                    {t("installer.iosDescription", "Følg disse stegene for å legge til appen")}
+                    {t("installer.iosDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -118,9 +118,9 @@ export default function Installer() {
                       1
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.iosStep1", "Trykk på Del-knappen")}</p>
+                      <p className="font-medium">{t("installer.iosStep1")}</p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Share className="w-4 h-4" /> {t("installer.iosStep1Desc", "i Safari-menyen nederst")}
+                        <Share className="w-4 h-4" /> {t("installer.iosStep1Desc")}
                       </p>
                     </div>
                   </div>
@@ -129,9 +129,9 @@ export default function Installer() {
                       2
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.iosStep2", "Velg «Legg til på Hjem-skjerm»")}</p>
+                      <p className="font-medium">{t("installer.iosStep2")}</p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Plus className="w-4 h-4" /> {t("installer.iosStep2Desc", "i menyen som dukker opp")}
+                        <Plus className="w-4 h-4" /> {t("installer.iosStep2Desc")}
                       </p>
                     </div>
                   </div>
@@ -140,9 +140,9 @@ export default function Installer() {
                       3
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.iosStep3", "Trykk «Legg til»")}</p>
+                      <p className="font-medium">{t("installer.iosStep3")}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t("installer.iosStep3Desc", "AviSafe vises nå på hjemskjermen")}
+                        {t("installer.iosStep3Desc")}
                       </p>
                     </div>
                   </div>
@@ -155,10 +155,10 @@ export default function Installer() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Smartphone className="w-5 h-5" />
-                    {t("installer.androidTitle", "Installer på Android")}
+                    {t("installer.androidTitle")}
                   </CardTitle>
                   <CardDescription>
-                    {t("installer.androidDescription", "Følg disse stegene for å legge til appen")}
+                    {t("installer.androidDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -167,9 +167,9 @@ export default function Installer() {
                       1
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.androidStep1", "Trykk på meny-knappen")}</p>
+                      <p className="font-medium">{t("installer.androidStep1")}</p>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MoreVertical className="w-4 h-4" /> {t("installer.androidStep1Desc", "øverst til høyre i Chrome")}
+                        <MoreVertical className="w-4 h-4" /> {t("installer.androidStep1Desc")}
                       </p>
                     </div>
                   </div>
@@ -178,9 +178,9 @@ export default function Installer() {
                       2
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.androidStep2", "Velg «Installer app» eller «Legg til på startsiden»")}</p>
+                      <p className="font-medium">{t("installer.androidStep2")}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t("installer.androidStep2Desc", "i menyen som vises")}
+                        {t("installer.androidStep2Desc")}
                       </p>
                     </div>
                   </div>
@@ -189,9 +189,9 @@ export default function Installer() {
                       3
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{t("installer.androidStep3", "Bekreft installasjonen")}</p>
+                      <p className="font-medium">{t("installer.androidStep3")}</p>
                       <p className="text-sm text-muted-foreground">
-                        {t("installer.androidStep3Desc", "AviSafe vises nå på startsiden")}
+                        {t("installer.androidStep3Desc")}
                       </p>
                     </div>
                   </div>
@@ -204,15 +204,15 @@ export default function Installer() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Download className="w-5 h-5" />
-                    {t("installer.desktopTitle", "Installer på datamaskinen")}
+                    {t("installer.desktopTitle")}
                   </CardTitle>
                   <CardDescription>
-                    {t("installer.desktopDescription", "Bruk nettleserens installasjonsvalg")}
+                    {t("installer.desktopDescription")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    {t("installer.desktopInstructions", "Se etter installasjons-ikonet i adressefeltet, eller bruk nettlesermenyen for å installere appen.")}
+                    {t("installer.desktopInstructions")}
                   </p>
                 </CardContent>
               </Card>
@@ -222,7 +222,7 @@ export default function Installer() {
 
         <div className="text-center">
           <Button variant="ghost" onClick={() => window.history.back()}>
-            {t("actions.back", "Tilbake")}
+            {t("actions.back")}
           </Button>
         </div>
       </div>

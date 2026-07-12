@@ -2756,24 +2756,6 @@
       "top10CompaniesHours": "Top 10 selskaper – flytimer",
       "top10CompaniesMissions": "Top 10 selskaper – oppdrag"
     },
-    "pricing": {
-      "back": "Tilbake",
-      "subtitle": "Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.",
-      "safeSkyBadge": "SafeSky kartlag og publisering er tilgjengelig på alle abonnementer",
-      "mostPopular": "Mest populær",
-      "yourPlan": "Din plan",
-      "perUserMonth": "NOK/bruker/mnd",
-      "addonsTitle": "Tilleggsmoduler – 199 NOK/mnd per modul",
-      "addonExtra": "+ {{amount}} NOK tillegg/mnd",
-      "trialIncluded": "Inkluderer 5 dagers gratis prøveperiode",
-      "activeSubscription": "✓ Du har et aktivt abonnement",
-      "startSubscription": "Start abonnement",
-      "loginToSubscribe": "Logg inn for å abonnere",
-      "needAccount": "Du må ha en konto for å abonnere.",
-      "loginRegister": "Logg inn / Registrer deg",
-      "couldNotStartPayment": "Kunne ikke starte betaling: ",
-      "unknownError": "Ukjent feil"
-    },
     "marketing": {
       "sidebarTitle": "Marketing",
       "overview": "Oversikt",
@@ -2980,7 +2962,16 @@
       "low": "Lav",
       "areYouSure": "Er du sikker?",
       "cannotUndo": "Denne handlingen kan ikke angres.",
-      "cancel": "Avbryt"
+      "cancel": "Avbryt",
+      "imageUploadError": "Kun bildefiler er tillatt",
+      "imageTooLarge": "Maks 5 MB",
+      "imageUploadFailed": "Kunne ikke laste opp bilde",
+      "imagesLabel": "Bilder (valgfritt)",
+      "previewAlt": "Forhåndsvisning",
+      "uploading": "Laster opp...",
+      "addMoreImages": "Legg til flere bilder",
+      "uploadImage": "Last opp bilde",
+      "close": "Lukk"
     },
     "entryStatus": {
       "notStarted": "Ikke startet",
@@ -6209,5 +6200,50 @@
       "unknownValue": "–",
       "unknownName": "Ukjent"
     }
+  },
+  "pricing": {
+    "back": "Tilbake",
+    "subtitle": "Velg plan og tillegg som passer ditt selskap. Pris per bruker/mnd.",
+    "safeSkyBadge": "SafeSky kartlag og publisering er tilgjengelig på alle abonnementer",
+    "mostPopular": "Mest populær",
+    "yourPlan": "Din plan",
+    "perUserMonth": "NOK/bruker/mnd",
+    "addonsTitle": "Tilleggsmoduler – 199 NOK/mnd per modul",
+    "addonExtra": "+ {{amount}} NOK tillegg/mnd",
+    "trialIncluded": "Inkluderer 5 dagers gratis prøveperiode",
+    "activeSubscription": "✓ Du har et aktivt abonnement",
+    "startSubscription": "Start abonnement",
+    "loginToSubscribe": "Logg inn for å abonnere",
+    "needAccount": "Du må ha en konto for å abonnere.",
+    "loginRegister": "Logg inn / Registrer deg",
+    "couldNotStartPayment": "Kunne ikke starte betaling: ",
+    "unknownError": "Ukjent feil"
+  },
+  "installer": {
+    "title": "Installer AviSafe",
+    "subtitle": "Legg til AviSafe på hjemskjermen for rask tilgang",
+    "alreadyInstalled": "AviSafe er allerede installert!",
+    "installNow": "Installer nå",
+    "oneClickInstall": "Ett klikk for å installere appen",
+    "installButton": "Installer AviSafe",
+    "iosTitle": "Installer på iPhone/iPad",
+    "iosDescription": "Følg disse stegene for å legge til appen",
+    "iosStep1": "Trykk på Del-knappen",
+    "iosStep1Desc": "i Safari-menyen nederst",
+    "iosStep2": "Velg «Legg til på Hjem-skjerm»",
+    "iosStep2Desc": "i menyen som dukker opp",
+    "iosStep3": "Trykk «Legg til»",
+    "iosStep3Desc": "AviSafe vises nå på hjemskjermen",
+    "androidTitle": "Installer på Android",
+    "androidDescription": "Følg disse stegene for å legge til appen",
+    "androidStep1": "Trykk på meny-knappen",
+    "androidStep1Desc": "øverst til høyre i Chrome",
+    "androidStep2": "Velg «Installer app» eller «Legg til på startsiden»",
+    "androidStep2Desc": "i menyen som vises",
+    "androidStep3": "Bekreft installasjonen",
+    "androidStep3Desc": "AviSafe vises nå på startsiden",
+    "desktopTitle": "Installer på datamaskinen",
+    "desktopDescription": "Bruk nettleserens installasjonsvalg",
+    "desktopInstructions": "Se etter installasjons-ikonet i adressefeltet, eller bruk nettlesermenyen for å installere appen."
   }
 }
