@@ -601,7 +601,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     )}
                     {equipment.battery_max_cell_deviation_v != null && (
                       <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> Maks celleavvik</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.maxCellDeviation')}</p>
                         <p className={`text-sm font-medium ${equipment.battery_max_cell_deviation_v > 0.1 ? 'text-destructive' : ''}`}>
                           {equipment.battery_max_cell_deviation_v.toFixed(3)} V
                         </p>
