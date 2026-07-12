@@ -954,7 +954,7 @@ export default function Kalender() {
                   })
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Ingen hendelser denne dagen
+                    {t('pages.calendar.noEventsThisDay')}
                   </p>
                 )}
               </div>
