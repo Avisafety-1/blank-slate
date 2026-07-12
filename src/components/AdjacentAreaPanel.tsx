@@ -145,11 +145,11 @@ export function AdjacentAreaPanel({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label className="text-xs">UA Size</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.uaSize')}</Label>
             <Select value={uaSizeOverride} onValueChange={(v) => setUaSizeOverride(v as UaSizeKey | "auto")}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="auto">Auto: {UA_SIZE_LABELS[autoUaSize]}</SelectItem>
+                <SelectItem value="auto">{t('adjacentAreaPanel.auto', { label: UA_SIZE_LABELS[autoUaSize] })}</SelectItem>
                 {Object.entries(UA_SIZE_LABELS).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -158,12 +158,12 @@ export function AdjacentAreaPanel({
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">SAIL</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.sail')}</Label>
             <Select value={sail} onValueChange={(v) => setSail(v as SailLevel)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {["I", "II", "III", "IV", "V", "VI"].map((level) => (
-                  <SelectItem key={level} value={level}>SAIL {level}</SelectItem>
+                  <SelectItem key={level} value={level}>{t('adjacentAreaPanel.sailLevel', { level })}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -171,13 +171,13 @@ export function AdjacentAreaPanel({
 
           {autoUaSize.startsWith("3m") && uaSizeOverride === "auto" && (
             <div className="flex items-center justify-between gap-3 rounded-md border border-border p-2 sm:col-span-2">
-              <Label className="text-xs">Shelter: Er personer i området beskyttet (innendørs/under robust struktur)?</Label>
+              <Label className="text-xs">{t('adjacentAreaPanel.shelter')}</Label>
               <Switch checked={shelterApplicable} onCheckedChange={setShelterApplicable} />
             </div>
           )}
 
           <div className="space-y-1 sm:col-span-2">
-            <Label className="text-xs">Outdoor assemblies innen 1 km av OPS volume</Label>
+            <Label className="text-xs">{t('adjacentAreaPanel.outdoorAssemblies')}</Label>
             <Select value={outdoorAssemblies} onValueChange={(v) => setOutdoorAssemblies(v as OutdoorAssembliesCategory)}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
