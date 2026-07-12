@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { defaultTemplatesEn } from "./default-templates-en.ts";
+import type { EmailLanguage } from "./email-i18n.ts";
 
 export interface EmailTemplateResult {
   subject: string;
@@ -7,11 +9,14 @@ export interface EmailTemplateResult {
 }
 
 /**
- * Fetches an email template from the database or returns null if not found
+ * Fetches an email template from the database or returns null if not found.
+ * Filters on `language` – falls back to the same template in the default language
+ * ('no') if a language-specific row is missing.
  */
 export async function getEmailTemplate(
   companyId: string,
-  templateType: string
+  templateType: string,
+  language: EmailLanguage = "no"
 ): Promise<{ subject: string; content: string } | null> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -19,17 +24,20 @@ export async function getEmailTemplate(
 
   const { data, error } = await supabase
     .from('email_templates')
-    .select('subject, content')
+    .select('subject, content, language')
     .eq('company_id', companyId)
     .eq('template_type', templateType)
-    .maybeSingle();
+    .in('language', language === 'no' ? ['no'] : [language, 'no']);
 
   if (error) {
     console.error(`Error fetching email template ${templateType}:`, error);
     return null;
   }
 
-  return data;
+  if (!data || data.length === 0) return null;
+  // Prefer the requested language; fall back to 'no'
+  const match = data.find((r) => r.language === language) || data.find((r) => r.language === 'no');
+  return match ? { subject: match.subject, content: match.content } : null;
 }
 
 /**
