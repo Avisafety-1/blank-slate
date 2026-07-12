@@ -1098,7 +1098,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           onOpenChange={(o) => { if (!o) setVisibilityWarning(null); }}
           missing={visibilityWarning.missing}
           departments={deptVis.childDepartments}
-          resourceLabel="utstyret"
+          resourceLabel={t('resourceDialogs.equipmentDetail.resourceLabel')}
           onContinue={async () => {
             await visibilityWarning.onContinue();
             setVisibilityWarning(null);
