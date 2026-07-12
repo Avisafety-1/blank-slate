@@ -924,7 +924,7 @@ export default function Kalender() {
                               <p className="text-xs text-muted-foreground mb-2">{event.description}</p>
                             )}
                             <Badge variant="outline" className="text-xs">
-                              {event.type}
+                              {t(`pages.calendar.eventTypes.${event.type}`, { defaultValue: event.type })}
                             </Badge>
                             {isMaintenanceEvent && (
                               <div 
