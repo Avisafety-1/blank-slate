@@ -1063,7 +1063,7 @@ export function OpenAIPMap({
             userMarkerRef.current = L.circleMarker(coords, {
               radius: 8, fillColor: '#3b82f6', fillOpacity: 1, color: '#ffffff', weight: 2,
             }).addTo(map);
-            userMarkerRef.current.bindPopup("Din posisjon");
+            userMarkerRef.current.bindPopup(t('pages.map.yourPosition'));
           }
           // Only center on the user's position if we have not been given an explicit
           // mission center and we are not focusing on a specific flight.
