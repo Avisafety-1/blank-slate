@@ -39,7 +39,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [registrationCode, setRegistrationCode] = useState("");
-  const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [validatedCompany, setValidatedCompany] = useState<{ id: string; name: string; defaultLanguage?: 'no' | 'en' } | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
