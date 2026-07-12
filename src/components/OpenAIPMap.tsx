@@ -912,7 +912,7 @@ export function OpenAIPMap({
     if (openAipConfig.apiKey && openAipConfig.tiles.airspace) {
       const airspaceUrl = openAipConfig.tiles.airspace.replace("{key}", openAipConfig.apiKey);
       const airspaceLayer = L.tileLayer(airspaceUrl, { opacity: 0.55, subdomains: "abc" }).addTo(map);
-      layerConfigs.push({ id: "airspace", name: "Luftrom", layer: airspaceLayer, enabled: true, icon: "layers", group: "Luftrom" });
+      layerConfigs.push({ id: "airspace", name: t('pages.map.layers.airspace'), layer: airspaceLayer, enabled: true, icon: "layers", group: t('pages.map.layers.groups.airspace') });
     }
 
     const rpasLayer = L.layerGroup().addTo(map);
