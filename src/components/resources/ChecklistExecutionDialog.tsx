@@ -350,7 +350,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
         if (!cancelled) setDocxHtml(value);
       } catch (err) {
         console.error("[ChecklistExecutionDialog] docx convert failed:", err);
-        if (!cancelled) setLoadError("Kunne ikke vise Word-dokumentet. Bruk «Åpne i ny fane» for å laste det ned.");
+        if (!cancelled) setLoadError(t('resourceDialogs.checklistExecution.wordLoadError'));
       } finally {
         if (!cancelled) setDocxLoading(false);
       }
