@@ -176,6 +176,7 @@ const getCurrentPosition = (): Promise<{ lat: number; lng: number } | null> => {
 export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStopTimer, prefilledDuration, safeskyMode, completedChecklistIds, prefilledMissionId, flightTrack, dronetagDeviceId, startPosition, pilotName, flightStartTime }: LogFlightTimeDialogProps) => {
   const { user, companyId } = useAuth();
   const terminology = useTerminology();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drones, setDrones] = useState<Drone[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
