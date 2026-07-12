@@ -637,7 +637,7 @@ export const DroneLogbookDialog = ({
                   <div className="relative inline-block mt-1">
                     <img
                       src={imagePreviewUrl}
-                      alt="Forhåndsvisning"
+                      alt={t('resourceDialogs.droneLogbook.imagePreviewAlt')}
                       className="h-20 sm:h-24 w-auto rounded-md border object-cover"
                     />
                     <button
