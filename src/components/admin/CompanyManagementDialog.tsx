@@ -171,18 +171,21 @@ export const CompanyManagementDialog = ({
     try {
       let inheritedStripeExempt = stripeExempt;
       let inheritedDjiEnabled = false;
+      let inheritedLanguage: 'no' | 'en' | null = null;
       const parentId = forceParentCompanyId || data.parent_company_id || null;
 
       // Inherit settings from parent company when creating a child
       if (isCreating && parentId) {
         const { data: parentCompany } = await supabase
           .from("companies")
-          .select("stripe_exempt, dji_flightlog_enabled, selskapstype")
+          .select("stripe_exempt, dji_flightlog_enabled, selskapstype, default_language")
           .eq("id", parentId)
           .single();
         if (parentCompany) {
           inheritedStripeExempt = parentCompany.stripe_exempt;
           inheritedDjiEnabled = parentCompany.dji_flightlog_enabled;
+          const pl = (parentCompany as any).default_language;
+          if (pl === 'no' || pl === 'en') inheritedLanguage = pl;
           if (!data.selskapstype) {
             data.selskapstype = (parentCompany.selskapstype as 'droneoperator' | 'flyselskap') || 'droneoperator';
           }
@@ -201,7 +204,7 @@ export const CompanyManagementDialog = ({
         stripe_exempt: inheritedStripeExempt,
         parent_company_id: parentId,
         departments_enabled: departmentsEnabled,
-        default_language: data.default_language || 'no',
+        default_language: (isCreating && inheritedLanguage) ? inheritedLanguage : (data.default_language || 'no'),
       };
 
       if (isCreating) {
