@@ -941,7 +941,7 @@ const Hendelser = () => {
               
               <Button onClick={() => setAddDialogOpen(true)} className="gap-2" data-tour="hendelser-add">
                 <Plus className="w-4 h-4" />
-                {t('incidents.addIncident', 'Legg til hendelse')}
+                {t('incidents.addIncident')}
               </Button>
             </div>
 
