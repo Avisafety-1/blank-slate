@@ -863,10 +863,10 @@ export default function KartPage() {
                 onClick={() => kmlInputRef.current?.click()}
                 disabled={importingKml}
                 className="h-8 px-2 sm:px-3"
-                title="Importer KML/KMZ-fil"
+                title={t('pages.map.importKmlTitle')}
               >
                 <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline ml-1">{importingKml ? 'Importerer…' : 'KML'}</span>
+                <span className="hidden sm:inline ml-1">{importingKml ? t('pages.map.importingKml') : t('pages.map.kmlLabel')}</span>
               </Button>
               <Button
                 data-tour="map-route-ippc"
