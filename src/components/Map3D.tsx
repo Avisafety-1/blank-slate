@@ -1959,12 +1959,12 @@ export default function Map3D({
           className="shadow-lg bg-card hover:bg-accent"
           title={
             base === "satellite"
-              ? "Bytt til topografisk kart"
+              ? t('pages.map.popups.map3d.toTopo')
               : base === "topo"
-              ? "Bytt til standard kart"
-              : "Bytt til satellittkart"
+              ? t('pages.map.popups.map3d.toStandard')
+              : t('pages.map.popups.map3d.toSatellite')
           }
-          aria-label="Bytt grunnkart"
+          aria-label={t('pages.map.popups.map3d.baseAria')}
         >
           {base === "satellite" ? <Mountain className="h-5 w-5" /> : base === "topo" ? <MapIcon className="h-5 w-5" /> : <Satellite className="h-5 w-5" />}
         </Button>
