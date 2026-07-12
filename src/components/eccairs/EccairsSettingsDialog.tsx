@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Settings2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlanGating } from "@/hooks/usePlanGating";
+import { useTranslation } from "react-i18next";
 
 const ECCAIRS_GATEWAY = import.meta.env.VITE_ECCAIRS_GATEWAY_URL || "";
 
@@ -45,6 +46,7 @@ export function EccairsSettingsDialog({
   environment,
   onEnvironmentChange,
 }: EccairsSettingsDialogProps) {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const { hasAddon } = usePlanGating();
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export function EccairsSettingsDialog({
   // Gate addon
   useEffect(() => {
     if (open && !hasAddon('eccairs')) {
-      toast.error('ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen');
+      toast.error(t('eccairs.settingsDialog.errors.addonRequired'));
       onOpenChange(false);
     }
   }, [open]);
@@ -94,7 +96,7 @@ export function EccairsSettingsDialog({
         }
       } catch (err) {
         console.error("Error fetching ECCAIRS settings:", err);
-        toast.error("Kunne ikke hente ECCAIRS-innstillinger");
+        toast.error(t("eccairs.settingsDialog.errors.fetchSettings"));
       } finally {
         setLoading(false);
       }
@@ -105,17 +107,17 @@ export function EccairsSettingsDialog({
 
   const handleSave = async () => {
     if (!companyId) {
-      toast.error("Ingen bedrift tilknyttet");
+      toast.error(t("eccairs.settingsDialog.errors.noCompany"));
       return;
     }
 
     if (!clientId) {
-      toast.error("Client ID er påkrevd");
+      toast.error(t("eccairs.settingsDialog.errors.clientIdRequired"));
       return;
     }
 
     if (!clientSecret && !hasExistingSecret) {
-      toast.error("Client Secret er påkrevd");
+      toast.error(t("eccairs.settingsDialog.errors.clientSecretRequired"));
       return;
     }
 
@@ -149,19 +151,19 @@ export function EccairsSettingsDialog({
             });
           }
         } catch (cacheErr) {
-          console.warn("Kunne ikke tømme token-cache:", cacheErr);
+          console.warn(t("eccairs.settingsDialog.errors.clearTokenCacheFailed"), cacheErr);
         }
       }
 
-      toast.success("ECCAIRS-innstillinger lagret");
+      toast.success(t("eccairs.settingsDialog.success.saved"));
       setHasExistingSecret(true);
       setTestResult(null);
     } catch (err: any) {
       console.error("Error saving ECCAIRS settings:", err);
       if (err.message?.includes("ECCAIRS_ENCRYPTION_KEY")) {
-        toast.error("Krypteringsnøkkel ikke konfigurert i Supabase Vault");
+        toast.error(t("eccairs.settingsDialog.errors.encryptionKeyMissing"));
       } else {
-        toast.error("Kunne ikke lagre innstillinger");
+        toast.error(t("eccairs.settingsDialog.errors.saveFailed"));
       }
     } finally {
       setSaving(false);
@@ -170,12 +172,12 @@ export function EccairsSettingsDialog({
 
   const handleTestConnection = async () => {
     if (!companyId) {
-      toast.error("Ingen bedrift tilknyttet");
+      toast.error(t("eccairs.settingsDialog.errors.noCompany"));
       return;
     }
 
     if (!ECCAIRS_GATEWAY) {
-      toast.error("ECCAIRS gateway URL ikke konfigurert");
+      toast.error(t("eccairs.settingsDialog.errors.gatewayNotConfigured"));
       return;
     }
 
@@ -189,7 +191,7 @@ export function EccairsSettingsDialog({
       const accessToken = session?.access_token;
 
       if (!accessToken) {
-        toast.error("Du må være logget inn");
+        toast.error(t("eccairs.settingsDialog.errors.mustBeLoggedIn"));
         return;
       }
 
@@ -210,13 +212,17 @@ export function EccairsSettingsDialog({
       if (data.ok) {
         setTestResult({
           ok: true,
-          message: `Tilkobling vellykket (${data.credentials_source === "database" ? "per-selskap credentials" : "globale credentials"})`,
+          message: t("eccairs.settingsDialog.success.connectionOk", {
+            source: data.credentials_source === "database"
+              ? t("eccairs.settingsDialog.success.sourceDatabase")
+              : t("eccairs.settingsDialog.success.sourceGlobal"),
+          }),
         });
       } else {
         const raw = data.error || "";
         const friendly = /invalid_client|invalid_grant|401/i.test(raw)
-          ? "Feil brukernavn eller passord"
-          : raw || "Tilkobling feilet";
+          ? t("eccairs.settingsDialog.errors.wrongCredentials")
+          : raw || t("eccairs.settingsDialog.errors.connectionFailed");
         setTestResult({
           ok: false,
           message: friendly,
@@ -226,8 +232,8 @@ export function EccairsSettingsDialog({
       console.error("Test connection error:", err);
       const raw = err?.message || "";
       const friendly = /invalid_client|invalid_grant|401/i.test(raw)
-        ? "Feil brukernavn eller passord"
-        : raw || "Nettverksfeil";
+        ? t("eccairs.settingsDialog.errors.wrongCredentials")
+        : raw || t("eccairs.settingsDialog.errors.networkError");
       setTestResult({
         ok: false,
         message: friendly,
@@ -243,10 +249,10 @@ export function EccairsSettingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings2 className="w-5 h-5" />
-            ECCAIRS API-innstillinger
+            {t("eccairs.settingsDialog.title")}
           </DialogTitle>
           <DialogDescription>
-            Konfigurer tilkobling til ECCAIRS E2 API for rapportering.
+            {t("eccairs.settingsDialog.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -258,7 +264,7 @@ export function EccairsSettingsDialog({
           <div className="space-y-4 pt-4">
             {/* Environment */}
             <div className="space-y-2">
-              <Label htmlFor="environment">Miljø</Label>
+              <Label htmlFor="environment">{t("eccairs.settingsDialog.environmentLabel")}</Label>
               <Select
                 value={environment}
                 onValueChange={(val) => onEnvironmentChange(val as Environment)}
@@ -267,36 +273,36 @@ export function EccairsSettingsDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sandbox">Sandbox (test)</SelectItem>
-                  <SelectItem value="prod">Produksjon</SelectItem>
+                  <SelectItem value="sandbox">{t("eccairs.settingsDialog.environmentSandbox")}</SelectItem>
+                  <SelectItem value="prod">{t("eccairs.settingsDialog.environmentProd")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Client ID */}
             <div className="space-y-2">
-              <Label htmlFor="clientId">Client ID (brukernavn)</Label>
+              <Label htmlFor="clientId">{t("eccairs.settingsDialog.clientIdLabel")}</Label>
               <Input
                 id="clientId"
                 value={clientId}
                 onChange={(e) => setClientId(e.target.value)}
-                placeholder="Din E2 client ID"
+                placeholder={t("eccairs.settingsDialog.clientIdPlaceholder")}
               />
             </div>
 
             {/* Client Secret */}
             <div className="space-y-2">
-              <Label htmlFor="clientSecret">Client Secret (passord)</Label>
+              <Label htmlFor="clientSecret">{t("eccairs.settingsDialog.clientSecretLabel")}</Label>
               <Input
                 id="clientSecret"
                 type="password"
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
-                placeholder={hasExistingSecret ? "••••••••" : "Din E2 client secret"}
+                placeholder={hasExistingSecret ? t("eccairs.settingsDialog.clientSecretExistingPlaceholder") : t("eccairs.settingsDialog.clientSecretPlaceholder")}
               />
               {hasExistingSecret && (
                 <p className="text-xs text-muted-foreground">
-                  La feltet stå tomt for å beholde eksisterende passord
+                  {t("eccairs.settingsDialog.keepExistingPasswordHint")}
                 </p>
               )}
             </div>
@@ -304,7 +310,7 @@ export function EccairsSettingsDialog({
             {/* Base URL info */}
             <div className="p-3 bg-muted rounded-md">
               <p className="text-sm text-muted-foreground">
-                <strong>API URL:</strong> {E2_BASE_URLS[environment]}
+                <strong>{t("eccairs.settingsDialog.apiUrlLabel")}</strong> {E2_BASE_URLS[environment]}
               </p>
             </div>
 
@@ -337,20 +343,20 @@ export function EccairsSettingsDialog({
                 {testing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Tester...
+                    {t("eccairs.settingsDialog.testing")}
                   </>
                 ) : (
-                  "Test tilkobling"
+                  t("eccairs.settingsDialog.testConnection")
                 )}
               </Button>
               <Button onClick={handleSave} disabled={saving || !clientId}>
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Lagrer...
+                    {t("eccairs.settingsDialog.saving")}
                   </>
                 ) : (
-                  "Lagre"
+                  t("eccairs.settingsDialog.save")
                 )}
               </Button>
             </div>

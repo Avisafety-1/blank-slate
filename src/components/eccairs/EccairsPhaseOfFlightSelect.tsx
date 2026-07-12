@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Check, ChevronRight, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 
 // Parent mapping for RPAS/UAS phase of flight (VL391 1000000-series)
 const PARENT_MAP: Record<string, string> = {
@@ -83,9 +84,11 @@ interface EccairsPhaseOfFlightSelectProps {
 export function EccairsPhaseOfFlightSelect({
   value,
   onChange,
-  placeholder = "Velg flytefase...",
+  placeholder,
   disabled = false,
 }: EccairsPhaseOfFlightSelectProps) {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t("eccairs.phaseOfFlightSelect.placeholder");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -259,7 +262,7 @@ export function EccairsPhaseOfFlightSelect({
           disabled={disabled}
         >
           <span className="truncate">
-            {selectedItem?.value_description || (value ? `ID: ${value}` : placeholder)}
+            {selectedItem?.value_description || (value ? t("eccairs.common.idLabel", { id: value }) : effectivePlaceholder)}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -270,16 +273,16 @@ export function EccairsPhaseOfFlightSelect({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Søk flytefase..."
+            placeholder={t("eccairs.phaseOfFlightSelect.searchPlaceholder")}
             className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
         <ScrollArea className="max-h-[300px]">
           <div className="p-1">
             {isLoading ? (
-              <div className="p-4 text-sm text-muted-foreground">Laster...</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.loading")}</div>
             ) : filteredTree.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">Ingen treff</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.noResults")}</div>
             ) : (
               filteredTree.map(node => renderNode(node, 0))
             )}

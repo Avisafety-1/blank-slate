@@ -252,7 +252,7 @@ export function EccairsMappingDialog({
             .join('\n');
           
           if (narrativeText) {
-            narrativeText += '\n\n--- Kommentarer ---\n' + commentsText;
+            narrativeText += '\n\n--- ' + t('eccairs.mappingDialog.commentsHeader') + ' ---\n' + commentsText;
           } else {
             narrativeText = commentsText;
           }
@@ -351,7 +351,7 @@ export function EccairsMappingDialog({
             {field.label} ({getVLKey(field)})
             {field.entityPath && (
               <Badge variant="secondary" className="ml-2 text-xs">
-                Entity {field.entityPath}
+                {t("eccairs.mappingDialog.entityBadge", { path: field.entityPath })}
               </Badge>
             )}
             {field.required && <span className="text-destructive ml-1">*</span>}
@@ -391,7 +391,7 @@ export function EccairsMappingDialog({
             {field.label} ({getVLKey(field)})
             {field.entityPath && (
               <Badge variant="secondary" className="ml-2 text-xs">
-                Entity {field.entityPath}
+                {t("eccairs.mappingDialog.entityBadge", { path: field.entityPath })}
               </Badge>
             )}
             {field.required && <span className="text-destructive ml-1">*</span>}
@@ -567,7 +567,7 @@ export function EccairsMappingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>ECCAIRS Klassifisering</DialogTitle>
+          <DialogTitle>{t("eccairs.mappingDialog.title")}</DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
@@ -578,14 +578,14 @@ export function EccairsMappingDialog({
           <div className="space-y-6">
             {/* AviSafe data summary */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">AviSafe-data</h4>
+              <h4 className="font-medium text-sm text-muted-foreground">{t("eccairs.mappingDialog.avisafeData")}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Tittel: </span>
+                  <span className="text-muted-foreground">{t("eccairs.mappingDialog.titleLabel")}</span>
                   <span className="font-medium">{incident.tittel}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Alvorlighet: </span>
+                  <span className="text-muted-foreground">{t("eccairs.mappingDialog.severityLabel")}</span>
                   <Badge variant="outline">{incident.alvorlighetsgrad}</Badge>
                   {occurrenceClassValue && (
                     <span className="ml-2 text-xs text-muted-foreground">
@@ -595,13 +595,13 @@ export function EccairsMappingDialog({
                 </div>
                 {incident.kategori && (
                   <div>
-                    <span className="text-muted-foreground">Kategori: </span>
+                    <span className="text-muted-foreground">{t("eccairs.mappingDialog.categoryLabel")}</span>
                     <span>{incident.kategori}</span>
                   </div>
                 )}
                 {incident.lokasjon && (
                   <div>
-                    <span className="text-muted-foreground">Lokasjon: </span>
+                    <span className="text-muted-foreground">{t("eccairs.mappingDialog.locationLabel")}</span>
                     <span>{incident.lokasjon}</span>
                   </div>
                 )}
@@ -613,7 +613,7 @@ export function EccairsMappingDialog({
                 className="mt-2"
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Bruk automatiske forslag
+                {t("eccairs.mappingDialog.applySuggestions")}
               </Button>
             </div>
 
@@ -625,7 +625,7 @@ export function EccairsMappingDialog({
             {!requiredFieldsFilled && (
               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">
                 <AlertTriangle className="w-4 h-4" />
-                <span>Hendelsesklasse og Overskrift er påkrevd for ECCAIRS-eksport</span>
+                <span>{t("eccairs.mappingDialog.requiredFieldsWarning")}</span>
               </div>
             )}
           </div>
@@ -633,11 +633,11 @@ export function EccairsMappingDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Avbryt
+            {t("eccairs.mappingDialog.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={isSaving || !requiredFieldsFilled}>
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Lagre klassifisering
+            {t("eccairs.mappingDialog.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

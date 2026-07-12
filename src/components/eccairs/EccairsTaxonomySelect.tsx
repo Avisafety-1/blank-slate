@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface EccairsTaxonomySelectProps {
   valueListKey: string;
@@ -23,11 +24,13 @@ export function EccairsTaxonomySelect({
   valueListKey,
   value,
   onChange,
-  placeholder = "Velg...",
+  placeholder,
   disabled = false,
   valueIdPrefix = "",
   fixedLabel,
 }: EccairsTaxonomySelectProps) {
+  const { t } = useTranslation();
+  const effectivePlaceholder = placeholder ?? t("eccairs.taxonomySelect.placeholder");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -68,14 +71,14 @@ export function EccairsTaxonomySelect({
       if (id === '2133') return 'CAA Norway';
       return description ? `${description} (${id})` : `CAA (${id})`;
     }
-    return description || `ID: ${id}`;
+    return description || t("eccairs.common.idLabel", { id });
   };
 
   const selectedDisplay = value
     ? (isVL453
         ? getDisplayLabel(value, selectedItem?.value_description)
-        : (fixedLabel || selectedItem?.value_description || `ID: ${value}`))
-    : placeholder;
+        : (fixedLabel || selectedItem?.value_description || t("eccairs.common.idLabel", { id: value })))
+    : effectivePlaceholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -98,16 +101,16 @@ export function EccairsTaxonomySelect({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Søk..."
+              placeholder={t("eccairs.common.search")}
               className="h-11 border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </div>
           <CommandList>
             {isLoadingItems ? (
-              <div className="p-4 text-sm text-muted-foreground">Søker...</div>
+              <div className="p-4 text-sm text-muted-foreground">{t("eccairs.common.searching")}</div>
             ) : (
               <>
-                <CommandEmpty>Ingen treff</CommandEmpty>
+                <CommandEmpty>{t("eccairs.common.noResults")}</CommandEmpty>
                 <CommandGroup>
                   {(items || []).map((item) => (
                     <CommandItem

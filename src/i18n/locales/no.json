@@ -4784,5 +4784,120 @@
       "saveButton": "Lagre SORA-innstillinger",
       "parentCompanyFallback": "Morselskap"
     }
+  },
+  "eccairs": {
+    "common": {
+      "search": "Søk...",
+      "loading": "Laster...",
+      "noResults": "Ingen treff",
+      "searching": "Søker...",
+      "idLabel": "ID: {{id}}"
+    },
+    "attachmentUpload": {
+      "title": "Velg vedlegg fra dokumenter",
+      "description": "Velg dokumenter som skal legges ved ECCAIRS-rapporten ({{e2Id}})",
+      "searchPlaceholder": "Søk i dokumenter...",
+      "loadingDocuments": "Laster dokumenter...",
+      "noDocumentsFound": "Ingen dokumenter funnet",
+      "noDocumentsWithFiles": "Ingen dokumenter med filer",
+      "selectedCount_one": "{{count}} dokument valgt",
+      "selectedCount_other": "{{count}} dokumenter valgt",
+      "cancel": "Avbryt",
+      "uploading": "Laster opp...",
+      "uploadButton": "Last opp ({{count}})",
+      "errors": {
+        "fetchDocuments": "Kunne ikke hente dokumenter",
+        "gatewayNotConfigured": "ECCAIRS gateway URL er ikke konfigurert",
+        "mustBeLoggedIn": "Du må være logget inn",
+        "selectAtLeastOne": "Velg minst ett dokument",
+        "noFileUrl": "Ingen fil-URL",
+        "downloadFailedHttp": "Kunne ikke laste ned fil: HTTP {{status}}",
+        "downloadFailed": "Kunne ikke laste ned fil: {{message}}",
+        "unknownError": "Ukjent feil",
+        "uploadFailedStatus": "Opplasting feilet ({{status}})",
+        "noAttachmentsUploaded": "Ingen vedlegg ble lastet opp"
+      },
+      "success": {
+        "uploaded_one": "{{count}} vedlegg lastet opp til ECCAIRS",
+        "uploaded_other": "{{count}} vedlegg lastet opp til ECCAIRS",
+        "partial": "{{success}} vedlegg lastet opp, {{errors}} feilet"
+      }
+    },
+    "eventTypeSelect": {
+      "placeholder": "Velg hendelsestype..."
+    },
+    "eventTypeTreeSelect": {
+      "placeholder": "Velg hendelsestype...",
+      "searchPlaceholder": "Søk hendelsestype..."
+    },
+    "phaseOfFlightSelect": {
+      "placeholder": "Velg flytefase...",
+      "searchPlaceholder": "Søk flytefase..."
+    },
+    "multiSelect": {
+      "placeholder": "Velg..."
+    },
+    "taxonomySelect": {
+      "placeholder": "Velg..."
+    },
+    "settingsDialog": {
+      "title": "ECCAIRS API-innstillinger",
+      "description": "Konfigurer tilkobling til ECCAIRS E2 API for rapportering.",
+      "environmentLabel": "Miljø",
+      "environmentSandbox": "Sandbox (test)",
+      "environmentProd": "Produksjon",
+      "clientIdLabel": "Client ID (brukernavn)",
+      "clientIdPlaceholder": "Din E2 client ID",
+      "clientSecretLabel": "Client Secret (passord)",
+      "clientSecretPlaceholder": "Din E2 client secret",
+      "clientSecretExistingPlaceholder": "••••••••",
+      "keepExistingPasswordHint": "La feltet stå tomt for å beholde eksisterende passord",
+      "apiUrlLabel": "API URL:",
+      "testConnection": "Test tilkobling",
+      "testing": "Tester...",
+      "save": "Lagre",
+      "saving": "Lagrer...",
+      "errors": {
+        "addonRequired": "ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen",
+        "fetchSettings": "Kunne ikke hente ECCAIRS-innstillinger",
+        "noCompany": "Ingen bedrift tilknyttet",
+        "clientIdRequired": "Client ID er påkrevd",
+        "clientSecretRequired": "Client Secret er påkrevd",
+        "encryptionKeyMissing": "Krypteringsnøkkel ikke konfigurert i Supabase Vault",
+        "saveFailed": "Kunne ikke lagre innstillinger",
+        "gatewayNotConfigured": "ECCAIRS gateway URL ikke konfigurert",
+        "mustBeLoggedIn": "Du må være logget inn",
+        "wrongCredentials": "Feil brukernavn eller passord",
+        "connectionFailed": "Tilkobling feilet",
+        "networkError": "Nettverksfeil",
+        "clearTokenCacheFailed": "Kunne ikke tømme token-cache:"
+      },
+      "success": {
+        "saved": "ECCAIRS-innstillinger lagret",
+        "connectionOk": "Tilkobling vellykket ({{source}})",
+        "sourceDatabase": "per-selskap credentials",
+        "sourceGlobal": "globale credentials"
+      }
+    },
+    "mappingDialog": {
+      "title": "ECCAIRS Klassifisering",
+      "addonRequired": "ECCAIRS-rapportering krever ECCAIRS-tilleggsmodulen",
+      "applySuggestions": "Bruk automatiske forslag",
+      "suggestionsApplied": "Forslag anvendt",
+      "saved": "Klassifisering lagret",
+      "saveFailed": "Kunne ikke lagre klassifisering",
+      "cancel": "Avbryt",
+      "save": "Lagre klassifisering",
+      "requiredFieldsWarning": "Hendelsesklasse og Overskrift er påkrevd for ECCAIRS-eksport",
+      "avisafeData": "AviSafe-data",
+      "titleLabel": "Tittel: ",
+      "severityLabel": "Alvorlighet: ",
+      "categoryLabel": "Kategori: ",
+      "locationLabel": "Lokasjon: ",
+      "entityBadge": "Entity {{path}}",
+      "selectPlaceholder": "Velg {{field}}...",
+      "writePlaceholder": "Skriv {{field}}...",
+      "commentsHeader": "Kommentarer"
+    }
   }
 }
