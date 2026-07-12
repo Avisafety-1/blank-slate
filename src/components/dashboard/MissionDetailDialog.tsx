@@ -512,7 +512,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Merknader</p>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('dashboard.missionDetail.notes')}</p>
                   <p className="text-sm mt-1 text-amber-900 dark:text-amber-100">{currentMission.merknader}</p>
                 </div>
               </div>
