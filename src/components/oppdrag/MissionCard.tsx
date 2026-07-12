@@ -836,7 +836,7 @@ export const MissionCard = ({
                         }}
                       >
                         <BarChart3 className="h-3 w-3" />
-                        Analyser
+                        {t('pages.missions.card.analyze')}
                       </Button>
                       <Button
                         variant="ghost"
