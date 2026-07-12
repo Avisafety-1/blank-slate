@@ -426,38 +426,39 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Navn</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.name')}</p>
                   <p className="text-sm sm:text-base">{equipment.navn}</p>
                 </div>
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Type</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.type')}</p>
                   <p className="text-sm sm:text-base">{equipment.type}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Serienummer</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.serial')}</p>
                   <p className="text-sm sm:text-base">{equipment.serienummer}</p>
                 </div>
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Internt SN</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.internalSerial')}</p>
                   <p className="text-sm sm:text-base">{equipment.internal_serial || "-"}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vekt</p>
-                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} kg` : "Ikke angitt"}</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.weight')}</p>
+                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} ${t('resourceDialogs.equipmentDetail.labels.kgSuffix')}` : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="flex justify-between sm:block">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Flyvetimer</p>
-                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} timer</p>
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.flightHours')}</p>
+                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} {t('resourceDialogs.equipmentDetail.labels.hoursSuffix')}</p>
                 </div>
+
                 {(() => {
                   const maintenanceOnlyStatus = calculateEquipmentMaintenanceStatus({
                     neste_vedlikehold: equipment.neste_vedlikehold,
