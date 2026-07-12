@@ -1516,7 +1516,7 @@ const Admin = () => {
                                     className="scale-75"
                                     disabled={!canManageRoles}
                                   />
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">ECCAIRS-tilgang</span>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">{t('admin.page.eccairsAccess')}</span>
                                 </div>
                               )}
                               <div className="flex items-center gap-1.5 border border-border rounded-md px-2 py-1">
