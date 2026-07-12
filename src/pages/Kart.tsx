@@ -460,7 +460,7 @@ export default function KartPage() {
       setMissionFlightTracks(tracks.length ? tracks : null);
 
       if (error || !data) {
-        toast.error("Fant ikke oppdraget");
+        toast.error(t('pages.map.missionNotFound'));
       } else {
         setEditingMissionStatus((data as any).status ?? null);
         const route = (data.route as any) as RouteData | null;
