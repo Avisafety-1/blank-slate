@@ -731,12 +731,12 @@ export function PersonCompetencyDialog({
                 <>
                   <div className="space-y-3 mb-6 min-w-0">
                     <h3 data-tour="person-competencies" className="text-sm font-semibold text-muted-foreground">
-                      Kompetanser
+                      {t('resourceDialogs.personCompetency.competencies')}
                     </h3>
                     {regularComps.length === 0 && tourComps.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Ingen kompetanser registrert</p>
+                      <p className="text-sm text-muted-foreground">{t('resourceDialogs.personCompetency.noCompetencies')}</p>
                     ) : regularComps.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Ingen ordinære kompetanser registrert</p>
+                      <p className="text-sm text-muted-foreground">{t('resourceDialogs.personCompetency.noOrdinary')}</p>
                     ) : (
                       regularComps.map(renderCompetencyCard)
                     )}
