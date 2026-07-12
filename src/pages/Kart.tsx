@@ -712,8 +712,8 @@ export default function KartPage() {
                       )}
                       <span className="leading-tight break-words">
                         <span>{currentRoute.areaKm2.toFixed(2)} km²</span>
-                        {currentRoute.areaKm2 > 150 && <span> – for stort for SafeSky</span>}
-                        {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && " (stort)"}
+                        {currentRoute.areaKm2 > 150 && <span> – {t('pages.map.tooLargeForSafeSky')}</span>}
+                        {currentRoute.areaKm2 > 50 && currentRoute.areaKm2 <= 150 && ` (${t('pages.map.large')})`}
                       </span>
                     </div>
                   )}
