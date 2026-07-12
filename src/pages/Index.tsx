@@ -334,10 +334,10 @@ const Index = () => {
                   if ((course as any)?.unlocks_modules?.length) {
                     await refetchUserInfo();
                   }
-                  toast.success("Kurs fullført — kompetanse registrert");
+                  toast.success(t('dashboard.tourCourseCompleted'));
                 } catch (e) {
                   console.error("Failed to register tour course completion:", e);
-                  toast.error("Kunne ikke registrere kursfullføring");
+                  toast.error(t('dashboard.tourCourseError'));
                 }
               }
             : undefined,
