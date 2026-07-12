@@ -70,6 +70,8 @@ interface EquipmentDetailDialogProps {
 
 export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEquipment, onEquipmentUpdated }: EquipmentDetailDialogProps) => {
   const { user, companyId, isAdmin } = useAuth();
+  const { t } = useTranslation();
+
   const queryClient = useQueryClient();
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("equipment", initialEquipment?.id, companyId || undefined, open);
