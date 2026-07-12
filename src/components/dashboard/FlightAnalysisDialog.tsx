@@ -379,26 +379,26 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
         <DialogHeader className="pb-0">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <BarChart3 className="w-5 h-5 text-primary" />
-            Flyanalyse
+            {t('dashboard.flightAnalysis.title')}
             {droneName && <span className="text-muted-foreground font-normal">— {droneName}</span>}
           </DialogTitle>
-          <DialogDescription className="sr-only">Detaljert flyanalyse med kart og telemetri</DialogDescription>
+          <DialogDescription className="sr-only">{t('dashboard.flightAnalysis.description')}</DialogDescription>
           <div className="flex items-center gap-2 flex-wrap">
             {flightDate && (
               <Badge variant="outline" className="text-xs">
-                {new Date(flightDate).toLocaleDateString('nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                {new Date(flightDate).toLocaleDateString(i18n.language?.startsWith('en') ? 'en-GB' : 'nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
               </Badge>
             )}
-            <Badge variant="outline" className="text-xs">{positions.length} datapunkter</Badge>
+            <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
             {!hasAdvancedData && (
               <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="w-3 h-3 mr-1" />
-                Begrenset telemetri (importert før utvidet analyse)
+                {t('dashboard.flightAnalysis.limitedTelemetry')}
               </Badge>
             )}
             {events.length > 0 && (
               <Badge variant="outline" className="text-xs border-destructive/50 text-destructive">
-                {events.length} hendelser
+                {t('dashboard.flightAnalysis.events', { count: events.length })}
               </Badge>
             )}
           </div>
