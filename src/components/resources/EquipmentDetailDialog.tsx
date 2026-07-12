@@ -635,7 +635,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
                 return (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Oppdrag siden vedlikehold: {missionsSince} / {equipment.inspection_interval_missions}</p>
+                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.missionsSinceMaintenance', { current: missionsSince, limit: equipment.inspection_interval_missions })}</p>
                     <div className="w-full h-2 rounded-full bg-muted">
                       <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                     </div>
