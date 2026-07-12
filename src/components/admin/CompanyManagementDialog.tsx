@@ -82,6 +82,7 @@ const companySchema = z.object({
     .optional()
     .or(z.literal("")),
   parent_company_id: z.string().nullable().optional(),
+  default_language: z.enum(['no', 'en']).default('no'),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
