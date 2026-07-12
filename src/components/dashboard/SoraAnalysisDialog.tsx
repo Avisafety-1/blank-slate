@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { useTranslation } from "react-i18next";
 
 interface SoraAnalysisDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ interface SoraAnalysisDialogProps {
 }
 
 export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: SoraAnalysisDialogProps) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>(missionId || "");
@@ -74,7 +76,7 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
     if (error) {
       console.error("Error fetching missions:", error);
-      toast.error("Kunne ikke hente oppdrag");
+      toast.error(t("sora.analysisDialog.toastNoMissions"));
     } else {
       setMissions(data || []);
     }
@@ -169,17 +171,17 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
   const handleSave = async () => {
     if (!selectedMissionId) {
-      toast.error("Vennligst velg et oppdrag");
+      toast.error(t("sora.analysisDialog.toastNoMissionSelected"));
       return;
     }
 
     if (!companyId) {
-      toast.error("Kunne ikke finne selskaps-ID");
+      toast.error(t("sora.analysisDialog.toastNoCompanyId"));
       return;
     }
     
     if (!user?.id) {
-      toast.error("Kunne ikke finne bruker-ID");
+      toast.error(t("sora.analysisDialog.toastNoUserId"));
       return;
     }
 
@@ -232,12 +234,12 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
       if (error) throw error;
       
-      toast.success(existingSora ? "SORA-analyse oppdatert" : "SORA-analyse opprettet");
+      toast.success(existingSora ? t("sora.analysisDialog.toastUpdated") : t("sora.analysisDialog.toastCreated"));
       onSaved?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving SORA:", error);
-      toast.error("Kunne ikke lagre SORA-analyse: " + error.message);
+      toast.error(t("sora.analysisDialog.toastSaveError", { message: error.message }));
     } finally {
       setLoading(false);
     }
@@ -248,21 +250,21 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
       <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
-            {existingSora ? "Rediger SORA-analyse" : "Ny SORA-analyse"}
+            {existingSora ? t("sora.analysisDialog.titleEdit") : t("sora.analysisDialog.titleNew")}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Mission Selection */}
           <div className="space-y-2">
-            <Label>Oppdrag *</Label>
+            <Label>{t("sora.analysisDialog.missionLabel")}</Label>
             <Select
               value={selectedMissionId}
               onValueChange={setSelectedMissionId}
               disabled={!!missionId}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Velg et oppdrag" />
+                <SelectValue placeholder={t("sora.analysisDialog.missionPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {missions.map((mission) => (
@@ -280,20 +282,20 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
               <CardContent className="pt-6">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-semibold">Oppdrag:</span> {selectedMission.tittel}
+                    <span className="font-semibold">{t("sora.analysisDialog.missionInfoTitle")}</span> {selectedMission.tittel}
                   </div>
                   <div>
-                    <span className="font-semibold">Dato/tid:</span>{" "}
+                    <span className="font-semibold">{t("sora.analysisDialog.dateTimeLabel")}</span>{" "}
                     {format(new Date(selectedMission.tidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
                     {selectedMission.slutt_tidspunkt && 
                       ` - ${format(new Date(selectedMission.slutt_tidspunkt), "HH:mm", { locale: nb })}`
                     }
                   </div>
                   <div>
-                    <span className="font-semibold">Sted:</span> {selectedMission.lokasjon}
+                    <span className="font-semibold">{t("sora.analysisDialog.locationLabel")}</span> {selectedMission.lokasjon}
                   </div>
                   <div>
-                    <span className="font-semibold">Risk-nivå:</span> {selectedMission.risk_nivå}
+                    <span className="font-semibold">{t("sora.analysisDialog.riskLevelLabel")}</span> {selectedMission.risk_nivå}
                   </div>
                 </div>
               </CardContent>
@@ -304,30 +306,30 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
           <Accordion type="multiple" defaultValue={["section1", "section2", "section3", "section4", "section5"]} className="w-full">
             {/* Section 1: Operasjonsmiljø og ConOps */}
             <AccordionItem value="section1">
-              <AccordionTrigger>Operasjonsmiljø og ConOps</AccordionTrigger>
+              <AccordionTrigger>{t("sora.analysisDialog.section1Title")}</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Miljø</Label>
+                  <Label>{t("sora.analysisDialog.environmentLabel")}</Label>
                   <Select value={formData.environment} onValueChange={(value) => setFormData({ ...formData, environment: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg miljø" />
+                      <SelectValue placeholder={t("sora.analysisDialog.environmentPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Tettbygd">Tettbygd</SelectItem>
-                      <SelectItem value="Landlig">Landlig</SelectItem>
-                      <SelectItem value="Sjø">Sjø</SelectItem>
-                      <SelectItem value="Industriområde">Industriområde</SelectItem>
-                      <SelectItem value="Annet">Annet</SelectItem>
+                      <SelectItem value="Tettbygd">{t("sora.analysisDialog.envUrban")}</SelectItem>
+                      <SelectItem value="Landlig">{t("sora.analysisDialog.envRural")}</SelectItem>
+                      <SelectItem value="Sjø">{t("sora.analysisDialog.envSea")}</SelectItem>
+                      <SelectItem value="Industriområde">{t("sora.analysisDialog.envIndustrial")}</SelectItem>
+                      <SelectItem value="Annet">{t("sora.analysisDialog.envOther")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Kort ConOps-beskrivelse</Label>
+                  <Label>{t("sora.analysisDialog.conopsLabel")}</Label>
                   <Textarea
                     value={formData.conops_summary}
                     onChange={(e) => setFormData({ ...formData, conops_summary: e.target.value })}
-                    placeholder="Kort beskrivelse av hva som skal gjøres, hvor og hvordan (3–5 linjer)."
+                    placeholder={t("sora.analysisDialog.conopsPlaceholder")}
                     rows={4}
                   />
                 </div>
@@ -336,13 +338,13 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
             {/* Section 2: Bakkebasert risiko (GRC) */}
             <AccordionItem value="section2">
-              <AccordionTrigger>Bakkebasert risiko (GRC)</AccordionTrigger>
+              <AccordionTrigger>{t("sora.analysisDialog.section2Title")}</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>iGRC (grunnrisiko på bakken)</Label>
+                  <Label>{t("sora.analysisDialog.igrcLabel")}</Label>
                   <Select value={formData.igrc} onValueChange={(value) => setFormData({ ...formData, igrc: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg iGRC" />
+                      <SelectValue placeholder={t("sora.analysisDialog.igrcPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -353,20 +355,20 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tiltak for bakkebasert risiko</Label>
+                  <Label>{t("sora.analysisDialog.groundMitigationsLabel")}</Label>
                   <Textarea
                     value={formData.ground_mitigations}
                     onChange={(e) => setFormData({ ...formData, ground_mitigations: e.target.value })}
-                    placeholder="Beskriv sperringer, buffersoner, fallskjerm, ERP osv."
+                    placeholder={t("sora.analysisDialog.groundMitigationsPlaceholder")}
                     rows={4}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>fGRC (endelig risiko på bakken)</Label>
+                  <Label>{t("sora.analysisDialog.fgrcLabel")}</Label>
                   <Select value={formData.fgrc} onValueChange={(value) => setFormData({ ...formData, fgrc: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg fGRC" />
+                      <SelectValue placeholder={t("sora.analysisDialog.fgrcPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -380,13 +382,13 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
             {/* Section 3: Luftromsrisiko (ARC) */}
             <AccordionItem value="section3">
-              <AccordionTrigger>Luftromsrisiko (ARC)</AccordionTrigger>
+              <AccordionTrigger>{t("sora.analysisDialog.section3Title")}</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Initial ARC</Label>
+                  <Label>{t("sora.analysisDialog.arcInitialLabel")}</Label>
                   <Select value={formData.arc_initial} onValueChange={(value) => setFormData({ ...formData, arc_initial: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg initial ARC" />
+                      <SelectValue placeholder={t("sora.analysisDialog.arcInitialPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ARC-A">ARC-A</SelectItem>
@@ -398,20 +400,20 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Tiltak for luftromsrisiko</Label>
+                  <Label>{t("sora.analysisDialog.airspaceMitigationsLabel")}</Label>
                   <Textarea
                     value={formData.airspace_mitigations}
                     onChange={(e) => setFormData({ ...formData, airspace_mitigations: e.target.value })}
-                    placeholder="Beskriv strategiske og taktiske tiltak (NOTAM, ATC-koordinering, observatører osv.)."
+                    placeholder={t("sora.analysisDialog.airspaceMitigationsPlaceholder")}
                     rows={4}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Residual ARC</Label>
+                  <Label>{t("sora.analysisDialog.arcResidualLabel")}</Label>
                   <Select value={formData.arc_residual} onValueChange={(value) => setFormData({ ...formData, arc_residual: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg residual ARC" />
+                      <SelectValue placeholder={t("sora.analysisDialog.arcResidualPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ARC-A">ARC-A</SelectItem>
@@ -426,13 +428,13 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
             {/* Section 4: SAIL og rest-risiko */}
             <AccordionItem value="section4">
-              <AccordionTrigger>SAIL og rest-risiko</AccordionTrigger>
+              <AccordionTrigger>{t("sora.analysisDialog.section4Title")}</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>SAIL-nivå</Label>
+                  <Label>{t("sora.analysisDialog.sailLabel")}</Label>
                   <Select value={formData.sail} onValueChange={(value) => setFormData({ ...formData, sail: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg SAIL-nivå" />
+                      <SelectValue placeholder={t("sora.analysisDialog.sailPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="SAIL I">SAIL I</SelectItem>
@@ -446,21 +448,21 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Vurdering av rest-risiko</Label>
+                  <Label>{t("sora.analysisDialog.residualRiskLabel")}</Label>
                   <Select value={formData.residual_risk_level} onValueChange={(value) => setFormData({ ...formData, residual_risk_level: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Velg rest-risiko" />
+                      <SelectValue placeholder={t("sora.analysisDialog.residualRiskPlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Lav">Lav</SelectItem>
-                      <SelectItem value="Moderat">Moderat</SelectItem>
-                      <SelectItem value="Høy">Høy</SelectItem>
+                      <SelectItem value="Lav">{t("sora.analysisDialog.riskLow")}</SelectItem>
+                      <SelectItem value="Moderat">{t("sora.analysisDialog.riskModerate")}</SelectItem>
+                      <SelectItem value="Høy">{t("sora.analysisDialog.riskHigh")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Begrunnelse for rest-risiko</Label>
+                  <Label>{t("sora.analysisDialog.residualRiskCommentLabel")}</Label>
                   <Textarea
                     value={formData.residual_risk_comment}
                     onChange={(e) => setFormData({ ...formData, residual_risk_comment: e.target.value })}
@@ -469,11 +471,11 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Operative begrensninger</Label>
+                  <Label>{t("sora.analysisDialog.operationalLimitsLabel")}</Label>
                   <Textarea
                     value={formData.operational_limits}
                     onChange={(e) => setFormData({ ...formData, operational_limits: e.target.value })}
-                    placeholder="F.eks. maks vind, min. sikt, min. avstand til folk, bare dagslys osv."
+                    placeholder={t("sora.analysisDialog.operationalLimitsPlaceholder")}
                     rows={3}
                   />
                 </div>
@@ -482,41 +484,41 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
             {/* Section 5: Status og godkjenning */}
             <AccordionItem value="section5">
-              <AccordionTrigger>Status og godkjenning</AccordionTrigger>
+              <AccordionTrigger>{t("sora.analysisDialog.section5Title")}</AccordionTrigger>
               <AccordionContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>SORA-status *</Label>
+                  <Label>{t("sora.analysisDialog.statusLabel")}</Label>
                   <Select value={formData.sora_status} onValueChange={(value) => setFormData({ ...formData, sora_status: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Ikke startet">Ikke startet</SelectItem>
-                      <SelectItem value="Under arbeid">Under arbeid</SelectItem>
-                      <SelectItem value="Ferdig">Ferdig</SelectItem>
-                      <SelectItem value="Revidert">Revidert</SelectItem>
+                      <SelectItem value="Ikke startet">{t("sora.analysisDialog.statusNotStarted")}</SelectItem>
+                      <SelectItem value="Under arbeid">{t("sora.analysisDialog.statusInProgress")}</SelectItem>
+                      <SelectItem value="Ferdig">{t("sora.analysisDialog.statusDone")}</SelectItem>
+                      <SelectItem value="Revidert">{t("sora.analysisDialog.statusRevised")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Utført av</Label>
+                  <Label>{t("sora.analysisDialog.preparedByLabel")}</Label>
                   <Input
                     value={
                       existingSora?.prepared_by
-                        ? (preparedByProfile?.full_name || preparedByProfile?.email || "Ukjent")
+                        ? (preparedByProfile?.full_name || preparedByProfile?.email || t("sora.analysisDialog.unknownUser"))
                         : (user?.email || "")
                     }
                     disabled
                   />
                   {!existingSora?.prepared_by && (
-                    <p className="text-xs text-muted-foreground">Dette feltet settes automatisk til innlogget bruker</p>
+                    <p className="text-xs text-muted-foreground">{t("sora.analysisDialog.preparedByHint")}</p>
                   )}
                 </div>
 
                 {existingSora?.prepared_at && (
                   <div className="space-y-2">
-                    <Label>Dato utført</Label>
+                    <Label>{t("sora.analysisDialog.preparedAtLabel")}</Label>
                     <Input 
                       value={format(new Date(existingSora.prepared_at), "d. MMM yyyy HH:mm", { locale: nb })} 
                       disabled 
@@ -525,19 +527,19 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
                 )}
 
                 <div className="space-y-2">
-                  <Label>Godkjent av</Label>
+                  <Label>{t("sora.analysisDialog.approvedByLabel")}</Label>
                   <SearchablePersonSelect
                     persons={profiles}
                     value={formData.approved_by || null}
                     onValueChange={(val) => setFormData({ ...formData, approved_by: val || "" })}
-                    placeholder="Velg godkjenner (valgfritt)"
-                    searchPlaceholder="Søk person..."
+                    placeholder={t("sora.analysisDialog.approvedByPlaceholder")}
+                    searchPlaceholder={t("sora.analysisDialog.searchPersonPlaceholder")}
                   />
                 </div>
 
                 {existingSora?.approved_at && (
                   <div className="space-y-2">
-                    <Label>Dato godkjent</Label>
+                    <Label>{t("sora.analysisDialog.approvedAtLabel")}</Label>
                     <Input 
                       value={format(new Date(existingSora.approved_at), "d. MMM yyyy HH:mm", { locale: nb })} 
                       disabled 
@@ -551,10 +553,10 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Avbryt
+              {t("sora.analysisDialog.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={loading}>
-              {loading ? "Lagrer..." : "Lagre"}
+              {loading ? t("sora.analysisDialog.saving") : t("sora.analysisDialog.save")}
             </Button>
           </div>
         </div>
