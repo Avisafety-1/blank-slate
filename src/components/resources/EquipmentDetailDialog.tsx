@@ -647,34 +647,34 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
                   <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-                  Vedlikeholdsdetaljer
+                  {t('resourceDialogs.equipmentDetail.maintenance.detailsTitle')}
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (dager)</p>
-                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? `${equipment.vedlikeholdsintervall_dager} dager` : "Ikke angitt"}</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalDays')}</p>
+                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? t('resourceDialogs.equipmentDetail.maintenance.intervalDaysValue', { days: equipment.vedlikeholdsintervall_dager }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (timer)</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? `${equipment.inspection_interval_hours} timer` : "Ikke angitt"}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Vedl.intervall (oppdrag)</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? `${equipment.inspection_interval_missions} oppdrag` : "Ikke angitt"}</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalHours')}</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? t('resourceDialogs.equipmentDetail.maintenance.intervalHoursValue', { hours: equipment.inspection_interval_hours }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Varsel dager</p>
-                      <p className="text-sm sm:text-base">{equipment.varsel_dager ?? 14} dager før gul</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalMissions')}</p>
+                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsValue', { missions: equipment.inspection_interval_missions }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex justify-between sm:block">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.warningDays')}</p>
+                      <p className="text-sm sm:text-base">{t('resourceDialogs.equipmentDetail.maintenance.warningDaysValue', { days: equipment.varsel_dager ?? 14 })}</p>
                     </div>
                     <div className="flex justify-between sm:block">
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">Sjekkliste</p>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.checklist')}</p>
                       <p className="text-sm sm:text-base flex items-center gap-1">
                         {linkedChecklist ? (
                           <>
@@ -682,11 +682,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                             {linkedChecklist.tittel}
                           </>
                         ) : (
-                          "Ingen"
+                          t('resourceDialogs.equipmentDetail.maintenance.none')
                         )}
                       </p>
                     </div>
                   </div>
+
                 </CollapsibleContent>
               </Collapsible>
 
