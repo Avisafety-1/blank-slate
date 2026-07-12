@@ -23,6 +23,7 @@ import {
   Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getResourceConflictsForMission, ResourceConflict } from "@/hooks/useResourceConflicts";
