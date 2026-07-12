@@ -675,7 +675,7 @@ export function PersonCompetencyDialog({
                           }}
                         >
                           <Paperclip className="h-3.5 w-3.5" />
-                          Vis vedlegg
+                          {t('resourceDialogs.personCompetency.showAttachment')}
                           <ExternalLink className="h-3 w-3" />
                         </Button>
                       )}
