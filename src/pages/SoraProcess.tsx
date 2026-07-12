@@ -26,6 +26,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import avisafeLogoText from "@/assets/avisafe-logo-text.png";
+import { useTranslation } from "react-i18next";
 
 // All colors derived from the app's design system (index.css)
 // Primary: hsl(210 80% 28%)
@@ -127,7 +128,7 @@ const PhaseCard = ({ phase, icon, title, subtitle, accentColor, dimColor, midCol
               className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded"
               style={{ background: midColor, color: accentColor }}
             >
-              Fase {phase}
+              {t('sora.process.phaseLabel', { phase })}
             </span>
           </div>
           <h3 className="font-bold text-lg leading-tight" style={{ color: C.text }}>
@@ -168,6 +169,7 @@ const PhaseCard = ({ phase, icon, title, subtitle, accentColor, dimColor, midCol
 );
 
 export default function SoraProcess() {
+  const { t } = useTranslation();
   return (
     <div
       className="min-h-screen w-full"
@@ -198,28 +200,28 @@ export default function SoraProcess() {
             style={{ background: C.primaryDim, borderColor: C.borderPrimary, color: C.primaryLight }}
           >
             <Activity size={12} />
-            EASA SORA · AI-drevet · Specific-kategori
+            {t('sora.process.badge')}
           </div>
 
           <h1
             className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight mb-4"
             style={{ color: C.text }}
           >
-            Intelligent SORA
+            {t('sora.process.titleLine1')}
             <br />
             <span
               className="text-3xl sm:text-4xl"
               style={{ color: C.primaryLight }}
             >
-              fra data til beslutning
+              {t('sora.process.titleLine2')}
             </span>
           </h1>
 
           <p className="text-lg mb-2" style={{ color: C.textMuted }}>
-            Automatisert risikovurdering etter EASA SORA-metodikken
+            {t('sora.process.subtitle')}
           </p>
           <p className="text-sm font-semibold tracking-wide" style={{ color: C.primaryLight }}>
-            Norges mest avanserte droneoperasjonsplattform
+            {t('sora.process.tagline')}
           </p>
 
           {/* Stats bar */}
@@ -228,10 +230,10 @@ export default function SoraProcess() {
             style={{ borderColor: C.border }}
           >
             {[
-              { value: "7+", label: "Datakilder" },
-              { value: "5", label: "AI-kategorier" },
-              { value: "SAIL I–VI", label: "SORA-dekning" },
-              { value: "< 60s", label: "Analysertid" },
+              { value: "7+", label: t('sora.process.stat1Label') },
+              { value: "5", label: t('sora.process.stat2Label') },
+              { value: "SAIL I–VI", label: t('sora.process.stat3Label') },
+              { value: "< 60s", label: t('sora.process.stat4Label') },
             ].map((s, i) => (
               <div
                 key={s.label}
@@ -251,140 +253,140 @@ export default function SoraProcess() {
           <PhaseCard
             phase={1}
             icon={<Database size={20} />}
-            title="Avisafe Oppdragsdata"
-            subtitle="Strukturerte operasjonsdata fra plattformen"
+            title={t('sora.process.phase1Title')}
+            subtitle={t('sora.process.phase1Subtitle')}
             accentColor={C.primaryLight}
             dimColor={C.primaryDim}
             midColor={`hsl(210 50% 20%)`}
             items={[
-              { icon: <MapPin size={13} />, label: "Oppdragsdetaljer", desc: "Lokasjon, tid, rute, kunde" },
-              { icon: <Users size={13} />, label: "Piloter & kompetanser", desc: "Sertifikater, flytimer, recency" },
-              { icon: <Navigation size={13} />, label: "Droner", desc: "Modell, status, flytimer, inspeksjon" },
-              { icon: <Layers size={13} />, label: "Utstyr", desc: "Vedlikeholdsstatus, tilgjengelighet" },
+              { icon: <MapPin size={13} />, label: t('sora.process.phase1Item1Label'), desc: t('sora.process.phase1Item1Desc') },
+              { icon: <Users size={13} />, label: t('sora.process.phase1Item2Label'), desc: t('sora.process.phase1Item2Desc') },
+              { icon: <Navigation size={13} />, label: t('sora.process.phase1Item3Label'), desc: t('sora.process.phase1Item3Desc') },
+              { icon: <Layers size={13} />, label: t('sora.process.phase1Item4Label'), desc: t('sora.process.phase1Item4Desc') },
             ]}
           />
 
-          <FlowConnector label="Kontekstdata" />
+          <FlowConnector label={t('sora.process.connectorContext')} />
 
           <PhaseCard
             phase={2}
             icon={<Globe size={20} />}
-            title="Eksterne Datakilder"
-            subtitle="Sanntidsdata fra offentlige og regulatoriske API-er"
+            title={t('sora.process.phase2Title')}
+            subtitle={t('sora.process.phase2Subtitle')}
             accentColor={C.green}
             dimColor={C.greenDim}
             midColor={C.greenMid}
             items={[
-              { icon: <Wind size={13} />, label: "Yr.no / OpenMeteo", desc: "Temperatur, vind, kast, sikt, nedbør" },
-              { icon: <Radio size={13} />, label: "OpenAIP Luftrom", desc: "CTR, TMA, R/D/P-soner, restriksjoner" },
-              { icon: <MapPin size={13} />, label: "SSB Arealbruk (Geonorge WFS)", desc: "Bolig, industri, natur-klassifisering" },
-              { icon: <Users size={13} />, label: "SSB Befolkning (rutenett WFS)", desc: "Tetthet per km² — direkte inn i GRC" },
+              { icon: <Wind size={13} />, label: t('sora.process.phase2Item1Label'), desc: t('sora.process.phase2Item1Desc') },
+              { icon: <Radio size={13} />, label: t('sora.process.phase2Item2Label'), desc: t('sora.process.phase2Item2Desc') },
+              { icon: <MapPin size={13} />, label: t('sora.process.phase2Item3Label'), desc: t('sora.process.phase2Item3Desc') },
+              { icon: <Users size={13} />, label: t('sora.process.phase2Item4Label'), desc: t('sora.process.phase2Item4Desc') },
             ]}
           />
 
-          <FlowConnector label="Sanntidsdata" />
+          <FlowConnector label={t('sora.process.connectorRealtime')} />
 
           <PhaseCard
             phase={3}
             icon={<Shield size={20} />}
-            title="Selskapssettings & Hard Stops"
-            subtitle="Operatørens sikkerhetspolicyer — automatiske blokkeringer ved brudd"
+            title={t('sora.process.phase3Title')}
+            subtitle={t('sora.process.phase3Subtitle')}
             accentColor={C.red}
             dimColor={C.redDim}
             midColor={C.redMid}
             items={[
-              { icon: <Wind size={13} />, label: "Vindgrenser (m/s)", desc: "Middelvind og kastterskel" },
-              { icon: <Thermometer size={13} />, label: "Temperaturgrenser (°C)", desc: "Min og maks operasjonstemperatur" },
-              { icon: <Navigation size={13} />, label: "Maks flyhøyde (m AGL)", desc: "Hardstop — kan ikke overstyres" },
-              { icon: <Eye size={13} />, label: "BVLOS / Nattflyging", desc: "Tillatt eller ikke for selskapet" },
-              { icon: <Users size={13} />, label: "Maks befolkningstetthet", desc: "Terskel for operasjonsgodkjenning" },
-              { icon: <CheckCircle2 size={13} />, label: "Krav: observatør & reservebatteri", desc: "Operative minimumskrav" },
-              { icon: <Lock size={13} />, label: "Operative begrensninger", desc: "Fritekst sendt til AI-systemprompt" },
-              { icon: <FileText size={13} />, label: "Operasjonsmanual", desc: "Policydokumenter som AI-kontekst" },
+              { icon: <Wind size={13} />, label: t('sora.process.phase3Item1Label'), desc: t('sora.process.phase3Item1Desc') },
+              { icon: <Thermometer size={13} />, label: t('sora.process.phase3Item2Label'), desc: t('sora.process.phase3Item2Desc') },
+              { icon: <Navigation size={13} />, label: t('sora.process.phase3Item3Label'), desc: t('sora.process.phase3Item3Desc') },
+              { icon: <Eye size={13} />, label: t('sora.process.phase3Item4Label'), desc: t('sora.process.phase3Item4Desc') },
+              { icon: <Users size={13} />, label: t('sora.process.phase3Item5Label'), desc: t('sora.process.phase3Item5Desc') },
+              { icon: <CheckCircle2 size={13} />, label: t('sora.process.phase3Item6Label'), desc: t('sora.process.phase3Item6Desc') },
+              { icon: <Lock size={13} />, label: t('sora.process.phase3Item7Label'), desc: t('sora.process.phase3Item7Desc') },
+              { icon: <FileText size={13} />, label: t('sora.process.phase3Item8Label'), desc: t('sora.process.phase3Item8Desc') },
             ]}
           />
 
-          <FlowConnector label="Selskapspolicyer" />
+          <FlowConnector label={t('sora.process.connectorPolicies')} />
 
           <PhaseCard
             phase={4}
             icon={<User size={20} />}
-            title="Pilot & Operatør Input"
-            subtitle="Operasjonsspesifikke parametere definert av piloten"
+            title={t('sora.process.phase4Title')}
+            subtitle={t('sora.process.phase4Subtitle')}
             accentColor={C.yellow}
             dimColor={C.yellowDim}
             midColor={C.yellowMid}
             items={[
-              { icon: <Navigation size={13} />, label: "Flyhøyde & operasjonstype", desc: "VLOS / BVLOS" },
-              { icon: <Users size={13} />, label: "Nærhet til folk", desc: "Ingen / spredt / tett bebyggelse" },
-              { icon: <AlertTriangle size={13} />, label: "Kritisk infrastruktur", desc: "Nærhet og eksponeringsgrad" },
-              { icon: <Eye size={13} />, label: "Antall observatører", desc: "Bemanning av sikkerhetsvakter" },
-              { icon: <Radio size={13} />, label: "ATC-koordinering", desc: "Kontakt og clearance-status" },
-              { icon: <MapPin size={13} />, label: "Reservelandingsplass", desc: "Definert nødlandingspunkt" },
+              { icon: <Navigation size={13} />, label: t('sora.process.phase4Item1Label'), desc: t('sora.process.phase4Item1Desc') },
+              { icon: <Users size={13} />, label: t('sora.process.phase4Item2Label'), desc: t('sora.process.phase4Item2Desc') },
+              { icon: <AlertTriangle size={13} />, label: t('sora.process.phase4Item3Label'), desc: t('sora.process.phase4Item3Desc') },
+              { icon: <Eye size={13} />, label: t('sora.process.phase4Item4Label'), desc: t('sora.process.phase4Item4Desc') },
+              { icon: <Radio size={13} />, label: t('sora.process.phase4Item5Label'), desc: t('sora.process.phase4Item5Desc') },
+              { icon: <MapPin size={13} />, label: t('sora.process.phase4Item6Label'), desc: t('sora.process.phase4Item6Desc') },
             ]}
           />
 
-          <FlowConnector label="Operasjonsparametre" />
+          <FlowConnector label={t('sora.process.connectorParams')} />
 
           <PhaseCard
             phase={5}
             icon={<Brain size={20} />}
-            title="AI Analyse — Første vurdering"
-            subtitle="Claude AI analyserer alle inputs simultant mot SORA-rammeverket"
+            title={t('sora.process.phase5Title')}
+            subtitle={t('sora.process.phase5Subtitle')}
             accentColor={C.purple}
             dimColor={C.purpleDim}
             midColor={C.purpleMid}
             glow
             items={[
-              { icon: <Cpu size={13} />, label: "Simultant alle datakilder", desc: "700+ parametere analysert i én pass" },
-              { icon: <AlertTriangle size={13} />, label: "Hard stop-sjekk", desc: "Automatisk blokkering ved brudd" },
-              { icon: <BarChart3 size={13} />, label: "Risikoscore 1–10", desc: "Vektet per kategori" },
-              { icon: <Wind size={13} />, label: "Værvurdering", desc: "Vind, sikt, temperatur, nedbør" },
-              { icon: <Radio size={13} />, label: "Luftromsvurdering", desc: "CTR/TMA-konflikter, klareringer" },
-              { icon: <Users size={13} />, label: "Pilot & utstyrsvurdering", desc: "Kompetanse, recency, vedlikehold" },
+              { icon: <Cpu size={13} />, label: t('sora.process.phase5Item1Label'), desc: t('sora.process.phase5Item1Desc') },
+              { icon: <AlertTriangle size={13} />, label: t('sora.process.phase5Item2Label'), desc: t('sora.process.phase5Item2Desc') },
+              { icon: <BarChart3 size={13} />, label: t('sora.process.phase5Item3Label'), desc: t('sora.process.phase5Item3Desc') },
+              { icon: <Wind size={13} />, label: t('sora.process.phase5Item4Label'), desc: t('sora.process.phase5Item4Desc') },
+              { icon: <Radio size={13} />, label: t('sora.process.phase5Item5Label'), desc: t('sora.process.phase5Item5Desc') },
+              { icon: <Users size={13} />, label: t('sora.process.phase5Item6Label'), desc: t('sora.process.phase5Item6Desc') },
             ]}
           />
 
-          <FlowConnector label="Risikovurdering" />
+          <FlowConnector label={t('sora.process.connectorRisk')} />
 
           <PhaseCard
             phase={6}
             icon={<MessageSquare size={20} />}
-            title="Pilotens Mitigeringer"
-            subtitle="Piloter responderer på AI-analysen med tiltak i 5 risikoklasser"
+            title={t('sora.process.phase6Title')}
+            subtitle={t('sora.process.phase6Subtitle')}
             accentColor={C.yellow}
             dimColor={C.yellowDim}
             midColor={C.yellowMid}
             items={[
-              { icon: <Wind size={13} />, label: "Værtiltak", desc: "Planer for vindeksponering og nedbør" },
-              { icon: <Radio size={13} />, label: "Luftromstiltak", desc: "ATC-koordinering, NOTAM-konfirmasjon" },
-              { icon: <User size={13} />, label: "Pilotvurdering", desc: "Begrunnelse for kompetanse og recency" },
-              { icon: <MapPin size={13} />, label: "Oppdragstiltak", desc: "Operasjonell kontigensplan" },
-              { icon: <Cpu size={13} />, label: "Utstyrstiltak", desc: "Redundans, backup-systemer, inspeksjon" },
-              { icon: <FileText size={13} />, label: "Oppdatert ConOps", desc: "Revidert operasjonskonsept til AI" },
+              { icon: <Wind size={13} />, label: t('sora.process.phase6Item1Label'), desc: t('sora.process.phase6Item1Desc') },
+              { icon: <Radio size={13} />, label: t('sora.process.phase6Item2Label'), desc: t('sora.process.phase6Item2Desc') },
+              { icon: <User size={13} />, label: t('sora.process.phase6Item3Label'), desc: t('sora.process.phase6Item3Desc') },
+              { icon: <MapPin size={13} />, label: t('sora.process.phase6Item4Label'), desc: t('sora.process.phase6Item4Desc') },
+              { icon: <Cpu size={13} />, label: t('sora.process.phase6Item5Label'), desc: t('sora.process.phase6Item5Desc') },
+              { icon: <FileText size={13} />, label: t('sora.process.phase6Item6Label'), desc: t('sora.process.phase6Item6Desc') },
             ]}
           />
 
-          <FlowConnector label="Mitigeringer" />
+          <FlowConnector label={t('sora.process.connectorMitigations')} />
 
           <PhaseCard
             phase={7}
             icon={<Zap size={20} />}
-            title="AI Re-vurdering — SORA-modus"
-            subtitle="Ny AI-analyse med alle mitigeringer. Strukturert SORA-beregning etter EASA SORA AMC-rammeverket"
+            title={t('sora.process.phase7Title')}
+            subtitle={t('sora.process.phase7Subtitle')}
             accentColor={C.purple}
             dimColor={C.purpleDim}
             midColor={C.purpleMid}
             glow
             items={[
-              { icon: <Brain size={13} />, label: "Komplett re-analyse", desc: "Alle mitigeringer integrert" },
-              { icon: <BarChart3 size={13} />, label: "GRC-beregning", desc: "iGRC → bakkemitigeringer → fGRC" },
-              { icon: <Radio size={13} />, label: "ARC-klassifisering", desc: "Initial ARC → luftromsmitigeringer → Residual ARC" },
-              { icon: <Layers size={13} />, label: "SAIL-matrise", desc: "fGRC × Residual ARC → SAIL I–VI" },
+              { icon: <Brain size={13} />, label: t('sora.process.phase7Item1Label'), desc: t('sora.process.phase7Item1Desc') },
+              { icon: <BarChart3 size={13} />, label: t('sora.process.phase7Item2Label'), desc: t('sora.process.phase7Item2Desc') },
+              { icon: <Radio size={13} />, label: t('sora.process.phase7Item3Label'), desc: t('sora.process.phase7Item3Desc') },
+              { icon: <Layers size={13} />, label: t('sora.process.phase7Item4Label'), desc: t('sora.process.phase7Item4Desc') },
             ]}
           />
 
-          <FlowConnector label="SORA-analyse" />
+          <FlowConnector label={t('sora.process.connectorAnalysis')} />
 
           {/* ── SORA OUTPUT ── */}
           <div
