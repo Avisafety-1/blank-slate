@@ -953,6 +953,7 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
           const { data: newTemplate, error } = await supabase.from("email_templates").insert({
             company_id: activeCompanyId,
             template_type: selectedTemplateType,
+            language: selectedLanguage,
             subject,
             content,
           }).select().single();
