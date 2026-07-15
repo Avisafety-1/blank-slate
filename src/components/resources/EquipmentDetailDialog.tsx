@@ -27,6 +27,7 @@ import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDial
 import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
 import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
+import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 
 interface Equipment {
@@ -481,7 +482,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
-                            {aggregatedStatus}
+                            {translateResourceStatus(aggregatedStatus)}
                           </Badge>
                         </div>
                         {aggregatedStatus !== "Grønn" && (
@@ -876,7 +877,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="F.eks. 50"
+                        placeholder={`${t('common.eg')} 50`}
                         value={formData.inspection_interval_hours}
                         onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
                         className="text-sm"
@@ -889,7 +890,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="F.eks. 5"
+                        placeholder={`${t('common.eg')} 5`}
                         value={formData.varsel_timer}
                         onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
                         className="text-sm"
@@ -904,7 +905,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         id="inspection_interval_missions"
                         type="number"
                         min="1"
-                        placeholder="F.eks. 100"
+                        placeholder={`${t('common.eg')} 100`}
                         value={formData.inspection_interval_missions}
                         onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
                         className="text-sm"
@@ -916,7 +917,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         id="varsel_oppdrag"
                         type="number"
                         min="1"
-                        placeholder="F.eks. 10"
+                        placeholder={`${t('common.eg')} 10`}
                         value={formData.varsel_oppdrag}
                         onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
                         className="text-sm"
