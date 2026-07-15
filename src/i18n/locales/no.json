@@ -173,6 +173,8 @@
     "selectMission": "Velg oppdrag (valgfritt)",
     "noMissionSelected": "Ingen oppdrag valgt",
     "noMission": "Ingen oppdrag",
+    "searchMission": "Søk etter oppdrag...",
+    "noMissionsFound": "Ingen oppdrag funnet",
     "safeskyPublishing": "SafeSky publisering",
     "safeskyOff": "Av",
     "safeskyOffDesc": "Deler kun posisjon internt i selskapet",
