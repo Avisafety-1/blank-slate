@@ -62,7 +62,8 @@
     "other": "Annet",
     "missionFallback": "Oppdrag",
     "unknown": "Ukjent",
-    "unknownError": "Ukjent feil"
+    "unknownError": "Ukjent feil",
+    "eg": "F.eks."
   },
   "auth": {
     "signIn": "Logg inn",
