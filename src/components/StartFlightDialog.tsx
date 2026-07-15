@@ -1064,29 +1064,102 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             <div data-tour="start-flight-mission" className="space-y-2">
               <Label htmlFor="mission-select">{t('flight.selectMission')}</Label>
-              <Select value={selectedMissionId} onValueChange={setSelectedMissionId}>
-                <SelectTrigger id="mission-select">
-                  <SelectValue placeholder={t('flight.noMissionSelected')} />
-                </SelectTrigger>
-              <SelectContent>
-                  <SelectItem value="none">{t('flight.noMission')}</SelectItem>
-                  {missions.map((mission) => {
-                    const missionHasRoute = mission.route && 
-                      typeof mission.route === 'object' && 
-                      mission.route !== null &&
-                      'coordinates' in mission.route;
-                    return (
-                      <SelectItem key={mission.id} value={mission.id}>
-                        <div className="flex items-center gap-2">
-                          {missionHasRoute && <MapPin className="h-3 w-3 text-primary" />}
-                          <span>{mission.tittel}</span>
-                          <span className="text-muted-foreground text-xs">- {mission.lokasjon}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-            </Select>
+              {(() => {
+                const selected = selectedMissionId && selectedMissionId !== 'none'
+                  ? missions.find((m) => m.id === selectedMissionId)
+                  : null;
+                const isNone = selectedMissionId === 'none';
+                const selectedHasRoute = selected?.route &&
+                  typeof selected.route === 'object' &&
+                  selected.route !== null &&
+                  'coordinates' in (selected.route as any);
+                return (
+                  <Popover open={missionPopoverOpen} onOpenChange={setMissionPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="mission-select"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={missionPopoverOpen}
+                        className={cn(
+                          "w-full justify-between font-normal text-left whitespace-normal h-auto min-h-10 py-2",
+                          !selected && !isNone && "text-muted-foreground"
+                        )}
+                      >
+                        <span className="flex items-start gap-2 flex-1 min-w-0 break-words">
+                          {selected ? (
+                            <>
+                              {selectedHasRoute && <MapPin className="h-3 w-3 text-primary shrink-0 mt-1" />}
+                              <span className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0 break-words">
+                                <span className="font-medium break-words">{selected.tittel}</span>
+                                {selected.lokasjon && (
+                                  <span className="text-xs text-muted-foreground break-words">- {selected.lokasjon}</span>
+                                )}
+                              </span>
+                            </>
+                          ) : isNone ? (
+                            <span>{t('flight.noMission')}</span>
+                          ) : (
+                            <span>{t('flight.noMissionSelected')}</span>
+                          )}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[--radix-popover-trigger-width] p-0 max-w-[calc(100vw-2rem)]"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput placeholder={t('flight.searchMission')} />
+                        <CommandList className="max-h-[50vh]">
+                          <CommandEmpty>{t('flight.noMissionsFound')}</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="__none__ ingen no mission"
+                              onSelect={() => {
+                                setSelectedMissionId('none');
+                                setMissionPopoverOpen(false);
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", isNone ? "opacity-100" : "opacity-0")} />
+                              {t('flight.noMission')}
+                            </CommandItem>
+                            {missions.map((mission) => {
+                              const missionHasRoute = mission.route &&
+                                typeof mission.route === 'object' &&
+                                mission.route !== null &&
+                                'coordinates' in (mission.route as any);
+                              return (
+                                <CommandItem
+                                  key={mission.id}
+                                  value={`${mission.tittel} ${mission.lokasjon ?? ''}`}
+                                  onSelect={() => {
+                                    setSelectedMissionId(mission.id);
+                                    setMissionPopoverOpen(false);
+                                  }}
+                                  className="items-start"
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4 mt-1 shrink-0", selectedMissionId === mission.id ? "opacity-100" : "opacity-0")} />
+                                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                                    {missionHasRoute && <MapPin className="h-3 w-3 text-primary shrink-0 mt-1" />}
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0 flex-1">
+                                      <span className="font-medium break-words">{mission.tittel}</span>
+                                      {mission.lokasjon && (
+                                        <span className="text-xs text-muted-foreground break-words">- {mission.lokasjon}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
 
             {missionChecklistIds.length > 0 && (
               <div className="space-y-2 mt-2">
