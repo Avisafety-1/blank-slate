@@ -62,7 +62,8 @@
     "other": "Other",
     "missionFallback": "Mission",
     "unknown": "Unknown",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "eg": "e.g."
   },
   "auth": {
     "signIn": "Sign in",
@@ -2518,7 +2519,7 @@
       "purchasePriceEur": "Purchase price (EUR)"
     }
   },
-   "riskAssessment": {
+  "riskAssessment": {
     "flightMode": "Flight mode",
     "vlosDesc": "Visual contact with the drone throughout the flight",
     "bvlosDesc": "Flight beyond visual line of sight — requires SORA, C2 link and DAA",

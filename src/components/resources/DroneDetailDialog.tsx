@@ -34,6 +34,7 @@ import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDial
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
+import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1029,7 +1030,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-sm font-medium text-muted-foreground">{tt("labels.status")}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge className={`${getStatusColorClasses(aggregatedStatus)} border`}>
-                      {aggregatedStatus}
+                      {translateResourceStatus(aggregatedStatus)}
                     </Badge>
                   </div>
                   {/* Status explanation */}
