@@ -173,6 +173,8 @@
     "selectMission": "Select mission (optional)",
     "noMissionSelected": "No mission selected",
     "noMission": "No mission",
+    "searchMission": "Search missions...",
+    "noMissionsFound": "No missions found",
     "safeskyPublishing": "SafeSky publishing",
     "safeskyOff": "Off",
     "safeskyOffDesc": "Shares position internally within the company only",
