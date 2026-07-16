@@ -304,18 +304,25 @@ export const DroneLogbookDialog = ({
           }
           const isHendelse = entry.entry_type === 'hendelse';
           const incidentIdMatch = entry.description?.match(/^incident_id:(.+)$/);
+          const translatedTitle = translatePersistedLogText(entry.title);
+          const translatedDescription = incidentIdMatch
+            ? undefined
+            : (entry.description ? translatePersistedLogText(entry.description) : undefined);
+          const translatedBadge = entry.entry_type
+            ? (t(`resourceDialogs.droneLogbook.entryTypes.${entry.entry_type}`, { defaultValue: entry.entry_type }) as string)
+            : t('resourceDialogs.droneLogbook.badges.note');
           logs.push({
             id: `manual-${entry.id}`,
             type: 'manual',
             date: new Date(entry.entry_date),
-            title: entry.title,
-            description: incidentIdMatch ? undefined : (entry.description || undefined),
+            title: translatedTitle,
+            description: translatedDescription,
             userName: userMap.get(entry.user_id) || t('resourceDialogs.droneLogbook.unknownUser'),
             icon: isHendelse ? <AlertTriangle className="w-4 h-4" /> : <Edit className="w-4 h-4" />,
             badgeColor: isHendelse
               ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
               : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-            badgeText: entry.entry_type || t('resourceDialogs.droneLogbook.badges.note'),
+            badgeText: translatedBadge,
             imageUrl: imagePublicUrl,
             incidentId: incidentIdMatch?.[1] || undefined,
             manualEntryId: entry.id,
