@@ -20,7 +20,7 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon
+  Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon, Copy
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
