@@ -216,7 +216,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   <ArrowDown className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="flex-1 text-sm min-w-[100px]">{mt.label}</div>
+              <div className="flex-1 text-sm min-w-[100px]">{t(`missions.missionTypes.${mt.label}`, mt.label)}</div>
 
               {/* Document link */}
               {linkedDoc ? (
