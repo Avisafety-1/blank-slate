@@ -883,10 +883,13 @@
       "Inspeksjon": "Inspeksjon",
       "Kartlegging": "Kartlegging",
       "Foto/film": "Foto/film",
+      "Filming": "Filming",
+      "Fotografering": "Fotografering",
       "Søk og redning": "Søk og redning",
       "Landbruk": "Landbruk",
       "Bygg/anlegg": "Bygg/anlegg",
       "Forskning": "Forskning",
+      "Levering": "Levering",
       "Annet": "Annet"
     },
     "riskLevels": {
