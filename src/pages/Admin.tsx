@@ -1623,8 +1623,8 @@ const Admin = () => {
           {hasAddon('sora_admin') && (
             <TabsContent value="company-config" data-tour="admin-content-sora" className="mt-4 sm:mt-8">
               <div className="mb-4">
-                <h2 className="text-lg font-semibold">{companyName || "Selskapet"} — SORA-innstillinger</h2>
-                <p className="text-sm text-muted-foreground">Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering</p>
+                <h2 className="text-lg font-semibold">{t('admin.companySoraTitle', { company: companyName || t('admin.companyFallback') })}</h2>
+                <p className="text-sm text-muted-foreground">{t('admin.companySoraDesc')}</p>
               </div>
               <CompanySoraConfigSection />
             </TabsContent>
