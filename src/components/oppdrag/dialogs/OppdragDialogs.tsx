@@ -29,6 +29,7 @@ export interface OppdragDialogsProps {
   initialSelectedEquipment: string[];
   initialSelectedDrones: string[];
   initialSelectedCustomer: string;
+  initialSelectedDocuments?: string[];
   clearInitialData: () => void;
 
   // Edit dialog
