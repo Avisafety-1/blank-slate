@@ -4326,9 +4326,17 @@
       "lightboxAlt": "Bilde",
       "entryTypes": {
         "merknad": "Merknad",
+        "Merknad": "Merknad",
         "hendelse": "Hendelse",
+        "Hendelse": "Hendelse",
         "reparasjon": "Reparasjon",
-        "annet": "Annet"
+        "Reparasjon": "Reparasjon",
+        "vedlikehold": "Vedlikehold",
+        "Vedlikehold": "Vedlikehold",
+        "Flytting": "Flytting",
+        "flytting": "Flytting",
+        "annet": "Annet",
+        "Annet": "Annet"
       },
       "logTitles": {
         "flight": "Flytur: {{from}} -> {{to}}",
