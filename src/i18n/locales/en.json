@@ -674,6 +674,17 @@
   },
   "resources": {
     "title": "Resources",
+    "equipmentTypes": {
+      "Batteri": "Battery",
+      "Sensor": "Sensor",
+      "Kamera": "Camera",
+      "Radio": "Radio",
+      "Lader": "Charger",
+      "Propell": "Propeller",
+      "Verneutstyr": "Safety gear",
+      "Verktøy": "Tools",
+      "Bæresystem": "Carrying system"
+    },
     "equipment": "Equipment",
     "personnel": "Personnel",
     "addCompetency": "Add competency",
@@ -881,10 +892,13 @@
       "Inspeksjon": "Inspection",
       "Kartlegging": "Mapping",
       "Foto/film": "Photo/Video",
+      "Filming": "Filming",
+      "Fotografering": "Photography",
       "Søk og redning": "Search and rescue",
       "Landbruk": "Agriculture",
       "Bygg/anlegg": "Construction",
       "Forskning": "Research",
+      "Levering": "Delivery",
       "Annet": "Other"
     },
     "riskLevels": {
@@ -6717,7 +6731,30 @@
       "groupInfrastruktur": "Infrastructure",
       "groupLiveTrafikk": "Live traffic",
       "groupOppdrag": "Missions",
-      "groupAnnet": "Other"
+      "groupAnnet": "Other",
+      "layers": {
+        "airspace": "Airspace",
+        "rpas": "RPAS 5 km",
+        "nsm": "NSM restricted areas",
+        "aip": "P/R/D zones",
+        "rmz_tmz_atz": "RMZ / TMZ / ATZ",
+        "restriksjonsomrader": "Restricted areas",
+        "fareomrader": "Danger areas",
+        "sikringsobjekter": "Security objects",
+        "notam": "NOTAM",
+        "verneomrader": "Protected areas",
+        "befolkning": "Population",
+        "tettsteder": "Urban areas",
+        "arealbruk": "Land use",
+        "luftfartshindre": "Aviation obstacles",
+        "kraftledninger": "Power lines",
+        "eiendomsgrenser": "Property boundaries",
+        "tensio_luftnett": "Tensio power grid",
+        "flyplasser": "Airports",
+        "drones": "Drones",
+        "safesky": "Air traffic",
+        "nais": "Ship traffic"
+      }
     },
     "weatherPanel": {
       "loading": "Fetching {{label}}...",

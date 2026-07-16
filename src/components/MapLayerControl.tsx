@@ -141,7 +141,7 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
                           htmlFor={layer.id}
                           className="text-sm font-normal cursor-pointer flex-1"
                         >
-                          {layer.name}
+                          {t(`safety.mapLayerControl.layers.${layer.id}`, layer.name)}
                         </Label>
                       </div>
                     );

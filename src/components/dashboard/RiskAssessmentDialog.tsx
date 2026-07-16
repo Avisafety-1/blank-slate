@@ -696,7 +696,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           </SelectTrigger>
                           <SelectContent>
                             {missionTypeLabels.map((label) => (
-                              <SelectItem key={label} value={label}>{label}</SelectItem>
+                              <SelectItem key={label} value={label}>{t(`missions.missionTypes.${label}`, label)}</SelectItem>
                             ))}
                             <SelectItem value="other">{t('common.other', 'Annet')}</SelectItem>
                           </SelectContent>

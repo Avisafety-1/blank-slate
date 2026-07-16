@@ -138,7 +138,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
         {grouped.map(([groupName, items]) => (
           <div key={groupName} className="rounded-lg border border-border/50 p-3 space-y-2">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-              {groupName}
+              {t(`safety.mapLayerControl.group${groupName === 'Luftrom' ? 'Luftrom' : groupName === 'Restriksjoner' ? 'Restriksjoner' : groupName === 'Natur & befolkning' ? 'NaturBefolkning' : groupName === 'Infrastruktur' ? 'Infrastruktur' : groupName === 'Live trafikk' ? 'LiveTrafikk' : groupName === 'Oppdrag' ? 'Oppdrag' : 'Annet'}`, groupName)}
             </div>
             {items.map((entry) => {
               const Icon = ICON_MAP[entry.icon] ?? Layers;
@@ -151,7 +151,7 @@ export function MapLayerDefaultsSection({ companyId, disabled, locked }: Props) 
                 >
                   <Label htmlFor={rowId} className="flex items-center gap-2 cursor-pointer flex-1">
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm">{entry.name}</span>
+                    <span className="text-sm">{t(`safety.mapLayerControl.layers.${entry.id}`, entry.name)}</span>
                   </Label>
                   <Switch
                     id={rowId}
