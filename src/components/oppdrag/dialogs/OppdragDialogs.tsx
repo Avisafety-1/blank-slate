@@ -139,6 +139,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         initialSelectedEquipment={props.initialSelectedEquipment}
         initialSelectedDrones={props.initialSelectedDrones}
         initialSelectedCustomer={props.initialSelectedCustomer}
+        initialSelectedDocuments={props.initialSelectedDocuments}
       />
 
       {/* Edit Mission Dialog */}
