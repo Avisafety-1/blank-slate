@@ -881,10 +881,13 @@
       "Inspeksjon": "Inspection",
       "Kartlegging": "Mapping",
       "Foto/film": "Photo/Video",
+      "Filming": "Filming",
+      "Fotografering": "Photography",
       "Søk og redning": "Search and rescue",
       "Landbruk": "Agriculture",
       "Bygg/anlegg": "Construction",
       "Forskning": "Research",
+      "Levering": "Delivery",
       "Annet": "Other"
     },
     "riskLevels": {
