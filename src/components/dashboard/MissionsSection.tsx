@@ -295,10 +295,10 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             <Tabs value={missionFilter} onValueChange={(v) => setMissionFilter(v as 'mine' | 'all')} className="flex-1 min-w-0">
               <TabsList className="grid w-full grid-cols-2 h-8">
                 <TabsTrigger value="mine" className="text-xs px-1">
-                  Mine ({missions.filter((m: any) => myMissionIds.has(m.id)).length})
+                  {t('dashboard.missions.mineTab', { count: missions.filter((m: any) => myMissionIds.has(m.id)).length })}
                 </TabsTrigger>
                 <TabsTrigger value="all" className="text-xs px-1">
-                  Alle ({missions.length})
+                  {t('dashboard.missions.allTab', { count: missions.length })}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
