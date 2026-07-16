@@ -2945,6 +2945,8 @@
         "ninoxNotApproved": "Ikke godkjent i Ninox",
         "moreOptions": "Flere valg",
         "edit": "Rediger",
+        "duplicate": "Dupliser",
+        "copySuffix": " (kopi)",
         "newRiskAssessment": "Ny risikovurdering",
         "attachChecklist": "Tilknytt sjekkliste",
         "sendForApproval": "Send til godkjenning",
