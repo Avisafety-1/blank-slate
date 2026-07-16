@@ -505,18 +505,18 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
 
       {/* Risk assessment prompt after mission creation */}
       <AlertDialog open={props.riskPromptOpen} onOpenChange={props.setRiskPromptOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("oppdragDialogs.riskTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("oppdragDialogs.riskDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={props.onSkipRiskAssessment}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-2">
+            <AlertDialogCancel onClick={props.onSkipRiskAssessment} className="w-full sm:w-auto whitespace-normal text-center h-auto min-h-10 py-2">
               {t("oppdragDialogs.skipRisk")}
             </AlertDialogCancel>
-            <AlertDialogAction onClick={props.onPerformRiskAssessment}>
+            <AlertDialogAction onClick={props.onPerformRiskAssessment} className="w-full sm:w-auto whitespace-normal text-center h-auto min-h-10 py-2">
               {t("oppdragDialogs.performRisk")}
             </AlertDialogAction>
           </AlertDialogFooter>
