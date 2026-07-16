@@ -124,6 +124,7 @@ const Oppdrag = () => {
   const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
   const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
   const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
+  const [initialSelectedDocuments, setInitialSelectedDocuments] = useState<string[]>([]);
 
   const handledScrollRef = useRef<string | null>(null);
 
