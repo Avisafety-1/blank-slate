@@ -1574,6 +1574,7 @@
     "users": "Users",
     "customers": "Customers",
     "emailTemplates": "Email templates",
+    "emailShort": "Email",
     "companies": "Companies",
     "myCompany": "My company",
     "training": "Training",
@@ -4323,9 +4324,17 @@
       "lightboxAlt": "Image",
       "entryTypes": {
         "merknad": "Note",
+        "Merknad": "Note",
         "hendelse": "Incident",
+        "Hendelse": "Incident",
         "reparasjon": "Repair",
-        "annet": "Other"
+        "Reparasjon": "Repair",
+        "vedlikehold": "Maintenance",
+        "Vedlikehold": "Maintenance",
+        "Flytting": "Move",
+        "flytting": "Move",
+        "annet": "Other",
+        "Annet": "Other"
       },
       "logTitles": {
         "flight": "Flight: {{from}} -> {{to}}",
