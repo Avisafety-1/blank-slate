@@ -121,71 +121,48 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
             level = baseSeverity === "WARNING" ? "caution" : baseSeverity === "CAUTION" ? "note" : "note";
           }
           const distMeters = Math.round(r.min_distance);
+          const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
           let message: string;
 
           if (isCtrOrTiz) {
-            if (r.route_inside) {
-              message = `I kontrollert luftrom (${r.z_type} «${r.z_name}»). Maks høyde 120 meter AGL.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til kontrollert luftrom (${r.z_type} «${r.z_name}»), ${distStr} unna. Kontakt tårn ved høyere operasjoner.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.ctrTizInside', { type: r.z_type, name: r.z_name })
+              : t('safety.airspaceMessages.ctrTizNear', { type: r.z_type, name: r.z_name, distance: distStr });
           } else if (is5km) {
-            if (r.route_inside) {
-              message = `Inne i 5 km-sonen rundt «${r.z_name}». Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til 5 km-sonen rundt «${r.z_name}», ${distStr} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.fiveKmInside', { name: r.z_name })
+              : t('safety.airspaceMessages.fiveKmNear', { name: r.z_name, distance: distStr });
           } else if (isAtz5km) {
-            if (r.route_inside) {
-              message = `Inne i 5 km-sonen rundt småflyplassen «${r.z_name}». Kontakt flyplassen før flyging — se myppr.no for PPR (Prior Permission Required).`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til 5 km-sonen rundt småflyplassen «${r.z_name}», ${distStr} unna. PPR kan kreves — se myppr.no.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.atz5kmInside', { name: r.z_name })
+              : t('safety.airspaceMessages.atz5kmNear', { name: r.z_name, distance: distStr });
           } else if (r.z_type === 'NOTAM') {
-            // z_name is now "A1234/26: UNMANNED ACFT (BLOS) WILL ..."
             const cleanName = (r.z_name || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-            if (r.route_inside) {
-              message = `Aktiv NOTAM i operasjonsområdet: ${cleanName}. Sjekk restriksjoner.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Aktiv NOTAM ${distStr} unna: ${cleanName}`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.notamInside', { name: cleanName })
+              : t('safety.airspaceMessages.notamNear', { name: cleanName, distance: distStr });
           } else if (r.z_type === 'NATURVERN') {
-            if (r.route_inside) {
-              message = `Ruten går gjennom naturvernområde «${r.z_name}». Sjekk verneforskriften for eventuelle restriksjoner.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til naturvernområde «${r.z_name}», ${distStr} unna.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.natureInside', { name: r.z_name })
+              : t('safety.airspaceMessages.natureNear', { name: r.z_name, distance: distStr });
           } else if (r.z_type === 'FERDSELSFORBUD') {
-            if (r.route_inside) {
-              message = `Ruten går gjennom område med ferdselsforbud «${r.z_name}». Droneflyvning kan være forbudt.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til område med ferdselsforbud «${r.z_name}», ${distStr} unna.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.ferdselInside', { name: r.z_name })
+              : t('safety.airspaceMessages.ferdselNear', { name: r.z_name, distance: distStr });
           } else if (r.z_type === 'LANDINGSFORBUD') {
-            if (r.route_inside) {
-              message = `Ruten går gjennom område med landingsforbud «${r.z_name}». Landing/start forbudt.`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til område med landingsforbud «${r.z_name}», ${distStr} unna.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.landingInside', { name: r.z_name })
+              : t('safety.airspaceMessages.landingNear', { name: r.z_name, distance: distStr });
           } else if (r.z_type === 'LAVFLYVING') {
-            if (r.route_inside) {
-              message = `Ruten går gjennom område med lavflyvingsforbud under 300m «${r.z_name}».`;
-            } else {
-              const distStr = distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km";
-              message = `Nærhet til område med lavflyvingsforbud «${r.z_name}», ${distStr} unna.`;
-            }
+            message = r.route_inside
+              ? t('safety.airspaceMessages.lowflyInside', { name: r.z_name })
+              : t('safety.airspaceMessages.lowflyNear', { name: r.z_name, distance: distStr });
           } else if (r.route_inside) {
-            message = `Ruten går gjennom ${r.z_type}-sone «${r.z_name}».`;
+            message = t('safety.airspaceMessages.genericInside', { type: r.z_type, name: r.z_name });
           } else {
-            message = `Ruten er ${distMeters < 1000 ? distMeters + " m" : (distMeters / 1000).toFixed(1) + " km"} fra ${r.z_type}-sone «${r.z_name}».`;
+            message = t('safety.airspaceMessages.genericNear', { type: r.z_type, name: r.z_name, distance: distStr });
           }
+
 
           return {
             zone_type: r.z_type,
