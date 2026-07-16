@@ -505,6 +505,7 @@ const Oppdrag = () => {
                     importingKml={data.importingKml}
                     kmlImportMissionId={data.kmlImportMissionId}
                     onEdit={handleEditMission}
+                    onCopy={handleCopyMission}
                     onDelete={setDeletingMission}
                     onNewRiskAssessment={handleNewRiskAssessment}
                     onSubmitForApproval={(m) => data.handleSubmitForApproval(m, companySettings, soraApprovalEnabled)}
