@@ -1279,7 +1279,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{eq.navn}</p>
                               <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))} border text-xs`}>
-                                {calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14)}
+                                {translateResourceStatus(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • {tt("linkedEquipment.snPrefix")}: {eq.serienummer}</p>
