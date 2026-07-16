@@ -96,6 +96,7 @@ export const MissionCard = ({
   importingKml,
   kmlImportMissionId,
   onEdit,
+  onCopy,
   onDelete,
   onNewRiskAssessment,
   onNotam,
