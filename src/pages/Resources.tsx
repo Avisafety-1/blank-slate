@@ -574,7 +574,7 @@ const Resources = () => {
                       <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                     </div>
                     <div className="text-sm space-y-1">
-                      <p>Sist flydd: {drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
+                      <p>{t('resources.drones.lastFlown')}: {drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
                       <p>{t('flight.flightHours')}: {drone.flyvetimer}</p>
                       {drone.neste_inspeksjon && (
                         <p>{t('flight.nextInspection')}: {format(new Date(drone.neste_inspeksjon), "dd.MM.yyyy")}</p>
