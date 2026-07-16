@@ -581,6 +581,7 @@ const Oppdrag = () => {
           initialSelectedEquipment={initialSelectedEquipment}
           initialSelectedDrones={initialSelectedDrones}
           initialSelectedCustomer={initialSelectedCustomer}
+          initialSelectedDocuments={initialSelectedDocuments}
           clearInitialData={clearInitialData}
           editDialogOpen={editDialogOpen}
           setEditDialogOpen={setEditDialogOpen}
