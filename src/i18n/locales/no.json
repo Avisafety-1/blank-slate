@@ -300,7 +300,9 @@
       "approveInNinoxDescription": "Bekreft at oppdraget er godkjent i Ninox.",
       "approve": "Godkjenn",
       "geocodeNotFound": "Fant ikke koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.",
-      "geocodeError": "Kunne ikke finne koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data."
+      "geocodeError": "Kunne ikke finne koordinater for adressen. Luftrom, kart, vær og risikovurdering kan mangle data.",
+      "mineTab": "Mine ({{count}})",
+      "allTab": "Alle ({{count}})"
     },
     "kpi": {
       "title": "Hendelser siste 6 mnd",
@@ -657,6 +659,19 @@
       "maxSpeed": "Maks hastighet: {{v}} m/s",
       "maxAgl": "Maks AGL: {{v}} m",
       "avgAgl": "Snitt AGL: {{v}} m"
+    },
+    "publication": {
+      "title": "Kartpublisering",
+      "description": "Vis dette planlagte oppdraget på det interne AviSafe-kartet for koordinering med andre operatører.",
+      "lockedNote": "Selskapets administrator har låst publiseringsvalgene. Standardverdiene fra selskapet gjelder.",
+      "publishToMap": "Publiser planlagt oppdrag på kart",
+      "shareContact": "Del kontaktinfo",
+      "shareContactWith": "Del kontaktinfo ({{fields}})",
+      "adminSharesNothing": "Admin har ikke aktivert deling av navn, telefon eller e-post.",
+      "anonymous": "Publiser anonymt (skjul selskap og kontakt)",
+      "fieldName": "navn",
+      "fieldPhone": "telefon",
+      "fieldEmail": "e-post"
     }
   },
   "resources": {
@@ -2519,7 +2534,10 @@
       "purchase": "Kjøp",
       "customerPricePerUnitMonth": "Kundepris per enhet/mnd (NOK)",
       "purchasePriceEur": "Innkjøpspris (EUR)"
-    }
+    },
+    "companySoraTitle": "{{company}} — SORA-innstillinger",
+    "companySoraDesc": "Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering",
+    "companyFallback": "Selskapet"
   },
   "riskAssessment": {
     "flightMode": "Flygemodus",
@@ -6961,6 +6979,34 @@
       "powerLineVoltage": "Spenning: {{value}} kV",
       "unknownValue": "–",
       "unknownName": "Ukjent"
+    },
+    "airspaceMessages": {
+      "ctrTizInside": "I kontrollert luftrom ({{type}} «{{name}}»). Maks høyde 120 meter AGL.",
+      "ctrTizNear": "Nærhet til kontrollert luftrom ({{type}} «{{name}}»), {{distance}} unna. Kontakt tårn ved høyere operasjoner.",
+      "fiveKmInside": "Inne i 5 km-sonen rundt «{{name}}». Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.",
+      "fiveKmNear": "Nærhet til 5 km-sonen rundt «{{name}}», {{distance}} unna. Kontrollert luftrom — maks 120 m AGL. Søk godkjenning i Ninox.",
+      "atz5kmInside": "Inne i 5 km-sonen rundt småflyplassen «{{name}}». Kontakt flyplassen før flyging — se myppr.no for PPR (Prior Permission Required).",
+      "atz5kmNear": "Nærhet til 5 km-sonen rundt småflyplassen «{{name}}», {{distance}} unna. PPR kan kreves — se myppr.no.",
+      "notamInside": "Aktiv NOTAM i operasjonsområdet: {{name}}. Sjekk restriksjoner.",
+      "notamNear": "Aktiv NOTAM {{distance}} unna: {{name}}",
+      "natureInside": "Ruten går gjennom naturvernområde «{{name}}». Sjekk verneforskriften for eventuelle restriksjoner.",
+      "natureNear": "Nærhet til naturvernområde «{{name}}», {{distance}} unna.",
+      "ferdselInside": "Ruten går gjennom område med ferdselsforbud «{{name}}». Droneflyvning kan være forbudt.",
+      "ferdselNear": "Nærhet til område med ferdselsforbud «{{name}}», {{distance}} unna.",
+      "landingInside": "Ruten går gjennom område med landingsforbud «{{name}}». Landing/start forbudt.",
+      "landingNear": "Nærhet til område med landingsforbud «{{name}}», {{distance}} unna.",
+      "lowflyInside": "Ruten går gjennom område med lavflyvingsforbud under 300m «{{name}}».",
+      "lowflyNear": "Nærhet til område med lavflyvingsforbud «{{name}}», {{distance}} unna.",
+      "genericInside": "Ruten går gjennom {{type}}-sone «{{name}}».",
+      "genericNear": "Ruten er {{distance}} fra {{type}}-sone «{{name}}».",
+      "timeoutError": "Luftromssjekk tok for lang tid. Prøv igjen.",
+      "genericError": "Kunne ikke sjekke luftrom. Prøv igjen."
+    },
+    "weatherWarnings": {
+      "dewPointHigh": "Svært høy risiko for kondens — duggpunktdifferanse {{value}}°C",
+      "dewPointMedium": "Fare for kondens — duggpunktdifferanse {{value}}°C",
+      "dewPointLow": "Nær duggpunktet ({{value}}°C differanse) — vær oppmerksom på fuktighet",
+      "fog": "Tåke - redusert sikt"
     }
   },
   "pricing": {

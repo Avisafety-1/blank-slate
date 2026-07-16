@@ -298,7 +298,9 @@
       "approveInNinoxDescription": "Confirm that the mission is approved in Ninox.",
       "approve": "Approve",
       "geocodeNotFound": "Could not find coordinates for the address. Airspace, map, weather and risk assessment may be missing data.",
-      "geocodeError": "Could not look up coordinates for the address. Airspace, map, weather and risk assessment may be missing data."
+      "geocodeError": "Could not look up coordinates for the address. Airspace, map, weather and risk assessment may be missing data.",
+      "mineTab": "Mine ({{count}})",
+      "allTab": "All ({{count}})"
     },
     "kpi": {
       "title": "Incidents last 6 months",
@@ -655,6 +657,19 @@
       "maxSpeed": "Max speed: {{v}} m/s",
       "maxAgl": "Max AGL: {{v}} m",
       "avgAgl": "Avg AGL: {{v}} m"
+    },
+    "publication": {
+      "title": "Map publishing",
+      "description": "Show this planned mission on the internal AviSafe map for coordination with other operators.",
+      "lockedNote": "The company administrator has locked publishing options. The company defaults apply.",
+      "publishToMap": "Publish planned mission on map",
+      "shareContact": "Share contact info",
+      "shareContactWith": "Share contact info ({{fields}})",
+      "adminSharesNothing": "Admin has not enabled sharing of name, phone or email.",
+      "anonymous": "Publish anonymously (hide company and contact)",
+      "fieldName": "name",
+      "fieldPhone": "phone",
+      "fieldEmail": "email"
     }
   },
   "resources": {
@@ -2517,7 +2532,10 @@
       "purchase": "Purchase",
       "customerPricePerUnitMonth": "Customer price per unit/month (NOK)",
       "purchasePriceEur": "Purchase price (EUR)"
-    }
+    },
+    "companySoraTitle": "{{company}} — SORA settings",
+    "companySoraDesc": "Configure company-specific limits and requirements for the AI risk assessment",
+    "companyFallback": "The company"
   },
   "riskAssessment": {
     "flightMode": "Flight mode",
@@ -6959,6 +6977,34 @@
       "powerLineVoltage": "Voltage: {{value}} kV",
       "unknownValue": "–",
       "unknownName": "Unknown"
+    },
+    "airspaceMessages": {
+      "ctrTizInside": "In controlled airspace ({{type}} «{{name}}»). Max altitude 120 metres AGL.",
+      "ctrTizNear": "Near controlled airspace ({{type}} «{{name}}»), {{distance}} away. Contact tower for higher operations.",
+      "fiveKmInside": "Inside the 5 km zone around «{{name}}». Controlled airspace — max 120 m AGL. Request approval in Ninox.",
+      "fiveKmNear": "Near the 5 km zone around «{{name}}», {{distance}} away. Controlled airspace — max 120 m AGL. Request approval in Ninox.",
+      "atz5kmInside": "Inside the 5 km zone around the airfield «{{name}}». Contact the airfield before flying — see myppr.no for PPR (Prior Permission Required).",
+      "atz5kmNear": "Near the 5 km zone around the airfield «{{name}}», {{distance}} away. PPR may be required — see myppr.no.",
+      "notamInside": "Active NOTAM in the operational area: {{name}}. Check restrictions.",
+      "notamNear": "Active NOTAM {{distance}} away: {{name}}",
+      "natureInside": "The route passes through nature reserve «{{name}}». Check the conservation regulations for restrictions.",
+      "natureNear": "Near nature reserve «{{name}}», {{distance}} away.",
+      "ferdselInside": "The route passes through a no-access area «{{name}}». Drone flying may be prohibited.",
+      "ferdselNear": "Near a no-access area «{{name}}», {{distance}} away.",
+      "landingInside": "The route passes through a no-landing area «{{name}}». Take-off/landing prohibited.",
+      "landingNear": "Near a no-landing area «{{name}}», {{distance}} away.",
+      "lowflyInside": "The route passes through a low-flying restriction area under 300 m «{{name}}».",
+      "lowflyNear": "Near a low-flying restriction area «{{name}}», {{distance}} away.",
+      "genericInside": "The route passes through {{type}} zone «{{name}}».",
+      "genericNear": "The route is {{distance}} from {{type}} zone «{{name}}».",
+      "timeoutError": "Airspace check took too long. Please try again.",
+      "genericError": "Could not check airspace. Please try again."
+    },
+    "weatherWarnings": {
+      "dewPointHigh": "Very high risk of condensation — dew point difference {{value}}°C",
+      "dewPointMedium": "Risk of condensation — dew point difference {{value}}°C",
+      "dewPointLow": "Near the dew point ({{value}}°C difference) — watch out for humidity",
+      "fog": "Fog - reduced visibility"
     }
   },
   "pricing": {

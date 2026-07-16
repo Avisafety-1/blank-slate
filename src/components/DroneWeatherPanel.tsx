@@ -19,6 +19,20 @@ interface WeatherWarning {
   unit: string;
 }
 
+const translateWeatherWarning = (
+  warning: WeatherWarning,
+  t: (key: string, opts?: any) => string
+): string => {
+  if (warning.type === 'dew_point') {
+    const value = warning.value?.toFixed(1);
+    if (warning.level === 'warning') return t('safety.weatherWarnings.dewPointHigh', { value });
+    if (warning.level === 'caution') return t('safety.weatherWarnings.dewPointMedium', { value });
+    return t('safety.weatherWarnings.dewPointLow', { value });
+  }
+  if (warning.type === 'visibility') return t('safety.weatherWarnings.fog');
+  return warning.message;
+};
+
 interface SavedWeatherData {
   captured_at: string;
   current: {
@@ -312,7 +326,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                   warning.level === 'note' && "bg-muted border-border text-muted-foreground"
                 )}
               >
-                <AlertDescription className="text-xs text-foreground">{warning.message}</AlertDescription>
+                <AlertDescription className="text-xs text-foreground">{translateWeatherWarning(warning, t)}</AlertDescription>
               </Alert>
             ))}
           </div>
@@ -387,7 +401,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                   warning.level === 'note' && "bg-muted border-border text-foreground"
                 )}
               >
-                <AlertDescription className="text-xs">{warning.message}</AlertDescription>
+                <AlertDescription className="text-xs">{translateWeatherWarning(warning, t)}</AlertDescription>
               </Alert>
             ))}
           </div>
@@ -607,7 +621,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                     warning.level === 'warning' && "bg-destructive/10"
                   )}
                 >
-                  <AlertDescription className="text-xs text-foreground">{warning.message}</AlertDescription>
+                  <AlertDescription className="text-xs text-foreground">{translateWeatherWarning(warning, t)}</AlertDescription>
                 </Alert>
               ))}
             </div>

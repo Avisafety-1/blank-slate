@@ -91,7 +91,15 @@ export async function showWeatherPopup(map: L.Map, lat: number, lng: number) {
           note: { bg: '#dbeafe', border: '#3b82f6' },
         };
         const wColor = wColors[w.level] || wColors.note;
-        html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${w.message}</div>`;
+        let msg = w.message;
+        if (w.type === 'dew_point') {
+          const value = Number(w.value).toFixed(1);
+          const k = w.level === 'warning' ? 'dewPointHigh' : w.level === 'caution' ? 'dewPointMedium' : 'dewPointLow';
+          msg = i18n.t(`safety.weatherWarnings.${k}`, { value }) as string;
+        } else if (w.type === 'visibility') {
+          msg = i18n.t('safety.weatherWarnings.fog') as string;
+        }
+        html += `<div style="padding: 6px; background: ${wColor.bg}; border-left: 3px solid ${wColor.border}; margin-bottom: 6px; border-radius: 3px;">${msg}</div>`;
       });
       html += '</div>';
     }
