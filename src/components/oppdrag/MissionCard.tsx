@@ -68,6 +68,7 @@ export interface MissionCardProps {
   importingKml: boolean;
   kmlImportMissionId: string | null;
   onEdit: (mission: Mission) => void;
+  onCopy?: (mission: Mission) => void;
   onDelete: (mission: Mission) => void;
   onNewRiskAssessment: (mission: Mission) => void;
   onNotam?: (mission: Mission) => void;
