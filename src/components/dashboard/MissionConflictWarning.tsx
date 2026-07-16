@@ -1,7 +1,7 @@
 import { AlertTriangle, Phone, Mail } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
-import { nb, enGB } from "date-fns/locale";
+import { nb, enGB, type Locale } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import type { MissionMapConflict } from "@/hooks/useMissionMapConflicts";
 
