@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
+import { translatePersistedLogText } from "@/lib/i18nHelpers";
 import { 
   Book, 
   Plane, 
