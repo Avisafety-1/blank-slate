@@ -1,6 +1,6 @@
 import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment } from "@react-three/drei";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 interface Drone3DViewerProps {
@@ -65,7 +65,6 @@ export const Drone3DViewer = ({ pitch, roll, yaw }: Drone3DViewerProps) => {
           <directionalLight position={[5, 5, 5]} intensity={1} />
           <directionalLight position={[-3, 2, -3]} intensity={0.4} />
           <DroneModel pitch={pitch} roll={roll} yaw={yaw} />
-          <Environment preset="city" />
         </Canvas>
       </div>
       {yaw !== undefined && (
