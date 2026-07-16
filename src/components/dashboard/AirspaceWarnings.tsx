@@ -183,10 +183,10 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
       } catch (err: any) {
         clearTimeout(timeoutId2);
         if (err?.name === 'AbortError' || controller.signal.aborted) {
-          setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+          setError(t('safety.airspaceMessages.timeoutError'));
         } else {
           console.error("Error checking airspace:", err);
-          setError("Kunne ikke sjekke luftrom. Prøv igjen.");
+          setError(t('safety.airspaceMessages.genericError'));
         }
       } finally {
         setLoading(false);
