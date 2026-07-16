@@ -2943,6 +2943,8 @@
         "ninoxNotApproved": "Not approved in Ninox",
         "moreOptions": "More options",
         "edit": "Edit",
+        "duplicate": "Duplicate",
+        "copySuffix": " (copy)",
         "newRiskAssessment": "New risk assessment",
         "attachChecklist": "Attach checklist",
         "sendForApproval": "Send for approval",
