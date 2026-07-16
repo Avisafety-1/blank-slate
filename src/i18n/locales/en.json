@@ -7130,5 +7130,23 @@
     "added": "News added",
     "errorAdd": "Could not add news",
     "unknown": "Unknown"
+  },
+  "conflicts": {
+    "mission": {
+      "title": "Possible conflict with planned mission",
+      "description_one": "Another operator has published a mission that overlaps in time and area. You can still save — this warning is informational.",
+      "description_other": "Other operators have published {{count}} missions that overlap in time and area. You can still save — this warning is informational.",
+      "anonymousMission": "Anonymously published mission",
+      "plannedMission": "Planned mission",
+      "anonymousNote": "Operator has chosen anonymous publishing.",
+      "more": "+{{count}} more"
+    },
+    "resource": {
+      "usedInCompact": "Used in \"{{title}}\"",
+      "usedIn": "Conflict: Used in \"{{title}}\" ({{time}})",
+      "sameDayCompact": "Also used in \"{{title}}\" same day",
+      "sameDay": "Also used in \"{{title}}\" same day ({{time}})"
+    }
   }
 }
+

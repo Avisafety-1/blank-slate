@@ -7132,5 +7132,23 @@
     "added": "Nyhet lagt til",
     "errorAdd": "Kunne ikke legge til nyhet",
     "unknown": "Ukjent"
+  },
+  "conflicts": {
+    "mission": {
+      "title": "Mulig konflikt med planlagt oppdrag",
+      "description_one": "Andre operatører har publisert et oppdrag som overlapper i tid og område. Du kan fortsatt lagre — varselet er informativt.",
+      "description_other": "Andre operatører har publisert {{count}} oppdrag som overlapper i tid og område. Du kan fortsatt lagre — varselet er informativt.",
+      "anonymousMission": "Anonymt publisert oppdrag",
+      "plannedMission": "Planlagt oppdrag",
+      "anonymousNote": "Operatør har valgt anonym publisering.",
+      "more": "+{{count}} flere"
+    },
+    "resource": {
+      "usedInCompact": "Brukes i \"{{title}}\"",
+      "usedIn": "Konflikt: Brukes i \"{{title}}\" ({{time}})",
+      "sameDayCompact": "Brukes også i \"{{title}}\" samme dag",
+      "sameDay": "Brukes også i \"{{title}}\" samme dag ({{time}})"
+    }
   }
 }
+

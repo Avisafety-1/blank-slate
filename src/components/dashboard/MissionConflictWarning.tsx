@@ -1,23 +1,27 @@
 import { AlertTriangle, Phone, Mail } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enGB, type Locale } from "date-fns/locale";
+import { useTranslation } from "react-i18next";
 import type { MissionMapConflict } from "@/hooks/useMissionMapConflicts";
 
 interface Props {
   conflicts: MissionMapConflict[];
 }
 
-const fmt = (iso: string | null) => {
+const fmt = (iso: string | null, locale: Locale) => {
   if (!iso) return "—";
   try {
-    return format(new Date(iso), "dd.MM HH:mm", { locale: nb });
+    return format(new Date(iso), "dd.MM HH:mm", { locale });
   } catch {
     return "—";
   }
 };
 
 export const MissionConflictWarning = ({ conflicts }: Props) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language?.startsWith("no") ? nb : enGB;
+
   if (!conflicts.length) return null;
 
   const visible = conflicts.slice(0, 5);
@@ -27,12 +31,11 @@ export const MissionConflictWarning = ({ conflicts }: Props) => {
     <Alert className="border-amber-500/50 bg-amber-500/5 text-foreground">
       <AlertTriangle className="h-4 w-4 text-amber-500" />
       <AlertTitle className="text-amber-700 dark:text-amber-400">
-        Mulig konflikt med planlagt oppdrag
+        {t("conflicts.mission.title")}
       </AlertTitle>
       <AlertDescription className="space-y-2 mt-2">
         <p className="text-xs text-muted-foreground">
-          Andre operatører har publisert {conflicts.length === 1 ? "et oppdrag" : `${conflicts.length} oppdrag`} som
-          overlapper i tid og område. Du kan fortsatt lagre — varselet er informativt.
+          {t("conflicts.mission.description", { count: conflicts.length })}
         </p>
         <ul className="space-y-1.5">
           {visible.map((c) => {
@@ -47,17 +50,17 @@ export const MissionConflictWarning = ({ conflicts }: Props) => {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-medium">
                     {c.anonymous_publish
-                      ? "Anonymt publisert oppdrag"
-                      : c.public_title || "Planlagt oppdrag"}
+                      ? t("conflicts.mission.anonymousMission")
+                      : c.public_title || t("conflicts.mission.plannedMission")}
                   </span>
                   <span className="text-muted-foreground tabular-nums">
-                    {fmt(c.starts_at)}
-                    {c.ends_at ? ` – ${fmt(c.ends_at)}` : ""}
+                    {fmt(c.starts_at, locale)}
+                    {c.ends_at ? ` – ${fmt(c.ends_at, locale)}` : ""}
                   </span>
                 </div>
                 {c.anonymous_publish ? (
                   <p className="text-muted-foreground mt-1">
-                    Operatør har valgt anonym publisering.
+                    {t("conflicts.mission.anonymousNote")}
                   </p>
                 ) : showContact ? (
                   <div className="flex flex-wrap gap-2 mt-1">
@@ -89,7 +92,7 @@ export const MissionConflictWarning = ({ conflicts }: Props) => {
           })}
         </ul>
         {extra > 0 && (
-          <p className="text-xs text-muted-foreground">+{extra} flere</p>
+          <p className="text-xs text-muted-foreground">{t("conflicts.mission.more", { count: extra })}</p>
         )}
       </AlertDescription>
     </Alert>
