@@ -281,9 +281,16 @@ export const MissionCard = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
             <DropdownMenuItem onClick={() => onEdit(mission)}>
+            <DropdownMenuItem onClick={() => onEdit(mission)}>
               <Edit className="h-4 w-4 mr-2" />
               {t('pages.missions.card.edit')}
             </DropdownMenuItem>
+            {onCopy && (
+              <DropdownMenuItem onClick={() => onCopy(mission)}>
+                <Copy className="h-4 w-4 mr-2" />
+                {t('pages.missions.card.duplicate')}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onNewRiskAssessment(mission)}>
               <ShieldCheck className="h-4 w-4 mr-2" />
               {t('pages.missions.card.newRiskAssessment')}
