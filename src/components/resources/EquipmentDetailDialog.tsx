@@ -763,7 +763,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     </SelectTrigger>
                     <SelectContent>
                       {equipmentTypes.map((et) => (
-                        <SelectItem key={et} value={et}>{et}</SelectItem>
+                        <SelectItem key={et} value={et}>{t(`resources.equipmentTypes.${et}`, et)}</SelectItem>
                       ))}
                       <SelectItem value="__other__">{t('resourceDialogs.equipmentDetail.labels.otherType')}</SelectItem>
                     </SelectContent>
