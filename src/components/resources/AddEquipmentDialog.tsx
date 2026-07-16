@@ -196,7 +196,7 @@ export const AddEquipmentDialog = ({ open, onOpenChange, onEquipmentAdded, userI
                 </SelectTrigger>
                 <SelectContent>
                   {selectableEquipmentTypes.map((tp) => (
-                    <SelectItem key={tp} value={tp}>{tp}</SelectItem>
+                    <SelectItem key={tp} value={tp}>{t(`resources.equipmentTypes.${tp}`, tp)}</SelectItem>
                   ))}
                   <SelectItem value="__other__">{t('resourceDialogs.addEquipment.annet')}</SelectItem>
                 </SelectContent>
