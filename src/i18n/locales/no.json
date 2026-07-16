@@ -6733,7 +6733,30 @@
       "groupInfrastruktur": "Infrastruktur",
       "groupLiveTrafikk": "Live trafikk",
       "groupOppdrag": "Oppdrag",
-      "groupAnnet": "Annet"
+      "groupAnnet": "Annet",
+      "layers": {
+        "airspace": "Luftrom",
+        "rpas": "RPAS 5 km",
+        "nsm": "NSM forbudsområder",
+        "aip": "P/R/D-soner",
+        "rmz_tmz_atz": "RMZ / TMZ / ATZ",
+        "restriksjonsomrader": "Restriksjonsområder",
+        "fareomrader": "Fareområder",
+        "sikringsobjekter": "Sikringsobjekter",
+        "notam": "NOTAM",
+        "verneomrader": "Verneområder",
+        "befolkning": "Befolkning",
+        "tettsteder": "Tettsteder",
+        "arealbruk": "Arealbruk",
+        "luftfartshindre": "Luftfartshindre",
+        "kraftledninger": "Kraftledninger",
+        "eiendomsgrenser": "Eiendomsgrenser",
+        "tensio_luftnett": "Luftnett Tensio",
+        "flyplasser": "Flyplasser",
+        "drones": "Droner",
+        "safesky": "Lufttrafikk",
+        "nais": "Skipstrafikk"
+      }
     },
     "weatherPanel": {
       "loading": "Henter {{label}}...",
