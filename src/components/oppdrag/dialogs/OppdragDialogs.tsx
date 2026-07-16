@@ -29,6 +29,7 @@ export interface OppdragDialogsProps {
   initialSelectedEquipment: string[];
   initialSelectedDrones: string[];
   initialSelectedCustomer: string;
+  initialSelectedDocuments?: string[];
   clearInitialData: () => void;
 
   // Edit dialog
@@ -138,6 +139,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         initialSelectedEquipment={props.initialSelectedEquipment}
         initialSelectedDrones={props.initialSelectedDrones}
         initialSelectedCustomer={props.initialSelectedCustomer}
+        initialSelectedDocuments={props.initialSelectedDocuments}
       />
 
       {/* Edit Mission Dialog */}

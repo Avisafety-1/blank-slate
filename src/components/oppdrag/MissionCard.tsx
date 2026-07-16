@@ -20,7 +20,7 @@ import {
   MapPin, Calendar, Users, Plane, Package, FileText, Download,
   Edit, AlertTriangle, Route, Ruler, Navigation, Clock, Radio,
   ClipboardCheck, Trash2, ShieldCheck, Brain, ChevronDown, Info,
-  Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon
+  Send, CheckCircle2, Upload, Building2, BarChart3, Radio as RadioIcon, Copy
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -68,6 +68,7 @@ export interface MissionCardProps {
   importingKml: boolean;
   kmlImportMissionId: string | null;
   onEdit: (mission: Mission) => void;
+  onCopy?: (mission: Mission) => void;
   onDelete: (mission: Mission) => void;
   onNewRiskAssessment: (mission: Mission) => void;
   onNotam?: (mission: Mission) => void;
@@ -95,6 +96,7 @@ export const MissionCard = ({
   importingKml,
   kmlImportMissionId,
   onEdit,
+  onCopy,
   onDelete,
   onNewRiskAssessment,
   onNotam,
@@ -282,6 +284,12 @@ export const MissionCard = ({
               <Edit className="h-4 w-4 mr-2" />
               {t('pages.missions.card.edit')}
             </DropdownMenuItem>
+            {onCopy && (
+              <DropdownMenuItem onClick={() => onCopy(mission)}>
+                <Copy className="h-4 w-4 mr-2" />
+                {t('pages.missions.card.duplicate')}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onNewRiskAssessment(mission)}>
               <ShieldCheck className="h-4 w-4 mr-2" />
               {t('pages.missions.card.newRiskAssessment')}

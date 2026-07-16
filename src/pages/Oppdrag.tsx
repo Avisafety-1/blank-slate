@@ -124,6 +124,7 @@ const Oppdrag = () => {
   const [initialSelectedEquipment, setInitialSelectedEquipment] = useState<string[]>([]);
   const [initialSelectedDrones, setInitialSelectedDrones] = useState<string[]>([]);
   const [initialSelectedCustomer, setInitialSelectedCustomer] = useState<string>("");
+  const [initialSelectedDocuments, setInitialSelectedDocuments] = useState<string[]>([]);
 
   const handledScrollRef = useRef<string | null>(null);
 
@@ -304,11 +305,48 @@ const Oppdrag = () => {
     setInitialSelectedEquipment([]);
     setInitialSelectedDrones([]);
     setInitialSelectedCustomer("");
+    setInitialSelectedDocuments([]);
   };
 
   const handleEditMission = (mission: Mission) => {
     setEditingMission(mission);
     setEditDialogOpen(true);
+  };
+
+  const handleCopyMission = async (mission: Mission) => {
+    try {
+      const [personnelRes, equipmentRes, dronesRes, documentsRes] = await Promise.all([
+        supabase.from("mission_personnel").select("profile_id").eq("mission_id", mission.id),
+        supabase.from("mission_equipment").select("equipment_id").eq("mission_id", mission.id),
+        supabase.from("mission_drones").select("drone_id").eq("mission_id", mission.id),
+        supabase.from("mission_documents").select("document_id").eq("mission_id", mission.id),
+      ]);
+
+      const suffix = t('pages.missions.card.copySuffix');
+      setInitialFormData({
+        tittel: `${mission.tittel || ""}${suffix}`,
+        lokasjon: mission.lokasjon || "",
+        tidspunkt: "",
+        slutt_tidspunkt: "",
+        beskrivelse: mission.beskrivelse || "",
+        merknader: mission.merknader || "",
+        status: "Planlagt",
+        risk_nivå: mission.risk_nivå || "Lav",
+        latitude: mission.latitude ?? null,
+        longitude: mission.longitude ?? null,
+        oppdragstype: (mission as any).oppdragstype || "",
+        oppdragstype_annet: (mission as any).oppdragstype_annet || "",
+      });
+      setInitialRouteData((mission.route as RouteData) || null);
+      setInitialSelectedPersonnel((personnelRes.data || []).map((p: any) => p.profile_id));
+      setInitialSelectedEquipment((equipmentRes.data || []).map((e: any) => e.equipment_id));
+      setInitialSelectedDrones((dronesRes.data || []).map((d: any) => d.drone_id));
+      setInitialSelectedDocuments((documentsRes.data || []).map((d: any) => d.document_id));
+      setInitialSelectedCustomer(mission.customer_id || "");
+      setAddDialogOpen(true);
+    } catch (err) {
+      console.error("Error duplicating mission:", err);
+    }
   };
 
   const handleMissionUpdated = () => {
@@ -467,6 +505,7 @@ const Oppdrag = () => {
                     importingKml={data.importingKml}
                     kmlImportMissionId={data.kmlImportMissionId}
                     onEdit={handleEditMission}
+                    onCopy={handleCopyMission}
                     onDelete={setDeletingMission}
                     onNewRiskAssessment={handleNewRiskAssessment}
                     onSubmitForApproval={(m) => data.handleSubmitForApproval(m, companySettings, soraApprovalEnabled)}
@@ -542,6 +581,7 @@ const Oppdrag = () => {
           initialSelectedEquipment={initialSelectedEquipment}
           initialSelectedDrones={initialSelectedDrones}
           initialSelectedCustomer={initialSelectedCustomer}
+          initialSelectedDocuments={initialSelectedDocuments}
           clearInitialData={clearInitialData}
           editDialogOpen={editDialogOpen}
           setEditDialogOpen={setEditDialogOpen}
