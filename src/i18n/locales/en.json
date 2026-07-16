@@ -674,6 +674,17 @@
   },
   "resources": {
     "title": "Resources",
+    "equipmentTypes": {
+      "Batteri": "Battery",
+      "Sensor": "Sensor",
+      "Kamera": "Camera",
+      "Radio": "Radio",
+      "Lader": "Charger",
+      "Propell": "Propeller",
+      "Verneutstyr": "Safety gear",
+      "Verktøy": "Tools",
+      "Bæresystem": "Carrying system"
+    },
     "equipment": "Equipment",
     "personnel": "Personnel",
     "addCompetency": "Add competency",
