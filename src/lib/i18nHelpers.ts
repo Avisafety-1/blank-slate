@@ -161,6 +161,18 @@ export function translatePersistedLogText(
     .replace(/Flyttet fra (.+?) til (.+)$/i, "Moved from $1 to $2")
     .replace(/Flyttet av (.+?)\. (\d+) ressurser flyttet, (\d+) delt, (\d+) frakoblet\./i,
       "Moved by $1. $2 resources moved, $3 shared, $4 disconnected.")
+    .replace(/Vedlikehold utført/gi, "Maintenance completed")
+    .replace(/Utført via utstyrskort/gi, "Performed via equipment card")
+    .replace(/Utført via ressurskort/gi, "Performed via resource card")
+    .replace(/Utført via dronekort/gi, "Performed via drone card")
+    .replace(/Utført via oppdrag/gi, "Performed via mission")
+    .replace(/Drone-tilkobling/gi, "Drone connection")
+    .replace(/Lagt til på (.+?) drone/gi, "Added to $1 drone")
+    .replace(/Fjernet fra (.+?) drone/gi, "Removed from $1 drone")
+    .replace(/Lagt til i (.+)$/i, "Added to $1")
+    .replace(/Fjernet fra (.+)$/i, "Removed from $1")
+    .replace(/Opprettet av /gi, "Created by ")
+    .replace(/Registrert av /gi, "Registered by ")
     .replace(/ Notat: /g, " Note: ");
 }
 
