@@ -146,6 +146,25 @@ export function translatePersistedRiskText(
  * vi aldri ender opp med tomme labels i UI.
  */
 
+/**
+ * Oversetter display-tekst for logg-oppføringer som er lagret på norsk i
+ * databasen (skrevet fra SQL-funksjoner, f.eks. drone-flytting).
+ * Endrer ikke lagret verdi — kun visning.
+ */
+export function translatePersistedLogText(
+  value: string | null | undefined,
+  language: AppLanguage = getCurrentLanguage(),
+): string {
+  if (!value) return "";
+  if (language !== "en") return value;
+  return value
+    .replace(/Flyttet fra (.+?) til (.+)$/i, "Moved from $1 to $2")
+    .replace(/Flyttet av (.+?)\. (\d+) ressurser flyttet, (\d+) delt, (\d+) frakoblet\./i,
+      "Moved by $1. $2 resources moved, $3 shared, $4 disconnected.")
+    .replace(/ Notat: /g, " Note: ");
+}
+
+
 type DbValueMap = Record<string, { en: string; no?: string }>;
 
 const MISSION_STATUS: DbValueMap = {
