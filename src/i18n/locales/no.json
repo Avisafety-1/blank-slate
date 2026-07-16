@@ -676,6 +676,17 @@
   },
   "resources": {
     "title": "Ressurser",
+    "equipmentTypes": {
+      "Batteri": "Batteri",
+      "Sensor": "Sensor",
+      "Kamera": "Kamera",
+      "Radio": "Radio",
+      "Lader": "Lader",
+      "Propell": "Propell",
+      "Verneutstyr": "Verneutstyr",
+      "Verktøy": "Verktøy",
+      "Bæresystem": "Bæresystem"
+    },
     "equipment": "Utstyr",
     "personnel": "Personell",
     "addCompetency": "Legg til kompetanse",
