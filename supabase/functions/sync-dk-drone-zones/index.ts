@@ -1,5 +1,8 @@
 // Sync Trafikstyrelsen (Denmark) drone zones + nature areas into dk_drone_zones / dk_nature_areas.
 // Scheduled daily via pg_cron, also callable manually by superadmin.
+//
+// Fase A2: non-blocking dual-write to public.airspace_zones. Any failure in the
+// dual-write path is caught and logged; it never affects the existing sync.
 import { createClient } from "npm:@supabase/supabase-js@2.81.0";
 import {
   AuthError,
@@ -29,6 +32,20 @@ const FARVE_TO_LAYER: Record<string, string> = {
   "4": "orange",
   "5": "bla",
 };
+
+// Fase A2: mapping fra Trafikstyrelsen-farve til felles airspace_zones-klasser.
+const FARVE_TO_UNIFIED: Record<string, {
+  zone_type: string;
+  restriction_type: string;
+  display_class: string;
+}> = {
+  "1": { zone_type: "R",     restriction_type: "RESTRICTED",         display_class: "RED" },
+  "4": { zone_type: "D",     restriction_type: "APPROVAL_REQUIRED",  display_class: "AMBER" },
+  "5": { zone_type: "OTHER", restriction_type: "NOTIFICATION",       display_class: "BLUE" },
+};
+
+const UNIFIED_BATCH_SIZE = 500;
+const UNIFIED_MAX_SKIPPED_RATIO = 0.1; // avbryt deaktivering hvis >10 % feilet
 
 function geomTypeToKind(t: string): "point" | "polygon" | null {
   if (t === "Point" || t === "MultiPoint") return "point";
@@ -61,6 +78,8 @@ function normalizeDroneFeature(f: any, idx: number) {
     upper_limit_m: null,
     geometry_geojson: JSON.stringify(f.geometry),
     properties: p,
+    _raw_geometry: f.geometry,
+    _farve: farve,
   };
 }
 
@@ -82,6 +101,207 @@ function normalizeNatureFeature(f: any, idx: number) {
     source_url: p.URL ?? null,
     geometry_geojson: JSON.stringify(f.geometry),
     properties: p,
+    _raw_geometry: f.geometry,
+  };
+}
+
+// ---------- Fase A2: dual-write helpers ----------
+
+async function startSyncRun(supabase: any, source: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("airspace_sync_runs")
+      .insert({ source, country_code: "DK", status: "running" })
+      .select("id")
+      .single();
+    if (error) {
+      console.warn(`[dual-write] failed to start sync run for ${source}:`, error.message);
+      return null;
+    }
+    return data.id;
+  } catch (err) {
+    console.warn(`[dual-write] startSyncRun threw for ${source}:`, err);
+    return null;
+  }
+}
+
+async function finishSyncRun(
+  supabase: any,
+  runId: string | null,
+  patch: Record<string, unknown>,
+) {
+  if (!runId) return;
+  try {
+    await supabase
+      .from("airspace_sync_runs")
+      .update({ ...patch, finished_at: new Date().toISOString() })
+      .eq("id", runId);
+  } catch (err) {
+    console.warn(`[dual-write] finishSyncRun threw:`, err);
+  }
+}
+
+async function upsertUnifiedInBatches(
+  supabase: any,
+  features: any[],
+): Promise<{ upserted: number; skipped: number; errors: unknown[]; batchFailures: number }> {
+  let upserted = 0;
+  let skipped = 0;
+  const errors: unknown[] = [];
+  let batchFailures = 0;
+
+  for (let i = 0; i < features.length; i += UNIFIED_BATCH_SIZE) {
+    const batch = features.slice(i, i + UNIFIED_BATCH_SIZE);
+    try {
+      const { data, error } = await supabase.rpc("bulk_upsert_airspace_zones", {
+        p_features: batch,
+      });
+      if (error) {
+        batchFailures += 1;
+        errors.push({ batch_start: i, error: error.message });
+        continue;
+      }
+      const res = (data ?? {}) as any;
+      upserted += Number(res.upserted ?? 0);
+      skipped += Number(res.skipped ?? 0);
+      if (Array.isArray(res.errors) && res.errors.length) {
+        errors.push(...res.errors.slice(0, 5));
+      }
+    } catch (err) {
+      batchFailures += 1;
+      errors.push({ batch_start: i, error: String(err) });
+    }
+  }
+
+  return { upserted, skipped, errors, batchFailures };
+}
+
+// Danish drone zones → felles airspace_zones-format
+function buildUnifiedDroneFeatures(features: any[]) {
+  const out: any[] = [];
+  for (const f of features) {
+    const mapping = FARVE_TO_UNIFIED[f._farve];
+    if (!mapping) continue;
+    out.push({
+      country_code: "DK",
+      source: "trafikstyrelsen_dk",
+      external_id: f.external_id,
+      zone_type: mapping.zone_type,
+      restriction_type: mapping.restriction_type,
+      display_class: mapping.display_class,
+      theme: f.category ?? null,
+      name: f.name ?? f.external_id,
+      short_name: null,
+      authority: "Trafikstyrelsen",
+      lower_limit_m: null,
+      upper_limit_m: f.elevation_m ?? null,
+      lower_limit_raw: null,
+      upper_limit_raw: f.elevation_m != null ? String(f.elevation_m) : null,
+      altitude_reference: null,
+      valid_from: null,
+      valid_to: null,
+      active: true,
+      properties: f.properties ?? {},
+      geometry_geojson: JSON.stringify(f._raw_geometry),
+    });
+  }
+  return out;
+}
+
+function buildUnifiedNatureFeatures(features: any[]) {
+  const out: any[] = [];
+  for (const f of features) {
+    out.push({
+      country_code: "DK",
+      source: "trafikstyrelsen_dk_nature",
+      external_id: f.external_id,
+      zone_type: "NATURE",
+      restriction_type: "NATURE_SENSITIVE",
+      display_class: "GREEN",
+      theme: f.theme ?? null,
+      name: f.name ?? f.external_id,
+      short_name: null,
+      authority: "Trafikstyrelsen",
+      lower_limit_m: null,
+      upper_limit_m: null,
+      lower_limit_raw: null,
+      upper_limit_raw: null,
+      altitude_reference: null,
+      valid_from: null,
+      valid_to: null,
+      active: !!f.active,
+      properties: f.properties ?? {},
+      geometry_geojson: JSON.stringify(f._raw_geometry),
+    });
+  }
+  return out;
+}
+
+async function dualWriteUnified(
+  supabase: any,
+  source: string,
+  unifiedFeatures: any[],
+): Promise<Record<string, unknown>> {
+  const runId = await startSyncRun(supabase, source);
+  const fetched = unifiedFeatures.length;
+
+  if (fetched === 0) {
+    await finishSyncRun(supabase, runId, {
+      status: "aborted",
+      fetched_count: 0, valid_count: 0,
+      error: "no_features_after_normalization",
+    });
+    return { ok: false, reason: "no_features", fetched: 0 };
+  }
+
+  const { upserted, skipped, errors, batchFailures } =
+    await upsertUnifiedInBatches(supabase, unifiedFeatures);
+
+  const failureRatio = fetched > 0 ? (skipped + batchFailures) / fetched : 1;
+  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+
+  let deactivateResult: unknown = { skipped: true, reason: "not_run" };
+  if (shouldDeactivate) {
+    const keepIds = unifiedFeatures.map((f) => f.external_id).filter(Boolean);
+    try {
+      const { data, error } = await supabase.rpc("deactivate_stale_airspace_zones", {
+        p_source: source,
+        p_country_code: "DK",
+        p_keep_external_ids: keepIds,
+      });
+      deactivateResult = error ? { error: error.message } : data;
+    } catch (err) {
+      deactivateResult = { error: String(err) };
+    }
+  } else {
+    deactivateResult = {
+      skipped: true,
+      reason: batchFailures > 0 ? "batch_failures" : "high_skipped_ratio",
+      failure_ratio: failureRatio,
+    };
+  }
+
+  const status = batchFailures > 0 ? "failed" : "success";
+  const deactivated =
+    typeof (deactivateResult as any)?.deactivated === "number"
+      ? (deactivateResult as any).deactivated
+      : 0;
+
+  await finishSyncRun(supabase, runId, {
+    status,
+    fetched_count: fetched,
+    valid_count: fetched - skipped,
+    upserted_count: upserted,
+    deactivated_count: deactivated,
+    error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
+    stats: { batch_failures: batchFailures, deactivate: deactivateResult },
+  });
+
+  return {
+    ok: batchFailures === 0,
+    fetched, upserted, skipped, batch_failures: batchFailures,
+    deactivate: deactivateResult,
+    errors: errors.slice(0, 5),
   };
 }
 
@@ -95,9 +315,13 @@ async function syncDroneZones(supabase: any) {
 
   // Group by layer_id so bulk_upsert_dk_drone_zones can delete stale rows per layer
   const byLayer: Record<string, any[]> = { rod: [], orange: [], bla: [] };
+  const allNormalized: any[] = [];
   features.forEach((f, i) => {
     const n = normalizeDroneFeature(f, i);
-    if (n) byLayer[n.layer_id].push(n);
+    if (n) {
+      byLayer[n.layer_id].push(n);
+      allNormalized.push(n);
+    }
   });
 
   const layerResults: Record<string, unknown> = {};
@@ -108,7 +332,18 @@ async function syncDroneZones(supabase: any) {
     });
     layerResults[layer_id] = error ? { ok: false, error: error.message } : { ok: true, fetched: feats.length, ...(data ?? {}) };
   }
-  return { ok: true, total: features.length, layers: layerResults };
+
+  // Fase A2: non-blocking dual-write
+  let unified: unknown = { skipped: true };
+  try {
+    const unifiedFeatures = buildUnifiedDroneFeatures(allNormalized);
+    unified = await dualWriteUnified(supabase, "trafikstyrelsen_dk", unifiedFeatures);
+  } catch (err) {
+    console.warn("[dual-write] drone zones dual-write failed non-fatally:", err);
+    unified = { ok: false, error: String(err) };
+  }
+
+  return { ok: true, total: features.length, layers: layerResults, unified };
 }
 
 async function syncNatureAreas(supabase: any) {
@@ -120,13 +355,26 @@ async function syncNatureAreas(supabase: any) {
   const features: any[] = Array.isArray(json?.features) ? json.features : [];
   const normalized = features
     .map((f, i) => normalizeNatureFeature(f, i))
-    .filter(Boolean);
+    .filter(Boolean) as any[];
 
   const { data, error } = await supabase.rpc("bulk_upsert_dk_nature_areas", {
     p_features: normalized,
   });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, fetched: features.length, ...(data ?? {}) };
+  const legacy = error
+    ? { ok: false, error: error.message }
+    : { ok: true, fetched: features.length, ...(data ?? {}) };
+
+  // Fase A2: non-blocking dual-write
+  let unified: unknown = { skipped: true };
+  try {
+    const unifiedFeatures = buildUnifiedNatureFeatures(normalized);
+    unified = await dualWriteUnified(supabase, "trafikstyrelsen_dk_nature", unifiedFeatures);
+  } catch (err) {
+    console.warn("[dual-write] nature areas dual-write failed non-fatally:", err);
+    unified = { ok: false, error: String(err) };
+  }
+
+  return { ...legacy, unified };
 }
 
 Deno.serve(async (req) => {
