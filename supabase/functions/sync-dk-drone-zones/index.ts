@@ -209,7 +209,7 @@ function buildUnifiedDroneFeatures(features: any[]) {
       short_name: null,
       authority: "Trafikstyrelsen",
       lower_limit_m: null,
-      upper_limit_m: f.elevation_m ?? null,
+      upper_limit_m: f.elevation_m != null ? Math.round(Number(f.elevation_m)) : null,
       lower_limit_raw: null,
       upper_limit_raw: f.elevation_m != null ? String(f.elevation_m) : null,
       altitude_reference: null,
