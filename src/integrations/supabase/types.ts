@@ -233,6 +233,132 @@ export type Database = {
         }
         Relationships: []
       }
+      airspace_sync_runs: {
+        Row: {
+          country_code: string
+          created_at: string
+          deactivated_count: number
+          error: string | null
+          fetched_count: number
+          finished_at: string | null
+          id: string
+          source: string
+          started_at: string
+          stats: Json
+          status: string
+          upserted_count: number
+          valid_count: number
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          deactivated_count?: number
+          error?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          source: string
+          started_at?: string
+          stats?: Json
+          status?: string
+          upserted_count?: number
+          valid_count?: number
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          deactivated_count?: number
+          error?: string | null
+          fetched_count?: number
+          finished_at?: string | null
+          id?: string
+          source?: string
+          started_at?: string
+          stats?: Json
+          status?: string
+          upserted_count?: number
+          valid_count?: number
+        }
+        Relationships: []
+      }
+      airspace_zones: {
+        Row: {
+          active: boolean
+          altitude_reference: string | null
+          authority: string | null
+          country_code: string
+          created_at: string
+          display_class: string
+          external_id: string
+          geom: unknown
+          id: string
+          lower_limit_m: number | null
+          lower_limit_raw: string | null
+          name: string
+          properties: Json
+          restriction_type: string
+          short_name: string | null
+          source: string
+          theme: string | null
+          updated_at: string
+          upper_limit_m: number | null
+          upper_limit_raw: string | null
+          valid_from: string | null
+          valid_to: string | null
+          zone_type: string
+        }
+        Insert: {
+          active?: boolean
+          altitude_reference?: string | null
+          authority?: string | null
+          country_code: string
+          created_at?: string
+          display_class: string
+          external_id: string
+          geom: unknown
+          id?: string
+          lower_limit_m?: number | null
+          lower_limit_raw?: string | null
+          name: string
+          properties?: Json
+          restriction_type: string
+          short_name?: string | null
+          source: string
+          theme?: string | null
+          updated_at?: string
+          upper_limit_m?: number | null
+          upper_limit_raw?: string | null
+          valid_from?: string | null
+          valid_to?: string | null
+          zone_type: string
+        }
+        Update: {
+          active?: boolean
+          altitude_reference?: string | null
+          authority?: string | null
+          country_code?: string
+          created_at?: string
+          display_class?: string
+          external_id?: string
+          geom?: unknown
+          id?: string
+          lower_limit_m?: number | null
+          lower_limit_raw?: string | null
+          name?: string
+          properties?: Json
+          restriction_type?: string
+          short_name?: string | null
+          source?: string
+          theme?: string | null
+          updated_at?: string
+          upper_limit_m?: number | null
+          upper_limit_raw?: string | null
+          valid_from?: string | null
+          valid_to?: string | null
+          zone_type?: string
+        }
+        Relationships: []
+      }
       app_config: {
         Row: {
           key: string
@@ -6816,6 +6942,57 @@ export type Database = {
             }
             Returns: string
           }
+      airspace_zones_in_bbox: {
+        Args: {
+          p_country_codes?: string[]
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+          p_zone_types?: string[]
+        }
+        Returns: {
+          altitude_reference: string
+          country_code: string
+          display_class: string
+          geometry_geojson: Json
+          id: string
+          lower_limit_m: number
+          name: string
+          properties: Json
+          restriction_type: string
+          short_name: string
+          source: string
+          theme: string
+          upper_limit_m: number
+          zone_type: string
+        }[]
+      }
+      airspace_zones_intersecting_route: {
+        Args: {
+          p_buffer_m?: number
+          p_country_codes?: string[]
+          p_route: Json
+          p_zone_types?: string[]
+        }
+        Returns: {
+          altitude_reference: string
+          country_code: string
+          display_class: string
+          distance_m: number
+          id: string
+          lower_limit_m: number
+          name: string
+          properties: Json
+          restriction_type: string
+          route_inside: boolean
+          short_name: string
+          source: string
+          theme: string
+          upper_limit_m: number
+          zone_type: string
+        }[]
+      }
       bulk_upsert_caa_zones: {
         Args: { p_features: Json; p_layer_id: string }
         Returns: Json
