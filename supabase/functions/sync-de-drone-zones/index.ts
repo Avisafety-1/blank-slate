@@ -342,16 +342,57 @@ async function syncOneLayer(
   const tileGrid = opts.tileGrid ?? 5;
   const budgetMs = opts.budgetMs ?? 220_000;
 
-  let features: any[] = [];
-  let tileInfo: Record<string, unknown> | null = null;
-  try {
-    if (tiled) {
-      const r = await fetchDipulLayerTiled(entry.typename, entry.source, tileGrid, budgetMs);
-      features = r.features;
-      tileInfo = { tile_grid: tileGrid, tiles_done: r.tilesDone, tiles_total: r.tilesTotal, timed_out: r.timedOut };
-    } else {
-      features = await fetchDipulLayer(entry.typename);
+  // ---- Streaming tiled path (store nature-lag) ----
+  if (tiled) {
+    let r;
+    try {
+      r = await syncTiledLayer(supabase, entry, tileGrid, budgetMs);
+    } catch (err) {
+      await finishSyncRun(supabase, runId, { status: "failed", error: String(err).slice(0, 500) });
+      return { ok: false, source: entry.source, error: String(err) };
     }
+    const tileInfo = { tile_grid: tileGrid, tiles_done: r.tilesDone, tiles_total: r.tilesTotal, timed_out: r.timedOut };
+    const totalSkipped = r.normalizeSkipped + r.rpcSkipped;
+    const failureRatio = r.fetched > 0 ? (totalSkipped + r.batchFailures) / r.fetched : 1;
+    const shouldDeactivate = r.batchFailures === 0 && !r.timedOut && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+
+    let deactivateResult: unknown = { skipped: true, reason: "not_run" };
+    if (shouldDeactivate && r.keepIds.length > 0) {
+      try {
+        const { data, error } = await supabase.rpc("deactivate_stale_airspace_zones", {
+          p_source: entry.source, p_country_code: "DE", p_keep_external_ids: r.keepIds,
+        });
+        deactivateResult = error ? { error: error.message } : data;
+      } catch (err) { deactivateResult = { error: String(err) }; }
+    } else {
+      deactivateResult = {
+        skipped: true,
+        reason: r.timedOut ? "tiled_incomplete" : (r.batchFailures > 0 ? "batch_failures" : "high_skipped_ratio"),
+        failure_ratio: failureRatio,
+      };
+    }
+
+    const status = r.batchFailures > 0 ? "failed" : (r.timedOut ? "partial" : "success");
+    const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
+      ? (deactivateResult as any).deactivated : 0;
+    await finishSyncRun(supabase, runId, {
+      status, fetched_count: r.fetched, valid_count: r.fetched - r.normalizeSkipped,
+      upserted_count: r.upserted, deactivated_count: deactivated,
+      error: r.errors.length ? JSON.stringify(r.errors).slice(0, 2000) : null,
+      stats: { batch_failures: r.batchFailures, deactivate: deactivateResult, normalize_skipped: r.normalizeSkipped, tile: tileInfo },
+    });
+    return {
+      ok: r.batchFailures === 0, source: entry.source, typename: entry.typename,
+      layer_id: entry.mapping.layer_id, fetched: r.fetched, upserted: r.upserted,
+      skipped: totalSkipped, batch_failures: r.batchFailures,
+      deactivate: deactivateResult, errors: r.errors.slice(0, 3), tile: tileInfo,
+    };
+  }
+
+  // ---- Standard (in-memory) path ----
+  let features: any[] = [];
+  try {
+    features = await fetchDipulLayer(entry.typename);
   } catch (err) {
     await finishSyncRun(supabase, runId, { status: "failed", error: String(err).slice(0, 500) });
     return { ok: false, source: entry.source, error: String(err) };
@@ -364,17 +405,14 @@ async function syncOneLayer(
     await finishSyncRun(supabase, runId, {
       status: "aborted", fetched_count: fetched, valid_count: 0,
       error: "no_features_after_normalization",
-      stats: tileInfo ? { tile: tileInfo } : undefined,
     });
-    return { ok: false, source: entry.source, reason: "no_features", fetched, tile: tileInfo };
+    return { ok: false, source: entry.source, reason: "no_features", fetched };
   }
 
   const { upserted, skipped: rpcSkipped, errors, batchFailures } = await upsertInBatches(supabase, rows);
   const totalSkipped = normalizeSkipped + rpcSkipped;
   const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-  // Ikke deaktiver hvis tiled fetch time-outet — vi mangler ids fra ikke-prosesserte tiles
-  const tiledIncomplete = tiled && !!(tileInfo as any)?.timed_out;
-  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO && !tiledIncomplete;
+  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
 
   let deactivateResult: unknown = { skipped: true, reason: "not_run" };
   if (shouldDeactivate) {
@@ -386,14 +424,10 @@ async function syncOneLayer(
       deactivateResult = error ? { error: error.message } : data;
     } catch (err) { deactivateResult = { error: String(err) }; }
   } else {
-    deactivateResult = {
-      skipped: true,
-      reason: tiledIncomplete ? "tiled_incomplete" : (batchFailures > 0 ? "batch_failures" : "high_skipped_ratio"),
-      failure_ratio: failureRatio,
-    };
+    deactivateResult = { skipped: true, reason: batchFailures > 0 ? "batch_failures" : "high_skipped_ratio", failure_ratio: failureRatio };
   }
 
-  const status = batchFailures > 0 ? "failed" : (tiledIncomplete ? "partial" : "success");
+  const status = batchFailures > 0 ? "failed" : "success";
   const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
     ? (deactivateResult as any).deactivated : 0;
 
@@ -401,14 +435,13 @@ async function syncOneLayer(
     status, fetched_count: fetched, valid_count: fetched - normalizeSkipped,
     upserted_count: upserted, deactivated_count: deactivated,
     error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
-    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped, tile: tileInfo },
+    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped },
   });
 
   return {
     ok: batchFailures === 0, source: entry.source, typename: entry.typename,
     layer_id: entry.mapping.layer_id, fetched, upserted, skipped: totalSkipped,
     batch_failures: batchFailures, deactivate: deactivateResult, errors: errors.slice(0, 3),
-    tile: tileInfo,
   };
 }
 
