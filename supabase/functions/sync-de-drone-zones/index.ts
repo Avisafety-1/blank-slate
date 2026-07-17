@@ -223,10 +223,12 @@ async function syncTiledLayer(
   entry: { typename: string; source: string; mapping: LayerMapping },
   tileGrid: number,
   budgetMs: number,
+  tileStart: number,
+  tileCount: number | null,
 ): Promise<{
   fetched: number; upserted: number; normalizeSkipped: number; rpcSkipped: number;
   batchFailures: number; errors: unknown[]; keepIds: string[];
-  tilesDone: number; tilesTotal: number; timedOut: boolean;
+  tilesDone: number; tilesTotal: number; tilesProcessed: number; nextTile: number; timedOut: boolean;
 }> {
   const [minLon, minLat, maxLon, maxLat] = DE_BBOX;
   const dLon = (maxLon - minLon) / tileGrid;
@@ -235,60 +237,64 @@ async function syncTiledLayer(
   const keepIds: string[] = [];
   const errors: unknown[] = [];
   const tilesTotal = tileGrid * tileGrid;
+  const tileEnd = tileCount == null ? tilesTotal : Math.min(tilesTotal, tileStart + tileCount);
   const start = Date.now();
-  let tilesDone = 0, timedOut = false;
+  let tilesProcessed = 0, timedOut = false;
   let fetched = 0, upserted = 0, normalizeSkipped = 0, rpcSkipped = 0, batchFailures = 0;
+  let currentTile = tileStart;
 
-  for (let ix = 0; ix < tileGrid && !timedOut; ix++) {
-    for (let iy = 0; iy < tileGrid; iy++) {
-      if (Date.now() - start > budgetMs) { timedOut = true; break; }
-      const bbox: [number, number, number, number] = [
-        minLon + ix * dLon, minLat + iy * dLat,
-        minLon + (ix + 1) * dLon, minLat + (iy + 1) * dLat,
-      ];
-      let feats: any[] = [];
-      try {
-        feats = await fetchDipulLayer(entry.typename, bbox);
-      } catch (err) {
-        console.warn(`[de-sync] tile ${ix},${iy} for ${entry.source} failed:`, String(err).slice(0, 200));
-        errors.push({ tile: [ix, iy], error: String(err).slice(0, 200) });
-        tilesDone++;
-        continue;
-      }
-      fetched += feats.length;
-
-      // Dedup mot tidligere tiles (overlap ved polygon-grenser) uten å holde alle features i minnet
-      const uniqueFeats: any[] = [];
-      for (const f of feats) {
-        const key = String(
-          f?.id ??
-          f?.properties?.external_reference ??
-          f?.properties?.gml_id ??
-          `${entry.source}:${JSON.stringify(f?.geometry ?? {}).slice(0, 80)}`,
-        );
-        if (seen.has(key)) continue;
-        seen.add(key);
-        uniqueFeats.push(f);
-      }
-      // Frigi originalarray før normalisering for å redusere peak-memory
-      feats = [];
-
-      const { rows, skipped: nSkip } = buildUnifiedFeatures(uniqueFeats, entry.mapping, entry.source);
-      normalizeSkipped += nSkip;
-      if (rows.length > 0) {
-        for (const r of rows) if (r.external_id) keepIds.push(r.external_id);
-        const res = await upsertInBatches(supabase, rows);
-        upserted += res.upserted;
-        rpcSkipped += res.skipped;
-        batchFailures += res.batchFailures;
-        if (res.errors.length) errors.push(...res.errors.slice(0, 3));
-      }
-      tilesDone++;
-
-      console.log(`[de-sync] ${entry.source} tile ${tilesDone}/${tilesTotal} feats=${uniqueFeats.length} upserted=${upserted}`);
+  for (; currentTile < tileEnd; currentTile++) {
+    if (Date.now() - start > budgetMs) { timedOut = true; break; }
+    const ix = Math.floor(currentTile / tileGrid);
+    const iy = currentTile % tileGrid;
+    const bbox: [number, number, number, number] = [
+      minLon + ix * dLon, minLat + iy * dLat,
+      minLon + (ix + 1) * dLon, minLat + (iy + 1) * dLat,
+    ];
+    let feats: any[] = [];
+    try {
+      feats = await fetchDipulLayer(entry.typename, bbox);
+    } catch (err) {
+      console.warn(`[de-sync] tile ${currentTile}(${ix},${iy}) for ${entry.source} failed:`, String(err).slice(0, 200));
+      errors.push({ tile: currentTile, error: String(err).slice(0, 200) });
+      tilesProcessed++;
+      continue;
     }
+    fetched += feats.length;
+
+    const uniqueFeats: any[] = [];
+    for (const f of feats) {
+      const key = String(
+        f?.id ??
+        f?.properties?.external_reference ??
+        f?.properties?.gml_id ??
+        `${entry.source}:${JSON.stringify(f?.geometry ?? {}).slice(0, 80)}`,
+      );
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniqueFeats.push(f);
+    }
+    feats = [];
+
+    const { rows, skipped: nSkip } = buildUnifiedFeatures(uniqueFeats, entry.mapping, entry.source);
+    normalizeSkipped += nSkip;
+    if (rows.length > 0) {
+      for (const r of rows) if (r.external_id) keepIds.push(r.external_id);
+      const res = await upsertInBatches(supabase, rows);
+      upserted += res.upserted;
+      rpcSkipped += res.skipped;
+      batchFailures += res.batchFailures;
+      if (res.errors.length) errors.push(...res.errors.slice(0, 3));
+    }
+    tilesProcessed++;
+    console.log(`[de-sync] ${entry.source} tile ${currentTile + 1}/${tilesTotal} feats=${uniqueFeats.length} upserted=${upserted}`);
   }
-  return { fetched, upserted, normalizeSkipped, rpcSkipped, batchFailures, errors, keepIds, tilesDone, tilesTotal, timedOut };
+  return {
+    fetched, upserted, normalizeSkipped, rpcSkipped, batchFailures, errors, keepIds,
+    tilesDone: currentTile, tilesTotal, tilesProcessed,
+    nextTile: (timedOut || currentTile < tilesTotal) ? currentTile : tilesTotal,
+    timedOut,
+  };
 }
 
 async function startSyncRun(supabase: any, source: string): Promise<string | null> {
@@ -335,28 +341,37 @@ async function upsertInBatches(supabase: any, rows: any[]) {
 async function syncOneLayer(
   supabase: any,
   entry: { typename: string; source: string; mapping: LayerMapping },
-  opts: { tileGrid?: number; budgetMs?: number } = {},
+  opts: { tileGrid?: number; budgetMs?: number; tileStart?: number; tileCount?: number | null; finalize?: boolean } = {},
 ): Promise<Record<string, unknown>> {
   const runId = await startSyncRun(supabase, entry.source);
   const tiled = TILED_SOURCES.has(entry.source);
   const tileGrid = opts.tileGrid ?? 5;
   const budgetMs = opts.budgetMs ?? 220_000;
+  const tileStart = opts.tileStart ?? 0;
+  const tileCount = opts.tileCount ?? null;
 
   // ---- Streaming tiled path (store nature-lag) ----
   if (tiled) {
     let r;
     try {
-      r = await syncTiledLayer(supabase, entry, tileGrid, budgetMs);
+      r = await syncTiledLayer(supabase, entry, tileGrid, budgetMs, tileStart, tileCount);
     } catch (err) {
       await finishSyncRun(supabase, runId, { status: "failed", error: String(err).slice(0, 500) });
       return { ok: false, source: entry.source, error: String(err) };
     }
-    const tileInfo = { tile_grid: tileGrid, tiles_done: r.tilesDone, tiles_total: r.tilesTotal, timed_out: r.timedOut };
+    const isChunk = tileCount != null || tileStart > 0;
+    const fullyDone = !r.timedOut && r.nextTile >= r.tilesTotal;
+    const tileInfo = {
+      tile_grid: tileGrid, tiles_processed: r.tilesProcessed,
+      tile_start: tileStart, next_tile: r.nextTile, tiles_total: r.tilesTotal,
+      timed_out: r.timedOut, finalize: !!opts.finalize,
+    };
     const totalSkipped = r.normalizeSkipped + r.rpcSkipped;
     const failureRatio = r.fetched > 0 ? (totalSkipped + r.batchFailures) / r.fetched : 1;
-    const shouldDeactivate = r.batchFailures === 0 && !r.timedOut && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+    // Deaktiver KUN når vi bekrefter full sweep i én invocation (ikke chunks).
+    const shouldDeactivate = !isChunk && fullyDone && r.batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
 
-    let deactivateResult: unknown = { skipped: true, reason: "not_run" };
+    let deactivateResult: unknown = { skipped: true, reason: isChunk ? "chunked_run" : "not_run" };
     if (shouldDeactivate && r.keepIds.length > 0) {
       try {
         const { data, error } = await supabase.rpc("deactivate_stale_airspace_zones", {
@@ -364,15 +379,11 @@ async function syncOneLayer(
         });
         deactivateResult = error ? { error: error.message } : data;
       } catch (err) { deactivateResult = { error: String(err) }; }
-    } else {
-      deactivateResult = {
-        skipped: true,
-        reason: r.timedOut ? "tiled_incomplete" : (r.batchFailures > 0 ? "batch_failures" : "high_skipped_ratio"),
-        failure_ratio: failureRatio,
-      };
     }
 
-    const status = r.batchFailures > 0 ? "failed" : (r.timedOut ? "partial" : "success");
+    const status = r.batchFailures > 0
+      ? "failed"
+      : (isChunk ? (fullyDone ? "success" : "partial") : (r.timedOut ? "partial" : "success"));
     const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
       ? (deactivateResult as any).deactivated : 0;
     await finishSyncRun(supabase, runId, {
@@ -386,8 +397,10 @@ async function syncOneLayer(
       layer_id: entry.mapping.layer_id, fetched: r.fetched, upserted: r.upserted,
       skipped: totalSkipped, batch_failures: r.batchFailures,
       deactivate: deactivateResult, errors: r.errors.slice(0, 3), tile: tileInfo,
+      next_tile: r.nextTile, fully_done: fullyDone,
     };
   }
+
 
   // ---- Standard (in-memory) path ----
   let features: any[] = [];
@@ -466,12 +479,16 @@ Deno.serve(async (req) => {
     let filter: Set<string> | null = null;
     let tileGrid: number | undefined;
     let budgetMs: number | undefined;
+    let tileStart: number | undefined;
+    let tileCount: number | null | undefined;
     try {
       const body = req.method === "POST" ? await req.json().catch(() => null) : null;
       if (body?.group && LAYER_GROUPS[body.group]) filter = new Set(LAYER_GROUPS[body.group]);
       else if (Array.isArray(body?.sources) && body.sources.length) filter = new Set(body.sources);
       if (typeof body?.tile_grid === "number") tileGrid = body.tile_grid;
       if (typeof body?.budget_ms === "number") budgetMs = body.budget_ms;
+      if (typeof body?.tile_start === "number") tileStart = body.tile_start;
+      if (typeof body?.tile_count === "number") tileCount = body.tile_count;
     } catch { /* empty body ok */ }
 
     const targets = filter ? DIPUL_LAYERS.filter((e) => filter!.has(e.source)) : DIPUL_LAYERS;
@@ -489,7 +506,7 @@ Deno.serve(async (req) => {
     const results: Record<string, unknown>[] = [];
     for (const entry of targets) {
       try {
-        results.push(await syncOneLayer(supabase, entry, { tileGrid, budgetMs }));
+        results.push(await syncOneLayer(supabase, entry, { tileGrid, budgetMs, tileStart, tileCount }));
       } catch (err) {
         results.push({ ok: false, source: entry.source, error: String(err) });
       }
