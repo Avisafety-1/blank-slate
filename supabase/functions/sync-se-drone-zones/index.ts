@@ -39,17 +39,17 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
   {
     typename: "mais:CTR",
     source: "lfv_se_ctr",
-    mapping: { layer_id: "ctr", zone_type: "CTR", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "CTR", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "mais:TIZ",
     source: "lfv_se_tiz",
-    mapping: { layer_id: "ctr", zone_type: "TIZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "TIZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "mais:ATZ",
     source: "lfv_se_atz",
-    mapping: { layer_id: "ctr", zone_type: "ATZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "ATZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "DAIM_TOPO:RWY5K",
@@ -64,14 +64,14 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
   {
     typename: "mais:RSTA",
     source: "lfv_se_rsta",
-    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "R", restriction_type: "PROHIBITED", display_class: "RED" },
     // LFV publiserer kun GND-restriksjoner som drone-relevante.
     cql_filter: "LOWER='GND' OR LOWER='SFC'",
   },
   {
     typename: "mais:DNGA",
     source: "lfv_se_dnga",
-    mapping: { layer_id: "fareomrader", zone_type: "DRONE_DANGER", restriction_type: "CAUTION", display_class: "AMBER" },
+    mapping: { layer_id: "fareomrader", zone_type: "D", restriction_type: "CAUTION", display_class: "AMBER" },
     // Spec: kun LOWER='GND' publiseres på Drönarkartan.
     cql_filter: "LOWER='GND'",
   },
@@ -80,7 +80,7 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
     // Vi henter alt og filtrerer normaliserings-siden basert på LOW_UOM/LOWER.
     typename: "DAIM_TOPO:SUP",
     source: "lfv_se_sup",
-    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "R", restriction_type: "PROHIBITED", display_class: "RED" },
   },
 ];
 
