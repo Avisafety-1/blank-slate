@@ -72,9 +72,29 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
     typename: "mais:DNGA",
     source: "lfv_se_dnga",
     mapping: { layer_id: "fareomrader", zone_type: "DRONE_DANGER", restriction_type: "CAUTION", display_class: "AMBER" },
-    cql_filter: "LOWER='GND' OR LOWER='SFC'",
+    // Spec: kun LOWER='GND' publiseres på Drönarkartan.
+    cql_filter: "LOWER='GND'",
+  },
+  {
+    // AIP Supplement: tidsbegrensede restriksjonsområder. Spec sier LOWER <= 500 ft.
+    // Vi henter alt og filtrerer normaliserings-siden basert på LOW_UOM/LOWER.
+    typename: "DAIM_TOPO:SUP",
+    source: "lfv_se_sup",
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
   },
 ];
+
+// SUP-lag: konverter LOW_UOM/UP_UOM til meter. FT AMSL / FT AGL / M / FL.
+function parseSupAltitude(value: string | null, uom: string | null): number | null {
+  if (!value) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  const u = (uom ?? "").toUpperCase();
+  if (u === "M") return Math.round(num);
+  if (u === "FT") return Math.round(num * 0.3048);
+  if (u === "FL") return Math.round(num * 100 * 0.3048);
+  return null;
+}
 
 function toStringOrNull(v: unknown): string | null {
   if (v == null) return null;
