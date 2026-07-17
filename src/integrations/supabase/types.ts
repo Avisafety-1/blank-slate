@@ -233,6 +233,60 @@ export type Database = {
         }
         Relationships: []
       }
+      airspace_shadow_comparisons: {
+        Row: {
+          buffer_m: number
+          context: string
+          country_code: string
+          created_at: string
+          id: string
+          legacy_count: number
+          legacy_zone_ids: Json
+          mission_id: string | null
+          notes: string | null
+          only_in_legacy: Json
+          only_in_unified: Json
+          parity_pct: number | null
+          route_geojson: Json | null
+          unified_count: number
+          unified_zone_ids: Json
+        }
+        Insert: {
+          buffer_m?: number
+          context: string
+          country_code: string
+          created_at?: string
+          id?: string
+          legacy_count?: number
+          legacy_zone_ids?: Json
+          mission_id?: string | null
+          notes?: string | null
+          only_in_legacy?: Json
+          only_in_unified?: Json
+          parity_pct?: number | null
+          route_geojson?: Json | null
+          unified_count?: number
+          unified_zone_ids?: Json
+        }
+        Update: {
+          buffer_m?: number
+          context?: string
+          country_code?: string
+          created_at?: string
+          id?: string
+          legacy_count?: number
+          legacy_zone_ids?: Json
+          mission_id?: string | null
+          notes?: string | null
+          only_in_legacy?: Json
+          only_in_unified?: Json
+          parity_pct?: number | null
+          route_geojson?: Json | null
+          unified_count?: number
+          unified_zone_ids?: Json
+        }
+        Relationships: []
+      }
       airspace_sync_runs: {
         Row: {
           country_code: string
@@ -6579,6 +6633,18 @@ export type Database = {
       }
     }
     Views: {
+      airspace_shadow_parity_rollup: {
+        Row: {
+          avg_parity_pct: number | null
+          below_99_count: number | null
+          context: string | null
+          country_code: string | null
+          last_sample_at: string | null
+          min_parity_pct: number | null
+          samples: number | null
+        }
+        Relationships: []
+      }
       eccairs_integrations_safe: {
         Row: {
           company_id: string | null
@@ -7514,6 +7580,19 @@ export type Database = {
       }
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      log_airspace_shadow_comparison: {
+        Args: {
+          p_buffer_m: number
+          p_context: string
+          p_country_code: string
+          p_legacy_zone_ids: Json
+          p_mission_id: string
+          p_notes?: string
+          p_route_geojson: Json
+          p_unified_zone_ids: Json
+        }
+        Returns: string
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       lookup_fh2_feed_company: {
         Args: { p_enc_key: string; p_key: string }
