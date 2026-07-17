@@ -43,20 +43,31 @@ Deno.serve(async (req) => {
     const { data: legacyNature } = await supabase.rpc('get_dk_nature_areas_in_bounds', {
       min_lat: minLat, min_lng: minLng, max_lat: maxLat, max_lng: maxLng,
     });
-    // Unified
+    // Unified: query airspace_zones directly to get external_id + source
+    const envWkt = `POLYGON((${minLng} ${minLat},${maxLng} ${minLat},${maxLng} ${maxLat},${minLng} ${maxLat},${minLng} ${minLat}))`;
     const { data: unified } = await supabase.rpc('airspace_zones_in_bbox', {
       p_min_lng: minLng, p_min_lat: minLat, p_max_lng: maxLng, p_max_lat: maxLat,
       p_zone_types: null, p_country_codes: ['DK'], p_layer_ids: null,
     });
+    // For each unified row we need external_id — fetch by ids
+    const unifiedIdList = ((unified ?? []) as any[]).map((z) => z.id);
+    let unifiedRows: Array<{ external_id: string; source: string }> = [];
+    if (unifiedIdList.length) {
+      const { data: uRows } = await supabase
+        .from('airspace_zones')
+        .select('external_id, source')
+        .in('id', unifiedIdList);
+      unifiedRows = (uRows ?? []) as any;
+    }
 
     const legacyIds = new Set<string>([
       ...((legacyDrone ?? []) as any[]).map((z) => `drone:${z.external_id ?? z.id}`),
       ...((legacyNature ?? []) as any[]).map((z) => `nature:${z.external_id ?? z.id}`),
     ]);
     const unifiedIds = new Set<string>(
-      ((unified ?? []) as any[]).map((z) => {
+      unifiedRows.map((z) => {
         const isNature = z.source === 'trafikstyrelsen_dk_nature';
-        return `${isNature ? 'nature' : 'drone'}:${z.external_id ?? z.id}`;
+        return `${isNature ? 'nature' : 'drone'}:${z.external_id}`;
       }),
     );
 
