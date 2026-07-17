@@ -111,6 +111,8 @@ export async function fetchUnifiedZonesForRoute(
   bufferM: number = 500,
 ): Promise<UnifiedAirspaceZone[]> {
   if (!routePoints || routePoints.length < 2) return [];
+  // Defence in depth: NO is never sent to the unified pipeline in C1.
+  if ((country as string) === "NO") return [];
 
   const enabled = await isUnifiedAirspaceEnabled(country);
   if (!enabled) return [];
