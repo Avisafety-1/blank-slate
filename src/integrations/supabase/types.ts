@@ -233,6 +233,30 @@ export type Database = {
         }
         Relationships: []
       }
+      airspace_layers: {
+        Row: {
+          created_at: string
+          default_enabled: boolean
+          description: string | null
+          group_key: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          default_enabled?: boolean
+          description?: string | null
+          group_key: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          default_enabled?: boolean
+          description?: string | null
+          group_key?: string
+          id?: string
+        }
+        Relationships: []
+      }
       airspace_shadow_comparisons: {
         Row: {
           buffer_m: number
@@ -340,12 +364,15 @@ export type Database = {
           active: boolean
           altitude_reference: string | null
           authority: string | null
+          authority_rank: number
           country_code: string
           created_at: string
+          dedupe_key: string | null
           display_class: string
-          external_id: string
+          external_id: string | null
           geom: unknown
           id: string
+          layer_id: string
           lower_limit_m: number | null
           lower_limit_raw: string | null
           name: string
@@ -365,12 +392,15 @@ export type Database = {
           active?: boolean
           altitude_reference?: string | null
           authority?: string | null
+          authority_rank?: number
           country_code: string
           created_at?: string
+          dedupe_key?: string | null
           display_class: string
-          external_id: string
+          external_id?: string | null
           geom: unknown
           id?: string
+          layer_id: string
           lower_limit_m?: number | null
           lower_limit_raw?: string | null
           name: string
@@ -390,12 +420,15 @@ export type Database = {
           active?: boolean
           altitude_reference?: string | null
           authority?: string | null
+          authority_rank?: number
           country_code?: string
           created_at?: string
+          dedupe_key?: string | null
           display_class?: string
-          external_id?: string
+          external_id?: string | null
           geom?: unknown
           id?: string
+          layer_id?: string
           lower_limit_m?: number | null
           lower_limit_raw?: string | null
           name?: string
@@ -411,7 +444,15 @@ export type Database = {
           valid_to?: string | null
           zone_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "airspace_zones_layer_id_fk"
+            columns: ["layer_id"]
+            isOneToOne: false
+            referencedRelation: "airspace_layers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_config: {
         Row: {
@@ -6645,6 +6686,59 @@ export type Database = {
         }
         Relationships: []
       }
+      airspace_source_health: {
+        Row: {
+          active_rows: number | null
+          country_code: string | null
+          distinct_layers: number | null
+          last_updated_at: string | null
+          source: string | null
+          top_unmapped_raw_types: Json | null
+          total_rows: number | null
+          unclassified_rows: number | null
+        }
+        Relationships: []
+      }
+      airspace_zones_with_precedence: {
+        Row: {
+          active: boolean | null
+          altitude_reference: string | null
+          authority: string | null
+          authority_rank: number | null
+          country_code: string | null
+          created_at: string | null
+          dedupe_key: string | null
+          display_class: string | null
+          external_id: string | null
+          geom: unknown
+          id: string | null
+          layer_id: string | null
+          lower_limit_m: number | null
+          lower_limit_raw: string | null
+          name: string | null
+          precedence_rank: number | null
+          properties: Json | null
+          restriction_type: string | null
+          short_name: string | null
+          source: string | null
+          theme: string | null
+          updated_at: string | null
+          upper_limit_m: number | null
+          upper_limit_raw: string | null
+          valid_from: string | null
+          valid_to: string | null
+          zone_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airspace_zones_layer_id_fk"
+            columns: ["layer_id"]
+            isOneToOne: false
+            referencedRelation: "airspace_layers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       eccairs_integrations_safe: {
         Row: {
           company_id: string | null
@@ -6783,6 +6877,46 @@ export type Database = {
           type?: string | null
         }
         Relationships: []
+      }
+      resolved_airspace_zones: {
+        Row: {
+          active: boolean | null
+          altitude_reference: string | null
+          authority: string | null
+          authority_rank: number | null
+          country_code: string | null
+          created_at: string | null
+          dedupe_key: string | null
+          display_class: string | null
+          external_id: string | null
+          geom: unknown
+          id: string | null
+          layer_id: string | null
+          lower_limit_m: number | null
+          lower_limit_raw: string | null
+          name: string | null
+          precedence_rank: number | null
+          properties: Json | null
+          restriction_type: string | null
+          short_name: string | null
+          source: string | null
+          theme: string | null
+          updated_at: string | null
+          upper_limit_m: number | null
+          upper_limit_raw: string | null
+          valid_from: string | null
+          valid_to: string | null
+          zone_type: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airspace_zones_layer_id_fk"
+            columns: ["layer_id"]
+            isOneToOne: false
+            referencedRelation: "airspace_layers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_planned_mission_map: {
         Row: {
@@ -7011,6 +7145,7 @@ export type Database = {
       airspace_zones_in_bbox: {
         Args: {
           p_country_codes?: string[]
+          p_layer_ids?: string[]
           p_max_lat: number
           p_max_lng: number
           p_min_lat: number
@@ -7019,10 +7154,13 @@ export type Database = {
         }
         Returns: {
           altitude_reference: string
+          authority_rank: number
           country_code: string
+          dedupe_key: string
           display_class: string
           geometry_geojson: Json
           id: string
+          layer_id: string
           lower_limit_m: number
           name: string
           properties: Json
@@ -7036,17 +7174,21 @@ export type Database = {
       }
       airspace_zones_intersecting_route: {
         Args: {
-          p_buffer_m?: number
+          p_buffer_m: number
           p_country_codes?: string[]
+          p_layer_ids?: string[]
           p_route: Json
           p_zone_types?: string[]
         }
         Returns: {
           altitude_reference: string
+          authority_rank: number
           country_code: string
+          dedupe_key: string
           display_class: string
           distance_m: number
           id: string
+          layer_id: string
           lower_limit_m: number
           name: string
           properties: Json
