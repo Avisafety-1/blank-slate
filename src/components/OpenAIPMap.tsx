@@ -43,7 +43,9 @@ import {
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
+  fetchUnifiedAirspaceZones,
 } from "@/lib/mapDataFetchers";
+import { isUnifiedAirspaceEnabled } from "@/lib/airspaceUnified";
 import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
