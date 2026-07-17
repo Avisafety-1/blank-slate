@@ -56,10 +56,17 @@ Deno.serve(async (req) => {
     const LEG_TO_UNIFIED: Record<string, string> = {
       rod: 'rpas', orange: 'fareomrader', bla: 'sikringsobjekter',
     };
+    const slug = (s: any) => String(s ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
     const legacyIds = new Set<string>([
       ...((legacyDrone ?? []) as any[]).map((z) => {
         const uni = LEG_TO_UNIFIED[z.layer_id] ?? z.layer_id;
-        return `drone:${uni}:${z.external_id ?? z.id}`;
+        const disambig = slug(z.name ?? z.category);
+        const suffix = disambig ? `:${disambig}` : '';
+        return `drone:${uni}:${z.external_id ?? z.id}${suffix}`;
       }),
       ...((legacyNature ?? []) as any[]).map((z) => `nature:${z.external_id ?? z.id}`),
     ]);
