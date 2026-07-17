@@ -945,6 +945,19 @@ export function OpenAIPMap({
     const dkOrangeLayer = L.layerGroup();
     const dkBlaLayer = L.layerGroup();
 
+    // ============================================================
+    // 🇪🇺 Unified airspace zones (DK/SE/DE/FI) — Phase C1
+    // Only rendered for companies in `airspace_unified_company_allowlist`.
+    // For everyone else these layers stay empty (fetcher never called).
+    // NO is intentionally excluded — legacy code path is authoritative there.
+    // ============================================================
+    const unifiedAirspaceLayer = L.layerGroup();      // CTR/TIZ/ATZ (layer_id='airspace')
+    const unifiedRpasLayer = L.layerGroup();          // DRONE_NO_FLY (layer_id='rpas')
+    const unifiedRestrictedLayer = L.layerGroup();    // R (layer_id='restriksjonsomrader')
+    const unifiedDangerLayer = L.layerGroup();        // DRONE_DANGER (layer_id='fareomrader')
+    const unifiedSecurityLayer = L.layerGroup();      // DRONE_PROTECTED_OBJECT (layer_id='sikringsobjekter')
+    const unifiedNatureLayer = L.layerGroup();        // NATURE (layer_id='verneomrader')
+
     // NRL (vises sammen med OpenAIP-hindringer under "Luftfartshindre")
     const nrlLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.nrl5?", {
       layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt", format: "image/png", transparent: true, opacity: 0.8, attribution: 'NRL Luftfartshindre',
