@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     // Legacy zones (dk_drone_zones)
     const { data: legacyDrone } = await supabase.rpc('get_dk_drone_zones_in_bounds', {
       min_lat: minLat, min_lng: minLng, max_lat: maxLat, max_lng: maxLng,
-      p_layer_ids: null,
+      p_layer_ids: ['bla', 'orange', 'rod', 'gron', 'gul'],
     });
     // Legacy nature
     const { data: legacyNature } = await supabase.rpc('get_dk_nature_areas_in_bounds', {
