@@ -304,6 +304,15 @@ async function syncOneLayer(
   };
 }
 
+// Grupper for å unngå at én invocation overskrider edge-timeout.
+// Kan filtreres via body `{"group": "core|nature|security"}` eller `{"sources": [...]}`.
+const LAYER_GROUPS: Record<string, string[]> = {
+  core: ["dfs_de_ctr", "dfs_de_flughaefen", "dfs_de_flugplaetze", "dfs_de_edr", "dfs_de_tempo"],
+  nature: ["dfs_de_naturschutz", "dfs_de_nationalpark", "dfs_de_vogelschutz", "dfs_de_ffh"],
+  security: ["dfs_de_militaer", "dfs_de_polizei", "dfs_de_jva", "dfs_de_diplomat", "dfs_de_intl_org",
+             "dfs_de_kraftwerk", "dfs_de_umspannwerk", "dfs_de_industri"],
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -313,9 +322,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    let filter: Set<string> | null = null;
+    try {
+      const body = req.method === "POST" ? await req.json().catch(() => null) : null;
+      if (body?.group && LAYER_GROUPS[body.group]) filter = new Set(LAYER_GROUPS[body.group]);
+      else if (Array.isArray(body?.sources) && body.sources.length) filter = new Set(body.sources);
+    } catch { /* empty body ok */ }
+
+    const targets = filter ? DIPUL_LAYERS.filter((e) => filter!.has(e.source)) : DIPUL_LAYERS;
+
     // Sekvensielt for å ikke belaste DIPUL WFS.
     const results: Record<string, unknown>[] = [];
-    for (const entry of DIPUL_LAYERS) {
+    for (const entry of targets) {
       try {
         results.push(await syncOneLayer(supabase, entry));
       } catch (err) {
@@ -325,7 +343,7 @@ Deno.serve(async (req) => {
 
     const ok = results.every((r) => (r as any).ok !== false);
     return new Response(
-      JSON.stringify({ ok, results, synced_at: new Date().toISOString() }),
+      JSON.stringify({ ok, filter: filter ? Array.from(filter) : "all", results, synced_at: new Date().toISOString() }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
