@@ -33,16 +33,25 @@ const FARVE_TO_LAYER: Record<string, string> = {
   "5": "bla",
 };
 
-// Fase A2: mapping fra Trafikstyrelsen-farve til felles airspace_zones-klasser.
+// Fase A6: mapping fra Trafikstyrelsen-farve til felles airspace_zones-klasser
+// og til UI-kartlag. Trafikstyrelsen er nasjonal CAA → høy autoritet (rank 20).
+// Konservativ restriction_type: aldri "PROHIBITED" basert på farve alene.
 const FARVE_TO_UNIFIED: Record<string, {
+  layer_id: string;
   zone_type: string;
   restriction_type: string;
   display_class: string;
 }> = {
-  "1": { zone_type: "R",     restriction_type: "RESTRICTED",         display_class: "RED" },
-  "4": { zone_type: "D",     restriction_type: "APPROVAL_REQUIRED",  display_class: "AMBER" },
-  "5": { zone_type: "OTHER", restriction_type: "NOTIFICATION",       display_class: "BLUE" },
+  // Rød: flyvesikringskritisk (flyplasser, heliporter, 5 km-soner)
+  "1": { layer_id: "rpas",                zone_type: "DRONE_NO_FLY",           restriction_type: "APPROVAL_REQUIRED", display_class: "RED"   },
+  // Orange: opmærksomhed (fareområder)
+  "4": { layer_id: "fareomrader",         zone_type: "DRONE_DANGER",           restriction_type: "CAUTION",           display_class: "AMBER" },
+  // Blå: sikringskritisk (fængsler, ambassader, kraftværker)
+  "5": { layer_id: "sikringsobjekter",    zone_type: "DRONE_PROTECTED_OBJECT", restriction_type: "NOTIFICATION",      display_class: "BLUE"  },
 };
+
+const DK_AUTHORITY_RANK = 20; // Nasjonal CAA
+
 
 const UNIFIED_BATCH_SIZE = 500;
 const UNIFIED_MAX_SKIPPED_RATIO = 0.1; // avbryt deaktivering hvis >10 % feilet
@@ -182,10 +191,16 @@ function buildUnifiedDroneFeatures(features: any[]) {
   for (const f of features) {
     const mapping = FARVE_TO_UNIFIED[f._farve];
     if (!mapping) continue;
+    // dedupe_key lar OpenAIP eller andre kilder senere skjules automatisk
+    // hvis de beskriver samme fysiske objekt (ICAO for flyplasser, ellers navn).
+    const dedupeKey = f.icao
+      ? `airport:${String(f.icao).toUpperCase()}`
+      : (f.name ? `dk:${mapping.layer_id}:${String(f.name).toLowerCase().trim()}` : null);
     out.push({
       country_code: "DK",
       source: "trafikstyrelsen_dk",
       external_id: f.external_id,
+      layer_id: mapping.layer_id,
       zone_type: mapping.zone_type,
       restriction_type: mapping.restriction_type,
       display_class: mapping.display_class,
@@ -201,12 +216,15 @@ function buildUnifiedDroneFeatures(features: any[]) {
       valid_from: null,
       valid_to: null,
       active: true,
-      properties: f.properties ?? {},
-      geometry_geojson: JSON.stringify(f._raw_geometry),
+      authority_rank: DK_AUTHORITY_RANK,
+      dedupe_key: dedupeKey,
+      properties: { ...(f.properties ?? {}), raw_type: f._farve, adapter_version: "a6" },
+      geometry: JSON.stringify(f._raw_geometry),
     });
   }
   return out;
 }
+
 
 function buildUnifiedNatureFeatures(features: any[]) {
   const out: any[] = [];
@@ -215,6 +233,7 @@ function buildUnifiedNatureFeatures(features: any[]) {
       country_code: "DK",
       source: "trafikstyrelsen_dk_nature",
       external_id: f.external_id,
+      layer_id: "verneomrader",
       zone_type: "NATURE",
       restriction_type: "NATURE_SENSITIVE",
       display_class: "GREEN",
@@ -230,12 +249,15 @@ function buildUnifiedNatureFeatures(features: any[]) {
       valid_from: null,
       valid_to: null,
       active: !!f.active,
-      properties: f.properties ?? {},
-      geometry_geojson: JSON.stringify(f._raw_geometry),
+      authority_rank: DK_AUTHORITY_RANK,
+      dedupe_key: f.external_id ? `dk:nature:${f.external_id}` : null,
+      properties: { ...(f.properties ?? {}), raw_type: "nature", adapter_version: "a6" },
+      geometry: JSON.stringify(f._raw_geometry),
     });
   }
   return out;
 }
+
 
 async function dualWriteUnified(
   supabase: any,
