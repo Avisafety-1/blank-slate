@@ -30,54 +30,49 @@ export interface UnifiedAirspaceZone {
   level: "warning" | "caution" | "note";
 }
 
-/** Country flags supported today. Add new countries here as they roll out. */
-export type UnifiedCountry = "DK";
-
-const FLAG_KEYS: Record<UnifiedCountry, string> = {
-  DK: "airspace_unified_dk_enabled",
-};
+/** Countries supported by the unified pipeline today. NO is intentionally excluded. */
+export type UnifiedCountry = "DK" | "SE" | "DE" | "FI";
 
 // In-memory flag cache (avoids one round-trip per warning render).
 // 60 s TTL is short enough that flipping the flag propagates quickly, and
 // long enough to make repeated route edits cheap.
 const FLAG_TTL_MS = 60_000;
-const flagCache = new Map<string, { value: boolean; fetchedAt: number }>();
+let flagCache: { value: boolean; fetchedAt: number } | null = null;
 
-/** Returns true if the unified analysis is enabled for a given country. */
-export async function isUnifiedAirspaceEnabled(country: UnifiedCountry): Promise<boolean> {
-  const key = FLAG_KEYS[country];
-  if (!key) return false;
-
-  const cached = flagCache.get(key);
-  if (cached && Date.now() - cached.fetchedAt < FLAG_TTL_MS) {
-    return cached.value;
+/**
+ * Returns true if the unified analysis is enabled for the CURRENT USER.
+ *
+ * Gated by two independent switches (see `is_unified_airspace_enabled_for_me`):
+ *   1) global master flag `airspace_unified_dk_enabled` in app_config, AND
+ *   2) the user's active company is in `airspace_unified_company_allowlist`.
+ *
+ * Fail-closed on any error. The `country` argument is kept for API stability
+ * and future per-country gating; today the same gate applies to all supported
+ * countries.
+ */
+export async function isUnifiedAirspaceEnabled(_country?: UnifiedCountry): Promise<boolean> {
+  if (flagCache && Date.now() - flagCache.fetchedAt < FLAG_TTL_MS) {
+    return flagCache.value;
   }
 
   try {
-    const { data, error } = await supabase
-      .from("app_config")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
+    const { data, error } = await supabase.rpc("is_unified_airspace_enabled_for_me");
     if (error) {
-      // Fail closed: on any error, treat as disabled.
-      flagCache.set(key, { value: false, fetchedAt: Date.now() });
+      flagCache = { value: false, fetchedAt: Date.now() };
       return false;
     }
-
-    const enabled = data?.value === "true";
-    flagCache.set(key, { value: enabled, fetchedAt: Date.now() });
+    const enabled = data === true;
+    flagCache = { value: enabled, fetchedAt: Date.now() };
     return enabled;
   } catch {
-    flagCache.set(key, { value: false, fetchedAt: Date.now() });
+    flagCache = { value: false, fetchedAt: Date.now() };
     return false;
   }
 }
 
 /** Test-only: clear the flag cache. */
 export function _clearUnifiedFlagCache() {
-  flagCache.clear();
+  flagCache = null;
 }
 
 function buildLineStringGeoJson(routePoints: UnifiedRoutePoint[]) {
@@ -116,6 +111,8 @@ export async function fetchUnifiedZonesForRoute(
   bufferM: number = 500,
 ): Promise<UnifiedAirspaceZone[]> {
   if (!routePoints || routePoints.length < 2) return [];
+  // Defence in depth: NO is never sent to the unified pipeline in C1.
+  if ((country as string) === "NO") return [];
 
   const enabled = await isUnifiedAirspaceEnabled(country);
   if (!enabled) return [];
