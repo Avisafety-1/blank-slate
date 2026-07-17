@@ -72,9 +72,29 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
     typename: "mais:DNGA",
     source: "lfv_se_dnga",
     mapping: { layer_id: "fareomrader", zone_type: "DRONE_DANGER", restriction_type: "CAUTION", display_class: "AMBER" },
-    cql_filter: "LOWER='GND' OR LOWER='SFC'",
+    // Spec: kun LOWER='GND' publiseres på Drönarkartan.
+    cql_filter: "LOWER='GND'",
+  },
+  {
+    // AIP Supplement: tidsbegrensede restriksjonsområder. Spec sier LOWER <= 500 ft.
+    // Vi henter alt og filtrerer normaliserings-siden basert på LOW_UOM/LOWER.
+    typename: "DAIM_TOPO:SUP",
+    source: "lfv_se_sup",
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
   },
 ];
+
+// SUP-lag: konverter LOW_UOM/UP_UOM til meter. FT AMSL / FT AGL / M / FL.
+function parseSupAltitude(value: string | null, uom: string | null): number | null {
+  if (!value) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  const u = (uom ?? "").toUpperCase();
+  if (u === "M") return Math.round(num);
+  if (u === "FT") return Math.round(num * 0.3048);
+  if (u === "FL") return Math.round(num * 100 * 0.3048);
+  return null;
+}
 
 function toStringOrNull(v: unknown): string | null {
   if (v == null) return null;
@@ -108,25 +128,47 @@ function buildUnifiedFeatures(
     const f = features[i];
     if (!f?.geometry) { skipped++; continue; }
     const p = (f.properties ?? {}) as Record<string, unknown>;
+
+    const isSup = source === "lfv_se_sup";
     const externalId =
       toStringOrNull(f.id) ??
       toStringOrNull(p["OBJECTID"]) ??
       toStringOrNull(p["FID"]) ??
+      toStringOrNull(p["DESIG"]) ??
       `${source}:${i}`;
     const name =
       toStringOrNull(p["NAMEOFAREA"]) ??
+      toStringOrNull(p["NAME"]) ??
       toStringOrNull(p["LOCATION"]) ??
       toStringOrNull(p["NAMEOFPOIN"]) ??
       null;
     const upperRaw = toStringOrNull(p["UPPER"]);
     const lowerRaw = toStringOrNull(p["LOWER"]);
-    // UPPER kan være 'UNL', 'FL95', tall (ft AMSL). Vi lagrer rå-verdien
-    // og lar meter-feltet stå null når parsing ikke er trygg.
+    const upperUom = toStringOrNull(p["UP_UOM"]);
+    const lowerUom = toStringOrNull(p["LOW_UOM"]);
+
+    let lowerM: number | null = null;
     let upperM: number | null = null;
-    if (upperRaw && /^\d+$/.test(upperRaw)) {
-      // Feet AMSL → meter (grov konvertering, kun for lagring)
-      upperM = Math.round(Number(upperRaw) * 0.3048);
+    let altRef: string | null = null;
+
+    if (isSup) {
+      lowerM = parseSupAltitude(lowerRaw, lowerUom);
+      upperM = parseSupAltitude(upperRaw, upperUom);
+      // Filter: kun drone-relevante lave områder (LOWER <= 500 ft ≈ 152 m).
+      if (lowerM !== null && lowerM > 152) { skipped++; continue; }
+      altRef = upperUom === "FL" ? "FL" : (upperUom === "FT" ? "AMSL_FT" : (upperUom === "M" ? "M" : null));
+    } else {
+      // UPPER kan være 'UNL', 'FL95', tall (ft AMSL). Vi lagrer rå-verdien
+      // og lar meter-feltet stå null når parsing ikke er trygg.
+      if (upperRaw && /^\d+$/.test(upperRaw)) {
+        upperM = Math.round(Number(upperRaw) * 0.3048);
+      }
+      altRef = upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw ? "AMSL_FT" : null);
     }
+
+    const validFrom = isSup ? toStringOrNull(p["FROM"]) : null;
+    const validTo = isSup ? toStringOrNull(p["TO"]) : null;
+
     rows.push({
       country_code: "SE",
       source,
@@ -135,17 +177,17 @@ function buildUnifiedFeatures(
       zone_type: mapping.zone_type,
       restriction_type: mapping.restriction_type,
       display_class: mapping.display_class,
-      theme: toStringOrNull(p["TYPEOFAREA"]) ?? toStringOrNull(p["TYPEOFPOIN"]),
+      theme: toStringOrNull(p["TYPEOFAREA"]) ?? toStringOrNull(p["TYPEOFPOIN"]) ?? (isSup ? toStringOrNull(p["DESIG"]) : null),
       name: name ?? externalId,
-      short_name: toStringOrNull(p["POSITIONINDICATOR"]) ?? toStringOrNull(p["POSITIONIN"]),
+      short_name: toStringOrNull(p["POSITIONINDICATOR"]) ?? toStringOrNull(p["POSITIONIN"]) ?? (isSup ? toStringOrNull(p["DESIG"]) : null),
       authority: "LFV",
-      lower_limit_m: null,
+      lower_limit_m: lowerM,
       upper_limit_m: upperM,
       lower_limit_raw: lowerRaw,
       upper_limit_raw: upperRaw,
-      altitude_reference: upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw ? "AMSL_FT" : null),
-      valid_from: null,
-      valid_to: null,
+      altitude_reference: altRef,
+      valid_from: validFrom,
+      valid_to: validTo,
       active: true,
       authority_rank: SE_AUTHORITY_RANK,
       dedupe_key: normalizeDedupeKey(mapping, p, name),
