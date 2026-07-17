@@ -196,10 +196,13 @@ function buildUnifiedDroneFeatures(features: any[]) {
     const dedupeKey = f.icao
       ? `airport:${String(f.icao).toUpperCase()}`
       : (f.name ? `dk:${mapping.layer_id}:${String(f.name).toLowerCase().trim()}` : null);
+    // B6 fix: legacy OBJECTID collides across farve categories (same id in rod/orange/bla).
+    // Prefix with unified layer_id so (source, country_code, external_id) stays unique.
+    const unifiedExternalId = `${mapping.layer_id}:${f.external_id}`;
     out.push({
       country_code: "DK",
       source: "trafikstyrelsen_dk",
-      external_id: f.external_id,
+      external_id: unifiedExternalId,
       layer_id: mapping.layer_id,
       zone_type: mapping.zone_type,
       restriction_type: mapping.restriction_type,
@@ -218,7 +221,7 @@ function buildUnifiedDroneFeatures(features: any[]) {
       active: true,
       authority_rank: DK_AUTHORITY_RANK,
       dedupe_key: dedupeKey,
-      properties: { ...(f.properties ?? {}), raw_type: f._farve, adapter_version: "a6" },
+      properties: { ...(f.properties ?? {}), raw_type: f._farve, raw_object_id: f.external_id, adapter_version: "b6" },
       geometry: JSON.stringify(f._raw_geometry),
     });
   }
