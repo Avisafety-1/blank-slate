@@ -1903,3 +1903,105 @@ export async function fetchAisVesselsInBounds(params: {
     console.error("[NAIS] Error:", err);
   }
 }
+
+// ============================================================================
+// Unified airspace zones (DK/SE/DE/FI) — Phase C1
+// ----------------------------------------------------------------------------
+// Reads from `airspace_zones` via the `airspace_zones_in_bbox` RPC. Gating
+// (fail-closed, Moderavdeling-only in C1) MUST be enforced by the caller via
+// `isUnifiedAirspaceEnabled()` — this fetcher trusts its input and does the
+// HTTP call unconditionally.
+// ============================================================================
+
+const UNIFIED_COLORS: Record<string, string> = {
+  PROHIBITED: "#dc2626",           // red
+  RESTRICTED: "#dc2626",
+  APPROVAL_REQUIRED: "#f97316",    // orange
+  CAUTION: "#eab308",              // yellow
+  NOTIFICATION: "#2563eb",         // blue
+  NATURE_SENSITIVE: "#16a34a",     // green
+  INFO: "#6b7280",
+};
+
+const escUnified = (s: any) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]!));
+
+function buildUnifiedZonePopup(zone: any): string {
+  const name = escUnified(zone.name || zone.short_name || "Ukjent sone");
+  const ztype = escUnified(zone.zone_type || "");
+  const country = escUnified(zone.country_code || "");
+  const authority = escUnified(zone.authority || zone.source || "");
+  const lower = zone.lower_limit_m != null ? `${Math.round(zone.lower_limit_m)} m` : "";
+  const upper = zone.upper_limit_m != null ? `${Math.round(zone.upper_limit_m)} m` : "";
+  const altRef = escUnified(zone.altitude_reference || "");
+  const restriction = escUnified(zone.restriction_type || "");
+  let html = `<strong>${name}</strong><br/>`;
+  html += `<div style="font-size:12px;color:#555">${ztype}${country ? " · " + country : ""}</div>`;
+  if (restriction) html += `<div style="font-size:12px;margin-top:2px">${restriction}</div>`;
+  if (lower || upper) html += `<div style="font-size:12px;margin-top:2px">${lower || "?"} – ${upper || "?"}${altRef ? " " + altRef : ""}</div>`;
+  if (authority) html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: ${authority}</div>`;
+  return html;
+}
+
+export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
+  layerId: string;
+  countryCodes: string[];
+}) {
+  const { layer, mode, bounds, layerId, countryCodes } = params;
+  if (!countryCodes.length) return;
+  const cacheKey = `unified:${layerId}:${countryCodes.slice().sort().join(",")}`;
+  const cache = getCache(cacheKey);
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
+  try {
+    const { data, error } = await supabase.rpc("airspace_zones_in_bbox", {
+      p_min_lng: padded.minLng,
+      p_min_lat: padded.minLat,
+      p_max_lng: padded.maxLng,
+      p_max_lat: padded.maxLat,
+      p_zone_types: null,
+      p_country_codes: countryCodes,
+      p_layer_ids: [layerId],
+    });
+    if (error || !Array.isArray(data)) {
+      if (error) console.error(`[unified:${layerId}] fetch error:`, error);
+      return;
+    }
+
+    diffRender(
+      layer,
+      cache,
+      data.filter((z: any) => z?.geometry_geojson),
+      (z: any) => hashString(`u|${z.id}`),
+      (zone: any) => {
+        const color = UNIFIED_COLORS[String(zone.restriction_type || "").toUpperCase()] || "#dc2626";
+        const isNature = zone.restriction_type === "NATURE_SENSITIVE";
+        const baseStyle = {
+          color,
+          weight: 1.5,
+          fillColor: color,
+          fillOpacity: isNature ? 0.18 : 0.22,
+          dashArray: zone.restriction_type === "CAUTION" ? "4, 4" : undefined,
+        };
+        return L.geoJSON(
+          { type: "Feature" as const, geometry: zone.geometry_geojson, properties: zone } as any,
+          {
+            interactive: mode !== "routePlanning",
+            pane: "overlayPane",
+            style: baseStyle,
+            onEachFeature: mode !== "routePlanning" ? (_f, lyr) => {
+              lyr.bindPopup(buildUnifiedZonePopup(zone));
+              attachHoverPromotion(lyr, { paneName: "overlayPane", baseStyle });
+            } : undefined,
+          },
+        );
+      },
+    );
+    cache.cachedBounds = padded;
+  } catch (err) {
+    console.error(`[unified:${layerId}] fetch failed:`, err);
+  }
+}
+

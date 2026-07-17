@@ -43,7 +43,9 @@ import {
   fetchKraftledningerInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
+  fetchUnifiedAirspaceZones,
 } from "@/lib/mapDataFetchers";
+import { isUnifiedAirspaceEnabled } from "@/lib/airspaceUnified";
 import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -943,6 +945,19 @@ export function OpenAIPMap({
     const dkOrangeLayer = L.layerGroup();
     const dkBlaLayer = L.layerGroup();
 
+    // ============================================================
+    // 🇪🇺 Unified airspace zones (DK/SE/DE/FI) — Phase C1
+    // Only rendered for companies in `airspace_unified_company_allowlist`.
+    // For everyone else these layers stay empty (fetcher never called).
+    // NO is intentionally excluded — legacy code path is authoritative there.
+    // ============================================================
+    const unifiedAirspaceLayer = L.layerGroup();      // CTR/TIZ/ATZ (layer_id='airspace')
+    const unifiedRpasLayer = L.layerGroup();          // DRONE_NO_FLY (layer_id='rpas')
+    const unifiedRestrictedLayer = L.layerGroup();    // R (layer_id='restriksjonsomrader')
+    const unifiedDangerLayer = L.layerGroup();        // DRONE_DANGER (layer_id='fareomrader')
+    const unifiedSecurityLayer = L.layerGroup();      // DRONE_PROTECTED_OBJECT (layer_id='sikringsobjekter')
+    const unifiedNatureLayer = L.layerGroup();        // NATURE (layer_id='verneomrader')
+
     // NRL (vises sammen med OpenAIP-hindringer under "Luftfartshindre")
     const nrlLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.nrl5?", {
       layers: "nrlflate,nrllinje,nrlluftspenn,nrlmast,nrlpunkt", format: "image/png", transparent: true, opacity: 0.8, attribution: 'NRL Luftfartshindre',
@@ -1026,19 +1041,19 @@ export function OpenAIPMap({
     const gInf = t('pages.map.layers.groups.infrastructure');
     const gMis = t('pages.map.layers.groups.missions');
     const gLive = t('pages.map.layers.groups.liveTraffic');
-    layerConfigs.push({ id: "rpas", name: t('pages.map.layers.rpas'), layer: rpasLayer, enabled: true, icon: "radio", group: gAir });
+    layerConfigs.push({ id: "rpas", name: t('pages.map.layers.rpas'), layer: [rpasLayer, unifiedRpasLayer], enabled: true, icon: "radio", group: gAir });
     layerConfigs.push({ id: "nsm", name: t('pages.map.layers.nsm'), layer: nsmLayer, enabled: true, icon: "ban", group: gAir });
-    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: aipLayer, enabled: false, icon: "shield", group: gAir });
+    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: [aipLayer, unifiedAirspaceLayer], enabled: false, icon: "shield", group: gAir });
     layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: gAir });
 
-    // Restriksjoner — slått sammen NO + DK
-    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer], enabled: false, icon: "ban", group: gRes });
-    layerConfigs.push({ id: "fareomrader", name: t('pages.map.layers.dangerAreas'), layer: [caaFareLayer, dkOrangeLayer], enabled: false, icon: "alertTriangle", group: gRes });
-    layerConfigs.push({ id: "sikringsobjekter", name: t('pages.map.layers.securityObjects'), layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer], enabled: false, icon: "shield", group: gRes });
+    // Restriksjoner — slått sammen NO + DK + unified (SE/DE/FI/DK)
+    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer, unifiedRestrictedLayer], enabled: false, icon: "ban", group: gRes });
+    layerConfigs.push({ id: "fareomrader", name: t('pages.map.layers.dangerAreas'), layer: [caaFareLayer, dkOrangeLayer, unifiedDangerLayer], enabled: false, icon: "alertTriangle", group: gRes });
+    layerConfigs.push({ id: "sikringsobjekter", name: t('pages.map.layers.securityObjects'), layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer, unifiedSecurityLayer], enabled: false, icon: "shield", group: gRes });
     layerConfigs.push({ id: "notam", name: t('pages.map.layers.notam'), layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: gRes });
 
     // Natur & befolkning
-    layerConfigs.push({ id: "verneomrader", name: t('pages.map.layers.protectedAreas'), layer: [naturvernLayer, dkNatureLayer], enabled: false, icon: "treePine", group: gNat });
+    layerConfigs.push({ id: "verneomrader", name: t('pages.map.layers.protectedAreas'), layer: [naturvernLayer, dkNatureLayer, unifiedNatureLayer], enabled: false, icon: "treePine", group: gNat });
     layerConfigs.push({ id: "befolkning", name: t('pages.map.layers.population'), layer: [eurostatPopLayer, ssbBefolkningLayer], enabled: false, icon: "users", group: gNat });
     layerConfigs.push({ id: "tettsteder", name: t('pages.map.layers.urbanAreas'), layer: tettstederLayer, enabled: false, icon: "users", group: gNat });
     layerConfigs.push({ id: "arealbruk", name: t('pages.map.layers.landUse'), layer: arealbrukLayer, enabled: false, icon: "users", group: gNat });
@@ -1121,6 +1136,12 @@ export function OpenAIPMap({
       dkRodLayer,
       dkOrangeLayer,
       dkBlaLayer,
+      unifiedAirspaceLayer,
+      unifiedRpasLayer,
+      unifiedRestrictedLayer,
+      unifiedDangerLayer,
+      unifiedSecurityLayer,
+      unifiedNatureLayer,
       notamLayer,
       obstaclesLayer,
       airportsLayer,
@@ -1361,6 +1382,46 @@ export function OpenAIPMap({
       }
     };
 
+    // ============================================================
+    // Unified airspace (DK/SE/DE/FI) — Phase C1
+    // Gated by `isUnifiedAirspaceEnabled()` (fail-closed, Moderavdeling only).
+    // No fetches happen for any other company.
+    // ============================================================
+    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI'];
+    // layerId → [layerGroup, minZoom]. Larger datasets require higher zoom.
+    const unifiedLayerMap: Array<[string, L.LayerGroup, number]> = [
+      ['airspace', unifiedAirspaceLayer, 7],
+      ['rpas', unifiedRpasLayer, 7],
+      ['restriksjonsomrader', unifiedRestrictedLayer, 7],
+      ['fareomrader', unifiedDangerLayer, 7],
+      ['sikringsobjekter', unifiedSecurityLayer, 10], // DE ~31k features
+      ['verneomrader', unifiedNatureLayer, 10],       // DE ~14k features
+    ];
+    const fetchUnifiedLayers = async () => {
+      const enabled = await isUnifiedAirspaceEnabled();
+      if (!enabled) return; // no-op for everyone except allowlisted companies
+      const z = map.getZoom();
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      unifiedLayerMap.forEach(([layerId, lg, minZoom]) => {
+        if (z < minZoom) {
+          resetCache(`unified:${layerId}:DE,DK,FI,SE`, lg);
+          return;
+        }
+        if (!map.hasLayer(lg)) return;
+        fetchUnifiedAirspaceZones({
+          layer: lg,
+          mode: modeRef.current,
+          bounds,
+          layerId,
+          countryCodes: UNIFIED_COUNTRIES,
+        });
+      });
+    };
+
     let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchVern = () => {
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
@@ -1368,6 +1429,7 @@ export function OpenAIPMap({
         fetchVerneomraader();
         fetchCaaLayers();
         fetchDkLayers();
+        fetchUnifiedLayers();
       }, 300);
     };
 
@@ -1375,6 +1437,7 @@ export function OpenAIPMap({
     fetchVerneomraader();
     fetchCaaLayers();
     fetchDkLayers();
+    fetchUnifiedLayers();
     map.on('moveend', debouncedFetchVern);
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
@@ -1382,6 +1445,8 @@ export function OpenAIPMap({
       if (caaMatch) fetchCaaLayers();
       const dkMatch = [...dkDroneLayerMap.map(([, lg]) => lg), dkNatureLayer].includes(e.layer);
       if (dkMatch) fetchDkLayers();
+      const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
+      if (unifiedMatch) fetchUnifiedLayers();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
@@ -1392,6 +1457,8 @@ export function OpenAIPMap({
       if (e.layer === dkNatureLayer) resetCache('dkNature', dkNatureLayer);
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
+      const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
+      if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:DE,DK,FI,SE`, unifiedMatch[1]);
     });
 
     // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
