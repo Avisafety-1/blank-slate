@@ -233,6 +233,7 @@ function buildUnifiedNatureFeatures(features: any[]) {
       country_code: "DK",
       source: "trafikstyrelsen_dk_nature",
       external_id: f.external_id,
+      layer_id: "verneomrader",
       zone_type: "NATURE",
       restriction_type: "NATURE_SENSITIVE",
       display_class: "GREEN",
@@ -248,12 +249,15 @@ function buildUnifiedNatureFeatures(features: any[]) {
       valid_from: null,
       valid_to: null,
       active: !!f.active,
-      properties: f.properties ?? {},
-      geometry_geojson: JSON.stringify(f._raw_geometry),
+      authority_rank: DK_AUTHORITY_RANK,
+      dedupe_key: f.external_id ? `dk:nature:${f.external_id}` : null,
+      properties: { ...(f.properties ?? {}), raw_type: "nature", adapter_version: "a6" },
+      geometry: JSON.stringify(f._raw_geometry),
     });
   }
   return out;
 }
+
 
 async function dualWriteUnified(
   supabase: any,
