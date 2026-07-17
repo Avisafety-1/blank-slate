@@ -196,9 +196,19 @@ function buildUnifiedDroneFeatures(features: any[]) {
     const dedupeKey = f.icao
       ? `airport:${String(f.icao).toUpperCase()}`
       : (f.name ? `dk:${mapping.layer_id}:${String(f.name).toLowerCase().trim()}` : null);
-    // B6 fix: legacy OBJECTID collides across farve categories (same id in rod/orange/bla).
-    // Prefix with unified layer_id so (source, country_code, external_id) stays unique.
-    const unifiedExternalId = `${mapping.layer_id}:${f.external_id}`;
+    // B6 fix: (a) legacy OBJECTID collides across farve categories, and
+    // (b) within the "orange" layer the same OBJECTID appears against multiple
+    // distinct rows (e.g. a Politi and a Virksomhed sharing id 975).
+    // Compose external_id from layer + OBJECTID + a stable slug of the name/typeId
+    // so no upsert can silently overwrite a sibling row.
+    const disambiguator = String(f.name ?? f.category ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48);
+    const unifiedExternalId = disambiguator
+      ? `${mapping.layer_id}:${f.external_id}:${disambiguator}`
+      : `${mapping.layer_id}:${f.external_id}`;
     out.push({
       country_code: "DK",
       source: "trafikstyrelsen_dk",

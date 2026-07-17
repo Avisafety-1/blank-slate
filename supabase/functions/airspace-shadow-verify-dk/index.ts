@@ -43,31 +43,30 @@ Deno.serve(async (req) => {
     const { data: legacyNature } = await supabase.rpc('get_dk_nature_areas_in_bounds', {
       min_lat: minLat, min_lng: minLng, max_lat: maxLat, max_lng: maxLng,
     });
-    // Unified: query airspace_zones directly to get external_id + source
-    const envWkt = `POLYGON((${minLng} ${minLat},${maxLng} ${minLat},${maxLng} ${maxLat},${minLng} ${maxLat},${minLng} ${minLat}))`;
-    const { data: unified } = await supabase.rpc('airspace_zones_in_bbox', {
+    // Unified: raw active rows in bbox (bypasses dedupe view) so parity reflects
+    // ingestion coverage, not user-facing display resolution.
+    const { data: unifiedRaw } = await supabase.rpc('airspace_zones_raw_in_bbox', {
       p_min_lng: minLng, p_min_lat: minLat, p_max_lng: maxLng, p_max_lat: maxLat,
-      p_zone_types: null, p_country_codes: ['DK'], p_layer_ids: null,
+      p_country_codes: ['DK'],
     });
-    // For each unified row we need external_id — fetch by ids
-    const unifiedIdList = ((unified ?? []) as any[]).map((z) => z.id);
-    let unifiedRows: Array<{ external_id: string; source: string }> = [];
-    if (unifiedIdList.length) {
-      const { data: uRows } = await supabase
-        .from('airspace_zones')
-        .select('external_id, source')
-        .in('id', unifiedIdList);
-      unifiedRows = (uRows ?? []) as any;
-    }
+    const unifiedRows: Array<{ external_id: string; source: string }> =
+      ((unifiedRaw ?? []) as any[]).map((r) => ({ external_id: r.external_id, source: r.source }));
 
     // B6: legacy layer_id (rod/orange/bla) → unified layer_id, so keys line up 1:1
     const LEG_TO_UNIFIED: Record<string, string> = {
       rod: 'rpas', orange: 'fareomrader', bla: 'sikringsobjekter',
     };
+    const slug = (s: any) => String(s ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48);
     const legacyIds = new Set<string>([
       ...((legacyDrone ?? []) as any[]).map((z) => {
         const uni = LEG_TO_UNIFIED[z.layer_id] ?? z.layer_id;
-        return `drone:${uni}:${z.external_id ?? z.id}`;
+        const disambig = slug(z.name ?? z.category);
+        const suffix = disambig ? `:${disambig}` : '';
+        return `drone:${uni}:${z.external_id ?? z.id}${suffix}`;
       }),
       ...((legacyNature ?? []) as any[]).map((z) => `nature:${z.external_id ?? z.id}`),
     ]);
