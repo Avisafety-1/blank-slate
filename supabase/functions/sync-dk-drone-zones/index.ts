@@ -191,10 +191,16 @@ function buildUnifiedDroneFeatures(features: any[]) {
   for (const f of features) {
     const mapping = FARVE_TO_UNIFIED[f._farve];
     if (!mapping) continue;
+    // dedupe_key lar OpenAIP eller andre kilder senere skjules automatisk
+    // hvis de beskriver samme fysiske objekt (ICAO for flyplasser, ellers navn).
+    const dedupeKey = f.icao
+      ? `airport:${String(f.icao).toUpperCase()}`
+      : (f.name ? `dk:${mapping.layer_id}:${String(f.name).toLowerCase().trim()}` : null);
     out.push({
       country_code: "DK",
       source: "trafikstyrelsen_dk",
       external_id: f.external_id,
+      layer_id: mapping.layer_id,
       zone_type: mapping.zone_type,
       restriction_type: mapping.restriction_type,
       display_class: mapping.display_class,
@@ -210,12 +216,15 @@ function buildUnifiedDroneFeatures(features: any[]) {
       valid_from: null,
       valid_to: null,
       active: true,
-      properties: f.properties ?? {},
-      geometry_geojson: JSON.stringify(f._raw_geometry),
+      authority_rank: DK_AUTHORITY_RANK,
+      dedupe_key: dedupeKey,
+      properties: { ...(f.properties ?? {}), raw_type: f._farve, adapter_version: "a6" },
+      geometry: JSON.stringify(f._raw_geometry),
     });
   }
   return out;
 }
+
 
 function buildUnifiedNatureFeatures(features: any[]) {
   const out: any[] = [];
