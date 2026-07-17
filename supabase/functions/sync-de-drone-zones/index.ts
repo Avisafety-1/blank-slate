@@ -175,10 +175,10 @@ function buildUnifiedFeatures(
   return { rows, skipped };
 }
 
-async function fetchDipulLayer(typename: string): Promise<any[]> {
+async function fetchDipulLayer(typename: string, bbox?: [number, number, number, number]): Promise<any[]> {
   const all: any[] = [];
   let startIndex = 0;
-  for (let page = 0; page < 20; page++) {
+  for (let page = 0; page < 40; page++) {
     const params = new URLSearchParams({
       service: "WFS",
       version: "2.0.0",
@@ -189,6 +189,10 @@ async function fetchDipulLayer(typename: string): Promise<any[]> {
       count: String(WFS_PAGE_SIZE),
       startIndex: String(startIndex),
     });
+    if (bbox) {
+      // GeoServer short-form EPSG:4326 => lon,lat axis order
+      params.set("bbox", `${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]},EPSG:4326`);
+    }
     const url = `${WFS_BASE}?${params.toString()}`;
     const res = await safeFetch(url, {
       headers: { "User-Agent": "Avisafe-Sync/1.0", "Accept": "application/json" },
@@ -201,6 +205,67 @@ async function fetchDipulLayer(typename: string): Promise<any[]> {
     startIndex += WFS_PAGE_SIZE;
   }
   return all;
+}
+
+// Tyskland bbox (fastland + øyer, litt margin)
+const DE_BBOX: [number, number, number, number] = [5.5, 47.2, 15.1, 55.2];
+
+// Store naturvern-lag inneholder tusenvis av polygoner og time-outer i én
+// WFS-forespørsel. Hentes derfor per rutenett-tile (bbox-splitting).
+const TILED_SOURCES = new Set([
+  "dfs_de_naturschutz",
+  "dfs_de_ffh",
+  "dfs_de_vogelschutz",
+]);
+
+async function fetchDipulLayerTiled(
+  typename: string,
+  source: string,
+  tileGrid: number,
+  budgetMs: number,
+): Promise<{ features: any[]; tilesDone: number; tilesTotal: number; timedOut: boolean }> {
+  const [minLon, minLat, maxLon, maxLat] = DE_BBOX;
+  const dLon = (maxLon - minLon) / tileGrid;
+  const dLat = (maxLat - minLat) / tileGrid;
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  const tilesTotal = tileGrid * tileGrid;
+  const start = Date.now();
+  let tilesDone = 0;
+  let timedOut = false;
+
+  for (let ix = 0; ix < tileGrid && !timedOut; ix++) {
+    for (let iy = 0; iy < tileGrid; iy++) {
+      if (Date.now() - start > budgetMs) { timedOut = true; break; }
+      const bbox: [number, number, number, number] = [
+        minLon + ix * dLon,
+        minLat + iy * dLat,
+        minLon + (ix + 1) * dLon,
+        minLat + (iy + 1) * dLat,
+      ];
+      let feats: any[] = [];
+      try {
+        feats = await fetchDipulLayer(typename, bbox);
+      } catch (err) {
+        console.warn(`[de-sync] tile ${ix},${iy} for ${source} failed:`, String(err).slice(0, 200));
+        tilesDone++;
+        continue;
+      }
+      for (const f of feats) {
+        const key = String(
+          f?.id ??
+          f?.properties?.external_reference ??
+          f?.properties?.gml_id ??
+          `${source}:${JSON.stringify(f?.geometry)?.slice(0, 80)}`,
+        );
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(f);
+      }
+      tilesDone++;
+    }
+  }
+  return { features: merged, tilesDone, tilesTotal, timedOut };
 }
 
 async function startSyncRun(supabase: any, source: string): Promise<string | null> {
@@ -247,11 +312,23 @@ async function upsertInBatches(supabase: any, rows: any[]) {
 async function syncOneLayer(
   supabase: any,
   entry: { typename: string; source: string; mapping: LayerMapping },
+  opts: { tileGrid?: number; budgetMs?: number } = {},
 ): Promise<Record<string, unknown>> {
   const runId = await startSyncRun(supabase, entry.source);
+  const tiled = TILED_SOURCES.has(entry.source);
+  const tileGrid = opts.tileGrid ?? 5;
+  const budgetMs = opts.budgetMs ?? 220_000;
+
   let features: any[] = [];
+  let tileInfo: Record<string, unknown> | null = null;
   try {
-    features = await fetchDipulLayer(entry.typename);
+    if (tiled) {
+      const r = await fetchDipulLayerTiled(entry.typename, entry.source, tileGrid, budgetMs);
+      features = r.features;
+      tileInfo = { tile_grid: tileGrid, tiles_done: r.tilesDone, tiles_total: r.tilesTotal, timed_out: r.timedOut };
+    } else {
+      features = await fetchDipulLayer(entry.typename);
+    }
   } catch (err) {
     await finishSyncRun(supabase, runId, { status: "failed", error: String(err).slice(0, 500) });
     return { ok: false, source: entry.source, error: String(err) };
@@ -264,14 +341,17 @@ async function syncOneLayer(
     await finishSyncRun(supabase, runId, {
       status: "aborted", fetched_count: fetched, valid_count: 0,
       error: "no_features_after_normalization",
+      stats: tileInfo ? { tile: tileInfo } : undefined,
     });
-    return { ok: false, source: entry.source, reason: "no_features", fetched };
+    return { ok: false, source: entry.source, reason: "no_features", fetched, tile: tileInfo };
   }
 
   const { upserted, skipped: rpcSkipped, errors, batchFailures } = await upsertInBatches(supabase, rows);
   const totalSkipped = normalizeSkipped + rpcSkipped;
   const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+  // Ikke deaktiver hvis tiled fetch time-outet — vi mangler ids fra ikke-prosesserte tiles
+  const tiledIncomplete = tiled && !!(tileInfo as any)?.timed_out;
+  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO && !tiledIncomplete;
 
   let deactivateResult: unknown = { skipped: true, reason: "not_run" };
   if (shouldDeactivate) {
@@ -283,10 +363,14 @@ async function syncOneLayer(
       deactivateResult = error ? { error: error.message } : data;
     } catch (err) { deactivateResult = { error: String(err) }; }
   } else {
-    deactivateResult = { skipped: true, reason: batchFailures > 0 ? "batch_failures" : "high_skipped_ratio", failure_ratio: failureRatio };
+    deactivateResult = {
+      skipped: true,
+      reason: tiledIncomplete ? "tiled_incomplete" : (batchFailures > 0 ? "batch_failures" : "high_skipped_ratio"),
+      failure_ratio: failureRatio,
+    };
   }
 
-  const status = batchFailures > 0 ? "failed" : "success";
+  const status = batchFailures > 0 ? "failed" : (tiledIncomplete ? "partial" : "success");
   const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
     ? (deactivateResult as any).deactivated : 0;
 
@@ -294,13 +378,14 @@ async function syncOneLayer(
     status, fetched_count: fetched, valid_count: fetched - normalizeSkipped,
     upserted_count: upserted, deactivated_count: deactivated,
     error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
-    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped },
+    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped, tile: tileInfo },
   });
 
   return {
     ok: batchFailures === 0, source: entry.source, typename: entry.typename,
     layer_id: entry.mapping.layer_id, fetched, upserted, skipped: totalSkipped,
     batch_failures: batchFailures, deactivate: deactivateResult, errors: errors.slice(0, 3),
+    tile: tileInfo,
   };
 }
 
@@ -323,19 +408,32 @@ Deno.serve(async (req) => {
     );
 
     let filter: Set<string> | null = null;
+    let tileGrid: number | undefined;
+    let budgetMs: number | undefined;
     try {
       const body = req.method === "POST" ? await req.json().catch(() => null) : null;
       if (body?.group && LAYER_GROUPS[body.group]) filter = new Set(LAYER_GROUPS[body.group]);
       else if (Array.isArray(body?.sources) && body.sources.length) filter = new Set(body.sources);
+      if (typeof body?.tile_grid === "number") tileGrid = body.tile_grid;
+      if (typeof body?.budget_ms === "number") budgetMs = body.budget_ms;
     } catch { /* empty body ok */ }
 
     const targets = filter ? DIPUL_LAYERS.filter((e) => filter!.has(e.source)) : DIPUL_LAYERS;
+
+    // Rydd opp gamle "running"-rader (>10 min) fra tidligere time-outs slik at
+    // vi ikke får en voksende liste av zombie-runs for tiled-lag.
+    try {
+      await supabase.from("airspace_sync_runs")
+        .update({ status: "failed", error: "superseded_by_new_run", finished_at: new Date().toISOString() })
+        .eq("country_code", "DE").eq("status", "running")
+        .lt("started_at", new Date(Date.now() - 10 * 60_000).toISOString());
+    } catch (err) { console.warn("[de-sync] cleanup zombie runs:", err); }
 
     // Sekvensielt for å ikke belaste DIPUL WFS.
     const results: Record<string, unknown>[] = [];
     for (const entry of targets) {
       try {
-        results.push(await syncOneLayer(supabase, entry));
+        results.push(await syncOneLayer(supabase, entry, { tileGrid, budgetMs }));
       } catch (err) {
         results.push({ ok: false, source: entry.source, error: String(err) });
       }
