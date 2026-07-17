@@ -1043,8 +1043,8 @@ export function OpenAIPMap({
     const gLive = t('pages.map.layers.groups.liveTraffic');
     layerConfigs.push({ id: "rpas", name: t('pages.map.layers.rpas'), layer: [rpasLayer, unifiedRpasLayer], enabled: true, icon: "radio", group: gAir });
     layerConfigs.push({ id: "nsm", name: t('pages.map.layers.nsm'), layer: nsmLayer, enabled: true, icon: "ban", group: gAir });
-    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: [aipLayer, unifiedAirspaceLayer], enabled: false, icon: "shield", group: gAir });
-    layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: rmzTmzAtzLayer, enabled: true, icon: "radio", group: gAir });
+    layerConfigs.push({ id: "aip", name: t('pages.map.layers.prd'), layer: aipLayer, enabled: false, icon: "shield", group: gAir });
+    layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: [rmzTmzAtzLayer, unifiedAirspaceLayer], enabled: true, icon: "radio", group: gAir });
 
     // Restriksjoner — slått sammen NO + DK + unified (SE/DE/FI/DK)
     layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer, unifiedRestrictedLayer], enabled: false, icon: "ban", group: gRes });
