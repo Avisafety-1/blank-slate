@@ -408,19 +408,32 @@ Deno.serve(async (req) => {
     );
 
     let filter: Set<string> | null = null;
+    let tileGrid: number | undefined;
+    let budgetMs: number | undefined;
     try {
       const body = req.method === "POST" ? await req.json().catch(() => null) : null;
       if (body?.group && LAYER_GROUPS[body.group]) filter = new Set(LAYER_GROUPS[body.group]);
       else if (Array.isArray(body?.sources) && body.sources.length) filter = new Set(body.sources);
+      if (typeof body?.tile_grid === "number") tileGrid = body.tile_grid;
+      if (typeof body?.budget_ms === "number") budgetMs = body.budget_ms;
     } catch { /* empty body ok */ }
 
     const targets = filter ? DIPUL_LAYERS.filter((e) => filter!.has(e.source)) : DIPUL_LAYERS;
+
+    // Rydd opp gamle "running"-rader (>10 min) fra tidligere time-outs slik at
+    // vi ikke får en voksende liste av zombie-runs for tiled-lag.
+    try {
+      await supabase.from("airspace_sync_runs")
+        .update({ status: "failed", error: "superseded_by_new_run", finished_at: new Date().toISOString() })
+        .eq("country_code", "DE").eq("status", "running")
+        .lt("started_at", new Date(Date.now() - 10 * 60_000).toISOString());
+    } catch (err) { console.warn("[de-sync] cleanup zombie runs:", err); }
 
     // Sekvensielt for å ikke belaste DIPUL WFS.
     const results: Record<string, unknown>[] = [];
     for (const entry of targets) {
       try {
-        results.push(await syncOneLayer(supabase, entry));
+        results.push(await syncOneLayer(supabase, entry, { tileGrid, budgetMs }));
       } catch (err) {
         results.push({ ok: false, source: entry.source, error: String(err) });
       }
