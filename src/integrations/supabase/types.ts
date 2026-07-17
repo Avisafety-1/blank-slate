@@ -359,6 +359,38 @@ export type Database = {
         }
         Relationships: []
       }
+      airspace_unified_company_allowlist: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airspace_unified_company_allowlist_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       airspace_zones: {
         Row: {
           active: boolean
@@ -7738,6 +7770,7 @@ export type Database = {
       }
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      is_unified_airspace_enabled_for_me: { Args: never; Returns: boolean }
       log_airspace_shadow_comparison: {
         Args: {
           p_buffer_m: number
