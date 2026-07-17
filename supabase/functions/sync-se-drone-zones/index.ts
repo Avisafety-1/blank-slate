@@ -39,17 +39,17 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
   {
     typename: "mais:CTR",
     source: "lfv_se_ctr",
-    mapping: { layer_id: "ctr", zone_type: "CTR", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "CTR", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "mais:TIZ",
     source: "lfv_se_tiz",
-    mapping: { layer_id: "ctr", zone_type: "TIZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "TIZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "mais:ATZ",
     source: "lfv_se_atz",
-    mapping: { layer_id: "ctr", zone_type: "ATZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
+    mapping: { layer_id: "airspace", zone_type: "ATZ", restriction_type: "APPROVAL_REQUIRED", display_class: "AMBER" },
   },
   {
     typename: "DAIM_TOPO:RWY5K",
@@ -64,7 +64,7 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
   {
     typename: "mais:RSTA",
     source: "lfv_se_rsta",
-    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "R", restriction_type: "PROHIBITED", display_class: "RED" },
     // LFV publiserer kun GND-restriksjoner som drone-relevante.
     cql_filter: "LOWER='GND' OR LOWER='SFC'",
   },
@@ -80,7 +80,7 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
     // Vi henter alt og filtrerer normaliserings-siden basert på LOW_UOM/LOWER.
     typename: "DAIM_TOPO:SUP",
     source: "lfv_se_sup",
-    mapping: { layer_id: "restriksjonsomrader", zone_type: "RESTRICTED", restriction_type: "PROHIBITED", display_class: "RED" },
+    mapping: { layer_id: "restriksjonsomrader", zone_type: "R", restriction_type: "PROHIBITED", display_class: "RED" },
   },
 ];
 
@@ -156,14 +156,14 @@ function buildUnifiedFeatures(
       upperM = parseSupAltitude(upperRaw, upperUom);
       // Filter: kun drone-relevante lave områder (LOWER <= 500 ft ≈ 152 m).
       if (lowerM !== null && lowerM > 152) { skipped++; continue; }
-      altRef = upperUom === "FL" ? "FL" : (upperUom === "FT" ? "AMSL_FT" : (upperUom === "M" ? "M" : null));
+      altRef = upperUom === "FL" ? "FL" : (upperUom === "FT" ? "AMSL" : (upperUom === "M" ? "AMSL" : null));
     } else {
       // UPPER kan være 'UNL', 'FL95', tall (ft AMSL). Vi lagrer rå-verdien
       // og lar meter-feltet stå null når parsing ikke er trygg.
       if (upperRaw && /^\d+$/.test(upperRaw)) {
         upperM = Math.round(Number(upperRaw) * 0.3048);
       }
-      altRef = upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw ? "AMSL_FT" : null);
+      altRef = upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw && /^\d+$/.test(upperRaw) ? "AMSL" : (upperRaw === "UNL" ? "UNL" : null));
     }
 
     const validFrom = isSup ? toStringOrNull(p["FROM"]) : null;
