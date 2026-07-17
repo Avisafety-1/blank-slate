@@ -1382,6 +1382,46 @@ export function OpenAIPMap({
       }
     };
 
+    // ============================================================
+    // Unified airspace (DK/SE/DE/FI) — Phase C1
+    // Gated by `isUnifiedAirspaceEnabled()` (fail-closed, Moderavdeling only).
+    // No fetches happen for any other company.
+    // ============================================================
+    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI'];
+    // layerId → [layerGroup, minZoom]. Larger datasets require higher zoom.
+    const unifiedLayerMap: Array<[string, L.LayerGroup, number]> = [
+      ['airspace', unifiedAirspaceLayer, 7],
+      ['rpas', unifiedRpasLayer, 7],
+      ['restriksjonsomrader', unifiedRestrictedLayer, 7],
+      ['fareomrader', unifiedDangerLayer, 7],
+      ['sikringsobjekter', unifiedSecurityLayer, 10], // DE ~31k features
+      ['verneomrader', unifiedNatureLayer, 10],       // DE ~14k features
+    ];
+    const fetchUnifiedLayers = async () => {
+      const enabled = await isUnifiedAirspaceEnabled();
+      if (!enabled) return; // no-op for everyone except allowlisted companies
+      const z = map.getZoom();
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      unifiedLayerMap.forEach(([layerId, lg, minZoom]) => {
+        if (z < minZoom) {
+          resetCache(`unified:${layerId}:DE,DK,FI,SE`, lg);
+          return;
+        }
+        if (!map.hasLayer(lg)) return;
+        fetchUnifiedAirspaceZones({
+          layer: lg,
+          mode: modeRef.current,
+          bounds,
+          layerId,
+          countryCodes: UNIFIED_COUNTRIES,
+        });
+      });
+    };
+
     let vernDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetchVern = () => {
       if (vernDebounceTimer) clearTimeout(vernDebounceTimer);
@@ -1389,6 +1429,7 @@ export function OpenAIPMap({
         fetchVerneomraader();
         fetchCaaLayers();
         fetchDkLayers();
+        fetchUnifiedLayers();
       }, 300);
     };
 
@@ -1396,6 +1437,7 @@ export function OpenAIPMap({
     fetchVerneomraader();
     fetchCaaLayers();
     fetchDkLayers();
+    fetchUnifiedLayers();
     map.on('moveend', debouncedFetchVern);
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
@@ -1403,6 +1445,8 @@ export function OpenAIPMap({
       if (caaMatch) fetchCaaLayers();
       const dkMatch = [...dkDroneLayerMap.map(([, lg]) => lg), dkNatureLayer].includes(e.layer);
       if (dkMatch) fetchDkLayers();
+      const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
+      if (unifiedMatch) fetchUnifiedLayers();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
@@ -1413,6 +1457,8 @@ export function OpenAIPMap({
       if (e.layer === dkNatureLayer) resetCache('dkNature', dkNatureLayer);
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
+      const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
+      if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:DE,DK,FI,SE`, unifiedMatch[1]);
     });
 
     // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
