@@ -185,7 +185,54 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           };
         });
         const severityOrder = { warning: 0, caution: 1, note: 2 };
-        const sortedWarnings = warningsArray.sort(
+
+        // Additive unified fetch (DK/SE/DE/FI). Fail-closed for all users
+        // except those in `airspace_unified_company_allowlist` — returns []
+        // otherwise, so this does not affect existing behavior.
+        let unifiedWarnings: AirspaceWarning[] = [];
+        if (routePoints && routePoints.length >= 2) {
+          try {
+            const results = await Promise.all(
+              UNIFIED_COUNTRIES.map((c) =>
+                fetchUnifiedZonesForRoute(c, routePoints, 500),
+              ),
+            );
+            const zones: UnifiedAirspaceZone[] = results.flat();
+            unifiedWarnings = zones.map((z) => {
+              const distMeters = Math.round(z.min_distance);
+              const distStr =
+                distMeters < 1000
+                  ? `${distMeters} m`
+                  : `${(distMeters / 1000).toFixed(1)} km`;
+              const displayType = `${z.zone_type} (${z.country_code})`;
+              const message = z.is_inside
+                ? t("safety.airspaceMessages.genericInside", {
+                    type: displayType,
+                    name: z.zone_name,
+                  })
+                : t("safety.airspaceMessages.genericNear", {
+                    type: displayType,
+                    name: z.zone_name,
+                    distance: distStr,
+                  });
+              return {
+                zone_type: z.zone_type,
+                zone_name: z.zone_name,
+                distance_meters: distMeters,
+                is_inside: z.is_inside,
+                level: z.level,
+                message,
+              };
+            });
+          } catch (err) {
+            // Never let unified failures break the legacy warnings render.
+            console.warn("[unified airspace] fetch failed (ignored):", err);
+          }
+        }
+
+        const combined = [...warningsArray, ...unifiedWarnings];
+        const sortedWarnings = combined.sort(
+
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
         );
 
