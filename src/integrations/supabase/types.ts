@@ -7201,6 +7201,22 @@ export type Database = {
           zone_type: string
         }[]
       }
+      airspace_zones_raw_in_bbox: {
+        Args: {
+          p_country_codes?: string[]
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+        }
+        Returns: {
+          country_code: string
+          external_id: string
+          id: string
+          layer_id: string
+          source: string
+        }[]
+      }
       bulk_upsert_airspace_zones: { Args: { p_features: Json }; Returns: Json }
       bulk_upsert_caa_zones: {
         Args: { p_features: Json; p_layer_id: string }
