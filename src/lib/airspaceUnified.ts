@@ -135,13 +135,13 @@ export async function fetchUnifiedZonesForRoute(
 
     return data.map((row: any): UnifiedAirspaceZone => {
       const isInside = Boolean(row.route_inside);
-      const distance = Number(row.min_distance ?? 0);
-      const restriction = String(row.restriction_type ?? "info");
+      const distance = Number(row.distance_m ?? 0);
+      const restriction = String(row.restriction_type ?? "info").toLowerCase();
       return {
-        z_id: String(row.z_id),
+        z_id: String(row.id),
         zone_type: String(row.zone_type ?? "UNKNOWN"),
         restriction_type: restriction,
-        zone_name: String(row.z_name ?? ""),
+        zone_name: String(row.name ?? ""),
         country_code: String(row.country_code ?? country),
         source: String(row.source ?? ""),
         min_distance: distance,
