@@ -951,8 +951,13 @@ export function OpenAIPMap({
     // For everyone else these layers stay empty (fetcher never called).
     // NO is intentionally excluded — legacy code path is authoritative there.
     // ============================================================
-    const unifiedAirspaceLayer = L.layerGroup();      // CTR/TIZ/ATZ (layer_id='airspace')
-    const unifiedRpasLayer = L.layerGroup();          // DRONE_NO_FLY (layer_id='rpas')
+    // Merged into default-ON parent buttons (rpas, rmz_tmz_atz) — must be
+    // added to the map at init so `fetchUnifiedLayers` (which gates on
+    // `map.hasLayer(lg)`) actually issues the fetch. The fetcher itself is
+    // still gated by `isUnifiedAirspaceEnabled()` (Moderavdeling only).
+    const unifiedAirspaceLayer = L.layerGroup().addTo(map);   // CTR/TIZ/ATZ (layer_id='airspace')
+    const unifiedRpasLayer = L.layerGroup().addTo(map);       // DRONE_NO_FLY (layer_id='rpas')
+    // Merged into default-OFF parent buttons — added on toggle.
     const unifiedRestrictedLayer = L.layerGroup();    // R (layer_id='restriksjonsomrader')
     const unifiedDangerLayer = L.layerGroup();        // DRONE_DANGER (layer_id='fareomrader')
     const unifiedSecurityLayer = L.layerGroup();      // DRONE_PROTECTED_OBJECT (layer_id='sikringsobjekter')
