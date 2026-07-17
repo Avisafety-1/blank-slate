@@ -175,10 +175,10 @@ function buildUnifiedFeatures(
   return { rows, skipped };
 }
 
-async function fetchDipulLayer(typename: string): Promise<any[]> {
+async function fetchDipulLayer(typename: string, bbox?: [number, number, number, number]): Promise<any[]> {
   const all: any[] = [];
   let startIndex = 0;
-  for (let page = 0; page < 20; page++) {
+  for (let page = 0; page < 40; page++) {
     const params = new URLSearchParams({
       service: "WFS",
       version: "2.0.0",
@@ -189,6 +189,10 @@ async function fetchDipulLayer(typename: string): Promise<any[]> {
       count: String(WFS_PAGE_SIZE),
       startIndex: String(startIndex),
     });
+    if (bbox) {
+      // GeoServer short-form EPSG:4326 => lon,lat axis order
+      params.set("bbox", `${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]},EPSG:4326`);
+    }
     const url = `${WFS_BASE}?${params.toString()}`;
     const res = await safeFetch(url, {
       headers: { "User-Agent": "Avisafe-Sync/1.0", "Accept": "application/json" },
@@ -201,6 +205,67 @@ async function fetchDipulLayer(typename: string): Promise<any[]> {
     startIndex += WFS_PAGE_SIZE;
   }
   return all;
+}
+
+// Tyskland bbox (fastland + øyer, litt margin)
+const DE_BBOX: [number, number, number, number] = [5.5, 47.2, 15.1, 55.2];
+
+// Store naturvern-lag inneholder tusenvis av polygoner og time-outer i én
+// WFS-forespørsel. Hentes derfor per rutenett-tile (bbox-splitting).
+const TILED_SOURCES = new Set([
+  "dfs_de_naturschutz",
+  "dfs_de_ffh",
+  "dfs_de_vogelschutz",
+]);
+
+async function fetchDipulLayerTiled(
+  typename: string,
+  source: string,
+  tileGrid: number,
+  budgetMs: number,
+): Promise<{ features: any[]; tilesDone: number; tilesTotal: number; timedOut: boolean }> {
+  const [minLon, minLat, maxLon, maxLat] = DE_BBOX;
+  const dLon = (maxLon - minLon) / tileGrid;
+  const dLat = (maxLat - minLat) / tileGrid;
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  const tilesTotal = tileGrid * tileGrid;
+  const start = Date.now();
+  let tilesDone = 0;
+  let timedOut = false;
+
+  for (let ix = 0; ix < tileGrid && !timedOut; ix++) {
+    for (let iy = 0; iy < tileGrid; iy++) {
+      if (Date.now() - start > budgetMs) { timedOut = true; break; }
+      const bbox: [number, number, number, number] = [
+        minLon + ix * dLon,
+        minLat + iy * dLat,
+        minLon + (ix + 1) * dLon,
+        minLat + (iy + 1) * dLat,
+      ];
+      let feats: any[] = [];
+      try {
+        feats = await fetchDipulLayer(typename, bbox);
+      } catch (err) {
+        console.warn(`[de-sync] tile ${ix},${iy} for ${source} failed:`, String(err).slice(0, 200));
+        tilesDone++;
+        continue;
+      }
+      for (const f of feats) {
+        const key = String(
+          f?.id ??
+          f?.properties?.external_reference ??
+          f?.properties?.gml_id ??
+          `${source}:${JSON.stringify(f?.geometry)?.slice(0, 80)}`,
+        );
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(f);
+      }
+      tilesDone++;
+    }
+  }
+  return { features: merged, tilesDone, tilesTotal, timedOut };
 }
 
 async function startSyncRun(supabase: any, source: string): Promise<string | null> {
