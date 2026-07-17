@@ -42,6 +42,11 @@ verify_jwt = false
 [functions.sync-dk-drone-zones]
 verify_jwt = false
 
+[functions.sync-se-drone-zones]
+verify_jwt = false
+
+
+
 
 [functions.push-subscribe]
 verify_jwt = false
