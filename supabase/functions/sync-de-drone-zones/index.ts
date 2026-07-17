@@ -312,11 +312,23 @@ async function upsertInBatches(supabase: any, rows: any[]) {
 async function syncOneLayer(
   supabase: any,
   entry: { typename: string; source: string; mapping: LayerMapping },
+  opts: { tileGrid?: number; budgetMs?: number } = {},
 ): Promise<Record<string, unknown>> {
   const runId = await startSyncRun(supabase, entry.source);
+  const tiled = TILED_SOURCES.has(entry.source);
+  const tileGrid = opts.tileGrid ?? 5;
+  const budgetMs = opts.budgetMs ?? 220_000;
+
   let features: any[] = [];
+  let tileInfo: Record<string, unknown> | null = null;
   try {
-    features = await fetchDipulLayer(entry.typename);
+    if (tiled) {
+      const r = await fetchDipulLayerTiled(entry.typename, entry.source, tileGrid, budgetMs);
+      features = r.features;
+      tileInfo = { tile_grid: tileGrid, tiles_done: r.tilesDone, tiles_total: r.tilesTotal, timed_out: r.timedOut };
+    } else {
+      features = await fetchDipulLayer(entry.typename);
+    }
   } catch (err) {
     await finishSyncRun(supabase, runId, { status: "failed", error: String(err).slice(0, 500) });
     return { ok: false, source: entry.source, error: String(err) };
@@ -329,14 +341,17 @@ async function syncOneLayer(
     await finishSyncRun(supabase, runId, {
       status: "aborted", fetched_count: fetched, valid_count: 0,
       error: "no_features_after_normalization",
+      stats: tileInfo ? { tile: tileInfo } : undefined,
     });
-    return { ok: false, source: entry.source, reason: "no_features", fetched };
+    return { ok: false, source: entry.source, reason: "no_features", fetched, tile: tileInfo };
   }
 
   const { upserted, skipped: rpcSkipped, errors, batchFailures } = await upsertInBatches(supabase, rows);
   const totalSkipped = normalizeSkipped + rpcSkipped;
   const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+  // Ikke deaktiver hvis tiled fetch time-outet — vi mangler ids fra ikke-prosesserte tiles
+  const tiledIncomplete = tiled && !!(tileInfo as any)?.timed_out;
+  const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO && !tiledIncomplete;
 
   let deactivateResult: unknown = { skipped: true, reason: "not_run" };
   if (shouldDeactivate) {
@@ -348,10 +363,14 @@ async function syncOneLayer(
       deactivateResult = error ? { error: error.message } : data;
     } catch (err) { deactivateResult = { error: String(err) }; }
   } else {
-    deactivateResult = { skipped: true, reason: batchFailures > 0 ? "batch_failures" : "high_skipped_ratio", failure_ratio: failureRatio };
+    deactivateResult = {
+      skipped: true,
+      reason: tiledIncomplete ? "tiled_incomplete" : (batchFailures > 0 ? "batch_failures" : "high_skipped_ratio"),
+      failure_ratio: failureRatio,
+    };
   }
 
-  const status = batchFailures > 0 ? "failed" : "success";
+  const status = batchFailures > 0 ? "failed" : (tiledIncomplete ? "partial" : "success");
   const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
     ? (deactivateResult as any).deactivated : 0;
 
@@ -359,13 +378,14 @@ async function syncOneLayer(
     status, fetched_count: fetched, valid_count: fetched - normalizeSkipped,
     upserted_count: upserted, deactivated_count: deactivated,
     error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
-    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped },
+    stats: { batch_failures: batchFailures, deactivate: deactivateResult, normalize_skipped: normalizeSkipped, tile: tileInfo },
   });
 
   return {
     ok: batchFailures === 0, source: entry.source, typename: entry.typename,
     layer_id: entry.mapping.layer_id, fetched, upserted, skipped: totalSkipped,
     batch_failures: batchFailures, deactivate: deactivateResult, errors: errors.slice(0, 3),
+    tile: tileInfo,
   };
 }
 
