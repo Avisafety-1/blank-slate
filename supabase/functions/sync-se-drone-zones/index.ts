@@ -71,7 +71,7 @@ const LFV_LAYERS: Array<{ typename: string; mapping: LayerMapping; source: strin
   {
     typename: "mais:DNGA",
     source: "lfv_se_dnga",
-    mapping: { layer_id: "fareomrader", zone_type: "D", restriction_type: "CAUTION", display_class: "AMBER" },
+    mapping: { layer_id: "fareomrader", zone_type: "DRONE_DANGER", restriction_type: "CAUTION", display_class: "AMBER" },
     // Spec: kun LOWER='GND' publiseres på Drönarkartan.
     cql_filter: "LOWER='GND'",
   },
