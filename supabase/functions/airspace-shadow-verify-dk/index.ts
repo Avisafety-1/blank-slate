@@ -60,13 +60,21 @@ Deno.serve(async (req) => {
       unifiedRows = (uRows ?? []) as any;
     }
 
+    // B6: legacy layer_id (rod/orange/bla) → unified layer_id, so keys line up 1:1
+    const LEG_TO_UNIFIED: Record<string, string> = {
+      rod: 'rpas', orange: 'fareomrader', bla: 'sikringsobjekter',
+    };
     const legacyIds = new Set<string>([
-      ...((legacyDrone ?? []) as any[]).map((z) => `drone:${z.external_id ?? z.id}`),
+      ...((legacyDrone ?? []) as any[]).map((z) => {
+        const uni = LEG_TO_UNIFIED[z.layer_id] ?? z.layer_id;
+        return `drone:${uni}:${z.external_id ?? z.id}`;
+      }),
       ...((legacyNature ?? []) as any[]).map((z) => `nature:${z.external_id ?? z.id}`),
     ]);
     const unifiedIds = new Set<string>(
       unifiedRows.map((z) => {
         const isNature = z.source === 'trafikstyrelsen_dk_nature';
+        // Unified drone external_id already carries `${layer_id}:${objectid}`
         return `${isNature ? 'nature' : 'drone'}:${z.external_id}`;
       }),
     );
