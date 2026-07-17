@@ -156,14 +156,14 @@ function buildUnifiedFeatures(
       upperM = parseSupAltitude(upperRaw, upperUom);
       // Filter: kun drone-relevante lave områder (LOWER <= 500 ft ≈ 152 m).
       if (lowerM !== null && lowerM > 152) { skipped++; continue; }
-      altRef = upperUom === "FL" ? "FL" : (upperUom === "FT" ? "AMSL_FT" : (upperUom === "M" ? "M" : null));
+      altRef = upperUom === "FL" ? "FL" : (upperUom === "FT" ? "AMSL" : (upperUom === "M" ? "AMSL" : null));
     } else {
       // UPPER kan være 'UNL', 'FL95', tall (ft AMSL). Vi lagrer rå-verdien
       // og lar meter-feltet stå null når parsing ikke er trygg.
       if (upperRaw && /^\d+$/.test(upperRaw)) {
         upperM = Math.round(Number(upperRaw) * 0.3048);
       }
-      altRef = upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw ? "AMSL_FT" : null);
+      altRef = upperRaw && /^FL/.test(upperRaw) ? "FL" : (upperRaw && /^\d+$/.test(upperRaw) ? "AMSL" : (upperRaw === "UNL" ? "UNL" : null));
     }
 
     const validFrom = isSup ? toStringOrNull(p["FROM"]) : null;
