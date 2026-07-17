@@ -6993,6 +6993,7 @@ export type Database = {
           zone_type: string
         }[]
       }
+      bulk_upsert_airspace_zones: { Args: { p_features: Json }; Returns: Json }
       bulk_upsert_caa_zones: {
         Args: { p_features: Json; p_layer_id: string }
         Returns: Json
@@ -7111,6 +7112,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      deactivate_stale_airspace_zones: {
+        Args: {
+          p_country_code: string
+          p_keep_external_ids: string[]
+          p_source: string
+        }
+        Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
