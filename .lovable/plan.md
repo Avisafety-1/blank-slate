@@ -1,62 +1,114 @@
-## Problem
+## Bakgrunn — to sammenhengende problemer
 
-Kartlags-knappene i /kart leser i dag kun fra land-spesifikke legacy-tabeller (CAA=NO, `dk_drone_zones`/`dk_nature_areas`=DK). Data i den nye `airspace_zones`-tabellen for SE (381), DE (46 315) og FI (1 012) — pluss unified DK — blir aldri hentet. Derfor er kartet tomt over Tyskland selv om dataene finnes.
+**1. CTR/flyplass vises ikke som standard i utlandet**
 
-Foreløpig wiring (`AirspaceWarnings.tsx`) leverer bare tekst-advarsler for en aktiv rute — ingen polygoner.
+I NO er `rpas` (5 km rundt flyplass) og `rmz_tmz_atz` (CTR/TIZ/ATZ/RMZ/TMZ) default PÅ, mens `aip` (P/R/D) er default AV. Da jeg wiret inn unified-lagene la jeg CTR/TIZ/ATZ (`layer_id='airspace'`) inn under `aip`-knappen — som er default AV. Derfor ser Moderavdeling ingen CTR i DE/SE/FI før de manuelt slår på "P/R/D-soner". Det bryter med hvordan kartet oppfører seg i Norge.
 
-## Mål
+Unified `rpas`-laget (DRONE_NO_FLY = 5 km rundt flyplass) er allerede korrekt merged inn i `rpas`-knappen (default på) — det trenger ingen endring.
 
-Vise `airspace_zones`-polygoner på kartet for de eksisterende lag-knappene, **kun** for brukere i `airspace_unified_company_allowlist` (i dag Moderavdeling). Ingen andre selskaper skal se noen endring. NO forblir helt utenfor.
+**2. Timeout når oppdrag lagres**
 
-## Løsning (additiv, én fil)
+Både `airspace_zones_intersecting_route` (rute-analyse) og `airspace_zones_in_bbox` (kartrendering) leser fra viewet `resolved_airspace_zones` → `airspace_zones_with_precedence`. Sistnevnte kjører et `row_number() OVER (PARTITION BY country_code, layer_id, dedupe_key ORDER BY ...)` **over hele tabellen** (~50k rader) før noen filtrering. Planneren klarer ikke å pushe det romlige filteret ned under vindusfunksjonen, så hver eneste RPC-kall gjør en full scan + sort. Dette skalerer dårlig og forklarer timeouten på oppdragslagring.
 
-`airspace_zones.layer_id` matcher allerede eksisterende knappe-IDer:
-- `airspace` (CTR/TIZ/ATZ), `rpas`, `restriksjonsomrader`, `fareomrader`, `sikringsobjekter`, `verneomrader`
+Indeksene på geom (GIST), country/layer og dedupe finnes allerede — problemet er utelukkende viewets rekkefølge.
 
-Én ny fetcher — `fetchUnifiedAirspaceZones(...)` i `src/lib/mapDataFetchers.ts` — kaller RPC-en `airspace_zones_in_bbox(min_lng, min_lat, max_lng, max_lat, null, ['DK','SE','DE','FI'], [layerId])`. Én fetcher per aktivt lag, samme diff-render-mønster som `fetchDkDroneZones` (ingen flicker).
+## Endringer
 
-I `OpenAIPMap.tsx`:
+### A. Flytt unified CTR til `rmz_tmz_atz`-knappen (default på)
 
-1. Opprett seks nye `L.layerGroup()`-instanser: `unifiedAirspaceLayer`, `unifiedRpasLayer`, `unifiedRestrictedLayer`, `unifiedDangerLayer`, `unifiedSecurityLayer`, `unifiedNatureLayer`.
-2. Legg dem inn i eksisterende `layerConfigs.push({ ... layer: [...] })`-array for samme knapp — slik at UI-listen ikke får noen nye rader og bestående brukere ser identisk meny.
-3. Ny `fetchUnifiedLayers()` som (a) sjekker cachet flagg via `isUnifiedAirspaceEnabled()` → returnerer tidlig hvis false, (b) hopper over hvis zoom < 7 (DE har 46k soner — trenger zoom-terskel), (c) sender parallelle bbox-kall per aktivert lag.
-4. Wire `fetchUnifiedLayers()` inn i eksisterende `debouncedFetchVern` og `layeradd`/`layerremove`-håndterere — samme cache-nøkkelmønster (`resetCache('unified:<layerId>', lg)`).
-5. Legg de nye LayerGroup-referansene i den store `[...].forEach(l => l.addTo(map))`-listen så de faktisk mounter (men rendrer ingenting før fetcheren populerer dem).
+I `src/components/OpenAIPMap.tsx`:
 
-## Gating (fail-closed)
+- `aip`-knapp: fjern `unifiedAirspaceLayer` fra `layer`-arrayet → tilbake til bare `aipLayer` (NO P/R/D).
+- `rmz_tmz_atz`-knapp: legg til `unifiedAirspaceLayer` i `layer`-arrayet ved siden av `rmzTmzAtzLayer`.
 
-- `isUnifiedAirspaceEnabled()` (60 s cache) er eneste inngangsport. RPC-en returnerer true kun hvis global flag ER PÅ **og** brukerens `company_id ∈ airspace_unified_company_allowlist`.
-- For alle andre selskaper: fetch-kallet gjøres aldri, layerGroups forblir tomme — kart-oppførselen er bit-identisk med i dag.
-- NO er dobbel-blokkert: ikke i `country_codes`-arrayet, og backend-RPC-en filtrerer allerede på `active=true` + `country_code`.
+Ingen andre lag flyttes:
+- `rpas` (5 km airport) — unified allerede default på. ✓
+- `restriksjonsomrader` / `fareomrader` / `sikringsobjekter` / `verneomrader` — beholder default AV (matcher NO-oppførsel for P/R/D, D-soner, sikring, natur).
 
-## Ytelse-hensyn (DE = 46k rader)
+### B. Skriv om `resolved_airspace_zones` slik at dedupe skjer etter filter
 
-- Zoom-terskel 7 (samme som DK) — RPC-en spatial-indekserer på `geom`.
-- `airspace` (CTR): 69 DE — trygg fra zoom 7.
-- `sikringsobjekter` (DE 31 001) og `verneomrader` (DE 13 829): sett zoom-terskel 10 for disse to lagene spesifikt, ellers får vi 30k features i én bbox.
-- Alle kall bruker samme diff-render (add/remove pr. `external_id`) som eksisterende fetchers.
+Definér viewet som en LATERAL/DISTINCT-ON-basert struktur som PostgreSQL kan pushe romlige predikater under:
 
-## Styling
+```sql
+CREATE OR REPLACE VIEW public.resolved_airspace_zones
+WITH (security_invoker=on) AS
+SELECT DISTINCT ON (z.country_code, z.layer_id, COALESCE(z.dedupe_key, z.id::text))
+       z.id, z.created_at, z.updated_at, z.country_code, z.source,
+       z.external_id, z.zone_type, z.restriction_type, z.display_class,
+       z.theme, z.name, z.short_name, z.authority,
+       z.lower_limit_m, z.upper_limit_m, z.lower_limit_raw, z.upper_limit_raw,
+       z.altitude_reference, z.valid_from, z.valid_to, z.active,
+       z.properties, z.geom, z.layer_id, z.authority_rank, z.dedupe_key
+  FROM public.airspace_zones z
+ WHERE z.active
+   AND (z.valid_from IS NULL OR z.valid_from <= now())
+   AND (z.valid_to   IS NULL OR z.valid_to   >  now())
+ ORDER BY z.country_code, z.layer_id, COALESCE(z.dedupe_key, z.id::text),
+          z.authority_rank NULLS LAST, z.updated_at DESC;
+```
 
-Behold eksisterende visuelle konvensjoner per `restriction_type`:
-- PROHIBITED → rød fylling
-- APPROVAL_REQUIRED → oransje
-- CAUTION → gul
-- NOTIFICATION → blå
-- NATURE_SENSITIVE → grønn
+`DISTINCT ON` alene er heller ikke sub-linear, så vi må parallelt endre selve RPC-ene til å **filtrere `airspace_zones` direkte** og bare deduplisere på det spatiale subsettet:
 
-Popups viser `name`, `zone_type`, `country_code`, `authority`, `lower_limit_m`–`upper_limit_m` (samme som DK-popupene).
+```sql
+CREATE OR REPLACE FUNCTION public.airspace_zones_intersecting_route(...)
+...
+AS $$
+DECLARE v_route geometry; v_buffer int;
+BEGIN
+  v_buffer := LEAST(GREATEST(COALESCE(p_buffer_m,0),0), 100000);
+  v_route  := ST_SetSRID(ST_GeomFromGeoJSON(p_route::text), 4326);
 
-## Filer som endres
+  RETURN QUERY
+  WITH candidates AS (
+    SELECT z.*
+      FROM public.airspace_zones z
+     WHERE z.active
+       AND (z.valid_from IS NULL OR z.valid_from <= now())
+       AND (z.valid_to   IS NULL OR z.valid_to   >  now())
+       AND (p_country_codes IS NULL OR z.country_code = ANY(p_country_codes))
+       AND (p_layer_ids     IS NULL OR z.layer_id     = ANY(p_layer_ids))
+       AND (p_zone_types    IS NULL OR z.zone_type    = ANY(p_zone_types))
+       AND ST_DWithin(z.geom::geography, v_route::geography, v_buffer)
+  ), deduped AS (
+    SELECT DISTINCT ON (country_code, layer_id, COALESCE(dedupe_key, id::text))
+           *
+      FROM candidates
+     ORDER BY country_code, layer_id, COALESCE(dedupe_key, id::text),
+              authority_rank NULLS LAST, updated_at DESC
+  )
+  SELECT id, country_code, source, layer_id, zone_type, restriction_type,
+         display_class, theme, name, short_name, lower_limit_m, upper_limit_m,
+         altitude_reference, authority_rank, dedupe_key,
+         ST_Distance(geom::geography, v_route::geography) AS distance_m,
+         ST_Intersects(geom, v_route)                     AS route_inside,
+         properties
+    FROM deduped;
+END; $$;
+```
 
-- `src/lib/mapDataFetchers.ts` — ny `fetchUnifiedAirspaceZones()` + delt style/popup-helper.
-- `src/components/OpenAIPMap.tsx` — 6 nye LayerGroups, wiring i eksisterende push-arrays, ny `fetchUnifiedLayers()` + integrasjon i `debouncedFetchVern`/`layeradd`/`layerremove`.
+Samme mønster for `airspace_zones_in_bbox` (bytt `ST_DWithin` mot `ST_Intersects(geom, ST_MakeEnvelope(...))`).
 
-Ingen DB-endringer. Ingen endring i `mapLayers.ts`-config (knappene finnes allerede).
+Effekt: begge RPC-ene bruker nå `airspace_zones_geography_gix` / `airspace_zones_geom_gix` direkte. Rute-analyser skalerer med antall soner *nær ruten*, ikke totalt antall soner i Europa.
 
-## Verifisering
+### C. Legg til støtte-indeks for dedupe-sortering
 
-1. Logg inn som Moderavdeling-bruker → zoom til Tyskland zoom 8+ → aktiver "P/R/D-soner" og "Fareområder" → polygoner skal dukke opp.
-2. Logg inn som en NO-bruker (annet selskap) → åpne samme område → ingen unified-data skal vises, nettverksfanen skal ikke inneholde `airspace_zones_in_bbox`-kall.
-3. Zoom < 7 i Tyskland → ingen fetch, ingen render.
-4. NO-bruker som panner i Norge → uendret, kun legacy CAA-lag vises.
+```sql
+CREATE INDEX IF NOT EXISTS airspace_zones_dedupe_ix
+  ON public.airspace_zones (country_code, layer_id, dedupe_key, authority_rank)
+  WHERE active;
+```
+
+Brukes i `DISTINCT ON`-sorten etter at bbox har smalnet inn kandidatene.
+
+### D. Ingen NO-påvirkning, verifisering
+
+- Ingen endring av `airspace_zones_with_precedence` beholdes (kun for eventuelle direkte lesere av viewet).
+- NO-brukere bruker fortsatt legacy-RPC-er; unified-RPC-ene kalles kun for allowlist-selskap (fail-closed).
+- Verifiser med `EXPLAIN (ANALYZE, BUFFERS)` mot en typisk rute i DE at `airspace_zones_geography_gix` brukes og totaltid < 500 ms.
+- Manuell UI-test i Moderavdeling: åpne kartet i DE — CTR-polygoner skal vises umiddelbart (uten å måtte hake av noe), og "Lagre oppdrag" i en rute innom en CTR skal returnere advarsler uten timeout.
+
+## Rekkefølge
+
+1. Migrasjon: nytt `resolved_airspace_zones`-view + omskrevet `airspace_zones_intersecting_route` + omskrevet `airspace_zones_in_bbox` + ny indeks.
+2. Kode-endring i `OpenAIPMap.tsx`: flytt `unifiedAirspaceLayer` fra `aip` til `rmz_tmz_atz`.
+3. EXPLAIN-verifisering + UI-røyketest i Moderavdeling.
