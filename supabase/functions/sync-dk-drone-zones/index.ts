@@ -33,16 +33,25 @@ const FARVE_TO_LAYER: Record<string, string> = {
   "5": "bla",
 };
 
-// Fase A2: mapping fra Trafikstyrelsen-farve til felles airspace_zones-klasser.
+// Fase A6: mapping fra Trafikstyrelsen-farve til felles airspace_zones-klasser
+// og til UI-kartlag. Trafikstyrelsen er nasjonal CAA → høy autoritet (rank 20).
+// Konservativ restriction_type: aldri "PROHIBITED" basert på farve alene.
 const FARVE_TO_UNIFIED: Record<string, {
+  layer_id: string;
   zone_type: string;
   restriction_type: string;
   display_class: string;
 }> = {
-  "1": { zone_type: "R",     restriction_type: "RESTRICTED",         display_class: "RED" },
-  "4": { zone_type: "D",     restriction_type: "APPROVAL_REQUIRED",  display_class: "AMBER" },
-  "5": { zone_type: "OTHER", restriction_type: "NOTIFICATION",       display_class: "BLUE" },
+  // Rød: flyvesikringskritisk (flyplasser, heliporter, 5 km-soner)
+  "1": { layer_id: "rpas",                zone_type: "DRONE_NO_FLY",           restriction_type: "APPROVAL_REQUIRED", display_class: "RED"   },
+  // Orange: opmærksomhed (fareområder)
+  "4": { layer_id: "fareomrader",         zone_type: "DRONE_DANGER",           restriction_type: "CAUTION",           display_class: "AMBER" },
+  // Blå: sikringskritisk (fængsler, ambassader, kraftværker)
+  "5": { layer_id: "sikringsobjekter",    zone_type: "DRONE_PROTECTED_OBJECT", restriction_type: "NOTIFICATION",      display_class: "BLUE"  },
 };
+
+const DK_AUTHORITY_RANK = 20; // Nasjonal CAA
+
 
 const UNIFIED_BATCH_SIZE = 500;
 const UNIFIED_MAX_SKIPPED_RATIO = 0.1; // avbryt deaktivering hvis >10 % feilet
