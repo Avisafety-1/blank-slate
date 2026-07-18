@@ -1,49 +1,53 @@
+## Mål
+Legg til svenske verneområder fra Naturvårdsverket i unified airspace-modellen, kun aktivt for Moderavdeling (allowlist), uten å påvirke norsk flow eller andre brukere.
 
-## Del 1 — Eurostat befolkningstetthet vises ikke
+## Datakilde
+- **WFS**: `https://geodata.naturvardsverket.se/naturvardsregistret/wfs`
+- Lag som hentes:
+  - Naturreservat
+  - Nationalparker
+  - Naturvårdsområden
+  - Biotopskydd
+  - Djur- och växtskyddsområden
+  - Natura 2000 (SCI + SPA)
 
-**Rotårsak (verifisert):** GISCO WMS krever `STYLES` (returnerer `ServiceException: missing parameters ['styles']` uten den). Leaflet's `TileLayer.WMS` sender normalt `STYLES=` automatisk, men når vi tvinger `crs: L.CRS.EPSG4326` inne i et EPSG:3857-kart bruker Leaflet 4326-tile-oppløsning (bare 2 tiles på zoom 0, forskjøvet grid) — så tiles havner utenfor synlig viewport. Direktekall til GISCO WMS med `STYLES=&SRS=EPSG:3857` fungerer også (ikke bare 4326).
+## Endringer
 
-**Fix:**
-1. I `src/components/OpenAIPMap.tsx` (linje 988–994) fjerne `crs: L.CRS.EPSG4326` og `uppercase: true`, og eksplisitt sette `styles: ""` slik at Leaflet bruker kartets EPSG:3857 grid som forventet.
-2. Verifisere at legenden (`BefolkningLegend`) fortsatt vises for Eurostat-modus i Tyskland.
+### 1. Ny edge function `sync-sweden-nature`
+Under `supabase/functions/sync-sweden-nature/index.ts`:
+- Henter hvert lag via WFS `GetFeature` som GeoJSON (`outputFormat=application/json`, `srsName=EPSG:4326`).
+- Tiled bbox-strategi (lik tysk adapter) for å unngå timeout — Sverige delt i ~1° ruter.
+- Mapper hver feature til `airspace_zones`-rad:
+  - `country = 'SE'`
+  - `source = 'naturvardsverket'`
+  - `layer_id` per verneform: `se_naturreservat`, `se_nationalpark`, `se_naturvardsomrade`, `se_biotopskydd`, `se_djurskydd`, `se_natura2000`
+  - `zone_type = 'protected_area'` (ny kategori) eller `nature` for å matche eksisterende semantikk
+  - `name`, `identifier` (NVR-id), `properties` (rå-attributter)
+- Idempotent upsert med `(source, external_id)` som konfliktnøkkel.
+- Deduplication mot ID-kollisjoner (samme lærdom som DK-fasen).
 
-## Del 2 — Kraftledninger, luftfartshindre osv. i DK/SE/DE/FI
+### 2. Registrer function i `supabase/config.toml`
+`verify_jwt = false`, invoke fra admin manuelt eller via cron senere.
 
-**Verifiserte fakta om tilgjengelige kilder:**
-- **OpenAIP** har `obstacles` (luftfartshindre) globalt via `api.core.openaip.net/api/obstacles` — enhetlig for hele Europa. Dette kan erstatte NRK/Kartverket-hindre for ikke-norske land.
-- **OpenAIP har ikke** kraftledninger. Ingen offisiell paneuropeisk kilde finnes.
-- **OpenStreetMap** (`power=line`, `power=minor_line`, `power=tower`) er den eneste realistiske paneuropeiske kilden for kraftledninger. Hentes via Overpass API per viewport, eller Wikimedia/OSM WMS `power` layer.
-- Nasjonale nettselskaper (DK: Energinet, DE: 50Hertz/TenneT/Amprion/TransnetBW, FI: Fingrid) har egne datasett, men de er fragmenterte og krever N adaptere per land — ikke skalerbart.
+### 3. Kjør backfill
+Én invocation per lag, tiled. Rapporter antall zoner per lag.
 
-**Anbefaling (skalerbar arkitektur, i tråd med unified airspace-mønsteret):**
+### 4. UI-wiring i `src/lib/unifiedRouteProximityLayers.ts` og `src/components/OpenAIPMap.tsx`
+- Utvid `fetchUnifiedNatureInBounds` (eller tilsvarende) til å inkludere SE-lag i tillegg til DK.
+- Vis polygonene på samme naturvern-lag-knapp som allerede eksisterer (grønn styling per verneform, konsistent med norsk `NATURVERN_COLORS`).
+- Auto-reveal langs rute i tillegg til manuell aktivering.
+- Popup viser navn + verneform + auto-badge når trigget av rute.
 
-### 2a. Luftfartshindre (obstacles)
-- Ny edge function `openaip-obstacles-fetch` som proxier `api.core.openaip.net/api/obstacles?bbox=...&country=DE,DK,FI,SE` med server-side API-nøkkel.
-- Ny map data-fetcher `fetchOpenAipObstacles(bbox)` som brukes for ikke-NO viewports.
-- Merges inn i eksisterende `luftfartshindre`-knapp (samme mønster som unified airspace merges inn i eksisterende knapper).
-- Kun aktiv for allowlisted selskaper (Moderavdeling) initielt — Norge bruker fortsatt Kartverket/NRK.
+### 5. Route proximity + safety analysis
+- `airspace_zones_intersecting_route` RPC dekker allerede alle rader i `airspace_zones`, så svenske verneområder kommer automatisk med i luftromssjekk for Moderavdeling når de er lagret der.
+- Bekreft at `zone_type` filtreringen ikke ekskluderer verneområder (juster om nødvendig).
 
-### 2b. Kraftledninger (power lines)
-- Ny edge function `osm-power-lines-fetch` som spør Overpass API:
-  `[out:json];(way["power"~"^(line|minor_line)$"](bbox);node["power"="tower"](bbox););out geom;`
-- Cache viewport-resultater i Postgres tabell `osm_power_lines_cache` (bbox + geom + fetched_at, 30 dagers TTL).
-- Ny fetcher `fetchOsmPowerLines(bbox)` — kun for zoom ≥ 11 (Overpass er tregt, må begrenses).
-- Merges inn i eksisterende `kraftledninger`-knapp.
-- Kun aktiv for allowlisted selskaper. Norge bruker fortsatt NVE.
+## Ikke i scope
+- Ingen endringer i norsk `naturvern_zones`/`vern_restriction_zones`-flow.
+- Ingen aktivering utenfor Moderavdeling-allowlisten.
+- Ikke Tyskland/Finland verneområder i denne runden (kan følge samme mønster senere via Natura2000 nasjonale kilder).
 
-### 2c. Ikke i denne runden
-- Eiendomsgrenser: hvert EU-land har eget kadaster, ingen enhetlig kilde. Utsettes.
-- Tettsteder/befolkning-polygoner: Eurostat GEOSTAT dekker allerede dette. Ingen endring nødvendig utover Del 1.
-- Verneområder DE/SE/FI: Natura2000 dekker allerede DE (32k soner backfilled). SE/FI kan legges til senere via samme adapter-mønster.
-
-## Rekkefølge og risiko
-
-1. **Del 1 (Eurostat-fix)** — trygg, ren UI-fix, ingen skjema-endring.
-2. **Del 2a (OpenAIP obstacles)** — trenger OpenAIP API-nøkkel som secret. Additivt, gated på allowlist.
-3. **Del 2b (OSM power lines)** — trenger ny cache-tabell + Overpass rate-limit håndtering. Additivt, gated.
-
-Ingen endring påvirker norske brukere eller andre selskaper enn Moderavdeling. Ingen eksisterende kartlag fjernes.
-
-## Spørsmål før implementasjon
-
-Skal jeg starte med bare **Del 1** (Eurostat-fix), eller kjøre hele **Del 1 + 2a + 2b** i samme runde? Del 2b krever at du legger til en OSM Overpass-strategi — det er ingen API-nøkkel, men vi bør avklare cache-tabellen.
+## Verifisering
+- Etter backfill: `select layer_id, count(*) from airspace_zones where country='SE' and source='naturvardsverket' group by layer_id`.
+- Tegn rute i Sverige som logget-inn Moderavdeling-bruker → verneområder skal dukke opp både manuelt (lag på) og automatisk (rute-buffer).
+- Logget-inn norsk bruker: ingen synlig endring.
