@@ -187,6 +187,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Chunk-parametere fra request body: gjør at vi kan orkestrere flere kall
+    // for å unngå CPU-limit på Edge Function når hele datasettet (~10-11k features) skal inn.
+    let body: any = {};
+    try { body = await req.json(); } catch { /* ok */ }
+    const inputStart = Number(body?.startIndex ?? 0);
+    const maxPages = Math.max(1, Math.min(Number(body?.maxPages ?? 6), MAX_PAGES));
+    const finalize = body?.finalize === true;
+    const clientKeepIds: string[] = Array.isArray(body?.keepIds) ? body.keepIds : [];
+
     // Rydd zombier
     try {
       await supabase.from("airspace_sync_runs")
@@ -197,17 +206,17 @@ Deno.serve(async (req) => {
 
     const runId = await startSyncRun(supabase);
 
-    let startIndex = 0;
-    let matched = 0;
+    let startIndex = inputStart;
     let fetched = 0;
     let upserted = 0;
     let normalizeSkipped = 0;
     let rpcSkipped = 0;
     let batchFailures = 0;
     const errors: unknown[] = [];
-    const keepIds: string[] = [];
+    const chunkKeepIds: string[] = [];
+    let reachedEnd = false;
 
-    for (let page = 0; page < MAX_PAGES; page++) {
+    for (let page = 0; page < maxPages; page++) {
       let pageRes: { features: any[]; matched: number };
       try {
         pageRes = await fetchPage(startIndex);
@@ -215,50 +224,36 @@ Deno.serve(async (req) => {
         errors.push({ page, error: String(err).slice(0, 200) });
         break;
       }
-      matched = pageRes.matched;
       const feats = pageRes.features;
       fetched += feats.length;
 
       const { rows, skipped: nSkip } = buildRows(feats);
       normalizeSkipped += nSkip;
       if (rows.length > 0) {
-        for (const r of rows) if (r.external_id) keepIds.push(r.external_id);
+        for (const r of rows) if (r.external_id) chunkKeepIds.push(r.external_id);
         const res = await upsertInBatches(supabase, rows);
         upserted += res.upserted;
         rpcSkipped += res.skipped;
         batchFailures += res.batchFailures;
         if (res.errors.length) errors.push(...res.errors.slice(0, 3));
       }
-      console.log(`[nv-sync] page ${page} start=${startIndex} feats=${feats.length} upserted=${upserted}/${matched}`);
-      if (feats.length < WFS_PAGE_SIZE) break;
+      console.log(`[nv-sync] chunk-start=${inputStart} page=${page} start=${startIndex} feats=${feats.length} upserted=${upserted}`);
       startIndex += WFS_PAGE_SIZE;
+      if (feats.length < WFS_PAGE_SIZE) { reachedEnd = true; break; }
     }
 
-    const totalSkipped = normalizeSkipped + rpcSkipped;
-    const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-    const sweepComplete = matched > 0 && fetched >= matched;
-    const shouldDeactivate =
-      sweepComplete && batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
-
-    let deactivateResult: unknown = { skipped: true, reason: "not_run" };
-    if (shouldDeactivate) {
+    let deactivateResult: unknown = { skipped: true, reason: "not_finalize" };
+    if (finalize && batchFailures === 0) {
+      const allKeepIds = Array.from(new Set([...clientKeepIds, ...chunkKeepIds]));
       try {
         const { data, error } = await supabase.rpc("deactivate_stale_airspace_zones", {
-          p_source: SOURCE, p_country_code: "SE", p_keep_external_ids: keepIds,
+          p_source: SOURCE, p_country_code: "SE", p_keep_external_ids: allKeepIds,
         });
-        deactivateResult = error ? { error: error.message } : data;
+        deactivateResult = error ? { error: error.message } : { ...data, keep_count: allKeepIds.length };
       } catch (err) { deactivateResult = { error: String(err) }; }
-    } else {
-      deactivateResult = {
-        skipped: true,
-        reason: batchFailures > 0 ? "batch_failures"
-              : !sweepComplete ? "incomplete_sweep"
-              : "high_skipped_ratio",
-        failure_ratio: failureRatio,
-      };
     }
 
-    const status = batchFailures > 0 ? "failed" : sweepComplete ? "success" : "partial";
+    const status = batchFailures > 0 ? "failed" : "success";
     const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
       ? (deactivateResult as any).deactivated : 0;
 
@@ -270,10 +265,14 @@ Deno.serve(async (req) => {
       deactivated_count: deactivated,
       error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
       stats: {
+        chunk_start: inputStart,
+        next_start: startIndex,
+        reached_end: reachedEnd,
+        finalize,
         batch_failures: batchFailures,
         deactivate: deactivateResult,
         normalize_skipped: normalizeSkipped,
-        matched,
+        chunk_keep_ids: chunkKeepIds.length,
       },
     });
 
@@ -281,11 +280,15 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: batchFailures === 0,
         source: SOURCE,
-        matched,
+        chunkStart: inputStart,
+        nextStart: startIndex,
+        reachedEnd,
+        finalize,
         fetched,
         upserted,
-        skipped: totalSkipped,
+        skipped: normalizeSkipped + rpcSkipped,
         batch_failures: batchFailures,
+        keepIds: chunkKeepIds,
         deactivate: deactivateResult,
         errors: errors.slice(0, 5),
         synced_at: new Date().toISOString(),
