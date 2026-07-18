@@ -6,15 +6,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { AlertTriangle, AlertCircle, Info, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import {
   fetchUnifiedZonesForRoute,
+  getUnifiedCountriesForRoute,
   type UnifiedCountry,
   type UnifiedAirspaceZone,
 } from "@/lib/airspaceUnified";
-
-// Countries covered by the unified pipeline. NO is intentionally excluded and
-// remains on the legacy code path (see airspaceUnified.ts). The unified fetch
-// is additionally gated per-company via `is_unified_airspace_enabled_for_me`
-// (Phase C1 — Moderavdeling only), so this call is a no-op for all other users.
-const UNIFIED_COUNTRIES: UnifiedCountry[] = ["DK", "SE", "DE", "FI"];
 
 interface AirspaceWarningRaw {
   z_id: string;
@@ -192,8 +187,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
         let unifiedWarnings: AirspaceWarning[] = [];
         if (routePoints && routePoints.length >= 2) {
           try {
+            const countries: UnifiedCountry[] = getUnifiedCountriesForRoute(routePoints, 500);
             const results = await Promise.all(
-              UNIFIED_COUNTRIES.map((c) =>
+              countries.map((c) =>
                 fetchUnifiedZonesForRoute(c, routePoints, 500),
               ),
             );
