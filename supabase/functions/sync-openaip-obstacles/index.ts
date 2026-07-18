@@ -21,41 +21,49 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const allObstacles: any[] = [];
-    let page = 1;
-    const limit = 100;
-    let hasMore = true;
-
-    while (hasMore) {
-      const url = `https://api.core.openaip.net/api/obstacles?country=NO&limit=${limit}&page=${page}`;
-      console.log(`Fetching obstacles page ${page}: ${url}`);
-
-      const response = await fetch(url, {
-        headers: {
-          "x-openaip-api-key": OPENAIP_API_KEY,
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAIP API error ${response.status}: ${errorText}`);
+    let countries: string[] = ["NO", "DK", "SE", "DE", "FI"];
+    try {
+      if (req.method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        if (Array.isArray(body?.countries) && body.countries.length > 0) {
+          countries = body.countries.map((c: string) => c.toUpperCase());
+        }
       }
+    } catch (_) { /* ignore */ }
 
-      const data = await response.json();
-      const items = data.items || [];
-      allObstacles.push(...items);
+    const allObstacles: any[] = [];
+    const limit = 100;
 
-      console.log(`Page ${page}: got ${items.length} obstacles`);
+    for (const country of countries) {
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const url = `https://api.core.openaip.net/api/obstacles?country=${country}&limit=${limit}&page=${page}`;
+        console.log(`[${country}] Fetching obstacles page ${page}`);
 
-      if (items.length < limit) {
-        hasMore = false;
-      } else {
-        page++;
+        const response = await fetch(url, {
+          headers: {
+            "x-openaip-api-key": OPENAIP_API_KEY,
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`OpenAIP API error ${response.status} for ${country}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        const items = data.items || [];
+        allObstacles.push(...items);
+        console.log(`[${country}] Page ${page}: ${items.length}`);
+
+        if (items.length < limit) hasMore = false;
+        else page++;
       }
     }
 
-    console.log(`Total obstacles fetched: ${allObstacles.length}`);
+    console.log(`Total obstacles fetched across ${countries.join(",")}: ${allObstacles.length}`);
 
     // Obstacle type mapping
     const obstacleTypeMap: Record<number, string> = {
