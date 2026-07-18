@@ -1777,6 +1777,48 @@ export function OpenAIPMap({
     };
   }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
 
+  // Auto-vis unified airspace + DK-natur langs ruten (DK/SE/DE/FI).
+  // Gated av `isUnifiedAirspaceEnabled()` — no-op utenfor Moderavdeling.
+  useEffect(() => {
+    const layer = unifiedRouteProximityLayerRef.current;
+    if (!layer) return;
+
+    if (unifiedRouteProximityDebounceRef.current !== null) {
+      window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+      unifiedRouteProximityDebounceRef.current = null;
+    }
+
+    const coords = routePointsRef.current;
+    if (coords.length < 2) {
+      try { layer.clearLayers(); } catch {}
+      unifiedRouteProximityAbortRef.current?.abort();
+      unifiedRouteProximityAbortRef.current = null;
+      return;
+    }
+
+    unifiedRouteProximityDebounceRef.current = window.setTimeout(() => {
+      unifiedRouteProximityAbortRef.current?.abort();
+      const controller = new AbortController();
+      unifiedRouteProximityAbortRef.current = controller;
+      updateUnifiedRouteProximityLayers({
+        layer,
+        coordinates: [...coords],
+        signal: controller.signal,
+      })
+        .then(() => {
+          syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
+        })
+        .catch(() => { /* swallow */ });
+    }, 300);
+
+    return () => {
+      if (unifiedRouteProximityDebounceRef.current !== null) {
+        window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+        unifiedRouteProximityDebounceRef.current = null;
+      }
+    };
+  }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
+
   // Cleanup proximity layer on unmount
   useEffect(() => {
     return () => {
@@ -1788,6 +1830,14 @@ export function OpenAIPMap({
       }
       try { routeProximityLayerRef.current?.clearLayers(); } catch {}
       routeProximityLayerRef.current = null;
+      unifiedRouteProximityAbortRef.current?.abort();
+      unifiedRouteProximityAbortRef.current = null;
+      if (unifiedRouteProximityDebounceRef.current !== null) {
+        window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+        unifiedRouteProximityDebounceRef.current = null;
+      }
+      try { unifiedRouteProximityLayerRef.current?.clearLayers(); } catch {}
+      unifiedRouteProximityLayerRef.current = null;
     };
   }, []);
 
