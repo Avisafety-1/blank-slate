@@ -2005,3 +2005,131 @@ export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
   }
 }
 
+
+// ============================================================================
+// OSM Power Lines (DK/SE/DE/FI) — Overpass proxy, viewport-based
+// Gated by isUnifiedAirspaceEnabled (Moderavdeling only). Runs alongside NVE
+// (which covers Norway); features are added into the same kraftledningerLayer.
+// ============================================================================
+
+const OSM_POWER_COUNTRY_BOUNDS: Array<[number, number, number, number]> = [
+  [54.4, 7.5, 58.2, 15.8],
+  [55.0, 10.85, 69.4, 25.8],
+  [47.0, 5.5, 55.4, 15.7],
+  [59.5, 19.0, 70.3, 32.2],
+];
+
+function bboxIntersectsUnifiedCountries(b: { minLat: number; minLng: number; maxLat: number; maxLng: number }) {
+  return OSM_POWER_COUNTRY_BOUNDS.some(([s, w, n, e]) =>
+    b.minLat <= n && b.maxLat >= s && b.minLng <= e && b.maxLng >= w,
+  );
+}
+
+const osmPowerZoomCache = new Map<string, number>();
+
+export async function fetchOsmPowerLinesInBounds(params: {
+  layer: L.LayerGroup;
+  bounds: L.LatLngBounds;
+  zoom: number;
+  pane: string;
+  mode: string;
+}) {
+  const { layer, bounds, zoom, pane, mode } = params;
+  // Overpass is heavy; only fetch at reasonable zoom levels.
+  if (zoom < 9) {
+    resetCache("osm-power", layer);
+    osmPowerZoomCache.delete("osm-power");
+    return;
+  }
+
+  const bbox = {
+    minLat: bounds.getSouth(),
+    minLng: bounds.getWest(),
+    maxLat: bounds.getNorth(),
+    maxLng: bounds.getEast(),
+  };
+  if (!bboxIntersectsUnifiedCountries(bbox)) return;
+
+  const cache = getCache("osm-power");
+  const lastZoom = osmPowerZoomCache.get("osm-power");
+  if (lastZoom === zoom && bboxCovered(cache.cachedBounds, bbox)) return;
+
+  const padded = padBBox(bbox);
+
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-osm-power-lines", {
+      body: {
+        south: padded.minLat,
+        west: padded.minLng,
+        north: padded.maxLat,
+        east: padded.maxLng,
+      },
+    });
+    if (error) {
+      console.warn("[osm-power] invoke failed:", error);
+      return;
+    }
+    const features: any[] = (data as any)?.features ?? [];
+    if (!features.length) {
+      cache.cachedBounds = padded;
+      osmPowerZoomCache.set("osm-power", zoom);
+      return;
+    }
+
+    type Item = { feature: any };
+    const items: Item[] = features.map((f) => ({ feature: f }));
+
+    diffRender(
+      layer,
+      cache,
+      items,
+      ({ feature }) => `osm:${feature.id}`,
+      ({ feature }) => {
+        const props = feature.properties || {};
+        const powerType = String(props.power || "");
+        const isSubstation = powerType === "substation";
+        const isPoint = feature.geometry?.type === "Point";
+        // Style similar to NVE conventions.
+        const style = isSubstation
+          ? { color: "#a855f7", weight: 1, fillColor: "#a855f7", fillOpacity: 0.25 }
+          : powerType === "cable"
+            ? { color: "#06b6d4", weight: 2, opacity: 0.85, dashArray: "6,4" }
+            : { color: "#2563eb", weight: 2.5, opacity: 0.85 };
+
+        return L.geoJSON(feature, {
+          pane,
+          interactive: mode !== "routePlanning",
+          style: isPoint ? undefined : (style as any),
+          pointToLayer: (_f, latlng) =>
+            L.circleMarker(latlng, {
+              pane,
+              radius: 4,
+              fillColor: "#a855f7",
+              color: "#fff",
+              weight: 1,
+              fillOpacity: 0.8,
+            }),
+          onEachFeature: mode !== "routePlanning" ? (_f, l) => {
+            const label = isSubstation ? "Substation" : powerType === "cable" ? "Power cable" : "Power line";
+            const voltage = props.voltage ? `${escapePopupHtml(props.voltage)} V` : "";
+            const operator = props.operator ? escapePopupHtml(props.operator) : "";
+            const name = props.name ? escapePopupHtml(props.name) : "";
+            const rows = [
+              name && `<div><strong>${name}</strong></div>`,
+              operator && `<div style="color:#64748b;font-size:12px;">${operator}</div>`,
+              voltage && `<div style="font-size:12px;">${voltage}</div>`,
+            ].filter(Boolean).join("");
+            l.bindPopup(
+              `<div style="min-width:160px;"><strong>${label}</strong> <span style="color:#94a3b8;font-size:11px;">(OSM)</span>${rows ? `<div style="margin-top:4px;">${rows}</div>` : ""}</div>`,
+            );
+          } : undefined,
+        });
+      },
+    );
+
+    cache.cachedBounds = padded;
+    osmPowerZoomCache.set("osm-power", zoom);
+  } catch (err) {
+    console.error("[osm-power] fetch failed:", err);
+  }
+}

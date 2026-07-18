@@ -41,6 +41,7 @@ import {
   fetchDkDroneZones,
   fetchDkNatureAreas,
   fetchKraftledningerInBounds,
+  fetchOsmPowerLinesInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
   fetchUnifiedAirspaceZones,
@@ -1523,6 +1524,16 @@ export function OpenAIPMap({
             pane: 'powerPane',
             mode: modeRef.current,
           });
+          isUnifiedAirspaceEnabled().then((allowed) => {
+            if (!allowed) return;
+            fetchOsmPowerLinesInBounds({
+              layer: kraftledningerLayer,
+              bounds: map.getBounds(),
+              zoom: map.getZoom(),
+              pane: 'powerPane',
+              mode: modeRef.current,
+            });
+          });
         }
       }, 500);
     };
@@ -1978,6 +1989,17 @@ export function OpenAIPMap({
                 zoom: map.getZoom(),
                 pane: 'powerPane',
                 mode: modeRef.current,
+              });
+              // OSM Overpass fallback for DK/SE/DE/FI — gated by allowlist.
+              isUnifiedAirspaceEnabled().then((allowed) => {
+                if (!allowed) return;
+                fetchOsmPowerLinesInBounds({
+                  layer: layers[0] as L.LayerGroup,
+                  bounds: map.getBounds(),
+                  zoom: map.getZoom(),
+                  pane: 'powerPane',
+                  mode: modeRef.current,
+                });
               });
             } else {
               layers.forEach((l) => {
