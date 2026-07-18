@@ -41,6 +41,7 @@ import {
   fetchDkDroneZones,
   fetchDkNatureAreas,
   fetchKraftledningerInBounds,
+  fetchOsmPowerLinesInBounds,
   fetchAisVesselsInBounds,
   fetchNotams,
   fetchUnifiedAirspaceZones,
