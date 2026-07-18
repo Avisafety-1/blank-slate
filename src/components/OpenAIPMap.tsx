@@ -1169,6 +1169,7 @@ export function OpenAIPMap({
       kraftledningerLayer,
       naisLayer,
       routeProximityLayer,
+      unifiedRouteProximityLayer,
     ];
     syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
     if (routePointsRef.current.length > 0) {
