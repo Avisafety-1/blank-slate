@@ -31,7 +31,10 @@ const SE_AUTHORITY_RANK = 20;
 
 const UNIFIED_BATCH_SIZE = 500;
 const UNIFIED_MAX_SKIPPED_RATIO = 0.1;
-const WFS_PAGE_SIZE = 1000;
+// ArcGIS WFS-serveren returnerer maks 500 features per svar for GEOJSON,
+// og GeoJSON-utdata inneholder ikke numberMatched. Vi pager derfor til vi
+// får færre enn 500 tilbake.
+const WFS_PAGE_SIZE = 500;
 const MAX_PAGES = 40;
 
 function toStr(v: unknown): string | null {
