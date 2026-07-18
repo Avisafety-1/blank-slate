@@ -1,12 +1,17 @@
 // Sync svenske verneområder fra Naturvårdsverket WFS inn i unified airspace_zones.
 // Kilde: https://geodata.naturvardsverket.se/naturvardsregistret/wfs
-// FeatureType: Naturvardsregistret_WFS:SkyddadeOmraden (~10 700 polygoner)
+// FeatureType: Naturvardsregistret_WFS:SkyddadeOmraden
 // SKYDDSTYP-attributt skiller verneform (Naturreservat, Nationalpark, Natura 2000, ...).
+//
+// ArcGIS WFS-serveren stotter ikke palitelig startIndex-paging med GEOJSON
+// (returnerer trunkert eller malformet JSON pa store offsets), sa vi bruker
+// tiled BBOX-hentning som i sync-de-drone-zones. Sverige (55-70N, 10-25E)
+// deles i 1x1-graders ruter; hver rute returnerer opp til 500 features.
 //
 // Skriver til public.airspace_zones med source='naturvardsverket_se', country='SE',
 // layer_id='verneomrader', zone_type='NATURE', restriction_type='NATURE_SENSITIVE'.
-// Kartlaget "Verneområder" plukker opp radene automatisk for allowlist-selskaper
-// (Moderavdeling i C1) — ingen UI-endringer nødvendig.
+// Kartlaget "Verneomrader" plukker opp radene automatisk for allowlist-selskaper
+// (Moderavdeling i C1) - ingen UI-endringer nodvendig.
 
 import { createClient } from "npm:@supabase/supabase-js@2.81.0";
 import {
@@ -30,12 +35,14 @@ const SOURCE = "naturvardsverket_se";
 const SE_AUTHORITY_RANK = 20;
 
 const UNIFIED_BATCH_SIZE = 500;
-const UNIFIED_MAX_SKIPPED_RATIO = 0.1;
-// ArcGIS WFS-serveren returnerer maks 500 features per svar for GEOJSON,
-// og GeoJSON-utdata inneholder ikke numberMatched. Vi pager derfor til vi
-// får færre enn 500 tilbake.
-const WFS_PAGE_SIZE = 500;
-const MAX_PAGES = 40;
+const TILE_MAX_FEATURES = 500; // server-side cap for GEOJSON output
+
+// Sverige bounding box (approx landmass with buffer)
+const SE_MIN_LAT = 55;
+const SE_MAX_LAT = 70;
+const SE_MIN_LNG = 10;
+const SE_MAX_LNG = 25;
+const TILE_SIZE_DEG = 1;
 
 function toStr(v: unknown): string | null {
   if (v == null) return null;
@@ -43,8 +50,6 @@ function toStr(v: unknown): string | null {
   return s ? s : null;
 }
 
-// SKYDDSTYP → normalisert kategori (theme). Ingen egen layer_id per type i C1 —
-// alt havner på "verneomrader" for å matche eksisterende UI-knapp.
 function normalizeTheme(skyddstyp: string | null): string {
   if (!skyddstyp) return "Ukjent";
   const s = skyddstyp.toLowerCase();
@@ -52,16 +57,33 @@ function normalizeTheme(skyddstyp: string | null): string {
   if (s.includes("naturreservat")) return "Naturreservat";
   if (s.includes("natura")) return "Natura 2000";
   if (s.includes("biotopskydd")) return "Biotopskydd";
-  if (s.includes("djur") || s.includes("växtskydd") || s.includes("vaxtskydd"))
-    return "Djur- och växtskyddsområde";
-  if (s.includes("naturvårdsområde") || s.includes("naturvardsomrade"))
-    return "Naturvårdsområde";
+  if (s.includes("djur") || s.includes("vaxtskydd") || s.includes("växtskydd"))
+    return "Djur- och vaxtskyddsomrade";
+  if (s.includes("naturvardsomrade") || s.includes("naturvårdsområde"))
+    return "Naturvardsomrade";
   if (s.includes("landskapsbild")) return "Landskapsbildsskydd";
   if (s.includes("kultur")) return "Kulturreservat";
   return skyddstyp;
 }
 
-async function fetchPage(startIndex: number): Promise<{ features: any[]; matched: number }> {
+interface Tile { minLat: number; minLng: number; maxLat: number; maxLng: number; }
+
+function generateTiles(): Tile[] {
+  const tiles: Tile[] = [];
+  for (let lat = SE_MIN_LAT; lat < SE_MAX_LAT; lat += TILE_SIZE_DEG) {
+    for (let lng = SE_MIN_LNG; lng < SE_MAX_LNG; lng += TILE_SIZE_DEG) {
+      tiles.push({
+        minLat: lat, minLng: lng,
+        maxLat: lat + TILE_SIZE_DEG, maxLng: lng + TILE_SIZE_DEG,
+      });
+    }
+  }
+  return tiles;
+}
+
+async function fetchTile(tile: Tile): Promise<any[]> {
+  // bbox format for WFS 2.0: miny,minx,maxy,maxx,crs
+  const bbox = `${tile.minLat},${tile.minLng},${tile.maxLat},${tile.maxLng},urn:ogc:def:crs:EPSG::4326`;
   const params = new URLSearchParams({
     service: "WFS",
     version: "2.0.0",
@@ -69,8 +91,8 @@ async function fetchPage(startIndex: number): Promise<{ features: any[]; matched
     typeNames: TYPENAME,
     outputFormat: "GEOJSON",
     srsName: "urn:ogc:def:crs:EPSG::4326",
-    count: String(WFS_PAGE_SIZE),
-    startIndex: String(startIndex),
+    count: String(TILE_MAX_FEATURES),
+    bbox,
   });
   const url = `${WFS_URL}?${params.toString()}`;
   const res = await safeFetch(
@@ -80,62 +102,53 @@ async function fetchPage(startIndex: number): Promise<{ features: any[]; matched
   );
   if (!res.ok) throw new Error(`NV WFS HTTP ${res.status}`);
   const json = await res.json();
-  const features = Array.isArray(json?.features) ? json.features : [];
-  const matched = Number(json?.numberMatched ?? json?.totalFeatures ?? features.length);
-  return { features, matched };
+  return Array.isArray(json?.features) ? json.features : [];
 }
 
-function buildRows(features: any[]): { rows: any[]; skipped: number } {
-  const rows: any[] = [];
-  let skipped = 0;
-  for (let i = 0; i < features.length; i++) {
-    const f = features[i];
-    if (!f?.geometry) { skipped++; continue; }
-    const gt = f.geometry.type;
-    if (gt !== "Polygon" && gt !== "MultiPolygon") { skipped++; continue; }
-    const p = (f.properties ?? {}) as Record<string, unknown>;
-    const externalId =
-      toStr(p["NVRID"]) ??
-      toStr(p["OBJECTID"]) ??
-      toStr(p["GmlID"]) ??
-      toStr(f.id) ??
-      `nv:${i}`;
-    const skyddstyp = toStr(p["SKYDDSTYP"]);
-    const theme = normalizeTheme(skyddstyp);
-    const name = toStr(p["NAMN"]) ?? theme;
-    const status = toStr(p["BESLUTSSTATUS"]);
-    const active = !status || status.toLowerCase().startsWith("gäll") || status.toLowerCase().startsWith("gall");
-
-    rows.push({
-      country_code: "SE",
-      source: SOURCE,
-      external_id: externalId,
-      layer_id: "verneomrader",
-      zone_type: "NATURE",
-      restriction_type: "NATURE_SENSITIVE",
-      display_class: "GREEN",
-      theme,
-      name,
-      short_name: skyddstyp,
-      authority: "Naturvårdsverket",
-      lower_limit_m: null,
-      upper_limit_m: null,
-      lower_limit_raw: null,
-      upper_limit_raw: null,
-      altitude_reference: null,
-      valid_from: toStr(p["URSPR_GALLANDEDATUM"]) ?? toStr(p["SENASTE_GALLANDEDATUM"]),
-      valid_to: null,
-      active,
-      authority_rank: SE_AUTHORITY_RANK,
-      dedupe_key: `se:verneomrader:${externalId}`,
-      properties: { ...p, raw_source_layer: SOURCE, adapter_version: "c1" },
-      geometry: JSON.stringify(f.geometry),
-    });
-  }
-  return { rows, skipped };
+function buildRow(f: any): any | null {
+  if (!f?.geometry) return null;
+  const gt = f.geometry.type;
+  if (gt !== "Polygon" && gt !== "MultiPolygon") return null;
+  const p = (f.properties ?? {}) as Record<string, unknown>;
+  const externalId =
+    toStr(p["NVRID"]) ??
+    toStr(p["OBJECTID"]) ??
+    toStr(p["GmlID"]) ??
+    toStr(f.id);
+  if (!externalId) return null;
+  const skyddstyp = toStr(p["SKYDDSTYP"]);
+  const theme = normalizeTheme(skyddstyp);
+  const name = toStr(p["NAMN"]) ?? theme;
+  const status = toStr(p["BESLUTSSTATUS"]);
+  const active = !status || status.toLowerCase().startsWith("gall") || status.toLowerCase().startsWith("gäll");
+  return {
+    country_code: "SE",
+    source: SOURCE,
+    external_id: externalId,
+    layer_id: "verneomrader",
+    zone_type: "NATURE",
+    restriction_type: "NATURE_SENSITIVE",
+    display_class: "GREEN",
+    theme,
+    name,
+    short_name: skyddstyp,
+    authority: "Naturvardsverket",
+    lower_limit_m: null,
+    upper_limit_m: null,
+    lower_limit_raw: null,
+    upper_limit_raw: null,
+    altitude_reference: null,
+    valid_from: toStr(p["URSPR_GALLANDEDATUM"]) ?? toStr(p["SENASTE_GALLANDEDATUM"]),
+    valid_to: null,
+    active,
+    authority_rank: SE_AUTHORITY_RANK,
+    dedupe_key: `se:verneomrader:${externalId}`,
+    properties: { ...p, raw_source_layer: SOURCE, adapter_version: "c1-tiled" },
+    geometry: JSON.stringify(f.geometry),
+  };
 }
 
-async function upsertInBatches(supabase: any, rows: any[]) {
+async function upsertBatch(supabase: any, rows: any[]) {
   let upserted = 0, skipped = 0, batchFailures = 0;
   const errors: unknown[] = [];
   for (let i = 0; i < rows.length; i += UNIFIED_BATCH_SIZE) {
@@ -146,7 +159,7 @@ async function upsertInBatches(supabase: any, rows: any[]) {
       const res = (data ?? {}) as any;
       upserted += Number(res.upserted ?? 0);
       skipped += Number(res.skipped ?? 0);
-      if (Array.isArray(res.errors) && res.errors.length) errors.push(...res.errors.slice(0, 5));
+      if (Array.isArray(res.errors) && res.errors.length) errors.push(...res.errors.slice(0, 3));
     } catch (err) {
       batchFailures++;
       errors.push({ batch_start: i, error: String(err) });
@@ -163,10 +176,7 @@ async function startSyncRun(supabase: any): Promise<string | null> {
       .select("id").single();
     if (error) { console.warn("[nv-sync] startSyncRun:", error.message); return null; }
     return data.id;
-  } catch (err) {
-    console.warn("[nv-sync] startSyncRun threw:", err);
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function finishSyncRun(supabase: any, runId: string | null, patch: Record<string, unknown>) {
@@ -187,12 +197,11 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Chunk-parametere fra request body: gjør at vi kan orkestrere flere kall
-    // for å unngå CPU-limit på Edge Function når hele datasettet (~10-11k features) skal inn.
+    // Chunk-parametere: gjor at vi kan orkestrere flere kall for a unnga CPU-limit.
     let body: any = {};
-    try { body = await req.json(); } catch { /* ok */ }
-    const inputStart = Number(body?.startIndex ?? 0);
-    const maxPages = Math.max(1, Math.min(Number(body?.maxPages ?? 6), MAX_PAGES));
+    try { body = await req.json(); } catch {}
+    const tileStart = Math.max(0, Number(body?.tileStart ?? 0));
+    const tileCount = Math.max(1, Math.min(Number(body?.tileCount ?? 30), 300));
     const finalize = body?.finalize === true;
     const clientKeepIds: string[] = Array.isArray(body?.keepIds) ? body.keepIds : [];
 
@@ -206,40 +215,43 @@ Deno.serve(async (req) => {
 
     const runId = await startSyncRun(supabase);
 
-    let startIndex = inputStart;
+    const allTiles = generateTiles();
+    const tiles = allTiles.slice(tileStart, tileStart + tileCount);
+    const totalTiles = allTiles.length;
+
     let fetched = 0;
     let upserted = 0;
     let normalizeSkipped = 0;
     let rpcSkipped = 0;
     let batchFailures = 0;
+    let tilesAtCap = 0;
     const errors: unknown[] = [];
-    const chunkKeepIds: string[] = [];
-    let reachedEnd = false;
+    const chunkKeepIds = new Set<string>();
 
-    for (let page = 0; page < maxPages; page++) {
-      let pageRes: { features: any[]; matched: number };
+    for (let ti = 0; ti < tiles.length; ti++) {
+      const tile = tiles[ti];
+      let feats: any[];
       try {
-        pageRes = await fetchPage(startIndex);
+        feats = await fetchTile(tile);
       } catch (err) {
-        errors.push({ page, error: String(err).slice(0, 200) });
-        break;
+        errors.push({ tile: tileStart + ti, error: String(err).slice(0, 200) });
+        continue;
       }
-      const feats = pageRes.features;
       fetched += feats.length;
-
-      const { rows, skipped: nSkip } = buildRows(feats);
-      normalizeSkipped += nSkip;
+      if (feats.length >= TILE_MAX_FEATURES) tilesAtCap++;
+      const rows: any[] = [];
+      for (const f of feats) {
+        const r = buildRow(f);
+        if (r) { rows.push(r); chunkKeepIds.add(r.external_id); }
+        else normalizeSkipped++;
+      }
       if (rows.length > 0) {
-        for (const r of rows) if (r.external_id) chunkKeepIds.push(r.external_id);
-        const res = await upsertInBatches(supabase, rows);
+        const res = await upsertBatch(supabase, rows);
         upserted += res.upserted;
         rpcSkipped += res.skipped;
         batchFailures += res.batchFailures;
-        if (res.errors.length) errors.push(...res.errors.slice(0, 3));
+        if (res.errors.length) errors.push(...res.errors.slice(0, 2));
       }
-      console.log(`[nv-sync] chunk-start=${inputStart} page=${page} start=${startIndex} feats=${feats.length} upserted=${upserted}`);
-      startIndex += WFS_PAGE_SIZE;
-      if (feats.length < WFS_PAGE_SIZE) { reachedEnd = true; break; }
     }
 
     let deactivateResult: unknown = { skipped: true, reason: "not_finalize" };
@@ -253,6 +265,8 @@ Deno.serve(async (req) => {
       } catch (err) { deactivateResult = { error: String(err) }; }
     }
 
+    const nextTileStart = tileStart + tiles.length;
+    const reachedEnd = nextTileStart >= totalTiles;
     const status = batchFailures > 0 ? "failed" : "success";
     const deactivated = typeof (deactivateResult as any)?.deactivated === "number"
       ? (deactivateResult as any).deactivated : 0;
@@ -265,14 +279,17 @@ Deno.serve(async (req) => {
       deactivated_count: deactivated,
       error: errors.length ? JSON.stringify(errors).slice(0, 2000) : null,
       stats: {
-        chunk_start: inputStart,
-        next_start: startIndex,
+        tile_start: tileStart,
+        tile_count: tiles.length,
+        next_tile_start: nextTileStart,
+        total_tiles: totalTiles,
         reached_end: reachedEnd,
+        tiles_at_cap: tilesAtCap,
         finalize,
         batch_failures: batchFailures,
         deactivate: deactivateResult,
         normalize_skipped: normalizeSkipped,
-        chunk_keep_ids: chunkKeepIds.length,
+        chunk_keep_ids: chunkKeepIds.size,
       },
     });
 
@@ -280,15 +297,18 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: batchFailures === 0,
         source: SOURCE,
-        chunkStart: inputStart,
-        nextStart: startIndex,
+        tileStart,
+        tileCount: tiles.length,
+        nextTileStart,
+        totalTiles,
         reachedEnd,
+        tilesAtCap,
         finalize,
         fetched,
         upserted,
         skipped: normalizeSkipped + rpcSkipped,
         batch_failures: batchFailures,
-        keepIds: chunkKeepIds,
+        keepIds: Array.from(chunkKeepIds),
         deactivate: deactivateResult,
         errors: errors.slice(0, 5),
         synced_at: new Date().toISOString(),
