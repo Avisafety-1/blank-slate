@@ -110,8 +110,15 @@ Deno.serve(async (req) => {
   way["power"="substation"](${bbox});
 );out body geom;`;
 
-    const osm = await overpassQuery(query);
-    const geojson = osmToGeoJSON(osm);
+    const result = await overpassQuery(query);
+    if (!result.ok) {
+      // Rate-limited or upstream unavailable — return empty FC so map stays usable.
+      console.warn('[fetch-osm-power-lines] overpass unavailable', result.status, result.error);
+      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [], _upstream: result.status }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+      });
+    }
+    const geojson = osmToGeoJSON(result.data);
     return new Response(JSON.stringify(geojson), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
     });
