@@ -56,6 +56,7 @@ import {
   updateRouteProximityLayers,
   computeVesselScale,
 } from "@/lib/routeProximityLayers";
+import { updateUnifiedRouteProximityLayers } from "@/lib/unifiedRouteProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
@@ -305,12 +306,15 @@ export function OpenAIPMap({
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const unifiedRouteProximityLayerRef = useRef<L.LayerGroup | null>(null);
   const naisLayerRef = useRef<L.LayerGroup | null>(null);
   const obstaclesLayerRef = useRef<L.LayerGroup | null>(null);
   const routePlanningInteractiveLayerRefs = useRef<L.Layer[]>([]);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
   const routeProximityDebounceRef = useRef<number | null>(null);
+  const unifiedRouteProximityAbortRef = useRef<AbortController | null>(null);
+  const unifiedRouteProximityDebounceRef = useRef<number | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
@@ -978,10 +982,15 @@ export function OpenAIPMap({
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.7,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
+    // GISCO WMS backend støtter kun EPSG:4326 for PopulationGrid2021
+    // (EPSG:3857 returnerer ServiceException). Tvinger Leaflet til å be
+    // om tiles i EPSG:4326 selv om kartet er 3857.
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
-      attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
+      attribution: '© European Commission – Eurostat (GISCO)', version: "1.1.1",
       minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
+      uppercase: true,
+      crs: L.CRS.EPSG4326,
     } as any);
 
     // SSB Tettsteder
@@ -1125,6 +1134,8 @@ export function OpenAIPMap({
     routeLayerRef.current = routeLayer;
     const routeProximityLayer = L.layerGroup().addTo(map);
     routeProximityLayerRef.current = routeProximityLayer;
+    const unifiedRouteProximityLayer = L.layerGroup().addTo(map);
+    unifiedRouteProximityLayerRef.current = unifiedRouteProximityLayer;
     routePlanningInteractiveLayerRefs.current = [
       rpasLayer,
       nsmLayer,
@@ -1158,6 +1169,7 @@ export function OpenAIPMap({
       kraftledningerLayer,
       naisLayer,
       routeProximityLayer,
+      unifiedRouteProximityLayer,
     ];
     syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
     if (routePointsRef.current.length > 0) {
@@ -1765,6 +1777,48 @@ export function OpenAIPMap({
     };
   }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
 
+  // Auto-vis unified airspace + DK-natur langs ruten (DK/SE/DE/FI).
+  // Gated av `isUnifiedAirspaceEnabled()` — no-op utenfor Moderavdeling.
+  useEffect(() => {
+    const layer = unifiedRouteProximityLayerRef.current;
+    if (!layer) return;
+
+    if (unifiedRouteProximityDebounceRef.current !== null) {
+      window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+      unifiedRouteProximityDebounceRef.current = null;
+    }
+
+    const coords = routePointsRef.current;
+    if (coords.length < 2) {
+      try { layer.clearLayers(); } catch {}
+      unifiedRouteProximityAbortRef.current?.abort();
+      unifiedRouteProximityAbortRef.current = null;
+      return;
+    }
+
+    unifiedRouteProximityDebounceRef.current = window.setTimeout(() => {
+      unifiedRouteProximityAbortRef.current?.abort();
+      const controller = new AbortController();
+      unifiedRouteProximityAbortRef.current = controller;
+      updateUnifiedRouteProximityLayers({
+        layer,
+        coordinates: [...coords],
+        signal: controller.signal,
+      })
+        .then(() => {
+          syncRoutePlanningInteractivity(modeRef.current, routeInspectModeRef.current);
+        })
+        .catch(() => { /* swallow */ });
+    }, 300);
+
+    return () => {
+      if (unifiedRouteProximityDebounceRef.current !== null) {
+        window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+        unifiedRouteProximityDebounceRef.current = null;
+      }
+    };
+  }, [routePointCount, routeUndoToken, controlledRoute, existingRoute]);
+
   // Cleanup proximity layer on unmount
   useEffect(() => {
     return () => {
@@ -1776,6 +1830,14 @@ export function OpenAIPMap({
       }
       try { routeProximityLayerRef.current?.clearLayers(); } catch {}
       routeProximityLayerRef.current = null;
+      unifiedRouteProximityAbortRef.current?.abort();
+      unifiedRouteProximityAbortRef.current = null;
+      if (unifiedRouteProximityDebounceRef.current !== null) {
+        window.clearTimeout(unifiedRouteProximityDebounceRef.current);
+        unifiedRouteProximityDebounceRef.current = null;
+      }
+      try { unifiedRouteProximityLayerRef.current?.clearLayers(); } catch {}
+      unifiedRouteProximityLayerRef.current = null;
     };
   }, []);
 
