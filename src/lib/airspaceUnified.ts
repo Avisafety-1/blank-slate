@@ -203,13 +203,18 @@ export async function fetchUnifiedZonesForRoute(
     const routeGeoJson = buildLineStringGeoJson(routePoints);
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), UNIFIED_RPC_TIMEOUT_MS);
-    const { data, error } = await supabase
-      .rpc("airspace_zones_intersecting_route", {
+    let response: { data: any; error: any };
+    try {
+      response = await supabase.rpc("airspace_zones_intersecting_route", {
         p_route: routeGeoJson as any,
         p_buffer_m: safeBuffer,
         p_country_codes: [country],
-      }, { signal: controller.signal } as any)
-      .finally(() => window.clearTimeout(timeoutId));
+      }, { signal: controller.signal } as any) as any;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+
+    const { data, error } = response;
 
     if (error || !Array.isArray(data)) return [];
 
