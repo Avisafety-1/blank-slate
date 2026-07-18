@@ -978,10 +978,15 @@ export function OpenAIPMap({
       layers: "befolkning_1km_2025", format: "image/png", transparent: true, opacity: 0.7,
       attribution: 'Befolkning 1km² © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
+    // GISCO WMS backend støtter kun EPSG:4326 for PopulationGrid2021
+    // (EPSG:3857 returnerer ServiceException). Tvinger Leaflet til å be
+    // om tiles i EPSG:4326 selv om kartet er 3857.
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", format: "image/png", transparent: true, opacity: 0.6,
-      attribution: '© European Commission – Eurostat (GISCO)', version: "1.3.0",
+      attribution: '© European Commission – Eurostat (GISCO)', version: "1.1.1",
       minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
+      uppercase: true,
+      crs: L.CRS.EPSG4326,
     } as any);
 
     // SSB Tettsteder
