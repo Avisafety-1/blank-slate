@@ -45,7 +45,7 @@ type Bounds = {
 // country lookups while avoiding false negatives near borders.
 const COUNTRY_BOUNDS: Record<UnifiedCountry, Bounds> = {
   DK: { minLng: 7.5, minLat: 54.4, maxLng: 15.8, maxLat: 58.2 },
-  SE: { minLng: 10.0, minLat: 55.0, maxLng: 25.8, maxLat: 69.4 },
+  SE: { minLng: 10.85, minLat: 55.0, maxLng: 25.8, maxLat: 69.4 },
   DE: { minLng: 5.5, minLat: 47.0, maxLng: 15.7, maxLat: 55.4 },
   FI: { minLng: 19.0, minLat: 59.5, maxLng: 32.2, maxLat: 70.3 },
 };
