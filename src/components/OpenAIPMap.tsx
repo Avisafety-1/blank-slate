@@ -1980,6 +1980,17 @@ export function OpenAIPMap({
                 pane: 'powerPane',
                 mode: modeRef.current,
               });
+              // OSM Overpass fallback for DK/SE/DE/FI — gated by allowlist.
+              isUnifiedAirspaceEnabled().then((allowed) => {
+                if (!allowed) return;
+                fetchOsmPowerLinesInBounds({
+                  layer: layers[0] as L.LayerGroup,
+                  bounds: map.getBounds(),
+                  zoom: map.getZoom(),
+                  pane: 'powerPane',
+                  mode: modeRef.current,
+                });
+              });
             } else {
               layers.forEach((l) => {
                 if ('clearLayers' in l) (l as L.LayerGroup).clearLayers();
