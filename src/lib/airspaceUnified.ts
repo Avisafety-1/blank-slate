@@ -45,7 +45,7 @@ type Bounds = {
 // country lookups while avoiding false negatives near borders.
 const COUNTRY_BOUNDS: Record<UnifiedCountry, Bounds> = {
   DK: { minLng: 7.5, minLat: 54.4, maxLng: 15.8, maxLat: 58.2 },
-  SE: { minLng: 10.0, minLat: 55.0, maxLng: 25.8, maxLat: 69.4 },
+  SE: { minLng: 10.85, minLat: 55.0, maxLng: 25.8, maxLat: 69.4 },
   DE: { minLng: 5.5, minLat: 47.0, maxLng: 15.7, maxLat: 55.4 },
   FI: { minLng: 19.0, minLat: 59.5, maxLng: 32.2, maxLat: 70.3 },
 };
@@ -202,17 +202,20 @@ export async function fetchUnifiedZonesForRoute(
   try {
     const routeGeoJson = buildLineStringGeoJson(routePoints);
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), UNIFIED_RPC_TIMEOUT_MS);
-    let response: { data: any; error: any };
-    try {
-      response = await supabase.rpc("airspace_zones_intersecting_route", {
-        p_route: routeGeoJson as any,
-        p_buffer_m: safeBuffer,
-        p_country_codes: [country],
-      }, { signal: controller.signal } as any) as any;
-    } finally {
-      window.clearTimeout(timeoutId);
-    }
+    const timeoutId = globalThis.setTimeout(() => controller.abort(), UNIFIED_RPC_TIMEOUT_MS);
+    const response = await (async (): Promise<{ data: any; error: any }> => {
+      try {
+        return await (supabase
+          .rpc("airspace_zones_intersecting_route", {
+            p_route: routeGeoJson as any,
+            p_buffer_m: safeBuffer,
+            p_country_codes: [country],
+          }) as any)
+          .abortSignal(controller.signal);
+      } finally {
+        globalThis.clearTimeout(timeoutId);
+      }
+    })();
 
     const { data, error } = response;
 
