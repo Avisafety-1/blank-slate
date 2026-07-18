@@ -305,12 +305,15 @@ export function OpenAIPMap({
   const populationDensityLayerRef = useRef<L.LayerGroup | null>(null);
   const populationDensityRendererRef = useRef<L.Renderer | null>(null);
   const routeProximityLayerRef = useRef<L.LayerGroup | null>(null);
+  const unifiedRouteProximityLayerRef = useRef<L.LayerGroup | null>(null);
   const naisLayerRef = useRef<L.LayerGroup | null>(null);
   const obstaclesLayerRef = useRef<L.LayerGroup | null>(null);
   const routePlanningInteractiveLayerRefs = useRef<L.Layer[]>([]);
   const routeProximityCacheRef = useRef(createProximityCache());
   const routeProximityAbortRef = useRef<AbortController | null>(null);
   const routeProximityDebounceRef = useRef<number | null>(null);
+  const unifiedRouteProximityAbortRef = useRef<AbortController | null>(null);
+  const unifiedRouteProximityDebounceRef = useRef<number | null>(null);
   const adjacentAreaRadiusMRef = useRef(adjacentAreaRadiusM);
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
