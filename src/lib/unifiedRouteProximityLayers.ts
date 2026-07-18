@@ -198,27 +198,31 @@ export async function updateUnifiedRouteProximityLayers(
   const [unifiedRes, dkNatureRes] = await Promise.all([
     wantUnified
       ? withTimeout(
-          supabase.rpc("airspace_zones_in_bbox", {
-            p_min_lng: bbox.minLng,
-            p_min_lat: bbox.minLat,
-            p_max_lng: bbox.maxLng,
-            p_max_lat: bbox.maxLat,
-            p_zone_types: null,
-            p_country_codes: countries,
-            p_layer_ids: null,
-          }),
+          Promise.resolve(
+            supabase.rpc("airspace_zones_in_bbox", {
+              p_min_lng: bbox.minLng,
+              p_min_lat: bbox.minLat,
+              p_max_lng: bbox.maxLng,
+              p_max_lat: bbox.maxLat,
+              p_zone_types: null,
+              p_country_codes: countries,
+              p_layer_ids: null,
+            }),
+          ),
           RPC_TIMEOUT_MS,
         ).catch(() => ({ data: [], error: null } as any))
       : Promise.resolve({ data: [], error: null } as any),
     wantDkNature
       ? withTimeout(
-          supabase.rpc("get_dk_nature_areas_in_bounds", {
-            min_lat: bbox.minLat,
-            min_lng: bbox.minLng,
-            max_lat: bbox.maxLat,
-            max_lng: bbox.maxLng,
-            p_include_inactive: true,
-          }),
+          Promise.resolve(
+            supabase.rpc("get_dk_nature_areas_in_bounds", {
+              min_lat: bbox.minLat,
+              min_lng: bbox.minLng,
+              max_lat: bbox.maxLat,
+              max_lng: bbox.maxLng,
+              p_include_inactive: true,
+            }),
+          ),
           RPC_TIMEOUT_MS,
         ).catch(() => ({ data: [], error: null } as any))
       : Promise.resolve({ data: [], error: null } as any),
