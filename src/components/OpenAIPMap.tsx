@@ -56,6 +56,7 @@ import {
   updateRouteProximityLayers,
   computeVesselScale,
 } from "@/lib/routeProximityLayers";
+import { updateUnifiedRouteProximityLayers } from "@/lib/unifiedRouteProximityLayers";
 
 const DEFAULT_POS: [number, number] = [63.7, 9.6];
 const TENSIO_WMS_URL = "https://tensio-prod-k8s10.cloudgis.no/arcgis/services/luftnett/luftnett/MapServer/WMSServer";
