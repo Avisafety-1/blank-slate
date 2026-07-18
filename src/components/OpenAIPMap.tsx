@@ -1134,6 +1134,8 @@ export function OpenAIPMap({
     routeLayerRef.current = routeLayer;
     const routeProximityLayer = L.layerGroup().addTo(map);
     routeProximityLayerRef.current = routeProximityLayer;
+    const unifiedRouteProximityLayer = L.layerGroup().addTo(map);
+    unifiedRouteProximityLayerRef.current = unifiedRouteProximityLayer;
     routePlanningInteractiveLayerRefs.current = [
       rpasLayer,
       nsmLayer,
