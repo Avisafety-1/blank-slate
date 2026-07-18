@@ -20,8 +20,9 @@ function bboxInSupportedCountry(south: number, west: number, north: number, east
   return COUNTRY_BOUNDS.some(([s, w, n, e]) => south <= n && north >= s && west <= e && east >= w);
 }
 
-async function overpassQuery(query: string): Promise<any> {
-  let lastErr: unknown = null;
+async function overpassQuery(query: string): Promise<{ ok: true; data: any } | { ok: false; status: number; error: string }> {
+  let lastStatus = 0;
+  let lastErr = '';
   for (const url of OVERPASS_ENDPOINTS) {
     try {
       const res = await fetch(url, {
@@ -29,16 +30,18 @@ async function overpassQuery(query: string): Promise<any> {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`,
       });
-      if (!res.ok) {
-        lastErr = new Error(`${url} HTTP ${res.status}`);
-        continue;
-      }
-      return await res.json();
+      if (res.ok) return { ok: true, data: await res.json() };
+      lastStatus = res.status;
+      lastErr = `${url} HTTP ${res.status}`;
+      // On rate-limit / server errors, try next endpoint
+      if (res.status === 429 || res.status >= 500) continue;
+      // Other errors: stop trying
+      break;
     } catch (err) {
-      lastErr = err;
+      lastErr = String(err);
     }
   }
-  throw lastErr ?? new Error('All Overpass endpoints failed');
+  return { ok: false, status: lastStatus, error: lastErr };
 }
 
 function osmToGeoJSON(osm: any) {
@@ -107,8 +110,15 @@ Deno.serve(async (req) => {
   way["power"="substation"](${bbox});
 );out body geom;`;
 
-    const osm = await overpassQuery(query);
-    const geojson = osmToGeoJSON(osm);
+    const result = await overpassQuery(query);
+    if (!result.ok) {
+      // Rate-limited or upstream unavailable — return empty FC so map stays usable.
+      console.warn('[fetch-osm-power-lines] overpass unavailable', result.status, result.error);
+      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [], _upstream: result.status }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
+      });
+    }
+    const geojson = osmToGeoJSON(result.data);
     return new Response(JSON.stringify(geojson), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=600' },
     });
