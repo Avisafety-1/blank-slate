@@ -1524,6 +1524,16 @@ export function OpenAIPMap({
             pane: 'powerPane',
             mode: modeRef.current,
           });
+          isUnifiedAirspaceEnabled().then((allowed) => {
+            if (!allowed) return;
+            fetchOsmPowerLinesInBounds({
+              layer: kraftledningerLayer,
+              bounds: map.getBounds(),
+              zoom: map.getZoom(),
+              pane: 'powerPane',
+              mode: modeRef.current,
+            });
+          });
         }
       }, 500);
     };
