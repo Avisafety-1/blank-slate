@@ -1,51 +1,61 @@
-## Funn
+## Mål
 
-- Den nye `airspace_zones_intersecting_route`-RPC-en er ikke treg alene i test: typiske DE-ruter svarte på ca. 35–120 ms.
-- Timeouten ser derfor ikke ut som «bare manglende indeks» i denne RPC-en.
-- Den faktiske oppdragskort-/dialog-komponenten gjør først legacy `check_mission_airspace`, og deretter gjør den unified-sjekken sekvensielt per land: `DK`, `SE`, `DE`, `FI`.
-- Nettverksloggen viser mange parallelle/repeterte kall mot `airspace_zones_intersecting_route`, og flere timeouter spesielt når ruter sjekkes mot land de ikke ligger i. Dette skaper venting uten nytte.
-- `check_mission_airspace` har `statement_timeout = 8s` og er fortsatt NO/legacy-orientert. Unified-data ligger i separat RPC og er bare allowlistet for Moderavdeling.
+1. Auto-avdekk underliggende kartlag når man tegner en rute i DK/SE/DE/FI (samme oppførsel som i Norge i dag).
+2. Fikse Eurostat befolkningstetthets-laget slik at det vises når man aktiverer det manuelt fra lag-menyen.
 
-## Plan
+Ingenting endres for Norge eller for selskaper utenfor "Moderavdeling"-allowlisten.
 
-1. **Behold Norge og eksisterende brukere urørt**
-   - Ikke endre `check_mission_airspace` sin legacy-logikk for NO.
-   - Ikke aktivere unified for andre selskaper enn allowlistet Moderavdeling.
-   - Ikke fjerne eller endre eksisterende norske kartlag/advarsler.
+---
 
-2. **Stopp unødvendige land-sjekker i frontend**
-   - I `src/lib/airspaceUnified.ts`: legg til en enkel bounding-box/country prefilter for `DK`, `SE`, `DE`, `FI`.
-   - Hvis ruten åpenbart ikke overlapper landet, returner `[]` uten Supabase-RPC.
-   - Dette vil hindre at en rute i Tyskland sjekkes mot DK/SE/FI, og at norske ruter sjekkes mot alle unified-land.
+## Del 1 — Fikse Eurostat WMS-lag
 
-3. **Gjør unified-rutekall mer robust**
-   - Kjør bare relevante unified-land, og helst samlet/avgrenset der det er mulig.
-   - Legg inn kort klient-timeout/fail-soft rundt unified-kall, slik at lagring/visning ikke henger selv om én unified-sjekk er treg.
-   - Fortsett å ignorere unified-feil for alle utenfor Moderavdeling.
+**Rotårsak (verifisert):** GISCO WMS-endepunktet `PopulationGrid2021` returnerer `ServiceException` når Leaflet ber om `EPSG:3857` (server-side kilde svarer ikke). Samme forespørsel i `EPSG:4326` gir gyldig PNG. Leaflets `L.tileLayer.wms` bruker `EPSG:3857` som standard på en 3857-basert kart-CRS, derfor blir laget usynlig når det skrus på.
 
-4. **Optimaliser RPC-en litt mer målrettet**
-   - Oppdater `airspace_zones_intersecting_route` med en bbox-prefilter før `ST_DWithin(...::geography...)`, slik PostGIS kan bruke `geom` GIST-indeksen først.
-   - Behold eksisterende geography-indeks og dedupe-indeks.
-   - Dette er en trygg forbedring selv om hovedårsaken virker å være for mange irrelevante kall.
+**Fiks i `src/components/OpenAIPMap.tsx`:**
+- Endre `eurostatPopLayer`-definisjonen (rundt linje 981) til å tvinge `crs: L.CRS.EPSG4326` og bruke `version: "1.1.1"` + `uppercase: true`, så tile-URL-en spør EC-tjenesten i den CRS-en den faktisk klarer å levere.
+- Beholde `opacity`, `minZoom` og `maxNativeZoom` som i dag.
+- Ingen endring på SSB-laget (Norge).
 
-5. **Valider med reelle eksempler**
-   - Kjør `EXPLAIN ANALYZE` for tysk rute mot `DE` før/etter RPC-endringen.
-   - Test at ruter utenfor DE ikke lenger sender DE-RPC fra klientlogikken.
-   - Test at NO/legacy `check_mission_airspace` fortsatt fungerer uendret.
+## Del 2 — Auto-avdekk lag ved rute-tegning i DK/SE/DE/FI
 
-## Teknisk detalj
+Norge har i dag `updateRouteProximityLayers` i `src/lib/routeProximityLayers.ts` som ved rute-endring henter en 500 m bbox og viser vernområder, CAA-soner, kraftledninger og AIS uansett om laget er huket av. Vi utvider samme mønster til unified-landene, med samme gating som allerede finnes (`is_unified_airspace_enabled_for_me()` + NO ekskludert).
 
-Foreslått RPC-filter:
+**Nye kilder som skal auto-avdekkes langs rute i unified-land:**
+- Unified airspace-soner (`airspace_zones_intersecting_route` — allerede optimalisert med bbox-prefilter og timeout).
+- Natur/verneområder for DK (`dk_nature_areas`) og DE (`airspace_zones` med `zone_type` = nature).
+- Eurostat befolknings-cell overlay: n/a — vi lar WMS-laget selv håndtere visning (fikset i Del 1).
 
-```sql
-AND z.geom && ST_Expand(v_route, degrees_for_buffer)
-AND ST_DWithin(z.geom::geography, v_route::geography, v_buffer)
-```
+**Implementasjon:**
 
-Foreslått frontend-filter:
+1. **Ny hjelperfunksjon `updateUnifiedRouteProximityLayers`** i `src/lib/routeProximityLayers.ts` (eller ny fil `unifiedRouteProximityLayers.ts` for å holde Norge-koden ren):
+   - Input: `map`, dedikert `L.LayerGroup` for unified-proximity, `coordinates`, `signal`, `activeManualLayers`-hint.
+   - Bruker `getUnifiedCountriesForRoute()` fra `src/lib/airspaceUnified.ts` for å bare treffe relevante land.
+   - Kaller `airspace_zones_intersecting_route` (uten dedup i UI — samme RPC som warnings bruker) og renderer polygoner med `PANE = "routeProximityPane"` og "auto-vist"-badge i popup.
+   - Kaller `dk_nature_areas_in_bounds` (eksisterende RPC) for DK-natur når DK er relevant.
+   - Skipper kilder som er aktive manuelt (samme `activeManualLayers`-mønster som i dag).
+   - Timeout og AbortSignal som eksisterende funksjon.
 
-```ts
-const countries = UNIFIED_COUNTRIES.filter(country => routeMayIntersectCountry(country, routePoints, bufferM));
-```
+2. **Wiring i `src/components/OpenAIPMap.tsx`:**
+   - Legge til en `unifiedRouteProximityLayerRef` (egen `L.LayerGroup`, egen cache/abort) parallelt med eksisterende `routeProximityLayerRef`.
+   - Trigges av samme rute-endrings-effekt som Norge-proximity, men bak samme gate som `AirspaceWarnings` bruker: `is_unified_airspace_enabled_for_me()` cache + minst ett unified-land i rutas bbox.
+   - Ved rute-clear eller ingen relevante land: `layer.clearLayers()`.
 
-Dette angriper timeouten på to nivåer: færre RPC-kall fra UI, og raskere kandidatutvalg i databasen.
+3. **Ingen endringer i map-lag-listen eller default toggles** — laget er en implisitt "route drawn"-overlay, akkurat som i Norge.
+
+## Ikke inkludert / bevisst utelatt
+
+- Ingen endring for NO-brukere eller selskaper utenfor allowlist.
+- Ingen ny database-migration; alt bygger på eksisterende RPC-er.
+- SE/FI får kun unified-airspace auto-reveal (vi har ikke egne natur-tabeller for disse i dag).
+- Ingen endring i `AirspaceWarnings`-panelet — det er allerede riktig.
+
+## Filer som endres
+
+- `src/components/OpenAIPMap.tsx` — Eurostat CRS-fix + wiring av unified route-proximity effekt/ref.
+- `src/lib/routeProximityLayers.ts` (eller ny søsterfil) — ny `updateUnifiedRouteProximityLayers` + rendering-hjelpere.
+
+## Verifisering
+
+- Manuell test i "Moderavdeling": tegn rute i DE → se at unified airspace-polygoner dukker opp langs ruten uten å skru på laget.
+- Skru på "Befolkning" fra lag-menyen mens kartet er over Tyskland → Eurostat-ruter skal males på.
+- Norsk konto: tegn rute i Norge → ingen atferdsendring, ingen ekstra RPC-kall.
