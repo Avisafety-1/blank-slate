@@ -21,118 +21,89 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const allObstacles: any[] = [];
-    let page = 1;
-    const limit = 100;
-    let hasMore = true;
-
-    while (hasMore) {
-      const url = `https://api.core.openaip.net/api/obstacles?country=NO&limit=${limit}&page=${page}`;
-      console.log(`Fetching obstacles page ${page}: ${url}`);
-
-      const response = await fetch(url, {
-        headers: {
-          "x-openaip-api-key": OPENAIP_API_KEY,
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAIP API error ${response.status}: ${errorText}`);
+    let countries: string[] = ["NO", "DK", "SE", "DE", "FI"];
+    try {
+      if (req.method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        if (Array.isArray(body?.countries) && body.countries.length > 0) {
+          countries = body.countries.map((c: string) => c.toUpperCase());
+        }
       }
+    } catch (_) { /* ignore */ }
 
-      const data = await response.json();
-      const items = data.items || [];
-      allObstacles.push(...items);
-
-      console.log(`Page ${page}: got ${items.length} obstacles`);
-
-      if (items.length < limit) {
-        hasMore = false;
-      } else {
-        page++;
-      }
-    }
-
-    console.log(`Total obstacles fetched: ${allObstacles.length}`);
+    const limit = 1000;
 
     // Obstacle type mapping
     const obstacleTypeMap: Record<number, string> = {
-      0: "other",
-      1: "cable",
-      2: "tower",
-      3: "chimney",
-      4: "mast",
-      5: "wind_turbine",
-      6: "building",
-      7: "church",
-      8: "bridge",
-      9: "natural",
-      10: "pole",
-      11: "catenary",
-      12: "antenna",
+      0: "other", 1: "cable", 2: "tower", 3: "chimney", 4: "mast",
+      5: "wind_turbine", 6: "building", 7: "church", 8: "bridge",
+      9: "natural", 10: "pole", 11: "catenary", 12: "antenna",
     };
 
+    let totalFetched = 0;
     let synced = 0;
     let errors = 0;
 
-    for (const obstacle of allObstacles) {
-      try {
-        const openaipId = obstacle._id;
-        const name = obstacle.name || null;
-        const geometry = obstacle.geometry;
-
-        if (!geometry || !geometry.coordinates) {
-          continue;
-        }
-
-        const [lng, lat] = geometry.coordinates;
-        const obstacleType = obstacleTypeMap[obstacle.type] || "other";
-        const elevation = obstacle.elevation?.value ?? null;
-        const heightAgl = obstacle.heightAgl?.value ?? null;
-
-        const { error: upsertError } = await supabase
-          .from("openaip_obstacles")
-          .upsert(
-            {
-              openaip_id: openaipId,
-              name,
-              type: obstacleType,
-              geometry: `SRID=4326;POINT(${lng} ${lat})`,
-              elevation,
-              height_agl: heightAgl,
-              properties: {
-                openaip_type: obstacle.type,
-                country: obstacle.country,
-                lighted: obstacle.lighted,
-              },
-              synced_at: new Date().toISOString(),
+    const upsertBatch = async (items: any[]) => {
+      const rows = items
+        .map((o) => {
+          const g = o.geometry;
+          if (!g?.coordinates) return null;
+          const [lng, lat] = g.coordinates;
+          return {
+            openaip_id: o._id,
+            name: o.name || null,
+            type: obstacleTypeMap[o.type] || "other",
+            geometry: `SRID=4326;POINT(${lng} ${lat})`,
+            elevation: o.elevation?.value ?? null,
+            height_agl: o.heightAgl?.value ?? o.height?.value ?? null,
+            properties: {
+              openaip_type: o.type,
+              country: o.country,
+              lighted: o.lighted,
             },
-            { onConflict: "openaip_id" }
-          );
+            synced_at: new Date().toISOString(),
+          };
+        })
+        .filter(Boolean) as any[];
 
-        if (upsertError) {
-          console.error(`Error upserting obstacle ${openaipId}: ${upsertError.message}`);
-          errors++;
-        } else {
-          synced++;
+      if (rows.length === 0) return;
+      const { error } = await supabase
+        .from("openaip_obstacles")
+        .upsert(rows, { onConflict: "openaip_id" });
+      if (error) {
+        console.error(`Batch upsert error: ${error.message}`);
+        errors += rows.length;
+      } else {
+        synced += rows.length;
+      }
+    };
+
+    for (const country of countries) {
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const url = `https://api.core.openaip.net/api/obstacles?country=${country}&limit=${limit}&page=${page}`;
+        console.log(`[${country}] page ${page}`);
+        const response = await fetch(url, {
+          headers: { "x-openaip-api-key": OPENAIP_API_KEY, Accept: "application/json" },
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`OpenAIP API error ${response.status} for ${country}: ${errorText}`);
         }
-      } catch (err) {
-        errors++;
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`Obstacle error: ${msg}`);
+        const data = await response.json();
+        const items = data.items || [];
+        totalFetched += items.length;
+        await upsertBatch(items);
+        console.log(`[${country}] page ${page}: ${items.length} (synced=${synced})`);
+        if (items.length < limit) hasMore = false;
+        else page++;
       }
     }
 
-    const summary = {
-      total_fetched: allObstacles.length,
-      synced,
-      errors,
-    };
-
-    console.log(`Obstacles sync complete: ${synced} synced, ${errors} errors`);
-
+    const summary = { total_fetched: totalFetched, synced, errors };
+    console.log(`Done: ${JSON.stringify(summary)}`);
     return new Response(JSON.stringify(summary), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
