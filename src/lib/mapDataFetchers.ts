@@ -1924,8 +1924,6 @@ const UNIFIED_COLORS: Record<string, string> = {
   INFO: "#6b7280",
 };
 
-import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
-
 function buildUnifiedZonePopup(zone: any): string {
   return buildUnifiedZonePopupHtml(zone);
 }
