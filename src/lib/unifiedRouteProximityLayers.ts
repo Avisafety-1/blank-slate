@@ -16,6 +16,7 @@ import {
   getUnifiedCountriesForRoute,
   isUnifiedAirspaceEnabled,
 } from "@/lib/airspaceUnified";
+import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
 import type { RoutePoint } from "@/types/map";
 
 const PANE = "routeProximityPane";
@@ -108,12 +109,7 @@ function renderUnifiedZones(layer: L.LayerGroup, rows: UnifiedZoneRow[]) {
     const restriction = String(zone.restriction_type || "INFO").toUpperCase();
     const color = UNIFIED_COLORS[restriction] || "#dc2626";
     const isNature = restriction === "NATURE_SENSITIVE";
-    const name = zone.name || zone.short_name || zone.zone_type || "";
-    const limits =
-      zone.upper_limit_m != null || zone.lower_limit_m != null
-        ? `<div style="font-size:11px;color:#64748b;">${escapeHtml(zone.lower_limit_m ?? "GND")} – ${escapeHtml(zone.upper_limit_m ?? "UNL")} m</div>`
-        : "";
-    const popup = `<div style="min-width:180px;"><strong>${isNature ? "🌿" : "⚠️"} ${escapeHtml(zone.zone_type || restriction)}</strong><br/><strong>${escapeHtml(name)}</strong> <span style="font-size:11px;color:#64748b;">(${escapeHtml(zone.country_code)})</span>${limits}${autoBadge()}</div>`;
+    const popup = buildUnifiedZonePopupHtml(zone as any, { extraBadgeHtml: autoBadge() });
     try {
       L.geoJSON(
         { type: "Feature", geometry: zone.geometry_geojson, properties: {} } as any,

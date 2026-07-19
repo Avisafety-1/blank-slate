@@ -3240,6 +3240,37 @@
           "toTopo": "Bytt til topografisk kart",
           "toStandard": "Bytt til standard kart",
           "baseAria": "Bytt grunnkart"
+        },
+        "unified": {
+          "source": "Kilde",
+          "unknownZone": "Ukjent sone",
+          "area": "Areal",
+          "managedBy": "Forvaltet av",
+          "protectedSince": "Vernet",
+          "validFrom": "Gjelder fra",
+          "moreInfo": "Mer info hos Naturvårdsverket",
+          "moreInfoLfv": "Mer info hos LFV",
+          "restriction": {
+            "PROHIBITED": "Forbudt område",
+            "RESTRICTED": "Restriksjonsområde",
+            "APPROVAL_REQUIRED": "Krever tillatelse fra flygekontroll",
+            "NOTIFICATION": "Notifikasjonspliktig",
+            "CAUTION": "Forsiktighet påkrevd",
+            "NATURE_SENSITIVE": "Naturvernområde – vis hensyn til dyre- og fugleliv",
+            "INFO": "Informasjon"
+          },
+          "lfv": {
+            "template": {
+              "CTR": "Kontrollzone. Flyging nærmere enn 5 km fra rullebanen krever tillatelse fra flygekontrolltjenesten. Utenfor 5 km og under 50 m AGL: tillatt for droner ≤ 7 kg og hastighet < 90 km/t.",
+              "TIZ": "Trafikkinformasjonszone. Krever kontakt/tillatelse med AFIS/lufthavnpersonell før flyging.",
+              "TIA": "Trafikkinformasjonsområde. Kontakt med AFIS anbefalt.",
+              "RMZ": "Radiokommunikasjonspliktig sone. Toveis radio med tjenesteenhet påkrevd.",
+              "TMZ": "Transponderpliktig sone. Krever transponder eller særskilt klarering.",
+              "R": "Restriksjonsområde – flyging kun tillatt på bestemte vilkår (se AIP/NOTAM).",
+              "D": "Fareområde – aktiviteter som kan være farlige for luftfart.",
+              "P": "Forbudt område – flyging ikke tillatt."
+            }
+          }
         }
       },
       "layers": {
@@ -7151,4 +7182,3 @@
     }
   }
 }
-
