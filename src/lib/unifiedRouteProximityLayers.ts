@@ -16,6 +16,7 @@ import {
   getUnifiedCountriesForRoute,
   isUnifiedAirspaceEnabled,
 } from "@/lib/airspaceUnified";
+import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
 import type { RoutePoint } from "@/types/map";
 
 const PANE = "routeProximityPane";
