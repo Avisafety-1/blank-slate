@@ -53,14 +53,18 @@ function lfvTemplateForType(typeOfArea: string | undefined): string | null {
   if (!typeOfArea) return null;
   const t = String(typeOfArea).toUpperCase();
   const key = ({
-    CTR:  "lfv.template.CTR",
-    TIZ:  "lfv.template.TIZ",
-    TIA:  "lfv.template.TIA",
-    RMZ:  "lfv.template.RMZ",
-    TMZ:  "lfv.template.TMZ",
-    R:    "lfv.template.R",
-    D:    "lfv.template.D",
-    P:    "lfv.template.P",
+    "RW-5K": "lfv.template.RW5K",
+    RW5K:   "lfv.template.RW5K",
+    CTR:    "lfv.template.CTR",
+    TIZ:    "lfv.template.TIZ",
+    TIA:    "lfv.template.TIA",
+    RMZ:    "lfv.template.RMZ",
+    TMZ:    "lfv.template.TMZ",
+    RSTA:   "lfv.template.R",
+    R:      "lfv.template.R",
+    DNGA:   "lfv.template.D",
+    D:      "lfv.template.D",
+    P:      "lfv.template.P",
   } as Record<string, string>)[t];
   if (!key) return null;
   const val = tp(key, { defaultValue: "" });
