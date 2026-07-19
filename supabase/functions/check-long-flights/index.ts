@@ -109,6 +109,49 @@ serve(async (req) => {
           console.error(`Email failed for ${flight.profile_id}:`, emailErr);
         }
 
+        // 2b. Send SMS via GatewayAPI
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('telefon')
+            .eq('id', flight.profile_id)
+            .maybeSingle();
+          const rawPhone: string | null = (profile as any)?.telefon ?? null;
+          const msisdn = normalizeMsisdn(rawPhone);
+          const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+          const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
+          if (!msisdn) {
+            console.log(`No valid phone for ${flight.profile_id}, skipping SMS`);
+          } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
+            console.warn('GatewayAPI env vars missing, skipping SMS');
+          } else {
+            const smsRes = await fetch('https://connector-gateway.lovable.dev/gatewayapi/mobile/single', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                'X-Connection-Api-Key': GATEWAYAPI_API_KEY,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                sender: 'AviSafe',
+                recipient: msisdn,
+                message: `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
+                reference: `long-flight-${flight.id}`,
+              }),
+            });
+            if (!smsRes.ok) {
+              const body = await smsRes.text();
+              console.error(`SMS failed [${smsRes.status}]: ${body}`);
+            } else {
+              console.log(`SMS sent to ${msisdn}`);
+            }
+          }
+        } catch (smsErr) {
+          console.error(`SMS failed for ${flight.profile_id}:`, smsErr);
+        }
+
+
+
         // 3. Mark as notified
         await supabase
           .from('active_flights')
