@@ -8,6 +8,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Convert a phone number string to MSISDN integer (country code + number, no plus).
+ * Norwegian mobile numbers (8 digits starting with 4/9) get +47 prepended. */
+function normalizeMsisdn(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  let digits = String(raw).replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  else if (digits.startsWith('00')) digits = digits.slice(2);
+  else if (/^\d{8}$/.test(digits) && /^[49]/.test(digits)) digits = '47' + digits;
+  if (!/^\d{8,15}$/.test(digits)) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
