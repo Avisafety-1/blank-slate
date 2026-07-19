@@ -8,6 +8,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Convert a phone number string to MSISDN integer (country code + number, no plus).
+ * Norwegian mobile numbers (8 digits starting with 4/9) get +47 prepended. */
+function normalizeMsisdn(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  let digits = String(raw).replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  else if (digits.startsWith('00')) digits = digits.slice(2);
+  else if (/^\d{8}$/.test(digits) && /^[49]/.test(digits)) digits = '47' + digits;
+  if (!/^\d{8,15}$/.test(digits)) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -108,6 +122,49 @@ serve(async (req) => {
         } catch (emailErr) {
           console.error(`Email failed for ${flight.profile_id}:`, emailErr);
         }
+
+        // 2b. Send SMS via GatewayAPI
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('telefon')
+            .eq('id', flight.profile_id)
+            .maybeSingle();
+          const rawPhone: string | null = (profile as any)?.telefon ?? null;
+          const msisdn = normalizeMsisdn(rawPhone);
+          const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+          const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
+          if (!msisdn) {
+            console.log(`No valid phone for ${flight.profile_id}, skipping SMS`);
+          } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
+            console.warn('GatewayAPI env vars missing, skipping SMS');
+          } else {
+            const smsRes = await fetch('https://connector-gateway.lovable.dev/gatewayapi/mobile/single', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                'X-Connection-Api-Key': GATEWAYAPI_API_KEY,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                sender: 'AviSafe',
+                recipient: msisdn,
+                message: `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
+                reference: `long-flight-${flight.id}`,
+              }),
+            });
+            if (!smsRes.ok) {
+              const body = await smsRes.text();
+              console.error(`SMS failed [${smsRes.status}]: ${body}`);
+            } else {
+              console.log(`SMS sent to ${msisdn}`);
+            }
+          }
+        } catch (smsErr) {
+          console.error(`SMS failed for ${flight.profile_id}:`, smsErr);
+        }
+
+
 
         // 3. Mark as notified
         await supabase
