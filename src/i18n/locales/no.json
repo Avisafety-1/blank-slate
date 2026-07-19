@@ -3261,14 +3261,15 @@
           },
           "lfv": {
             "template": {
-              "CTR": "Kontrollzone. Flyging nærmere enn 5 km fra rullebanen krever tillatelse fra flygekontrolltjenesten. Utenfor 5 km og under 50 m AGL: tillatt for droner ≤ 7 kg og hastighet < 90 km/t.",
+              "CTR": "Kontrollsone. Flyging krever tillatelse fra flygekontrolltjenesten (ATC). Utenfor 5 km-sonen og under 50 m AGL kan flyging være tillatt for droner ≤ 7 kg og hastighet < 90 km/t – se innerste 5 km-sirkel.",
               "TIZ": "Trafikkinformasjonszone. Krever kontakt/tillatelse med AFIS/lufthavnpersonell før flyging.",
               "TIA": "Trafikkinformasjonsområde. Kontakt med AFIS anbefalt.",
               "RMZ": "Radiokommunikasjonspliktig sone. Toveis radio med tjenesteenhet påkrevd.",
               "TMZ": "Transponderpliktig sone. Krever transponder eller særskilt klarering.",
               "R": "Restriksjonsområde – flyging kun tillatt på bestemte vilkår (se AIP/NOTAM).",
               "D": "Fareområde – aktiviteter som kan være farlige for luftfart.",
-              "P": "Forbudt område – flyging ikke tillatt."
+              "P": "Forbudt område – flyging ikke tillatt.",
+              "RW5K": "Innenfor 5 km fra rullebanen. Krever tillatelse fra flygekontroll/AFIS før flyging."
             }
           }
         }

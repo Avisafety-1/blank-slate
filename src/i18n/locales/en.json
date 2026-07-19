@@ -3259,14 +3259,15 @@
           },
           "lfv": {
             "template": {
-              "CTR": "Control zone. Flight within 5 km of the runway requires ATC approval. Outside 5 km and below 50 m AGL: permitted for drones ≤ 7 kg and speed < 90 km/h.",
+              "CTR": "Control zone. Flight requires ATC approval. Outside the 5 km ring and below 50 m AGL, flight may be permitted for drones ≤ 7 kg and speed < 90 km/h – see the inner 5 km circle.",
               "TIZ": "Traffic Information Zone. Contact/approval from AFIS required before flight.",
               "TIA": "Traffic Information Area. Contact with AFIS recommended.",
               "RMZ": "Radio Mandatory Zone. Two-way radio with ATS unit required.",
               "TMZ": "Transponder Mandatory Zone. Transponder or specific clearance required.",
               "R": "Restricted area – flight only allowed under specific conditions (see AIP/NOTAM).",
               "D": "Danger area – activities that may be hazardous to aviation.",
-              "P": "Prohibited area – flight not permitted."
+              "P": "Prohibited area – flight not permitted.",
+              "RW5K": "Within 5 km of the runway. Requires approval from ATC/AFIS before flight."
             }
           }
         }
