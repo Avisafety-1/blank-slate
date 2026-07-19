@@ -1923,26 +1923,10 @@ const UNIFIED_COLORS: Record<string, string> = {
   INFO: "#6b7280",
 };
 
-const escUnified = (s: any) =>
-  String(s ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]!));
+import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
 
 function buildUnifiedZonePopup(zone: any): string {
-  const name = escUnified(zone.name || zone.short_name || "Ukjent sone");
-  const ztype = escUnified(zone.zone_type || "");
-  const country = escUnified(zone.country_code || "");
-  const authority = escUnified(zone.authority || zone.source || "");
-  const lower = zone.lower_limit_m != null ? `${Math.round(zone.lower_limit_m)} m` : "";
-  const upper = zone.upper_limit_m != null ? `${Math.round(zone.upper_limit_m)} m` : "";
-  const altRef = escUnified(zone.altitude_reference || "");
-  const restriction = escUnified(zone.restriction_type || "");
-  let html = `<strong>${name}</strong><br/>`;
-  html += `<div style="font-size:12px;color:#555">${ztype}${country ? " · " + country : ""}</div>`;
-  if (restriction) html += `<div style="font-size:12px;margin-top:2px">${restriction}</div>`;
-  if (lower || upper) html += `<div style="font-size:12px;margin-top:2px">${lower || "?"} – ${upper || "?"}${altRef ? " " + altRef : ""}</div>`;
-  if (authority) html += `<div style="margin-top:4px;font-size:11px;color:#666">Kilde: ${authority}</div>`;
-  return html;
+  return buildUnifiedZonePopupHtml(zone);
 }
 
 export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
