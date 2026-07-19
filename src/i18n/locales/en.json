@@ -3238,6 +3238,37 @@
           "toTopo": "Switch to topographic map",
           "toStandard": "Switch to standard map",
           "baseAria": "Change base map"
+        },
+        "unified": {
+          "source": "Source",
+          "unknownZone": "Unknown zone",
+          "area": "Area",
+          "managedBy": "Managed by",
+          "protectedSince": "Protected since",
+          "validFrom": "Valid from",
+          "moreInfo": "More info at Naturvårdsverket",
+          "moreInfoLfv": "More info at LFV",
+          "restriction": {
+            "PROHIBITED": "Prohibited area",
+            "RESTRICTED": "Restricted area",
+            "APPROVAL_REQUIRED": "Requires ATC approval",
+            "NOTIFICATION": "Notification required",
+            "CAUTION": "Caution required",
+            "NATURE_SENSITIVE": "Nature reserve – respect wildlife",
+            "INFO": "Information"
+          },
+          "lfv": {
+            "template": {
+              "CTR": "Control zone. Flight within 5 km of the runway requires ATC approval. Outside 5 km and below 50 m AGL: permitted for drones ≤ 7 kg and speed < 90 km/h.",
+              "TIZ": "Traffic Information Zone. Contact/approval from AFIS required before flight.",
+              "TIA": "Traffic Information Area. Contact with AFIS recommended.",
+              "RMZ": "Radio Mandatory Zone. Two-way radio with ATS unit required.",
+              "TMZ": "Transponder Mandatory Zone. Transponder or specific clearance required.",
+              "R": "Restricted area – flight only allowed under specific conditions (see AIP/NOTAM).",
+              "D": "Danger area – activities that may be hazardous to aviation.",
+              "P": "Prohibited area – flight not permitted."
+            }
+          }
         }
       },
       "layers": {
@@ -7149,4 +7180,3 @@
     }
   }
 }
-
