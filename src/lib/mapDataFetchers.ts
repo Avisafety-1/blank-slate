@@ -9,6 +9,7 @@ import airportIcon from "@/assets/airport-icon.png";
 import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 import { buildNatureZonePopupHtml, enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
+import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
 
 
 
