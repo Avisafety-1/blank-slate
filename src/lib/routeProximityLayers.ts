@@ -719,7 +719,7 @@ export async function updateRouteProximityLayers(
         ),
     activeManualLayers?.obstacles
       ? Promise.resolve([] as ObstacleRecord[])
-      : withTimeout(loadObstacles(cache), 8000, signal).catch(
+      : withTimeout(loadObstacles(bbox, cache), 8000, signal).catch(
           () => [] as ObstacleRecord[],
         ),
   ]);
