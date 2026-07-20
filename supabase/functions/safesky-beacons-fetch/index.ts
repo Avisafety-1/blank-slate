@@ -146,15 +146,11 @@ Deno.serve(async (req) => {
 
     // (log line replaced by reason-based log above)
 
-    // Step 2: Fetch beacons from SafeSky sandbox API with HMAC-SHA256-V1 authentication
-    const safeskyApiKeyCandidates = [
-      { name: 'safesky_api_key', value: Deno.env.get('safesky_api_key') },
-      { name: 'SAFESKY_API_KEY', value: Deno.env.get('SAFESKY_API_KEY') },
-      { name: 'SAFESKY_BEACONS_API_KEY', value: Deno.env.get('SAFESKY_BEACONS_API_KEY') },
-      { name: 'SAFESKY_PROD_API_KEY', value: Deno.env.get('SAFESKY_PROD_API_KEY') },
-    ];
-    const selectedSafeSkyApiKey = safeskyApiKeyCandidates.find((candidate) => candidate.value);
-    const safeskyApiKey = selectedSafeSkyApiKey?.value;
+    // Use simple x-api-key header against sandbox (same as mil.avisafe.no)
+    const safeskyApiKey =
+      Deno.env.get('SAFESKY_BEACONS_API_KEY') ||
+      Deno.env.get('safesky_api_key') ||
+      Deno.env.get('SAFESKY_API_KEY');
     if (!safeskyApiKey) {
       console.error('No SafeSky API key configured');
       return new Response(
@@ -162,19 +158,18 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    console.log(`Using SafeSky API key from ${selectedSafeSkyApiKey?.name}`);
 
     console.log('Calling SafeSky sandbox API:', SAFESKY_BEACONS_URL);
 
-    const authHeaders = await generateAuthHeaders(safeskyApiKey, 'GET', SAFESKY_BEACONS_URL);
     const response = await safeFetch(SAFESKY_BEACONS_URL, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
-        ...authHeaders,
+        'x-api-key': safeskyApiKey,
       },
     }, ['sandbox-public-api.safesky.app']);
+
 
     if (!response.ok) {
       const errorText = await response.text();
