@@ -330,9 +330,13 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
 export async function fetchObstacles(params: FetchParams) {
   const { layer, mode } = params;
   try {
+    // NB: PostgREST har default limit på 1000 rader. openaip_obstacles har
+    // ~40k rader (NO/DK/SE/DE/FI) — uten eksplisitt limit forsvinner alle
+    // hindringer utenfor de første 1000 (typisk DK/DE/FI/SE).
     const { data, error } = await supabase
       .from('openaip_obstacles')
-      .select('openaip_id, name, type, geometry, elevation, height_agl, properties');
+      .select('openaip_id, name, type, geometry, elevation, height_agl, properties')
+      .limit(100000);
 
     if (error || !data) {
       console.error('Feil ved henting av hindringer:', error);
