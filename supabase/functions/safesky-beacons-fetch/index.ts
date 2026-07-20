@@ -5,8 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Norway bounding box for beacon fetching
-const NORWAY_VIEWPORT = "57.5,4.0,71.5,31.5";
+// Bounding box covering Norway + Denmark (SW lat, SW lng, NE lat, NE lng)
+// Extended south to 54.5°N and west to 7.5°E to include all of Denmark.
+const NORWAY_VIEWPORT = "54.5,7.5,71.5,31.5";
 const SAFESKY_HOST = "sandbox-public-api.safesky.app";
 const SAFESKY_PATH = "/v1/beacons";
 // Include grounded traffic (default is false, which filters out GROUNDED beacons)
