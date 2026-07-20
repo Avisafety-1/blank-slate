@@ -1204,7 +1204,7 @@ serve(async (req) => {
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
-    if (routeCoords && routeCoords.length >= 2) {
+    if (routeCoords && routeCoords.length >= 2 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
