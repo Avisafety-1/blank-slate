@@ -1325,7 +1325,7 @@ export function OpenAIPMap({
     fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
     fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
     fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+    // fetchObstacles wires up below via fetchObstaclesViewport (viewport-scoped RPC)
     fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
@@ -1351,6 +1351,27 @@ export function OpenAIPMap({
       fetchNaturvernZones({ layer: naturvernLayer, mode, bounds });
       fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
     };
+
+    // Viewport-based aviation obstacles fetch (uses GIST index via RPC)
+    const fetchObstaclesViewport = () => {
+      if (!map.hasLayer(obstaclesLayer)) return;
+      if (map.getZoom() < 8) {
+        resetCache('obstacles', obstaclesLayer);
+        return;
+      }
+      const b = map.getBounds();
+      fetchObstacles({
+        layer: obstaclesLayer,
+        mode: modeRef.current,
+        bounds: {
+          minLat: b.getSouth(),
+          minLng: b.getWest(),
+          maxLat: b.getNorth(),
+          maxLng: b.getEast(),
+        },
+      });
+    };
+
 
     // CAA dronesoner: refetch on moveend per aktivert lag
     const caaLayerMap: Array<[string, L.LayerGroup]> = [
@@ -1459,6 +1480,7 @@ export function OpenAIPMap({
         fetchCaaLayers();
         fetchDkLayers();
         fetchUnifiedLayers();
+        fetchObstaclesViewport();
       }, 300);
     };
 
@@ -1467,6 +1489,7 @@ export function OpenAIPMap({
     fetchCaaLayers();
     fetchDkLayers();
     fetchUnifiedLayers();
+    fetchObstaclesViewport();
     map.on('moveend', debouncedFetchVern);
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
@@ -1476,6 +1499,7 @@ export function OpenAIPMap({
       if (dkMatch) fetchDkLayers();
       const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
       if (unifiedMatch) fetchUnifiedLayers();
+      if (e.layer === obstaclesLayer) fetchObstaclesViewport();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
@@ -1486,6 +1510,7 @@ export function OpenAIPMap({
       if (e.layer === dkNatureLayer) resetCache('dkNature', dkNatureLayer);
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
+      if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
       if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:DE,DK,FI,SE`, unifiedMatch[1]);
     });
@@ -1609,7 +1634,7 @@ export function OpenAIPMap({
         fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
         fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
         fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-        fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+        fetchObstaclesViewport();
         fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
         fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });

@@ -327,59 +327,48 @@ export async function fetchAllAipZones(params: GeoJsonFetchParams & {
   }
 }
 
-export async function fetchObstacles(params: FetchParams) {
-  const { layer, mode } = params;
+export async function fetchObstacles(params: FetchParams & {
+  bounds?: { minLat: number; minLng: number; maxLat: number; maxLng: number };
+}) {
+  const { layer, mode, bounds } = params;
+  // Viewport-based lookup via GIST-indexed RPC. Avoids PostgREST 1000-row cap
+  // and keeps payloads small (openaip_obstacles has ~40k rows across NO/DK/SE/DE/FI).
+  if (!bounds) return;
+  const cache = getCache('obstacles');
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
   try {
-    // NB: PostgREST har default limit på 1000 rader. openaip_obstacles har
-    // ~40k rader (NO/DK/SE/DE/FI) — uten eksplisitt limit forsvinner alle
-    // hindringer utenfor de første 1000 (typisk DK/DE/FI/SE).
-    const { data, error } = await supabase
-      .from('openaip_obstacles')
-      .select('openaip_id, name, type, geometry, elevation, height_agl, properties')
-      .limit(100000);
+    const { data, error } = await supabase.rpc('get_obstacles_in_bounds', {
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
+    });
 
     if (error || !data) {
       console.error('Feil ved henting av hindringer:', error);
       return;
     }
 
-    layer.clearLayers();
+    const obstacleIcon = L.divIcon({
+      className: '',
+      html: `<div style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#991b1b" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/></svg></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      popupAnchor: [0, -10],
+    });
 
-    for (const obstacle of data) {
-      if (!obstacle.geometry) continue;
-
-      try {
-        const geom = obstacle.geometry as any;
-        let lat: number, lng: number;
-        
-        if (geom.coordinates) {
-          [lng, lat] = geom.coordinates;
-        } else {
-          continue;
-        }
-
-        const obstacleIcon = L.divIcon({
-          className: '',
-          html: `<div style="
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#ef4444" stroke="#991b1b" stroke-width="1.5">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-              <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/>
-              <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/>
-            </svg>
-          </div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
-          popupAnchor: [0, -10],
+    diffRender(
+      layer,
+      cache,
+      (data as any[]).filter((o) => typeof o?.lat === 'number' && typeof o?.lng === 'number'),
+      (o) => `ob|${o.openaip_id}`,
+      (obstacle) => {
+        const marker = L.marker([obstacle.lat, obstacle.lng], {
+          icon: obstacleIcon,
+          interactive: mode !== 'routePlanning',
+          pane: 'obstaclePane',
         });
-
-        const marker = L.marker([lat, lng], { icon: obstacleIcon, interactive: mode !== 'routePlanning', pane: 'obstaclePane' });
-        
         const typeName = obstacle.type || 'Ukjent';
         const displayName = obstacle.name || typeName;
         let popup = `<strong>⚠️ Hindring</strong><br/>`;
@@ -388,12 +377,10 @@ export async function fetchObstacles(params: FetchParams) {
         if (obstacle.elevation) popup += `Høyde (MSL): ${obstacle.elevation} m<br/>`;
         if (obstacle.height_agl) popup += `Høyde (AGL): ${obstacle.height_agl} m<br/>`;
         marker.bindPopup(popup);
-        
-        marker.addTo(layer);
-      } catch (err) {
-        // Skip individual obstacles that fail
-      }
-    }
+        return marker;
+      },
+    );
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error('Kunne ikke hente hindringer:', err);
   }
