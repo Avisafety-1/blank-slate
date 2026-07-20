@@ -1352,6 +1352,27 @@ export function OpenAIPMap({
       fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
     };
 
+    // Viewport-based aviation obstacles fetch (uses GIST index via RPC)
+    const fetchObstaclesViewport = () => {
+      if (!map.hasLayer(obstaclesLayer)) return;
+      if (map.getZoom() < 8) {
+        resetCache('obstacles', obstaclesLayer);
+        return;
+      }
+      const b = map.getBounds();
+      fetchObstacles({
+        layer: obstaclesLayer,
+        mode: modeRef.current,
+        bounds: {
+          minLat: b.getSouth(),
+          minLng: b.getWest(),
+          maxLat: b.getNorth(),
+          maxLng: b.getEast(),
+        },
+      });
+    };
+
+
     // CAA dronesoner: refetch on moveend per aktivert lag
     const caaLayerMap: Array<[string, L.LayerGroup]> = [
       ['fengsler', caaFengslerLayer],
