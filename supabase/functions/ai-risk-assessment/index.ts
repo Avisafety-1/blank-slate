@@ -1075,8 +1075,19 @@ serve(async (req) => {
 
 
     // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
+    // Norge-only datakilde (Geonorge WFS). For unified/europeisk gren settes
+    // en tydelig coverage-note i stedet slik at AI ikke skriver "0 people/km²".
     let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
-    if (lat && lng) {
+    if (unifiedAirspaceActive) {
+      landUseData = {
+        categories: [],
+        featureCount: {},
+        groundRiskClassification: 'unknown',
+        summary: (language === 'en')
+          ? 'Population and land-use data outside Norway is not yet integrated. Ground risk (iGRC) falls back to SORA-default population class based on drawn footprint — verify manually against local sources.'
+          : 'Befolknings- og arealbruksdata utenfor Norge er ikke integrert ennå. Bakkerisiko (iGRC) faller tilbake på SORA-standard befolkningsklasse basert på tegnet fotavtrykk — verifiser manuelt mot lokale kilder.',
+      };
+    } else if (lat && lng) {
       try {
         // Build bounding box from route coordinates or single point
         const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
