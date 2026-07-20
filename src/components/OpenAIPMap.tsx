@@ -988,7 +988,8 @@ export function OpenAIPMap({
     // kartets grid og faktisk vises i viewport.
     const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
       layers: "PopulationGrid2021", styles: "", format: "image/png", transparent: true, opacity: 0.6,
-      attribution: '© European Commission – Eurostat (GISCO)', version: "1.1.1",
+      attribution: '© European Commission – Eurostat (GISCO)', version: "1.1.1", uppercase: true,
+      crs: L.CRS.EPSG4326,
       minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
     } as any);
 
