@@ -946,7 +946,11 @@ export function OpenAIPMap({
     // ============================================================
     // 🇩🇰 Trafikstyrelsen dronezoner
     // ============================================================
-    const dkRodLayer = L.layerGroup();
+    // dkRodLayer piggybacks the "RPAS 5 km" toggle (default ON), so it must be
+    // added to the map at init — otherwise `fetchDkLayers` (which gates on
+    // `map.hasLayer(lg)`) never fires and the innermost DK airport rings never
+    // render until the user toggles rpas off/on.
+    const dkRodLayer = L.layerGroup().addTo(map);
     const dkOrangeLayer = L.layerGroup();
     const dkBlaLayer = L.layerGroup();
 
