@@ -990,12 +990,20 @@ export function OpenAIPMap({
     // GISCO WMS krever eksplisitt STYLES-parameter (ellers ServiceException:
     // "missing parameters ['styles']"). Bruker EPSG:3857 slik at tiles matcher
     // kartets grid og faktisk vises i viewport.
-    const eurostatPopLayer = L.tileLayer.wms("https://gisco-services.ec.europa.eu/maps/service", {
-      layers: "PopulationGrid2021", styles: "", format: "image/png", transparent: true, opacity: 0.6,
-      attribution: '© European Commission – Eurostat (GISCO)', version: "1.1.1", uppercase: true,
-      crs: L.CRS.EPSG4326,
-      minZoom: 4, maxZoom: 18, maxNativeZoom: 10, tiled: true, updateWhenIdle: true, keepBuffer: 1,
-    } as any);
+    // Eurostat 1 km² befolkningsraster (Europa). GISCO's WMS backend feiler
+    // sporadisk med "no image returned from source WMS" for enkelte bbox/zoom,
+    // så vi bruker WMTS (native EPSG:3857 XYZ) — mer stabil enn WMS-tiles.
+    const eurostatPopLayer = L.tileLayer(
+      "https://gisco-services.ec.europa.eu/maps/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PopulationGrid2021&STYLE=default&TILEMATRIXSET=EPSG3857&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png",
+      {
+        opacity: 0.6,
+        attribution: '© European Commission – Eurostat (GISCO)',
+        minZoom: 5,
+        maxZoom: 18,
+        maxNativeZoom: 10,
+        crossOrigin: true,
+      } as any
+    );
 
     // SSB Tettsteder
     const tettstederLayer = L.tileLayer.wms("https://kart.ssb.no/api/mapserver/v1/wms/tettsteder", {
