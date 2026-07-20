@@ -1025,6 +1025,55 @@ serve(async (req) => {
       }
     }
 
+    // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
+    // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
+    // og norske ruter går aldri hit — check_mission_airspace (NO) er urørt.
+    // Se .lovable/plan.md for begrunnelse og guardrails.
+    const NORWAY_BBOX = { minLat: 57.5, maxLat: 71.5, minLng: 4.0, maxLng: 31.5 };
+    const centroidInNorway = (() => {
+      const pts = (routeCoords && routeCoords.length > 0)
+        ? routeCoords
+        : (lat && lng ? [{ lat, lng }] : []);
+      if (pts.length === 0) return true; // Ingen koordinater -> ikke aktiver ny gren
+      const cLat = pts.reduce((s, c) => s + c.lat, 0) / pts.length;
+      const cLng = pts.reduce((s, c) => s + c.lng, 0) / pts.length;
+      return cLat >= NORWAY_BBOX.minLat && cLat <= NORWAY_BBOX.maxLat
+          && cLng >= NORWAY_BBOX.minLng && cLng <= NORWAY_BBOX.maxLng;
+    })();
+
+    let unifiedAirspaceActive = false;
+    if (!centroidInNorway && (lat && lng) && companyId) {
+      try {
+        const { data: allow } = await supabase
+          .from('airspace_unified_company_allowlist')
+          .select('company_id')
+          .eq('company_id', companyId)
+          .maybeSingle();
+        if (allow) {
+          unifiedAirspaceActive = true;
+          console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
+          const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
+            'check_mission_airspace_unified',
+            {
+              p_lat: lat,
+              p_lng: lng,
+              p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
+            },
+          );
+          if (unifiedErr) {
+            console.error('Unified airspace RPC error:', unifiedErr);
+          } else if (unifiedWarnings && unifiedWarnings.length > 0) {
+            airspaceWarnings = [...airspaceWarnings, ...unifiedWarnings];
+            console.log(`Unified airspace warnings added: ${unifiedWarnings.length}`);
+          }
+        }
+      } catch (e) {
+        console.error('Unified airspace check error (non-blocking):', e);
+      }
+    }
+
+
+
     // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
     let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
     if (lat && lng) {
