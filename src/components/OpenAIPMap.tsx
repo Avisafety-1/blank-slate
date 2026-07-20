@@ -1325,7 +1325,7 @@ export function OpenAIPMap({
     fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
     fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
     fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-    fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+    // fetchObstacles wires up below via fetchObstaclesViewport (viewport-scoped RPC)
     fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
@@ -1630,7 +1630,7 @@ export function OpenAIPMap({
         fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
         fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
         fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
-        fetchObstacles({ layer: obstaclesLayer, mode: modeRef.current });
+        fetchObstaclesViewport();
         fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
         fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
