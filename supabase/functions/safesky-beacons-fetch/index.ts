@@ -157,6 +157,7 @@ Deno.serve(async (req) => {
     }
 
     console.log('Calling SafeSky production API:', SAFESKY_BEACONS_URL);
+    console.log(`[debug] key prefix=${safeskyApiKey.slice(0, 9)}… length=${safeskyApiKey.length} trimmedLength=${safeskyApiKey.trim().length}`);
 
     const authHeaders = await generateAuthHeaders(safeskyApiKey, 'GET', SAFESKY_BEACONS_URL);
     const response = await safeFetch(SAFESKY_BEACONS_URL, {
