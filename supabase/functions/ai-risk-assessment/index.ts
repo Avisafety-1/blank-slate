@@ -1671,17 +1671,37 @@ serve(async (req) => {
           ? `Inside the 5 km zone around small airfield(s): ${insideAtz5km.map(w => `"${w.name}"`).join(', ')}. Pilot must contact the airfield before flight — check myppr.no for PPR. Does NOT require Ninox.`
           : `Innenfor 5 km-sonen rundt småflyplass(er): ${insideAtz5km.map(w => `«${w.name}»`).join(', ')}. Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR. Krever IKKE Ninox.`);
       }
+
+      // Ninox er norsk-spesifikk (Luftfartstilsynets system). Ved unified/europeisk
+      // gren erstattes Ninox-terminologi med generisk "local coordination"-tekst
+      // slik at AI ikke feiler-refererer norsk regelverk for DK/SE/DE/FI.
+      const finalText = unifiedAirspaceActive
+        ? summaryParts.join(' ')
+            .replace(/krever Ninox-godkjenning/gi, 'krever lokal koordinering (verifiser per land)')
+            .replace(/requires Ninox approval/gi, 'requires local coordination (verify per country)')
+            .replace(/Ingen Ninox-godkjenning kreves/gi, 'Ingen lokal koordinering påkrevd fra denne kilden (verifiser per land)')
+            .replace(/No Ninox approval required/gi, 'No local coordination required from this source (verify per country)')
+            .replace(/sjekk myppr\.no for PPR/gi, 'verifiser PPR-krav med lokal luftfartsmyndighet')
+            .replace(/check myppr\.no for PPR/gi, 'verify PPR requirements with local aviation authority')
+            .replace(/Krever IKKE Ninox\.?/gi, '')
+            .replace(/Does NOT require Ninox\.?/gi, '')
+        : summaryParts.join(' ');
+
       return {
         warnings: mappedWarnings,
         summary: {
-          requires_ninox_approval: requiresNinox,
+          requires_ninox_approval: unifiedAirspaceActive ? null : requiresNinox,
+          requires_local_coordination: unifiedAirspaceActive ? (inside5km.length > 0) : null,
+          coverage_region: unifiedAirspaceActive ? 'europe_unified_dk_se_de_fi' : 'norway',
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
           inside_small_airfield_5km_zone: insideAtz5km.length > 0,
           distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance. For ATZ_5KM (småflyplass): avstand til 5 km-sirkelens grense.',
           controlled_airspace_policy: isAtOrBelow120m && requiresNinox === false ? 'CTR/TIZ-overlapp ved maks 120 m AGL og utenfor 5 km-sonen er operativt varsel/aktsomhet, ikke automatisk no-go/hard-stop.' : 'Avklar lokale luftromskrav basert på høyde og soneoverlapp.',
-          small_airfield_policy: 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
-          text: summaryParts.join(' '),
+          small_airfield_policy: unifiedAirspaceActive
+            ? '5 km-sone rundt småflyplass i DK/SE/DE/FI: verifiser PPR/koordineringskrav med lokal luftfartsmyndighet (ikke Ninox).'
+            : 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
+          text: finalText,
         },
       };
     })();
