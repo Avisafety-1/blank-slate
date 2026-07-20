@@ -1025,9 +1025,69 @@ serve(async (req) => {
       }
     }
 
+    // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
+    // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
+    // og norske ruter går aldri hit — check_mission_airspace (NO) er urørt.
+    // Se .lovable/plan.md for begrunnelse og guardrails.
+    const NORWAY_BBOX = { minLat: 57.5, maxLat: 71.5, minLng: 4.0, maxLng: 31.5 };
+    const centroidInNorway = (() => {
+      const pts = (routeCoords && routeCoords.length > 0)
+        ? routeCoords
+        : (lat && lng ? [{ lat, lng }] : []);
+      if (pts.length === 0) return true; // Ingen koordinater -> ikke aktiver ny gren
+      const cLat = pts.reduce((s, c) => s + c.lat, 0) / pts.length;
+      const cLng = pts.reduce((s, c) => s + c.lng, 0) / pts.length;
+      return cLat >= NORWAY_BBOX.minLat && cLat <= NORWAY_BBOX.maxLat
+          && cLng >= NORWAY_BBOX.minLng && cLng <= NORWAY_BBOX.maxLng;
+    })();
+
+    let unifiedAirspaceActive = false;
+    if (!centroidInNorway && (lat && lng) && companyId) {
+      try {
+        const { data: allow } = await supabase
+          .from('airspace_unified_company_allowlist')
+          .select('company_id')
+          .eq('company_id', companyId)
+          .maybeSingle();
+        if (allow) {
+          unifiedAirspaceActive = true;
+          console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
+          const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
+            'check_mission_airspace_unified',
+            {
+              p_lat: lat,
+              p_lng: lng,
+              p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
+            },
+          );
+          if (unifiedErr) {
+            console.error('Unified airspace RPC error:', unifiedErr);
+          } else if (unifiedWarnings && unifiedWarnings.length > 0) {
+            airspaceWarnings = [...airspaceWarnings, ...unifiedWarnings];
+            console.log(`Unified airspace warnings added: ${unifiedWarnings.length}`);
+          }
+        }
+      } catch (e) {
+        console.error('Unified airspace check error (non-blocking):', e);
+      }
+    }
+
+
+
     // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
+    // Norge-only datakilde (Geonorge WFS). For unified/europeisk gren settes
+    // en tydelig coverage-note i stedet slik at AI ikke skriver "0 people/km²".
     let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
-    if (lat && lng) {
+    if (unifiedAirspaceActive) {
+      landUseData = {
+        categories: [],
+        featureCount: {},
+        groundRiskClassification: 'unknown',
+        summary: (language === 'en')
+          ? 'Population and land-use data outside Norway is not yet integrated. Ground risk (iGRC) falls back to SORA-default population class based on drawn footprint — verify manually against local sources.'
+          : 'Befolknings- og arealbruksdata utenfor Norge er ikke integrert ennå. Bakkerisiko (iGRC) faller tilbake på SORA-standard befolkningsklasse basert på tegnet fotavtrykk — verifiser manuelt mot lokale kilder.',
+      };
+    } else if (lat && lng) {
       try {
         // Build bounding box from route coordinates or single point
         const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
@@ -1144,7 +1204,7 @@ serve(async (req) => {
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
-    if (routeCoords && routeCoords.length >= 2) {
+    if (routeCoords && routeCoords.length >= 2 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1611,17 +1671,37 @@ serve(async (req) => {
           ? `Inside the 5 km zone around small airfield(s): ${insideAtz5km.map(w => `"${w.name}"`).join(', ')}. Pilot must contact the airfield before flight — check myppr.no for PPR. Does NOT require Ninox.`
           : `Innenfor 5 km-sonen rundt småflyplass(er): ${insideAtz5km.map(w => `«${w.name}»`).join(', ')}. Pilot må kontakte flyplassen før flyging — sjekk myppr.no for PPR. Krever IKKE Ninox.`);
       }
+
+      // Ninox er norsk-spesifikk (Luftfartstilsynets system). Ved unified/europeisk
+      // gren erstattes Ninox-terminologi med generisk "local coordination"-tekst
+      // slik at AI ikke feiler-refererer norsk regelverk for DK/SE/DE/FI.
+      const finalText = unifiedAirspaceActive
+        ? summaryParts.join(' ')
+            .replace(/krever Ninox-godkjenning/gi, 'krever lokal koordinering (verifiser per land)')
+            .replace(/requires Ninox approval/gi, 'requires local coordination (verify per country)')
+            .replace(/Ingen Ninox-godkjenning kreves/gi, 'Ingen lokal koordinering påkrevd fra denne kilden (verifiser per land)')
+            .replace(/No Ninox approval required/gi, 'No local coordination required from this source (verify per country)')
+            .replace(/sjekk myppr\.no for PPR/gi, 'verifiser PPR-krav med lokal luftfartsmyndighet')
+            .replace(/check myppr\.no for PPR/gi, 'verify PPR requirements with local aviation authority')
+            .replace(/Krever IKKE Ninox\.?/gi, '')
+            .replace(/Does NOT require Ninox\.?/gi, '')
+        : summaryParts.join(' ');
+
       return {
         warnings: mappedWarnings,
         summary: {
-          requires_ninox_approval: requiresNinox,
+          requires_ninox_approval: unifiedAirspaceActive ? null : requiresNinox,
+          requires_local_coordination: unifiedAirspaceActive ? (inside5km.length > 0) : null,
+          coverage_region: unifiedAirspaceActive ? 'europe_unified_dk_se_de_fi' : 'norway',
           inside_controlled_airspace: insideCtr.length > 0,
           inside_5km_zone: inside5km.length > 0,
           inside_small_airfield_5km_zone: insideAtz5km.length > 0,
           distance_semantics: 'Alle avstander (warnings[].distance og tall i summary.text) er avstand til SONEGRENSEN (polygonens yttergrense), IKKE til flyplass/aerodrome/NSM-anlegg. For 5KM-soner: avstand til selve flyplassen ≈ 5000 m + distance. For ATZ_5KM (småflyplass): avstand til 5 km-sirkelens grense.',
           controlled_airspace_policy: isAtOrBelow120m && requiresNinox === false ? 'CTR/TIZ-overlapp ved maks 120 m AGL og utenfor 5 km-sonen er operativt varsel/aktsomhet, ikke automatisk no-go/hard-stop.' : 'Avklar lokale luftromskrav basert på høyde og soneoverlapp.',
-          small_airfield_policy: 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
-          text: summaryParts.join(' '),
+          small_airfield_policy: unifiedAirspaceActive
+            ? '5 km-sone rundt småflyplass i DK/SE/DE/FI: verifiser PPR/koordineringskrav med lokal luftfartsmyndighet (ikke Ninox).'
+            : 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
+          text: finalText,
         },
       };
     })();

@@ -7284,6 +7284,17 @@ export type Database = {
           z_type: string
         }[]
       }
+      check_mission_airspace_unified: {
+        Args: { p_lat: number; p_lng: number; p_route?: Json }
+        Returns: {
+          min_distance: number
+          route_inside: boolean
+          severity: string
+          z_id: string
+          z_name: string
+          z_type: string
+        }[]
+      }
       check_mission_zone_conflicts: {
         Args: { p_latitude: number; p_longitude: number }
         Returns: {
