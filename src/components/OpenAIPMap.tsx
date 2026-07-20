@@ -1060,7 +1060,7 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "rmz_tmz_atz", name: t('pages.map.layers.rmzTmzAtz'), layer: [rmzTmzAtzLayer, unifiedAirspaceLayer], enabled: true, icon: "radio", group: gAir });
 
     // Restriksjoner — slått sammen NO + DK + unified (SE/DE/FI/DK)
-    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, dkRodLayer, unifiedRestrictedLayer], enabled: false, icon: "ban", group: gRes });
+    layerConfigs.push({ id: "restriksjonsomrader", name: t('pages.map.layers.restrictedAreas'), layer: [caaRestriksjonerLayer, unifiedRestrictedLayer], enabled: false, icon: "ban", group: gRes });
     layerConfigs.push({ id: "fareomrader", name: t('pages.map.layers.dangerAreas'), layer: [caaFareLayer, dkOrangeLayer, unifiedDangerLayer], enabled: false, icon: "alertTriangle", group: gRes });
     layerConfigs.push({ id: "sikringsobjekter", name: t('pages.map.layers.securityObjects'), layer: [caaFengslerLayer, caaAmbassaderLayer, dkBlaLayer, unifiedSecurityLayer], enabled: false, icon: "shield", group: gRes });
     layerConfigs.push({ id: "notam", name: t('pages.map.layers.notam'), layer: [notamLayer, caaNotamSonerLayer], enabled: true, icon: "alertTriangle", group: gRes });
