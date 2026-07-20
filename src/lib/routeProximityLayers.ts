@@ -581,23 +581,25 @@ function renderAisVessels(
 // ============ Luftfartshindre (openaip_obstacles) ============
 
 async function loadObstacles(
+  bbox: BBox,
   cache: SourceCache,
 ): Promise<ObstacleRecord[]> {
-  if (cache.obstaclesAll) return cache.obstaclesAll;
-  const { data, error } = await supabase
-    .from("openaip_obstacles")
-    .select("openaip_id, name, type, geometry, elevation, height_agl");
+  // Use viewport-scoped RPC to avoid PostgREST 1000-row cap
+  // (openaip_obstacles has ~40k rows across NO/DK/SE/DE/FI).
+  const { data, error } = await supabase.rpc("get_obstacles_in_bounds", {
+    min_lat: bbox.minLat,
+    min_lng: bbox.minLng,
+    max_lat: bbox.maxLat,
+    max_lng: bbox.maxLng,
+  });
   if (error || !data) {
     console.warn("[routeProximity] obstacle load failed", error);
-    cache.obstaclesAll = [];
     return [];
   }
   const records: ObstacleRecord[] = [];
   for (const o of data as any[]) {
-    const geom = o.geometry;
-    if (!geom || !geom.coordinates) continue;
-    const lng = Number(geom.coordinates[0]);
-    const lat = Number(geom.coordinates[1]);
+    const lat = Number(o.lat);
+    const lng = Number(o.lng);
     if (!isFinite(lat) || !isFinite(lng)) continue;
     records.push({
       openaip_id: o.openaip_id,
@@ -609,7 +611,6 @@ async function loadObstacles(
       lng,
     });
   }
-  cache.obstaclesAll = records;
   return records;
 }
 
@@ -718,7 +719,7 @@ export async function updateRouteProximityLayers(
         ),
     activeManualLayers?.obstacles
       ? Promise.resolve([] as ObstacleRecord[])
-      : withTimeout(loadObstacles(cache), 8000, signal).catch(
+      : withTimeout(loadObstacles(bbox, cache), 8000, signal).catch(
           () => [] as ObstacleRecord[],
         ),
   ]);
