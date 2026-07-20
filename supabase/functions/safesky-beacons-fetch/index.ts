@@ -146,18 +146,17 @@ Deno.serve(async (req) => {
 
     // (log line replaced by reason-based log above)
 
-    // Step 2: Fetch beacons from SafeSky production API with HMAC-SHA256-V1 authentication
-    const safeskyApiKey = Deno.env.get('SAFESKY_PROD_API_KEY');
+    // Step 2: Fetch beacons from SafeSky sandbox API with HMAC-SHA256-V1 authentication
+    const safeskyApiKey = Deno.env.get('SAFESKY_BEACONS_API_KEY') ?? Deno.env.get('SAFESKY_PROD_API_KEY');
     if (!safeskyApiKey) {
-      console.error('SAFESKY_PROD_API_KEY not configured');
+      console.error('SAFESKY_BEACONS_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'SAFESKY_PROD_API_KEY not configured' }),
+        JSON.stringify({ error: 'SAFESKY_BEACONS_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Calling SafeSky production API:', SAFESKY_BEACONS_URL);
-    console.log(`[debug] key prefix=${safeskyApiKey.slice(0, 9)}… length=${safeskyApiKey.length} trimmedLength=${safeskyApiKey.trim().length}`);
+    console.log('Calling SafeSky sandbox API:', SAFESKY_BEACONS_URL);
 
     const authHeaders = await generateAuthHeaders(safeskyApiKey, 'GET', SAFESKY_BEACONS_URL);
     const response = await safeFetch(SAFESKY_BEACONS_URL, {
@@ -167,7 +166,7 @@ Deno.serve(async (req) => {
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
         ...authHeaders,
       },
-    }, ['uav-api.safesky.app']);
+    }, ['sandbox-public-api.safesky.app']);
 
     if (!response.ok) {
       const errorText = await response.text();
