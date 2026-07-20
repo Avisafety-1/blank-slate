@@ -1480,6 +1480,7 @@ export function OpenAIPMap({
         fetchCaaLayers();
         fetchDkLayers();
         fetchUnifiedLayers();
+        fetchObstaclesViewport();
       }, 300);
     };
 
@@ -1488,6 +1489,7 @@ export function OpenAIPMap({
     fetchCaaLayers();
     fetchDkLayers();
     fetchUnifiedLayers();
+    fetchObstaclesViewport();
     map.on('moveend', debouncedFetchVern);
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
@@ -1497,6 +1499,7 @@ export function OpenAIPMap({
       if (dkMatch) fetchDkLayers();
       const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
       if (unifiedMatch) fetchUnifiedLayers();
+      if (e.layer === obstaclesLayer) fetchObstaclesViewport();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
