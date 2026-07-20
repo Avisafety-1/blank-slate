@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
+import { safeFetch } from "../_shared/http.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,11 +9,11 @@ const corsHeaders = {
 
 // Bounding box covering Norway + Denmark (SW lat, SW lng, NE lat, NE lng)
 // Extended south to 54.5°N and west to 7.5°E to include all of Denmark.
-const NORWAY_VIEWPORT = "54.5,7.5,71.5,31.5";
-const SAFESKY_HOST = "sandbox-public-api.safesky.app";
+const SAFESKY_VIEWPORT = "54.5,7.5,71.5,31.5";
+const SAFESKY_HOST = "uav-api.safesky.app";
 const SAFESKY_PATH = "/v1/beacons";
 // Include grounded traffic (default is false, which filters out GROUNDED beacons)
-const SAFESKY_QUERY = `viewport=${NORWAY_VIEWPORT}&return_grounded_traffic=true`;
+const SAFESKY_QUERY = `viewport=${SAFESKY_VIEWPORT}&return_grounded_traffic=true`;
 const SAFESKY_BEACONS_URL = `https://${SAFESKY_HOST}${SAFESKY_PATH}?${SAFESKY_QUERY}`;
 
 // How long a heartbeat is considered "active" (45 seconds — matches 30s client interval + margin)
