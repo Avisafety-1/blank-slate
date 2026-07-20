@@ -1510,6 +1510,7 @@ export function OpenAIPMap({
       if (e.layer === dkNatureLayer) resetCache('dkNature', dkNatureLayer);
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
+      if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
       if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:DE,DK,FI,SE`, unifiedMatch[1]);
     });
