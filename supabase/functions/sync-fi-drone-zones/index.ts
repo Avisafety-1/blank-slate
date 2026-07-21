@@ -24,6 +24,19 @@ const FI_AUTHORITY_RANK = 20; // Fintraffic Sky (Traficom-godkjent kilde)
 
 const UNIFIED_BATCH_SIZE = 500;
 const UNIFIED_MAX_SKIPPED_RATIO = 0.1;
+// Airspace-adapteren filtrerer bevisst bort drone-irrelevante feature-typer
+// (FIR/CTA/TMA/SECTOR/ADIZ/RAS/...). Bruk høyere terskel så deaktivering
+// av stale rader fortsatt kjøres etter filtrering.
+const UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE = 0.7;
+
+// Feature.properties.type-verdier som IKKE er relevante for droneoperasjoner
+// (høyt/nasjonalt luftrom som dekker enorme områder). Droppes helt.
+const AIRSPACE_IRRELEVANT_TYPES = new Set([
+  "FIR", "UIR", "SECTOR", "ADIZ", "RAS", "TMA_P", "PROTECT", "OTHER:RMZ",
+]);
+// Uklassifiserte features (type == null) med disse navne-suffiksene er
+// CTA/TMA/FIR/UIR og dekker hele områder — droppes.
+const AIRSPACE_IRRELEVANT_NAME_SUFFIXES = [" CTA", " TMA", " FIR", " UIR"];
 
 type LayerMapping = {
   layer_id: string;
