@@ -1159,10 +1159,11 @@ serve(async (req) => {
         featureCount: {},
         groundRiskClassification: 'unknown',
         summary: (language === 'en')
-          ? 'Population and land-use data outside Norway is not yet integrated. Ground risk (iGRC) falls back to SORA-default population class based on drawn footprint — verify manually against local sources.'
-          : 'Befolknings- og arealbruksdata utenfor Norge er ikke integrert ennå. Bakkerisiko (iGRC) faller tilbake på SORA-standard befolkningsklasse basert på tegnet fotavtrykk — verifiser manuelt mot lokale kilder.',
+          ? 'Land-use data outside Norway is not integrated yet. Population density is derived from Eurostat GEOSTAT 2021 1 km grid (see population section) — verify local land use manually.'
+          : 'Arealbruksdata utenfor Norge er ikke integrert ennå. Befolkningstetthet hentes fra Eurostat GEOSTAT 2021 1 km-rutenett (se befolkningsavsnitt) — verifiser lokal arealbruk manuelt.',
       };
     } else if (lat && lng) {
+
       try {
         // Build bounding box from route coordinates or single point
         const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
