@@ -139,7 +139,7 @@ function buildUnifiedFeatures(
       // SECTOR/ADIZ/RAS/PROTECT/RMZ + navngitte MANTO/KVARKEN/HALTI-lignende
       // sektorer uten `type`) dekker enorme områder og er ikke drone-relevant.
       // UAS-soner (source=fintraffic_fi_uas) og navwrng håndteres separat.
-      const AIRSPACE_ALLOWED_TYPES = new Set(["P", "R", "D"]);
+      const AIRSPACE_ALLOWED_TYPES = new Set(["P", "R", "D", "D_OTHER"]);
       if (!typeUpper || !AIRSPACE_ALLOWED_TYPES.has(typeUpper)) {
         skipped++; continue;
       }
