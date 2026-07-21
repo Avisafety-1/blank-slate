@@ -1326,6 +1326,56 @@ serve(async (req) => {
       }
     }
 
+    // 9c-eu. Eurostat 1 km population density for missions outside Norway (allowlisted companies).
+    if (routeCoords && routeCoords.length >= 2 && unifiedAirspaceActive) {
+      try {
+        const soraData = mission.mission_sora?.[0];
+        const routeSora = (mission.route as any)?.soraSettings;
+        const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
+        const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
+        const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
+        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const computed = await computeEurostatPopulationDensity(routeCoords, footprintBufferM, resolveLang(language), supabase);
+
+        if (computed) {
+          const maxDensity = computed.maxDensity;
+          let grcImpact: 'none' | 'moderate' | 'high' | 'very_high' = 'none';
+          let grcIncrement = 0;
+          if (maxDensity >= 1500) { grcImpact = 'very_high'; grcIncrement = 2; }
+          else if (maxDensity >= 500) { grcImpact = 'high'; grcIncrement = 1; }
+          else if (maxDensity >= 100) { grcImpact = 'moderate'; }
+
+          const en = resolveLang(language) === 'en';
+          const summary = en
+            ? `Eurostat 1 km: ${computed.calculation}. Average density inside footprint is ${computed.avgDensity.toFixed(1)} people/km² across ${computed.cellCount} overlapping cells. Dimensioning cell is ${computed.driver}.`
+            : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+          populationData = { ...computed, grcImpact, grcIncrement, summary };
+          console.log(`Eurostat population: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}`);
+        } else {
+          console.log('Eurostat 1km: no overlapping populated cells found inside operational footprint');
+          const en = resolveLang(language) === 'en';
+          populationData = {
+            maxDensity: 0,
+            avgDensity: 0,
+            cellCount: 0,
+            grcImpact: 'none',
+            grcIncrement: 0,
+            summary: en
+              ? 'No populated Eurostat 1 km cells found inside the operation footprint.'
+              : 'Ingen befolkede Eurostat 1 km-ruter ble funnet innenfor operasjonens fotavtrykk.',
+            gridResolutionM: 1000,
+            dataSource: en ? 'Eurostat GEOSTAT 2021 population on 1 km grid' : 'Eurostat GEOSTAT 2021 befolkning på 1 km rutenett',
+            method: en
+              ? 'Highest overlapping 1 km cell equals people/km² directly.'
+              : 'Høyeste overlappende 1 km-rute tilsvarer personer/km² direkte.',
+          };
+        }
+      } catch (e) {
+        console.error('Eurostat population fetch error (continuing without data):', e);
+      }
+    }
+
+
     // 9d. Fetch company-specific SORA config
     // Inheritance rules:
     //   1) If parent exists AND parent.propagate_sora_config = true AND parent has
