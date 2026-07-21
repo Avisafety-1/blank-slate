@@ -24,6 +24,19 @@ const FI_AUTHORITY_RANK = 20; // Fintraffic Sky (Traficom-godkjent kilde)
 
 const UNIFIED_BATCH_SIZE = 500;
 const UNIFIED_MAX_SKIPPED_RATIO = 0.1;
+// Airspace-adapteren filtrerer bevisst bort drone-irrelevante feature-typer
+// (FIR/CTA/TMA/SECTOR/ADIZ/RAS/...). Bruk høyere terskel så deaktivering
+// av stale rader fortsatt kjøres etter filtrering.
+const UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE = 0.9;
+
+// Feature.properties.type-verdier som IKKE er relevante for droneoperasjoner
+// (høyt/nasjonalt luftrom som dekker enorme områder). Droppes helt.
+const AIRSPACE_IRRELEVANT_TYPES = new Set([
+  "FIR", "UIR", "SECTOR", "ADIZ", "RAS", "TMA_P", "PROTECT", "OTHER:RMZ",
+]);
+// Uklassifiserte features (type == null) med disse navne-suffiksene er
+// CTA/TMA/FIR/UIR og dekker hele områder — droppes.
+const AIRSPACE_IRRELEVANT_NAME_SUFFIXES = [" CTA", " TMA", " FIR", " UIR", " CTR", " CTA EAST", " CTA WEST"];
 
 type LayerMapping = {
   layer_id: string;
@@ -116,11 +129,27 @@ function buildUnifiedFeatures(
     if (!f?.geometry) { skipped++; continue; }
     const p = (f.properties ?? {}) as Record<string, unknown>;
     const featureType = toStringOrNull(p["type"]);
+    const featureName = toStringOrNull(p["name"]) ?? "";
+
+    // Filtrer bort drone-irrelevant høyt/nasjonalt luftrom (FIR/CTA/TMA/SECTOR/ADIZ/...).
+    // Kun for Airspace-datasettet — UAS/temporary/navwrng er alltid drone-relevant.
+    if (source === "fintraffic_fi_airspace") {
+      const typeUpper = (featureType ?? "").toUpperCase();
+      // Kun P/R/D beholdes fra Airspace-datasettet. Alt annet (CTR/TMA/CTA/FIR/
+      // SECTOR/ADIZ/RAS/PROTECT/RMZ + navngitte MANTO/KVARKEN/HALTI-lignende
+      // sektorer uten `type`) dekker enorme områder og er ikke drone-relevant.
+      // UAS-soner (source=fintraffic_fi_uas) og navwrng håndteres separat.
+      const AIRSPACE_ALLOWED_TYPES = new Set(["P", "R", "D", "D_OTHER"]);
+      if (!typeUpper || !AIRSPACE_ALLOWED_TYPES.has(typeUpper)) {
+        skipped++; continue;
+      }
+    }
+
     const mapping = source === "fintraffic_fi_airspace"
       ? refineAirspaceFeature(baseMapping, featureType)
       : baseMapping;
 
-    const name = toStringOrNull(p["name"]) ?? toStringOrNull(zoneMeta.zoneType) ?? "FI-zone";
+    const name = (featureName || toStringOrNull(zoneMeta.zoneType) || "FI-zone");
     const seq = toStringOrNull(p["sequenceNumber"]) ?? String(i);
     const externalId = `fi:${zoneId}:${seq}:${name.toLowerCase().replace(/\s+/g, "_")}`.slice(0, 200);
 
@@ -282,7 +311,10 @@ Deno.serve(async (req) => {
       const { upserted, skipped: rpcSkipped, errors, batchFailures } = await upsertInBatches(supabase, rows);
       const totalSkipped = normalizeSkipped + rpcSkipped;
       const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-      const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+      const maxSkipRatio = source === "fintraffic_fi_airspace"
+        ? UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE
+        : UNIFIED_MAX_SKIPPED_RATIO;
+      const shouldDeactivate = batchFailures === 0 && failureRatio <= maxSkipRatio;
 
       let deactivateResult: unknown = { skipped: true, reason: "not_run" };
       if (shouldDeactivate) {

@@ -1,66 +1,62 @@
-## Problem
+# Rens opp finsk luftrom — vis kun drone-relevante soner
 
-Risikovurderingen (edge function `ai-risk-assessment`) er hardkodet mot norske datakilder og "ser" ingenting utenfor Norge. Dette bekreftes av skjermbildene fra Aalborg: population = 0/km², "No 5 km zones nearby", Airspace 9.0/10 GO — mens ruten på kartet faktisk ligger inne i EKYT CTR/TIZ og i verneområder.
+## Rotårsak (verifisert i DB)
 
-Konkret hva som er NO-only i dag:
-- `check_mission_airspace` RPC unionerer kun: `nsm_restriction_zones`, `rpas_5km_zones`, `rpas_ctr_tiz`, `aip_restriction_zones`, `caa_drone_zones`, `naturvern_zones`, `vern_restriction_zones`, `notams`.
-- Befolkningstetthet henter fra SSB WFS (Norge).
-- Arealbruk henter fra Geonorge SSB Arealbruk WFS (Norge).
+Fintraffic-adapteren importerer *hele* nasjonalt luftrom fra `Airspace`-datasettet og klassifiserer alt som `CTR` (AMBER). Det gir 176 store polygoner som overlapper hverandre og farger hele Finland oransje:
 
-De unified europeiske dataene (`airspace_zones` for DK/SE/DE/FI, `dk_drone_zones`, `dk_nature_areas`, sveriges naturreservat i `airspace_zones`) brukes ikke av risikovurderingen i det hele tatt.
+| ftype | antall | max km² | kommentar |
+|---|---|---|---|
+| FIR | 1 | 416 057 | hele Finland-FIR |
+| SECTOR | 14 | 74 970 | ATC-sektorer, ikke drone-relevant |
+| ADIZ | 1 | 17 410 | luftforsvarssone langs grensen |
+| RAS | 1 | 11 524 | rikstjeneste-sektor |
+| TMA_P | 8 | 12 246 | høyt TMA (lower ~550 m) |
+| (uten type) | 106 | 14 146 | CTA/TMA — EFJY CTA, EFOU TMA … |
+| OTHER:RMZ | 5 | 630 | radio mandatory zone |
+| D_OTHER | 39 | 79 | mindre D-områder |
+| P | 7 | 66 | forbudte soner (allerede riktig som R/RED) |
+| PROTECT | 1 | 64 | |
 
-## Guardrails — norske brukere skal ikke merke noe
+Ingen av disse feature-typene endres av dagens `refineAirspaceFeature` (som bare kjenner igjen `P`/`R`/`D`). Resultat: TMA/CTA/FIR/SECTOR/ADIZ blir alle CTR-amber og dekker hele landet. UAS-sonene (819 røde soner rundt flyplasser) og R-sonene (7 stk) er allerede riktige.
 
-Norge er urørt hvis vi holder oss til to enkle porter, ANDed:
-
-1. **Geografi-port**: Rutens/oppdragets centroid ligger utenfor Norge-bboksen (57.5–71.5°N, 4.0–31.5°E). Alt inne i Norge → nøyaktig samme kodebane som i dag, samme RPC, samme SSB-kall, samme scoring.
-2. **Allowlist-port**: `is_unified_airspace_enabled_for_me()` returnerer true. Fra før er kun "Moderavdeling" seedet her, så ingen andre selskap får nye datakall eller ny scoring før allowlisten utvides.
-
-Ingen endringer på `check_mission_airspace`, `nsm_*`, `rpas_*`, `caa_*`, `naturvern_*`, `vern_*`, SSB-kallene eller populationData-scoringen. Kun *tillegg* som slår inn når begge portene er åpne.
+flyk.com viser kun UAS-soner (rødt/gult rundt flyplasser), små CTR-er, R/D-områder — samme filosofi vi bør følge.
 
 ## Endringer
 
-### 1. Ny RPC `check_mission_airspace_unified(p_lat, p_lng, p_route)`
-Samme signatur og returkolonner som `check_mission_airspace`, men unionerer over de europeiske tabellene:
-- `airspace_zones` filtrert på `country_code IN ('DK','SE','DE','FI')` og `is_active = true`, mappet til `z_type` fra `zone_class` (CTR/TIZ/CTA/RMZ/TMZ/ATZ/R/D/P/NATURE osv.).
-- `dk_drone_zones` med `layer_id IN ('rod','orange','bla')` mappet til hhv `5KM`, `RESTRICTED`, `INFO`.
-- `dk_nature_areas` mappet til `NATURVERN`.
+**Kun `supabase/functions/sync-fi-drone-zones/index.ts`** — ingen DB-schema-endringer, ingen UI-endringer, ingen påvirkning på NO/DK/SE/DE eller andre selskaper.
 
-`STABLE SECURITY DEFINER`, `statement_timeout = 8s`, GIST-indeks-vennlig ST_DWithin med 50 km buffer (2 km for natur), identisk form på output.
+### 1. Skip drone-irrelevante feature-typer under normalisering
 
-### 2. Edge function `ai-risk-assessment` — additiv gren
-Ved siden av eksisterende steg 9:
+I `buildUnifiedFeatures`, før raden lages, dropp features hvor `properties.type` er:
+- `FIR`, `SECTOR`, `ADIZ`, `RAS`, `TMA_P`, `PROTECT`, `OTHER:RMZ`
+- Alle features med `type == null` **og** navn som slutter på ` CTA`, ` TMA`, ` FIR`, ` UIR` (EFJY CTA, EFOU TMA, osv.)
 
-```text
-Step 9: check_mission_airspace (NO)  — UENDRET
-Step 9a (ny): hvis outside_norway(centroid) OG unified_enabled_for_company →
-              kall check_mission_airspace_unified, appendes til airspaceWarnings
+Disse teller da som `skipped` i statistikken, men det er tilsiktet — ikke en feil.
+
+### 2. Utvid `refineAirspaceFeature` med CTR-heuristikk
+
+CTR-features (mindre soner rundt selve flyplassen, typisk <100 km², nedre limit = GND) skal fortsatt vises som AMBER CTR. Uklassifiserte features med lite areal og GND-basert nedre limit kan beholdes som CTR. Enkleste regel: behold features hvor `type ∈ {CTR, CTA_LOW}` eller navn ender på ` CTR`. Alt annet uten eksplisitt P/R/D droppes.
+
+### 3. Løft `UNIFIED_MAX_SKIPPED_RATIO`
+
+Filtreringen vil skipe ~30 % av airspace-features med vilje. Terskelen `0.1` for `deactivate_stale_airspace_zones` må heves for source `fintraffic_fi_airspace` (f.eks. til `0.6`), ellers blir deaktivering hoppet over med grunn `high_skipped_ratio` og gamle rader blir liggende.
+
+### 4. Kjør synk på nytt
+
+Etter deploy: kall `sync-fi-drone-zones` én gang. `deactivate_stale_airspace_zones` fjerner FIR/CTA/TMA/SECTOR/ADIZ automatisk (siden de ikke lenger er i `keep_external_ids`), og kartet får kun UAS + små CTR + R/D.
+
+## Sikkerhet / scope
+
+- Kun Fintraffic-adapteren endres. NO/DK/SE/DE/CAA/nature/obstacles er urørt.
+- Ingen kode- eller RLS-endring i klienten. Alle brukere (også utenfor Moderavdeling-allowlisten) ser en renere FI, men UI-toggler og lag er identiske.
+- `airspace_zones`-rader deaktiveres via eksisterende `deactivate_stale_airspace_zones` — samme mekanisme som brukes daglig, ingen sletting.
+
+## Verifisering etterpå
+
+```sql
+SELECT properties->>'type' AS ftype, COUNT(*), MAX(ROUND((ST_Area(geom::geography)/1e6)::numeric,0)) AS max_km2
+FROM airspace_zones WHERE country_code='FI' AND source='fintraffic_fi_airspace' AND active
+GROUP BY 1 ORDER BY 3 DESC;
 ```
 
-`airspaceFacts`-bygger og resten av AI-prompten er allerede generisk over `airspaceWarnings`-arrayet, så CTR/TIZ/5KM/NATURVERN blir tolket riktig uten prompt-endringer.
-
-### 3. Befolkning/arealbruk utenfor Norge
-SSB WFS-kallene er hardkodet mot norske data — de returnerer tomt for DK/SE/DE/FI. I dag gir det den villedende "0 people/km²"-teksten.
-
-Additiv fix (kun for utenfor-NO + allowlist):
-- Hopp over SSB-kallene (de er meningsløse der ute).
-- Sett `populationData = null` + en eksplisitt "coverage note" i `landUseData.summary`:
-  *"Population and land-use data outside Norway is not yet integrated. Ground risk (iGRC) uses SORA-default population class based on drawn footprint — verify manually against local sources."*
-- iGRC-utregningen faller da tilbake på karakteristisk dimensjon/hastighet uten populasjonsreduksjon, og prompten får med disclaimeren så AI ikke skriver "0 people/km²".
-
-For Norge fjernes/endres ingenting.
-
-### 4. Ninox/5 km-tekst
-Eksisterende `airspaceFacts.requiresNinox`-logikk er norsk-spesifikk (Ninox er Luftfartstilsynets system). For utenfor-NO settes `requiresNinox = null` og teksten blir "Local coordination may be required within 5 km of airfield — verify per country" i stedet for "Ninox approval required".
-
-## Verifisering før merge
-
-- Kjør risikovurdering på DK-ruten fra skjermbildet (Aalborg EKYT) som Moderavdeling-bruker: skal returnere CTR/TIZ, 5 km-ring og naturområder som warnings, Airspace-score skal droppe fra 9.0 og gi CAUTION/NO-GO.
-- Kjør samme risikovurdering som en *ikke*-allowlistet bruker: skal oppføre seg som i dag (ingen nye advarsler, ingen crash).
-- Kjør risikovurdering på en NO-rute (f.eks. Trondheim) som Moderavdeling-bruker: `outside_norway`-porten skal stenge, output skal være bit-identisk med før endringen.
-
-## Ikke i scope
-
-- Utvide allowlisten. Kun Moderavdeling til testing er fortsatt regelen.
-- Befolkningsdata for Europa (Eurostat/GHSL WFS-integrasjon) — dette blir egen fase når UI-testingen på Moderavdeling er verifisert.
-- Endre `check_mission_airspace` (NO) eller SSB-fetch-logikken.
+Forventet: kun `P`, `D`, `CTR` (og evt. små uklassifiserte CTR-navn) igjen, `max_km2` under ~500.
