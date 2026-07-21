@@ -129,11 +129,28 @@ function buildUnifiedFeatures(
     if (!f?.geometry) { skipped++; continue; }
     const p = (f.properties ?? {}) as Record<string, unknown>;
     const featureType = toStringOrNull(p["type"]);
+    const featureName = toStringOrNull(p["name"]) ?? "";
+
+    // Filtrer bort drone-irrelevant høyt/nasjonalt luftrom (FIR/CTA/TMA/SECTOR/ADIZ/...).
+    // Kun for Airspace-datasettet — UAS/temporary/navwrng er alltid drone-relevant.
+    if (source === "fintraffic_fi_airspace") {
+      const typeUpper = (featureType ?? "").toUpperCase();
+      if (typeUpper && AIRSPACE_IRRELEVANT_TYPES.has(typeUpper)) {
+        skipped++; continue;
+      }
+      if (!typeUpper) {
+        const nameUpper = featureName.toUpperCase();
+        if (AIRSPACE_IRRELEVANT_NAME_SUFFIXES.some((s) => nameUpper.endsWith(s))) {
+          skipped++; continue;
+        }
+      }
+    }
+
     const mapping = source === "fintraffic_fi_airspace"
       ? refineAirspaceFeature(baseMapping, featureType)
       : baseMapping;
 
-    const name = toStringOrNull(p["name"]) ?? toStringOrNull(zoneMeta.zoneType) ?? "FI-zone";
+    const name = (featureName || toStringOrNull(zoneMeta.zoneType) || "FI-zone");
     const seq = toStringOrNull(p["sequenceNumber"]) ?? String(i);
     const externalId = `fi:${zoneId}:${seq}:${name.toLowerCase().replace(/\s+/g, "_")}`.slice(0, 200);
 
