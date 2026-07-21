@@ -27,7 +27,7 @@ const UNIFIED_MAX_SKIPPED_RATIO = 0.1;
 // Airspace-adapteren filtrerer bevisst bort drone-irrelevante feature-typer
 // (FIR/CTA/TMA/SECTOR/ADIZ/RAS/...). Bruk høyere terskel så deaktivering
 // av stale rader fortsatt kjøres etter filtrering.
-const UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE = 0.7;
+const UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE = 0.9;
 
 // Feature.properties.type-verdier som IKKE er relevante for droneoperasjoner
 // (høyt/nasjonalt luftrom som dekker enorme områder). Droppes helt.
