@@ -135,14 +135,13 @@ function buildUnifiedFeatures(
     // Kun for Airspace-datasettet — UAS/temporary/navwrng er alltid drone-relevant.
     if (source === "fintraffic_fi_airspace") {
       const typeUpper = (featureType ?? "").toUpperCase();
-      if (typeUpper && AIRSPACE_IRRELEVANT_TYPES.has(typeUpper)) {
+      // Kun P/R/D beholdes fra Airspace-datasettet. Alt annet (CTR/TMA/CTA/FIR/
+      // SECTOR/ADIZ/RAS/PROTECT/RMZ + navngitte MANTO/KVARKEN/HALTI-lignende
+      // sektorer uten `type`) dekker enorme områder og er ikke drone-relevant.
+      // UAS-soner (source=fintraffic_fi_uas) og navwrng håndteres separat.
+      const AIRSPACE_ALLOWED_TYPES = new Set(["P", "R", "D"]);
+      if (!typeUpper || !AIRSPACE_ALLOWED_TYPES.has(typeUpper)) {
         skipped++; continue;
-      }
-      if (!typeUpper) {
-        const nameUpper = featureName.toUpperCase();
-        if (AIRSPACE_IRRELEVANT_NAME_SUFFIXES.some((s) => nameUpper.endsWith(s))) {
-          skipped++; continue;
-        }
       }
     }
 
