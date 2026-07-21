@@ -409,6 +409,81 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   };
 }
 
+// Eurostat GEOSTAT 2021 v2 1 km grid population for missions outside Norway.
+// Mirrors computeSsb250PopulationDensity output so downstream scoring/prompts
+// can consume it identically. Uses the eurostat_pop_in_bbox RPC (GIST-indexed).
+async function computeEurostatPopulationDensity(
+  route: RouteCoord[],
+  footprintBufferM: number,
+  lang: Lang,
+  supabase: any,
+) {
+  if (route.length < 2) return null;
+
+  const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
+  const degLat = footprintBufferM / metersPerDegLat;
+  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  const minLat = Math.min(...route.map(p => p.lat)) - degLat;
+  const maxLat = Math.max(...route.map(p => p.lat)) + degLat;
+  const minLng = Math.min(...route.map(p => p.lng)) - degLng;
+  const maxLng = Math.max(...route.map(p => p.lng)) + degLng;
+
+  console.log(`Fetching Eurostat 1km population for footprint: buffer=${footprintBufferM}m bbox=${minLng.toFixed(4)},${minLat.toFixed(4)},${maxLng.toFixed(4)},${maxLat.toFixed(4)}`);
+  const { data, error } = await supabase.rpc('eurostat_pop_in_bbox', {
+    min_lng: minLng, min_lat: minLat, max_lng: maxLng, max_lat: maxLat,
+  });
+  if (error) throw new Error(`eurostat_pop_in_bbox: ${error.message}`);
+
+  const cells: Array<{ population: number; centroid: RouteCoord }> = (data ?? [])
+    .map((r: any) => ({
+      population: Number(r.pop_2021) || 0,
+      centroid: { lat: Number(r.centroid_lat), lng: Number(r.centroid_lng) },
+    }))
+    .filter((c: any) => c.population > 0 && Number.isFinite(c.centroid.lat) && Number.isFinite(c.centroid.lng));
+
+  // 1 km cell → tolerate up to ~720 m from segment centerline (half-diagonal).
+  const overlapping = cells.filter(cell => {
+    for (let i = 0; i < route.length - 1; i++) {
+      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 720) return true;
+    }
+    return false;
+  });
+  if (overlapping.length === 0) return null;
+
+  const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
+  const totalPopulation = overlapping.reduce((sum, cell) => sum + cell.population, 0);
+  // 1 km² cell → people/km² == population count.
+  const maxDensity = maxCell.population;
+  const avgDensity = totalPopulation / overlapping.length;
+  const driver = nearestRouteDriver(maxCell.centroid, route, lang);
+
+  const en = lang === 'en';
+  const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
+
+  return {
+    maxDensity,
+    avgDensity,
+    cellCount: overlapping.length,
+    maxCellPopulation: maxCell.population,
+    totalPopulation,
+    gridResolutionM: 1000,
+    dataSource: en ? 'Eurostat GEOSTAT 2021 population on 1 km grid' : 'Eurostat GEOSTAT 2021 befolkning på 1 km rutenett',
+    method: en
+      ? 'Highest overlapping 1 km cell equals people/km² directly (1 km² cell size).'
+      : 'Høyeste overlappende 1 km-rute tilsvarer personer/km² direkte (celle er 1 km²).',
+    calculation: en
+      ? `${fmt(maxCell.population)} people in dimensioning 1 km cell = ${fmt(Math.round(maxDensity))} people/km²`
+      : `${fmt(maxCell.population)} personer i dimensjonerende 1 km-rute = ${fmt(Math.round(maxDensity))} personer/km²`,
+    footprintDescription: en
+      ? `Planned route + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m from route).`
+      : `Planlagt rute + Flight Geography + Contingency + Ground Risk Buffer (${fmt(Math.round(footprintBufferM))} m fra ruten).`,
+    driver,
+    driverCoordinate: maxCell.centroid,
+  };
+}
+
+
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
