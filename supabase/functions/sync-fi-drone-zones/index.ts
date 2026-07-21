@@ -36,7 +36,7 @@ const AIRSPACE_IRRELEVANT_TYPES = new Set([
 ]);
 // Uklassifiserte features (type == null) med disse navne-suffiksene er
 // CTA/TMA/FIR/UIR og dekker hele områder — droppes.
-const AIRSPACE_IRRELEVANT_NAME_SUFFIXES = [" CTA", " TMA", " FIR", " UIR"];
+const AIRSPACE_IRRELEVANT_NAME_SUFFIXES = [" CTA", " TMA", " FIR", " UIR", " CTR", " CTA EAST", " CTA WEST"];
 
 type LayerMapping = {
   layer_id: string;
