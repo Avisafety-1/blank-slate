@@ -312,7 +312,10 @@ Deno.serve(async (req) => {
       const { upserted, skipped: rpcSkipped, errors, batchFailures } = await upsertInBatches(supabase, rows);
       const totalSkipped = normalizeSkipped + rpcSkipped;
       const failureRatio = fetched > 0 ? (totalSkipped + batchFailures) / fetched : 1;
-      const shouldDeactivate = batchFailures === 0 && failureRatio <= UNIFIED_MAX_SKIPPED_RATIO;
+      const maxSkipRatio = source === "fintraffic_fi_airspace"
+        ? UNIFIED_MAX_SKIPPED_RATIO_AIRSPACE
+        : UNIFIED_MAX_SKIPPED_RATIO;
+      const shouldDeactivate = batchFailures === 0 && failureRatio <= maxSkipRatio;
 
       let deactivateResult: unknown = { skipped: true, reason: "not_run" };
       if (shouldDeactivate) {
