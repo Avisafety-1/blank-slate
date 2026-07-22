@@ -1,62 +1,50 @@
-# Rens opp finsk luftrom — vis kun drone-relevante soner
+## Bakgrunn
 
-## Rotårsak (verifisert i DB)
+Fra `/maphelp` sier notaminfo selv:
 
-Fintraffic-adapteren importerer *hele* nasjonalt luftrom fra `Airspace`-datasettet og klassifiserer alt som `CTR` (AMBER). Det gir 176 store polygoner som overlapper hverandre og farger hele Finland oransje:
+> "The NOTAM information is collected by logging on to the **NATS** web site, and downloading all the information for the **EGTT and EGPX** flight Information Regions, ie the whole of the **UK**."
 
-| ftype | antall | max km² | kommentar |
-|---|---|---|---|
-| FIR | 1 | 416 057 | hele Finland-FIR |
-| SECTOR | 14 | 74 970 | ATC-sektorer, ikke drone-relevant |
-| ADIZ | 1 | 17 410 | luftforsvarssone langs grensen |
-| RAS | 1 | 11 524 | rikstjeneste-sektor |
-| TMA_P | 8 | 12 246 | høyt TMA (lower ~550 m) |
-| (uten type) | 106 | 14 146 | CTA/TMA — EFJY CTA, EFOU TMA … |
-| OTHER:RMZ | 5 | 630 | radio mandatory zone |
-| D_OTHER | 39 | 79 | mindre D-områder |
-| P | 7 | 66 | forbudte soner (allerede riktig som R/RED) |
-| PROTECT | 1 | 64 | |
+Dette betyr at notaminfo sin egen kildedata i utgangspunktet er UK-only (NATS AIS). At vi i dag får norske NOTAMs derfra tyder på at Dave har utvidet kildene sine noe, men det finnes ingen dokumentert måte å utvide RSS-boundary programmatisk — boundary er lagret per konto på serveren, og feed-URL-en (`?u=<brukernavn>`) plukker bare opp den lagrede boundary-en.
 
-Ingen av disse feature-typene endres av dagens `refineAirspaceFeature` (som bare kjenner igjen `P`/`R`/`D`). Resultat: TMA/CTA/FIR/SECTOR/ADIZ blir alle CTR-amber og dekker hele landet. UAS-sonene (819 røde soner rundt flyplasser) og R-sonene (7 stk) er allerede riktige.
+Sider som antyder mulige omgåelser:
+- `Flight Planning Map` viser "the entire country, and all current NOTAMS" — én visning uten boundary-filter
+- `Latest Briefing` viser den rå NATS-briefing-en som lastes ned time for time
+- `Export NOTAMs` (i sidemenyen) og KML-nedlasting for innloggede brukere
 
-flyk.com viser kun UAS-soner (rødt/gult rundt flyplasser), små CTR-er, R/D-områder — samme filosofi vi bør følge.
+Ingen av disse er dokumentert som API, men de eksisterer som endepunkter når man er logget inn.
 
-## Endringer
+## Plan
 
-**Kun `supabase/functions/sync-fi-drone-zones/index.ts`** — ingen DB-schema-endringer, ingen UI-endringer, ingen påvirkning på NO/DK/SE/DE eller andre selskaper.
+### Fase 1 — Reverse-engineer notaminfo (undersøkelse, ingen kode)
 
-### 1. Skip drone-irrelevante feature-typer under normalisering
+Manuell utforsking mot notaminfo med innlogget bruker for å svare på:
 
-I `buildUnifiedFeatures`, før raden lages, dropp features hvor `properties.type` er:
-- `FIR`, `SECTOR`, `ADIZ`, `RAS`, `TMA_P`, `PROTECT`, `OTHER:RMZ`
-- Alle features med `type == null` **og** navn som slutter på ` CTA`, ` TMA`, ` FIR`, ` UIR` (EFJY CTA, EFOU TMA, osv.)
+1. Har `Flight Planning Map` en underliggende JSON/XML-endpoint (DevTools → Network) som returnerer alle UK-NOTAMs uten boundary-filter?
+2. Kan `Latest Briefing` hentes som strukturert tekst per FIR (f.eks. EGTT, EGPX, ENOR, ESAA)?
+3. Har `Export NOTAMs`/KML et URL-mønster som kan parameteriseres med FIR eller boundary?
+4. Hvilke FIR-er dekker notaminfo faktisk i dag (kun UK, eller også ENOR/ESAA/EKDK/EDGG/EFIN)?
 
-Disse teller da som `skipped` i statistikken, men det er tilsiktet — ikke en feil.
+Leveranse: kort notat med endepunkter, respons-format, og en go/no-go-anbefaling for å bygge en «notaminfo-scraper»-adapter.
 
-### 2. Utvid `refineAirspaceFeature` med CTR-heuristikk
+### Fase 2 — Beslutningspunkt
 
-CTR-features (mindre soner rundt selve flyplassen, typisk <100 km², nedre limit = GND) skal fortsatt vises som AMBER CTR. Uklassifiserte features med lite areal og GND-basert nedre limit kan beholdes som CTR. Enkleste regel: behold features hvor `type ∈ {CTR, CTA_LOW}` eller navn ender på ` CTR`. Alt annet uten eksplisitt P/R/D droppes.
+Basert på funnene i Fase 1, velg én av:
 
-### 3. Løft `UNIFIED_MAX_SKIPPED_RATIO`
+- **2A**: Bygg `fetch-notams-notaminfo-scraper` som logger inn og henter Flight Planning Map / Latest Briefing / KML uten boundary — hvis endepunktene finnes og dekker de landene vi trenger.
+- **2B**: Aksepter at notaminfo har hardt UK-tak (og delvis NO), og bygg `fetch-notams-autorouter` som europeisk hovedkilde. Behold notaminfo RSS som fallback for Norge for ikke å påvirke eksisterende brukere.
+- **2C**: Kombinasjon: 2A for land der scraping fungerer, 2B for resten.
 
-Filtreringen vil skipe ~30 % av airspace-features med vilje. Terskelen `0.1` for `deactivate_stale_airspace_zones` må heves for source `fintraffic_fi_airspace` (f.eks. til `0.6`), ellers blir deaktivering hoppet over med grunn `high_skipped_ratio` og gamle rader blir liggende.
+### Fase 3 — Implementasjon (kun etter godkjenning av Fase 2-valg)
 
-### 4. Kjør synk på nytt
+Uansett valg: nye kilder skrives til `notams`-tabellen med samme deduplisering på `notam_id`. Ingen endring i `notam_rss_feeds`-flyten for norske brukere før parity er verifisert.
 
-Etter deploy: kall `sync-fi-drone-zones` én gang. `deactivate_stale_airspace_zones` fjerner FIR/CTA/TMA/SECTOR/ADIZ automatisk (siden de ikke lenger er i `keep_external_ids`), og kartet får kun UAS + små CTR + R/D.
+## Risiko og begrensninger
 
-## Sikkerhet / scope
+- **Notaminfo-scraping er skjør**: HTML/session-endringer kan bryte det uten varsel, og ToS på notaminfo tillater ikke eksplisitt automatisert nedlasting av briefings. Bør avklares med Dave (kontaktskjema) før produksjonssetting.
+- **Notaminfo dekker sannsynligvis ikke DE/FI/SE/DK offisielt** — selv en perfekt scraper løser ikke det europeiske dekningsproblemet.
+- **Autorouter** er en gratis, dokumentert, OAuth-basert API laget for nettopp dette formålet og gir hele ECAC — dette er den mest robuste veien til europeisk dekning uavhengig av notaminfo-utfallet.
+- Norske brukere skal ikke merke noe før nye kilder er shadow-verifisert (samme mønster som airspace-utrullingen).
 
-- Kun Fintraffic-adapteren endres. NO/DK/SE/DE/CAA/nature/obstacles er urørt.
-- Ingen kode- eller RLS-endring i klienten. Alle brukere (også utenfor Moderavdeling-allowlisten) ser en renere FI, men UI-toggler og lag er identiske.
-- `airspace_zones`-rader deaktiveres via eksisterende `deactivate_stale_airspace_zones` — samme mekanisme som brukes daglig, ingen sletting.
+## Neste steg
 
-## Verifisering etterpå
-
-```sql
-SELECT properties->>'type' AS ftype, COUNT(*), MAX(ROUND((ST_Area(geom::geography)/1e6)::numeric,0)) AS max_km2
-FROM airspace_zones WHERE country_code='FI' AND source='fintraffic_fi_airspace' AND active
-GROUP BY 1 ORDER BY 3 DESC;
-```
-
-Forventet: kun `P`, `D`, `CTR` (og evt. små uklassifiserte CTR-navn) igjen, `max_km2` under ~500.
+Godkjenn Fase 1 (undersøkelse), så gjør jeg manuell DevTools-analyse mot notaminfo og rapporterer tilbake med endepunktene før vi velger 2A/2B/2C.
