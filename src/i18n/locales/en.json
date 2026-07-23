@@ -1813,7 +1813,13 @@
       "inactive": "Inactive",
       "addNewFeed": "Add new feed",
       "namePlaceholder": "Name (e.g. Northern Norway)",
-      "helpText": "Create accounts on notaminfo.com with different coverage areas, and add the RSS feed URLs here."
+      "helpText": "Create accounts on notaminfo.com with different coverage areas, and add the RSS feed URLs here.",
+      "countryTitle": "Country briefings (notaminfo)",
+      "countryDescription": "Fetches public per-country NOTAM briefings from notaminfo.com/latest?country=X (no per-account boundary). Enable countries you want coverage for.",
+      "lastSynced": "Last synced {{time}}",
+      "neverSynced": "Never synced",
+      "lastCount": "{{count}} NOTAMs",
+      "syncFailed": "Error: {{error}}"
     },
     "mapLayerDefaults": {
       "saveError": "Could not save default map layers: {{message}}",
