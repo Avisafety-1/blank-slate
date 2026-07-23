@@ -423,20 +423,26 @@ Deno.serve(async (req) => {
     }
     console.log(`Loaded ${caaMap.size} CAA zones for NOTAM geometry enrichment`);
 
-    // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
+    // ── Step 1: Fetch enabled feeds (RSS + notaminfo per-country briefings) ──
     const { data: feeds } = await supabase
       .from("notam_rss_feeds")
-      .select("id, name, feed_url")
+      .select("id, name, feed_url, source_type, country")
       .eq("enabled", true);
 
     if (feeds && feeds.length > 0) {
-      console.log(`Fetching NOTAMs from ${feeds.length} RSS feed(s)...`);
+      console.log(`Fetching NOTAMs from ${feeds.length} feed(s)...`);
       const feedResults: { name: string; count: number }[] = [];
 
       for (const feed of feeds) {
         try {
-          const items = await fetchRssFeed(feed.feed_url);
+          const items = feed.source_type === "country_briefing"
+            ? await fetchCountryBriefing(feed.feed_url, feed.country ?? "")
+            : await fetchRssFeed(feed.feed_url);
           if (items.length === 0) {
+            // Record sync state even when empty
+            await supabase.from("notam_rss_feeds").update({
+              last_synced_at: now.toISOString(), last_upserted_count: 0, last_error: null,
+            }).eq("id", feed.id);
             feedResults.push({ name: feed.name, count: 0 });
             continue;
           }
