@@ -479,9 +479,15 @@ Deno.serve(async (req) => {
             }
           }
 
+          await supabase.from("notam_rss_feeds").update({
+            last_synced_at: now.toISOString(), last_upserted_count: rows.length, last_error: null,
+          }).eq("id", feed.id);
           feedResults.push({ name: feed.name, count: rows.length });
         } catch (feedErr) {
           console.error(`Error processing feed "${feed.name}":`, feedErr);
+          await supabase.from("notam_rss_feeds").update({
+            last_synced_at: now.toISOString(), last_error: String(feedErr).slice(0, 500),
+          }).eq("id", feed.id);
           feedResults.push({ name: feed.name, count: -1 });
         }
       }
