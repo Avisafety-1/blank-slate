@@ -5365,25 +5365,40 @@ export type Database = {
       }
       notam_rss_feeds: {
         Row: {
+          country: string | null
           created_at: string
           enabled: boolean
           feed_url: string
           id: string
+          last_error: string | null
+          last_synced_at: string | null
+          last_upserted_count: number | null
           name: string
+          source_type: string
         }
         Insert: {
+          country?: string | null
           created_at?: string
           enabled?: boolean
           feed_url: string
           id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          last_upserted_count?: number | null
           name: string
+          source_type?: string
         }
         Update: {
+          country?: string | null
           created_at?: string
           enabled?: boolean
           feed_url?: string
           id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          last_upserted_count?: number | null
           name?: string
+          source_type?: string
         }
         Relationships: []
       }
