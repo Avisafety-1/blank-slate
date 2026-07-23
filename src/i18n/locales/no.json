@@ -1815,7 +1815,13 @@
       "inactive": "Inaktiv",
       "addNewFeed": "Legg til ny feed",
       "namePlaceholder": "Navn (f.eks. Nord-Norge)",
-      "helpText": "Opprett kontoer på notaminfo.com med ulike dekningsområder, og legg til RSS-feed-URLene her."
+      "helpText": "Opprett kontoer på notaminfo.com med ulike dekningsområder, og legg til RSS-feed-URLene her.",
+      "countryTitle": "Land-briefings (notaminfo)",
+      "countryDescription": "Henter offentlige NOTAM-briefings per land fra notaminfo.com/latest?country=X (ingen kontogrense). Aktivér land du ønsker dekning for.",
+      "lastSynced": "Sist synket {{time}}",
+      "neverSynced": "Aldri synket",
+      "lastCount": "{{count}} NOTAMs",
+      "syncFailed": "Feil: {{error}}"
     },
     "mapLayerDefaults": {
       "saveError": "Kunne ikke lagre standard kartlag: {{message}}",
