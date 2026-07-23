@@ -250,6 +250,150 @@ async function fetchRssFeed(feedUrl: string): Promise<ReturnType<typeof parseRss
   return items;
 }
 
+/** Parse ICAO briefing date "26/07/02 15:56" (YY/MM/DD HH:MM UTC) → ISO */
+function parseBriefingDate(raw: string): string | null {
+  const m = raw.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const yy = 2000 + parseInt(m[1]);
+  const iso = `${yy}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00Z`;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** Parse a single raw NOTAM block from a notaminfo /latest?country=X briefing.
+ *  Block format:
+ *    A1234/26
+ *    Q) ENOR/QSPAH/IV/BO/E/000/155/5921N00956E061
+ *    A) ENOR  B) FROM: 26/06/20 00:00  TO: 26/08/09 23:59 [EST|PERM]
+ *    E) <text spanning multiple lines>
+ *    [F) <lower alt>]  [G) <upper alt>]
+ */
+function parseBriefingBlock(block: string, countryLabel: string): ReturnType<typeof parseRssItem> | null {
+  // NOTAM ID (must be present)
+  const idMatch = block.match(/^\s*([A-Z])(\d+)\/(\d{2})\s*$/m);
+  if (!idMatch) return null;
+  const series = idMatch[1];
+  const number = parseInt(idMatch[2]);
+  const yy = idMatch[3];
+  const year = 2000 + parseInt(yy);
+  const notamId = `${series}${number}/${yy}`;
+
+  // Q-line
+  const qlineMatch = block.match(/Q\)\s*([A-Z]{4}\/Q[^\s\n]+)/);
+  const qline = qlineMatch ? qlineMatch[1] : null;
+  const qlineSegments = qline?.split("/") ?? [];
+  const location = qline ? qline.substring(0, 4) : null;
+  const qcode = qlineSegments[1] ?? null; // "QSPAH"
+  const scope = qlineSegments.length >= 5 ? qlineSegments[4] : null;
+
+  // Lower/upper FL from Q-line segments 5 & 6 ("000"/"155" = FL 0-155)
+  const parseFLSeg = (s: string | undefined) => {
+    if (!s) return null;
+    const n = parseInt(s);
+    return isNaN(n) ? null : n;
+  };
+  const minimumFL = parseFLSeg(qlineSegments[5]);
+  const maximumFL = parseFLSeg(qlineSegments[6]);
+
+  // Q-line center + radius
+  let centerLat: number | null = null;
+  let centerLng: number | null = null;
+  let radiusNm: number | null = null;
+  if (qline) {
+    const c = parseQlineCenter(qline);
+    if (c) { centerLat = c.lat; centerLng = c.lng; radiusNm = c.radiusNm; }
+  }
+
+  // B) FROM / TO
+  const fromMatch = block.match(/B\)\s*FROM:\s*(\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2})/);
+  const toMatch = block.match(/TO:\s*(\d{2}\/\d{2}\/\d{2}\s+\d{2}:\d{2})(\s+(EST|PERM))?/);
+  const effectiveStart = fromMatch ? parseBriefingDate(fromMatch[1]) : null;
+  const effectiveEnd = toMatch ? parseBriefingDate(toMatch[1]) : null;
+  const toSuffix = toMatch?.[3];
+  const effectiveEndInterpretation = toSuffix === "PERM" ? "PERM" : (toSuffix === "EST" ? "EST" : null);
+
+  // E) text (up to F/G/next NOTAM/end)
+  const eMatch = block.match(/E\)\s*([\s\S]*?)(?:\n\s*[FG]\)|$)/);
+  const notamText = eMatch ? eMatch[1].trim().replace(/\s+/g, " ") : block.trim();
+
+  // Geometry: DMS in E-text takes priority; else circle from Q-line if radius sane
+  let geometryGeojson: object | null = parseNotamCoordinates(notamText);
+  if (!geometryGeojson && centerLat && centerLng && radiusNm && radiusNm > 0 && scope !== "A") {
+    geometryGeojson = createCirclePolygon(centerLat, centerLng, radiusNm);
+  }
+
+  // Map country to ISO3 for country_code column
+  const countryToIso3: Record<string, string> = {
+    Austria: "AUT", Belgium: "BEL", Denmark: "DNK", France: "FRA", Germany: "DEU",
+    Iceland: "ISL", Ireland: "IRL", Italy: "ITA", Netherlands: "NLD", Norway: "NOR",
+    Portugal: "PRT", Spain: "ESP", Sweden: "SWE", Switzerland: "CHE", UK: "GBR",
+  };
+
+  return {
+    notam_id: notamId,
+    series,
+    number,
+    year,
+    location,
+    country_code: countryToIso3[countryLabel] ?? null,
+    qcode,
+    scope,
+    traffic: null,
+    purpose: null,
+    notam_type: null,
+    notam_text: notamText,
+    effective_start: effectiveStart,
+    effective_end: effectiveEnd,
+    effective_end_interpretation: effectiveEndInterpretation,
+    minimum_fl: minimumFL,
+    maximum_fl: maximumFL,
+    center_lat: centerLat,
+    center_lng: centerLng,
+    geometry_geojson: geometryGeojson,
+    properties: { qline, source: "notaminfo-briefing", country: countryLabel },
+  };
+}
+
+/** Fetch and parse a notaminfo per-country briefing page. */
+async function fetchCountryBriefing(feedUrl: string, countryLabel: string): Promise<ReturnType<typeof parseRssItem>[]> {
+  const res = await fetch(feedUrl, {
+    headers: { Accept: "text/html", "User-Agent": "Avisafe/1.0 (+https://avisafe.no)" },
+  });
+  if (!res.ok) {
+    console.error(`Country briefing fetch error [${res.status}] for ${feedUrl}`);
+    return [];
+  }
+  const html = await res.text();
+  // Strip HTML tags → plain text, decode entities we care about
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "\n")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\r/g, "");
+
+  // Split into blocks on NOTAM ID lines (e.g. "A1144/26"). We look for lines that are
+  // just an ID and use their positions as block boundaries.
+  const idLineRegex = /^\s*([A-Z]\d+\/\d{2})\s*$/gm;
+  const positions: number[] = [];
+  let m;
+  while ((m = idLineRegex.exec(text)) !== null) positions.push(m.index);
+  positions.push(text.length);
+
+  const items: ReturnType<typeof parseRssItem>[] = [];
+  for (let i = 0; i < positions.length - 1; i++) {
+    const block = text.slice(positions[i], positions[i + 1]);
+    // Must contain a Q-line to be a valid NOTAM block
+    if (!/Q\)\s*[A-Z]{4}\/Q/.test(block)) continue;
+    const item = parseBriefingBlock(block, countryLabel);
+    if (item) items.push(item);
+  }
+  return items;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -279,20 +423,26 @@ Deno.serve(async (req) => {
     }
     console.log(`Loaded ${caaMap.size} CAA zones for NOTAM geometry enrichment`);
 
-    // ── Step 1: Fetch RSS feeds from notam_rss_feeds table ──
+    // ── Step 1: Fetch enabled feeds (RSS + notaminfo per-country briefings) ──
     const { data: feeds } = await supabase
       .from("notam_rss_feeds")
-      .select("id, name, feed_url")
+      .select("id, name, feed_url, source_type, country")
       .eq("enabled", true);
 
     if (feeds && feeds.length > 0) {
-      console.log(`Fetching NOTAMs from ${feeds.length} RSS feed(s)...`);
+      console.log(`Fetching NOTAMs from ${feeds.length} feed(s)...`);
       const feedResults: { name: string; count: number }[] = [];
 
       for (const feed of feeds) {
         try {
-          const items = await fetchRssFeed(feed.feed_url);
+          const items = feed.source_type === "country_briefing"
+            ? await fetchCountryBriefing(feed.feed_url, feed.country ?? "")
+            : await fetchRssFeed(feed.feed_url);
           if (items.length === 0) {
+            // Record sync state even when empty
+            await supabase.from("notam_rss_feeds").update({
+              last_synced_at: now.toISOString(), last_upserted_count: 0, last_error: null,
+            }).eq("id", feed.id);
             feedResults.push({ name: feed.name, count: 0 });
             continue;
           }
@@ -329,9 +479,15 @@ Deno.serve(async (req) => {
             }
           }
 
+          await supabase.from("notam_rss_feeds").update({
+            last_synced_at: now.toISOString(), last_upserted_count: rows.length, last_error: null,
+          }).eq("id", feed.id);
           feedResults.push({ name: feed.name, count: rows.length });
         } catch (feedErr) {
           console.error(`Error processing feed "${feed.name}":`, feedErr);
+          await supabase.from("notam_rss_feeds").update({
+            last_synced_at: now.toISOString(), last_error: String(feedErr).slice(0, 500),
+          }).eq("id", feed.id);
           feedResults.push({ name: feed.name, count: -1 });
         }
       }
