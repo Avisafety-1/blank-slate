@@ -462,7 +462,7 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
       if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
+      const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id, telefon, preferred_language').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
       console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
