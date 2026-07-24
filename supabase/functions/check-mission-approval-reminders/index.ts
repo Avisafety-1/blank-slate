@@ -88,10 +88,11 @@ serve(async (req) => {
   const missionIds = missions.map((m: any) => m.id);
   const { data: existing } = await supabase
     .from('mission_approval_reminders')
-    .select('mission_id, tier')
+    .select('mission_id, tier, recipients_count, sms_recipients_count')
     .in('mission_id', missionIds);
 
   const sentSet = new Set((existing || []).map((r: any) => `${r.mission_id}:${r.tier}`));
+  const smsSentSet = new Set((existing || []).filter((r: any) => (r.sms_recipients_count ?? 0) > 0).map((r: any) => `${r.mission_id}:${r.tier}`));
 
   let totalEmails = 0;
   const tiersHandled: Array<{ mission_id: string; tier: Tier; recipients: number }> = [];
