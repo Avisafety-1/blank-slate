@@ -149,14 +149,19 @@ serve(async (req) => {
     }
 
     let recipientIds = new Set(eligible.map((a: any) => a.id));
+    const smsInfoById = new Map<string, { telefon: string | null; preferred_language: string | null }>();
+    for (const a of eligible) smsInfoById.set(a.id, { telefon: a.telefon ?? null, preferred_language: a.preferred_language ?? null });
     if (tier >= 3) {
       const { data: companyAdmins } = await supabase
         .from('profiles')
-        .select('id, company_id')
+        .select('id, company_id, telefon, preferred_language')
         .eq('approved', true)
         .in('id', adminIds)
         .eq('company_id', mission.company_id);
-      for (const a of companyAdmins || []) recipientIds.add(a.id);
+      for (const a of companyAdmins || []) {
+        recipientIds.add(a.id);
+        if (!smsInfoById.has(a.id)) smsInfoById.set(a.id, { telefon: (a as any).telefon ?? null, preferred_language: (a as any).preferred_language ?? null });
+      }
     }
 
     if (recipientIds.size === 0) {
