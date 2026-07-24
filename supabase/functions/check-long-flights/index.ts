@@ -151,7 +151,9 @@ serve(async (req) => {
               body: JSON.stringify({
                 sender: 'AviSafe',
                 recipient: msisdn,
-                message: `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
+                message: isEn
+                  ? `AviSafe: Your flight started ${startFormatted} has lasted over ${durationHours} hours. Did you forget to end it? Log in to end it.`
+                  : `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
                 reference: `long-flight-${flight.id}`,
               }),
             });
