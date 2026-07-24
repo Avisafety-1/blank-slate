@@ -119,7 +119,7 @@ serve(async (req) => {
     const adminIds = adminRoles.map((r: any) => r.user_id);
     const { data: approverProfiles } = await supabase
       .from('profiles')
-      .select('id, approval_company_ids, company_id')
+      .select('id, approval_company_ids, company_id, telefon, preferred_language')
       .eq('approved', true)
       .eq('can_approve_missions', true)
       .in('id', adminIds);
