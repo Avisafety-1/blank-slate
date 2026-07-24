@@ -4436,6 +4436,7 @@ export type Database = {
           mission_id: string
           recipients_count: number
           sent_at: string
+          sms_recipients_count: number
           tier: number
         }
         Insert: {
@@ -4443,6 +4444,7 @@ export type Database = {
           mission_id: string
           recipients_count?: number
           sent_at?: string
+          sms_recipients_count?: number
           tier: number
         }
         Update: {
@@ -4450,6 +4452,7 @@ export type Database = {
           mission_id?: string
           recipients_count?: number
           sent_at?: string
+          sms_recipients_count?: number
           tier?: number
         }
         Relationships: [
