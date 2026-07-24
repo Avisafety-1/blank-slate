@@ -127,10 +127,12 @@ serve(async (req) => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('telefon')
+            .select('telefon, preferred_language')
             .eq('id', flight.profile_id)
             .maybeSingle();
           const rawPhone: string | null = (profile as any)?.telefon ?? null;
+          const prefLang = String((profile as any)?.preferred_language ?? '').toLowerCase();
+          const isEn = prefLang.startsWith('en');
           const msisdn = normalizeMsisdn(rawPhone);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
@@ -149,7 +151,9 @@ serve(async (req) => {
               body: JSON.stringify({
                 sender: 'AviSafe',
                 recipient: msisdn,
-                message: `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
+                message: isEn
+                  ? `AviSafe: Your flight started ${startFormatted} has lasted over ${durationHours} hours. Did you forget to end it? Log in to end it.`
+                  : `AviSafe: Din flytur startet ${startFormatted} har vart i over ${durationHours} timer. Har du glemt å avslutte? Logg inn for å avslutte.`,
                 reference: `long-flight-${flight.id}`,
               }),
             });
