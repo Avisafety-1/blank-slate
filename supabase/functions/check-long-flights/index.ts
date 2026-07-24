@@ -127,10 +127,12 @@ serve(async (req) => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('telefon')
+            .select('telefon, preferred_language')
             .eq('id', flight.profile_id)
             .maybeSingle();
           const rawPhone: string | null = (profile as any)?.telefon ?? null;
+          const prefLang = String((profile as any)?.preferred_language ?? '').toLowerCase();
+          const isEn = prefLang.startsWith('en');
           const msisdn = normalizeMsisdn(rawPhone);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
