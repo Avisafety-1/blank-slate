@@ -26,17 +26,17 @@ interface RiskExportOptions {
 }
 
 function getCategoryLabels(): Record<string, string> {
-  return i18n.t('pdf.riskAssessment.categories', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
+  return i18n.t('riskAssessment.categories', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
 }
 
 function getGoLabels(): Record<string, string> {
   const go: Record<string, string> = {
-    GO: i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }),
-    BETINGET: i18n.t('pdf.riskAssessment.go.conditional', { ns: 'pdf' }),
-    "NO-GO": i18n.t('pdf.riskAssessment.go.noGo', { ns: 'pdf' }),
-    go: i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }),
-    caution: i18n.t('pdf.riskAssessment.go.conditional', { ns: 'pdf' }),
-    "no-go": i18n.t('pdf.riskAssessment.go.noGo', { ns: 'pdf' }),
+    GO: i18n.t('riskAssessment.go.go', { ns: 'pdf' }),
+    BETINGET: i18n.t('riskAssessment.go.conditional', { ns: 'pdf' }),
+    "NO-GO": i18n.t('riskAssessment.go.noGo', { ns: 'pdf' }),
+    go: i18n.t('riskAssessment.go.go', { ns: 'pdf' }),
+    caution: i18n.t('riskAssessment.go.conditional', { ns: 'pdf' }),
+    "no-go": i18n.t('riskAssessment.go.noGo', { ns: 'pdf' }),
   };
   return go;
 }
@@ -46,9 +46,9 @@ function getCategoryLabel(key: string): string {
 }
 
 function getGoLabel(decision: any): string {
-  if (typeof decision === "boolean") return decision ? i18n.t('pdf.riskAssessment.go.go', { ns: 'pdf' }) : i18n.t('pdf.riskAssessment.go.notGo', { ns: 'pdf' });
+  if (typeof decision === "boolean") return decision ? i18n.t('riskAssessment.go.go', { ns: 'pdf' }) : i18n.t('riskAssessment.go.notGo', { ns: 'pdf' });
   if (typeof decision === "string") return getGoLabels()[decision] || decision;
-  return i18n.t('pdf.riskAssessment.go.notApplicable', { ns: 'pdf' });
+  return i18n.t('riskAssessment.go.notApplicable', { ns: 'pdf' });
 }
 
 function getCategoryEntries(categories: any): [string, any][] {
@@ -61,10 +61,10 @@ function getCategoryEntries(categories: any): [string, any][] {
 
 function getMitigationLabels(): Record<string, string> {
   return {
-    m1a_sheltering: i18n.t('pdf.riskAssessment.mitigations.m1aSheltering', { ns: 'pdf' }),
-    m1b_operational_restrictions: i18n.t('pdf.riskAssessment.mitigations.m1bOperationalRestrictions', { ns: 'pdf' }),
-    m1c_ground_observation: i18n.t('pdf.riskAssessment.mitigations.m1cGroundObservation', { ns: 'pdf' }),
-    m2_impact_reduction: i18n.t('pdf.riskAssessment.mitigations.m2ImpactReduction', { ns: 'pdf' }),
+    m1a_sheltering: i18n.t('riskAssessment.mitigations.m1aSheltering', { ns: 'pdf' }),
+    m1b_operational_restrictions: i18n.t('riskAssessment.mitigations.m1bOperationalRestrictions', { ns: 'pdf' }),
+    m1c_ground_observation: i18n.t('riskAssessment.mitigations.m1cGroundObservation', { ns: 'pdf' }),
+    m2_impact_reduction: i18n.t('riskAssessment.mitigations.m2ImpactReduction', { ns: 'pdf' }),
   };
 }
 
@@ -72,16 +72,16 @@ function addOperationClassification(doc: any, data: any, yPos: number, pageWidth
   if (!data || (!data.category && data.requires_sora === undefined)) return yPos;
   
   yPos = checkPageBreak(doc, yPos, 40);
-  yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.operationClassification', { ns: 'pdf' }), yPos);
+  yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.operationClassification', { ns: 'pdf' }), yPos);
   doc.setFontSize(10);
 
   const fields: [string, string][] = [];
-  if (data.category) fields.push([i18n.t('pdf.riskAssessment.labels.category', { ns: 'pdf' }), `${sanitizeForPdf(data.category)}${data.subcategory ? ` - ${sanitizeForPdf(data.subcategory)}` : ''}`]);
-  if (data.requires_sora !== undefined) fields.push([i18n.t('pdf.riskAssessment.labels.requiresSora', { ns: 'pdf' }), data.requires_sora ? i18n.t('pdf.common.yes', { ns: 'pdf' }) : i18n.t('pdf.common.no', { ns: 'pdf' })]);
-  if (data.alos_max_m != null) fields.push([i18n.t('pdf.riskAssessment.labels.alosMax', { ns: 'pdf' }), String(data.alos_max_m)]);
-  if (data.alos_calculation) fields.push([i18n.t('pdf.riskAssessment.labels.alosCalculation', { ns: 'pdf' }), sanitizeForPdf(data.alos_calculation)]);
-  if (data.sts_applicable) fields.push([i18n.t('pdf.riskAssessment.labels.sts', { ns: 'pdf' }), sanitizeForPdf(data.sts_applicable)]);
-  if (data.sora_buffers_calculated !== undefined) fields.push([i18n.t('pdf.riskAssessment.labels.soraBuffersCalculated', { ns: 'pdf' }), data.sora_buffers_calculated ? i18n.t('pdf.common.yes', { ns: 'pdf' }) : i18n.t('pdf.common.no', { ns: 'pdf' })]);
+  if (data.category) fields.push([i18n.t('riskAssessment.labels.category', { ns: 'pdf' }), `${sanitizeForPdf(data.category)}${data.subcategory ? ` - ${sanitizeForPdf(data.subcategory)}` : ''}`]);
+  if (data.requires_sora !== undefined) fields.push([i18n.t('riskAssessment.labels.requiresSora', { ns: 'pdf' }), data.requires_sora ? i18n.t('common.yes', { ns: 'pdf' }) : i18n.t('common.no', { ns: 'pdf' })]);
+  if (data.alos_max_m != null) fields.push([i18n.t('riskAssessment.labels.alosMax', { ns: 'pdf' }), String(data.alos_max_m)]);
+  if (data.alos_calculation) fields.push([i18n.t('riskAssessment.labels.alosCalculation', { ns: 'pdf' }), sanitizeForPdf(data.alos_calculation)]);
+  if (data.sts_applicable) fields.push([i18n.t('riskAssessment.labels.sts', { ns: 'pdf' }), sanitizeForPdf(data.sts_applicable)]);
+  if (data.sora_buffers_calculated !== undefined) fields.push([i18n.t('riskAssessment.labels.soraBuffersCalculated', { ns: 'pdf' }), data.sora_buffers_calculated ? i18n.t('common.yes', { ns: 'pdf' }) : i18n.t('common.no', { ns: 'pdf' })]);
 
   for (const [label, value] of fields) {
     yPos = checkPageBreak(doc, yPos, 8);
@@ -108,22 +108,22 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (!data) return yPos;
 
   yPos = checkPageBreak(doc, yPos, 50);
-  yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.groundRisk', { ns: 'pdf' }), yPos);
+  yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.groundRisk', { ns: 'pdf' }), yPos);
   doc.setFontSize(10);
 
   const fields: [string, string][] = [];
-  if (data.characteristic_dimension) fields.push([i18n.t('pdf.riskAssessment.labels.characteristicDimension', { ns: 'pdf' }), sanitizeForPdf(data.characteristic_dimension)]);
-  if (data.max_speed_category) fields.push([i18n.t('pdf.riskAssessment.labels.speedCategory', { ns: 'pdf' }), sanitizeForPdf(data.max_speed_category)]);
-  if (data.drone_weight_kg != null) fields.push([i18n.t('pdf.riskAssessment.labels.droneWeight', { ns: 'pdf' }), String(data.drone_weight_kg)]);
-  if (data.population_density_band) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensity', { ns: 'pdf' }), sanitizeForPdf(data.population_density_band)]);
-  if (data.population_density_value != null) fields.push([i18n.t('pdf.riskAssessment.labels.populationDensityPerKm2', { ns: 'pdf' }), String(data.population_density_value)]);
-  if (data.population_density_average != null) fields.push([i18n.t('pdf.riskAssessment.labels.avgDensityPerKm2', { ns: 'pdf' }), String(data.population_density_average)]);
-  if (data.ssb_grid_population != null) fields.push([i18n.t('pdf.riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.ssbCalc.gridPopulationValue', { ns: 'pdf', count: data.ssb_grid_population, resolution: data.ssb_grid_resolution_m || 250 })]);
-  if (data.grc_calculation_method) fields.push([i18n.t('pdf.riskAssessment.labels.grcMethod', { ns: 'pdf' }), sanitizeForPdf(data.grc_calculation_method)]);
-  if (data.igrc_table_basis) fields.push([i18n.t('pdf.riskAssessment.labels.tableBasis', { ns: 'pdf' }), sanitizeForPdf(data.igrc_table_basis)]);
-  if (data.igrc != null) fields.push([i18n.t('pdf.riskAssessment.labels.igrc', { ns: 'pdf' }), String(data.igrc)]);
-  if (data.total_reduction != null) fields.push([i18n.t('pdf.riskAssessment.labels.documentedReduction', { ns: 'pdf' }), String(data.total_reduction)]);
-  if (data.fgrc != null) fields.push([i18n.t('pdf.riskAssessment.labels.fgrc', { ns: 'pdf' }), String(data.fgrc)]);
+  if (data.characteristic_dimension) fields.push([i18n.t('riskAssessment.labels.characteristicDimension', { ns: 'pdf' }), sanitizeForPdf(data.characteristic_dimension)]);
+  if (data.max_speed_category) fields.push([i18n.t('riskAssessment.labels.speedCategory', { ns: 'pdf' }), sanitizeForPdf(data.max_speed_category)]);
+  if (data.drone_weight_kg != null) fields.push([i18n.t('riskAssessment.labels.droneWeight', { ns: 'pdf' }), String(data.drone_weight_kg)]);
+  if (data.population_density_band) fields.push([i18n.t('riskAssessment.labels.populationDensity', { ns: 'pdf' }), sanitizeForPdf(data.population_density_band)]);
+  if (data.population_density_value != null) fields.push([i18n.t('riskAssessment.labels.populationDensityPerKm2', { ns: 'pdf' }), String(data.population_density_value)]);
+  if (data.population_density_average != null) fields.push([i18n.t('riskAssessment.labels.avgDensityPerKm2', { ns: 'pdf' }), String(data.population_density_average)]);
+  if (data.ssb_grid_population != null) fields.push([i18n.t('riskAssessment.labels.ssbGridPopulation', { ns: 'pdf' }), i18n.t('riskAssessment.ssbCalc.gridPopulationValue', { ns: 'pdf', count: data.ssb_grid_population, resolution: data.ssb_grid_resolution_m || 250 })]);
+  if (data.grc_calculation_method) fields.push([i18n.t('riskAssessment.labels.grcMethod', { ns: 'pdf' }), sanitizeForPdf(data.grc_calculation_method)]);
+  if (data.igrc_table_basis) fields.push([i18n.t('riskAssessment.labels.tableBasis', { ns: 'pdf' }), sanitizeForPdf(data.igrc_table_basis)]);
+  if (data.igrc != null) fields.push([i18n.t('riskAssessment.labels.igrc', { ns: 'pdf' }), String(data.igrc)]);
+  if (data.total_reduction != null) fields.push([i18n.t('riskAssessment.labels.documentedReduction', { ns: 'pdf' }), String(data.total_reduction)]);
+  if (data.fgrc != null) fields.push([i18n.t('riskAssessment.labels.fgrc', { ns: 'pdf' }), String(data.fgrc)]);
 
   for (const [label, value] of fields) {
     yPos = checkPageBreak(doc, yPos, 8);
@@ -137,7 +137,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.igrc_reasoning) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.igrcReasoning', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.igrcReasoning', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(data.igrc_reasoning), pageWidth - 28);
@@ -148,16 +148,16 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.population_density_calculation || data.population_density_driver || data.population_density_source) {
     yPos = checkPageBreak(doc, yPos, 28);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.ssbCalculationTitle', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.ssbCalculationTitle', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lang = i18n.language?.toLowerCase().startsWith("en") ? "en-GB" : "nb-NO";
     const ssbText = [
-      data.population_density_source ? i18n.t('pdf.riskAssessment.ssbCalc.dataSource', { ns: 'pdf', value: data.population_density_source }) : null,
-      data.population_density_footprint ? i18n.t('pdf.riskAssessment.ssbCalc.footprint', { ns: 'pdf', value: data.population_density_footprint }) : null,
-      data.population_density_calculation ? i18n.t('pdf.riskAssessment.ssbCalc.calculation', { ns: 'pdf', value: data.population_density_calculation }) : null,
-      data.population_density_average != null ? i18n.t('pdf.riskAssessment.ssbCalc.avgInFootprint', { ns: 'pdf', value: Number(data.population_density_average).toLocaleString(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : null,
-      data.population_density_driver ? i18n.t('pdf.riskAssessment.ssbCalc.dimensioningPart', { ns: 'pdf', value: data.population_density_driver }) : null,
+      data.population_density_source ? i18n.t('riskAssessment.ssbCalc.dataSource', { ns: 'pdf', value: data.population_density_source }) : null,
+      data.population_density_footprint ? i18n.t('riskAssessment.ssbCalc.footprint', { ns: 'pdf', value: data.population_density_footprint }) : null,
+      data.population_density_calculation ? i18n.t('riskAssessment.ssbCalc.calculation', { ns: 'pdf', value: data.population_density_calculation }) : null,
+      data.population_density_average != null ? i18n.t('riskAssessment.ssbCalc.avgInFootprint', { ns: 'pdf', value: Number(data.population_density_average).toLocaleString(lang, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) }) : null,
+      data.population_density_driver ? i18n.t('riskAssessment.ssbCalc.dimensioningPart', { ns: 'pdf', value: data.population_density_driver }) : null,
     ].filter(Boolean).join("\n");
     const lines = doc.splitTextToSize(sanitizeForPdf(ssbText), pageWidth - 28);
     doc.text(lines, 14, yPos);
@@ -172,7 +172,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
       if (!mit) continue;
       mitigationBody.push([
         sanitizeForPdf(getMitigationLabels()[key] || key),
-        mit.applicable ? i18n.t('pdf.common.yes', { ns: 'pdf' }) : i18n.t('pdf.common.no', { ns: 'pdf' }),
+        mit.applicable ? i18n.t('common.yes', { ns: 'pdf' }) : i18n.t('common.no', { ns: 'pdf' }),
         mit.robustness || "—",
         String(mit.reduction || 0),
         sanitizeForPdf(mit.reasoning || ""),
@@ -182,7 +182,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
     if (mitigationBody.length > 0) {
       autoTable(doc, {
         startY: yPos,
-        head: [[i18n.t('pdf.riskAssessment.headers.mitigation', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.applied', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.robustness', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.reduction', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.reasoning', { ns: 'pdf' })]],
+        head: [[i18n.t('riskAssessment.headers.mitigation', { ns: 'pdf' }), i18n.t('riskAssessment.headers.applied', { ns: 'pdf' }), i18n.t('riskAssessment.headers.robustness', { ns: 'pdf' }), i18n.t('riskAssessment.headers.reduction', { ns: 'pdf' }), i18n.t('riskAssessment.headers.reasoning', { ns: 'pdf' })]],
         body: mitigationBody,
         styles: { fontSize: 8, font: fontName },
         headStyles: { fillColor: [59, 130, 246], font: fontName },
@@ -195,7 +195,7 @@ function addGroundRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: num
   if (data.fgrc_reasoning) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.fgrcReasoning', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.fgrcReasoning', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(data.fgrc_reasoning), pageWidth - 28);
@@ -210,15 +210,15 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (!data) return yPos;
 
   yPos = checkPageBreak(doc, yPos, 50);
-  yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.airRisk', { ns: 'pdf' }), yPos);
+  yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.airRisk', { ns: 'pdf' }), yPos);
   doc.setFontSize(10);
 
   const fields: [string, string][] = [];
-  if (data.aec) fields.push([i18n.t('pdf.riskAssessment.labels.aec', { ns: 'pdf' }), sanitizeForPdf(data.aec)]);
-  if (data.initial_arc) fields.push([i18n.t('pdf.riskAssessment.labels.initialArc', { ns: 'pdf' }), sanitizeForPdf(data.initial_arc)]);
-  if (data.residual_arc) fields.push([i18n.t('pdf.riskAssessment.labels.residualArc', { ns: 'pdf' }), sanitizeForPdf(data.residual_arc)]);
-  if (data.tmpr_level) fields.push([i18n.t('pdf.riskAssessment.labels.tmprLevel', { ns: 'pdf' }), sanitizeForPdf(data.tmpr_level)]);
-  if (data.vlos_exemption !== undefined) fields.push([i18n.t('pdf.riskAssessment.labels.vlosExemption', { ns: 'pdf' }), data.vlos_exemption ? i18n.t('pdf.common.yes', { ns: 'pdf' }) : i18n.t('pdf.common.no', { ns: 'pdf' })]);
+  if (data.aec) fields.push([i18n.t('riskAssessment.labels.aec', { ns: 'pdf' }), sanitizeForPdf(data.aec)]);
+  if (data.initial_arc) fields.push([i18n.t('riskAssessment.labels.initialArc', { ns: 'pdf' }), sanitizeForPdf(data.initial_arc)]);
+  if (data.residual_arc) fields.push([i18n.t('riskAssessment.labels.residualArc', { ns: 'pdf' }), sanitizeForPdf(data.residual_arc)]);
+  if (data.tmpr_level) fields.push([i18n.t('riskAssessment.labels.tmprLevel', { ns: 'pdf' }), sanitizeForPdf(data.tmpr_level)]);
+  if (data.vlos_exemption !== undefined) fields.push([i18n.t('riskAssessment.labels.vlosExemption', { ns: 'pdf' }), data.vlos_exemption ? i18n.t('common.yes', { ns: 'pdf' }) : i18n.t('common.no', { ns: 'pdf' })]);
 
   for (const [label, value] of fields) {
     yPos = checkPageBreak(doc, yPos, 8);
@@ -232,7 +232,7 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (data.aec_reasoning) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.aecReasoning', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.aecReasoning', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(data.aec_reasoning), pageWidth - 28);
@@ -243,7 +243,7 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (data.arc_reduction_reasoning) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.arcReductionReasoning', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.arcReductionReasoning', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(data.arc_reduction_reasoning), pageWidth - 28);
@@ -255,7 +255,7 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (data.strategic_mitigations_applied?.length > 0) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.strategicMitigationsApplied', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.strategicMitigationsApplied', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     for (const m of data.strategic_mitigations_applied) {
@@ -268,7 +268,7 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (data.strategic_mitigations_not_applied?.length > 0) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.strategicMitigationsNotApplied', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.strategicMitigationsNotApplied', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     for (const m of data.strategic_mitigations_not_applied) {
@@ -282,11 +282,11 @@ function addAirRiskAnalysis(doc: any, data: any, yPos: number, pageWidth: number
   if (data.tmpr_requirements) {
     yPos = checkPageBreak(doc, yPos, 20);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.tmprRequirements', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.tmprRequirements', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const tmprFields = ["detect", "decide", "command", "execute", "feedback_loop"];
-    const tmprLabels: Record<string, string> = i18n.t('pdf.riskAssessment.tmpr', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
+    const tmprLabels: Record<string, string> = i18n.t('riskAssessment.tmpr', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
     for (const key of tmprFields) {
       if (data.tmpr_requirements[key]) {
         yPos = checkPageBreak(doc, yPos, 8);
@@ -308,7 +308,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
 
   // SORA header
   yPos = checkPageBreak(doc, yPos, 40);
-  yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.soraAnalysis', { ns: 'pdf' }), yPos);
+  yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.soraAnalysis', { ns: 'pdf' }), yPos);
   doc.setFontSize(10);
 
   // Summary
@@ -321,14 +321,14 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
 
   // Key metrics
   const soraFields: [string, string][] = [];
-  if (sora.environment) soraFields.push([i18n.t('pdf.riskAssessment.labels.environment', { ns: 'pdf' }), sanitizeForPdf(sora.environment)]);
-  if (sora.igrc != null) soraFields.push([i18n.t('pdf.riskAssessment.labels.igrc', { ns: 'pdf' }), String(sora.igrc)]);
-  if (sora.fgrc != null) soraFields.push([i18n.t('pdf.riskAssessment.labels.fgrc', { ns: 'pdf' }), String(sora.fgrc)]);
-  if (sora.arc_initial) soraFields.push([i18n.t('pdf.riskAssessment.labels.initialArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_initial)]);
-  if (sora.arc_residual) soraFields.push([i18n.t('pdf.riskAssessment.labels.residualArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_residual)]);
-  if (sora.sail) soraFields.push([i18n.t('pdf.riskAssessment.labels.sail', { ns: 'pdf' }), sanitizeForPdf(sora.sail)]);
-  if (sora.residual_risk_level) soraFields.push([i18n.t('pdf.riskAssessment.labels.residualRisk', { ns: 'pdf' }), sanitizeForPdf(sora.residual_risk_level)]);
-  if (sora.recommendation) soraFields.push([i18n.t('pdf.riskAssessment.labels.recommendation', { ns: 'pdf' }), getGoLabel(sora.recommendation)]);
+  if (sora.environment) soraFields.push([i18n.t('riskAssessment.labels.environment', { ns: 'pdf' }), sanitizeForPdf(sora.environment)]);
+  if (sora.igrc != null) soraFields.push([i18n.t('riskAssessment.labels.igrc', { ns: 'pdf' }), String(sora.igrc)]);
+  if (sora.fgrc != null) soraFields.push([i18n.t('riskAssessment.labels.fgrc', { ns: 'pdf' }), String(sora.fgrc)]);
+  if (sora.arc_initial) soraFields.push([i18n.t('riskAssessment.labels.initialArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_initial)]);
+  if (sora.arc_residual) soraFields.push([i18n.t('riskAssessment.labels.residualArc', { ns: 'pdf' }), sanitizeForPdf(sora.arc_residual)]);
+  if (sora.sail) soraFields.push([i18n.t('riskAssessment.labels.sail', { ns: 'pdf' }), sanitizeForPdf(sora.sail)]);
+  if (sora.residual_risk_level) soraFields.push([i18n.t('riskAssessment.labels.residualRisk', { ns: 'pdf' }), sanitizeForPdf(sora.residual_risk_level)]);
+  if (sora.recommendation) soraFields.push([i18n.t('riskAssessment.labels.recommendation', { ns: 'pdf' }), getGoLabel(sora.recommendation)]);
 
   for (const [label, value] of soraFields) {
     yPos = checkPageBreak(doc, yPos, 8);
@@ -344,7 +344,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
     yPos += 3;
     yPos = checkPageBreak(doc, yPos, 15);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.conops', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.conops', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(sora.conops_summary), pageWidth - 28);
@@ -356,7 +356,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   if (sora.ground_mitigations) {
     yPos = checkPageBreak(doc, yPos, 15);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.groundMitigations', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.groundMitigations', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(sora.ground_mitigations), pageWidth - 28);
@@ -368,7 +368,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   if (sora.airspace_mitigations) {
     yPos = checkPageBreak(doc, yPos, 15);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.airspaceMitigations', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.airspaceMitigations', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(sora.airspace_mitigations), pageWidth - 28);
@@ -379,7 +379,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   // SAIL Lookup
   if (sora.sail_lookup) {
     yPos = checkPageBreak(doc, yPos, 60);
-    yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.sailLookup', { ns: 'pdf' }), yPos);
+    yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.sailLookup', { ns: 'pdf' }), yPos);
 
     // Draw SAIL matrix
     const fgrcRows = ["<=2", "3", "4", "5", "6", "7"];
@@ -406,7 +406,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
 
     autoTable(doc, {
       startY: yPos,
-      head: [[i18n.t('pdf.riskAssessment.headers.sailMatrixCol', { ns: 'pdf' }), "a", "b", "c", "d"]],
+      head: [[i18n.t('riskAssessment.headers.sailMatrixCol', { ns: 'pdf' }), "a", "b", "c", "d"]],
       body: matrixBody,
       styles: { fontSize: 8, font: fontName, halign: 'center' },
       headStyles: { fillColor: [59, 130, 246], font: fontName },
@@ -415,10 +415,10 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
     yPos = (doc as any).lastAutoTable?.finalY + 5 || yPos + 40;
 
     const lookupFields: [string, string][] = [];
-    lookupFields.push([i18n.t('pdf.riskAssessment.labels.fgrcUsed', { ns: 'pdf' }), String(sora.sail_lookup.fgrc_used)]);
-    lookupFields.push([i18n.t('pdf.riskAssessment.labels.arcUsed', { ns: 'pdf' }), sora.sail_lookup.arc_used?.toUpperCase() || "—"]);
-    lookupFields.push([i18n.t('pdf.riskAssessment.labels.sailResult', { ns: 'pdf' }), sora.sail_lookup.result || "—"]);
-    if (sora.sail_lookup.fgrc_adjustments) lookupFields.push([i18n.t('pdf.riskAssessment.labels.adjustments', { ns: 'pdf' }), sanitizeForPdf(sora.sail_lookup.fgrc_adjustments)]);
+    lookupFields.push([i18n.t('riskAssessment.labels.fgrcUsed', { ns: 'pdf' }), String(sora.sail_lookup.fgrc_used)]);
+    lookupFields.push([i18n.t('riskAssessment.labels.arcUsed', { ns: 'pdf' }), sora.sail_lookup.arc_used?.toUpperCase() || "—"]);
+    lookupFields.push([i18n.t('riskAssessment.labels.sailResult', { ns: 'pdf' }), sora.sail_lookup.result || "—"]);
+    if (sora.sail_lookup.fgrc_adjustments) lookupFields.push([i18n.t('riskAssessment.labels.adjustments', { ns: 'pdf' }), sanitizeForPdf(sora.sail_lookup.fgrc_adjustments)]);
 
     for (const [label, value] of lookupFields) {
       yPos = checkPageBreak(doc, yPos, 8);
@@ -435,7 +435,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   if (sora.residual_risk_comment) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.residualRiskComment', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.residualRiskComment', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(sora.residual_risk_comment), pageWidth - 28);
@@ -446,7 +446,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   if (sora.operational_limits) {
     yPos = checkPageBreak(doc, yPos, 12);
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.operationalLimits', { ns: 'pdf' }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.operationalLimits', { ns: 'pdf' }), 14, yPos);
     yPos += 5;
     setFontStyle(doc, "normal");
     const lines = doc.splitTextToSize(sanitizeForPdf(sora.operational_limits), pageWidth - 28);
@@ -457,11 +457,11 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   // Containment (Step 8)
   if (sora.containment) {
     yPos = checkPageBreak(doc, yPos, 40);
-    yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.containment', { ns: 'pdf' }), yPos);
+    yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.containment', { ns: 'pdf' }), yPos);
     doc.setFontSize(10);
 
     setFontStyle(doc, "bold");
-    doc.text(i18n.t('pdf.riskAssessment.labels.robustnessLevel', { ns: 'pdf', level: sanitizeForPdf(sora.containment.robustness_level) }), 14, yPos);
+    doc.text(i18n.t('riskAssessment.labels.robustnessLevel', { ns: 'pdf', level: sanitizeForPdf(sora.containment.robustness_level) }), 14, yPos);
     yPos += 6;
 
     if (sora.containment.reasoning) {
@@ -475,7 +475,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
       yPos = checkPageBreak(doc, yPos, 10);
       doc.setTextColor(200, 100, 0);
       setFontStyle(doc, "bold");
-      doc.text(i18n.t('pdf.riskAssessment.labels.ftsRequired', { ns: 'pdf' }), 14, yPos);
+      doc.text(i18n.t('riskAssessment.labels.ftsRequired', { ns: 'pdf' }), 14, yPos);
       yPos += 5;
       if (sora.containment.fts_note) {
         setFontStyle(doc, "normal");
@@ -492,7 +492,7 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
       yPos = checkPageBreak(doc, yPos, 30);
       autoTable(doc, {
         startY: yPos,
-        head: [[i18n.t('pdf.riskAssessment.headers.criterion', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.requirement', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.documentation', { ns: 'pdf' })]],
+        head: [[i18n.t('riskAssessment.headers.criterion', { ns: 'pdf' }), i18n.t('riskAssessment.headers.requirement', { ns: 'pdf' }), i18n.t('riskAssessment.headers.documentation', { ns: 'pdf' })]],
         body: sora.containment.criteria.map((c: any) => [
           sanitizeForPdf(c.criterion),
           sanitizeForPdf(c.requirement),
@@ -508,11 +508,11 @@ function addSoraOutputSection(doc: any, sora: any, yPos: number, pageWidth: numb
   // OSO Requirements (Step 9)
   if (sora.oso_requirements?.length > 0) {
     yPos = checkPageBreak(doc, yPos, 40);
-    yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.osoRequirements', { ns: 'pdf' }), yPos);
+    yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.osoRequirements', { ns: 'pdf' }), yPos);
 
     autoTable(doc, {
       startY: yPos,
-      head: [[i18n.t('pdf.riskAssessment.headers.oso', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.description', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.robustness', { ns: 'pdf' })]],
+      head: [[i18n.t('riskAssessment.headers.oso', { ns: 'pdf' }), i18n.t('riskAssessment.headers.description', { ns: 'pdf' }), i18n.t('riskAssessment.headers.robustness', { ns: 'pdf' })]],
       body: sora.oso_requirements.map((oso: any) => [
         sanitizeForPdf(oso.oso),
         sanitizeForPdf(oso.description),
@@ -552,7 +552,7 @@ export const exportRiskAssessmentPDF = async ({
     const fontName = arePdfFontsLoaded() ? "Roboto" : "helvetica";
 
     const isSoraExport = exportType === 'sora';
-    const title = isSoraExport ? i18n.t('pdf.riskAssessment.titleSora', { ns: 'pdf' }) : i18n.t('pdf.riskAssessment.titleAi', { ns: 'pdf' });
+    const title = isSoraExport ? i18n.t('riskAssessment.titleSora', { ns: 'pdf' }) : i18n.t('riskAssessment.titleAi', { ns: 'pdf' });
 
     // Header
     let yPos = addPdfHeader(doc, title, sanitizeForPdf(missionTitle), companyName);
@@ -561,7 +561,7 @@ export const exportRiskAssessmentPDF = async ({
       doc.setFontSize(9);
       doc.setTextColor(100);
       doc.text(
-        i18n.t('pdf.riskAssessment.labels.assessedAt', { ns: 'pdf', date: formatDateForPdf(createdAt, "dd.MM.yyyy 'kl.' HH:mm") }),
+        i18n.t('riskAssessment.labels.assessedAt', { ns: 'pdf', date: formatDateForPdf(createdAt, "dd.MM.yyyy 'kl.' HH:mm") }),
         pageWidth / 2,
         yPos - 5,
         { align: "center" }
@@ -583,7 +583,7 @@ export const exportRiskAssessmentPDF = async ({
 
       // Mission overview
       if (assessment.mission_overview) {
-        yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.missionOverview', { ns: 'pdf' }), yPos);
+        yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.missionOverview', { ns: 'pdf' }), yPos);
         doc.setFontSize(10);
         setFontStyle(doc, "normal");
         const overviewLines = doc.splitTextToSize(sanitizeForPdf(assessment.mission_overview), pageWidth - 28);
@@ -594,7 +594,7 @@ export const exportRiskAssessmentPDF = async ({
       // Assessment method
       if (assessment.assessment_method) {
         yPos = checkPageBreak(doc, yPos, 30);
-        yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.assessmentMethod', { ns: 'pdf' }), yPos);
+        yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.assessmentMethod', { ns: 'pdf' }), yPos);
         doc.setFontSize(10);
         setFontStyle(doc, "normal");
         const methodLines = doc.splitTextToSize(sanitizeForPdf(assessment.assessment_method), pageWidth - 28);
@@ -604,7 +604,7 @@ export const exportRiskAssessmentPDF = async ({
 
       // Overall score
       yPos = checkPageBreak(doc, yPos, 30);
-      yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.overallAssessment', { ns: 'pdf' }), yPos);
+      yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.overallAssessment', { ns: 'pdf' }), yPos);
       doc.setFontSize(10);
       setFontStyle(doc, "bold");
       const recLabel = getGoLabel(assessment.recommendation);
@@ -614,7 +614,7 @@ export const exportRiskAssessmentPDF = async ({
       if (assessment.hard_stop_triggered && assessment.hard_stop_reason) {
         setFontStyle(doc, "normal");
         doc.setTextColor(200, 0, 0);
-        const stopLines = doc.splitTextToSize(i18n.t('pdf.riskAssessment.hardStop', { ns: 'pdf', reason: sanitizeForPdf(assessment.hard_stop_reason) }), pageWidth - 28);
+        const stopLines = doc.splitTextToSize(i18n.t('riskAssessment.hardStop', { ns: 'pdf', reason: sanitizeForPdf(assessment.hard_stop_reason) }), pageWidth - 28);
         doc.text(stopLines, 14, yPos);
         doc.setTextColor(0);
         yPos += stopLines.length * 5 + 5;
@@ -644,7 +644,7 @@ export const exportRiskAssessmentPDF = async ({
       const catEntries = getCategoryEntries(assessment.categories);
       if (catEntries.length > 0) {
         yPos = checkPageBreak(doc, yPos, 50);
-        yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.categoryScores', { ns: 'pdf' }), yPos);
+        yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.categoryScores', { ns: 'pdf' }), yPos);
 
         const tableBody = catEntries.map(([key, cat]: [string, any]) => [
           sanitizeForPdf(getCategoryLabel(key)),
@@ -655,7 +655,7 @@ export const exportRiskAssessmentPDF = async ({
 
         autoTable(doc, {
           startY: yPos,
-          head: [[i18n.t('pdf.riskAssessment.headers.categoryLabel', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.score', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.decision', { ns: 'pdf' }), i18n.t('pdf.riskAssessment.headers.pilotComment', { ns: 'pdf' })]],
+          head: [[i18n.t('riskAssessment.headers.categoryLabel', { ns: 'pdf' }), i18n.t('riskAssessment.headers.score', { ns: 'pdf' }), i18n.t('riskAssessment.headers.decision', { ns: 'pdf' }), i18n.t('riskAssessment.headers.pilotComment', { ns: 'pdf' })]],
           body: tableBody,
           styles: { fontSize: 9, font: fontName },
           headStyles: { fillColor: [59, 130, 246], font: fontName },
@@ -693,10 +693,10 @@ export const exportRiskAssessmentPDF = async ({
           doc.setFontSize(9);
 
           const detailFields: [string, string | undefined][] = [
-            [i18n.t('pdf.riskAssessment.labels.actualConditions', { ns: 'pdf' }), cat.actual_conditions],
-            [i18n.t('pdf.riskAssessment.labels.droneStatus', { ns: 'pdf' }), cat.drone_status],
-            [i18n.t('pdf.riskAssessment.labels.experienceSummary', { ns: 'pdf' }), cat.experience_summary],
-            [i18n.t('pdf.riskAssessment.labels.complexityFactors', { ns: 'pdf' }), cat.complexity_factors],
+            [i18n.t('riskAssessment.labels.actualConditions', { ns: 'pdf' }), cat.actual_conditions],
+            [i18n.t('riskAssessment.labels.droneStatus', { ns: 'pdf' }), cat.drone_status],
+            [i18n.t('riskAssessment.labels.experienceSummary', { ns: 'pdf' }), cat.experience_summary],
+            [i18n.t('riskAssessment.labels.complexityFactors', { ns: 'pdf' }), cat.complexity_factors],
           ];
 
           for (const [label, value] of detailFields) {
@@ -715,7 +715,7 @@ export const exportRiskAssessmentPDF = async ({
           if (factors.length > 0) {
             yPos = checkPageBreak(doc, yPos, 10);
             setFontStyle(doc, "bold");
-            doc.text(i18n.t('pdf.riskAssessment.labels.positiveFactors', { ns: 'pdf' }), 18, yPos);
+            doc.text(i18n.t('riskAssessment.labels.positiveFactors', { ns: 'pdf' }), 18, yPos);
             yPos += 5;
             setFontStyle(doc, "normal");
             for (const factor of factors) {
@@ -729,7 +729,7 @@ export const exportRiskAssessmentPDF = async ({
           if (cat.concerns?.length > 0) {
             yPos = checkPageBreak(doc, yPos, 10);
             setFontStyle(doc, "bold");
-            doc.text(i18n.t('pdf.riskAssessment.labels.concerns', { ns: 'pdf' }), 18, yPos);
+            doc.text(i18n.t('riskAssessment.labels.concerns', { ns: 'pdf' }), 18, yPos);
             yPos += 5;
             setFontStyle(doc, "normal");
             for (const concern of cat.concerns) {
@@ -747,12 +747,12 @@ export const exportRiskAssessmentPDF = async ({
       // Recommendations
       if (assessment.recommendations?.length > 0) {
         yPos = checkPageBreak(doc, yPos, 40);
-        yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.recommendedActions', { ns: 'pdf' }), yPos);
+        yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.recommendedActions', { ns: 'pdf' }), yPos);
         doc.setFontSize(9);
         setFontStyle(doc, "normal");
 
         const priorityOrder = ["high", "medium", "low"];
-        const priorityLabels: Record<string, string> = i18n.t('pdf.riskAssessment.priority', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
+        const priorityLabels: Record<string, string> = i18n.t('riskAssessment.priority', { ns: 'pdf', returnObjects: true }) as Record<string, string>;
 
         for (const priority of priorityOrder) {
           const items = assessment.recommendations.filter((r: any) => r.priority === priority);
@@ -760,7 +760,7 @@ export const exportRiskAssessmentPDF = async ({
 
           yPos = checkPageBreak(doc, yPos, 15);
           setFontStyle(doc, "bold");
-          doc.text(i18n.t('pdf.riskAssessment.labels.priority', { ns: 'pdf', priority: priorityLabels[priority] || priority }), 14, yPos);
+          doc.text(i18n.t('riskAssessment.labels.priority', { ns: 'pdf', priority: priorityLabels[priority] || priority }), 14, yPos);
           yPos += 6;
           setFontStyle(doc, "normal");
 
@@ -773,7 +773,7 @@ export const exportRiskAssessmentPDF = async ({
 
             if (item.reason) {
               doc.setTextColor(80);
-              const reasonLines = doc.splitTextToSize(i18n.t('pdf.riskAssessment.labels.reasoning', { ns: 'pdf', reason: sanitizeForPdf(item.reason) }), pageWidth - 40);
+              const reasonLines = doc.splitTextToSize(i18n.t('riskAssessment.labels.reasoning', { ns: 'pdf', reason: sanitizeForPdf(item.reason) }), pageWidth - 40);
               doc.text(reasonLines, 22, yPos);
               yPos += reasonLines.length * 5;
               doc.setTextColor(0);
@@ -781,7 +781,7 @@ export const exportRiskAssessmentPDF = async ({
 
             if (item.risk_addressed) {
               doc.setTextColor(80);
-              const riskLines = doc.splitTextToSize(i18n.t('pdf.riskAssessment.labels.riskAddressed', { ns: 'pdf', risk: sanitizeForPdf(item.risk_addressed) }), pageWidth - 40);
+              const riskLines = doc.splitTextToSize(i18n.t('riskAssessment.labels.riskAddressed', { ns: 'pdf', risk: sanitizeForPdf(item.risk_addressed) }), pageWidth - 40);
               doc.text(riskLines, 22, yPos);
               yPos += riskLines.length * 5;
               doc.setTextColor(0);
@@ -796,7 +796,7 @@ export const exportRiskAssessmentPDF = async ({
       // Prerequisites / go conditions
       if (assessment.prerequisites?.length > 0 || assessment.go_conditions?.length > 0) {
         yPos = checkPageBreak(doc, yPos, 30);
-        yPos = addSectionHeader(doc, i18n.t('pdf.riskAssessment.sections.prerequisites', { ns: 'pdf' }), yPos);
+        yPos = addSectionHeader(doc, i18n.t('riskAssessment.sections.prerequisites', { ns: 'pdf' }), yPos);
         doc.setFontSize(9);
         setFontStyle(doc, "normal");
 
@@ -820,8 +820,8 @@ export const exportRiskAssessmentPDF = async ({
     const disclaimer =
       assessment.ai_disclaimer ||
       (isSoraExport
-        ? i18n.t('pdf.riskAssessment.disclaimerSora', { ns: 'pdf' })
-        : i18n.t('pdf.riskAssessment.disclaimerAi', { ns: 'pdf' }));
+        ? i18n.t('riskAssessment.disclaimerSora', { ns: 'pdf' })
+        : i18n.t('riskAssessment.disclaimerAi', { ns: 'pdf' }));
     const disclaimerLines = doc.splitTextToSize(sanitizeForPdf(disclaimer), pageWidth - 28);
     doc.text(disclaimerLines, 14, yPos);
     doc.setTextColor(0);
@@ -829,7 +829,7 @@ export const exportRiskAssessmentPDF = async ({
     // Generate and upload
     const dateStr = format(new Date(), "yyyy-MM-dd");
     const safeTitle = sanitizeFilenameForPdf(missionTitle).substring(0, 30);
-    const prefix = isSoraExport ? i18n.t('pdf.riskAssessment.filenamePrefixSora', { ns: 'pdf' }) : i18n.t('pdf.riskAssessment.filenamePrefixAi', { ns: 'pdf' });
+    const prefix = isSoraExport ? i18n.t('riskAssessment.filenamePrefixSora', { ns: 'pdf' }) : i18n.t('riskAssessment.filenamePrefixAi', { ns: 'pdf' });
     const fileName = `${prefix}-${safeTitle}-${dateStr}.pdf`;
     const pdfBlob = doc.output("blob");
     const filePath = `${companyId}/${fileName}`;
@@ -839,7 +839,7 @@ export const exportRiskAssessmentPDF = async ({
       .select("full_name")
       .eq("id", userId)
       .single();
-    const opprettetAv = userProfile?.full_name || i18n.t('pdf.common.unknown', { ns: 'pdf' });
+    const opprettetAv = userProfile?.full_name || i18n.t('common.unknown', { ns: 'pdf' });
 
     const { error: uploadError } = await supabase.storage
       .from("documents")
@@ -851,8 +851,8 @@ export const exportRiskAssessmentPDF = async ({
     if (uploadError) throw uploadError;
 
     const docTitle = isSoraExport
-      ? i18n.t('pdf.riskAssessment.documentCategoryTitle.sora', { ns: 'pdf', title: sanitizeForPdf(missionTitle), date: formatDateForPdf(new Date(), "dd.MM.yyyy") })
-      : i18n.t('pdf.riskAssessment.documentCategoryTitle.ai', { ns: 'pdf', title: sanitizeForPdf(missionTitle), date: formatDateForPdf(new Date(), "dd.MM.yyyy") });
+      ? i18n.t('riskAssessment.documentCategoryTitle.sora', { ns: 'pdf', title: sanitizeForPdf(missionTitle), date: formatDateForPdf(new Date(), "dd.MM.yyyy") })
+      : i18n.t('riskAssessment.documentCategoryTitle.ai', { ns: 'pdf', title: sanitizeForPdf(missionTitle), date: formatDateForPdf(new Date(), "dd.MM.yyyy") });
 
     const { error: docError } = await supabase.from("documents").insert({
       tittel: docTitle,
@@ -863,8 +863,8 @@ export const exportRiskAssessmentPDF = async ({
       user_id: userId,
       opprettet_av: opprettetAv,
       beskrivelse: isSoraExport
-        ? i18n.t('pdf.riskAssessment.documentDescription.sora', { ns: 'pdf', title: sanitizeForPdf(missionTitle) })
-        : i18n.t('pdf.riskAssessment.documentDescription.ai', { ns: 'pdf', title: sanitizeForPdf(missionTitle) }),
+        ? i18n.t('riskAssessment.documentDescription.sora', { ns: 'pdf', title: sanitizeForPdf(missionTitle) })
+        : i18n.t('riskAssessment.documentDescription.ai', { ns: 'pdf', title: sanitizeForPdf(missionTitle) }),
     });
 
     if (docError) throw docError;
