@@ -1,50 +1,37 @@
-## Bakgrunn
+## Mål
+Godkjennere skal få **SMS** (i tillegg til e-post) når et oppdrag ligger til godkjenning og det er **mindre enn 12 timer** igjen til oppdragets start.
 
-Fra `/maphelp` sier notaminfo selv:
+To triggere:
+1. **Umiddelbart ved innsending til godkjenning** — hvis `tidspunkt - now < 12t` → send SMS med en gang.
+2. **Fra påminnelses-cron** — så lenge oppdraget fortsatt er `pending_approval` og det er <12t til start (eller allerede startet innenfor tier 4-vinduet).
 
-> "The NOTAM information is collected by logging on to the **NATS** web site, and downloading all the information for the **EGTT and EGPX** flight Information Regions, ie the whole of the **UK**."
+SMS sendes kun til godkjennere som allerede regnes som mottakere for godkjennings-e-post (samme filter: `can_approve_missions`, `approval_company_ids`, `prevent_self_approval`, `notification_preferences.email_mission_approval = true`, og som har `profiles.telefon`). Vi legger ikke til egen SMS-preferanse i denne omgang (kan komme senere).
 
-Dette betyr at notaminfo sin egen kildedata i utgangspunktet er UK-only (NATS AIS). At vi i dag får norske NOTAMs derfra tyder på at Dave har utvidet kildene sine noe, men det finnes ingen dokumentert måte å utvide RSS-boundary programmatisk — boundary er lagret per konto på serveren, og feed-URL-en (`?u=<brukernavn>`) plukker bare opp den lagrede boundary-en.
+## Endringer
 
-Sider som antyder mulige omgåelser:
-- `Flight Planning Map` viser "the entire country, and all current NOTAMS" — én visning uten boundary-filter
-- `Latest Briefing` viser den rå NATS-briefing-en som lastes ned time for time
-- `Export NOTAMs` (i sidemenyen) og KML-nedlasting for innloggede brukere
+### 1. `supabase/functions/send-notification-email/index.ts` — `notify_mission_approval`-handleren
+Etter at e-post er sendt til godkjennere, sjekk `hoursUntil = (tidspunkt - now)/3600s`. Hvis `hoursUntil < 12` (inkludert negative verdier), send SMS via GatewayAPI til hver godkjenner som har `telefon`. Bruk samme mønster som `check-long-flights` (`normalizeMsisdn`, `LOVABLE_API_KEY` + `GATEWAYAPI_API_KEY`, `sender: 'AviSafe'`, `reference: approval-<missionId>-<userId>`). Meldingstekst basert på mottakerens `preferred_language`:
+- NO: `AviSafe: Oppdrag «<tittel>» venter på din godkjenning. Start <dato tid> (om X t). Logg inn for å godkjenne.`
+- EN: `AviSafe: Mission "<title>" is awaiting your approval. Starts <date time> (in X h). Log in to approve.`
 
-Ingen av disse er dokumentert som API, men de eksisterer som endepunkter når man er logget inn.
+Hent `telefon, preferred_language` sammen med `id, approval_company_ids, company_id` i den eksisterende `approverProfiles`-spørringen så vi ikke trenger nye rundturer.
 
-## Plan
+### 2. `supabase/functions/check-mission-approval-reminders/index.ts` — påminnelses-cron
+Utvid til også å sende SMS når `hoursUntil < 12` (dvs. tier 2 med rest <12t, tier 3, tier 4). Bruk samme mottakerliste (`notifyIds`) og samme meldingstekst-mal som over. Bruk `mission_approval_reminders.recipients_count` som i dag; SMS-status logges via `console.log` (ingen egen tabell).
 
-### Fase 1 — Reverse-engineer notaminfo (undersøkelse, ingen kode)
+For å unngå dobbeltsending av SMS legger vi til én kolonne `sms_recipients_count` (default 0) på `mission_approval_reminders`, og hopper over SMS på (mission_id, tier)-nivå hvis en tidligere kjøring allerede har sendt SMS for samme tier. Umiddelbar SMS fra `send-notification-email` regnes som tier-uavhengig og vil naturlig ikke gjentas siden mission bare sendes én gang.
 
-Manuell utforsking mot notaminfo med innlogget bruker for å svare på:
+### 3. Database-migrasjon
+```sql
+ALTER TABLE public.mission_approval_reminders
+  ADD COLUMN IF NOT EXISTS sms_recipients_count int NOT NULL DEFAULT 0;
+```
 
-1. Har `Flight Planning Map` en underliggende JSON/XML-endpoint (DevTools → Network) som returnerer alle UK-NOTAMs uten boundary-filter?
-2. Kan `Latest Briefing` hentes som strukturert tekst per FIR (f.eks. EGTT, EGPX, ENOR, ESAA)?
-3. Har `Export NOTAMs`/KML et URL-mønster som kan parameteriseres med FIR eller boundary?
-4. Hvilke FIR-er dekker notaminfo faktisk i dag (kun UK, eller også ENOR/ESAA/EKDK/EDGG/EFIN)?
+## Ute av scope
+- Ingen ny UI-innstilling for SMS-preferanser (SMS følger e-post-preferansen for godkjenning).
+- Ingen endring i norsk/eksisterende reminder-tier-logikk utover SMS-tillegget.
+- Personell-varsel (tier 3 til pilot) forblir e-post kun.
 
-Leveranse: kort notat med endepunkter, respons-format, og en go/no-go-anbefaling for å bygge en «notaminfo-scraper»-adapter.
-
-### Fase 2 — Beslutningspunkt
-
-Basert på funnene i Fase 1, velg én av:
-
-- **2A**: Bygg `fetch-notams-notaminfo-scraper` som logger inn og henter Flight Planning Map / Latest Briefing / KML uten boundary — hvis endepunktene finnes og dekker de landene vi trenger.
-- **2B**: Aksepter at notaminfo har hardt UK-tak (og delvis NO), og bygg `fetch-notams-autorouter` som europeisk hovedkilde. Behold notaminfo RSS som fallback for Norge for ikke å påvirke eksisterende brukere.
-- **2C**: Kombinasjon: 2A for land der scraping fungerer, 2B for resten.
-
-### Fase 3 — Implementasjon (kun etter godkjenning av Fase 2-valg)
-
-Uansett valg: nye kilder skrives til `notams`-tabellen med samme deduplisering på `notam_id`. Ingen endring i `notam_rss_feeds`-flyten for norske brukere før parity er verifisert.
-
-## Risiko og begrensninger
-
-- **Notaminfo-scraping er skjør**: HTML/session-endringer kan bryte det uten varsel, og ToS på notaminfo tillater ikke eksplisitt automatisert nedlasting av briefings. Bør avklares med Dave (kontaktskjema) før produksjonssetting.
-- **Notaminfo dekker sannsynligvis ikke DE/FI/SE/DK offisielt** — selv en perfekt scraper løser ikke det europeiske dekningsproblemet.
-- **Autorouter** er en gratis, dokumentert, OAuth-basert API laget for nettopp dette formålet og gir hele ECAC — dette er den mest robuste veien til europeisk dekning uavhengig av notaminfo-utfallet.
-- Norske brukere skal ikke merke noe før nye kilder er shadow-verifisert (samme mønster som airspace-utrullingen).
-
-## Neste steg
-
-Godkjenn Fase 1 (undersøkelse), så gjør jeg manuell DevTools-analyse mot notaminfo og rapporterer tilbake med endepunktene før vi velger 2A/2B/2C.
+## Verifikasjon
+- Sette en test-godkjenner med `telefon = +4748182991`, opprette oppdrag med start om 6 timer, sende til godkjenning → sjekke at både e-post og SMS kommer.
+- Kjøre `check-mission-approval-reminders` manuelt med et pending-oppdrag om <12t → SMS sendes én gang per tier.
