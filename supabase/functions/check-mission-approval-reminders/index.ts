@@ -231,6 +231,28 @@ serve(async (req) => {
     }
     totalEmails += sent;
 
+    // SMS if <12h to start and not already SMS-sent for this tier
+    let smsSent = 0;
+    const smsKey = `${mission.id}:${tier}`;
+    if (hoursUntil < 12 && !smsSentSet.has(smsKey)) {
+      for (const userId of notifyIds) {
+        const info = smsInfoById.get(userId);
+        if (!info?.telefon) continue;
+        const message = buildApprovalSmsMessage({
+          missionTitle: mission.tittel,
+          missionDate,
+          hoursUntil,
+          language: info.preferred_language,
+        });
+        const res = await sendGatewaySms({
+          phone: info.telefon,
+          message,
+          reference: `approval-reminder-${mission.id}-${tier}-${userId}`,
+        });
+        if (res.ok) smsSent++;
+      }
+    }
+
     // Tier 3 (T-4t): also notify mission personnel that approval is still pending
     let personnelSent = 0;
     if (tier === 3) {
