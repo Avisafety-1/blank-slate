@@ -329,10 +329,11 @@ serve(async (req) => {
         mission_id: mission.id,
         tier: t,
         recipients_count: t === tier ? sent : 0,
+        sms_recipients_count: t === tier ? smsSent : 0,
       }))
     );
 
-    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent, personnel: personnelSent });
+    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent, personnel: personnelSent, sms: smsSent });
   }
 
   return new Response(JSON.stringify({ checked: missions.length, sent: totalEmails, tiersHandled }), {
