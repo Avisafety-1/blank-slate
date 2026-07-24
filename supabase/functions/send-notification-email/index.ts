@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
+import { sendGatewaySms, buildApprovalSmsMessage } from "../_shared/sms.ts";
 import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shared/email-i18n.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
