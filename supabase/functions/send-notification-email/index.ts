@@ -514,7 +514,29 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // SMS if less than 12h to mission start (or already started)
+      let smsSent = 0;
+      const hoursUntil = (new Date(missionData!.tidspunkt).getTime() - Date.now()) / 36e5;
+      if (hoursUntil < 12) {
+        const notifyIdSet = new Set(notificationPrefs.map((p: any) => p.user_id));
+        const smsRecipients = eligibleApprovers.filter((a: any) => notifyIdSet.has(a.id) && a.telefon);
+        for (const approver of smsRecipients) {
+          const message = buildApprovalSmsMessage({
+            missionTitle: missionData!.tittel,
+            missionDate,
+            hoursUntil,
+            language: approver.preferred_language,
+          });
+          const res = await sendGatewaySms({
+            phone: approver.telefon,
+            message,
+            reference: `approval-${missionData!.id}-${approver.id}`,
+          });
+          if (res.ok) smsSent++;
+        }
+      }
+      return new Response(JSON.stringify({ success: true, emailsSent, smsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Handle pilot comment notification
