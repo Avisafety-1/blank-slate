@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback, fixEmailImages } from "../_shared/template-utils.ts";
+import { sendGatewaySms, buildApprovalSmsMessage } from "../_shared/sms.ts";
 import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shared/email-i18n.ts";
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
@@ -461,7 +462,7 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       const { data: adminRolesForApproval } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
       if (!adminRolesForApproval?.length) return new Response(JSON.stringify({ success: true, message: 'No admins' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
-      const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
+      const { data: approverProfiles } = await supabase.from('profiles').select('id, approval_company_ids, company_id, telefon, preferred_language').eq('approved', true).eq('can_approve_missions', true).in('id', adminRolesForApproval.map(r => r.user_id));
       console.log(`[APPROVAL] approverProfiles count=${approverProfiles?.length ?? 0}`);
       if (!approverProfiles?.length) return new Response(JSON.stringify({ success: true, message: 'No approvers' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
@@ -513,7 +514,29 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
       }
-      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+
+      // SMS if less than 12h to mission start (or already started)
+      let smsSent = 0;
+      const hoursUntil = (new Date(missionData!.tidspunkt).getTime() - Date.now()) / 36e5;
+      if (hoursUntil < 12) {
+        const notifyIdSet = new Set(notificationPrefs.map((p: any) => p.user_id));
+        const smsRecipients = eligibleApprovers.filter((a: any) => notifyIdSet.has(a.id) && a.telefon);
+        for (const approver of smsRecipients) {
+          const message = buildApprovalSmsMessage({
+            missionTitle: missionData!.tittel,
+            missionDate,
+            hoursUntil,
+            language: approver.preferred_language,
+          });
+          const res = await sendGatewaySms({
+            phone: approver.telefon,
+            message,
+            reference: `approval-${missionData!.id}-${approver.id}`,
+          });
+          if (res.ok) smsSent++;
+        }
+      }
+      return new Response(JSON.stringify({ success: true, emailsSent, smsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // Handle pilot comment notification

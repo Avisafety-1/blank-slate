@@ -1,0 +1,1 @@
+ALTER TABLE public.mission_approval_reminders ADD COLUMN IF NOT EXISTS sms_recipients_count int NOT NULL DEFAULT 0;

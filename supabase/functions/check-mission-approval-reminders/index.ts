@@ -5,6 +5,7 @@ import { authErrorResponse } from "../_shared/auth.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { sendGatewaySms, buildApprovalSmsMessage } from "../_shared/sms.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,10 +88,11 @@ serve(async (req) => {
   const missionIds = missions.map((m: any) => m.id);
   const { data: existing } = await supabase
     .from('mission_approval_reminders')
-    .select('mission_id, tier')
+    .select('mission_id, tier, recipients_count, sms_recipients_count')
     .in('mission_id', missionIds);
 
   const sentSet = new Set((existing || []).map((r: any) => `${r.mission_id}:${r.tier}`));
+  const smsSentSet = new Set((existing || []).filter((r: any) => (r.sms_recipients_count ?? 0) > 0).map((r: any) => `${r.mission_id}:${r.tier}`));
 
   let totalEmails = 0;
   const tiersHandled: Array<{ mission_id: string; tier: Tier; recipients: number }> = [];
@@ -117,7 +119,7 @@ serve(async (req) => {
     const adminIds = adminRoles.map((r: any) => r.user_id);
     const { data: approverProfiles } = await supabase
       .from('profiles')
-      .select('id, approval_company_ids, company_id')
+      .select('id, approval_company_ids, company_id, telefon, preferred_language')
       .eq('approved', true)
       .eq('can_approve_missions', true)
       .in('id', adminIds);
@@ -147,14 +149,19 @@ serve(async (req) => {
     }
 
     let recipientIds = new Set(eligible.map((a: any) => a.id));
+    const smsInfoById = new Map<string, { telefon: string | null; preferred_language: string | null }>();
+    for (const a of eligible) smsInfoById.set(a.id, { telefon: a.telefon ?? null, preferred_language: a.preferred_language ?? null });
     if (tier >= 3) {
       const { data: companyAdmins } = await supabase
         .from('profiles')
-        .select('id, company_id')
+        .select('id, company_id, telefon, preferred_language')
         .eq('approved', true)
         .in('id', adminIds)
         .eq('company_id', mission.company_id);
-      for (const a of companyAdmins || []) recipientIds.add(a.id);
+      for (const a of companyAdmins || []) {
+        recipientIds.add(a.id);
+        if (!smsInfoById.has(a.id)) smsInfoById.set(a.id, { telefon: (a as any).telefon ?? null, preferred_language: (a as any).preferred_language ?? null });
+      }
     }
 
     if (recipientIds.size === 0) {
@@ -223,6 +230,28 @@ serve(async (req) => {
       }
     }
     totalEmails += sent;
+
+    // SMS if <12h to start and not already SMS-sent for this tier
+    let smsSent = 0;
+    const smsKey = `${mission.id}:${tier}`;
+    if (hoursUntil < 12 && !smsSentSet.has(smsKey)) {
+      for (const userId of notifyIds) {
+        const info = smsInfoById.get(userId);
+        if (!info?.telefon) continue;
+        const message = buildApprovalSmsMessage({
+          missionTitle: mission.tittel,
+          missionDate,
+          hoursUntil,
+          language: info.preferred_language,
+        });
+        const res = await sendGatewaySms({
+          phone: info.telefon,
+          message,
+          reference: `approval-reminder-${mission.id}-${tier}-${userId}`,
+        });
+        if (res.ok) smsSent++;
+      }
+    }
 
     // Tier 3 (T-4t): also notify mission personnel that approval is still pending
     let personnelSent = 0;
@@ -300,10 +329,11 @@ serve(async (req) => {
         mission_id: mission.id,
         tier: t,
         recipients_count: t === tier ? sent : 0,
+        sms_recipients_count: t === tier ? smsSent : 0,
       }))
     );
 
-    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent, personnel: personnelSent });
+    tiersHandled.push({ mission_id: mission.id, tier, recipients: sent, personnel: personnelSent, sms: smsSent });
   }
 
   return new Response(JSON.stringify({ checked: missions.length, sent: totalEmails, tiersHandled }), {
