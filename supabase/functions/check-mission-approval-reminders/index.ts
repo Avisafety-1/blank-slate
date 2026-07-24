@@ -5,6 +5,7 @@ import { authErrorResponse } from "../_shared/auth.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { getEmailTemplateWithFallback } from "../_shared/template-utils.ts";
+import { sendGatewaySms, buildApprovalSmsMessage } from "../_shared/sms.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
