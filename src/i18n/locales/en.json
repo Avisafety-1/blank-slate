@@ -3275,7 +3275,12 @@
               "P": "Prohibited area – flight not permitted.",
               "RW5K": "Within 5 km of the runway. Requires approval from ATC/AFIS before flight."
             }
-          }
+          },
+          "pansa": {
+            "activatedByNotamTitle": "Activated by NOTAM",
+            "activatedByNotamBody": "Flexible zone. Flight is only prohibited when the zone is active. Always check current NOTAM / DroneTower activity before flight."
+          },
+          "moreInfoPansa": "More info on PANSA DroneMap"
         }
       },
       "layers": {
