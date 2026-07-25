@@ -7,23 +7,37 @@ import { XMLParser } from 'npm:fast-xml-parser@4'
 const FT_TO_M = 0.3048
 
 function mapZone(type_: string, restriction: string) {
-  const t = (type_ || '').toUpperCase()
-  const r = (restriction || '').toUpperCase()
-  if (r === 'DRA-P') return { zone_type: 'DRONE_NO_FLY', restriction_type: 'PROHIBITED', display_class: 'RED', theme: 'DRA-P', layer_id: 'rpas' }
-  if (r === 'DRA-R') return { zone_type: 'DRONE_DANGER', restriction_type: 'RESTRICTED', display_class: 'AMBER', theme: 'DRA-R', layer_id: 'rpas' }
-  if (r === 'DRA-I') return { zone_type: 'DRONE_PROTECTED_OBJECT', restriction_type: 'NOTIFICATION', display_class: 'AMBER', theme: 'DRA-I', layer_id: 'rpas' }
+  const t = (type_ || '').toUpperCase().replace(/[-_\s]/g, '')
+  const r = (restriction || '').toUpperCase().replace(/[-_\s]/g, '')
+
+  // Effective restriction: explicit `restriction` wins, otherwise infer from type prefix.
+  let eff = r
+  if (!eff || eff === 'NA') {
+    if (t.startsWith('DRAP')) eff = 'DRAP'
+    else if (t.startsWith('DRAR')) eff = 'DRAR'
+    else if (t.startsWith('DRAI')) eff = 'DRAI'
+  }
+
+  if (eff === 'DRAP') return { zone_type: 'DRONE_NO_FLY', restriction_type: 'PROHIBITED', display_class: 'RED', theme: 'DRA-P', layer_id: 'rpas' }
+  if (eff === 'DRAR') return { zone_type: 'R', restriction_type: 'RESTRICTED', display_class: 'AMBER', theme: 'DRA-R', layer_id: 'restriksjonsomrader' }
+  if (eff === 'DRAI') return { zone_type: 'DRONE_DANGER', restriction_type: 'NOTIFICATION', display_class: 'AMBER', theme: 'DRA-I', layer_id: 'fareomrader' }
+
   if (t === 'CTR' || t.startsWith('CTR') || t === 'MCTR' || t.startsWith('MCTR'))
     return { zone_type: 'CTR', restriction_type: 'APPROVAL_REQUIRED', display_class: 'AMBER', theme: t, layer_id: 'airspace' }
-  if (t === 'ATZ' || t.startsWith('ATZ'))
+  if (t === 'ATZ' || t.startsWith('ATZ') || t === 'MATZ')
     return { zone_type: 'ATZ', restriction_type: 'APPROVAL_REQUIRED', display_class: 'AMBER', theme: t, layer_id: 'airspace' }
   if (t === 'RMZ') return { zone_type: 'RMZ', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'RMZ', layer_id: 'airspace' }
-  if (t === 'TSA' || t === 'TRA' || t === 'MRT')
+  if (t === 'TSA' || t === 'TRA' || t === 'MRT' || t === 'EA')
     return { zone_type: t, restriction_type: 'CAUTION', display_class: 'AMBER', theme: t, layer_id: 'restriksjonsomrader' }
   if (t === 'R') return { zone_type: 'R', restriction_type: 'RESTRICTED', display_class: 'RED', theme: 'R', layer_id: 'restriksjonsomrader' }
-  if (t === 'D') return { zone_type: 'D', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'D', layer_id: 'restriksjonsomrader' }
-  if (t === 'ADIZ') return { zone_type: 'ADIZ', restriction_type: 'NOTIFICATION', display_class: 'AMBER', theme: 'ADIZ', layer_id: 'airspace' }
+  if (t === 'D') return { zone_type: 'D', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'D', layer_id: 'fareomrader' }
   if (t === 'RPA') return { zone_type: 'DRONE_NO_FLY', restriction_type: 'PROHIBITED', display_class: 'RED', theme: 'RPA', layer_id: 'rpas' }
-  return { zone_type: 'DRONE_DANGER', restriction_type: 'CAUTION', display_class: 'AMBER', theme: t || 'AREA', layer_id: 'airspace' }
+  if (t === 'AREA') return { zone_type: 'DRONE_DANGER', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'AREA', layer_id: 'fareomrader' }
+  // High-altitude / non-drone-relevant airspace: filter out
+  if (t === 'TMA' || t.startsWith('TMA') || t === 'MTMA' || t === 'CTA' || t.startsWith('CTA') || t === 'ADIZ' || t === 'FIR' || t === 'UIR')
+    return null
+
+  return { zone_type: 'DRONE_DANGER', restriction_type: 'CAUTION', display_class: 'AMBER', theme: t || 'AREA', layer_id: 'fareomrader' }
 }
 
 function coordsToRing(text: string): string | null {
