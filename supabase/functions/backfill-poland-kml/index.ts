@@ -10,6 +10,24 @@ function mapZone(type_: string, restriction: string) {
   const t = (type_ || '').toUpperCase().replace(/[-_\s]/g, '')
   const r = (restriction || '').toUpperCase().replace(/[-_\s]/g, '')
 
+  const airportZone = (() => {
+    if (t === 'CTR' || t.startsWith('CTR')) {
+      return { zone_type: 'CTR', restriction_type: 'APPROVAL_REQUIRED', display_class: 'RED', theme: 'CTR', layer_id: 'flyplasser' }
+    }
+    if (t === 'MCTR' || t.startsWith('MCTR')) {
+      return { zone_type: 'MCTR', restriction_type: 'APPROVAL_REQUIRED', display_class: 'RED', theme: 'MCTR', layer_id: 'flyplasser' }
+    }
+    if (t === 'ATZ' || t.startsWith('ATZ') || t === 'MATZ') {
+      return { zone_type: 'ATZ', restriction_type: 'APPROVAL_REQUIRED', display_class: 'RED', theme: 'ATZ', layer_id: 'flyplasser' }
+    }
+    return null
+  })()
+
+  // Airport control/traffic zones are permanent aerodrome airspace in DroneMap.
+  // They must not inherit the DRA-R import flag and become hidden behind the
+  // generic "Restricted areas" toggle.
+  if (airportZone) return airportZone
+
   // Effective restriction: explicit `restriction` wins, otherwise infer from type prefix.
   let eff = r
   if (!eff || eff === 'NA') {
@@ -22,10 +40,6 @@ function mapZone(type_: string, restriction: string) {
   if (eff === 'DRAR') return { zone_type: 'R', restriction_type: 'RESTRICTED', display_class: 'AMBER', theme: 'DRA-R', layer_id: 'restriksjonsomrader' }
   if (eff === 'DRAI') return { zone_type: 'DRONE_DANGER', restriction_type: 'NOTIFICATION', display_class: 'AMBER', theme: 'DRA-I', layer_id: 'fareomrader' }
 
-  if (t === 'CTR' || t.startsWith('CTR') || t === 'MCTR' || t.startsWith('MCTR'))
-    return { zone_type: 'CTR', restriction_type: 'APPROVAL_REQUIRED', display_class: 'AMBER', theme: t, layer_id: 'airspace' }
-  if (t === 'ATZ' || t.startsWith('ATZ') || t === 'MATZ')
-    return { zone_type: 'ATZ', restriction_type: 'APPROVAL_REQUIRED', display_class: 'AMBER', theme: t, layer_id: 'airspace' }
   if (t === 'RMZ') return { zone_type: 'RMZ', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'RMZ', layer_id: 'airspace' }
   if (t === 'TSA' || t === 'TRA' || t === 'MRT' || t === 'EA')
     return { zone_type: t, restriction_type: 'CAUTION', display_class: 'AMBER', theme: t, layer_id: 'restriksjonsomrader' }

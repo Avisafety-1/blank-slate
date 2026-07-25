@@ -39,10 +39,19 @@ const autoBadge = () => {
 const UNIFIED_COLORS: Record<string, string> = {
   PROHIBITED: "#dc2626",
   RESTRICTED: "#f97316",
+  APPROVAL_REQUIRED: "#f97316",
   NOTIFICATION: "#f59e0b",
   CAUTION: "#eab308",
   NATURE_SENSITIVE: "#16a34a",
   INFO: "#0ea5e9",
+};
+
+const UNIFIED_DISPLAY_CLASS_COLORS: Record<string, string> = {
+  RED: "#dc2626",
+  AMBER: "#f97316",
+  BLUE: "#2563eb",
+  GREEN: "#16a34a",
+  GREY: "#6b7280",
 };
 
 interface Bounds {
@@ -86,8 +95,10 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 interface UnifiedZoneRow {
   id: string;
   country_code: string;
+  layer_id: string | null;
   zone_type: string | null;
   restriction_type: string | null;
+  display_class: string | null;
   name: string | null;
   short_name: string | null;
   lower_limit_m: number | null;
@@ -107,8 +118,11 @@ function renderUnifiedZones(layer: L.LayerGroup, rows: UnifiedZoneRow[]) {
   for (const zone of rows) {
     if (!zone.geometry_geojson) continue;
     const restriction = String(zone.restriction_type || "INFO").toUpperCase();
-    const color = UNIFIED_COLORS[restriction] || "#dc2626";
+    const color = UNIFIED_DISPLAY_CLASS_COLORS[String(zone.display_class || "").toUpperCase()]
+      || UNIFIED_COLORS[restriction]
+      || "#dc2626";
     const isNature = restriction === "NATURE_SENSITIVE";
+    const isAirport = zone.layer_id === "flyplasser";
     const popup = buildUnifiedZonePopupHtml(zone as any, { extraBadgeHtml: autoBadge() });
     try {
       L.geoJSON(
@@ -118,9 +132,9 @@ function renderUnifiedZones(layer: L.LayerGroup, rows: UnifiedZoneRow[]) {
           interactive: true,
           style: {
             color,
-            weight: 2,
+            weight: isAirport ? 2.5 : 2,
             fillColor: color,
-            fillOpacity: isNature ? 0.18 : 0.22,
+            fillOpacity: isNature ? 0.18 : isAirport ? 0.16 : 0.22,
             dashArray: restriction === "CAUTION" ? "4, 4" : undefined,
           },
         },
@@ -227,7 +241,7 @@ export async function updateUnifiedRouteProximityLayers(
   if (signal.aborted) return;
 
   const unifiedRows: UnifiedZoneRow[] = Array.isArray(unifiedRes?.data)
-    ? (unifiedRes.data as UnifiedZoneRow[]).filter((r) => r?.geometry_geojson).slice(0, 800)
+    ? (unifiedRes.data as UnifiedZoneRow[]).filter((r) => r?.geometry_geojson).slice(0, 2500)
     : [];
   const dkNatureRows: DkNatureRow[] = Array.isArray(dkNatureRes?.data)
     ? (dkNatureRes.data as DkNatureRow[]).filter((r) => r?.geometry).slice(0, 300)
