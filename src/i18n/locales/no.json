@@ -3280,8 +3280,10 @@
           },
           "pansa": {
             "activatedByNotamTitle": "Aktiveres via NOTAM",
-            "activatedByNotamBody": "Fleksibel sone. Flyging er kun forbudt når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging."
+            "activatedByNotamBody": "Fleksibel sone. Flyging er kun forbudt når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging.",
+            "activatedByNotamBodyDraR": "Fleksibel sone. Samtykke fra soneansvarlig kreves kun når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging."
           },
+
           "moreInfoPansa": "Mer info hos PANSA DroneMap"
         }
       },

@@ -172,17 +172,25 @@ function pansaBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string 
   const restriction = String(props.pansa_restriction || "").toUpperCase().replace(/[-_\s]/g, "");
   const type_ = String(props.pansa_type || z.zone_type || "").toUpperCase();
 
-  // DRA-P zones in Poland are flexible: only prohibited when activated (typically via NOTAM).
-  if (restriction === "DRAP") {
+  // All PANSA zones (DRA-P / DRA-R / corridors like EPTR/EPTS/MCTR) are flexible:
+  // only restrictive when activated (typically via NOTAM / DroneTower). Show a
+  // NOTAM notice for prohibited/restricted classes; skip info-only (DRA-I).
+  const zt = String(z.zone_type || "").toUpperCase();
+  const isProhibited = restriction === "DRAP" || zt === "DRONE_NO_FLY";
+  const isRestricted = restriction === "DRAR" || zt === "R";
+  if (isProhibited || isRestricted) {
     const title = tp("pansa.activatedByNotamTitle", { defaultValue: "Activated by NOTAM" });
-    const body = tp("pansa.activatedByNotamBody", {
-      defaultValue:
-        "Flexible zone. Flight is only prohibited when the zone is active. Always check current NOTAM / DroneTower activity before flight.",
-    });
+    const bodyKey = isProhibited ? "pansa.activatedByNotamBody" : "pansa.activatedByNotamBodyDraR";
+    const bodyDefault = isProhibited
+      ? "Flexible zone. Flight is only prohibited when the zone is active. Always check current NOTAM / DroneTower activity before flight."
+      : "Flexible zone. Manager consent is only required when the zone is active. Always check current NOTAM / DroneTower activity before flight.";
+    const body = tp(bodyKey, { defaultValue: bodyDefault });
     parts.push(
       `<div style="margin-bottom:6px;padding:6px 8px;background:#fef9c3;border-left:3px solid #ca8a04;border-radius:4px;font-size:12px;color:#713f12;"><strong>⚠️ ${escUnified(title)}</strong><div style="margin-top:2px;">${escUnified(body)}</div></div>`,
     );
   }
+
+
 
   const RESTRICTION_LABELS: Record<string, string> = {
     DRAP: "Drone Restricted Area – Prohibited (no flight)",
