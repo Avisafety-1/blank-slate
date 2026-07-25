@@ -1586,11 +1586,15 @@ export async function fetchNotams(params: {
   }
 
   try {
-    const { data, error } = await supabase
-      .from("notams")
-      .select("*")
-      .or(`effective_end.gt.${new Date().toISOString()},effective_end_interpretation.in.(PERM,EST),effective_end.is.null`)
-      .limit(1000);
+    // Viewport-scoped fetch via RPC to avoid the 1000-row global cap
+    // (previously truncated Poland / other large-country NOTAMs)
+    const b = map.getBounds().pad(0.2);
+    const { data, error } = await supabase.rpc("get_notams_in_bounds", {
+      min_lat: b.getSouth(),
+      min_lng: b.getWest(),
+      max_lat: b.getNorth(),
+      max_lng: b.getEast(),
+    });
 
     if (error) {
       console.error("[NOTAM] Query error:", error);
