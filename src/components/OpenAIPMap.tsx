@@ -1482,6 +1482,7 @@ export function OpenAIPMap({
         fetchDkLayers();
         fetchUnifiedLayers();
         fetchObstaclesViewport();
+        fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: modeRef.current });
       }, 300);
     };
 
