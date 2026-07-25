@@ -167,6 +167,33 @@ function lfvBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
   return parts.join("");
 }
 
+function pansaBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
+  const parts: string[] = [];
+  const restriction = String(props.pansa_restriction || "").toUpperCase();
+  const type_ = String(props.pansa_type || z.zone_type || "").toUpperCase();
+  const RESTRICTION_LABELS: Record<string, string> = {
+    "DRA-P": "Drone Restricted Area – Prohibited (no flight)",
+    "DRA-R": "Drone Restricted Area – Restricted (approval required)",
+    "DRA-I": "Drone Restricted Area – Information (be aware)",
+    DRAP: "Drone Restricted Area – Prohibited (no flight)",
+    DRAR: "Drone Restricted Area – Restricted (approval required)",
+    DRAI: "Drone Restricted Area – Information (be aware)",
+  };
+  const label = RESTRICTION_LABELS[restriction];
+  if (label) {
+    parts.push(`<div style="font-size:12px;color:#475569;">${escUnified(label)}</div>`);
+  }
+  if (type_) {
+    parts.push(
+      `<div style="margin-top:4px;"><span style="display:inline-block;padding:1px 6px;background:#e2e8f0;border-radius:4px;font-family:monospace;font-size:11px;">${escUnified(type_)}</span></div>`,
+    );
+  }
+  parts.push(
+    `<div style="margin-top:4px;"><a href="https://dronemap.pansa.pl/" target="_blank" rel="noopener noreferrer">${tp("moreInfoPansa", { defaultValue: "More info on PANSA DroneMap" })} →</a></div>`,
+  );
+  return parts.join("");
+}
+
 function sourceLabel(z: UnifiedZoneForPopup): string {
   if (z.authority) return String(z.authority);
   const s = String(z.source || "");
@@ -175,6 +202,7 @@ function sourceLabel(z: UnifiedZoneForPopup): string {
   if (s.startsWith("trafikstyrelsen") || s.startsWith("dk_")) return "Trafikstyrelsen (DK)";
   if (s.startsWith("traficom") || s.startsWith("fi_")) return "Traficom (FI)";
   if (s.startsWith("dfs") || s.startsWith("de_")) return "DFS (DE)";
+  if (s.startsWith("pansa") || s.startsWith("pl_")) return "PANSA (PL)";
   return s || "—";
 }
 
