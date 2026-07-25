@@ -31,7 +31,7 @@ export interface UnifiedAirspaceZone {
 }
 
 /** Countries supported by the unified pipeline today. NO is intentionally excluded. */
-export type UnifiedCountry = "DK" | "SE" | "DE" | "FI";
+export type UnifiedCountry = "DK" | "SE" | "DE" | "FI" | "PL";
 
 type Bounds = {
   minLng: number;
@@ -48,6 +48,7 @@ const COUNTRY_BOUNDS: Record<UnifiedCountry, Bounds> = {
   SE: { minLng: 10.85, minLat: 55.0, maxLng: 25.8, maxLat: 69.4 },
   DE: { minLng: 5.5, minLat: 47.0, maxLng: 15.7, maxLat: 55.4 },
   FI: { minLng: 19.0, minLat: 59.5, maxLng: 32.2, maxLat: 70.3 },
+  PL: { minLng: 13.8, minLat: 48.9, maxLng: 24.4, maxLat: 55.1 },
 };
 
 const UNIFIED_RPC_TIMEOUT_MS = 4_500;
