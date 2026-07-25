@@ -1,36 +1,56 @@
-# Fikse rå i18n-nøkler i risikovurdering-PDF
+# Polen (PL) – MVP med opplastet PansaUTM KML
 
-## Hva som er galt
-`src/lib/riskAssessmentPdfExport.ts` kaller `i18n.t('pdf.riskAssessment.…', { ns: 'pdf' })` overalt. Fordi namespace allerede er `pdf`, blir det reelle oppslaget `pdf.pdf.riskAssessment.…` — det finnes ikke, så i18next returnerer nøkkelstrengen som fallback. Dette gir PDF-en Norconsult/Hamar så, og forklarer også hvorfor dokumentets tittel, beskrivelse og filnavn i biblioteket vises som `pdf.riskAssessment.documentCategoryTitle.ai` osv. (samme generator skriver disse feltene til DB).
+## Hva filen inneholder (verifisert)
 
-Ingen andre PDF-generatorer er berørt — `FlightLogbookDialog`, `incidentPdfExport`, `userManualPdf` bruker riktig mønster (nøkkel uten `pdf.`-prefix + `ns: 'pdf'`).
+- 2 738 Placemarks, alle Polygon
+- Restriksjoner: `DRA-P` (177), `DRA-R` (877), `DRA-I` (140), `N/A` (1 544 – hovedsakelig underliggende ATZ/CTR/RMZ/TSA/TRA/MRT/R/D/ADIZ)
+- Typer: `CTR`, `ATZ` (+ `ATZ1KM`/`ATZ6KM`), `MCTR`, `RMZ`, `TSA`, `TRA`, `MRT`, `R`, `D`, `ADIZ`, `RPA`, `AREA`, `NW`, `DRAP`/`DRAR`/`DRAI`
+- Hver `<description>` har `Restriction: X, Type: Y, Min: N ft, Max: M ft`
+- Navn = ICAO/zone-kode (f.eks. `EPTS7C`)
 
-## Endringer
+Perfekt strukturert for direkte innlasting i `airspace_zones`.
 
-### 1. `src/lib/riskAssessmentPdfExport.ts` (kun denne filen)
-Fjerne `pdf.`-prefix fra alle `i18n.t(...)`-kall som allerede har `{ ns: 'pdf' }`. Konkret:
-- `'pdf.riskAssessment.…'` → `'riskAssessment.…'`
-- `'pdf.common.…'` → `'common.…'`
-- Alle ~150 forekomster i filen. Trygg mekanisk erstatning: kun strenger som starter med `'pdf.` og ligger inne i et `i18n.t(...)`-kall med `ns: 'pdf'`.
+## Kan vi bruke det – vurdering
 
-Verifisere at hverken norsk (`no/pdf.json`) eller engelsk (`en/pdf.json`) mangler noen av nøklene som brukes (spot-check på `riskAssessment.titleAi`, `.sections.*`, `.labels.*`, `.go.*`, `.mitigations.*`, `.categories`, `.hardStop`, `.documentCategoryTitle.ai/sora`, `.documentDescription.ai/sora`, `.filenamePrefixAi/Sora`, `common.yes/no`).
+**Ja, som første MVP-kilde bak feature-flag for Moderavdeling.**
 
-### 2. Ingen andre kodeendringer
-- Ingen endring i i18n-filer, namespace-oppsett eller andre eksportere.
-- Ingen endring i logikk, kun nøkkelstrenger.
+- **Innhold**: dekker alle drone-relevante lag PANSA DroneMap viser i UI.
+- **Ferskhet**: statisk snapshot (25.07.2026). AUP/UUP-aktiveringer og NOTAM-driven status er ikke med — men det er samme begrensning som dagens DK/SE/FI-adaptere har for statiske soner.
+- **Lisens**: KML er eksportert fra offentlig DroneMap-UI. Uklart om det er formelt lisensiert for videredistribusjon. Vi bruker det kun for allowlisted Moderavdeling til vi har avklart lisens eller PANSA-partner-API.
+- **Stabile IDer**: navn (EPTS-kode) + type + restriksjon er stabilt nok som `source_ref` for idempotent upsert.
 
-### 3. Rydding av eksisterende dokumenter (valgfritt, kun etter kodefiks)
-Dokumenter som allerede er lagret med rå nøkler som `title`/`beskrivelse`/`filename` (som i Norconsult Hamar) kan enten:
-- **A) La være** — brukerne kan slette og re-eksportere risikovurderingen; nye eksporter blir riktige.
-- **B) SQL-rydding** — kjøre en engangs-oppdatering på `documents`-tabellen som bytter kjente råe nøkler (`pdf.riskAssessment.documentCategoryTitle.ai`, `.sora`, `.documentDescription.ai`, `.sora`, `pdf.riskAssessment.filenamePrefixAi`, `Sora`) med tilsvarende oversatt tekst basert på selskapets språk. Krever bekreftelse før kjøring.
+## Plan
 
-Anbefaler A først (lavest risiko); tar B som eget steg dersom du ønsker det.
+### Fase P1 – Engangs backfill fra opplastet KML (denne uken)
+1. Parser-skript (Deno one-shot i Edge Function `backfill-poland-kml`) som leser KML fra Storage (jeg laster filen opp til en privat bucket) og upserter til `airspace_zones` med:
+   - `country_code='PL'`, `source='pansa_kml_snapshot'`, `source_ref` = ICAO-kode + type
+   - `zone_type` normalisert til unified enum (CTR/ATZ/RMZ/TSA/TRA/MRT/R/D/ADIZ/DRONE_RED/DRONE_ORANGE/DRONE_YELLOW)
+   - `restriction_type` avledet: DRA-P→`prohibited`, DRA-R→`restricted`, DRA-I→`notification`, N/A→`info`
+   - `lower_limit_m`/`upper_limit_m` fra ft→m
+   - `snapshot_date` = 2026-07-25 (nytt kolonnefelt for revisjon)
+2. Verifisering: `airspace_shadow_comparisons` behøves ikke (ingen legacy PL-tabell) — i stedet manuell count-per-type-sanity mot DroneMap.
 
-## Verifisering
-1. `tsgo` for typesjekk.
-2. Manuelt: eksportere en AI-risikovurdering på norsk og på engelsk, sjekke at PDF-en viser oversatt tekst i alle seksjoner og at dokumentkortet i biblioteket viser riktig tittel/beskrivelse/filnavn.
-3. Grep for `'pdf\.` i `riskAssessmentPdfExport.ts` skal returnere 0 treff etter endring.
+### Fase P2 – UI-wiring (samme uke, kun Moderavdeling)
+1. Legg til `"PL"` i `UnifiedCountry`-typen og `COUNTRY_BOUNDS` i `src/lib/airspaceUnified.ts` (bbox ca. 14–24 Ø, 49–55 N).
+2. `getUnifiedCountriesForRoute` inkluderer PL automatisk.
+3. `src/lib/unifiedZonePopup.ts` — legg til PL-spesifikke etiketter for DRA-P/R/I på no/en.
+4. `updateUnifiedRouteProximityLayers` fungerer uendret (land-agnostisk).
+5. NO forblir eksplisitt blokkert i `fetchUnifiedZonesForRoute`.
 
-## Tekniske detaljer
-- i18next-oppsett i `src/i18n/index.ts` registrerer `pdf` som eget namespace (`ns: ['translation', 'pdf']`). Med `{ ns: 'pdf' }` skal nøkkelen være relativ til rot i `pdf.json`.
-- Bugsjekk: `grep -c "i18n.t('pdf\." src/lib/riskAssessmentPdfExport.ts` gir ~150 treff i dag; skal være 0 etter fiks.
+### Fase P3 – AI-risikovurdering
+Ingen kodeendring — `check_mission_airspace_unified` er land-agnostisk. Eurostat-befolkning dekker allerede PL. Verifiseres i Moderavdeling med testrute.
+
+### Fase P4 – Verneområder + hindringer + NOTAM (senere separat plan)
+Ikke i denne runden. Krever egne kilder (GDOŚ WFS, PANSA eTOD AIXM, PANSA NOF).
+
+## Åpne spørsmål
+
+1. **Skal jeg kjøre P1+P2 nå** med opplastet KML som eneste PL-kilde inntil videre?
+2. **Refresh-strategi**: er det OK at PL kun oppdateres når du laster opp en ny KML manuelt (til vi eventuelt får tilgang til DroneMap API/AIP AIXM), eller vil du at jeg parallelt reverse-engineerer DroneMap-nettverkskallene for automatisk daglig sync?
+3. **Verneområder i PL** – ønsket i samme runde eller i egen leveranse etter P1–P3 er verifisert?
+
+## Risiko / garantier
+
+- Alle skriv har `country_code='PL'` — norske rader røres ikke.
+- `is_unified_airspace_enabled_for_me()` + allowlist gjør at kun Moderavdeling ser PL i UI.
+- Backfill kan når som helst rulles tilbake med `DELETE FROM airspace_zones WHERE source='pansa_kml_snapshot'`.
