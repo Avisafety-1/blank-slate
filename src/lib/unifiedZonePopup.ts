@@ -230,6 +230,7 @@ export function buildUnifiedZonePopupHtml(
   let sourceBlock = "";
   if (src.startsWith("naturvardsverket")) sourceBlock = naturvardsverketBlock(props);
   else if (src.startsWith("lfv")) sourceBlock = lfvBlock(z, props);
+  else if (src.startsWith("pansa")) sourceBlock = pansaBlock(z, props);
 
   const heightRow = formatHeightRow(z);
   const source = sourceLabel(z);
