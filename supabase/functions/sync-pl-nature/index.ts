@@ -53,51 +53,49 @@ interface LayerDef {
 // Adapter tries them in order; first successful spelling wins for the run.
 const LAYERS: Array<LayerDef & { candidates: string[] }> = [
   {
-    typeName: "gdos:parki_narodowe",
-    candidates: ["gdos:parki_narodowe", "parki_narodowe", "gdos:ParkiNarodowe"],
+    typeName: "GDOS:ParkiNarodowe",
+    candidates: ["GDOS:ParkiNarodowe"],
     source: "pl_gdos_park_narodowy",
     theme: "Park Narodowy",
     shortCode: "PN",
   },
   {
-    typeName: "gdos:rezerwaty_przyrody",
-    candidates: ["gdos:rezerwaty_przyrody", "rezerwaty_przyrody", "gdos:RezerwatyPrzyrody"],
+    typeName: "GDOS:Rezerwaty",
+    candidates: ["GDOS:Rezerwaty"],
     source: "pl_gdos_rezerwat",
     theme: "Rezerwat przyrody",
     shortCode: "RP",
   },
   {
-    typeName: "gdos:parki_krajobrazowe",
-    candidates: ["gdos:parki_krajobrazowe", "parki_krajobrazowe", "gdos:ParkiKrajobrazowe"],
+    typeName: "GDOS:ParkiKrajobrazowe",
+    candidates: ["GDOS:ParkiKrajobrazowe"],
     source: "pl_gdos_park_krajobrazowy",
     theme: "Park Krajobrazowy",
     shortCode: "PK",
   },
   {
-    typeName: "gdos:obszary_natura2000_pta",
-    candidates: [
-      "gdos:obszary_natura2000_pta",
-      "gdos:natura2000_obszary_ptasie",
-      "gdos:ObszaryNatura2000_pta",
-      "obszary_natura2000_pta",
-    ],
+    typeName: "GDOS:ObszarySpecjalnejOchrony",
+    candidates: ["GDOS:ObszarySpecjalnejOchrony"],
     source: "pl_gdos_natura2000_spa",
-    theme: "Natura 2000 – Obszar Specjalnej Ochrony Ptaków",
+    theme: "Natura 2000 – Obszar Specjalnej Ochrony Ptaków (OSO)",
     shortCode: "OSO",
   },
   {
-    typeName: "gdos:obszary_natura2000_sie",
-    candidates: [
-      "gdos:obszary_natura2000_sie",
-      "gdos:natura2000_obszary_siedliskowe",
-      "gdos:ObszaryNatura2000_sie",
-      "obszary_natura2000_sie",
-    ],
+    typeName: "GDOS:SpecjalneObszaryOchrony",
+    candidates: ["GDOS:SpecjalneObszaryOchrony"],
     source: "pl_gdos_natura2000_sac",
-    theme: "Natura 2000 – Specjalny Obszar Ochrony Siedlisk",
+    theme: "Natura 2000 – Specjalny Obszar Ochrony Siedlisk (SOO)",
     shortCode: "SOO",
   },
+  {
+    typeName: "GDOS:ObszaryChronionegoKrajobrazu",
+    candidates: ["GDOS:ObszaryChronionegoKrajobrazu"],
+    source: "pl_gdos_obszar_chroniony",
+    theme: "Obszar Chronionego Krajobrazu",
+    shortCode: "OCK",
+  },
 ];
+
 
 function toStr(v: unknown): string | null {
   if (v == null) return null;
