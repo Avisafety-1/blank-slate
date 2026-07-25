@@ -127,6 +127,7 @@ Deno.serve(async (req) => {
         ? `POLYGON(${polys[0].join(',')})`
         : `MULTIPOLYGON(${polys.map(r => `(${r.join(',')})`).join(',')})`
       const m = mapZone(parsed.type_, parsed.restriction)
+      if (!m) { skipped++; continue }
       const name = typeof pm?.name === 'string' ? pm.name : (pm?.name?.['#text'] ?? 'PL zone')
       const rawKey = `${name}|${parsed.type_}|${parsed.restriction}`
       const n = seen.get(rawKey) ?? 0
