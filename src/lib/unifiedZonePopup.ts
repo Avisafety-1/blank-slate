@@ -221,6 +221,8 @@ function sourceLabel(z: UnifiedZoneForPopup): string {
   if (s.startsWith("traficom") || s.startsWith("fi_")) return "Traficom (FI)";
   if (s.startsWith("dfs") || s.startsWith("de_")) return "DFS (DE)";
   if (s.startsWith("pansa") || s.startsWith("pl_")) return "PANSA (PL)";
+  if (s.startsWith("gdos") || s.startsWith("pl_gdos")) return "GDOŚ (PL)";
+
   return s || "—";
 }
 
