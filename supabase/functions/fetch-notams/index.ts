@@ -326,8 +326,9 @@ function parseBriefingBlock(block: string, countryLabel: string): ReturnType<typ
   const countryToIso3: Record<string, string> = {
     Austria: "AUT", Belgium: "BEL", Denmark: "DNK", France: "FRA", Germany: "DEU",
     Iceland: "ISL", Ireland: "IRL", Italy: "ITA", Netherlands: "NLD", Norway: "NOR",
-    Portugal: "PRT", Spain: "ESP", Sweden: "SWE", Switzerland: "CHE", UK: "GBR",
+    Poland: "POL", Portugal: "PRT", Spain: "ESP", Sweden: "SWE", Switzerland: "CHE", UK: "GBR",
   };
+
 
   return {
     notam_id: notamId,
