@@ -7735,6 +7735,47 @@ export type Database = {
           verneform: string
         }[]
       }
+      get_notams_in_bounds: {
+        Args: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+        }
+        Returns: {
+          center_lat: number | null
+          center_lng: number | null
+          country_code: string | null
+          created_at: string
+          effective_end: string | null
+          effective_end_interpretation: string | null
+          effective_start: string | null
+          fetched_at: string
+          geometry: unknown
+          geometry_geojson: Json | null
+          id: string
+          location: string | null
+          maximum_fl: number | null
+          minimum_fl: number | null
+          notam_id: string
+          notam_text: string | null
+          notam_type: string | null
+          number: number
+          properties: Json | null
+          purpose: string | null
+          qcode: string | null
+          scope: string | null
+          series: string | null
+          traffic: string | null
+          year: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notams"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_obstacles_in_bounds: {
         Args: {
           max_lat: number
