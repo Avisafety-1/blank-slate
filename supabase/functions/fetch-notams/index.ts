@@ -8,6 +8,97 @@ const corsHeaders = {
 const PANSA_DRONEMAP_PUBLIC_API_KEY = Deno.env.get("PANSA_DRONEMAP_PUBLIC_API_KEY")
   ?? "4b705300-8dfa-11ee-b9d1-0242ac120002";
 
+let pansaCaCertPromise: Promise<string> | null = null;
+
+async function getPansaCaCert(): Promise<string> {
+  pansaCaCertPromise ??= fetch("https://certs.godaddy.com/repository/gdig2.crt.pem")
+    .then((res) => {
+      if (!res.ok) throw new Error(`Could not load GoDaddy intermediate CA [${res.status}]`);
+      return res.text();
+    });
+  return pansaCaCertPromise;
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const combined = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return combined;
+}
+
+function decodeChunkedBody(text: string): string {
+  let cursor = 0;
+  let decoded = "";
+  while (cursor < text.length) {
+    const lineEnd = text.indexOf("\r\n", cursor);
+    if (lineEnd < 0) break;
+    const size = parseInt(text.slice(cursor, lineEnd).split(";")[0], 16);
+    if (!Number.isFinite(size) || size <= 0) break;
+    const chunkStart = lineEnd + 2;
+    decoded += text.slice(chunkStart, chunkStart + size);
+    cursor = chunkStart + size + 2;
+  }
+  return decoded;
+}
+
+async function pansaDronemapRequest(path: string, accessToken?: string): Promise<unknown> {
+  const caCert = await getPansaCaCert();
+  const conn = await Deno.connectTls({
+    hostname: "api.dronemap.pansa.pl",
+    port: 443,
+    caCerts: [caCert],
+  });
+
+  const headers = [
+    `${accessToken ? "GET" : "POST"} ${path} HTTP/1.1`,
+    "Host: api.dronemap.pansa.pl",
+    "Connection: close",
+    "Accept: application/json, text/plain, */*",
+    "Accept-Encoding: identity",
+    "Content-Type: application/json",
+    "User-Agent: Avisafe/1.0 (+https://avisafe.no)",
+    "Origin: https://dronemap.pansa.pl",
+    "Referer: https://dronemap.pansa.pl/",
+    `x-api-key: ${PANSA_DRONEMAP_PUBLIC_API_KEY}`,
+    ...(accessToken ? [`Authorization: Bearer ${accessToken}`] : []),
+    "Content-Length: 0",
+    "",
+    "",
+  ].join("\r\n");
+
+  await conn.write(new TextEncoder().encode(headers));
+  const chunks: Uint8Array[] = [];
+  const buffer = new Uint8Array(65536);
+  try {
+    while (true) {
+      const bytesRead = await conn.read(buffer);
+      if (bytesRead === null) break;
+      chunks.push(buffer.slice(0, bytesRead));
+    }
+  } finally {
+    try { conn.close(); } catch { /* ignore close errors */ }
+  }
+
+  const raw = new TextDecoder().decode(concatBytes(chunks));
+  const headerEnd = raw.indexOf("\r\n\r\n");
+  if (headerEnd < 0) throw new Error("PANSA DroneMap returned an invalid HTTP response");
+
+  const headerText = raw.slice(0, headerEnd);
+  const bodyText = raw.slice(headerEnd + 4);
+  const status = Number(headerText.match(/^HTTP\/\d\.\d\s+(\d+)/)?.[1] ?? 0);
+  const isChunked = /transfer-encoding:\s*chunked/i.test(headerText);
+  const body = isChunked ? decodeChunkedBody(bodyText) : bodyText;
+
+  if (status < 200 || status >= 300) {
+    throw new Error(`PANSA DroneMap request failed [${status}]: ${body.slice(0, 300)}`);
+  }
+  return JSON.parse(body);
+}
+
 /** Parse DMS coordinates from NOTAM text for polygon geometry */
 function parseNotamCoordinates(text: string | null | undefined): object | null {
   if (!text) return null;
@@ -347,40 +438,12 @@ function parsePansaNotam(raw: Record<string, any>): ReturnType<typeof parseRssIt
 }
 
 async function fetchPansaDronemapNotams(feedUrl: string): Promise<ReturnType<typeof parseRssItem>[]> {
-  const baseHeaders = {
-    Accept: "application/json, text/plain, */*",
-    "Content-Type": "application/json",
-    "User-Agent": "Avisafe/1.0 (+https://avisafe.no)",
-    Origin: "https://dronemap.pansa.pl",
-    Referer: "https://dronemap.pansa.pl/",
-    "x-api-key": PANSA_DRONEMAP_PUBLIC_API_KEY,
-  };
-
-  const loginRes = await fetch("https://api.dronemap.pansa.pl/v1/front/login", {
-    method: "POST",
-    headers: baseHeaders,
-  });
-  if (!loginRes.ok) {
-    const body = await loginRes.text();
-    throw new Error(`PANSA DroneMap login failed [${loginRes.status}]: ${body.slice(0, 300)}`);
-  }
-
-  const loginJson = await loginRes.json();
-  const accessToken = loginJson?.access_token;
+  const loginJson = await pansaDronemapRequest("/v1/front/login") as Record<string, any>;
+  const accessToken = loginJson.access_token;
   if (!accessToken) throw new Error("PANSA DroneMap login did not return an access token");
 
-  const notamsRes = await fetch(feedUrl || "https://api.dronemap.pansa.pl/v1/notams", {
-    headers: {
-      ...baseHeaders,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  if (!notamsRes.ok) {
-    const body = await notamsRes.text();
-    throw new Error(`PANSA DroneMap NOTAM fetch failed [${notamsRes.status}]: ${body.slice(0, 300)}`);
-  }
-
-  const notamsJson = await notamsRes.json();
+  const url = new URL(feedUrl || "https://api.dronemap.pansa.pl/v1/notams");
+  const notamsJson = await pansaDronemapRequest(`${url.pathname}${url.search}`, accessToken) as Record<string, any>;
   const properties = Array.isArray(notamsJson?.properties) ? notamsJson.properties : [];
   return properties
     .filter((item: Record<string, any>) => item.active !== false)
