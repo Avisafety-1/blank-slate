@@ -1,46 +1,76 @@
-## Problem
+## Scope
 
-Polish PANSA zones (DRA-P *and* DRA-R, e.g. EPTR11B, EPTR22A/C, MCTR EPIR, EPTS10A) are "flexible" — they only impose restrictions when activated (via NOTAM / DroneTower). Today we treat them as always-restricted, which:
+Continue Poland rollout for "Moderavdeling" (allowlist-gated, unified pipeline). NO/DK/SE/DE/FI users unaffected.
 
-1. Shows a red WARNING banner on missions passing near/through them (screenshot 3 — 8+ false warnings on one route).
-2. Only DRA-P popups show the yellow "Activated by NOTAM" notice; DRA-R popups (EPTR11B etc.) look like hard restrictions.
+Two pieces left:
+1. **Nature protection areas** (GDOŚ — Natura 2000 + national parks / reserves)
+2. **NOTAM** coverage for Poland via existing notaminfo pipeline
 
-Confirmed from PANSA's own zone descriptions in screenshots 1–2:
-- DRA-P: "UAV flights are prohibited in the *active* zone" + "If inactive, does not cause any restrictions"
-- DRA-R: "In the *active* DRA-R zone, consent from the TRA Zone Manager is required" (implicit: inactive = no restriction)
+Airspace (PANSA, 2 738 zones) and popup/severity handling for flexible DRA-* zones are already in.
 
-## Changes
+---
 
-Scope: Poland only. NO/DK/SE/DE/FI behaviour unchanged. Moderavdeling-only (unified pipeline is still allowlist-gated).
+## 1. Poland nature areas (GDOŚ)
 
-### 1. Popup notice for DRA-R (`src/lib/unifiedZonePopup.ts`)
-Extend the existing PANSA branch so both `DRA-P` and `DRA-R` render the yellow "Activated by NOTAM" info box, with slightly different wording:
-- DRA-P: "Flight prohibited *only when active*. Check NOTAM / DroneTower before flight." (existing text kept)
-- DRA-R: "Manager consent required *only when active*. Check NOTAM / DroneTower before flight."
+**Source:** GDOŚ Geoserwis WFS (`https://sdi.gdos.gov.pl/wfs`), same pattern as `sync-sweden-nature` and `sync-de-drone-zones`. Layers to ingest:
 
-New i18n keys under `pages.map.popups.unified.pansa.*` in both `no.json` and `en.json`.
+- `Natura 2000 — Special Protection Areas (SPA/OSO)` — bird directive
+- `Natura 2000 — Special Areas of Conservation (SAC/SOO)` — habitats directive
+- `National parks (Parki Narodowe)`
+- `Nature reserves (Rezerwaty przyrody)`
+- `Landscape parks (Parki krajobrazowe)`
 
-### 2. Downgrade mission warnings for flexible PL zones
-Route-proximity severity is set in `src/lib/airspaceUnified.ts` → `severityFromRestriction()`. Currently any PL DRA-P/DRA-R inside the route → `warning` (red).
+**New edge function:** `supabase/functions/sync-pl-nature/index.ts`
+- Tiled WFS fetch (bbox loop, similar to German adapter) to stay under response caps.
+- Normalize into `airspace_zones` with:
+  - `country_code = 'PL'`
+  - `source = 'pl_gdos_<layer>'` (e.g. `pl_gdos_natura2000_spa`, `pl_gdos_park_narodowy`)
+  - `restriction_type = 'NATURE_SENSITIVE'` (matches SE nature classification — never a hard block, just caution + popup)
+  - `zone_type = 'NATURE'`
+  - `name`, `short_name`, `theme` populated from feature properties (`nazwa`, `kod`, `typ`), so popups read cleanly.
+  - `authority = 'GDOŚ'` and an official info URL in `properties` (per-area link when available).
+- Upsert by `(source, external_id)` and mark stale rows inactive — same convention as other adapters.
 
-Adjust so PANSA "flexible" zones (source starts with `pansa`, zone_type in DRA-P / DRA-R families incl. EPTR/EPTS/MCTR corridors) map to `note` (blue info) instead of `warning`/`caution`, regardless of inside/outside. Rationale: without live NOTAM activation data we cannot assert a hard restriction. The popup already tells the pilot to check NOTAM.
+**Backfill:** run the function once after deploy; expected ~2 000 protected areas.
 
-DRA-I stays as `note` (unchanged).
+**UI:** no changes required. Auto-reveal along routes (`unifiedRouteProximityLayers`) and the shared popup builder (`unifiedZonePopup.ts`, `naturvardsverket` styling reused for the `pl_gdos_*` source prefix — small `sourceLabel` addition to return "GDOŚ (PL)").
 
-### 3. AI risk assessment (`check_mission_airspace_unified` + `ai-risk-assessment` edge function)
-Same rule: for PL PANSA zones, pass them to the AI as *informational* ("flexible zone, verify NOTAM") rather than as hard conflicts, so `AI: Caution` isn't triggered purely by DRA-R/DRA-P overlap.
+## 2. Poland NOTAM
 
-### Out of scope
-- Actually ingesting live PANSA activation state (would need a separate PANSA activity API integration). Follow-up if desired.
-- Any change to NO / DK / SE / DE / FI zones.
+**Source:** notaminfo per-country briefing (already used for FR/IE/IT/etc.).
+
+**DB:** insert a `notam_rss_feeds` row:
+```
+name: 'notaminfo: Poland'
+country: 'Poland'
+source_type: 'country_briefing'
+feed_url: 'https://notaminfo.com/latest?country=Poland'
+enabled: true
+```
+
+**Code:** `supabase/functions/fetch-notams/index.ts` — add `Poland: 'POL'` to `countryToIso3`. No parser changes; the existing block scraper handles PL briefings.
+
+**Verification:** manually invoke `fetch-notams`, confirm PL NOTAMs land in `notams` with `country_code = 'POL'` and render on the map (existing NOTAM layer already filters by bbox, so PL is picked up automatically inside Moderavdeling's viewport).
+
+## 3. Risk assessment
+
+Nothing new. `check_mission_airspace_unified` already returns PL zones for allowlisted companies. `NATURE_SENSITIVE` maps to `note`/blue (same as SE), so no false red warnings. NOTAM contribution flows through the existing NOTAM path.
+
+---
+
+## Out of scope
+
+- Live PANSA activation state (would need a separate DroneTower API integration).
+- Any change to NO / DK / SE / DE / FI behaviour.
+- Rolling out beyond "Moderavdeling".
 
 ## Technical touch-points
 
 ```
-src/lib/unifiedZonePopup.ts          # extend pansaBlock for DRA-R
-src/lib/airspaceUnified.ts           # severityFromRestriction: PL flexible → note
-src/i18n/locales/no.json, en.json    # new pansa.* keys
-supabase/functions/ai-risk-assessment/index.ts   # tag PL PANSA zones as informational
+supabase/functions/sync-pl-nature/index.ts          # NEW
+supabase/functions/fetch-notams/index.ts            # + Poland: 'POL'
+src/lib/unifiedZonePopup.ts                         # sourceLabel: pl_gdos_* → 'GDOŚ (PL)'
+notam_rss_feeds                                     # insert Poland row (migration)
 ```
 
-No DB migration needed — classification of the 2,738 PL zones stays as is.
+No schema changes needed — nature areas reuse the existing `airspace_zones` shape.
