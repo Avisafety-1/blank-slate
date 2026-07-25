@@ -157,7 +157,7 @@ export function getUnifiedCountriesForRoute(
   routePoints: UnifiedRoutePoint[] | undefined,
   bufferM: number = 500,
 ): UnifiedCountry[] {
-  const countries: UnifiedCountry[] = ["DK", "SE", "DE", "FI"];
+  const countries: UnifiedCountry[] = ["DK", "SE", "DE", "FI", "PL"];
   return countries.filter((country) => routeMayIntersectCountry(country, routePoints, bufferM));
 }
 
