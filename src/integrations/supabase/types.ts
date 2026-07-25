@@ -8597,6 +8597,7 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_airspace_zones_pl: { Args: { rows: Json }; Returns: number }
       upsert_geojson_feature: {
         Args: {
           p_description: string
