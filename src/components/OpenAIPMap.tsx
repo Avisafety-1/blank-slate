@@ -1445,8 +1445,8 @@ export function OpenAIPMap({
       ['rpas', unifiedRpasLayer, 7],
       ['restriksjonsomrader', unifiedRestrictedLayer, 7],
       ['fareomrader', unifiedDangerLayer, 7],
-      ['sikringsobjekter', unifiedSecurityLayer, 10], // DE ~31k features
-      ['verneomrader', unifiedNatureLayer, 10],       // DE ~14k features
+      ['sikringsobjekter', unifiedSecurityLayer, 9], // DE ~31k features — viewport-limited
+      ['verneomrader', unifiedNatureLayer, 8],       // DE ~14k / SE ~10k / PL ~4k — viewport-limited
     ];
     const fetchUnifiedLayers = async () => {
       const enabled = await isUnifiedAirspaceEnabled();
