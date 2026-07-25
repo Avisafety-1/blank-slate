@@ -36,9 +36,12 @@ function mapZone(type_: string, restriction: string) {
     else if (t.startsWith('DRAI')) eff = 'DRAI'
   }
 
-  if (eff === 'DRAP') return { zone_type: 'DRONE_NO_FLY', restriction_type: 'PROHIBITED', display_class: 'RED', theme: 'DRA-P', layer_id: 'rpas' }
-  if (eff === 'DRAR') return { zone_type: 'R', restriction_type: 'RESTRICTED', display_class: 'AMBER', theme: 'DRA-R', layer_id: 'restriksjonsomrader' }
-  if (eff === 'DRAI') return { zone_type: 'DRONE_DANGER', restriction_type: 'NOTIFICATION', display_class: 'AMBER', theme: 'DRA-I', layer_id: 'fareomrader' }
+  // PANSA DRA-P / DRA-R / DRA-I are FLEXIBLE zones activated by NOTAM.
+  // We group them under the "P/R/D" (restriksjonsomrader) toggle and render
+  // them blue so pilots recognize them as informational-until-activated.
+  if (eff === 'DRAP') return { zone_type: 'DRONE_NO_FLY', restriction_type: 'CAUTION', display_class: 'BLUE', theme: 'DRA-P', layer_id: 'restriksjonsomrader' }
+  if (eff === 'DRAR') return { zone_type: 'R', restriction_type: 'CAUTION', display_class: 'BLUE', theme: 'DRA-R', layer_id: 'restriksjonsomrader' }
+  if (eff === 'DRAI') return { zone_type: 'DRONE_DANGER', restriction_type: 'CAUTION', display_class: 'BLUE', theme: 'DRA-I', layer_id: 'restriksjonsomrader' }
 
   if (t === 'RMZ') return { zone_type: 'RMZ', restriction_type: 'CAUTION', display_class: 'AMBER', theme: 'RMZ', layer_id: 'airspace' }
   if (t === 'TSA' || t === 'TRA' || t === 'MRT' || t === 'EA')
