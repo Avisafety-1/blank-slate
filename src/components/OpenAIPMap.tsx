@@ -1437,7 +1437,8 @@ export function OpenAIPMap({
     // Gated by `isUnifiedAirspaceEnabled()` (fail-closed, Moderavdeling only).
     // No fetches happen for any other company.
     // ============================================================
-    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI'];
+    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI', 'PL'];
+    const UNIFIED_COUNTRIES_KEY = UNIFIED_COUNTRIES.slice().sort().join(',');
     // layerId → [layerGroup, minZoom]. Larger datasets require higher zoom.
     const unifiedLayerMap: Array<[string, L.LayerGroup, number]> = [
       ['airspace', unifiedAirspaceLayer, 7],
