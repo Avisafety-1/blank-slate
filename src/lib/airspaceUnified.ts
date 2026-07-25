@@ -165,7 +165,17 @@ function severityFromRestriction(
   restriction: string,
   isInside: boolean,
   distance: number,
+  source?: string,
+  countryCode?: string,
 ): "warning" | "caution" | "note" {
+  // Polish PANSA zones (DRA-P / DRA-R / DRA-I) are FLEXIBLE — they only impose
+  // restrictions when activated via NOTAM / DroneTower. Without live activation
+  // data we cannot assert a hard restriction, so downgrade to info-level.
+  // The map popup already tells the pilot to check NOTAM before flight.
+  const src = String(source || "").toLowerCase();
+  const isPansa = src.startsWith("pansa") || src.startsWith("pl_") || countryCode === "PL";
+  if (isPansa) return "note";
+
   if (isInside && (restriction === "prohibited" || restriction === "restricted")) {
     return "warning";
   }
@@ -173,6 +183,7 @@ function severityFromRestriction(
   if (distance < 500) return "caution";
   return "note";
 }
+
 
 /**
  * Fetch unified zones intersecting (or near) a route.
