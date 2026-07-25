@@ -3277,7 +3277,12 @@
               "P": "Forbudt område – flyging ikke tillatt.",
               "RW5K": "Innenfor 5 km fra rullebanen. Krever tillatelse fra flygekontroll/AFIS før flyging."
             }
-          }
+          },
+          "pansa": {
+            "activatedByNotamTitle": "Aktiveres via NOTAM",
+            "activatedByNotamBody": "Fleksibel sone. Flyging er kun forbudt når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging."
+          },
+          "moreInfoPansa": "Mer info hos PANSA DroneMap"
         }
       },
       "layers": {

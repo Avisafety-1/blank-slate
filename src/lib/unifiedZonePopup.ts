@@ -169,12 +169,22 @@ function lfvBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
 
 function pansaBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
   const parts: string[] = [];
-  const restriction = String(props.pansa_restriction || "").toUpperCase();
+  const restriction = String(props.pansa_restriction || "").toUpperCase().replace(/[-_\s]/g, "");
   const type_ = String(props.pansa_type || z.zone_type || "").toUpperCase();
+
+  // DRA-P zones in Poland are flexible: only prohibited when activated (typically via NOTAM).
+  if (restriction === "DRAP") {
+    const title = tp("pansa.activatedByNotamTitle", { defaultValue: "Activated by NOTAM" });
+    const body = tp("pansa.activatedByNotamBody", {
+      defaultValue:
+        "Flexible zone. Flight is only prohibited when the zone is active. Always check current NOTAM / DroneTower activity before flight.",
+    });
+    parts.push(
+      `<div style="margin-bottom:6px;padding:6px 8px;background:#fef9c3;border-left:3px solid #ca8a04;border-radius:4px;font-size:12px;color:#713f12;"><strong>⚠️ ${escUnified(title)}</strong><div style="margin-top:2px;">${escUnified(body)}</div></div>`,
+    );
+  }
+
   const RESTRICTION_LABELS: Record<string, string> = {
-    "DRA-P": "Drone Restricted Area – Prohibited (no flight)",
-    "DRA-R": "Drone Restricted Area – Restricted (approval required)",
-    "DRA-I": "Drone Restricted Area – Information (be aware)",
     DRAP: "Drone Restricted Area – Prohibited (no flight)",
     DRAR: "Drone Restricted Area – Restricted (approval required)",
     DRAI: "Drone Restricted Area – Information (be aware)",
