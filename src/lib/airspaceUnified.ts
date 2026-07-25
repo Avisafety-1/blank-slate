@@ -246,7 +246,7 @@ export async function fetchUnifiedZonesForRoute(
         source: String(row.source ?? ""),
         min_distance: distance,
         is_inside: isInside,
-        level: severityFromRestriction(restriction, isInside, distance),
+        level: severityFromRestriction(restriction, isInside, distance, String(row.source ?? ""), String(row.country_code ?? country)),
       };
     });
   } catch {
