@@ -964,7 +964,7 @@ export function OpenAIPMap({
     // added to the map at init so `fetchUnifiedLayers` (which gates on
     // `map.hasLayer(lg)`) actually issues the fetch. The fetcher itself is
     // still gated by `isUnifiedAirspaceEnabled()` (Moderavdeling only).
-    const unifiedAirspaceLayer = L.layerGroup().addTo(map);   // CTR/TIZ/ATZ (layer_id='airspace')
+    const unifiedAirspaceLayer = L.layerGroup().addTo(map);   // TIZ/RMZ/TMZ etc. (layer_id='airspace')
     const unifiedRpasLayer = L.layerGroup().addTo(map);       // DRONE_NO_FLY (layer_id='rpas')
     // Merged into default-OFF parent buttons — added on toggle.
     const unifiedRestrictedLayer = L.layerGroup();    // R (layer_id='restriksjonsomrader')
@@ -1449,7 +1449,7 @@ export function OpenAIPMap({
       ['fareomrader', unifiedDangerLayer, 7],
       ['sikringsobjekter', unifiedSecurityLayer, 9], // DE ~31k features — viewport-limited
       ['verneomrader', unifiedNatureLayer, 8],       // DE ~14k / SE ~10k / PL ~4k — viewport-limited
-      ['flyplasser', unifiedAirportLayer, 7],
+      ['flyplasser', unifiedAirportLayer, 5],        // PL CTR/MCTR/ATZ airport polygons — small dataset
     ];
     const fetchUnifiedLayers = async () => {
       const enabled = await isUnifiedAirspaceEnabled();
