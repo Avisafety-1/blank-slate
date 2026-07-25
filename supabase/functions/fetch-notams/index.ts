@@ -30,19 +30,36 @@ function concatBytes(chunks: Uint8Array[]): Uint8Array {
   return combined;
 }
 
-function decodeChunkedBody(text: string): string {
+function findHeaderEnd(bytes: Uint8Array): number {
+  for (let i = 0; i < bytes.length - 3; i++) {
+    if (bytes[i] === 13 && bytes[i + 1] === 10 && bytes[i + 2] === 13 && bytes[i + 3] === 10) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function indexOfCrlf(bytes: Uint8Array, start: number): number {
+  for (let i = start; i < bytes.length - 1; i++) {
+    if (bytes[i] === 13 && bytes[i + 1] === 10) return i;
+  }
+  return -1;
+}
+
+function decodeChunkedBytes(bytes: Uint8Array): Uint8Array {
   let cursor = 0;
-  let decoded = "";
-  while (cursor < text.length) {
-    const lineEnd = text.indexOf("\r\n", cursor);
+  const decoded: Uint8Array[] = [];
+  while (cursor < bytes.length) {
+    const lineEnd = indexOfCrlf(bytes, cursor);
     if (lineEnd < 0) break;
-    const size = parseInt(text.slice(cursor, lineEnd).split(";")[0], 16);
+    const sizeLine = new TextDecoder().decode(bytes.slice(cursor, lineEnd));
+    const size = parseInt(sizeLine.split(";")[0], 16);
     if (!Number.isFinite(size) || size <= 0) break;
     const chunkStart = lineEnd + 2;
-    decoded += text.slice(chunkStart, chunkStart + size);
+    decoded.push(bytes.slice(chunkStart, chunkStart + size));
     cursor = chunkStart + size + 2;
   }
-  return decoded;
+  return concatBytes(decoded);
 }
 
 async function pansaDronemapRequest(path: string, accessToken?: string): Promise<unknown> {
@@ -83,15 +100,16 @@ async function pansaDronemapRequest(path: string, accessToken?: string): Promise
     try { conn.close(); } catch { /* ignore close errors */ }
   }
 
-  const raw = new TextDecoder().decode(concatBytes(chunks));
-  const headerEnd = raw.indexOf("\r\n\r\n");
+  const responseBytes = concatBytes(chunks);
+  const headerEnd = findHeaderEnd(responseBytes);
   if (headerEnd < 0) throw new Error("PANSA DroneMap returned an invalid HTTP response");
 
-  const headerText = raw.slice(0, headerEnd);
-  const bodyText = raw.slice(headerEnd + 4);
+  const headerText = new TextDecoder().decode(responseBytes.slice(0, headerEnd));
+  const bodyBytes = responseBytes.slice(headerEnd + 4);
   const status = Number(headerText.match(/^HTTP\/\d\.\d\s+(\d+)/)?.[1] ?? 0);
   const isChunked = /transfer-encoding:\s*chunked/i.test(headerText);
-  const body = isChunked ? decodeChunkedBody(bodyText) : bodyText;
+  const payloadBytes = isChunked ? decodeChunkedBytes(bodyBytes) : bodyBytes;
+  const body = new TextDecoder().decode(payloadBytes);
 
   if (status < 200 || status >= 300) {
     throw new Error(`PANSA DroneMap request failed [${status}]: ${body.slice(0, 300)}`);
