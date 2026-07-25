@@ -1919,6 +1919,16 @@ const UNIFIED_COLORS: Record<string, string> = {
   INFO: "#6b7280",
 };
 
+const UNIFIED_DISPLAY_CLASS_COLORS: Record<string, string> = {
+  RED: "#dc2626",
+  AMBER: "#f97316",
+  BLUE: "#2563eb",
+  GREEN: "#16a34a",
+  GREY: "#6b7280",
+};
+
+const unifiedZoomCache = new Map<string, number>();
+
 function buildUnifiedZonePopup(zone: any): string {
   return buildUnifiedZonePopupHtml(zone);
 }
@@ -1926,12 +1936,14 @@ function buildUnifiedZonePopup(zone: any): string {
 export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
   layerId: string;
   countryCodes: string[];
+  zoom: number;
 }) {
-  const { layer, mode, bounds, layerId, countryCodes } = params;
+  const { layer, mode, bounds, layerId, countryCodes, zoom } = params;
   if (!countryCodes.length) return;
   const cacheKey = `unified:${layerId}:${countryCodes.slice().sort().join(",")}`;
   const cache = getCache(cacheKey);
-  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const lastZoom = unifiedZoomCache.get(cacheKey);
+  if (lastZoom === zoom && bboxCovered(cache.cachedBounds, bounds)) return;
   const padded = padBBox(bounds);
   try {
     const { data, error } = await supabase.rpc("airspace_zones_in_bbox", {
@@ -1954,30 +1966,36 @@ export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
       data.filter((z: any) => z?.geometry_geojson),
       (z: any) => hashString(`u|${z.id}`),
       (zone: any) => {
-        const color = UNIFIED_COLORS[String(zone.restriction_type || "").toUpperCase()] || "#dc2626";
+        const displayClass = String(zone.display_class || "").toUpperCase();
+        const color = layerId === "flyplasser"
+          ? "#dc2626"
+          : UNIFIED_DISPLAY_CLASS_COLORS[displayClass]
+            || UNIFIED_COLORS[String(zone.restriction_type || "").toUpperCase()]
+            || "#dc2626";
         const isNature = zone.restriction_type === "NATURE_SENSITIVE";
         const baseStyle = {
           color,
-          weight: 1.5,
+          weight: layerId === "flyplasser" ? 2 : 1.5,
           fillColor: color,
-          fillOpacity: isNature ? 0.18 : 0.22,
+          fillOpacity: isNature ? 0.18 : layerId === "flyplasser" ? 0.16 : 0.22,
           dashArray: zone.restriction_type === "CAUTION" ? "4, 4" : undefined,
         };
         return L.geoJSON(
           { type: "Feature" as const, geometry: zone.geometry_geojson, properties: zone } as any,
           {
             interactive: mode !== "routePlanning",
-            pane: "overlayPane",
+            pane: layerId === "flyplasser" ? "airportPane" : "overlayPane",
             style: baseStyle,
             onEachFeature: mode !== "routePlanning" ? (_f, lyr) => {
               lyr.bindPopup(buildUnifiedZonePopup(zone));
-              attachHoverPromotion(lyr, { paneName: "overlayPane", baseStyle });
+              attachHoverPromotion(lyr, { paneName: layerId === "flyplasser" ? "airportPane" : "overlayPane", baseStyle });
             } : undefined,
           },
         );
       },
     );
     cache.cachedBounds = padded;
+    unifiedZoomCache.set(cacheKey, zoom);
   } catch (err) {
     console.error(`[unified:${layerId}] fetch failed:`, err);
   }

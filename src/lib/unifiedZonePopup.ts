@@ -170,15 +170,23 @@ function lfvBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
 function pansaBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string {
   const parts: string[] = [];
   const restriction = String(props.pansa_restriction || "").toUpperCase().replace(/[-_\s]/g, "");
-  const type_ = String(props.pansa_type || z.zone_type || "").toUpperCase();
-
-  // All PANSA zones (DRA-P / DRA-R / corridors like EPTR/EPTS/MCTR) are flexible:
-  // only restrictive when activated (typically via NOTAM / DroneTower). Show a
-  // NOTAM notice for prohibited/restricted classes; skip info-only (DRA-I).
+  const type_ = String(props.pansa_type || z.zone_type || "").toUpperCase().replace(/[-_\s]/g, "");
   const zt = String(z.zone_type || "").toUpperCase();
+  const isAirportZone =
+    z.layer_id === "flyplasser" ||
+    zt === "CTR" ||
+    zt === "MCTR" ||
+    zt === "ATZ" ||
+    type_.startsWith("CTR") ||
+    type_.startsWith("MCTR") ||
+    type_.startsWith("ATZ");
+
+  // PANSA DRA zones can be flexible, but CTR/MCTR/ATZ are airport airspace and
+  // must not be described as NOTAM-activated just because the KML source also
+  // carries a DRA-R restriction flag.
   const isProhibited = restriction === "DRAP" || zt === "DRONE_NO_FLY";
   const isRestricted = restriction === "DRAR" || zt === "R";
-  if (isProhibited || isRestricted) {
+  if (!isAirportZone && (isProhibited || isRestricted)) {
     const title = tp("pansa.activatedByNotamTitle", { defaultValue: "Activated by NOTAM" });
     const bodyKey = isProhibited ? "pansa.activatedByNotamBody" : "pansa.activatedByNotamBodyDraR";
     const bodyDefault = isProhibited
@@ -192,12 +200,22 @@ function pansaBlock(z: UnifiedZoneForPopup, props: Record<string, any>): string 
 
 
 
-  const RESTRICTION_LABELS: Record<string, string> = {
-    DRAP: "Drone Restricted Area – Prohibited (no flight)",
-    DRAR: "Drone Restricted Area – Restricted (approval required)",
-    DRAI: "Drone Restricted Area – Information (be aware)",
+  const TYPE_LABELS: Record<string, string> = {
+    CTR: tp("pansa.typeLabels.CTR", { defaultValue: "Control zone" }),
+    CTR1KM: tp("pansa.typeLabels.CTR1KM", { defaultValue: "Control zone – inner 1 km" }),
+    CTR6KM: tp("pansa.typeLabels.CTR6KM", { defaultValue: "Control zone – 6 km ring" }),
+    MCTR: tp("pansa.typeLabels.MCTR", { defaultValue: "Military control zone" }),
+    MCTR2KM: tp("pansa.typeLabels.MCTR2KM", { defaultValue: "Military control zone – 2 km ring" }),
+    ATZ: tp("pansa.typeLabels.ATZ", { defaultValue: "Aerodrome traffic zone" }),
+    ATZ1KM: tp("pansa.typeLabels.ATZ1KM", { defaultValue: "Aerodrome traffic zone – inner 1 km" }),
+    ATZ6KM: tp("pansa.typeLabels.ATZ6KM", { defaultValue: "Aerodrome traffic zone – 6 km ring" }),
   };
-  const label = RESTRICTION_LABELS[restriction];
+  const RESTRICTION_LABELS: Record<string, string> = {
+    DRAP: tp("pansa.restrictionLabels.DRAP", { defaultValue: "Drone Restricted Area – Prohibited" }),
+    DRAR: tp("pansa.restrictionLabels.DRAR", { defaultValue: "Drone Restricted Area – Restricted" }),
+    DRAI: tp("pansa.restrictionLabels.DRAI", { defaultValue: "Drone Restricted Area – Information" }),
+  };
+  const label = TYPE_LABELS[type_] || (!isAirportZone ? RESTRICTION_LABELS[restriction] : "");
   if (label) {
     parts.push(`<div style="font-size:12px;color:#475569;">${escUnified(label)}</div>`);
   }

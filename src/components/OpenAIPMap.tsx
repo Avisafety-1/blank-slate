@@ -971,6 +971,7 @@ export function OpenAIPMap({
     const unifiedDangerLayer = L.layerGroup();        // DRONE_DANGER (layer_id='fareomrader')
     const unifiedSecurityLayer = L.layerGroup();      // DRONE_PROTECTED_OBJECT (layer_id='sikringsobjekter')
     const unifiedNatureLayer = L.layerGroup();        // NATURE (layer_id='verneomrader')
+    const unifiedAirportLayer = L.layerGroup().addTo(map); // CTR/MCTR/ATZ airport polygons (layer_id='flyplasser')
 
     // NRL (vises sammen med OpenAIP-hindringer under "Luftfartshindre")
     const nrlLayer = L.tileLayer.wms("https://wms.geonorge.no/skwms1/wms.nrl5?", {
@@ -1091,7 +1092,7 @@ export function OpenAIPMap({
     if (tensioLuftnettLayer) {
       layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
     }
-    layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer], enabled: true, icon: "planeLanding", group: gInf });
+    layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer, unifiedAirportLayer], enabled: true, icon: "planeLanding", group: gInf });
 
     // Geolocation
     if (navigator.geolocation) {
@@ -1170,6 +1171,7 @@ export function OpenAIPMap({
       unifiedDangerLayer,
       unifiedSecurityLayer,
       unifiedNatureLayer,
+      unifiedAirportLayer,
       notamLayer,
       obstaclesLayer,
       airportsLayer,
@@ -1447,6 +1449,7 @@ export function OpenAIPMap({
       ['fareomrader', unifiedDangerLayer, 7],
       ['sikringsobjekter', unifiedSecurityLayer, 9], // DE ~31k features — viewport-limited
       ['verneomrader', unifiedNatureLayer, 8],       // DE ~14k / SE ~10k / PL ~4k — viewport-limited
+      ['flyplasser', unifiedAirportLayer, 7],
     ];
     const fetchUnifiedLayers = async () => {
       const enabled = await isUnifiedAirspaceEnabled();
@@ -1469,6 +1472,7 @@ export function OpenAIPMap({
           bounds,
           layerId,
           countryCodes: UNIFIED_COUNTRIES,
+          zoom: z,
         });
       });
     };

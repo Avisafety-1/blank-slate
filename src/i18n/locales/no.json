@@ -3281,7 +3281,22 @@
           "pansa": {
             "activatedByNotamTitle": "Aktiveres via NOTAM",
             "activatedByNotamBody": "Fleksibel sone. Flyging er kun forbudt når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging.",
-            "activatedByNotamBodyDraR": "Fleksibel sone. Samtykke fra soneansvarlig kreves kun når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging."
+            "activatedByNotamBodyDraR": "Fleksibel sone. Samtykke fra soneansvarlig kreves kun når sonen er aktiv. Sjekk alltid gjeldende NOTAM / DroneTower-aktivitet før flyging.",
+            "typeLabels": {
+              "CTR": "Kontrollsone",
+              "CTR1KM": "Kontrollsone – indre 1 km",
+              "CTR6KM": "Kontrollsone – 6 km-ring",
+              "MCTR": "Militær kontrollsone",
+              "MCTR2KM": "Militær kontrollsone – 2 km-ring",
+              "ATZ": "Flyplasstrafikksone",
+              "ATZ1KM": "Flyplasstrafikksone – indre 1 km",
+              "ATZ6KM": "Flyplasstrafikksone – 6 km-ring"
+            },
+            "restrictionLabels": {
+              "DRAP": "Drone Restricted Area – forbudt",
+              "DRAR": "Drone Restricted Area – restriksjon",
+              "DRAI": "Drone Restricted Area – informasjon"
+            }
           },
 
           "moreInfoPansa": "Mer info hos PANSA DroneMap"

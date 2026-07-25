@@ -3279,7 +3279,22 @@
           "pansa": {
             "activatedByNotamTitle": "Activated by NOTAM",
             "activatedByNotamBody": "Flexible zone. Flight is only prohibited when the zone is active. Always check current NOTAM / DroneTower activity before flight.",
-            "activatedByNotamBodyDraR": "Flexible zone. Manager consent is only required when the zone is active. Always check current NOTAM / DroneTower activity before flight."
+            "activatedByNotamBodyDraR": "Flexible zone. Manager consent is only required when the zone is active. Always check current NOTAM / DroneTower activity before flight.",
+            "typeLabels": {
+              "CTR": "Control zone",
+              "CTR1KM": "Control zone – inner 1 km",
+              "CTR6KM": "Control zone – 6 km ring",
+              "MCTR": "Military control zone",
+              "MCTR2KM": "Military control zone – 2 km ring",
+              "ATZ": "Aerodrome traffic zone",
+              "ATZ1KM": "Aerodrome traffic zone – inner 1 km",
+              "ATZ6KM": "Aerodrome traffic zone – 6 km ring"
+            },
+            "restrictionLabels": {
+              "DRAP": "Drone Restricted Area – Prohibited",
+              "DRAR": "Drone Restricted Area – Restricted",
+              "DRAI": "Drone Restricted Area – Information"
+            }
           },
 
           "moreInfoPansa": "More info on PANSA DroneMap"
