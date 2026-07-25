@@ -108,6 +108,26 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function flipPosition(pos: unknown): unknown {
+  if (!Array.isArray(pos) || pos.length < 2) return pos;
+  const [first, second, ...rest] = pos;
+  if (typeof first !== "number" || typeof second !== "number") return pos;
+  return [second, first, ...rest];
+}
+
+function flipCoordinates(coords: unknown): unknown {
+  if (!Array.isArray(coords)) return coords;
+  if (typeof coords[0] === "number") return flipPosition(coords);
+  return coords.map(flipCoordinates);
+}
+
+function normalizeGdosGeometry(geometry: any): any {
+  // GDOS WFS returns EPSG:4326 GeoJSON in axis order lat/lng when requested with
+  // the URN CRS. Store GeoJSON/PostGIS in normal lng/lat order so viewport
+  // queries and Leaflet rendering match the real Polish map position.
+  return { ...geometry, coordinates: flipCoordinates(geometry.coordinates) };
+}
+
 interface Tile { minLat: number; minLng: number; maxLat: number; maxLng: number; }
 
 function generateTiles(): Tile[] {
@@ -205,8 +225,8 @@ function buildRow(f: any, layer: LayerDef): any | null {
     active: true,
     authority_rank: PL_AUTHORITY_RANK,
     dedupe_key: `pl:verneomrader:${layer.source}:${externalId}`,
-    properties: { ...p, raw_source_layer: layer.source, adapter_version: "pl-c1" },
-    geometry: JSON.stringify(f.geometry),
+    properties: { ...p, raw_source_layer: layer.source, adapter_version: "pl-c2-axis-normalized" },
+    geometry: JSON.stringify(normalizeGdosGeometry(f.geometry)),
   };
 }
 
