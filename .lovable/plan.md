@@ -1,53 +1,38 @@
-# Plan: fullføre Polen-import trygt etter restart
+Jeg fant disse verifiserte strukturelle feilene:
 
-## Status jeg har verifisert
+- Polske CTR/MCTR/ATZ-soner er importert som `restriksjonsomrader` med `zone_type='R'`, derfor vises de bare når “Restricted areas” er aktivt og får feil “Activated by NOTAM”-tekst.
+- Det finnes ingen `flyplasser`-rader i `airspace_zones`; flyplassrelaterte polygoner ligger i feil lag. 203 PL-rader er flyplassrelaterte kandidater (`CTR`, `MCTR`, `ATZ` + 1km/2km/6km-ringer).
+- Ved lav zoom kan PL viewport-treff være svært høyt (hele Polen: ca. 6 607 rader), mens route-proximity-koden kutter til 800 rader. Det forklarer at lag ikke vises komplett når “for mye” treffer samtidig.
+- Visningslogikken har samme cache-nøkkel uavhengig av zoom. Når zoom/minZoom gjør at et lag tømmes, kan cache fortsatt tro at bbox er dekket og dermed ikke hente på nytt før man panorerer.
 
-- PANSA luftrom: **2 738** rader finnes, **2 735 aktive**.
-- GDOŚ naturvern: **5 av 6 lag er importert**:
-  - National parks: 76
-  - Nature reserves: 2 317
-  - Landscape parks: 351
-  - Natura 2000 SPA/fugleområder: 52
-  - Protected landscape areas: 205
-- Mangler sannsynligvis: **Natura 2000 SAC/habitatområder** (`pl_gdos_natura2000_sac`).
-- NOTAM-feed for Polen finnes og er aktiv: `notaminfo: Poland`.
-- Edge-loggene viser at forrige forsøk traff **CPU Time exceeded**, så vi må redusere chunk-størrelse før mer import.
+Plan for retting:
 
-## Viktig operasjonell regel
+1. Database-normalisering for Polen
+   - Migrere alle PANSA-rader med `pansa_type` i `CTR`, `CTR1KM`, `CTR6KM`, `MCTR`, `MCTR2KM`, `ATZ`, `ATZ1KM`, `ATZ6KM` fra `restriksjonsomrader` til et flyplass-/luftromslag.
+   - Sette `zone_type` til faktisk type (`CTR`, `MCTR`, `ATZ`), ikke `R`.
+   - Sette `restriction_type='APPROVAL_REQUIRED'` og rød/tydelig flyplass-stil for flyplasspolygoner.
+   - Beholde `properties.pansa_restriction='DRA-R'` som kildeinformasjon, men ikke bruke den til å kalle disse “Activated by NOTAM”.
 
-Vi skal ikke kjøre flere store layers i én curl-loop. Vi kjører **ett lite chunk-kall av gangen**, verifiserer etter hvert kall, og stopper hvis Supabase begynner å vise tegn til press.
+2. Kartlagsstruktur
+   - Koble polske flyplasspolygoner til “Flyplasser”/airspace-visning slik at flyplasser alltid vises når flyplasslaget er på, uten å kreve “Restricted areas”.
+   - Sikre at røde flyplasspolygoner rendres over generelle fare-/restriksjonslag, men under rute/NOTAM/popup.
+   - La egentlige DRA-R/DRA-P/DRA-I forbli i restricted/rpas/danger-lagene.
 
-## Tiltak før ny import
+3. Popup og tekstlogikk
+   - Endre PANSA-popupen slik at “Activated by NOTAM” kun vises for faktiske fleksible DRA-P/DRA-R soner, ikke CTR/MCTR/ATZ/flyplasspolygoner.
+   - Lage mer presise labels for PANSA: “Control zone”, “Aerodrome traffic zone”, “Military control zone”, “Drone restricted area”, osv.
+   - Beholde lenke til PANSA DroneMap som referanse.
 
-1. Juster `sync-pl-nature` slik at standardkjøring blir mer konservativ:
-   - `tileCount` default ned fra 30 til 10.
-   - maksimum `tileCount` ned fra 300 til 25.
-   - `UNIFIED_BATCH_SIZE` ned fra 500 til 150–200.
-   - Legg inn kort pause mellom tile-prosessering, ca. 300–500 ms.
-   - Sørg for at `finalize` bare kjøres på siste chunk, ikke på hvert delkall.
+4. Stabil visning ved zoom/pan
+   - Gjøre unified-kartlagcache zoom-bevisst eller nullstille cache ved zoomend, slik at lag ikke forsvinner etter zoom inn/ut.
+   - Fjerne/øke den lave route-proximity-grensen på 800 rader på en kontrollert måte, eller gruppere/filtrere per relevant lag slik at Polen ikke kuttes tilfeldig når mange soner treffer.
 
-2. Deploy edge-funksjonen på nytt.
+5. Verifisering
+   - Kontrollere med database-spørringer at CTR/MCTR/ATZ ligger i riktig lag etter migrering.
+   - Teste i kartet over Polen at:
+     - flyplasspolygoner vises uten “Restricted areas”,
+     - DRA-R fortsatt ligger under restricted,
+     - lagene ikke forsvinner ved zoom inn/ut,
+     - popupene ikke feilmerker flyplassområder som NOTAM-aktiverte.
 
-## Trygg backfill-strategi
-
-For manglende lag (`layerIndex: 4`, Natura 2000 SAC):
-
-1. Kjør chunk 0–9.
-2. Les respons:
-   - `ok` må være true.
-   - `batch_failures` må være 0.
-   - `tilesAtCap` må helst være lav/0.
-3. Vent kort før neste chunk.
-4. Fortsett 10 tiles av gangen til `reachedEnd: true`.
-5. Kjør `finalize: true` bare på siste kall med komplett `keepIds` dersom funksjonen trenger stale-deaktivering. Hvis keepId-listen blir stor, dropper vi finalize for SAC i denne omgang heller enn å risikere feilaktig deaktivering.
-
-## Verifisering etterpå
-
-- Query `airspace_zones` for alle `pl_gdos_*` kilder og antall aktive rader.
-- Sjekk edge logs for `sync-pl-nature` etter CPU-timeout eller batch failures.
-- Sjekk NOTAM-status for Polen i `notam_rss_feeds`.
-- Hvis database-dashboardet blir unhealthy igjen: stopp importen umiddelbart, ikke fortsett.
-
-## Produksjonsrisiko
-
-Dette påvirker fortsatt bare unified airspace for allowlist-selskapet **Moderavdeling** og ikke norske brukere/NO-data. Vi gjør ingen endring i Norge-logikk eller eksisterende norske kartlag.
+Jeg holder fortsatt Norge og eksisterende brukere upåvirket: endringene begrenses til `country_code='PL'`, PANSA-kilden og eksisterende unified allowlist-oppsett for Moderavdeling.
