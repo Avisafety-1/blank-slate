@@ -32,8 +32,9 @@ const corsHeaders = {
 const ALLOWED_HOSTS = ["sdi.gdos.gov.pl"];
 const WFS_URL = "https://sdi.gdos.gov.pl/wfs";
 const PL_AUTHORITY_RANK = 20;
-const UNIFIED_BATCH_SIZE = 500;
+const UNIFIED_BATCH_SIZE = 150;
 const TILE_MAX_FEATURES = 500;
+const TILE_DELAY_MS = 400;
 
 // Polen bbox (approx landmass med buffer)
 const PL_MIN_LAT = 49;
@@ -101,6 +102,10 @@ function toStr(v: unknown): string | null {
   if (v == null) return null;
   const s = String(v).trim();
   return s ? s : null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 interface Tile { minLat: number; minLng: number; maxLat: number; maxLng: number; }
@@ -259,7 +264,7 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch {}
     const layerIndex = Math.max(0, Math.min(Number(body?.layerIndex ?? 0), LAYERS.length - 1));
     const tileStart = Math.max(0, Number(body?.tileStart ?? 0));
-    const tileCount = Math.max(1, Math.min(Number(body?.tileCount ?? 30), 300));
+    const tileCount = Math.max(1, Math.min(Number(body?.tileCount ?? 10), 25));
     const finalize = body?.finalize === true;
     const clientKeepIds: string[] = Array.isArray(body?.keepIds) ? body.keepIds : [];
 
@@ -321,6 +326,7 @@ Deno.serve(async (req) => {
         batchFailures += res.batchFailures;
         if (res.errors.length) errors.push(...res.errors.slice(0, 2));
       }
+      if (ti < tiles.length - 1) await sleep(TILE_DELAY_MS);
     }
 
     let deactivateResult: unknown = { skipped: true, reason: "not_finalize" };
