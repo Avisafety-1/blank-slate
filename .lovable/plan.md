@@ -1,76 +1,53 @@
-## Scope
+# Plan: fullføre Polen-import trygt etter restart
 
-Continue Poland rollout for "Moderavdeling" (allowlist-gated, unified pipeline). NO/DK/SE/DE/FI users unaffected.
+## Status jeg har verifisert
 
-Two pieces left:
-1. **Nature protection areas** (GDOŚ — Natura 2000 + national parks / reserves)
-2. **NOTAM** coverage for Poland via existing notaminfo pipeline
+- PANSA luftrom: **2 738** rader finnes, **2 735 aktive**.
+- GDOŚ naturvern: **5 av 6 lag er importert**:
+  - National parks: 76
+  - Nature reserves: 2 317
+  - Landscape parks: 351
+  - Natura 2000 SPA/fugleområder: 52
+  - Protected landscape areas: 205
+- Mangler sannsynligvis: **Natura 2000 SAC/habitatområder** (`pl_gdos_natura2000_sac`).
+- NOTAM-feed for Polen finnes og er aktiv: `notaminfo: Poland`.
+- Edge-loggene viser at forrige forsøk traff **CPU Time exceeded**, så vi må redusere chunk-størrelse før mer import.
 
-Airspace (PANSA, 2 738 zones) and popup/severity handling for flexible DRA-* zones are already in.
+## Viktig operasjonell regel
 
----
+Vi skal ikke kjøre flere store layers i én curl-loop. Vi kjører **ett lite chunk-kall av gangen**, verifiserer etter hvert kall, og stopper hvis Supabase begynner å vise tegn til press.
 
-## 1. Poland nature areas (GDOŚ)
+## Tiltak før ny import
 
-**Source:** GDOŚ Geoserwis WFS (`https://sdi.gdos.gov.pl/wfs`), same pattern as `sync-sweden-nature` and `sync-de-drone-zones`. Layers to ingest:
+1. Juster `sync-pl-nature` slik at standardkjøring blir mer konservativ:
+   - `tileCount` default ned fra 30 til 10.
+   - maksimum `tileCount` ned fra 300 til 25.
+   - `UNIFIED_BATCH_SIZE` ned fra 500 til 150–200.
+   - Legg inn kort pause mellom tile-prosessering, ca. 300–500 ms.
+   - Sørg for at `finalize` bare kjøres på siste chunk, ikke på hvert delkall.
 
-- `Natura 2000 — Special Protection Areas (SPA/OSO)` — bird directive
-- `Natura 2000 — Special Areas of Conservation (SAC/SOO)` — habitats directive
-- `National parks (Parki Narodowe)`
-- `Nature reserves (Rezerwaty przyrody)`
-- `Landscape parks (Parki krajobrazowe)`
+2. Deploy edge-funksjonen på nytt.
 
-**New edge function:** `supabase/functions/sync-pl-nature/index.ts`
-- Tiled WFS fetch (bbox loop, similar to German adapter) to stay under response caps.
-- Normalize into `airspace_zones` with:
-  - `country_code = 'PL'`
-  - `source = 'pl_gdos_<layer>'` (e.g. `pl_gdos_natura2000_spa`, `pl_gdos_park_narodowy`)
-  - `restriction_type = 'NATURE_SENSITIVE'` (matches SE nature classification — never a hard block, just caution + popup)
-  - `zone_type = 'NATURE'`
-  - `name`, `short_name`, `theme` populated from feature properties (`nazwa`, `kod`, `typ`), so popups read cleanly.
-  - `authority = 'GDOŚ'` and an official info URL in `properties` (per-area link when available).
-- Upsert by `(source, external_id)` and mark stale rows inactive — same convention as other adapters.
+## Trygg backfill-strategi
 
-**Backfill:** run the function once after deploy; expected ~2 000 protected areas.
+For manglende lag (`layerIndex: 4`, Natura 2000 SAC):
 
-**UI:** no changes required. Auto-reveal along routes (`unifiedRouteProximityLayers`) and the shared popup builder (`unifiedZonePopup.ts`, `naturvardsverket` styling reused for the `pl_gdos_*` source prefix — small `sourceLabel` addition to return "GDOŚ (PL)").
+1. Kjør chunk 0–9.
+2. Les respons:
+   - `ok` må være true.
+   - `batch_failures` må være 0.
+   - `tilesAtCap` må helst være lav/0.
+3. Vent kort før neste chunk.
+4. Fortsett 10 tiles av gangen til `reachedEnd: true`.
+5. Kjør `finalize: true` bare på siste kall med komplett `keepIds` dersom funksjonen trenger stale-deaktivering. Hvis keepId-listen blir stor, dropper vi finalize for SAC i denne omgang heller enn å risikere feilaktig deaktivering.
 
-## 2. Poland NOTAM
+## Verifisering etterpå
 
-**Source:** notaminfo per-country briefing (already used for FR/IE/IT/etc.).
+- Query `airspace_zones` for alle `pl_gdos_*` kilder og antall aktive rader.
+- Sjekk edge logs for `sync-pl-nature` etter CPU-timeout eller batch failures.
+- Sjekk NOTAM-status for Polen i `notam_rss_feeds`.
+- Hvis database-dashboardet blir unhealthy igjen: stopp importen umiddelbart, ikke fortsett.
 
-**DB:** insert a `notam_rss_feeds` row:
-```
-name: 'notaminfo: Poland'
-country: 'Poland'
-source_type: 'country_briefing'
-feed_url: 'https://notaminfo.com/latest?country=Poland'
-enabled: true
-```
+## Produksjonsrisiko
 
-**Code:** `supabase/functions/fetch-notams/index.ts` — add `Poland: 'POL'` to `countryToIso3`. No parser changes; the existing block scraper handles PL briefings.
-
-**Verification:** manually invoke `fetch-notams`, confirm PL NOTAMs land in `notams` with `country_code = 'POL'` and render on the map (existing NOTAM layer already filters by bbox, so PL is picked up automatically inside Moderavdeling's viewport).
-
-## 3. Risk assessment
-
-Nothing new. `check_mission_airspace_unified` already returns PL zones for allowlisted companies. `NATURE_SENSITIVE` maps to `note`/blue (same as SE), so no false red warnings. NOTAM contribution flows through the existing NOTAM path.
-
----
-
-## Out of scope
-
-- Live PANSA activation state (would need a separate DroneTower API integration).
-- Any change to NO / DK / SE / DE / FI behaviour.
-- Rolling out beyond "Moderavdeling".
-
-## Technical touch-points
-
-```
-supabase/functions/sync-pl-nature/index.ts          # NEW
-supabase/functions/fetch-notams/index.ts            # + Poland: 'POL'
-src/lib/unifiedZonePopup.ts                         # sourceLabel: pl_gdos_* → 'GDOŚ (PL)'
-notam_rss_feeds                                     # insert Poland row (migration)
-```
-
-No schema changes needed — nature areas reuse the existing `airspace_zones` shape.
+Dette påvirker fortsatt bare unified airspace for allowlist-selskapet **Moderavdeling** og ikke norske brukere/NO-data. Vi gjør ingen endring i Norge-logikk eller eksisterende norske kartlag.
