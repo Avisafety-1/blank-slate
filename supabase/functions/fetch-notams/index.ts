@@ -5,10 +5,122 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PANSA_DRONEMAP_PUBLIC_API_KEY = Deno.env.get("PANSA_DRONEMAP_PUBLIC_API_KEY")
+  ?? "4b705300-8dfa-11ee-b9d1-0242ac120002";
+
+let pansaCaCertPromise: Promise<string> | null = null;
+
+async function getPansaCaCert(): Promise<string> {
+  pansaCaCertPromise ??= fetch("https://certs.godaddy.com/repository/gdig2.crt.pem")
+    .then((res) => {
+      if (!res.ok) throw new Error(`Could not load GoDaddy intermediate CA [${res.status}]`);
+      return res.text();
+    });
+  return pansaCaCertPromise;
+}
+
+function concatBytes(chunks: Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const combined = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return combined;
+}
+
+function findHeaderEnd(bytes: Uint8Array): number {
+  for (let i = 0; i < bytes.length - 3; i++) {
+    if (bytes[i] === 13 && bytes[i + 1] === 10 && bytes[i + 2] === 13 && bytes[i + 3] === 10) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function indexOfCrlf(bytes: Uint8Array, start: number): number {
+  for (let i = start; i < bytes.length - 1; i++) {
+    if (bytes[i] === 13 && bytes[i + 1] === 10) return i;
+  }
+  return -1;
+}
+
+function decodeChunkedBytes(bytes: Uint8Array): Uint8Array {
+  let cursor = 0;
+  const decoded: Uint8Array[] = [];
+  while (cursor < bytes.length) {
+    const lineEnd = indexOfCrlf(bytes, cursor);
+    if (lineEnd < 0) break;
+    const sizeLine = new TextDecoder().decode(bytes.slice(cursor, lineEnd));
+    const size = parseInt(sizeLine.split(";")[0], 16);
+    if (!Number.isFinite(size) || size <= 0) break;
+    const chunkStart = lineEnd + 2;
+    decoded.push(bytes.slice(chunkStart, chunkStart + size));
+    cursor = chunkStart + size + 2;
+  }
+  return concatBytes(decoded);
+}
+
+async function pansaDronemapRequest(path: string, accessToken?: string): Promise<unknown> {
+  const caCert = await getPansaCaCert();
+  const conn = await Deno.connectTls({
+    hostname: "api.dronemap.pansa.pl",
+    port: 443,
+    caCerts: [caCert],
+  });
+
+  const headers = [
+    `${accessToken ? "GET" : "POST"} ${path} HTTP/1.1`,
+    "Host: api.dronemap.pansa.pl",
+    "Connection: close",
+    "Accept: application/json, text/plain, */*",
+    "Accept-Encoding: identity",
+    "Content-Type: application/json",
+    "User-Agent: Avisafe/1.0 (+https://avisafe.no)",
+    "Origin: https://dronemap.pansa.pl",
+    "Referer: https://dronemap.pansa.pl/",
+    `x-api-key: ${PANSA_DRONEMAP_PUBLIC_API_KEY}`,
+    ...(accessToken ? [`Authorization: Bearer ${accessToken}`] : []),
+    "Content-Length: 0",
+    "",
+    "",
+  ].join("\r\n");
+
+  await conn.write(new TextEncoder().encode(headers));
+  const chunks: Uint8Array[] = [];
+  const buffer = new Uint8Array(65536);
+  try {
+    while (true) {
+      const bytesRead = await conn.read(buffer);
+      if (bytesRead === null) break;
+      chunks.push(buffer.slice(0, bytesRead));
+    }
+  } finally {
+    try { conn.close(); } catch { /* ignore close errors */ }
+  }
+
+  const responseBytes = concatBytes(chunks);
+  const headerEnd = findHeaderEnd(responseBytes);
+  if (headerEnd < 0) throw new Error("PANSA DroneMap returned an invalid HTTP response");
+
+  const headerText = new TextDecoder().decode(responseBytes.slice(0, headerEnd));
+  const bodyBytes = responseBytes.slice(headerEnd + 4);
+  const status = Number(headerText.match(/^HTTP\/\d\.\d\s+(\d+)/)?.[1] ?? 0);
+  const isChunked = /transfer-encoding:\s*chunked/i.test(headerText);
+  const payloadBytes = isChunked ? decodeChunkedBytes(bodyBytes) : bodyBytes;
+  const body = new TextDecoder().decode(payloadBytes);
+
+  if (status < 200 || status >= 300) {
+    throw new Error(`PANSA DroneMap request failed [${status}]: ${body.slice(0, 300)}`);
+  }
+  return JSON.parse(body);
+}
+
 /** Parse DMS coordinates from NOTAM text for polygon geometry */
 function parseNotamCoordinates(text: string | null | undefined): object | null {
   if (!text) return null;
-  const regex = /(\d{2})(\d{2})(\d{2})([NS])\s+(\d{3})(\d{2})(\d{2})([EW])/g;
+  const regex = /(\d{2})(\d{2})(\d{2})([NS])\s*(\d{3})(\d{2})(\d{2})([EW])/g;
   const coords: [number, number][] = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -250,6 +362,113 @@ async function fetchRssFeed(feedUrl: string): Promise<ReturnType<typeof parseRss
   return items;
 }
 
+function hashToPositiveInt(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) || 1;
+}
+
+function parsePansaSeries(raw: string | null | undefined, fallbackId: string) {
+  const value = raw ?? "";
+  const standard = value.match(/^([A-Z])(\d+)\/(\d{2})/);
+  if (standard) {
+    return {
+      series: standard[1],
+      number: parseInt(standard[2]),
+      year: 2000 + parseInt(standard[3]),
+    };
+  }
+
+  const droneZone = value.match(/^(\d+)([A-Z]+)\/(\d{2})/);
+  if (droneZone) {
+    return {
+      series: droneZone[2],
+      number: parseInt(droneZone[1]),
+      year: 2000 + parseInt(droneZone[3]),
+    };
+  }
+
+  return {
+    series: null,
+    number: hashToPositiveInt(fallbackId),
+    year: new Date().getUTCFullYear(),
+  };
+}
+
+function parsePansaNotam(raw: Record<string, any>): ReturnType<typeof parseRssItem> | null {
+  const uid = String(raw.uid ?? raw.series ?? "");
+  if (!uid) return null;
+
+  const q = raw.q ?? {};
+  const qline = q.fir
+    ? `${q.fir}/${q.code ?? ""}/${q.traffic ?? ""}/${q.purpose ?? ""}/${q.scope ?? ""}/${q.lower ?? ""}/${q.upper ?? ""}/${q.coords ?? ""}`
+    : null;
+
+  const parsedSeries = parsePansaSeries(raw.seriesref ?? raw.series, uid);
+  const center = q.coords ? parseQlineCenter(String(q.coords)) : null;
+  const description = typeof raw.description === "object" && raw.description !== null
+    ? (raw.description.en ?? raw.description.pl ?? null)
+    : raw.description;
+  const text = String(description ?? raw.e ?? raw.zonename ?? raw.series ?? "").trim();
+
+  let geometryGeojson: object | null = parseNotamCoordinates(`${raw.e ?? ""}\n${text}`);
+  if (!geometryGeojson && center?.lat && center?.lng && center.radiusNm && center.radiusNm > 0 && q.scope !== "A") {
+    geometryGeojson = createCirclePolygon(center.lat, center.lng, center.radiusNm);
+  }
+
+  const effectiveStart = raw.b ? new Date(raw.b).toISOString() : null;
+  const effectiveEnd = raw.c ? new Date(raw.c).toISOString() : null;
+
+  return {
+    notam_id: `PANSA:${uid}`,
+    series: parsedSeries.series,
+    number: parsedSeries.number,
+    year: parsedSeries.year,
+    location: raw.a ?? q.fir ?? "EPWW",
+    country_code: "POL",
+    qcode: q.code ?? null,
+    scope: q.scope ?? null,
+    traffic: q.traffic ?? null,
+    purpose: q.purpose ?? null,
+    notam_type: raw.type ?? null,
+    notam_text: text,
+    effective_start: effectiveStart,
+    effective_end: effectiveEnd,
+    effective_end_interpretation: null,
+    minimum_fl: q.lower ? parseInt(q.lower) : null,
+    maximum_fl: q.upper ? parseInt(q.upper) : null,
+    center_lat: center?.lat ?? null,
+    center_lng: center?.lng ?? null,
+    geometry_geojson: geometryGeojson,
+    properties: {
+      qline,
+      source: "pansa-dronemap",
+      uid,
+      raw_series: raw.series ?? null,
+      seriesref: raw.seriesref ?? null,
+      zonename: raw.zonename ?? null,
+      active: raw.active ?? null,
+      schedule: raw.d ?? null,
+    },
+  };
+}
+
+async function fetchPansaDronemapNotams(feedUrl: string): Promise<ReturnType<typeof parseRssItem>[]> {
+  const loginJson = await pansaDronemapRequest("/v1/front/login") as Record<string, any>;
+  const accessToken = loginJson.access_token;
+  if (!accessToken) throw new Error("PANSA DroneMap login did not return an access token");
+
+  const url = new URL(feedUrl || "https://api.dronemap.pansa.pl/v1/notams");
+  const notamsJson = await pansaDronemapRequest(`${url.pathname}${url.search}`, accessToken) as Record<string, any>;
+  const properties = Array.isArray(notamsJson?.properties) ? notamsJson.properties : [];
+  return properties
+    .filter((item: Record<string, any>) => item.active !== false)
+    .map(parsePansaNotam)
+    .filter((item): item is ReturnType<typeof parseRssItem> => Boolean(item));
+}
+
 /** Parse ICAO briefing date "26/07/02 15:56" (YY/MM/DD HH:MM UTC) → ISO */
 function parseBriefingDate(raw: string): string | null {
   const m = raw.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
@@ -376,6 +595,18 @@ async function fetchCountryBriefing(feedUrl: string, countryLabel: string): Prom
     .replace(/&gt;/g, ">")
     .replace(/\r/g, "");
 
+  const expectedBriefingCountry: Record<string, string> = {
+    Austria: "AUSTRIA", Belgium: "BELGIUM", Denmark: "DENMARK", France: "FRANCE", Germany: "GERMANY",
+    Iceland: "ICELAND", Ireland: "IRELAND", Italy: "ITALY", Netherlands: "NETHERLANDS", Norway: "NORWAY",
+    Poland: "POLAND", Portugal: "PORTUGAL", Spain: "SPAIN", Sweden: "SWEDEN", Switzerland: "SWITZERLAND", UK: "UNITED KINGDOM",
+  };
+  const actualCountryMatch = text.match(/Pre-flight Information Bulletin for\s+([A-Z ]+)/i);
+  const actualCountry = actualCountryMatch?.[1]?.trim().toUpperCase();
+  const expectedCountry = expectedBriefingCountry[countryLabel]?.toUpperCase();
+  if (actualCountry && expectedCountry && actualCountry !== expectedCountry) {
+    throw new Error(`notaminfo country fallback detected: requested ${countryLabel}, received ${actualCountry}`);
+  }
+
   // Split into blocks on NOTAM ID lines (e.g. "A1144/26"). We look for lines that are
   // just an ID and use their positions as block boundaries.
   const idLineRegex = /^\s*([A-Z]\d+\/\d{2})\s*$/gm;
@@ -438,7 +669,9 @@ Deno.serve(async (req) => {
         try {
           const items = feed.source_type === "country_briefing"
             ? await fetchCountryBriefing(feed.feed_url, feed.country ?? "")
-            : await fetchRssFeed(feed.feed_url);
+            : feed.source_type === "pansa_dronemap"
+              ? await fetchPansaDronemapNotams(feed.feed_url)
+              : await fetchRssFeed(feed.feed_url);
           if (items.length === 0) {
             // Record sync state even when empty
             await supabase.from("notam_rss_feeds").update({
