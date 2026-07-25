@@ -1437,7 +1437,8 @@ export function OpenAIPMap({
     // Gated by `isUnifiedAirspaceEnabled()` (fail-closed, Moderavdeling only).
     // No fetches happen for any other company.
     // ============================================================
-    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI'];
+    const UNIFIED_COUNTRIES = ['DK', 'SE', 'DE', 'FI', 'PL'];
+    const UNIFIED_COUNTRIES_KEY = UNIFIED_COUNTRIES.slice().sort().join(',');
     // layerId → [layerGroup, minZoom]. Larger datasets require higher zoom.
     const unifiedLayerMap: Array<[string, L.LayerGroup, number]> = [
       ['airspace', unifiedAirspaceLayer, 7],
@@ -1458,7 +1459,7 @@ export function OpenAIPMap({
       };
       unifiedLayerMap.forEach(([layerId, lg, minZoom]) => {
         if (z < minZoom) {
-          resetCache(`unified:${layerId}:DE,DK,FI,SE`, lg);
+          resetCache(`unified:${layerId}:${UNIFIED_COUNTRIES_KEY}`, lg);
           return;
         }
         if (!map.hasLayer(lg)) return;
@@ -1512,7 +1513,7 @@ export function OpenAIPMap({
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
       if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
-      if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:DE,DK,FI,SE`, unifiedMatch[1]);
+      if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:${UNIFIED_COUNTRIES_KEY}`, unifiedMatch[1]);
     });
 
     // Befolkning: bytter mellom SSB (Norge) og Eurostat (Europa) basert på kartsenter
