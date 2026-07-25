@@ -5,10 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PANSA_DRONEMAP_PUBLIC_API_KEY = Deno.env.get("PANSA_DRONEMAP_PUBLIC_API_KEY")
+  ?? "4b705300-8dfa-11ee-b9d1-0242ac120002";
+
 /** Parse DMS coordinates from NOTAM text for polygon geometry */
 function parseNotamCoordinates(text: string | null | undefined): object | null {
   if (!text) return null;
-  const regex = /(\d{2})(\d{2})(\d{2})([NS])\s+(\d{3})(\d{2})(\d{2})([EW])/g;
+  const regex = /(\d{2})(\d{2})(\d{2})([NS])\s*(\d{3})(\d{2})(\d{2})([EW])/g;
   const coords: [number, number][] = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -250,6 +253,141 @@ async function fetchRssFeed(feedUrl: string): Promise<ReturnType<typeof parseRss
   return items;
 }
 
+function hashToPositiveInt(value: string): number {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) || 1;
+}
+
+function parsePansaSeries(raw: string | null | undefined, fallbackId: string) {
+  const value = raw ?? "";
+  const standard = value.match(/^([A-Z])(\d+)\/(\d{2})/);
+  if (standard) {
+    return {
+      series: standard[1],
+      number: parseInt(standard[2]),
+      year: 2000 + parseInt(standard[3]),
+    };
+  }
+
+  const droneZone = value.match(/^(\d+)([A-Z]+)\/(\d{2})/);
+  if (droneZone) {
+    return {
+      series: droneZone[2],
+      number: parseInt(droneZone[1]),
+      year: 2000 + parseInt(droneZone[3]),
+    };
+  }
+
+  return {
+    series: null,
+    number: hashToPositiveInt(fallbackId),
+    year: new Date().getUTCFullYear(),
+  };
+}
+
+function parsePansaNotam(raw: Record<string, any>): ReturnType<typeof parseRssItem> | null {
+  const uid = String(raw.uid ?? raw.series ?? "");
+  if (!uid) return null;
+
+  const q = raw.q ?? {};
+  const qline = q.fir
+    ? `${q.fir}/${q.code ?? ""}/${q.traffic ?? ""}/${q.purpose ?? ""}/${q.scope ?? ""}/${q.lower ?? ""}/${q.upper ?? ""}/${q.coords ?? ""}`
+    : null;
+
+  const parsedSeries = parsePansaSeries(raw.seriesref ?? raw.series, uid);
+  const center = q.coords ? parseQlineCenter(String(q.coords)) : null;
+  const description = typeof raw.description === "object" && raw.description !== null
+    ? (raw.description.en ?? raw.description.pl ?? null)
+    : raw.description;
+  const text = String(description ?? raw.e ?? raw.zonename ?? raw.series ?? "").trim();
+
+  let geometryGeojson: object | null = parseNotamCoordinates(`${raw.e ?? ""}\n${text}`);
+  if (!geometryGeojson && center?.lat && center?.lng && center.radiusNm && center.radiusNm > 0 && q.scope !== "A") {
+    geometryGeojson = createCirclePolygon(center.lat, center.lng, center.radiusNm);
+  }
+
+  const effectiveStart = raw.b ? new Date(raw.b).toISOString() : null;
+  const effectiveEnd = raw.c ? new Date(raw.c).toISOString() : null;
+
+  return {
+    notam_id: `PANSA:${uid}`,
+    series: parsedSeries.series,
+    number: parsedSeries.number,
+    year: parsedSeries.year,
+    location: raw.a ?? q.fir ?? "EPWW",
+    country_code: "POL",
+    qcode: q.code ?? null,
+    scope: q.scope ?? null,
+    traffic: q.traffic ?? null,
+    purpose: q.purpose ?? null,
+    notam_type: raw.type ?? null,
+    notam_text: text,
+    effective_start: effectiveStart,
+    effective_end: effectiveEnd,
+    effective_end_interpretation: null,
+    minimum_fl: q.lower ? parseInt(q.lower) : null,
+    maximum_fl: q.upper ? parseInt(q.upper) : null,
+    center_lat: center?.lat ?? null,
+    center_lng: center?.lng ?? null,
+    geometry_geojson: geometryGeojson,
+    properties: {
+      qline,
+      source: "pansa-dronemap",
+      uid,
+      raw_series: raw.series ?? null,
+      seriesref: raw.seriesref ?? null,
+      zonename: raw.zonename ?? null,
+      active: raw.active ?? null,
+      schedule: raw.d ?? null,
+    },
+  };
+}
+
+async function fetchPansaDronemapNotams(feedUrl: string): Promise<ReturnType<typeof parseRssItem>[]> {
+  const baseHeaders = {
+    Accept: "application/json, text/plain, */*",
+    "Content-Type": "application/json",
+    "User-Agent": "Avisafe/1.0 (+https://avisafe.no)",
+    Origin: "https://dronemap.pansa.pl",
+    Referer: "https://dronemap.pansa.pl/",
+    "x-api-key": PANSA_DRONEMAP_PUBLIC_API_KEY,
+  };
+
+  const loginRes = await fetch("https://api.dronemap.pansa.pl/v1/front/login", {
+    method: "POST",
+    headers: baseHeaders,
+  });
+  if (!loginRes.ok) {
+    const body = await loginRes.text();
+    throw new Error(`PANSA DroneMap login failed [${loginRes.status}]: ${body.slice(0, 300)}`);
+  }
+
+  const loginJson = await loginRes.json();
+  const accessToken = loginJson?.access_token;
+  if (!accessToken) throw new Error("PANSA DroneMap login did not return an access token");
+
+  const notamsRes = await fetch(feedUrl || "https://api.dronemap.pansa.pl/v1/notams", {
+    headers: {
+      ...baseHeaders,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!notamsRes.ok) {
+    const body = await notamsRes.text();
+    throw new Error(`PANSA DroneMap NOTAM fetch failed [${notamsRes.status}]: ${body.slice(0, 300)}`);
+  }
+
+  const notamsJson = await notamsRes.json();
+  const properties = Array.isArray(notamsJson?.properties) ? notamsJson.properties : [];
+  return properties
+    .filter((item: Record<string, any>) => item.active !== false)
+    .map(parsePansaNotam)
+    .filter((item): item is ReturnType<typeof parseRssItem> => Boolean(item));
+}
+
 /** Parse ICAO briefing date "26/07/02 15:56" (YY/MM/DD HH:MM UTC) → ISO */
 function parseBriefingDate(raw: string): string | null {
   const m = raw.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
@@ -376,6 +514,18 @@ async function fetchCountryBriefing(feedUrl: string, countryLabel: string): Prom
     .replace(/&gt;/g, ">")
     .replace(/\r/g, "");
 
+  const expectedBriefingCountry: Record<string, string> = {
+    Austria: "AUSTRIA", Belgium: "BELGIUM", Denmark: "DENMARK", France: "FRANCE", Germany: "GERMANY",
+    Iceland: "ICELAND", Ireland: "IRELAND", Italy: "ITALY", Netherlands: "NETHERLANDS", Norway: "NORWAY",
+    Poland: "POLAND", Portugal: "PORTUGAL", Spain: "SPAIN", Sweden: "SWEDEN", Switzerland: "SWITZERLAND", UK: "UNITED KINGDOM",
+  };
+  const actualCountryMatch = text.match(/Pre-flight Information Bulletin for\s+([A-Z ]+)/i);
+  const actualCountry = actualCountryMatch?.[1]?.trim().toUpperCase();
+  const expectedCountry = expectedBriefingCountry[countryLabel]?.toUpperCase();
+  if (actualCountry && expectedCountry && actualCountry !== expectedCountry) {
+    throw new Error(`notaminfo country fallback detected: requested ${countryLabel}, received ${actualCountry}`);
+  }
+
   // Split into blocks on NOTAM ID lines (e.g. "A1144/26"). We look for lines that are
   // just an ID and use their positions as block boundaries.
   const idLineRegex = /^\s*([A-Z]\d+\/\d{2})\s*$/gm;
@@ -438,7 +588,9 @@ Deno.serve(async (req) => {
         try {
           const items = feed.source_type === "country_briefing"
             ? await fetchCountryBriefing(feed.feed_url, feed.country ?? "")
-            : await fetchRssFeed(feed.feed_url);
+            : feed.source_type === "pansa_dronemap"
+              ? await fetchPansaDronemapNotams(feed.feed_url)
+              : await fetchRssFeed(feed.feed_url);
           if (items.length === 0) {
             // Record sync state even when empty
             await supabase.from("notam_rss_feeds").update({
