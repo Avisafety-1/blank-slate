@@ -70,8 +70,8 @@ export const OverviewTab = () => {
           <CardContent className="space-y-2">
             {o.insights.map((i) => (
               <div key={i.id} className="rounded-md border p-3">
-                <div className="text-sm font-medium">{t(i.titleKey, i.params as any)}</div>
-                <div className="text-xs text-muted-foreground">{t(i.bodyKey, i.params as any)}</div>
+                <div className="text-sm font-medium">{t(i.titleKey, i.params as any) as string}</div>
+                <div className="text-xs text-muted-foreground">{t(i.bodyKey, i.params as any) as string}</div>
               </div>
             ))}
           </CardContent>
