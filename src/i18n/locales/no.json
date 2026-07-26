@@ -7256,7 +7256,30 @@
       "viewAll": "Se alle",
       "open": "Åpne",
       "dismiss": "Skjul",
-      "createFinding": "Opprett funn"
+      "createFinding": "Opprett funn",
+      "sendReminder": "Send påminnelse"
+    },
+    "severity": {
+      "critical": "Kritisk",
+      "warning": "Advarsel",
+      "info": "Info"
+    },
+    "reminder": {
+      "title": "Send påminnelse",
+      "subject": "Emne",
+      "body": "Melding",
+      "recipients": "Mottakere",
+      "noRecipients": "Ingen mottakere foreslått",
+      "channels": "Kanaler",
+      "channelEmail": "E-post",
+      "channelSms": "SMS",
+      "channelInbox": "AviSafe innboks",
+      "send": "Send",
+      "sent": "Påminnelse sendt til {{count}} mottaker(e)",
+      "failed": "Kunne ikke sende påminnelse",
+      "subjectPrefix": "Handling nødvendig:",
+      "bodyTemplate": "Hei,\n\nDette er en påminnelse fra compliance-verktøyet i AviSafe.\n\nFunn: {{title}}\nDetaljer: {{detail}}\n\nVennligst følg opp så snart som mulig.",
+      "noDetail": "(ingen ytterligere detaljer)"
     },
     "competency": {
       "header": "Pilotkompetanse",
