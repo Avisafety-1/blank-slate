@@ -52,11 +52,11 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                 </Badge>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">
-                    {t(f.titleKey, (f.titleParams ?? {}) as never)}
+                    {String(t(f.titleKey, (f.titleParams ?? {}) as never))}
                   </div>
                   {f.bodyKey && (
                     <div className="text-xs text-muted-foreground truncate">
-                      {t(f.bodyKey, (f.bodyParams ?? {}) as never)}
+                      {String(t(f.bodyKey, (f.bodyParams ?? {}) as never))}
                     </div>
                   )}
                 </div>
