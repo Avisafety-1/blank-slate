@@ -2704,6 +2704,9 @@ export const ProfileDialog = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+              <TabsContent value="inbox" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+                <InboxTab />
+              </TabsContent>
             </Tabs>
           )}
           <p className="text-[10px] text-muted-foreground/50 text-center pt-2 pb-1">
