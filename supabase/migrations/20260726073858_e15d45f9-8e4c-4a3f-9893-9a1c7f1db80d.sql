@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_safesky_beacons_lat_lng ON public.safesky_beacons (latitude, longitude);

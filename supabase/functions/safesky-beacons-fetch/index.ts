@@ -7,9 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Bounding box covering Norway + Denmark (SW lat, SW lng, NE lat, NE lng)
-// Extended south to 54.5°N and west to 7.5°E to include all of Denmark.
-const SAFESKY_VIEWPORT = "54.5,7.5,71.5,31.5";
+// Bounding box covering Norway, Sweden, Denmark, Finland, Germany og Polen.
+// SW = (47.0°N, 5.0°E), NE = (72.0°N, 32.0°E). Dekker hele Tyskland (sørgrense
+// ~47.3°N, vestgrense ~5.9°E), hele Polen (østgrense ~24°E) og hele Finland (nord ~70°N).
+const SAFESKY_VIEWPORT = "47.0,5.0,72.0,32.0";
 const SAFESKY_HOST = "sandbox-public-api.safesky.app";
 const SAFESKY_PATH = "/v1/beacons";
 // Include grounded traffic (default is false, which filters out GROUNDED beacons)

@@ -12,8 +12,30 @@ export interface SafeSkyControls {
 export function createSafeSkyManager(params: {
   safeskyLayer: L.LayerGroup;
   mode: string;
+  map?: L.Map;
 }) {
-  const { safeskyLayer, mode } = params;
+  const { safeskyLayer, mode, map } = params;
+
+  // Under denne zoomen er trafikkbildet for tett til å rendre — hopp over henting
+  // for å spare rader/CPU når kartet dekker hele Europa.
+  const MIN_ZOOM_FOR_TRAFFIC = 6;
+  // Padding rundt viewport slik at pan innenfor cachet område ikke trigger refetch.
+  const BBOX_PAD = 0.3;
+
+  function currentBBox(): { minLat: number; maxLat: number; minLng: number; maxLng: number } | null {
+    if (!map) return null;
+    try {
+      const b = map.getBounds().pad(BBOX_PAD);
+      return {
+        minLat: b.getSouth(),
+        maxLat: b.getNorth(),
+        minLng: b.getWest(),
+        maxLng: b.getEast(),
+      };
+    } catch {
+      return null;
+    }
+  }
   
   const safeskyMarkersCache = new Map<string, L.Marker>();
   const heliAnimIntervals = new Map<string, number>();
@@ -161,15 +183,37 @@ export function createSafeSkyManager(params: {
     }
   }
 
+  function clearAllMarkers() {
+    for (const [, marker] of safeskyMarkersCache) {
+      try { safeskyLayer.removeLayer(marker); } catch {}
+    }
+    safeskyMarkersCache.clear();
+    clearAllHeliIntervals();
+  }
+
   async function fetchSafeSkyBeacons() {
     if (destroyed) return;
-    // Auth is ensured by the caller (OpenAIPMap single getUser check)
-    
+
+    // Zoom-terskel: for høyt zoomet ut betyr for mye trafikk å rendre. Rydd og hopp over.
+    if (map && map.getZoom() < MIN_ZOOM_FOR_TRAFFIC) {
+      if (safeskyMarkersCache.size > 0) clearAllMarkers();
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('safesky_beacons')
-        .select('*');
-      
+      // Bounds-filter: hent bare beacons innenfor synlig kartutsnitt (+ padding).
+      // Sparer rader over ledningen når vi dekker Norge–Finland–Polen–Tyskland.
+      let query = supabase.from('safesky_beacons').select('*').limit(2000);
+      const bbox = currentBBox();
+      if (bbox) {
+        query = query
+          .gte('latitude', bbox.minLat)
+          .lte('latitude', bbox.maxLat)
+          .gte('longitude', bbox.minLng)
+          .lte('longitude', bbox.maxLng);
+      }
+      const { data, error } = await query;
+
       if (error) {
         console.error('SafeSky database error:', error);
         consecutiveFailures++;
@@ -180,13 +224,12 @@ export function createSafeSkyManager(params: {
         }
         return;
       }
-      
+
       consecutiveFailures = 0;
       const beacons = data || [];
-      
+
       if (beacons.length === 0) {
         consecutiveEmptyResults++;
-        console.warn(`SafeSky: 0 beacons returned (${consecutiveEmptyResults} consecutive empty results)`);
         if (consecutiveEmptyResults >= MAX_EMPTY_BEFORE_REFRESH) {
           console.warn('SafeSky: too many empty results, refreshing auth token...');
           consecutiveEmptyResults = 0;
@@ -199,7 +242,7 @@ export function createSafeSkyManager(params: {
       } else {
         consecutiveEmptyResults = 0;
       }
-      
+
       renderSafeSkyBeacons(beacons);
     } catch (err) {
       console.error('Feil ved henting av SafeSky data:', err);
@@ -280,24 +323,26 @@ export function createSafeSkyManager(params: {
     }, 2000);
   }
 
+  const onMapMove = () => debouncedFetchSafeSky();
+
   async function start() {
     if (destroyed) return;
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
-      
+
       // Fire-and-forget warm-up (fills DB cache in background)
       warmUpCache();
-      
+
       // Immediate DB fetch (may be empty first time, retry burst handles it)
       await fetchSafeSkyBeacons();
-      
+
       // If still empty after first fetch, do short retry burst
       if (safeskyMarkersCache.size === 0 && !destroyed) {
         startupRetryBurst();
       }
-      
+
       if (destroyed) return;
-      
+
       safeskyChannel = createUniqueChannel('safesky-beacons-changes')
         .on(
           'postgres_changes',
@@ -305,6 +350,12 @@ export function createSafeSkyManager(params: {
           () => debouncedFetchSafeSky()
         )
         .subscribe();
+
+      // Refetch når kartutsnittet endres — kritisk for stor bbox (NO+SE+FI+DE+PL).
+      if (map) {
+        map.on('moveend', onMapMove);
+        map.on('zoomend', onMapMove);
+      }
     }
   }
 
@@ -315,6 +366,10 @@ export function createSafeSkyManager(params: {
       safeskyChannel = null;
       safeskyLayer.clearLayers();
       safeskyMarkersCache.clear();
+    }
+    if (map) {
+      try { map.off('moveend', onMapMove); } catch {}
+      try { map.off('zoomend', onMapMove); } catch {}
     }
     if (safeskyPollInterval) {
       clearInterval(safeskyPollInterval);

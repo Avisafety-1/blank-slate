@@ -1316,7 +1316,7 @@ export function OpenAIPMap({
     // Heartbeat is now handled globally by useAppHeartbeat hook
 
     // SafeSky manager
-    const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode });
+    const safeSkyManager = createSafeSkyManager({ safeskyLayer, mode, map });
     (map as any)._safeskyControls = { start: safeSkyManager.start, stop: safeSkyManager.stop };
 
     // Start ALL layers immediately — AuthContext handles session validity,
