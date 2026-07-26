@@ -999,10 +999,12 @@ export const ProfileDialog = () => {
                   )}
                 </TabsTrigger>
                 )}
+                {!stripeExempt && (
                 <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <CreditCard className="h-3 w-3" />
                   <span>{t('profile.tabs.subscription')}</span>
                 </TabsTrigger>
+                )}
               </TabsList>
 
               {activeTab === "profile" && (
