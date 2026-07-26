@@ -23,8 +23,10 @@ export function useUnreadMessagesCount() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const channel = supabase
-      .channel(`inbox-count-${user.id}`)
+    const channel = supabase.channel(
+      `inbox-count-${user.id}-${Math.random().toString(36).slice(2)}`,
+    );
+    channel
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "internal_messages", filter: `recipient_id=eq.${user.id}` },
