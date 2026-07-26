@@ -7265,6 +7265,11 @@
       "warning": "Advarsel",
       "info": "Info"
     },
+    "reminderStatus": {
+      "notSent": "Ikke sendt",
+      "sentOpen": "Sendt – ikke lukket",
+      "closed": "Sendt og lukket"
+    },
     "reminder": {
       "title": "Send påminnelse",
       "subject": "Emne",

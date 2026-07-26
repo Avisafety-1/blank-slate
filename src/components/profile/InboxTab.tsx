@@ -28,7 +28,7 @@ const sevClass = (s: InboxMessage["severity"]) =>
 export const InboxTab = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "unread" | "done">("all");
+  const [filter, setFilter] = useState<"all" | "unread" | "done">("unread");
   const [selected, setSelected] = useState<InboxMessage | null>(null);
   const { data: messages = [], isLoading } = useInboxMessages(filter);
   const mark = useMarkMessage();

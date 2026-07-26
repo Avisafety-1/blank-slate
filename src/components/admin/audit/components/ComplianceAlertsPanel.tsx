@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowRight, XCircle, Send } from "lucide-react";
+import { AlertTriangle, ArrowRight, XCircle, Send, CheckCircle2, Clock, MailX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScannerFinding } from "../types";
 import { useUpsertDisposition } from "../hooks/useAuditData";
+import { useReminderStatuses, findingKey, type ReminderStatus } from "../hooks/useReminderStatuses";
 import { SendReminderDialog } from "../SendReminderDialog";
 
 interface Props {
@@ -26,8 +27,32 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispose = useUpsertDisposition();
+  const { data: reminderMap = {} } = useReminderStatuses();
   const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);
   const shown = findings.slice(0, limit);
+
+  const renderReminderBadge = (status: ReminderStatus | undefined) => {
+    const state = status?.state ?? "not_sent";
+    const cls =
+      state === "sent_closed"
+        ? "text-status-green border-status-green/40 bg-status-green/10"
+        : state === "sent_open"
+          ? "text-status-yellow border-status-yellow/40 bg-status-yellow/10"
+          : "text-status-red border-status-red/40 bg-status-red/10";
+    const Icon = state === "sent_closed" ? CheckCircle2 : state === "sent_open" ? Clock : MailX;
+    const label =
+      state === "sent_closed"
+        ? t("audit.reminderStatus.closed")
+        : state === "sent_open"
+          ? t("audit.reminderStatus.sentOpen")
+          : t("audit.reminderStatus.notSent");
+    return (
+      <Badge variant="outline" className={cn("gap-1 text-[10px] whitespace-nowrap", cls)}>
+        <Icon className="w-3 h-3" />
+        {label}
+      </Badge>
+    );
+  };
 
   return (
     <Card>
@@ -60,6 +85,7 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                     </div>
                   )}
                 </div>
+                {renderReminderBadge(reminderMap[findingKey(f.code, f.entityType, f.entityId)])}
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
                     size="sm"

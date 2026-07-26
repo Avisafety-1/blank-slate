@@ -7263,6 +7263,11 @@
       "warning": "Warning",
       "info": "Info"
     },
+    "reminderStatus": {
+      "notSent": "Not sent",
+      "sentOpen": "Sent – not closed",
+      "closed": "Sent and closed"
+    },
     "reminder": {
       "title": "Send reminder",
       "subject": "Subject",
