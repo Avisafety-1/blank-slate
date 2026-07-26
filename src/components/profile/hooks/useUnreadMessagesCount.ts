@@ -10,6 +10,8 @@ export function useUnreadMessagesCount() {
   const query = useQuery({
     queryKey: ["inbox-unread-count", user?.id],
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<number> => {
       const { count, error } = await supabase
         .from("internal_messages")
