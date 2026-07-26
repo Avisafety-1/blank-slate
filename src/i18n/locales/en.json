@@ -1235,6 +1235,7 @@
       "emergency": "Emergency",
       "notifications": "Alerts",
       "incidents": "Follow-up",
+      "inbox": "Inbox",
       "subscription": "Plan"
     },
     "roleBadges": {
