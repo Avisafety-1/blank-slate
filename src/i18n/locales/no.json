@@ -3298,7 +3298,6 @@
               "DRAI": "Drone Restricted Area – informasjon"
             }
           },
-
           "moreInfoPansa": "Mer info hos PANSA DroneMap"
         }
       },
@@ -6545,95 +6544,6 @@
       "birdstrike": "Fuglekollisjon (Birdstrike)"
     },
     "fields": {
-      "438": {
-        "label": "Lokalt hendelsesnummer (File Number)",
-        "helpText": "Lokalt referansenummer for hendelsen (autogenerert)"
-      },
-      "601": {
-        "label": "Overskrift (Headline)",
-        "helpText": "Kort beskrivelse av hendelsen på engelsk (fylles automatisk fra tittel)"
-      },
-      "433": {
-        "label": "Lokal dato",
-        "helpText": "Lokal dato for hendelsen (YYYY-MM-DD)"
-      },
-      "477": {
-        "label": "UTC dato",
-        "helpText": "UTC-dato beregnet fra lokal dato"
-      },
-      "457": {
-        "label": "Lokal tid",
-        "helpText": "Klokkeslett for hendelsen (HH:MM)"
-      },
-      "440": {
-        "label": "Stedsnavn (Location Name)",
-        "helpText": "Navn på stedet hvor hendelsen skjedde"
-      },
-      "454": {
-        "label": "Stat/område for hendelse",
-        "helpText": "Land/region hvor hendelsen skjedde (VL454)"
-      },
-      "453": {
-        "label": "Ansvarlig enhet (Responsible Entity)",
-        "helpText": "Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)"
-      },
-      "431": {
-        "label": "Hendelsesklasse",
-        "helpText": "Obligatorisk for alle ECCAIRS-rapporter"
-      },
-      "430": {
-        "label": "Hendelseskategori (CICTT)",
-        "helpText": "CICTT-kategori som CFIT, LOC-I, MAC, etc. (VL430)"
-      },
-      "390": {
-        "label": "Hendelsestype",
-        "helpText": "Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)"
-      },
-      "1072": {
-        "label": "Deteksjonsfase",
-        "helpText": "Fase da hendelsen ble oppdaget"
-      },
-      "1088": {
-        "label": "Luftfartssektor (Aviation Sector)",
-        "helpText": "Relatert luftfartssektor (VL1088)"
-      },
-      "455": {
-        "label": "Hendelsesstatus (Occurrence Status)",
-        "helpText": "Status på hendelsen (VL455)"
-      },
-      "32": {
-        "label": "Luftfartøykategori",
-        "helpText": "Kategori luftfartøy (VL32)"
-      },
-      "244": {
-        "label": "Serienummer (Aircraft Serial Number)",
-        "helpText": "ECCAIRS krever numerisk serienummer, maks 11 siffer. Hentes fra tilknyttet drone når mulig, ellers settes en numerisk standardverdi."
-      },
-      "1376": {
-        "label": "UAS driftstillatelsestype (Operation Authorization)",
-        "helpText": "Type driftstillatelse for UAS-operasjonen (VL1376)"
-      },
-      "1388": {
-        "label": "Kontrollmodus RPAS/UAS (Control Mode)",
-        "helpText": "Kontrollmodus for RPAS/UAS under hendelsen (VL1388)"
-      },
-      "1238": {
-        "label": "RPAS/UAS karakteristisk dimensjon",
-        "helpText": "Karakteristisk dimensjon på RPAS/UAS (VL1238)"
-      },
-      "1243": {
-        "label": "RPAS/UAS driftskategori (Operations Category)",
-        "helpText": "EU-driftskategori: Open, Specific, Certified (VL1243)"
-      },
-      "1246": {
-        "label": "RPAS/UAS operasjonstype (Type of Operation)",
-        "helpText": "Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)"
-      },
-      "215": {
-        "label": "Operatør (Operator)",
-        "helpText": "Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.",
-        "additionalTextField": "Operatørnavn"
-      },
       "13": {
         "label": "Luftromsklasse (Airspace Class)",
         "helpText": "Luftromsklasse - G (ukontrollert) er standard. Bruk C for hendelser innenfor TIZ/CTR."
@@ -6642,25 +6552,26 @@
         "label": "Luftromstype (Airspace Type)",
         "helpText": "Type luftrom (TMA, CTA, ATZ, RMZ, TMZ, etc.)"
       },
-      "1241": {
-        "label": "RPAS/UAS luftromstype",
-        "helpText": "Type luftrom for RPAS/UAS-operasjon (VL1241)"
+      "32": {
+        "label": "Luftfartøykategori",
+        "helpText": "Kategori luftfartøy (VL32)"
       },
-      "432": {
-        "label": "Skade på luftfartøy (Damage to Aircraft)",
-        "helpText": "Skadegrad på luftfartøyet (Destroyed, Substantial, Minor, None, Unknown)"
+      "215": {
+        "label": "Operatør (Operator)",
+        "helpText": "Operatør (VL215) — standard: Norway → Other. Skriv inn operatørens navn i tekstfeltet.",
+        "additionalTextField": "Operatørnavn"
       },
-      "448": {
-        "label": "Skade på tredjepart (3rd Party Damage)",
-        "helpText": "Skade på tredjepart (Substantial, Minor, None)"
+      "244": {
+        "label": "Serienummer (Aircraft Serial Number)",
+        "helpText": "ECCAIRS krever numerisk serienummer, maks 11 siffer. Hentes fra tilknyttet drone når mulig, ellers settes en numerisk standardverdi."
       },
-      "456": {
-        "label": "Tredjepart berørt",
-        "helpText": "Om tredjepart ble berørt av hendelsen (VL456)"
+      "390": {
+        "label": "Hendelsestype",
+        "helpText": "Velg hendelsestype fra ECCAIRS VL390-liste (Events entity)"
       },
-      "451": {
-        "label": "Skadegrad (Injury Level)",
-        "helpText": "Alvorlighetsgrad på personskade (VL451)"
+      "391": {
+        "label": "Risikoklassifisering (Risk Classification)",
+        "helpText": "Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)"
       },
       "424": {
         "label": "Narrativspråk",
@@ -6670,26 +6581,94 @@
         "label": "Narrativ (beskrivelse)",
         "helpText": "Detaljert beskrivelse av hendelsen"
       },
-      "1091": {
-        "label": "Rapportørens språk",
-        "helpText": "Språket rapportørens beskrivelse er skrevet på (VL1091)"
+      "430": {
+        "label": "Hendelseskategori (CICTT)",
+        "helpText": "CICTT-kategori som CFIT, LOC-I, MAC, etc. (VL430)"
       },
-      "1092": {
-        "label": "Rapportørens beskrivelse",
-        "helpText": "Rapportørens egen beskrivelse av hendelsen"
+      "431": {
+        "label": "Hendelsesklasse",
+        "helpText": "Obligatorisk for alle ECCAIRS-rapporter"
+      },
+      "432": {
+        "label": "Skade på luftfartøy (Damage to Aircraft)",
+        "helpText": "Skadegrad på luftfartøyet (Destroyed, Substantial, Minor, None, Unknown)"
+      },
+      "433": {
+        "label": "Lokal dato",
+        "helpText": "Lokal dato for hendelsen (YYYY-MM-DD)"
+      },
+      "438": {
+        "label": "Lokalt hendelsesnummer (File Number)",
+        "helpText": "Lokalt referansenummer for hendelsen (autogenerert)"
+      },
+      "440": {
+        "label": "Stedsnavn (Location Name)",
+        "helpText": "Navn på stedet hvor hendelsen skjedde"
       },
       "447": {
         "label": "Rapporteringsenhet (Reporting Entity)",
         "helpText": "Organisasjon/enhet som rapporterer hendelsen (VL447) — Operatøren som sender rapporten. Skriv inn selskapsnavn i tekstfeltet.",
         "additionalTextField": "Selskapsnavn"
       },
+      "448": {
+        "label": "Skade på tredjepart (3rd Party Damage)",
+        "helpText": "Skade på tredjepart (Substantial, Minor, None)"
+      },
+      "451": {
+        "label": "Skadegrad (Injury Level)",
+        "helpText": "Alvorlighetsgrad på personskade (VL451)"
+      },
+      "453": {
+        "label": "Ansvarlig enhet (Responsible Entity)",
+        "helpText": "Myndighet ansvarlig for hendelsesoppfølging (2133 = Norway CAA)"
+      },
+      "454": {
+        "label": "Stat/område for hendelse",
+        "helpText": "Land/region hvor hendelsen skjedde (VL454)"
+      },
+      "455": {
+        "label": "Hendelsesstatus (Occurrence Status)",
+        "helpText": "Status på hendelsen (VL455)"
+      },
+      "456": {
+        "label": "Tredjepart berørt",
+        "helpText": "Om tredjepart ble berørt av hendelsen (VL456)"
+      },
+      "457": {
+        "label": "Lokal tid",
+        "helpText": "Klokkeslett for hendelsen (HH:MM)"
+      },
       "476": {
         "label": "Rapportkilde (Report Source)",
         "helpText": "Kilde for rapporten (VL476)"
       },
+      "477": {
+        "label": "UTC dato",
+        "helpText": "UTC-dato beregnet fra lokal dato"
+      },
       "495": {
         "label": "Rapportskjematype (Reporting Form Type)",
         "helpText": "Type rapporteringsskjema (VL495)"
+      },
+      "601": {
+        "label": "Overskrift (Headline)",
+        "helpText": "Kort beskrivelse av hendelsen på engelsk (fylles automatisk fra tittel)"
+      },
+      "646": {
+        "label": "Fugler/dyr observert",
+        "helpText": "Antall fugler/dyr observert (VL646)"
+      },
+      "647": {
+        "label": "Fugler/dyr truffet",
+        "helpText": "Antall fugler/dyr truffet (VL647)"
+      },
+      "648": {
+        "label": "Fuglestørrelse",
+        "helpText": "Estimert størrelse på fugl (VL648)"
+      },
+      "649": {
+        "label": "Pilot varslet om fugler",
+        "helpText": "Om piloten ble varslet om fugler (VL649)"
       },
       "800": {
         "label": "Rapportstatus (Report Status)",
@@ -6707,10 +6686,6 @@
         "label": "Parter informert (Parties Informed)",
         "helpText": "Parter som er informert om hendelsen (VL1064)"
       },
-      "391": {
-        "label": "Risikoklassifisering (Risk Classification)",
-        "helpText": "Risikoklassifisering av hendelsen — kun RPAS-relevante verdier (VL391)"
-      },
       "1065": {
         "label": "Risikoklassifisering (intern)",
         "helpText": "Intern risikoklassifisering fra rapporterende organisasjon (maks 200 tegn)"
@@ -6719,29 +6694,53 @@
         "label": "Risikovurdering (Risk Assessment)",
         "helpText": "Detaljert risikovurdering av hendelsen"
       },
-      "1070": {
-        "label": "Konklusjoner (Conclusions)",
-        "helpText": "Konklusjoner fra organisasjonen"
-      },
       "1069": {
         "label": "Risikoreduserende tiltak (Risk Mitigation Action)",
         "helpText": "Forebyggende, korrigerende eller utbedrende tiltak for å redusere risiko"
       },
-      "646": {
-        "label": "Fugler/dyr observert",
-        "helpText": "Antall fugler/dyr observert (VL646)"
+      "1070": {
+        "label": "Konklusjoner (Conclusions)",
+        "helpText": "Konklusjoner fra organisasjonen"
       },
-      "647": {
-        "label": "Fugler/dyr truffet",
-        "helpText": "Antall fugler/dyr truffet (VL647)"
+      "1072": {
+        "label": "Deteksjonsfase",
+        "helpText": "Fase da hendelsen ble oppdaget"
       },
-      "648": {
-        "label": "Fuglestørrelse",
-        "helpText": "Estimert størrelse på fugl (VL648)"
+      "1088": {
+        "label": "Luftfartssektor (Aviation Sector)",
+        "helpText": "Relatert luftfartssektor (VL1088)"
       },
-      "649": {
-        "label": "Pilot varslet om fugler",
-        "helpText": "Om piloten ble varslet om fugler (VL649)"
+      "1091": {
+        "label": "Rapportørens språk",
+        "helpText": "Språket rapportørens beskrivelse er skrevet på (VL1091)"
+      },
+      "1092": {
+        "label": "Rapportørens beskrivelse",
+        "helpText": "Rapportørens egen beskrivelse av hendelsen"
+      },
+      "1238": {
+        "label": "RPAS/UAS karakteristisk dimensjon",
+        "helpText": "Karakteristisk dimensjon på RPAS/UAS (VL1238)"
+      },
+      "1241": {
+        "label": "RPAS/UAS luftromstype",
+        "helpText": "Type luftrom for RPAS/UAS-operasjon (VL1241)"
+      },
+      "1243": {
+        "label": "RPAS/UAS driftskategori (Operations Category)",
+        "helpText": "EU-driftskategori: Open, Specific, Certified (VL1243)"
+      },
+      "1246": {
+        "label": "RPAS/UAS operasjonstype (Type of Operation)",
+        "helpText": "Type operasjon: VLOS, BVLOS, EVLOS, FPV (VL1246)"
+      },
+      "1376": {
+        "label": "UAS driftstillatelsestype (Operation Authorization)",
+        "helpText": "Type driftstillatelse for UAS-operasjonen (VL1376)"
+      },
+      "1388": {
+        "label": "Kontrollmodus RPAS/UAS (Control Mode)",
+        "helpText": "Kontrollmodus for RPAS/UAS under hendelsen (VL1388)"
       }
     }
   },
@@ -7208,6 +7207,198 @@
       "usedIn": "Konflikt: Brukes i \"{{title}}\" ({{time}})",
       "sameDayCompact": "Brukes også i \"{{title}}\" samme dag",
       "sameDay": "Brukes også i \"{{title}}\" samme dag ({{time}})"
+    }
+  },
+  "audit": {
+    "title": "Revisjon & Compliance",
+    "subtitle": "Overvåk compliance, gjennomfør internrevisjoner og vær forberedt på tilsyn.",
+    "disclaimer": "Intern støtteindikator. Ikke en godkjenning fra Luftfartstilsynet.",
+    "tabs": {
+      "overview": "Oversikt",
+      "documentation": "Dokumentasjon",
+      "competency": "Kompetanse",
+      "fleet": "Flåte",
+      "operations": "Operasjoner",
+      "safety": "Safety",
+      "internal": "Internrevisjoner",
+      "package": "Tilsynspakke"
+    },
+    "states": {
+      "loading": "Laster …",
+      "error": "Kunne ikke laste data",
+      "empty": "Ingen data",
+      "unknown": "Ukjent",
+      "partial": "Delvis data",
+      "permissionDenied": "Ikke tilgang"
+    },
+    "overview": {
+      "compliance": "Compliance",
+      "dataQuality": "Datakvalitet",
+      "covered": "Dekket",
+      "lastComputed": "Sist beregnet",
+      "notApplicable": "N/A",
+      "scoreLegend": "0–100 basert på relevante kontroller"
+    },
+    "kpi": {
+      "activePilots": "Aktive piloter",
+      "activeDrones": "Aktive droner",
+      "flights12mo": "Flygninger siste 12 mnd",
+      "incidents12mo": "Hendelser siste 12 mnd",
+      "openActions": "Åpne tiltak",
+      "internalAudits": "Internrevisjoner",
+      "riskAssessments": "Risikovurderinger",
+      "completedChecklists": "Gjennomførte sjekklister"
+    },
+    "alerts": {
+      "title": "Compliance-varsler",
+      "empty": "Ingen aktive funn",
+      "viewAll": "Se alle",
+      "open": "Åpne",
+      "dismiss": "Skjul",
+      "createFinding": "Opprett funn"
+    },
+    "competency": {
+      "header": "Pilotkompetanse",
+      "pilot": "Pilot",
+      "competency": "Kompetanse",
+      "validUntil": "Gyldig til",
+      "status": "Status",
+      "statusPass": "Gyldig",
+      "statusWarn": "Utløper snart",
+      "statusFail": "Utløpt",
+      "statusUnknown": "Ukjent"
+    },
+    "fleet": {
+      "header": "Flåtestatus",
+      "drone": "Drone",
+      "registration": "Registrering",
+      "service": "Service",
+      "nextInspection": "Neste inspeksjon",
+      "remoteId": "Remote ID",
+      "firmware": "Firmware",
+      "calibration": "Kalibrering",
+      "battery": "Batteri"
+    },
+    "operations": {
+      "header": "Operasjoner",
+      "mission": "Oppdrag",
+      "date": "Dato",
+      "issue": "Mangel",
+      "total": "Analyserte oppdrag",
+      "codes": {
+        "missingRiskAssessment": "Mangler risikovurdering",
+        "missingChecklist": "Ufullstendig sjekkliste",
+        "missingApproval": "Mangler godkjenning",
+        "flightNotClosed": "Flygning ikke avsluttet"
+      }
+    },
+    "safety": {
+      "reported": "Rapporterte",
+      "nearMiss": "Nestenulykker",
+      "openActions": "Åpne tiltak",
+      "closedActions": "Lukkede tiltak",
+      "avgCloseDays": "Snitt lukketid (dager)",
+      "trend": "Trend siste 12 mnd"
+    },
+    "documents": {
+      "header": "Dokumentasjon",
+      "title": "Tittel",
+      "category": "Kategori",
+      "nextReview": "Neste revisjon",
+      "responsible": "Ansvarlig",
+      "status": "Status"
+    },
+    "scanner": {
+      "expiredCompetence": {
+        "title": "{{pilot}}: {{competency}} er utløpt",
+        "body": "Kompetansen utløp for {{days}} dager siden."
+      },
+      "expiringCompetence": {
+        "title": "{{pilot}}: {{competency}} utløper snart",
+        "body": "Utløper om {{days}} dager."
+      },
+      "expiredDocument": {
+        "title": "{{title}} er utløpt",
+        "body": "Dokumentet utløp for {{days}} dager siden."
+      },
+      "documentReviewOverdue": {
+        "title": "{{title}} bør revideres",
+        "body": "Neste revisjon om {{days}} dager."
+      },
+      "missingEmergencyPlan": {
+        "title": "Beredskapsplan mangler",
+        "body": "Ingen dokumenter merket som beredskapsplan er funnet."
+      },
+      "serviceExpired": {
+        "title": "{{drone}}: service er forfalt",
+        "body": "Servicedato er passert."
+      },
+      "serviceDueSoon": {
+        "title": "{{drone}}: service forfaller snart",
+        "body": "Neste service om {{days}} dager."
+      },
+      "missingRiskAssessment": {
+        "title": "{{mission}} mangler risikovurdering",
+        "body": "Ingen SORA/risikovurdering registrert."
+      },
+      "missingChecklist": {
+        "title": "{{mission}}: sjekkliste ikke fullført",
+        "body": "En eller flere obligatoriske sjekklister er ikke fullført."
+      },
+      "missingApproval": {
+        "title": "{{mission}} mangler godkjenning",
+        "body": "Oppdraget krever godkjenning."
+      },
+      "flightNotClosed": {
+        "title": "{{mission}}: flygning ikke avsluttet",
+        "body": "En flygning har ingen sluttidspunkt."
+      },
+      "overdueAction": {
+        "title": "Tiltak er forfalt",
+        "body": "{{desc}} — frist: {{deadline}}"
+      },
+      "awaitingVerification": {
+        "title": "Funn venter på verifisering",
+        "body": "{{desc}}"
+      }
+    },
+    "insight": {
+      "criticalFindings": {
+        "title": "Kritiske funn krever oppfølging",
+        "body": "{{count}} kritiske funn er åpne."
+      },
+      "overdueActions": {
+        "title": "Flere tiltak har vært åpne lenge",
+        "body": "{{count}} tiltak er over frist."
+      },
+      "lowRiskAssessmentRatio": {
+        "title": "Lav dekning på risikovurderinger",
+        "body": "Under halvparten av oppdragene har risikovurdering."
+      },
+      "noIncidentReports": {
+        "title": "Ingen rapporterte hendelser",
+        "body": "Ingen hendelser er rapportert siste 12 måneder — bekreft at rapporteringskulturen fungerer."
+      }
+    },
+    "internal": {
+      "header": "Internrevisjoner",
+      "new": "Ny revisjon",
+      "title": "Revisjon",
+      "date": "Dato",
+      "responsible": "Ansvarlig",
+      "status": "Status",
+      "findings": "Funn",
+      "statusPlanned": "Planlagt",
+      "statusInProgress": "Pågår",
+      "statusClosed": "Lukket",
+      "closeBlocked": "Kan ikke lukkes: åpne kritiske funn.",
+      "overrideReason": "Begrunnelse for overstyring"
+    },
+    "package": {
+      "header": "Tilsynspakke",
+      "generate": "Generer pakke",
+      "generating": "Genererer …",
+      "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil."
     }
   }
 }

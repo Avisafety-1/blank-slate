@@ -1,59 +1,84 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Users, Plane, Activity, AlertTriangle, ListChecks, ClipboardCheck } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Users, Plane, Activity, AlertTriangle, ListChecks, ClipboardCheck, ShieldCheck, ClipboardList } from "lucide-react";
 import { KpiCard } from "../components/KpiCard";
 import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
-import { AuditReadinessList } from "../components/AuditReadinessList";
-import { AiAuditCard } from "../components/AiAuditCard";
-import {
-  mockDocuments,
-  mockCompetencies,
-  mockFleet,
-  mockOverviewKpi,
-  mockAuditReadiness,
-} from "../data/mockAuditData";
-import { calculateComplianceScore } from "../lib/complianceScore";
+import { ComplianceAlertsPanel } from "../components/ComplianceAlertsPanel";
+import { useAuditOverview } from "../hooks/useAuditData";
 
 export const OverviewTab = () => {
-  const score = calculateComplianceScore({
-    documents: mockDocuments,
-    competencies: mockCompetencies,
-    fleet: mockFleet,
-    openFindings: mockOverviewKpi.openFindings,
-    openActions: mockOverviewKpi.openActions,
-  });
-  const readinessOk = mockAuditReadiness.filter((r) => r.status === "ok").length;
-  const readinessPct = Math.round((readinessOk / mockAuditReadiness.length) * 100);
+  const { t } = useTranslation();
+  const o = useAuditOverview();
+
+  if (o.isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+      </div>
+    );
+  }
+  if (o.isError) {
+    return <p className="text-sm text-status-red">{t("audit.states.error")}: {o.error?.message}</p>;
+  }
+
+  const score = o.evaluation?.overall ?? 0;
+  const dq = o.evaluation?.dataQuality;
+  const coveragePct = dq && (dq.covered + dq.unknown) > 0
+    ? Math.round((dq.covered / (dq.covered + dq.unknown)) * 100)
+    : 0;
+  const computedAt = o.evaluation ? new Date(o.evaluation.computedAt).toLocaleString() : "—";
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <Card className="lg:col-span-1">
-          <CardContent className="p-6 flex items-center justify-center">
-            <ComplianceScoreRing score={score} label="Compliance" />
+          <CardContent className="p-6 flex flex-col items-center gap-3">
+            <ComplianceScoreRing score={score} label={t("audit.overview.compliance")} />
+            <div className="w-full space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{t("audit.overview.dataQuality")}</span>
+                <span>{coveragePct}%</span>
+              </div>
+              <Progress value={coveragePct} />
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center">
+              {t("audit.overview.lastComputed")}: {computedAt}
+            </p>
           </CardContent>
         </Card>
-        <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KpiCard label="Aktive piloter" value={mockOverviewKpi.activePilots} icon={Users} />
-          <KpiCard label="Aktive droner" value={mockOverviewKpi.activeDrones} icon={Plane} />
-          <KpiCard label="Flygninger siste 12 mnd" value={mockOverviewKpi.flights12mo} icon={Activity} />
-          <KpiCard label="Åpne avvik" value={mockOverviewKpi.openFindings} icon={AlertTriangle} tone="warning" />
-          <KpiCard label="Åpne tiltak" value={mockOverviewKpi.openActions} icon={ListChecks} tone="warning" />
-          <KpiCard label="Internrevisjoner gjennomført" value={mockOverviewKpi.internalAuditsDone} icon={ClipboardCheck} />
+        <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard label={t("audit.kpi.activePilots")} value={o.kpis?.activePilots ?? 0} icon={Users} />
+          <KpiCard label={t("audit.kpi.activeDrones")} value={o.kpis?.activeDrones ?? 0} icon={Plane} />
+          <KpiCard label={t("audit.kpi.flights12mo")} value={o.kpis?.flights12mo ?? 0} icon={Activity} />
+          <KpiCard label={t("audit.kpi.incidents12mo")} value={o.kpis?.incidents12mo ?? 0} icon={AlertTriangle} tone="warning" />
+          <KpiCard label={t("audit.kpi.openActions")} value={o.kpis?.openActions ?? 0} icon={ListChecks} tone="warning" />
+          <KpiCard label={t("audit.kpi.internalAudits")} value={o.kpis?.internalAuditsDone ?? 0} icon={ClipboardCheck} />
+          <KpiCard label={t("audit.kpi.riskAssessments")} value={o.kpis?.riskAssessments12mo ?? 0} icon={ClipboardList} />
+          <KpiCard label={t("audit.kpi.completedChecklists")} value={o.kpis?.completedChecklists12mo ?? 0} icon={ShieldCheck} />
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Audit readiness</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Progress value={readinessPct} />
-          <AuditReadinessList items={mockAuditReadiness} />
-        </CardContent>
-      </Card>
+      <ComplianceAlertsPanel findings={o.scannerFindings} />
 
-      <AiAuditCard />
+      {o.insights.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">AI insights</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {o.insights.map((i) => (
+              <div key={i.id} className="rounded-md border p-3">
+                <div className="text-sm font-medium">{t(i.titleKey, i.params as any) as string}</div>
+                <div className="text-xs text-muted-foreground">{t(i.bodyKey, i.params as any) as string}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-xs text-muted-foreground">{t("audit.disclaimer")}</p>
     </div>
   );
 };

@@ -3296,7 +3296,6 @@
               "DRAI": "Drone Restricted Area – Information"
             }
           },
-
           "moreInfoPansa": "More info on PANSA DroneMap"
         }
       },
@@ -6543,95 +6542,6 @@
       "birdstrike": "Birdstrike"
     },
     "fields": {
-      "438": {
-        "label": "File Number",
-        "helpText": "Local reference number for the occurrence (auto-generated)"
-      },
-      "601": {
-        "label": "Headline",
-        "helpText": "Short description of the occurrence in English (auto-filled from title)"
-      },
-      "433": {
-        "label": "Local date",
-        "helpText": "Local date of the occurrence (YYYY-MM-DD)"
-      },
-      "477": {
-        "label": "UTC date",
-        "helpText": "UTC date calculated from local date"
-      },
-      "457": {
-        "label": "Local time",
-        "helpText": "Time of the occurrence (HH:MM)"
-      },
-      "440": {
-        "label": "Location Name",
-        "helpText": "Name of the place where the occurrence took place"
-      },
-      "454": {
-        "label": "State/area of occurrence",
-        "helpText": "Country/region where the occurrence took place (VL454)"
-      },
-      "453": {
-        "label": "Responsible Entity",
-        "helpText": "Authority responsible for occurrence follow-up (2133 = Norway CAA)"
-      },
-      "431": {
-        "label": "Occurrence class",
-        "helpText": "Mandatory for all ECCAIRS reports"
-      },
-      "430": {
-        "label": "Occurrence category (CICTT)",
-        "helpText": "CICTT category such as CFIT, LOC-I, MAC, etc. (VL430)"
-      },
-      "390": {
-        "label": "Event type",
-        "helpText": "Select event type from the ECCAIRS VL390 list (Events entity)"
-      },
-      "1072": {
-        "label": "Detection phase",
-        "helpText": "Phase in which the occurrence was detected"
-      },
-      "1088": {
-        "label": "Aviation Sector",
-        "helpText": "Related aviation sector (VL1088)"
-      },
-      "455": {
-        "label": "Occurrence Status",
-        "helpText": "Status of the occurrence (VL455)"
-      },
-      "32": {
-        "label": "Aircraft category",
-        "helpText": "Aircraft category (VL32)"
-      },
-      "244": {
-        "label": "Aircraft Serial Number",
-        "helpText": "ECCAIRS requires a numeric serial number, max 11 digits. Taken from the linked drone when possible, otherwise a numeric default value is used."
-      },
-      "1376": {
-        "label": "UAS Operation Authorization type",
-        "helpText": "Type of operation authorization for the UAS operation (VL1376)"
-      },
-      "1388": {
-        "label": "RPAS/UAS Control Mode",
-        "helpText": "Control mode of the RPAS/UAS during the occurrence (VL1388)"
-      },
-      "1238": {
-        "label": "RPAS/UAS characteristic dimension",
-        "helpText": "Characteristic dimension of the RPAS/UAS (VL1238)"
-      },
-      "1243": {
-        "label": "RPAS/UAS Operations Category",
-        "helpText": "EU operations category: Open, Specific, Certified (VL1243)"
-      },
-      "1246": {
-        "label": "RPAS/UAS Type of Operation",
-        "helpText": "Type of operation: VLOS, BVLOS, EVLOS, FPV (VL1246)"
-      },
-      "215": {
-        "label": "Operator",
-        "helpText": "Operator (VL215) — default: Norway → Other. Enter the operator name in the text field.",
-        "additionalTextField": "Operator name"
-      },
       "13": {
         "label": "Airspace Class",
         "helpText": "Airspace class — G (uncontrolled) is the default. Use C for occurrences within TIZ/CTR."
@@ -6640,25 +6550,26 @@
         "label": "Airspace Type",
         "helpText": "Type of airspace (TMA, CTA, ATZ, RMZ, TMZ, etc.)"
       },
-      "1241": {
-        "label": "RPAS/UAS airspace type",
-        "helpText": "Type of airspace for the RPAS/UAS operation (VL1241)"
+      "32": {
+        "label": "Aircraft category",
+        "helpText": "Aircraft category (VL32)"
       },
-      "432": {
-        "label": "Damage to Aircraft",
-        "helpText": "Damage level of the aircraft (Destroyed, Substantial, Minor, None, Unknown)"
+      "215": {
+        "label": "Operator",
+        "helpText": "Operator (VL215) — default: Norway → Other. Enter the operator name in the text field.",
+        "additionalTextField": "Operator name"
       },
-      "448": {
-        "label": "3rd Party Damage",
-        "helpText": "Damage to third parties (Substantial, Minor, None)"
+      "244": {
+        "label": "Aircraft Serial Number",
+        "helpText": "ECCAIRS requires a numeric serial number, max 11 digits. Taken from the linked drone when possible, otherwise a numeric default value is used."
       },
-      "456": {
-        "label": "Third party affected",
-        "helpText": "Whether third parties were affected by the occurrence (VL456)"
+      "390": {
+        "label": "Event type",
+        "helpText": "Select event type from the ECCAIRS VL390 list (Events entity)"
       },
-      "451": {
-        "label": "Injury Level",
-        "helpText": "Severity of personal injury (VL451)"
+      "391": {
+        "label": "Risk Classification",
+        "helpText": "Risk classification of the occurrence — only RPAS-relevant values (VL391)"
       },
       "424": {
         "label": "Narrative language",
@@ -6668,26 +6579,94 @@
         "label": "Narrative (description)",
         "helpText": "Detailed description of the occurrence"
       },
-      "1091": {
-        "label": "Reporter's language",
-        "helpText": "Language the reporter's description is written in (VL1091)"
+      "430": {
+        "label": "Occurrence category (CICTT)",
+        "helpText": "CICTT category such as CFIT, LOC-I, MAC, etc. (VL430)"
       },
-      "1092": {
-        "label": "Reporter's description",
-        "helpText": "The reporter's own description of the occurrence"
+      "431": {
+        "label": "Occurrence class",
+        "helpText": "Mandatory for all ECCAIRS reports"
+      },
+      "432": {
+        "label": "Damage to Aircraft",
+        "helpText": "Damage level of the aircraft (Destroyed, Substantial, Minor, None, Unknown)"
+      },
+      "433": {
+        "label": "Local date",
+        "helpText": "Local date of the occurrence (YYYY-MM-DD)"
+      },
+      "438": {
+        "label": "File Number",
+        "helpText": "Local reference number for the occurrence (auto-generated)"
+      },
+      "440": {
+        "label": "Location Name",
+        "helpText": "Name of the place where the occurrence took place"
       },
       "447": {
         "label": "Reporting Entity",
         "helpText": "Organization/entity reporting the occurrence (VL447) — the operator submitting the report. Enter the company name in the text field.",
         "additionalTextField": "Company name"
       },
+      "448": {
+        "label": "3rd Party Damage",
+        "helpText": "Damage to third parties (Substantial, Minor, None)"
+      },
+      "451": {
+        "label": "Injury Level",
+        "helpText": "Severity of personal injury (VL451)"
+      },
+      "453": {
+        "label": "Responsible Entity",
+        "helpText": "Authority responsible for occurrence follow-up (2133 = Norway CAA)"
+      },
+      "454": {
+        "label": "State/area of occurrence",
+        "helpText": "Country/region where the occurrence took place (VL454)"
+      },
+      "455": {
+        "label": "Occurrence Status",
+        "helpText": "Status of the occurrence (VL455)"
+      },
+      "456": {
+        "label": "Third party affected",
+        "helpText": "Whether third parties were affected by the occurrence (VL456)"
+      },
+      "457": {
+        "label": "Local time",
+        "helpText": "Time of the occurrence (HH:MM)"
+      },
       "476": {
         "label": "Report Source",
         "helpText": "Source of the report (VL476)"
       },
+      "477": {
+        "label": "UTC date",
+        "helpText": "UTC date calculated from local date"
+      },
       "495": {
         "label": "Reporting Form Type",
         "helpText": "Type of reporting form (VL495)"
+      },
+      "601": {
+        "label": "Headline",
+        "helpText": "Short description of the occurrence in English (auto-filled from title)"
+      },
+      "646": {
+        "label": "Birds/wildlife seen",
+        "helpText": "Number of birds/wildlife observed (VL646)"
+      },
+      "647": {
+        "label": "Birds/wildlife struck",
+        "helpText": "Number of birds/wildlife struck (VL647)"
+      },
+      "648": {
+        "label": "Bird size",
+        "helpText": "Estimated bird size (VL648)"
+      },
+      "649": {
+        "label": "Pilot advised of birds",
+        "helpText": "Whether the pilot was advised about birds (VL649)"
       },
       "800": {
         "label": "Report Status",
@@ -6705,10 +6684,6 @@
         "label": "Parties Informed",
         "helpText": "Parties informed about the occurrence (VL1064)"
       },
-      "391": {
-        "label": "Risk Classification",
-        "helpText": "Risk classification of the occurrence — only RPAS-relevant values (VL391)"
-      },
       "1065": {
         "label": "Risk classification (internal)",
         "helpText": "Internal risk classification from the reporting organization (max 200 characters)"
@@ -6717,29 +6692,53 @@
         "label": "Risk Assessment",
         "helpText": "Detailed risk assessment of the occurrence"
       },
-      "1070": {
-        "label": "Conclusions",
-        "helpText": "Conclusions from the organization"
-      },
       "1069": {
         "label": "Risk Mitigation Action",
         "helpText": "Preventive, corrective or remedial actions to reduce risk"
       },
-      "646": {
-        "label": "Birds/wildlife seen",
-        "helpText": "Number of birds/wildlife observed (VL646)"
+      "1070": {
+        "label": "Conclusions",
+        "helpText": "Conclusions from the organization"
       },
-      "647": {
-        "label": "Birds/wildlife struck",
-        "helpText": "Number of birds/wildlife struck (VL647)"
+      "1072": {
+        "label": "Detection phase",
+        "helpText": "Phase in which the occurrence was detected"
       },
-      "648": {
-        "label": "Bird size",
-        "helpText": "Estimated bird size (VL648)"
+      "1088": {
+        "label": "Aviation Sector",
+        "helpText": "Related aviation sector (VL1088)"
       },
-      "649": {
-        "label": "Pilot advised of birds",
-        "helpText": "Whether the pilot was advised about birds (VL649)"
+      "1091": {
+        "label": "Reporter's language",
+        "helpText": "Language the reporter's description is written in (VL1091)"
+      },
+      "1092": {
+        "label": "Reporter's description",
+        "helpText": "The reporter's own description of the occurrence"
+      },
+      "1238": {
+        "label": "RPAS/UAS characteristic dimension",
+        "helpText": "Characteristic dimension of the RPAS/UAS (VL1238)"
+      },
+      "1241": {
+        "label": "RPAS/UAS airspace type",
+        "helpText": "Type of airspace for the RPAS/UAS operation (VL1241)"
+      },
+      "1243": {
+        "label": "RPAS/UAS Operations Category",
+        "helpText": "EU operations category: Open, Specific, Certified (VL1243)"
+      },
+      "1246": {
+        "label": "RPAS/UAS Type of Operation",
+        "helpText": "Type of operation: VLOS, BVLOS, EVLOS, FPV (VL1246)"
+      },
+      "1376": {
+        "label": "UAS Operation Authorization type",
+        "helpText": "Type of operation authorization for the UAS operation (VL1376)"
+      },
+      "1388": {
+        "label": "RPAS/UAS Control Mode",
+        "helpText": "Control mode of the RPAS/UAS during the occurrence (VL1388)"
       }
     }
   },
@@ -7206,6 +7205,198 @@
       "usedIn": "Conflict: Used in \"{{title}}\" ({{time}})",
       "sameDayCompact": "Also used in \"{{title}}\" same day",
       "sameDay": "Also used in \"{{title}}\" same day ({{time}})"
+    }
+  },
+  "audit": {
+    "title": "Audit & Compliance",
+    "subtitle": "Monitor compliance, run internal audits, and stay ready for regulator inspections.",
+    "disclaimer": "Internal support indicator. Not an approval from the aviation authority.",
+    "tabs": {
+      "overview": "Overview",
+      "documentation": "Documentation",
+      "competency": "Competency",
+      "fleet": "Fleet",
+      "operations": "Operations",
+      "safety": "Safety",
+      "internal": "Internal audits",
+      "package": "Inspection package"
+    },
+    "states": {
+      "loading": "Loading …",
+      "error": "Failed to load data",
+      "empty": "No data",
+      "unknown": "Unknown",
+      "partial": "Partial data",
+      "permissionDenied": "No access"
+    },
+    "overview": {
+      "compliance": "Compliance",
+      "dataQuality": "Data quality",
+      "covered": "Covered",
+      "lastComputed": "Last computed",
+      "notApplicable": "N/A",
+      "scoreLegend": "0–100 based on applicable checks"
+    },
+    "kpi": {
+      "activePilots": "Active pilots",
+      "activeDrones": "Active drones",
+      "flights12mo": "Flights past 12 mo",
+      "incidents12mo": "Incidents past 12 mo",
+      "openActions": "Open actions",
+      "internalAudits": "Internal audits",
+      "riskAssessments": "Risk assessments",
+      "completedChecklists": "Completed checklists"
+    },
+    "alerts": {
+      "title": "Compliance alerts",
+      "empty": "No active findings",
+      "viewAll": "View all",
+      "open": "Open",
+      "dismiss": "Dismiss",
+      "createFinding": "Create finding"
+    },
+    "competency": {
+      "header": "Pilot competency",
+      "pilot": "Pilot",
+      "competency": "Competency",
+      "validUntil": "Valid until",
+      "status": "Status",
+      "statusPass": "Valid",
+      "statusWarn": "Expiring",
+      "statusFail": "Expired",
+      "statusUnknown": "Unknown"
+    },
+    "fleet": {
+      "header": "Fleet status",
+      "drone": "Drone",
+      "registration": "Registration",
+      "service": "Service",
+      "nextInspection": "Next inspection",
+      "remoteId": "Remote ID",
+      "firmware": "Firmware",
+      "calibration": "Calibration",
+      "battery": "Battery"
+    },
+    "operations": {
+      "header": "Operations",
+      "mission": "Mission",
+      "date": "Date",
+      "issue": "Issue",
+      "total": "Missions evaluated",
+      "codes": {
+        "missingRiskAssessment": "Missing risk assessment",
+        "missingChecklist": "Incomplete checklist",
+        "missingApproval": "Missing approval",
+        "flightNotClosed": "Flight not closed"
+      }
+    },
+    "safety": {
+      "reported": "Reported",
+      "nearMiss": "Near misses",
+      "openActions": "Open actions",
+      "closedActions": "Closed actions",
+      "avgCloseDays": "Avg. close time (days)",
+      "trend": "Trend past 12 mo"
+    },
+    "documents": {
+      "header": "Documentation",
+      "title": "Title",
+      "category": "Category",
+      "nextReview": "Next review",
+      "responsible": "Responsible",
+      "status": "Status"
+    },
+    "scanner": {
+      "expiredCompetence": {
+        "title": "{{pilot}}: {{competency}} expired",
+        "body": "Competency expired {{days}} days ago."
+      },
+      "expiringCompetence": {
+        "title": "{{pilot}}: {{competency}} expiring soon",
+        "body": "Expires in {{days}} days."
+      },
+      "expiredDocument": {
+        "title": "{{title}} expired",
+        "body": "Document expired {{days}} days ago."
+      },
+      "documentReviewOverdue": {
+        "title": "{{title}} needs review",
+        "body": "Next review in {{days}} days."
+      },
+      "missingEmergencyPlan": {
+        "title": "Emergency plan missing",
+        "body": "No document identified as emergency plan."
+      },
+      "serviceExpired": {
+        "title": "{{drone}}: service overdue",
+        "body": "Service date has passed."
+      },
+      "serviceDueSoon": {
+        "title": "{{drone}}: service due soon",
+        "body": "Next service in {{days}} days."
+      },
+      "missingRiskAssessment": {
+        "title": "{{mission}} missing risk assessment",
+        "body": "No SORA/risk assessment recorded."
+      },
+      "missingChecklist": {
+        "title": "{{mission}}: checklist not complete",
+        "body": "One or more required checklists are not complete."
+      },
+      "missingApproval": {
+        "title": "{{mission}} missing approval",
+        "body": "Mission requires approval."
+      },
+      "flightNotClosed": {
+        "title": "{{mission}}: flight not closed",
+        "body": "A flight has no end timestamp."
+      },
+      "overdueAction": {
+        "title": "Action is overdue",
+        "body": "{{desc}} — deadline: {{deadline}}"
+      },
+      "awaitingVerification": {
+        "title": "Finding awaiting verification",
+        "body": "{{desc}}"
+      }
+    },
+    "insight": {
+      "criticalFindings": {
+        "title": "Critical findings need attention",
+        "body": "{{count}} critical findings are open."
+      },
+      "overdueActions": {
+        "title": "Several actions have been open too long",
+        "body": "{{count}} actions are past deadline."
+      },
+      "lowRiskAssessmentRatio": {
+        "title": "Low risk-assessment coverage",
+        "body": "Less than half of missions have a risk assessment."
+      },
+      "noIncidentReports": {
+        "title": "No incident reports",
+        "body": "No incidents reported in the last 12 months — confirm the reporting culture is working."
+      }
+    },
+    "internal": {
+      "header": "Internal audits",
+      "new": "New audit",
+      "title": "Audit",
+      "date": "Date",
+      "responsible": "Responsible",
+      "status": "Status",
+      "findings": "Findings",
+      "statusPlanned": "Planned",
+      "statusInProgress": "In progress",
+      "statusClosed": "Closed",
+      "closeBlocked": "Cannot close: open critical findings.",
+      "overrideReason": "Override reason"
+    },
+    "package": {
+      "header": "Inspection package",
+      "generate": "Generate package",
+      "generating": "Generating …",
+      "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file."
     }
   }
 }
