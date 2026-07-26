@@ -212,6 +212,20 @@ const Hendelser = () => {
     fetchIncidents();
   }, [companyId]);
 
+  // Deep-link handling: ?id=<incident-uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id || incidents.length === 0) return;
+    const inc = incidents.find((i) => i.id === id);
+    if (inc) {
+      setSelectedIncident(inc);
+      setDetailDialogOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, incidents, setSearchParams]);
+
+
   // Consolidated real-time channel for Hendelser page
   useEffect(() => {
     const channel = createUniqueChannel('hendelser-main')
