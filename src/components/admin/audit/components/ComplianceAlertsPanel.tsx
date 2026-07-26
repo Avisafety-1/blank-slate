@@ -71,16 +71,16 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
         ) : (
           <ul className="divide-y divide-border">
             {shown.map((f) => (
-              <li key={`${f.code}-${f.entityId}`} className="flex flex-col sm:flex-row sm:items-center gap-2 py-2.5">
-                <Badge variant="outline" className={cn("uppercase text-[10px]", sevClass(f.severity))}>
+              <li key={`${f.code}-${f.entityId}`} className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
+                <Badge variant="outline" className={cn("uppercase text-xs sm:text-sm px-2.5 py-1", sevClass(f.severity))}>
                   {f.severity}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">
+                  <div className="text-sm sm:text-base font-medium truncate">
                     {String(t(f.titleKey, (f.titleParams ?? {}) as never))}
                   </div>
                   {f.bodyKey && (
-                    <div className="text-xs text-muted-foreground truncate">
+                    <div className="text-xs sm:text-sm text-muted-foreground truncate">
                       {String(t(f.bodyKey, (f.bodyParams ?? {}) as never))}
                     </div>
                   )}
