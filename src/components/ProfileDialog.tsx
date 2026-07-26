@@ -2456,6 +2456,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Subscription Tab */}
+              {!stripeExempt && (
               <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
                 <Card>
                   <CardHeader>
