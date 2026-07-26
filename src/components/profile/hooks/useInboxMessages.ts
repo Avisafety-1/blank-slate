@@ -27,6 +27,8 @@ export function useInboxMessages(filter: "all" | "unread" | "done" = "all") {
   const query = useQuery({
     queryKey: ["inbox", user?.id, filter],
     enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<InboxMessage[]> => {
       let q = supabase
         .from("internal_messages")
