@@ -1664,9 +1664,11 @@ const Admin = () => {
             <TrainingSection />
           </TabsContent>
 
-          <TabsContent value="audit" className="mt-4 sm:mt-8">
-            <AuditSection />
-          </TabsContent>
+          {companyName?.toLowerCase() === 'moderavdeling' && (
+            <TabsContent value="audit" className="mt-4 sm:mt-8">
+              <AuditSection />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
