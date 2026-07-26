@@ -1,72 +1,128 @@
-# Ny admin-fane: Revisjon / Audit
+# Compliance & Audit – Fase 2 (revidert plan)
 
-Ren frontend-modul. Ingen DB, edge functions eller migrations. All data fra mock-filer, arkitektur klargjort for senere ekte data.
+## Funn fra schema- og arkitekturgjennomgang
 
-## Filstruktur
+Bekreftet i faktisk kodebase (ikke antatt):
 
-```
+- **Company-scope**: RPC `get_user_visible_company_ids(_user_id)` er standardmønsteret (se `useStatusData.fetchPersonnel`, `_shared/companyScope.ts`). Mor/datter håndteres via `companies.parent_company_id` + `propagate_*`-flagg.
+- **Superadmin-bypass**: `user_roles.role='superadmin'` sjekkes i `assertUserInCompany`.
+- **Relevante eksisterende tabeller**: `profiles`, `personnel_competencies`, `drones` (m/ `neste_inspeksjon`, `flyvetimer`, `inspection_interval_*`, `varsel_*`, `hours_at_last_inspection`), `drone_inspections`, `drone_accessories`, `drone_equipment`, `equipment`, `missions`, `mission_sora`, `mission_risk_assessments`, `mission_deviation_reports`, `mission_personnel`, `flight_logs`, `incidents`, `incident_comments`, `documents` (allerede rik: kategori, versjon, gyldig_til, visibility, company_id, visible_to_children).
+- **React Query-mønster**: `useQueries`, `queryKey` inkluderer `companyId`, `staleTime: 5000`, PostgREST nested selects.
+- **Storage**: private buckets, `createSignedUrl(path, seconds)` — brukes for `documents`, `changelog-images`, `flight-logs`. Bruk samme mønster; ingen public URL.
+- **Routing**: `/oppdrag`, `/ressurser`, `/dokumenter`, `/hendelser`, `/status`, `/admin` — deep links går til disse eksisterende sidene med query-params.
+- **i18n**: obligatorisk – alle nye strenger i `no.json` og `en.json`.
+
+## Justeringer av opprinnelig forslag
+
+1. **`compliance_documents` opprettes IKKE.** Eksisterende `public.documents` dekker allerede id, kategori, versjon, gyldig_til, ansvarlig, filhåndtering, company_id, visible_to_children og varsel_dager_for_utløp. Audit-modulen leser fra `documents` og lager kun et view/hook over dette. Sparer duplisering av opplasting og RLS.
+2. **Legger til `compliance_finding_dispositions`** (foreslått som valgfritt) – nødvendig for at brukere skal kunne skjule/akseptere scanner-funn (code+entity_id+company_id).
+3. **`audit_checklist_items` som egen tabell** i stedet for jsonb-array (nåværende mock lagrer bool[]) – gir bedre kobling til funn og evidence.
+4. **Kompetanse leses fra `personnel_competencies`**, ikke fra ny tabell (brukes allerede i `useStatusData`).
+5. **Flåte**: bruker eksisterende `drones` + `drone_inspections` + `drone_accessories`. Remote ID / firmware / batteri: kartlegg hvilke kolonner som faktisk finnes; det som mangler rapporteres som `unknown` (ikke `fail`).
+6. **Ingen endring i eksisterende moduler** utover å akseptere query-params for deep links.
+
+## Delfaser
+
+### Fase A – Arkitektur, hooks & queries (ingen DB, ingen UI-endring ennå)
+
+Struktur:
+```text
 src/components/admin/audit/
-  AuditSection.tsx              // Container med indre Tabs (8 stk)
-  tabs/
-    OverviewTab.tsx
-    DocumentationTab.tsx
-    CompetencyTab.tsx
-    FleetTab.tsx
-    OperationsTab.tsx
-    SafetyTab.tsx
-    InternalAuditsTab.tsx       // CRUD med lokal useState
-    InspectionPackageTab.tsx
-  components/
-    KpiCard.tsx                 // Gjenbrukbar KPI-kort (label, value, icon, trend)
-    ComplianceScoreRing.tsx     // Sirkulær progress (SVG)
-    AuditReadinessList.tsx      // Sjekkliste med ✅/⚠ badges
-    AuditFindingDialog.tsx      // Legg til/rediger funn (mock-state)
-    AuditDetailDialog.tsx       // Åpne revisjon → seksjoner + funn + tiltak
-    PlaceholderCard.tsx         // "Data mangler / kommer" fallback
-    AiAuditCard.tsx             // Placeholder-kort nederst på Oversikt
-  data/
-    mockAuditData.ts            // Alle mock-datasett i én fil, typet
-  types.ts                      // AuditFinding, AuditAction, InternalAudit, m.m.
-  lib/
-    complianceScore.ts          // Ren funksjon (input → score). Kalles i dag med mock, senere med ekte data.
+  components/  tabs/  data/  lib/  (eksisterende)
+  hooks/       (nye React Query hooks)
+  queries/     (rene supabase-kall)
+  services/    (ComplianceEngine, ComplianceScanner, AuditInsightService)
+  validators/  (én fil pr regelfamilie)
+  utils/       (auditDeepLink, severity-sort, dato-utils)
+  types.ts     (utvides: ScannerFinding, CheckResult, CategoryScore, DomainKpis)
 ```
 
-## Integrasjon i Admin
+Nye hooks (alle scoper via `get_user_visible_company_ids`):
+- `useAuditKpis`, `useAuditCompetencies`, `useAuditFleet`, `useAuditOperations`, `useAuditSafety`, `useAuditDocuments` (leser eksisterende `documents`), `useAuditReviews`.
 
-I `src/pages/Admin.tsx`:
-- Ny `<TabsTrigger value="audit">` med `ShieldCheck`-ikon og label `t('admin.tabs.audit')` (default "Revisjon"). Plasseres etter `training`.
-- Ny `<TabsContent value="audit">` som rendrer `<AuditSection />`.
-- Kun synlig for admin/superadmin (samme mønster som eksisterende faner via `useRoleCheck().isAdmin`).
+Alle hooks returnerer `{ data, isLoading, isError, isPartial, lastComputedAt }` slik at UI kan vise loading/error/empty/partial/permission-denied states.
 
-## Faner (indre Tabs i AuditSection)
+### Fase B – DB-migrasjon (kun audit-egne tabeller)
 
-1. **Oversikt** – KPI-grid (Compliance score-ring + 6 KPI-kort) → Audit readiness progress bar + sjekkliste → `AiAuditCard` nederst.
-2. **Dokumentasjon** – Grid av dokumentkort (tittel, status-badge, neste revisjon, ansvarlig). Placeholder-hook `getDocuments()` returnerer mock.
-3. **Kompetanse** – Tabell (Pilot, Kompetanse, Gyldig til, Status). Status-badge grønn/gul/rød basert på dager til utløp.
-4. **Flåte** – Tabell (Drone, Firmware, Service, Remote ID, Batterihelse, Kalibrering) med OK/Forfaller/Mangler-badges.
-5. **Operasjoner** – 5 KPI-kort + liste "Mulige forbedringer".
-6. **Safety** – 6 KPI-kort + trendgraf 12 mnd (bruker `recharts` LineChart som allerede finnes i prosjektet).
-7. **Internrevisjoner** – Tabell + "Ny revisjon"-knapp. Klikk rad → `AuditDetailDialog` med 6 seksjoner (Organisasjon, Dokumentasjon, Kompetanse, Operasjoner, Teknisk, Safety), hver med sjekkliste + kommentar + vedlegg-placeholder + status. Funn og tiltak håndteres i samme dialog. **All state lokalt (useState/useReducer)** – ingen persistering.
-8. **Tilsynspakke** – Kort med "Generer tilsynspakke"-knapp som viser toast `"Tilsynspakke kommer i neste versjon."`. Under: liste over hvilke dokumenter som vil inngå.
+Fem nye tabeller i `public`. Alle får: `company_id uuid not null`, `created_at`/`updated_at` + trigger, indekser på `company_id` og relevante FK, GRANT til `authenticated`+`service_role`, `ENABLE RLS`, policies via `company_id = ANY(get_user_visible_company_ids(auth.uid()))` og superadmin-bypass med `has_role`.
 
-## Design
+- `audit_reviews(id, company_id, title, type, scope jsonb, date, responsible_user_id, status: planned|in_progress|closed, closed_at, override_reason)`
+- `audit_sections(id, review_id, company_id, section_key, comment, status)`
+- `audit_checklist_items(id, section_id, company_id, label, order_index, result: pass|warn|fail|na|unknown, comment, evidence_path)`
+- `audit_findings(id, company_id, review_id nullable, source_scanner_code nullable, category, description, reference, responsible_user_id, deadline, status: open|in_progress|verified|closed, verified_by, verified_at)`
+- `audit_actions(id, finding_id, company_id, description, responsible_user_id, deadline, status: open|in_progress|closed, comment, closed_at, closed_by)`
+- `audit_attachments(id, company_id, parent_type: review|finding|action|checklist_item, parent_id, storage_path, filename, mime_type, size_bytes, uploaded_by)`
+- `compliance_finding_dispositions(id, company_id, finding_code, entity_type, entity_id, disposition: accepted|dismissed|snoozed, reason, snooze_until, created_by, created_at)` + UNIQUE(company_id, finding_code, entity_type, entity_id).
 
-- Følger eksisterende AviSafe designsystem: `Card`, `Badge`, `Progress`, `Tabs`, `Button` fra `@/components/ui/*`.
-- Semantiske tokens (`bg-status-green/yellow/red`, `text-primary`, `text-muted-foreground`).
-- Grid: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4` for KPI-kort; stacker på mobil.
-- Compliance score-ring: enkel SVG med `stroke-primary`.
+CHECK constraints unngås for tid; bruk validation-trigger (prosjektregel). Trigger som sjekker at child-rad har samme `company_id` som parent.
+
+Storage: ny privat bucket `audit-attachments` (via `supabase--storage_create_bucket`). RLS på `storage.objects` scoper etter path-prefix `<company_id>/…` + `get_user_visible_company_ids`.
+
+### Fase C – ComplianceEngine, Scanner, Validators, Insights
+
+`services/ComplianceEngine.ts` – ren funksjon `evaluate(input): { overall: number|null, categories, dataQuality }`.
+- Kategorier: `competence`, `documentation`, `fleet`, `operations`, `safety`.
+- Hver kontroll returnerer `pass | warn | fail | na | unknown`.
+- `na` og `unknown` teller ikke i score. Kategori uten kontroller → `score: null`.
+- Overall = vektet snitt over kategorier med `score !== null` (relevant-vekting), ikke absolutt 20 %.
+- Returnerer `dataQuality: { covered, unknown, na }` slik at UI viser tydelig at dette er en intern indikator.
+
+`services/ComplianceScanner.ts` + `validators/*`:
+- Interface: `Validator = { code, run(ctx): ScannerFinding[] }`.
+- `ScannerFinding = { code, severity: critical|warning|info, titleKey, bodyKey, entityType, entityId, evidence, deepLink }`.
+- Ingen brukerrettet tekst i kode – kun i18n-nøkler.
+- Validatorer implementeres for reglene som faktisk har datagrunnlag: `competenceExpiringOrExpired`, `documentReviewOverdue`, `documentExpired`, `emergencyPlanMissing` (basert på `documents.kategori`), `droneServiceOverdue`, `droneInspectionOverdue`, `droneRemoteIdMissing` (kun hvis kolonne finnes, ellers hopp), `missionMissingRiskAssessment` (kun der `require_sora_on_missions` er på), `missionMissingChecklist`, `missionMissingDebrief`, `flightNotClosed`, `overdueAuditAction`, `findingAwaitingVerification`.
+- Scanner respekterer `compliance_finding_dispositions` (dismissed/snoozed skjules eller nedgraderes).
+
+`services/AuditInsightService.ts` – grensesnitt `getInsights(scannerFindings, kpis): Insight[]`. Foreløpig ren regelbasert (mock-tekster via i18n). Klart for GPT-erstatning.
+
+### Fase D – UI-oppkobling (ingen redesign)
+
+- `OverviewTab`: KPI fra `useAuditKpis`, ring fra engine (viser "N/A" hvis overall=null), `ComplianceAlertsPanel` (topp 10 scanner-funn med severity-emoji + deep link + "opprett formelt funn"-knapp), `AuditReadinessList` bygges fra scanner-funn, "Sist beregnet" timestamp + datakvalitet-strip.
+- `CompetencyTab`, `FleetTab`, `OperationsTab`, `SafetyTab`: bytter mock → hooks. Viser 5 states: loading/error/empty/partial/permission-denied. Kolonner med manglende data viser "Ukjent".
+- `DocumentationTab`: leser `documents` via hook.
+- `InternalAuditsTab` + `AuditDetailDialog`: full CRUD mot audit-tabellene via React Query mutations. Kontrollpunkt-knapp "Opprett funn" konverterer scanner-funn eller manuelle observasjoner til `audit_findings`. Lukking av revisjon blokkeres hvis åpne kritiske funn – kan overstyres med begrunnelse.
+- `AiAuditCard`: bruker `AuditInsightService`.
+- `InspectionPackageTab`: knapp kaller edge function (fase E), viser progress + signed URL.
+
+Sentral `utils/auditDeepLink.ts`:
+- fleet/drone → `/ressurser?tab=drones&id=…`
+- competence → `/ressurser?tab=personnel&id=…`
+- mission → `/oppdrag?id=…`
+- document → `/dokumenter?id=…`
+- incident/action → `/hendelser?id=…`
+Mottakersider aksepterer allerede tab/id-params der mulig; små justeringer legges til der de mangler.
+
+Disclaimer-tekst (i18n): «Intern støtteindikator. Ikke en godkjenning fra Luftfartstilsynet.»
+
+### Fase E – Tilsynspakke
+
+Edge function `generate-inspection-package`:
+- Auth + `assertUserInCompany`.
+- Bygger PDF-oversikt (samme mønster som `oppdragPdfExport`), CSV (kompetanse, flåte, funn), JSON (rå data), `manifest.json`.
+- Pakker som ZIP, laster opp til `audit-attachments/<company_id>/packages/<uuid>.zip`, returnerer 1 t signed URL.
+- Første versjon: kun oversiktsdokumenter, ikke alle vedlegg.
+
+### Fase F – Tester
+
+`vitest` under `src/components/admin/audit/__tests__/`:
+- ComplianceEngine: score-normalisering, `na`/`unknown`-håndtering, tomme datasett, alle-`na` → `null`.
+- Hver validator: kjent input → forventede `ScannerFinding[]`.
+- Severity-sortering og disposition-filtrering.
+- `auditDeepLink` mapping.
+- RLS cross-company: SQL-testrunde via egen migration/test-script (leser med to selskaper) – dokumenteres i `docs/security/`.
 
 ## i18n
 
-Alle nye strenger via `t()` – nye nøkler i `src/i18n/locales/no.json` og `en.json` under `admin.audit.*`. Følger prosjektets i18n-obligatorisk regel.
+Alle nye nøkler i `src/i18n/locales/no.json` og `en.json`. Ingen norsk/engelsk hardkoding i komponenter, validatorer eller services.
 
-## Klargjort for utvidelse
+## Ikke i denne omgang
 
-- `complianceScore.ts` isolerer beregning bak ren funksjon.
-- Mock-data eksponeres via små hooks (`useAuditDocuments()`, `useAuditFleet()` osv.) slik at bytte til Supabase-queries senere er en ren erstatning inne i hooken.
-- `InternalAudit`/`AuditFinding`/`AuditAction`-typer speiler forventet fremtidig DB-skjema.
+- Ekte GPT (kun grensesnitt).
+- Versjonering av dokumenter (bruker eksisterende `documents.versjon`).
+- Automatisk konvertering scanner→formelt funn.
+- Samling av alle vedlegg i tilsynspakken.
 
-## Teknisk (bekreftelse)
+## Leveranse pr fase
 
-- Ingen migrations, edge functions, storage-buckets eller Supabase-kall.
-- Ingen endringer i eksisterende komponenter utover å legge til én tab-trigger + en tab-content i `Admin.tsx`.
+Etter hver delfase leveres kort oppsummering: undersøkt, gjenbrukt, justert, filer/migrations, RLS/sikkerhet, tester, kjente mangler, neste steg.
