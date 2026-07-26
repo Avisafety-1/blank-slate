@@ -81,7 +81,7 @@ export function useMarkMessage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "read" | "done" }) => {
-      const patch: Record<string, unknown> = { status };
+      const patch: { status: "read" | "done"; read_at?: string; done_at?: string } = { status };
       if (status === "read") patch.read_at = new Date().toISOString();
       if (status === "done") patch.done_at = new Date().toISOString();
       const { error } = await supabase.from("internal_messages").update(patch).eq("id", id);
