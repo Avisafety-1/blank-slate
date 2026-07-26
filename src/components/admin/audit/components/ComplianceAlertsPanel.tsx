@@ -47,8 +47,8 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
           ? t("audit.reminderStatus.sentOpen")
           : t("audit.reminderStatus.notSent");
     return (
-      <Badge variant="outline" className={cn("gap-1 text-[10px] whitespace-nowrap", cls)}>
-        <Icon className="w-3 h-3" />
+      <Badge variant="outline" className={cn("gap-1.5 text-xs sm:text-sm whitespace-nowrap px-2.5 py-1", cls)}>
+        <Icon className="w-3.5 h-3.5" />
         {label}
       </Badge>
     );
