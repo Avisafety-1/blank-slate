@@ -18,10 +18,10 @@ interface Props {
 
 const sevClass = (sev: ScannerFinding["severity"]) =>
   sev === "critical"
-    ? "text-status-red border-status-red/40 bg-status-red/10"
+    ? "text-black border-status-red/60 bg-status-red/70"
     : sev === "warning"
-      ? "text-status-yellow border-status-yellow/40 bg-status-yellow/10"
-      : "text-primary border-primary/40 bg-primary/10";
+      ? "text-black border-status-yellow/60 bg-status-yellow/70"
+      : "text-black border-primary/60 bg-primary/70";
 
 export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
   const { t } = useTranslation();
@@ -35,10 +35,10 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
     const state = status?.state ?? "not_sent";
     const cls =
       state === "sent_closed"
-        ? "text-status-green border-status-green/40 bg-status-green/10"
+        ? "text-black border-status-green/60 bg-status-green/70"
         : state === "sent_open"
-          ? "text-status-yellow border-status-yellow/40 bg-status-yellow/10"
-          : "text-status-red border-status-red/40 bg-status-red/10";
+          ? "text-black border-status-yellow/60 bg-status-yellow/70"
+          : "text-black border-status-red/60 bg-status-red/70";
     const Icon = state === "sent_closed" ? CheckCircle2 : state === "sent_open" ? Clock : MailX;
     const label =
       state === "sent_closed"
