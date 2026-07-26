@@ -7424,5 +7424,20 @@
       "generating": "Genererer …",
       "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil."
     }
+  },
+  "inbox": {
+    "title": "Innboks",
+    "empty": "Ingen meldinger",
+    "systemSender": "AviSafe",
+    "goToModule": "Gå til modul",
+    "markDone": "Marker som ferdig",
+    "filter": {
+      "all": "Alle",
+      "unread": "Uleste",
+      "done": "Ferdig"
+    },
+    "status": {
+      "done": "Ferdig"
+    }
   }
 }
