@@ -582,6 +582,349 @@ export type Database = {
           },
         ]
       }
+      audit_actions: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          comment: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string
+          finding_id: string
+          id: string
+          responsible_user_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          comment?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description: string
+          finding_id: string
+          id?: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          comment?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string
+          finding_id?: string
+          id?: string
+          responsible_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_actions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_actions_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "audit_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_attachments: {
+        Row: {
+          company_id: string
+          created_at: string
+          filename: string
+          id: string
+          mime_type: string | null
+          parent_id: string
+          parent_type: string
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          filename: string
+          id?: string
+          mime_type?: string | null
+          parent_id: string
+          parent_type: string
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          mime_type?: string | null
+          parent_id?: string
+          parent_type?: string
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_attachments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_checklist_items: {
+        Row: {
+          comment: string | null
+          company_id: string
+          created_at: string
+          evidence_path: string | null
+          id: string
+          label: string
+          order_index: number
+          result: string
+          section_id: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          company_id: string
+          created_at?: string
+          evidence_path?: string | null
+          id?: string
+          label: string
+          order_index?: number
+          result?: string
+          section_id: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          company_id?: string
+          created_at?: string
+          evidence_path?: string | null
+          id?: string
+          label?: string
+          order_index?: number
+          result?: string
+          section_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_checklist_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_checklist_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "audit_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_findings: {
+        Row: {
+          category: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string
+          id: string
+          reference: string | null
+          responsible_user_id: string | null
+          review_id: string | null
+          severity: string
+          source_scanner_code: string | null
+          status: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          category: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description: string
+          id?: string
+          reference?: string | null
+          responsible_user_id?: string | null
+          review_id?: string | null
+          severity?: string
+          source_scanner_code?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          category?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string
+          id?: string
+          reference?: string | null
+          responsible_user_id?: string | null
+          review_id?: string | null
+          severity?: string
+          source_scanner_code?: string | null
+          status?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_findings_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "audit_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_reviews: {
+        Row: {
+          closed_at: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          override_reason: string | null
+          responsible_user_id: string | null
+          review_date: string
+          review_type: string
+          scope: Json
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          override_reason?: string | null
+          responsible_user_id?: string | null
+          review_date?: string
+          review_type?: string
+          scope?: Json
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          override_reason?: string | null
+          responsible_user_id?: string | null
+          review_date?: string
+          review_type?: string
+          scope?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_reviews_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_sections: {
+        Row: {
+          comment: string | null
+          company_id: string
+          created_at: string
+          id: string
+          order_index: number
+          review_id: string
+          section_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          review_id: string
+          section_key: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          review_id?: string
+          section_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_sections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_sections_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "audit_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_email_campaigns: {
         Row: {
           company_id: string | null
@@ -1426,6 +1769,56 @@ export type Database = {
             foreignKeyName: "company_subscriptions_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_finding_dispositions: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          disposition: string
+          entity_id: string
+          entity_type: string
+          finding_code: string
+          id: string
+          reason: string | null
+          snooze_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          disposition: string
+          entity_id: string
+          entity_type: string
+          finding_code: string
+          id?: string
+          reason?: string | null
+          snooze_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          disposition?: string
+          entity_id?: string
+          entity_type?: string
+          finding_code?: string
+          id?: string
+          reason?: string | null
+          snooze_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_finding_dispositions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
