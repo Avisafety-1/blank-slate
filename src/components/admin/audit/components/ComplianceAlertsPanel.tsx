@@ -85,6 +85,7 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                     </div>
                   )}
                 </div>
+                {renderReminderBadge(reminderMap[findingKey(f.code, f.entityType, f.entityId)])}
                 <div className="flex items-center gap-1 shrink-0">
                   <Button
                     size="sm"
