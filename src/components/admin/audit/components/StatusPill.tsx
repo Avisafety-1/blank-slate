@@ -16,7 +16,7 @@ export const StatusPill = ({ status, labelOverride }: Props) => {
   };
   const { cls, label } = map[status];
   return (
-    <Badge variant="outline" className={cn("font-medium", cls)}>
+    <Badge variant="outline" className={cn("font-medium text-xs sm:text-sm px-2.5 py-1", cls)}>
       {labelOverride ?? label}
     </Badge>
   );
