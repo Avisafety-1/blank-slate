@@ -999,10 +999,12 @@ export const ProfileDialog = () => {
                   )}
                 </TabsTrigger>
                 )}
+                {!stripeExempt && (
                 <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <CreditCard className="h-3 w-3" />
                   <span>{t('profile.tabs.subscription')}</span>
                 </TabsTrigger>
+                )}
               </TabsList>
 
               {activeTab === "profile" && (
@@ -2454,6 +2456,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Subscription Tab */}
+              {!stripeExempt && (
               <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
                 <Card>
                   <CardHeader>
@@ -2704,6 +2707,7 @@ export const ProfileDialog = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+              )}
               <TabsContent value="inbox" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
                 <InboxTab />
               </TabsContent>
