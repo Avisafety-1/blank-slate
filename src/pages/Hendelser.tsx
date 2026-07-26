@@ -31,7 +31,7 @@ import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { exportIncidentPDF } from "@/lib/incidentPdfExport";
 import { getAttributeLabel } from "@/config/eccairsFields";
@@ -211,6 +211,20 @@ const Hendelser = () => {
   useEffect(() => {
     fetchIncidents();
   }, [companyId]);
+
+  // Deep-link handling: ?id=<incident-uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id || incidents.length === 0) return;
+    const inc = incidents.find((i) => i.id === id);
+    if (inc) {
+      setSelectedIncident(inc);
+      setDetailDialogOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, incidents, setSearchParams]);
+
 
   // Consolidated real-time channel for Hendelser page
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, ListChecks, FolderPlus } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
@@ -76,6 +76,9 @@ const Documents = () => {
     }
   }, [user, loading, navigate]);
 
+  // Deep-link handling: ?id=<document-uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const { departmentsEnabled } = useAuth();
 
   const { data: documents, isLoading, refetch } = useQuery({
@@ -98,6 +101,19 @@ const Documents = () => {
     }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [refetch]);
+
+  // Deep-link handling: ?id=<document-uuid>
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id || !documents) return;
+    const doc = documents.find((d) => d.id === id);
+    if (doc) {
+      setSelectedDocument(doc);
+      setIsCreating(false);
+      setIsModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, documents, setSearchParams]);
 
   const filteredDocuments = documents?.filter(doc => {
     const matchesSearch = searchQuery === "" ||

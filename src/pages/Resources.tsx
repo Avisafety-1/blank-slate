@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,43 @@ const Resources = () => {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Deep-link handling: ?tab=drones|equipment|personnel&id=<uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("id");
+    const tab = searchParams.get("tab");
+    if (!id || !tab) return;
+    if (tab === "drones") {
+      const d = drones.find((x) => x.id === id);
+      if (d) {
+        setSelectedDrone(d);
+        setDroneDetailOpen(true);
+        setSearchParams({}, { replace: true });
+      }
+    } else if (tab === "equipment") {
+      const e = equipment.find((x) => x.id === id);
+      if (e) {
+        setSelectedEquipment(e);
+        setEquipmentDetailOpen(true);
+        setSearchParams({}, { replace: true });
+      }
+    } else if (tab === "personnel") {
+      const p = personnel.find((x: any) => x.id === id);
+      if (p) {
+        setSelectedPerson(p);
+        setPersonCompetencyDialogOpen(true);
+        setSearchParams({}, { replace: true });
+      }
+    } else if (tab === "dronetags") {
+      const dt = dronetags.find((x) => x.id === id);
+      if (dt) {
+        setSelectedDronetag(dt);
+        setDronetagDetailOpen(true);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, drones, equipment, personnel, dronetags, setSearchParams]);
 
   useEffect(() => {
     if (user) {
