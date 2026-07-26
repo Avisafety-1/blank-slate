@@ -39,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { TrainingSection } from "@/components/admin/TrainingSection";
+import { AuditSection } from "@/components/admin/audit/AuditSection";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { TrainingModulePicker } from "@/components/training/TrainingModulePicker";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
@@ -853,6 +854,10 @@ const Admin = () => {
               <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.training')}</span>
             </TabsTrigger>
+            <TabsTrigger value="audit" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+              <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>Revisjon</span>
+            </TabsTrigger>
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
               <TabsTrigger value="calculator" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Calculator className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -1655,6 +1660,10 @@ const Admin = () => {
 
           <TabsContent value="training" data-tour="admin-content-training" className="mt-4 sm:mt-8">
             <TrainingSection />
+          </TabsContent>
+
+          <TabsContent value="audit" className="mt-4 sm:mt-8">
+            <AuditSection />
           </TabsContent>
         </Tabs>
       </main>
