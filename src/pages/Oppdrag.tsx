@@ -18,6 +18,7 @@ import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 type Mission = any;
@@ -127,6 +128,20 @@ const Oppdrag = () => {
   const [initialSelectedDocuments, setInitialSelectedDocuments] = useState<string[]>([]);
 
   const handledScrollRef = useRef<string | null>(null);
+
+  // Deep-link handling: ?id=<mission-uuid> → reuse existing scroll-to-mission infra
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id) return;
+    data.navigate("/oppdrag", {
+      replace: true,
+      state: { scrollToMission: true, missionId: id },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+
 
 
   // Handle navigation state from route planner
