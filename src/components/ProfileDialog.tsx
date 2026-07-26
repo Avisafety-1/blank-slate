@@ -944,7 +944,7 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-8' : 'lg:grid-cols-7'}`}>
+              <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? (stripeExempt ? 'lg:grid-cols-7' : 'lg:grid-cols-8') : (stripeExempt ? 'lg:grid-cols-6' : 'lg:grid-cols-7')}`}>
                 <TabsTrigger value="inbox" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <InboxIcon className="h-3 w-3" />
                   <span>{t('profile.tabs.inbox')}</span>
