@@ -1,38 +1,72 @@
-Jeg fant disse verifiserte strukturelle feilene:
+# Ny admin-fane: Revisjon / Audit
 
-- Polske CTR/MCTR/ATZ-soner er importert som `restriksjonsomrader` med `zone_type='R'`, derfor vises de bare når “Restricted areas” er aktivt og får feil “Activated by NOTAM”-tekst.
-- Det finnes ingen `flyplasser`-rader i `airspace_zones`; flyplassrelaterte polygoner ligger i feil lag. 203 PL-rader er flyplassrelaterte kandidater (`CTR`, `MCTR`, `ATZ` + 1km/2km/6km-ringer).
-- Ved lav zoom kan PL viewport-treff være svært høyt (hele Polen: ca. 6 607 rader), mens route-proximity-koden kutter til 800 rader. Det forklarer at lag ikke vises komplett når “for mye” treffer samtidig.
-- Visningslogikken har samme cache-nøkkel uavhengig av zoom. Når zoom/minZoom gjør at et lag tømmes, kan cache fortsatt tro at bbox er dekket og dermed ikke hente på nytt før man panorerer.
+Ren frontend-modul. Ingen DB, edge functions eller migrations. All data fra mock-filer, arkitektur klargjort for senere ekte data.
 
-Plan for retting:
+## Filstruktur
 
-1. Database-normalisering for Polen
-   - Migrere alle PANSA-rader med `pansa_type` i `CTR`, `CTR1KM`, `CTR6KM`, `MCTR`, `MCTR2KM`, `ATZ`, `ATZ1KM`, `ATZ6KM` fra `restriksjonsomrader` til et flyplass-/luftromslag.
-   - Sette `zone_type` til faktisk type (`CTR`, `MCTR`, `ATZ`), ikke `R`.
-   - Sette `restriction_type='APPROVAL_REQUIRED'` og rød/tydelig flyplass-stil for flyplasspolygoner.
-   - Beholde `properties.pansa_restriction='DRA-R'` som kildeinformasjon, men ikke bruke den til å kalle disse “Activated by NOTAM”.
+```
+src/components/admin/audit/
+  AuditSection.tsx              // Container med indre Tabs (8 stk)
+  tabs/
+    OverviewTab.tsx
+    DocumentationTab.tsx
+    CompetencyTab.tsx
+    FleetTab.tsx
+    OperationsTab.tsx
+    SafetyTab.tsx
+    InternalAuditsTab.tsx       // CRUD med lokal useState
+    InspectionPackageTab.tsx
+  components/
+    KpiCard.tsx                 // Gjenbrukbar KPI-kort (label, value, icon, trend)
+    ComplianceScoreRing.tsx     // Sirkulær progress (SVG)
+    AuditReadinessList.tsx      // Sjekkliste med ✅/⚠ badges
+    AuditFindingDialog.tsx      // Legg til/rediger funn (mock-state)
+    AuditDetailDialog.tsx       // Åpne revisjon → seksjoner + funn + tiltak
+    PlaceholderCard.tsx         // "Data mangler / kommer" fallback
+    AiAuditCard.tsx             // Placeholder-kort nederst på Oversikt
+  data/
+    mockAuditData.ts            // Alle mock-datasett i én fil, typet
+  types.ts                      // AuditFinding, AuditAction, InternalAudit, m.m.
+  lib/
+    complianceScore.ts          // Ren funksjon (input → score). Kalles i dag med mock, senere med ekte data.
+```
 
-2. Kartlagsstruktur
-   - Koble polske flyplasspolygoner til “Flyplasser”/airspace-visning slik at flyplasser alltid vises når flyplasslaget er på, uten å kreve “Restricted areas”.
-   - Sikre at røde flyplasspolygoner rendres over generelle fare-/restriksjonslag, men under rute/NOTAM/popup.
-   - La egentlige DRA-R/DRA-P/DRA-I forbli i restricted/rpas/danger-lagene.
+## Integrasjon i Admin
 
-3. Popup og tekstlogikk
-   - Endre PANSA-popupen slik at “Activated by NOTAM” kun vises for faktiske fleksible DRA-P/DRA-R soner, ikke CTR/MCTR/ATZ/flyplasspolygoner.
-   - Lage mer presise labels for PANSA: “Control zone”, “Aerodrome traffic zone”, “Military control zone”, “Drone restricted area”, osv.
-   - Beholde lenke til PANSA DroneMap som referanse.
+I `src/pages/Admin.tsx`:
+- Ny `<TabsTrigger value="audit">` med `ShieldCheck`-ikon og label `t('admin.tabs.audit')` (default "Revisjon"). Plasseres etter `training`.
+- Ny `<TabsContent value="audit">` som rendrer `<AuditSection />`.
+- Kun synlig for admin/superadmin (samme mønster som eksisterende faner via `useRoleCheck().isAdmin`).
 
-4. Stabil visning ved zoom/pan
-   - Gjøre unified-kartlagcache zoom-bevisst eller nullstille cache ved zoomend, slik at lag ikke forsvinner etter zoom inn/ut.
-   - Fjerne/øke den lave route-proximity-grensen på 800 rader på en kontrollert måte, eller gruppere/filtrere per relevant lag slik at Polen ikke kuttes tilfeldig når mange soner treffer.
+## Faner (indre Tabs i AuditSection)
 
-5. Verifisering
-   - Kontrollere med database-spørringer at CTR/MCTR/ATZ ligger i riktig lag etter migrering.
-   - Teste i kartet over Polen at:
-     - flyplasspolygoner vises uten “Restricted areas”,
-     - DRA-R fortsatt ligger under restricted,
-     - lagene ikke forsvinner ved zoom inn/ut,
-     - popupene ikke feilmerker flyplassområder som NOTAM-aktiverte.
+1. **Oversikt** – KPI-grid (Compliance score-ring + 6 KPI-kort) → Audit readiness progress bar + sjekkliste → `AiAuditCard` nederst.
+2. **Dokumentasjon** – Grid av dokumentkort (tittel, status-badge, neste revisjon, ansvarlig). Placeholder-hook `getDocuments()` returnerer mock.
+3. **Kompetanse** – Tabell (Pilot, Kompetanse, Gyldig til, Status). Status-badge grønn/gul/rød basert på dager til utløp.
+4. **Flåte** – Tabell (Drone, Firmware, Service, Remote ID, Batterihelse, Kalibrering) med OK/Forfaller/Mangler-badges.
+5. **Operasjoner** – 5 KPI-kort + liste "Mulige forbedringer".
+6. **Safety** – 6 KPI-kort + trendgraf 12 mnd (bruker `recharts` LineChart som allerede finnes i prosjektet).
+7. **Internrevisjoner** – Tabell + "Ny revisjon"-knapp. Klikk rad → `AuditDetailDialog` med 6 seksjoner (Organisasjon, Dokumentasjon, Kompetanse, Operasjoner, Teknisk, Safety), hver med sjekkliste + kommentar + vedlegg-placeholder + status. Funn og tiltak håndteres i samme dialog. **All state lokalt (useState/useReducer)** – ingen persistering.
+8. **Tilsynspakke** – Kort med "Generer tilsynspakke"-knapp som viser toast `"Tilsynspakke kommer i neste versjon."`. Under: liste over hvilke dokumenter som vil inngå.
 
-Jeg holder fortsatt Norge og eksisterende brukere upåvirket: endringene begrenses til `country_code='PL'`, PANSA-kilden og eksisterende unified allowlist-oppsett for Moderavdeling.
+## Design
+
+- Følger eksisterende AviSafe designsystem: `Card`, `Badge`, `Progress`, `Tabs`, `Button` fra `@/components/ui/*`.
+- Semantiske tokens (`bg-status-green/yellow/red`, `text-primary`, `text-muted-foreground`).
+- Grid: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4` for KPI-kort; stacker på mobil.
+- Compliance score-ring: enkel SVG med `stroke-primary`.
+
+## i18n
+
+Alle nye strenger via `t()` – nye nøkler i `src/i18n/locales/no.json` og `en.json` under `admin.audit.*`. Følger prosjektets i18n-obligatorisk regel.
+
+## Klargjort for utvidelse
+
+- `complianceScore.ts` isolerer beregning bak ren funksjon.
+- Mock-data eksponeres via små hooks (`useAuditDocuments()`, `useAuditFleet()` osv.) slik at bytte til Supabase-queries senere er en ren erstatning inne i hooken.
+- `InternalAudit`/`AuditFinding`/`AuditAction`-typer speiler forventet fremtidig DB-skjema.
+
+## Teknisk (bekreftelse)
+
+- Ingen migrations, edge functions, storage-buckets eller Supabase-kall.
+- Ingen endringer i eksisterende komponenter utover å legge til én tab-trigger + en tab-content i `Admin.tsx`.
