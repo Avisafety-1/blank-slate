@@ -323,24 +323,26 @@ export function createSafeSkyManager(params: {
     }, 2000);
   }
 
+  const onMapMove = () => debouncedFetchSafeSky();
+
   async function start() {
     if (destroyed) return;
     if (!safeskyChannel) {
       console.log('Lufttrafikk: Starting real-time subscription');
-      
+
       // Fire-and-forget warm-up (fills DB cache in background)
       warmUpCache();
-      
+
       // Immediate DB fetch (may be empty first time, retry burst handles it)
       await fetchSafeSkyBeacons();
-      
+
       // If still empty after first fetch, do short retry burst
       if (safeskyMarkersCache.size === 0 && !destroyed) {
         startupRetryBurst();
       }
-      
+
       if (destroyed) return;
-      
+
       safeskyChannel = createUniqueChannel('safesky-beacons-changes')
         .on(
           'postgres_changes',
@@ -348,6 +350,12 @@ export function createSafeSkyManager(params: {
           () => debouncedFetchSafeSky()
         )
         .subscribe();
+
+      // Refetch når kartutsnittet endres — kritisk for stor bbox (NO+SE+FI+DE+PL).
+      if (map) {
+        map.on('moveend', onMapMove);
+        map.on('zoomend', onMapMove);
+      }
     }
   }
 
@@ -358,6 +366,10 @@ export function createSafeSkyManager(params: {
       safeskyChannel = null;
       safeskyLayer.clearLayers();
       safeskyMarkersCache.clear();
+    }
+    if (map) {
+      try { map.off('moveend', onMapMove); } catch {}
+      try { map.off('zoomend', onMapMove); } catch {}
     }
     if (safeskyPollInterval) {
       clearInterval(safeskyPollInterval);
