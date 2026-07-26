@@ -36,15 +36,28 @@ export async function resolveRecipients(
         .eq("company_id", companyId)
         .eq("is_technical_responsible", true);
       (data ?? []).forEach((p) => suggestions.push({ ...p, reason: "technical" }));
-    } else if (finding.entityType === "mission" || finding.entityType === "active_flight") {
-      const table = finding.entityType === "active_flight" ? "active_flights" : "missions";
-      const col = finding.entityType === "active_flight" ? "profile_id" : "created_by";
+    } else if (finding.entityType === "active_flight") {
       const { data } = await supabase
-        .from(table as "missions")
-        .select(`id, ${col}`)
+        .from("active_flights")
+        .select("id, profile_id")
         .eq("id", finding.entityId)
         .maybeSingle();
-      const ownerId = (data as Record<string, unknown> | null)?.[col] as string | undefined;
+      const ownerId = data?.profile_id ?? undefined;
+      if (ownerId) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .eq("id", ownerId)
+          .maybeSingle();
+        if (prof) suggestions.push({ ...prof, reason: "owner" });
+      }
+    } else if (finding.entityType === "mission") {
+      const { data } = await supabase
+        .from("missions")
+        .select("id, created_by")
+        .eq("id", finding.entityId)
+        .maybeSingle();
+      const ownerId = (data as { created_by?: string } | null)?.created_by;
       if (ownerId) {
         const { data: prof } = await supabase
           .from("profiles")
