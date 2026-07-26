@@ -12,8 +12,30 @@ export interface SafeSkyControls {
 export function createSafeSkyManager(params: {
   safeskyLayer: L.LayerGroup;
   mode: string;
+  map?: L.Map;
 }) {
-  const { safeskyLayer, mode } = params;
+  const { safeskyLayer, mode, map } = params;
+
+  // Under denne zoomen er trafikkbildet for tett til å rendre — hopp over henting
+  // for å spare rader/CPU når kartet dekker hele Europa.
+  const MIN_ZOOM_FOR_TRAFFIC = 6;
+  // Padding rundt viewport slik at pan innenfor cachet område ikke trigger refetch.
+  const BBOX_PAD = 0.3;
+
+  function currentBBox(): { minLat: number; maxLat: number; minLng: number; maxLng: number } | null {
+    if (!map) return null;
+    try {
+      const b = map.getBounds().pad(BBOX_PAD);
+      return {
+        minLat: b.getSouth(),
+        maxLat: b.getNorth(),
+        minLng: b.getWest(),
+        maxLng: b.getEast(),
+      };
+    } catch {
+      return null;
+    }
+  }
   
   const safeskyMarkersCache = new Map<string, L.Marker>();
   const heliAnimIntervals = new Map<string, number>();
