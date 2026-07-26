@@ -146,6 +146,7 @@ export const ProfileDialog = () => {
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const unreadInbox = useUnreadMessagesCount();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");
