@@ -32,6 +32,8 @@ import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { MissionDetailDialog } from "./dashboard/MissionDetailDialog";
 import { SignaturePad } from "./SignaturePad";
 import { TakeCourseDialog } from "./training/TakeCourseDialog";
+import { InboxTab } from "./profile/InboxTab";
+import { useUnreadMessagesCount } from "./profile/hooks/useUnreadMessagesCount";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
