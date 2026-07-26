@@ -86,24 +86,26 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                   )}
                 </div>
                 {renderReminderBadge(reminderMap[findingKey(f.code, f.entityType, f.entityId)])}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
+                    className="text-xs sm:text-sm"
                     onClick={() => setReminderFinding(f)}
                     title={t("audit.alerts.sendReminder")}
                   >
-                    <Send className="w-3 h-3 mr-1" />
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
                     {t("audit.alerts.sendReminder")}
                   </Button>
                   {f.deepLink?.path && (
-                    <Button size="sm" variant="outline" onClick={() => navigate(f.deepLink!.path)}>
-                      {t("audit.alerts.open")} <ArrowRight className="w-3 h-3 ml-1" />
+                    <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={() => navigate(f.deepLink!.path)}>
+                      {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                     </Button>
                   )}
                   <Button
                     size="sm"
                     variant="ghost"
+                    className="text-xs sm:text-sm"
                     onClick={() =>
                       dispose.mutate({
                         finding_code: f.code,
@@ -114,7 +116,7 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                     }
                     title={t("audit.alerts.dismiss")}
                   >
-                    <XCircle className="w-3 h-3" />
+                    <XCircle className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </li>
