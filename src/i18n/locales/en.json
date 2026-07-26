@@ -7422,5 +7422,20 @@
       "generating": "Generating …",
       "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file."
     }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "empty": "No messages",
+    "systemSender": "AviSafe",
+    "goToModule": "Go to module",
+    "markDone": "Mark as done",
+    "filter": {
+      "all": "All",
+      "unread": "Unread",
+      "done": "Done"
+    },
+    "status": {
+      "done": "Done"
+    }
   }
 }
