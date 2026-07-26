@@ -183,15 +183,37 @@ export function createSafeSkyManager(params: {
     }
   }
 
+  function clearAllMarkers() {
+    for (const [, marker] of safeskyMarkersCache) {
+      try { safeskyLayer.removeLayer(marker); } catch {}
+    }
+    safeskyMarkersCache.clear();
+    clearAllHeliIntervals();
+  }
+
   async function fetchSafeSkyBeacons() {
     if (destroyed) return;
-    // Auth is ensured by the caller (OpenAIPMap single getUser check)
-    
+
+    // Zoom-terskel: for høyt zoomet ut betyr for mye trafikk å rendre. Rydd og hopp over.
+    if (map && map.getZoom() < MIN_ZOOM_FOR_TRAFFIC) {
+      if (safeskyMarkersCache.size > 0) clearAllMarkers();
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('safesky_beacons')
-        .select('*');
-      
+      // Bounds-filter: hent bare beacons innenfor synlig kartutsnitt (+ padding).
+      // Sparer rader over ledningen når vi dekker Norge–Finland–Polen–Tyskland.
+      let query = supabase.from('safesky_beacons').select('*').limit(2000);
+      const bbox = currentBBox();
+      if (bbox) {
+        query = query
+          .gte('latitude', bbox.minLat)
+          .lte('latitude', bbox.maxLat)
+          .gte('longitude', bbox.minLng)
+          .lte('longitude', bbox.maxLng);
+      }
+      const { data, error } = await query;
+
       if (error) {
         console.error('SafeSky database error:', error);
         consecutiveFailures++;
@@ -202,13 +224,12 @@ export function createSafeSkyManager(params: {
         }
         return;
       }
-      
+
       consecutiveFailures = 0;
       const beacons = data || [];
-      
+
       if (beacons.length === 0) {
         consecutiveEmptyResults++;
-        console.warn(`SafeSky: 0 beacons returned (${consecutiveEmptyResults} consecutive empty results)`);
         if (consecutiveEmptyResults >= MAX_EMPTY_BEFORE_REFRESH) {
           console.warn('SafeSky: too many empty results, refreshing auth token...');
           consecutiveEmptyResults = 0;
@@ -221,7 +242,7 @@ export function createSafeSkyManager(params: {
       } else {
         consecutiveEmptyResults = 0;
       }
-      
+
       renderSafeSkyBeacons(beacons);
     } catch (err) {
       console.error('Feil ved henting av SafeSky data:', err);
