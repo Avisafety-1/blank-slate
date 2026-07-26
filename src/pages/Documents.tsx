@@ -102,6 +102,19 @@ const Documents = () => {
     return () => { supabase.removeChannel(channel); };
   }, [refetch]);
 
+  // Deep-link handling: ?id=<document-uuid>
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id || !documents) return;
+    const doc = documents.find((d) => d.id === id);
+    if (doc) {
+      setSelectedDocument(doc);
+      setIsCreating(false);
+      setIsModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, documents, setSearchParams]);
+
   const filteredDocuments = documents?.filter(doc => {
     const matchesSearch = searchQuery === "" ||
       doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
