@@ -63,7 +63,8 @@
     "missionFallback": "Oppdrag",
     "unknown": "Ukjent",
     "unknownError": "Ukjent feil",
-    "eg": "F.eks."
+    "eg": "F.eks.",
+    "cancel": "Avbryt"
   },
   "auth": {
     "signIn": "Logg inn",
@@ -7423,7 +7424,8 @@
       "generate": "Generer pakke",
       "generating": "Genererer …",
       "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil."
-    }
+    },
+    "tabTitle": "Revisjon"
   },
   "inbox": {
     "title": "Innboks",

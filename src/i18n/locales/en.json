@@ -63,7 +63,8 @@
     "missionFallback": "Mission",
     "unknown": "Unknown",
     "unknownError": "Unknown error",
-    "eg": "e.g."
+    "eg": "e.g.",
+    "cancel": "Cancel"
   },
   "auth": {
     "signIn": "Sign in",
@@ -7421,7 +7422,8 @@
       "generate": "Generate package",
       "generating": "Generating …",
       "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file."
-    }
+    },
+    "tabTitle": "Audit"
   },
   "inbox": {
     "title": "Inbox",
