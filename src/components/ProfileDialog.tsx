@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users, Inbox as InboxIcon } from "lucide-react";
 import { statusColors, getApprovalStatusColor, getApprovalStatusLabel, getSoraBadgeColor, getAIRiskBadgeColor, getNotamBadgeColor, shouldShowSoraBadge } from "@/lib/oppdragHelpers";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
