@@ -15,6 +15,7 @@ export interface SendReminderPayload {
 
 export function useSendReminder() {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: SendReminderPayload) => {
       const { data, error } = await supabase.functions.invoke("send-reminder", { body: payload });
@@ -25,6 +26,8 @@ export function useSendReminder() {
       const results = data?.results ?? [];
       const ok = results.filter((r: any) => r.ok).length;
       toast.success(t("audit.reminder.sent", { count: ok }));
+      qc.invalidateQueries({ queryKey: ["inbox"] });
+      qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
     },
     onError: (e) => {
       toast.error(t("audit.reminder.failed"), { description: String((e as Error).message ?? e) });
