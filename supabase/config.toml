@@ -246,3 +246,6 @@ verify_jwt = false
 
 [functions.fetch-osm-power-lines]
 verify_jwt = false
+
+[functions.send-reminder]
+verify_jwt = true
