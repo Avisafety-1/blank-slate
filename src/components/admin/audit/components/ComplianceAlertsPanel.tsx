@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowRight, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, XCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScannerFinding } from "../types";
 import { useUpsertDisposition } from "../hooks/useAuditData";
+import { SendReminderDialog } from "../SendReminderDialog";
 
 interface Props {
   findings: ScannerFinding[];
@@ -24,6 +26,7 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispose = useUpsertDisposition();
+  const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);
   const shown = findings.slice(0, limit);
 
   return (
@@ -49,15 +52,24 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
                 </Badge>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">
-                    {t(f.titleKey, f.titleParams as any) as string}
+                    {String(t(f.titleKey, (f.titleParams ?? {}) as never))}
                   </div>
                   {f.bodyKey && (
                     <div className="text-xs text-muted-foreground truncate">
-                      {t(f.bodyKey, f.bodyParams as any) as string}
+                      {String(t(f.bodyKey, (f.bodyParams ?? {}) as never))}
                     </div>
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setReminderFinding(f)}
+                    title={t("audit.alerts.sendReminder")}
+                  >
+                    <Send className="w-3 h-3 mr-1" />
+                    {t("audit.alerts.sendReminder")}
+                  </Button>
                   {f.deepLink?.path && (
                     <Button size="sm" variant="outline" onClick={() => navigate(f.deepLink!.path)}>
                       {t("audit.alerts.open")} <ArrowRight className="w-3 h-3 ml-1" />
@@ -84,6 +96,12 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
           </ul>
         )}
       </CardContent>
+
+      <SendReminderDialog
+        finding={reminderFinding}
+        open={!!reminderFinding}
+        onOpenChange={(v) => !v && setReminderFinding(null)}
+      />
     </Card>
   );
 };

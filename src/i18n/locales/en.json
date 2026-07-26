@@ -1235,6 +1235,7 @@
       "emergency": "Emergency",
       "notifications": "Alerts",
       "incidents": "Follow-up",
+      "inbox": "Inbox",
       "subscription": "Plan"
     },
     "roleBadges": {
@@ -7253,7 +7254,30 @@
       "viewAll": "View all",
       "open": "Open",
       "dismiss": "Dismiss",
-      "createFinding": "Create finding"
+      "createFinding": "Create finding",
+      "sendReminder": "Send reminder"
+    },
+    "severity": {
+      "critical": "Critical",
+      "warning": "Warning",
+      "info": "Info"
+    },
+    "reminder": {
+      "title": "Send reminder",
+      "subject": "Subject",
+      "body": "Message",
+      "recipients": "Recipients",
+      "noRecipients": "No suggested recipients",
+      "channels": "Channels",
+      "channelEmail": "Email",
+      "channelSms": "SMS",
+      "channelInbox": "AviSafe inbox",
+      "send": "Send",
+      "sent": "Reminder sent to {{count}} recipient(s)",
+      "failed": "Could not send reminder",
+      "subjectPrefix": "Action required:",
+      "bodyTemplate": "Hi,\n\nThis is a reminder from the AviSafe compliance tool.\n\nFinding: {{title}}\nDetails: {{detail}}\n\nPlease follow up as soon as possible.",
+      "noDetail": "(no further details)"
     },
     "competency": {
       "header": "Pilot competency",
@@ -7397,6 +7421,21 @@
       "generate": "Generate package",
       "generating": "Generating …",
       "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file."
+    }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "empty": "No messages",
+    "systemSender": "AviSafe",
+    "goToModule": "Go to module",
+    "markDone": "Mark as done",
+    "filter": {
+      "all": "All",
+      "unread": "Unread",
+      "done": "Done"
+    },
+    "status": {
+      "done": "Done"
     }
   }
 }

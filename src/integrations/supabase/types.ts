@@ -4464,6 +4464,120 @@ export type Database = {
           },
         ]
       }
+      internal_message_receipts: {
+        Row: {
+          channel: string
+          error: string | null
+          id: string
+          message_id: string
+          provider_id: string | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          channel: string
+          error?: string | null
+          id?: string
+          message_id: string
+          provider_id?: string | null
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          channel?: string
+          error?: string | null
+          id?: string
+          message_id?: string
+          provider_id?: string | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_message_receipts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "internal_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internal_messages: {
+        Row: {
+          body: string
+          channels_sent: Json
+          company_id: string
+          created_at: string
+          deep_link: string | null
+          done_at: string | null
+          finding_key: string | null
+          id: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string | null
+          severity: string
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channels_sent?: Json
+          company_id: string
+          created_at?: string
+          deep_link?: string | null
+          done_at?: string | null
+          finding_key?: string | null
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id?: string | null
+          severity?: string
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channels_sent?: Json
+          company_id?: string
+          created_at?: string
+          deep_link?: string | null
+          done_at?: string | null
+          finding_key?: string | null
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string | null
+          severity?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_messages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       linkedin_tokens: {
         Row: {
           access_token_encrypted: string

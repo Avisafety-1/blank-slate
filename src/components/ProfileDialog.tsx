@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users } from "lucide-react";
+import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users, Inbox as InboxIcon } from "lucide-react";
 import { statusColors, getApprovalStatusColor, getApprovalStatusLabel, getSoraBadgeColor, getAIRiskBadgeColor, getNotamBadgeColor, shouldShowSoraBadge } from "@/lib/oppdragHelpers";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -32,6 +32,8 @@ import { FlightLogbookDialog } from "./FlightLogbookDialog";
 import { MissionDetailDialog } from "./dashboard/MissionDetailDialog";
 import { SignaturePad } from "./SignaturePad";
 import { TakeCourseDialog } from "./training/TakeCourseDialog";
+import { InboxTab } from "./profile/InboxTab";
+import { useUnreadMessagesCount } from "./profile/hooks/useUnreadMessagesCount";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -144,6 +146,7 @@ export const ProfileDialog = () => {
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const unreadInbox = useUnreadMessagesCount();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");
@@ -941,7 +944,19 @@ export const ProfileDialog = () => {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-7' : 'lg:grid-cols-6'}`}>
+              <TabsList className={`grid w-full grid-cols-3 md:grid-cols-4 gap-1.5 p-1.5 lg:p-1 bg-transparent lg:bg-muted relative z-10 ${canBeIncidentResponsible ? 'lg:grid-cols-8' : 'lg:grid-cols-7'}`}>
+                <TabsTrigger value="inbox" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
+                  <InboxIcon className="h-3 w-3" />
+                  <span>{t('profile.tabs.inbox')}</span>
+                  {unreadInbox > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-1 h-5 min-w-5 px-1 flex items-center justify-center text-xs leading-none rounded-full pointer-events-none shrink-0"
+                    >
+                      {unreadInbox}
+                    </Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="profile" className="flex items-center justify-center gap-1 text-xs sm:text-sm bg-muted lg:bg-transparent rounded-lg lg:rounded-sm border border-border lg:border-0">
                   <User className="h-3 w-3" />
                   <span>{t('profile.tabs.profile')}</span>
@@ -2688,6 +2703,9 @@ export const ProfileDialog = () => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+              <TabsContent value="inbox" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+                <InboxTab />
               </TabsContent>
             </Tabs>
           )}
