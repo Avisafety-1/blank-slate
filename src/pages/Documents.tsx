@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, ListChecks, FolderPlus } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
@@ -75,6 +75,9 @@ const Documents = () => {
       navigate("/auth", { replace: true });
     }
   }, [user, loading, navigate]);
+
+  // Deep-link handling: ?id=<document-uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { departmentsEnabled } = useAuth();
 
