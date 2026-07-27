@@ -12,6 +12,7 @@ export function auditDeepLink(entityType: string, entityId: string): DeepLink {
     case "equipment":
       return { path: `/ressurser?tab=equipment&id=${entityId}` };
     case "profile":
+    case "person":
     case "personnel":
     case "competency":
       return { path: `/ressurser?tab=personnel&id=${entityId}` };
