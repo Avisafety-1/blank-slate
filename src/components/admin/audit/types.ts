@@ -141,6 +141,15 @@ export interface AuditKpis {
   internalAuditsDone: number;
   riskAssessments12mo: number;
   completedChecklists12mo: number;
+  // Action-oriented (Fase 3)
+  documentsExpiring30d: number;
+  competenciesExpiring60d: number;
+  dronesOverdue: number;
+  openFindings: number;
+  criticalFindings: number;
+  plannedReviews: number;
+  pilotsWithExpiringSoon: number;
+  dronesRequiringMaintenance: number;
 }
 
 // ---------- Real domain rows (from Supabase) ----------
