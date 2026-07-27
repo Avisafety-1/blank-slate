@@ -1,109 +1,94 @@
-## Mål
 
-Gjøre Audit & Compliance til en fokusert, handlingsorientert modul der data faktisk speiler databasen, tabbene grupperer intelligent, alt er i18n-dekket, og "Internal audits" + "Inspection package" blir reelle arbeidsverktøy — ikke bare et speil av alt som finnes i systemet.
+# Inspection Package — plan
 
-## Problemer i dagens versjon (verifisert)
+Today "Inspection package" (Revisjon → Inspection package) only lists what *would* be included and shows a "coming soon" toast. This plan turns it into a real, downloadable inspection package a Luftfartstilsynet inspector can be handed directly.
 
-- **KPI-klikk scroller feil**: `scrollToAuditTab` i `OverviewTab.tsx` leter etter `[value="…"]` på Radix TabsTrigger — Radix legger ikke `value` som DOM-attribute, så treffen faller alltid tilbake til første fane og siden scroller bare oppover.
-- **Compliance alerts ikke scrollbar**: `ComplianceAlertsPanel` viser `limit=15` og resten forsvinner ("Showing X of Y") uten paginering.
-- **Documentation**: klassifiserer alle dokumenter (Compliance/Operational/Mission/Other) — men de fleste får `noExpiry`-status og blir støy. Skal reduseres til dokumenter *med* utløpsdato.
-- **Competency**: flat tabell over alle piloter × alle sertifiseringer, ingen filtrering, ingen gruppering per person.
-- **Fleet**: tracker `remoteId`, `firmware`, `calibration`, `batteryHealth` som "not_configured" — bråker uten verdi. Vi har `drone_inspections` og `drone_log_entries` som ikke brukes.
-- **Operations**: alle avvik listes flatt, mange kort på siden.
-- **Safety**: `nearMiss` er avledet av regex på `kategori` (`/neste/i`) — upålitelig. Trend-grafen er lite nyttig.
-- **Internal audits**: bruker fortsatt `mockInternalAudits` i state — `useCreateAuditReview` finnes men er ikke koblet til. Ingen avdelingsvelger. Sjekklistene er hardkodet norsk.
-- **Inspection package**: bare en "coming soon" toast + hardkodet liste.
-- **i18n-hull**: `audit.status.noExpiry`, `audit.status.valid`, `audit.status.expired` vises som råe nøkler i skjermbildene (mangler i `no.json`/`en.json`); `AuditDetailDialog` er 100 % norsk hardkodet.
+## Goal
 
-## Forslag til ny struktur
+One-click generation of a complete inspection binder for the current company (respecting hierarchy / allowlist), containing:
+- A cover PDF with company info, compliance score, and table of contents
+- Structured PDF sections per audit category
+- Attached source documents (certificates, manuals, insurance, etc.)
+- Delivered as a single ZIP the user can download and email to the inspector
 
-### 1. Overview
-- Fiks KPI-scrolling: bruk `Tabs` sin `onValueChange` via en delt state (løft `activeTab` fra `AuditSection` og pass ned setter) i stedet for `document.querySelector`-hack.
-- Handlings-KPI-kortene beholdes, men tallene skal matche det som faktisk vises i tabbene (samme spørring).
-- **ComplianceAlertsPanel**: bytt `limit=15`-hard-cut til en scrollbar liste (`max-h-[520px] overflow-y-auto`) + "Vis flere"-knapp per alvorlighetsgruppe. Fjern "Showing X of Y".
+## Scope
 
-### 2. Documentation — kun det som betyr noe
-- Fjern klassefanene (Compliance/Operational/Mission/Other). Erstatt med tre statustabs: **Utløpt** (rød), **Utløper snart** (gul, ≤ 60d), **Gyldig** (grønn). Skjul dokumenter helt uten `gyldig_til` bak en "Vis dokumenter uten utløp"-lenke — telles ikke som compliance-svikt.
-- Kortvisning erstattes med tett tabell: `Dokument | Kategori | Ansvarlig | Utløper | Status | [Åpne]`.
+### 1. UI (`InspectionPackageTab.tsx`)
+- Keep the existing sections overview and critical-findings warning.
+- Replace the "coming soon" button with a real **Generate package** action:
+  - Options (checkboxes): include attached source documents, include incident reports, include audit reviews, redact personal data (names → initials).
+  - Date range selector (default: last 12 months).
+  - Language selector (NO / EN) — reuses the current i18n language by default.
+- While generating: progress state (fetching data → building PDF → zipping → uploading → ready).
+- On completion: show a download button + a "Send to inspector" link that opens the existing `ComposeMessageDialog` prefilled with a signed URL.
+- History list at the bottom: previously generated packages (last 10) with re-download.
 
-### 3. Competency — person først
-- Grupper `personnel_competencies` per `profileId`. Én rad per pilot med worst-case badge (utløpt/utløper/gyldig) og antall avvik.
-- Klikk på pilot ekspanderer inline rad med hver sertifisering + `Valid until` + `[Åpne person]` (deep-link til `/resources?tab=personnel&id=…`).
-- Sortering: piloter med utløpte først, deretter utløper snart, deretter gyldig.
-- Filter-input: søk på navn.
+### 2. Data assembly
+New service `src/components/admin/audit/services/InspectionPackageBuilder.ts` that gathers everything needed from the existing audit queries (no new fetch logic where possible):
+- Company profile (`companies` row + parent chain)
+- Compliance score & category scores (from `ComplianceEngine`)
+- Personnel + competencies (from `useAuditCompetencies`)
+- Fleet: drones, equipment, service status, open log deviations (from `useAuditFleet`)
+- Documents index with expiry status (from `useAuditDocuments`)
+- Operations: missions summary, open issues (from `useAuditOperations`)
+- Safety: incidents summary + closure stats (from `useAuditSafety`)
+- Internal audits: reviews + findings + actions (from `useAuditReviews`)
 
-### 4. Fleet — compliance-kritisk kun
-- Behold kolonner: `Drone | Registrering | Neste inspeksjon | Status | Åpne loggavvik`.
-- Fjern `remoteId`, `firmware`, `calibration`, `batteryHealth` helt (også fra `FleetRow`-typen og fra `ComplianceEngine`).
-- Legg til `Åpne loggavvik`-tall: `drone_log_entries` hvor `entry_type in ('deviation','issue','fault')` og ikke lukket. Ekspander for detaljer med lenke til `/resources?tab=drones&id=…`.
-- Legg til `drone_inspections`-siste inspeksjonsdato + `passed`-flagg som informasjonskolonne.
+Everything is fetched once, in parallel, scoped by `get_user_visible_company_ids()` so hierarchy rules are preserved.
 
-### 5. Operations — ekspanderbar
-- Én `Accordion` med én seksjon per issue-type: `Flight not closed | Missing risk assessment | Missing checklist | Missing approval`. Kollapset som default, count-badge i header, seksjoner med 0 vises ikke.
+### 3. PDF generation
+Reuse the existing PDF stack (`jspdf` — already used in `oppdragPdfExport.ts` / `riskAssessmentPdfExport.ts`) to build one cover PDF + one PDF per section, ensuring consistent AviSafe branding (logo, colors from `index.css`).
+- Cover: logo, company name, org.nr, period, overall score ring rendered as SVG → PNG, generation timestamp, generated-by user.
+- TOC with page numbers.
+- One section per category (Documentation, Competency, Fleet, Operations, Safety, Internal audits).
+- Each finding/row uses the same status colors as the UI (`status-red/yellow/green`).
 
-### 6. Safety — nye KPI-er
-- Fjern `nearMiss` (upålitelig regex). Erstatt KPI-rad med: **Reported 12mo**, **Åpne hendelser**, **Kritiske hendelser**, **Gjennomsnitt lukketid**, **% lukket innen frist**.
-- Kompletter med to fordelinger:
-  - **Alvorlighetsgrad** (donut/stacked bar fra `incidents.alvorlighetsgrad`).
-  - **Kategori** (top 5 fra `incidents.kategori`).
-- Trend-graf: bytt "reported vs near-miss" til stacked bar per måned per alvorlighetsgrad.
+### 4. Attachments
+- Pull document files from the `documents` storage bucket using signed URLs (respecting existing storage RLS).
+- Skip attachments the current user cannot download (fail-soft with a note in the PDF).
+- Group under `attachments/<category>/<filename>`.
 
-### 7. Internal audits — reell CRUD
-- Rive ut `mockInternalAudits`. Bruk `useAuditReviews` + `useCreateAuditReview`/`useUpdateAuditReview`/`useCreateAuditFinding` (finnes allerede).
-- **+ New audit**-knapp åpner dialog med:
-  - Tittel, dato, ansvarlig (dropdown fra `profiles` i selskapet)
-  - **Avdeling** (dropdown fra `get_user_visible_company_ids` → `companies.navn`) → lagres på `audit_reviews.scope = { company_id: <valgt> }`.
-  - **Auto-populert sjekkliste**: hver seksjon (organization/documentation/competency/operations/technical/safety) forhåndsutfylles med systemdata:
-    - Documentation: pull utløpte dokumenter for valgt avdeling → forhåndslagd som ubekreftet linje "Dokument X utløper Y — bekreft?"
-    - Competency: piloter med utløpt kompetanse
-    - Operations: flights not closed, mangler risikovurdering
-    - Technical: droner med forfalt inspeksjon
-    - Safety: åpne hendelser med kritisk alvorlighet
-  - Bruker kan huke av (bekreft), legge kommentar eller konvertere til `audit_finding` med ett klikk.
-- Refaktorer `AuditDetailDialog` til å bruke `audit_reviews`/`audit_findings`/`audit_actions`-tabellene (skriving via mutations, ikke lokal state), og oversett all hardkodet norsk (`SECTION_LABELS`, `SECTION_ITEMS`, dialog-knapper).
+### 5. Packaging & delivery
+- Zip everything client-side with `jszip` (already common in the codebase; confirm during build).
+- Upload the ZIP to a new storage path `inspection-packages/<company_id>/<uuid>.zip` in the existing `documents` bucket (company-scoped, matching current storage policy).
+- Return a 7-day signed URL to the UI.
 
-### 8. Inspection package — konkret innhold
-Forslag til hva pakken faktisk skal bygge (PDF/ZIP eksport):
-- **Selskapsinfo**: firma, org.nr, adresse, kontaktperson (fra `companies`).
-- **Personellregister**: piloter + gyldige sertifiseringer per pilot (fra `profiles`+`personnel_competencies`).
-- **Droneregister**: aktive droner, registreringsnummer, siste inspeksjon, neste inspeksjon (fra `drones`+`drone_inspections`).
-- **Operasjonsmanual + policyer**: dokumenter der `complianceRelevance = required` (lenker til storage).
-- **Siste 12 mnd flygetimer og oppdrag** (fra `flight_logs`+`missions`).
-- **Åpne funn og pågående tiltak** (fra `audit_findings`+`audit_actions`).
-- **Hendelseslogg 12 mnd** (fra `incidents`).
-- **Siste 3 gjennomførte internrevisjoner** (fra `audit_reviews` closed).
-- **Compliance-score-snapshot** (fra engine).
+### 6. Persistence
+New table `inspection_packages` to keep history:
 
-MVP i denne runden: bygg opp *innholdsfortegnelsen* som en real preview som viser telleverdier per seksjon, og lås `Generate`-knappen bak `criticalFindings === 0`. Selve PDF-genereringen kan vente på en egen runde.
+```text
+inspection_packages
+├─ id (uuid, pk)
+├─ company_id (uuid, fk companies)
+├─ generated_by (uuid, fk profiles)
+├─ generated_at (timestamptz, default now())
+├─ period_from / period_to (date)
+├─ options (jsonb)          -- which sections/toggles were selected
+├─ overall_score (int)
+├─ storage_path (text)      -- path in documents bucket
+└─ file_size_bytes (bigint)
+```
 
-### 9. i18n
-- Legg til manglende nøkler i `no.json` + `en.json`: `audit.status.valid/expiring/expired/noExpiry/notReviewed/notRequired/notConfigured/pending`, alle strengene i `AuditDetailDialog`, nye tab-etiketter (Documentation status-tabs, Fleet-kolonne "Åpne loggavvik", Safety severity-KPI-er, Internal-audit dialog).
-- Legg til i18n-scan-hook i denne rundens PR-sjekk (kjør `bun run i18n-scan` etterpå).
+RLS: `SELECT/INSERT` only when `has_role(auth.uid(),'administrator'|'superadmin')` and the row's `company_id` is in `get_user_visible_company_ids(auth.uid())`. Standard GRANTs to `authenticated` and `service_role` per project convention.
 
-## Tekniske detaljer
+### 7. Access control
+- Feature stays inside the Audit tab, which is already limited to "Moderavdeling" + superadmins.
+- Generation button gated to admin/superadmin roles.
+- All queries continue to use the caller's session — no service_role in the browser.
 
-- **Fjern `remoteId/firmware/calibration/batteryHealth`** fra `FleetRow`, `fetchFleet`, `ComplianceEngine.fleet`-scoring og `FleetTab`.
-- **Nye queries**:
-  - `fetchDroneDeviations(userId, companyId)` — `drone_log_entries` filtrert på deviation-typer.
-  - `fetchDroneInspections(userId, companyId)` — siste inspeksjon per drone fra `drone_inspections`.
-  - `fetchSafetyBreakdown(userId, companyId)` — utvide `fetchSafety` med `bySeverity`/`byCategory`/`closedOnTime`.
-  - `fetchDepartmentSuggestions(reviewCompanyId)` — brukt av New Audit-dialog for å hente forhåndsutfylte punkter.
-- **Aktiv tab som state** i `AuditSection`: `const [tab, setTab] = useState('overview')`, gi `setTab` til `OverviewTab` og `CategoryScoreGrid` for direkte navigering (ingen DOM-hacks).
-- **ComplianceAlertsPanel**: `max-h-[560px] overflow-y-auto` på `<CardContent>`; behold severity-headere som sticky (`sticky top-0 bg-card`).
-- **`AuditDetailDialog`**: erstatte lokal `useState<InternalAudit>` med `useUpdateAuditReview` + `useCreateAuditFinding` mutations. Slette `mockInternalAudits`.
-- **Migrasjon nødvendig**: nei — bruker eksisterende tabeller (`audit_reviews.scope` jsonb finnes; `drone_log_entries`, `drone_inspections`, `incidents.alvorlighetsgrad` finnes).
+### 8. i18n
+- New keys under `audit.package.*` (options, statuses, PDF section titles, cover strings) in both `no.json` and `en.json`, per the mandatory i18n rule.
+- PDF text follows the selected language.
 
-## Rekkefølge på implementering
+## Out of scope (follow-up)
+- Emailing the ZIP directly from an edge function (we'll rely on the existing internal message flow for now).
+- Scheduled/automatic regeneration.
+- Digital signing of the package.
 
-1. Fiks KPI-scroll + scrollbar alerts (rask, høy verdi).
-2. Fjern fleet-støyfeltene + trekk inn `drone_log_entries`/`drone_inspections`.
-3. Refaktor Documentation til status-tabs.
-4. Refaktor Competency til person-gruppert liste.
-5. Konverter Operations til Accordion.
-6. Refaktor Safety-KPI-er + severity breakdown.
-7. Koble Internal audits til ekte tabeller + avdelingsvelger + forhåndsutfylte forslag + oversett dialog.
-8. Bygg Inspection package-preview med telleverdier.
-9. Legg til/rydd i18n-nøkler i `no.json` + `en.json`; kjør scan.
-10. Manuell verifisering på `/admin` (Moderavdeling).
-
-Ingen brytende DB-endringer, ingen påvirkning for selskaper utenfor allowlisten.
+## Deliverables checklist
+1. Migration creating `inspection_packages` (+ grants + RLS).
+2. `InspectionPackageBuilder.ts` service.
+3. PDF renderer helpers under `src/components/admin/audit/pdf/`.
+4. Updated `InspectionPackageTab.tsx` with real generation flow + history list.
+5. i18n keys in `no.json` / `en.json`.
+6. Verified typecheck + a manual smoke test on Moderavdeling.
