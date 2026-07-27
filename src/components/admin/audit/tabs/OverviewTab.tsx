@@ -112,7 +112,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   )}
                 </div>
               </div>
-              <Button size="lg" onClick={() => scrollToAuditTab("package")}>
+              <Button size="lg" onClick={() => onNavigate("package" as AuditTabValue)}>
                 {t("audit.overview.inspectionCta.button")}
               </Button>
             </CardContent>
@@ -130,7 +130,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   ? t("audit.actionKpi.documentsExpiringHint")
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("documentation")}
+              onClick={() => onNavigate("documentation" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.competencyExpiring")}
@@ -142,7 +142,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   ? t("audit.actionKpi.competencyExpiringHint", { pilots: k?.pilotsWithExpiringSoon ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("competency")}
+              onClick={() => onNavigate("competency" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.dronesOverdue")}
@@ -154,7 +154,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   ? t("audit.actionKpi.dronesRequiringHint", { count: k?.dronesRequiringMaintenance ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("fleet")}
+              onClick={() => onNavigate("fleet" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.openFindings")}
@@ -166,14 +166,14 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   ? t("audit.actionKpi.criticalOpen", { count: k?.criticalFindings ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.overdueActions")}
               value={k?.openActions ?? 0}
               icon={ListChecks}
               tone={(k?.openActions ?? 0) > 0 ? "warning" : "success"}
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.plannedReviews")}
@@ -185,7 +185,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
                   ? t("audit.actionKpi.plannedReviewsHint")
                   : t("audit.actionKpi.plannedReviewsNone")
               }
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
           </div>
         </div>
@@ -194,7 +194,7 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
       {/* --- Score per category --- */}
       <CategoryScoreGrid
         evaluation={o.evaluation}
-        onSelect={(key) => scrollToAuditTab(CATEGORY_TO_TAB[key])}
+        onSelect={(key) => onNavigate(CATEGORY_TO_TAB[key] as AuditTabValue)}
       />
 
       {/* --- Grouped alerts --- */}
