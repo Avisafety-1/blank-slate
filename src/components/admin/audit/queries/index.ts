@@ -1,9 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { expiryStatus, daysUntil, monthsAgo } from "../utils/dates";
+import { resolveCheckBucket } from "../utils/statusMapping";
 import type {
   AuditKpis,
   CompetencyRow,
   DocumentRow,
+  DocumentComplianceClass,
+  DocumentComplianceRelevance,
   FleetRow,
   OperationsIssue,
   SafetyAggregate,
@@ -19,11 +22,47 @@ async function visibleCompanyIds(userId: string, fallback: string): Promise<stri
 }
 
 // ============================================================
+// Document classification helpers (frontend-derived)
+// ============================================================
+const COMPLIANCE_PATTERNS = /(operasjon|manual|ops\s*manual|beredskap|emergency|sop|policy|prosedyre|prosedure|risik|risk|forsikring|insurance|sertifik|certificate|authoris|godkjenn|approval|complian|regel|regulation|luftfartstilsyn|caa|easa)/i;
+const OPERATIONAL_PATTERNS = /(vedlikehold|maintenance|logg|log|training|opplæring|opplaering|kontrakt|contract|kunde|customer|internal|intern|kvalitet|quality)/i;
+const MISSION_PATTERNS = /(mission|oppdrag|flightplan|flyplan|briefing)/i;
+
+const REQUIRED_PATTERNS = /(operasjon|manual|ops\s*manual|beredskap|emergency|sop|risik|risk|forsikring|insurance|sertifik|certificate|luftfartstilsyn|caa|easa|godkjenn|approval)/i;
+const RECOMMENDED_PATTERNS = /(policy|prosedyre|prosedure|complian|regel|regulation|kvalitet|quality)/i;
+
+function classifyDocument(title: string, category: string): {
+  complianceClass: DocumentComplianceClass;
+  complianceRelevance: DocumentComplianceRelevance;
+} {
+  const haystack = `${title} ${category}`;
+  let complianceClass: DocumentComplianceClass = "other";
+  if (COMPLIANCE_PATTERNS.test(haystack)) complianceClass = "compliance";
+  else if (OPERATIONAL_PATTERNS.test(haystack)) complianceClass = "operational";
+  else if (MISSION_PATTERNS.test(haystack)) complianceClass = "mission";
+
+  let complianceRelevance: DocumentComplianceRelevance = "optional";
+  if (complianceClass === "compliance") {
+    complianceRelevance = REQUIRED_PATTERNS.test(haystack)
+      ? "required"
+      : RECOMMENDED_PATTERNS.test(haystack)
+        ? "recommended"
+        : "recommended";
+  } else if (complianceClass === "operational") {
+    complianceRelevance = "recommended";
+  }
+  return { complianceClass, complianceRelevance };
+}
+
+// ============================================================
 // KPIs
 // ============================================================
 export async function fetchAuditKpis(userId: string, companyId: string): Promise<AuditKpis> {
   const ids = await visibleCompanyIds(userId, companyId);
   const since = iso12moAgo();
+  const today = new Date().toISOString().slice(0, 10);
+  const in30 = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10);
+  const in60 = new Date(Date.now() + 60 * 86400_000).toISOString().slice(0, 10);
 
   const [
     pilotsRes,
@@ -34,6 +73,13 @@ export async function fetchAuditKpis(userId: string, companyId: string): Promise
     reviewsRes,
     raRes,
     missionsChkRes,
+    docsExpRes,
+    compExpRes,
+    dronesOverdueRes,
+    dronesUpcomingRes,
+    openFindingsRes,
+    criticalFindingsRes,
+    plannedReviewsRes,
   ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }).in("company_id", ids).eq("approved", true),
     supabase.from("drones").select("id", { count: "exact", head: true }).in("company_id", ids).eq("aktiv", true),
@@ -43,12 +89,40 @@ export async function fetchAuditKpis(userId: string, companyId: string): Promise
     supabase.from("audit_reviews").select("id", { count: "exact", head: true }).in("company_id", ids).eq("status", "closed"),
     supabase.from("mission_risk_assessments").select("id", { count: "exact", head: true }).in("company_id", ids).gte("created_at", since),
     supabase.from("missions").select("checklist_completed_ids").in("company_id", ids).gte("tidspunkt", since),
+    supabase.from("documents").select("id", { count: "exact", head: true }).in("company_id", ids).lte("gyldig_til", in30),
+    supabase.from("personnel_competencies").select("id, profile_id").in("profile_id", []).lte("utloper_dato", in60), // replaced below via count
+    supabase.from("drones").select("id", { count: "exact", head: true }).in("company_id", ids).eq("aktiv", true).lt("neste_inspeksjon", today),
+    supabase.from("drones").select("id", { count: "exact", head: true }).in("company_id", ids).eq("aktiv", true).lte("neste_inspeksjon", in30),
+    supabase.from("audit_findings").select("id", { count: "exact", head: true }).in("company_id", ids).neq("status", "closed"),
+    supabase.from("audit_findings").select("id", { count: "exact", head: true }).in("company_id", ids).neq("status", "closed").eq("severity", "critical"),
+    supabase.from("audit_reviews").select("id", { count: "exact", head: true }).in("company_id", ids).eq("status", "planned"),
   ]);
 
   const completedChecklists12mo = (missionsChkRes.data ?? []).reduce(
     (sum: number, row: any) => sum + (Array.isArray(row.checklist_completed_ids) ? row.checklist_completed_ids.length : 0),
     0,
   );
+
+  // Competencies expiring within 60d — need to scope by company_id via profiles join.
+  const { data: compExpiring } = await supabase
+    .from("personnel_competencies")
+    .select("id, profiles!inner(company_id)")
+    .in("profiles.company_id", ids)
+    .lte("utloper_dato", in60)
+    .gte("utloper_dato", today);
+  const competenciesExpiring60d = (compExpiring ?? []).length;
+
+  // Distinct pilots with at least one expiring competency
+  const pilotsWithExpiringSoonSet = new Set<string>();
+  const { data: pilotExpiring } = await supabase
+    .from("personnel_competencies")
+    .select("profile_id, profiles!inner(company_id)")
+    .in("profiles.company_id", ids)
+    .lte("utloper_dato", in60)
+    .gte("utloper_dato", today);
+  for (const r of (pilotExpiring ?? []) as any[]) {
+    if (r.profile_id) pilotsWithExpiringSoonSet.add(r.profile_id);
+  }
 
   return {
     activePilots: pilotsRes.count ?? 0,
@@ -59,6 +133,14 @@ export async function fetchAuditKpis(userId: string, companyId: string): Promise
     internalAuditsDone: reviewsRes.count ?? 0,
     riskAssessments12mo: raRes.count ?? 0,
     completedChecklists12mo,
+    documentsExpiring30d: docsExpRes.count ?? 0,
+    competenciesExpiring60d,
+    dronesOverdue: dronesOverdueRes.count ?? 0,
+    dronesRequiringMaintenance: dronesUpcomingRes.count ?? 0,
+    openFindings: openFindingsRes.count ?? 0,
+    criticalFindings: criticalFindingsRes.count ?? 0,
+    plannedReviews: plannedReviewsRes.count ?? 0,
+    pilotsWithExpiringSoon: pilotsWithExpiringSoonSet.size,
   };
 }
 
@@ -108,10 +190,12 @@ export async function fetchFleet(userId: string, companyId: string): Promise<Fle
     registration: d.registration_number ?? null,
     service: expiryStatus(d.neste_inspeksjon, d.varsel_dager ?? 30),
     nextInspection: d.neste_inspeksjon ?? null,
-    remoteId: "unknown", // schema has no field yet
-    firmware: "unknown",
-    calibration: "unknown",
-    batteryHealth: "unknown",
+    // These fields have no schema backing yet — surface as "not_configured"
+    // so the UI reads as "not tracked" rather than a scary "unknown".
+    remoteId: "not_configured",
+    firmware: "not_configured",
+    calibration: "not_configured",
+    batteryHealth: "not_configured",
   }));
 }
 
@@ -233,6 +317,7 @@ export async function fetchAuditDocuments(userId: string, companyId: string): Pr
   if (error) throw error;
   return (data ?? []).map((d: any) => {
     const status = expiryStatus(d.gyldig_til, d.varsel_dager_for_utløp ?? 30);
+    const { complianceClass, complianceRelevance } = classifyDocument(d.tittel ?? "", d.kategori ?? "");
     return {
       id: d.id,
       title: d.tittel ?? "—",
@@ -241,6 +326,8 @@ export async function fetchAuditDocuments(userId: string, companyId: string): Pr
       responsible: d.opprettet_av ?? null,
       daysUntilExpiry: daysUntil(d.gyldig_til),
       status,
+      complianceClass,
+      complianceRelevance,
     } satisfies DocumentRow;
   });
 }
