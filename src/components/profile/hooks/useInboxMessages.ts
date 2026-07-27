@@ -22,7 +22,7 @@ export interface InboxMessage {
   sender_name?: string | null;
 }
 
-export function useInboxMessages(filter: "all" | "unread" | "done" = "all") {
+export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "all") {
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -35,11 +35,15 @@ export function useInboxMessages(filter: "all" | "unread" | "done" = "all") {
       let q = supabase
         .from("internal_messages")
         .select("*")
-        .eq("recipient_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(200);
-      if (filter === "unread") q = q.eq("status", "unread");
-      if (filter === "done") q = q.eq("status", "done");
+      if (filter === "sent") {
+        q = q.eq("sender_id", user!.id);
+      } else {
+        q = q.eq("recipient_id", user!.id);
+        if (filter === "unread") q = q.eq("status", "unread");
+        if (filter === "done") q = q.eq("status", "done");
+      }
       const { data, error } = await q;
       if (error) throw error;
 
