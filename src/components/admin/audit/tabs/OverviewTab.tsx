@@ -28,10 +28,11 @@ import { ComplianceAlertsPanel } from "../components/ComplianceAlertsPanel";
 import { CategoryScoreGrid } from "../components/CategoryScoreGrid";
 import { useAuditOverview } from "../hooks/useAuditData";
 import type { ComplianceCategoryKey } from "../types";
-import { toast } from "sonner";
+import type { AuditTabValue } from "../AuditSection";
+
 
 // Which top-level Audit tab each score-ring category maps to.
-const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, string> = {
+const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, AuditTabValue> = {
   competence: "competency",
   documentation: "documentation",
   fleet: "fleet",
@@ -39,23 +40,11 @@ const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, string> = {
   safety: "safety",
 };
 
-function scrollToAuditTab(tabValue: string) {
-  const trigger = document.querySelector(
-    `[data-radix-collection-item][role="tab"][value="${tabValue}"]`,
-  ) as HTMLElement | null;
-  const anyTrigger = trigger ?? (document.querySelector(`[role="tab"][data-state]`) as HTMLElement | null);
-  // radix TabsTrigger uses id/aria-controls; try clicking a matching value attr fallback
-  const byText = Array.from(document.querySelectorAll<HTMLElement>('[role="tab"]')).find((el) =>
-    el.getAttribute("data-value") === tabValue || el.getAttribute("value") === tabValue,
-  );
-  const target = trigger ?? byText ?? anyTrigger;
-  if (target) {
-    target.click();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+interface OverviewTabProps {
+  onNavigate: (tab: AuditTabValue) => void;
 }
 
-export const OverviewTab = () => {
+export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
   const { t } = useTranslation();
   const o = useAuditOverview();
   const [showActivity, setShowActivity] = useState(false);
@@ -70,6 +59,7 @@ export const OverviewTab = () => {
   if (o.isError) {
     return <p className="text-sm text-status-red">{t("audit.states.error")}: {o.error?.message}</p>;
   }
+
 
   const score = o.evaluation?.overall ?? 0;
   const dq = o.evaluation?.dataQuality;
@@ -122,7 +112,7 @@ export const OverviewTab = () => {
                   )}
                 </div>
               </div>
-              <Button size="lg" onClick={() => scrollToAuditTab("package")}>
+              <Button size="lg" onClick={() => onNavigate("package" as AuditTabValue)}>
                 {t("audit.overview.inspectionCta.button")}
               </Button>
             </CardContent>
@@ -140,7 +130,7 @@ export const OverviewTab = () => {
                   ? t("audit.actionKpi.documentsExpiringHint")
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("documentation")}
+              onClick={() => onNavigate("documentation" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.competencyExpiring")}
@@ -152,7 +142,7 @@ export const OverviewTab = () => {
                   ? t("audit.actionKpi.competencyExpiringHint", { pilots: k?.pilotsWithExpiringSoon ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("competency")}
+              onClick={() => onNavigate("competency" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.dronesOverdue")}
@@ -164,7 +154,7 @@ export const OverviewTab = () => {
                   ? t("audit.actionKpi.dronesRequiringHint", { count: k?.dronesRequiringMaintenance ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("fleet")}
+              onClick={() => onNavigate("fleet" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.openFindings")}
@@ -176,14 +166,14 @@ export const OverviewTab = () => {
                   ? t("audit.actionKpi.criticalOpen", { count: k?.criticalFindings ?? 0 })
                   : t("audit.actionKpi.noActionNeeded")
               }
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.overdueActions")}
               value={k?.openActions ?? 0}
               icon={ListChecks}
               tone={(k?.openActions ?? 0) > 0 ? "warning" : "success"}
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
             <KpiCard
               label={t("audit.actionKpi.plannedReviews")}
@@ -195,7 +185,7 @@ export const OverviewTab = () => {
                   ? t("audit.actionKpi.plannedReviewsHint")
                   : t("audit.actionKpi.plannedReviewsNone")
               }
-              onClick={() => scrollToAuditTab("internal")}
+              onClick={() => onNavigate("internal" as AuditTabValue)}
             />
           </div>
         </div>
@@ -204,7 +194,7 @@ export const OverviewTab = () => {
       {/* --- Score per category --- */}
       <CategoryScoreGrid
         evaluation={o.evaluation}
-        onSelect={(key) => scrollToAuditTab(CATEGORY_TO_TAB[key])}
+        onSelect={(key) => onNavigate(CATEGORY_TO_TAB[key] as AuditTabValue)}
       />
 
       {/* --- Grouped alerts --- */}

@@ -7268,7 +7268,9 @@
       "groupCritical": "Requires action now",
       "groupWarning": "Should be followed up",
       "groupInfo": "For information",
-      "showingOf": "Showing {{shown}} of {{total}}"
+      "showingOf": "Showing {{shown}} of {{total}}",
+      "loadMore": "Show more",
+      "scrollHint": "Scroll to see all"
     },
     "severity": {
       "critical": "Critical",
@@ -7306,7 +7308,13 @@
       "statusPass": "Valid",
       "statusWarn": "Expiring",
       "statusFail": "Expired",
-      "statusUnknown": "Unknown"
+      "statusUnknown": "Unknown",
+      "search": "Search pilot …",
+      "issueCount": "{{count}} issues",
+      "allValid": "All valid",
+      "expand": "Show details",
+      "openPerson": "Open person",
+      "worstStatus": "Worst status"
     },
     "fleet": {
       "header": "Fleet status",
@@ -7319,7 +7327,12 @@
       "calibration": "Calibration",
       "battery": "Battery health",
       "additionalDetails": "Additional details",
-      "informationalNote": "Informational only — does not affect compliance score."
+      "informationalNote": "Informational only — does not affect compliance score.",
+      "openDeviations": "Open log issues",
+      "lastInspection": "Last inspection",
+      "openDrone": "Open drone",
+      "noDeviations": "No log issues",
+      "deviationsList": "Log issues"
     },
     "operations": {
       "header": "Operations",
@@ -7334,7 +7347,9 @@
         "flightNotClosed": "Flight not closed"
       },
       "noIssues": "No operational issues in the last 12 months",
-      "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions"
+      "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions",
+      "expandGroup": "Show {{count}}",
+      "collapseGroup": "Hide"
     },
     "safety": {
       "reported": "Reported",
@@ -7344,7 +7359,20 @@
       "avgCloseDays": "Avg. close time (days)",
       "trend": "Trend past 12 mo",
       "topFindings": "Most common findings",
-      "topFindingsEmpty": "No findings to show"
+      "topFindingsEmpty": "No findings to show",
+      "openIncidents": "Open incidents",
+      "criticalIncidents": "Critical incidents",
+      "closedOnTime": "% closed on time",
+      "bySeverity": "By severity",
+      "byCategory": "Top categories",
+      "noBreakdown": "No incidents to show",
+      "severity": {
+        "lav": "Low",
+        "moderat": "Moderate",
+        "hoy": "High",
+        "kritisk": "Critical",
+        "ukjent": "Unknown"
+      }
     },
     "documents": {
       "header": "Documentation",
@@ -7364,7 +7392,18 @@
         "recommended": "Recommended",
         "optional": "Optional"
       },
-      "emptyClass": "No documents in this category"
+      "emptyClass": "No documents in this category",
+      "statusTabs": {
+        "expired": "Expired",
+        "expiring": "Expiring soon",
+        "valid": "Valid",
+        "noExpiry": "No expiry"
+      },
+      "emptyStatus": "No documents in this status",
+      "noExpiryHint": "Documents without an expiry date are not counted as compliance gaps.",
+      "showNoExpiry": "Show documents without expiry ({{count}})",
+      "hideNoExpiry": "Hide documents without expiry",
+      "open": "Open"
     },
     "scanner": {
       "expiredCompetence": {
@@ -7451,7 +7490,43 @@
       "statusClosed": "Closed",
       "closeBlocked": "Cannot close: open critical findings.",
       "overrideReason": "Override reason",
-      "newTitle": "Annual internal audit {{year}}"
+      "newTitle": "Annual internal audit {{year}}",
+      "department": "Department",
+      "selectDepartment": "Select department",
+      "suggestions": "Suggested items from the system",
+      "suggestionsHint": "Confirm or convert to a finding.",
+      "confirm": "Confirm",
+      "confirmed": "Confirmed",
+      "convertToFinding": "Create finding",
+      "noSuggestions": "No suggestions — everything looks fine.",
+      "sectionOrganization": "Organization",
+      "sectionDocumentation": "Documentation",
+      "sectionCompetency": "Competency",
+      "sectionOperations": "Operations",
+      "sectionTechnical": "Technical",
+      "sectionSafety": "Safety",
+      "findingsHeader": "Findings",
+      "addFinding": "Add finding",
+      "noFindings": "No findings recorded.",
+      "category": "Category",
+      "categoryPlaceholder": "Category",
+      "responsiblePlaceholder": "Responsible",
+      "descriptionPlaceholder": "Description",
+      "actions": "Actions",
+      "addAction": "Add action",
+      "noActions": "No actions.",
+      "actionDescription": "Description",
+      "actionResponsible": "Responsible",
+      "actionDeadline": "Deadline",
+      "actionStatus": "Status",
+      "statusOpen": "Open",
+      "statusInProgressShort": "In progress",
+      "statusClosedShort": "Closed",
+      "attachmentsSoon": "Attachments (coming)",
+      "cancel": "Cancel",
+      "save": "Save",
+      "openFindings": "Open findings",
+      "nextReview": "Date"
     },
     "package": {
       "header": "Inspection package",
@@ -7459,7 +7534,21 @@
       "generating": "Generating …",
       "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file.",
       "criticalOpenTitle": "{{count}} critical finding(s) still open",
-      "criticalOpenBody": "Close the critical findings before generating the inspection package."
+      "criticalOpenBody": "Close the critical findings before generating the inspection package.",
+      "contentsHeader": "Inspection package contents",
+      "comingSoon": "PDF export coming soon.",
+      "section": {
+        "company": "Company information",
+        "personnel": "Personnel register",
+        "fleet": "Drone register",
+        "documents": "Manuals and policies",
+        "activity": "Last 12 months activity",
+        "findings": "Open findings and actions",
+        "incidents": "Incident log",
+        "reviews": "Completed internal audits",
+        "score": "Compliance score"
+      },
+      "sectionCount": "{{count}} items"
     },
     "tabTitle": "Audit",
     "actionKpi": {
@@ -7480,6 +7569,16 @@
     "categoryScore": {
       "openIssues": "{{count}} open issue(s)",
       "noIssues": "No open issues"
+    },
+    "status": {
+      "valid": "Valid",
+      "expiring": "Expiring soon",
+      "expired": "Expired",
+      "noExpiry": "No expiry",
+      "notRequired": "Not required",
+      "notConfigured": "Not configured",
+      "notReviewed": "Not reviewed",
+      "pending": "Pending"
     }
   },
   "inbox": {

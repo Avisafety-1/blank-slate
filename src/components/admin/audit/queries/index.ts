@@ -184,20 +184,61 @@ export async function fetchFleet(userId: string, companyId: string): Promise<Fle
     .in("company_id", ids)
     .eq("aktiv", true);
   if (error) throw error;
-  return (data ?? []).map((d: any) => ({
-    id: d.id,
-    droneName: d.modell ?? "—",
-    registration: d.registration_number ?? null,
-    service: expiryStatus(d.neste_inspeksjon, d.varsel_dager ?? 30),
-    nextInspection: d.neste_inspeksjon ?? null,
-    // These fields have no schema backing yet — surface as "not_configured"
-    // so the UI reads as "not tracked" rather than a scary "unknown".
-    remoteId: "not_configured",
-    firmware: "not_configured",
-    calibration: "not_configured",
-    batteryHealth: "not_configured",
-  }));
+  const drones = (data ?? []) as any[];
+
+  // Fetch open log deviations (merknad/hendelse/reparasjon) per drone in one round-trip.
+  const droneIds = drones.map((d) => d.id);
+  const twelveMoAgo = iso12moAgo();
+  let deviationsByDrone = new Map<string, any[]>();
+  let lastInspByDrone = new Map<string, string>();
+  if (droneIds.length) {
+    const [logsRes, inspRes] = await Promise.all([
+      supabase
+        .from("drone_log_entries")
+        .select("id, drone_id, entry_type, title, description, entry_date")
+        .in("drone_id", droneIds)
+        .in("entry_type", ["merknad", "hendelse", "reparasjon", "Merknad", "Hendelse", "Reparasjon"])
+        .gte("entry_date", twelveMoAgo)
+        .order("entry_date", { ascending: false })
+        .limit(500),
+      supabase
+        .from("drone_inspections")
+        .select("drone_id, inspection_date")
+        .in("drone_id", droneIds)
+        .order("inspection_date", { ascending: false })
+        .limit(500),
+    ]);
+    for (const r of (logsRes.data ?? []) as any[]) {
+      const arr = deviationsByDrone.get(r.drone_id) ?? [];
+      arr.push(r);
+      deviationsByDrone.set(r.drone_id, arr);
+    }
+    for (const r of (inspRes.data ?? []) as any[]) {
+      if (!lastInspByDrone.has(r.drone_id)) lastInspByDrone.set(r.drone_id, r.inspection_date);
+    }
+  }
+
+  return drones.map((d: any) => {
+    const devs = deviationsByDrone.get(d.id) ?? [];
+    return {
+      id: d.id,
+      droneName: d.modell ?? "—",
+      registration: d.registration_number ?? null,
+      service: expiryStatus(d.neste_inspeksjon, d.varsel_dager ?? 30),
+      nextInspection: d.neste_inspeksjon ?? null,
+      openDeviations: devs.length,
+      deviations: devs.slice(0, 10).map((r) => ({
+        id: r.id,
+        entryType: r.entry_type ?? null,
+        title: r.title ?? null,
+        description: r.description ?? null,
+        entryDate: r.entry_date ?? null,
+      })),
+      lastInspectionAt: lastInspByDrone.get(d.id) ?? null,
+    } satisfies FleetRow;
+  });
 }
+
 
 // ============================================================
 // Operations
@@ -258,35 +299,68 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
   const since = iso12moAgo();
   const { data, error } = await supabase
     .from("incidents")
-    .select("id, kategori, hendelsestidspunkt, status, opprettet_dato, oppdatert_dato")
+    .select("id, kategori, alvorlighetsgrad, hendelsestidspunkt, status, opprettet_dato, oppdatert_dato")
     .in("company_id", ids)
     .gte("hendelsestidspunkt", since);
   if (error) throw error;
   const rows = (data ?? []) as any[];
   const reported = rows.length;
-  const nearMiss = rows.filter((r) => /neste/i.test(r.kategori ?? "")).length;
   const closedRows = rows.filter((r) => /lukket|closed/i.test(r.status ?? ""));
-  const openActions = rows.length - closedRows.length;
-  const closedActions = closedRows.length;
+  const openIncidents = reported - closedRows.length;
+  const closedIncidents = closedRows.length;
+
+  // Action stats come from audit_actions.
+  const [openActRes, closedActRes] = await Promise.all([
+    supabase.from("audit_actions").select("id", { count: "exact", head: true }).in("company_id", ids).neq("status", "closed"),
+    supabase.from("audit_actions").select("id, deadline, closed_at", { count: "exact" }).in("company_id", ids).eq("status", "closed"),
+  ]);
+  const openActions = openActRes.count ?? 0;
+  const closedActionsRows = (closedActRes.data ?? []) as any[];
+  const closedActions = closedActRes.count ?? closedActionsRows.length;
+  const onTime = closedActionsRows.filter(
+    (a) => a.deadline && a.closed_at && new Date(a.closed_at) <= new Date(a.deadline),
+  ).length;
+  const closedOnTimePct = closedActions > 0 ? Math.round((onTime / closedActions) * 100) : null;
+
+  // Avg close days for incidents.
   const days: number[] = [];
   for (const r of closedRows) {
     const opened = new Date(r.opprettet_dato).getTime();
     const closed = new Date(r.oppdatert_dato).getTime();
     if (!Number.isNaN(opened) && !Number.isNaN(closed) && closed >= opened) {
-      days.push((closed - opened) / (24 * 60 * 60 * 1000));
+      days.push((closed - opened) / 86400_000);
     }
   }
   const avgCloseDays = days.length ? Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10 : null;
 
-  // Monthly trend
-  const bucket: Record<string, { incidents: number; nearMiss: number }> = {};
+  // Severity breakdown.
+  const sevBucket = new Map<string, number>();
+  const catBucket = new Map<string, number>();
+  let critical = 0;
+  for (const r of rows) {
+    const sev = (r.alvorlighetsgrad ?? "ukjent").toString().toLowerCase();
+    sevBucket.set(sev, (sevBucket.get(sev) ?? 0) + 1);
+    if (sev === "kritisk" || sev === "critical") critical++;
+    const cat = (r.kategori ?? "").toString().trim();
+    if (cat) catBucket.set(cat, (catBucket.get(cat) ?? 0) + 1);
+  }
+  const bySeverity = [...sevBucket.entries()]
+    .map(([severity, count]) => ({ severity, count }))
+    .sort((a, b) => b.count - a.count);
+  const byCategory = [...catBucket.entries()]
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  // Monthly trend.
+  const bucket: Record<string, { incidents: number; critical: number }> = {};
   const months: string[] = [];
   for (let i = 11; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     months.push(key);
-    bucket[key] = { incidents: 0, nearMiss: 0 };
+    bucket[key] = { incidents: 0, critical: 0 };
   }
   for (const r of rows) {
     const t = new Date(r.hendelsestidspunkt);
@@ -294,16 +368,31 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
     const key = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
     if (!bucket[key]) continue;
     bucket[key].incidents++;
-    if (/neste/i.test(r.kategori ?? "")) bucket[key].nearMiss++;
+    const sev = (r.alvorlighetsgrad ?? "").toString().toLowerCase();
+    if (sev === "kritisk" || sev === "critical") bucket[key].critical++;
   }
   const trend = months.map((m) => ({
     month: new Date(`${m}-01T00:00:00Z`).toLocaleString(undefined, { month: "short" }),
     incidents: bucket[m].incidents,
-    nearMiss: bucket[m].nearMiss,
+    nearMiss: bucket[m].critical, // reuse field so chart renders "critical"
   }));
 
-  return { reported, nearMiss, openActions, closedActions, avgCloseDays, trend };
+  return {
+    reported,
+    critical,
+    openIncidents,
+    closedIncidents,
+    openActions,
+    closedActions,
+    avgCloseDays,
+    closedOnTimePct,
+    bySeverity,
+    byCategory,
+    trend,
+    nearMiss: 0,
+  };
 }
+
 
 // ============================================================
 // Documents

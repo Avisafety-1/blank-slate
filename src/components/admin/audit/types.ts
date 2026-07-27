@@ -163,16 +163,23 @@ export interface CompetencyRow {
   status: CheckResult; // pass/warn/fail
 }
 
+export interface FleetDeviation {
+  id: string;
+  entryType: string | null;
+  title: string | null;
+  description: string | null;
+  entryDate: string | null;
+}
+
 export interface FleetRow {
   id: string;
   droneName: string;
   registration: string | null;
   service: CheckResult;
   nextInspection: string | null;
-  remoteId: CheckResult; // usually unknown (schema mangler kolonne)
-  firmware: CheckResult;
-  calibration: CheckResult;
-  batteryHealth: CheckResult;
+  openDeviations: number;
+  deviations: FleetDeviation[];
+  lastInspectionAt: string | null;
 }
 
 export interface OperationsIssue {
@@ -183,14 +190,32 @@ export interface OperationsIssue {
   code: "missingRiskAssessment" | "missingChecklist" | "missingApproval" | "flightNotClosed";
 }
 
+export interface SafetySeverityBucket {
+  severity: string; // lav | moderat | hoy | kritisk | ukjent
+  count: number;
+}
+
+export interface SafetyCategoryBucket {
+  category: string;
+  count: number;
+}
+
 export interface SafetyAggregate {
   reported: number;
-  nearMiss: number;
+  critical: number;
+  openIncidents: number;
+  closedIncidents: number;
   openActions: number;
   closedActions: number;
   avgCloseDays: number | null;
+  closedOnTimePct: number | null;
+  bySeverity: SafetySeverityBucket[];
+  byCategory: SafetyCategoryBucket[];
   trend: SafetyTrendPoint[];
+  // Legacy field, kept so existing consumers don't break; always 0.
+  nearMiss: number;
 }
+
 
 export interface DocumentRow {
   id: string;
