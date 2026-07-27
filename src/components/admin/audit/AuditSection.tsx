@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, FileText, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package, Construction } from "lucide-react";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { DocumentationTab } from "./tabs/DocumentationTab";
 import { CompetencyTab } from "./tabs/CompetencyTab";
