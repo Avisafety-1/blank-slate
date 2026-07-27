@@ -17,6 +17,8 @@ export interface InboxMessage {
   read_at: string | null;
   done_at: string | null;
   created_at: string;
+  parent_id: string | null;
+  thread_root_id: string | null;
   sender_name?: string | null;
 }
 
