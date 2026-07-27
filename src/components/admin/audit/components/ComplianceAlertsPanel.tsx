@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowRight, XCircle, Send, CheckCircle2, Clock, MailX } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ArrowRight, XCircle, Send, CheckCircle2, Clock, MailX, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ScannerFinding } from "../types";
+import type { FindingSeverity, ScannerFinding } from "../types";
 import { useUpsertDisposition } from "../hooks/useAuditData";
 import { useReminderStatuses, findingKey, type ReminderStatus } from "../hooks/useReminderStatuses";
 import { SendReminderDialog } from "../SendReminderDialog";
@@ -16,20 +16,65 @@ interface Props {
   limit?: number;
 }
 
-const sevClass = (sev: ScannerFinding["severity"]) =>
+const SEVERITY_ORDER: FindingSeverity[] = ["critical", "warning", "info"];
+
+const sectionMeta: Record<
+  FindingSeverity,
+  { icon: typeof AlertOctagon; ringCls: string; textCls: string; titleKey: string }
+> = {
+  critical: {
+    icon: AlertOctagon,
+    ringCls: "border-status-red/60",
+    textCls: "text-status-red",
+    titleKey: "audit.alerts.groupCritical",
+  },
+  warning: {
+    icon: AlertTriangle,
+    ringCls: "border-status-yellow/60",
+    textCls: "text-status-yellow",
+    titleKey: "audit.alerts.groupWarning",
+  },
+  info: {
+    icon: Info,
+    ringCls: "border-primary/60",
+    textCls: "text-primary",
+    titleKey: "audit.alerts.groupInfo",
+  },
+};
+
+const sevBadgeClass = (sev: FindingSeverity) =>
   sev === "critical"
     ? "text-black border-status-red/60 bg-status-red/70"
     : sev === "warning"
       ? "text-black border-status-yellow/60 bg-status-yellow/70"
       : "text-black border-primary/60 bg-primary/70";
 
-export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
+export const ComplianceAlertsPanel = ({ findings, limit = 15 }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispose = useUpsertDisposition();
   const { data: reminderMap = {} } = useReminderStatuses();
   const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);
-  const shown = findings.slice(0, limit);
+
+  const grouped = useMemo(() => {
+    const g: Record<FindingSeverity, ScannerFinding[]> = { critical: [], warning: [], info: [] };
+    for (const f of findings) g[f.severity].push(f);
+    return g;
+  }, [findings]);
+
+  const total = findings.length;
+  const shown = useMemo(() => {
+    // Cap total displayed while preserving severity priority.
+    let remaining = limit;
+    const out: Record<FindingSeverity, ScannerFinding[]> = { critical: [], warning: [], info: [] };
+    for (const sev of SEVERITY_ORDER) {
+      if (remaining <= 0) break;
+      const take = grouped[sev].slice(0, remaining);
+      out[sev] = take;
+      remaining -= take.length;
+    }
+    return out;
+  }, [grouped, limit]);
 
   const renderReminderBadge = (status: ReminderStatus | undefined) => {
     const state = status?.state ?? "not_sent";
@@ -54,6 +99,61 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
     );
   };
 
+  const renderRow = (f: ScannerFinding) => (
+    <li
+      key={`${f.code}-${f.entityId}`}
+      className="flex flex-col sm:flex-row sm:items-center gap-2 py-3"
+    >
+      <Badge variant="outline" className={cn("uppercase text-xs sm:text-sm px-2.5 py-1", sevBadgeClass(f.severity))}>
+        {t(`audit.severity.${f.severity}`)}
+      </Badge>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm sm:text-base font-medium break-words">
+          {String(t(f.titleKey, (f.titleParams ?? {}) as never))}
+        </div>
+        {f.bodyKey && (
+          <div className="text-xs sm:text-sm text-muted-foreground break-words">
+            {String(t(f.bodyKey, (f.bodyParams ?? {}) as never))}
+          </div>
+        )}
+      </div>
+      {renderReminderBadge(reminderMap[findingKey(f.code, f.entityType, f.entityId)])}
+      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs sm:text-sm"
+          onClick={() => setReminderFinding(f)}
+          title={t("audit.alerts.sendReminder")}
+        >
+          <Send className="w-3.5 h-3.5 mr-1.5" />
+          {t("audit.alerts.sendReminder")}
+        </Button>
+        {f.deepLink?.path && (
+          <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={() => navigate(f.deepLink!.path)}>
+            {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-xs sm:text-sm"
+          onClick={() =>
+            dispose.mutate({
+              finding_code: f.code,
+              entity_type: f.entityType,
+              entity_id: f.entityId,
+              disposition: "dismissed",
+            })
+          }
+          title={t("audit.alerts.dismiss")}
+        >
+          <XCircle className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </li>
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -61,67 +161,45 @@ export const ComplianceAlertsPanel = ({ findings, limit = 10 }: Props) => {
           <AlertTriangle className="w-4 h-4 text-status-yellow" />
           {t("audit.alerts.title")}
         </CardTitle>
-        {findings.length > limit && (
-          <Badge variant="outline">{findings.length}</Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {SEVERITY_ORDER.map((sev) => {
+            const count = grouped[sev].length;
+            if (!count) return null;
+            return (
+              <Badge key={sev} variant="outline" className={cn("text-xs px-2 py-0.5", sevBadgeClass(sev))}>
+                {count}
+              </Badge>
+            );
+          })}
+        </div>
       </CardHeader>
-      <CardContent>
-        {shown.length === 0 ? (
+      <CardContent className="space-y-5">
+        {total === 0 ? (
           <p className="text-sm text-muted-foreground">{t("audit.alerts.empty")}</p>
         ) : (
-          <ul className="divide-y divide-border">
-            {shown.map((f) => (
-              <li key={`${f.code}-${f.entityId}`} className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
-                <Badge variant="outline" className={cn("uppercase text-xs sm:text-sm px-2.5 py-1", sevClass(f.severity))}>
-                  {f.severity}
-                </Badge>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm sm:text-base font-medium truncate">
-                    {String(t(f.titleKey, (f.titleParams ?? {}) as never))}
-                  </div>
-                  {f.bodyKey && (
-                    <div className="text-xs sm:text-sm text-muted-foreground truncate">
-                      {String(t(f.bodyKey, (f.bodyParams ?? {}) as never))}
-                    </div>
-                  )}
-                </div>
-                {renderReminderBadge(reminderMap[findingKey(f.code, f.entityType, f.entityId)])}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs sm:text-sm"
-                    onClick={() => setReminderFinding(f)}
-                    title={t("audit.alerts.sendReminder")}
-                  >
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
-                    {t("audit.alerts.sendReminder")}
-                  </Button>
-                  {f.deepLink?.path && (
-                    <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={() => navigate(f.deepLink!.path)}>
-                      {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs sm:text-sm"
-                    onClick={() =>
-                      dispose.mutate({
-                        finding_code: f.code,
-                        entity_type: f.entityType,
-                        entity_id: f.entityId,
-                        disposition: "dismissed",
-                      })
-                    }
-                    title={t("audit.alerts.dismiss")}
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          SEVERITY_ORDER.map((sev) => {
+            const items = shown[sev];
+            if (!items.length) return null;
+            const meta = sectionMeta[sev];
+            const Icon = meta.icon;
+            return (
+              <section key={sev} className={cn("rounded-lg border-l-4 pl-3", meta.ringCls)}>
+                <header className={cn("flex items-center gap-2 mb-1", meta.textCls)}>
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm font-semibold uppercase tracking-wide">
+                    {t(meta.titleKey)}
+                  </span>
+                  <Badge variant="outline" className="text-xs">{grouped[sev].length}</Badge>
+                </header>
+                <ul className="divide-y divide-border">{items.map(renderRow)}</ul>
+              </section>
+            );
+          })
+        )}
+        {total > limit && (
+          <p className="text-xs text-muted-foreground">
+            {t("audit.alerts.showingOf", { shown: limit, total })}
+          </p>
         )}
       </CardContent>
 
