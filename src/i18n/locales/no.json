@@ -7440,6 +7440,8 @@
     "markDone": "Marker som ferdig",
     "newMessage": "Ny melding",
     "reply": "Svar",
+    "replyPlaceholder": "Skriv et svar…",
+    "sendReply": "Send svar",
     "sentTo": "Sendt til mottaker",
     "filter": {
       "all": "Alle",

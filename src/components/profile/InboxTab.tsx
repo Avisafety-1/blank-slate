@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
@@ -6,15 +6,16 @@ import { nb, enUS } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Inbox, ArrowRight, CheckCircle2, AlertTriangle, AlertCircle, Info, Plus, Reply, Send } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Inbox, ArrowRight, CheckCircle2, AlertTriangle, AlertCircle, Info, Plus, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
+import { useSendMessage } from "./hooks/useSendMessage";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
-import type { RecipientOption } from "./hooks/useSearchRecipients";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
   if (s === "critical") return <AlertCircle className="w-4 h-4 text-status-red" />;
@@ -36,18 +37,27 @@ export const InboxTab = () => {
   const [filter, setFilter] = useState<"all" | "unread" | "done" | "sent">("unread");
   const [selected, setSelected] = useState<InboxMessage | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
-  const [composePrefill, setComposePrefill] = useState<{
-    parent_id?: string | null;
-    recipients?: RecipientOption[];
-    subject?: string;
-    lockRecipients?: boolean;
-  } | undefined>(undefined);
+  const [replyText, setReplyText] = useState("");
+  const threadEndRef = useRef<HTMLDivElement | null>(null);
   const { data: messages = [], isLoading } = useInboxMessages(filter);
   const mark = useMarkMessage();
+  const send = useSendMessage();
   const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
 
   const threadRoot = selected?.thread_root_id ?? selected?.id ?? null;
   const { data: thread = [] } = useMessageThread(threadRoot);
+
+  // Scroll to newest message when thread updates
+  useEffect(() => {
+    if (thread.length > 0) {
+      threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [thread.length]);
+
+  // Reset reply text when switching messages
+  useEffect(() => {
+    setReplyText("");
+  }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
     setSelected(m);
@@ -55,30 +65,34 @@ export const InboxTab = () => {
   };
 
   const openCompose = () => {
-    setComposePrefill(undefined);
     setComposeOpen(true);
   };
 
-  const openReply = () => {
-    if (!selected?.sender_id) return;
-    setComposePrefill({
-      parent_id: selected.id,
-      recipients: [
-        {
-          id: selected.sender_id,
-          full_name: selected.sender_name ?? null,
-          email: null,
-          company_id: null,
-          company_name: null,
-        },
-      ],
-      subject: selected.subject.toLowerCase().startsWith("re:")
-        ? selected.subject
-        : `Re: ${selected.subject}`,
-      lockRecipients: true,
+  // Determine reply recipients: everyone in the thread who isn't the current user
+  const replyRecipientIds = (() => {
+    const ids = new Set<string>();
+    for (const m of thread) {
+      if (m.sender_id && m.sender_id !== user?.id) ids.add(m.sender_id);
+    }
+    // Fallback if thread hasn't loaded yet
+    if (ids.size === 0 && selected?.sender_id && selected.sender_id !== user?.id) {
+      ids.add(selected.sender_id);
+    }
+    return Array.from(ids);
+  })();
+
+  const canReply = replyRecipientIds.length > 0 && filter !== "sent";
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || replyRecipientIds.length === 0 || !selected) return;
+    const lastMessage = thread[thread.length - 1] ?? selected;
+    await send.mutateAsync({
+      recipient_ids: replyRecipientIds,
+      subject: selected.subject,
+      body: replyText.trim(),
+      parent_id: lastMessage.id,
     });
-    setSelected(null);
-    setComposeOpen(true);
+    setReplyText("");
   };
 
   return (
@@ -156,84 +170,107 @@ export const InboxTab = () => {
       </Card>
 
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-md p-4 sm:p-6 overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full gap-0">
           {selected && (
             <>
-              <SheetHeader>
-                <div className="flex items-center gap-2 mb-2">
+              {/* Header */}
+              <SheetHeader className="p-4 sm:p-6 border-b shrink-0 space-y-2 text-left">
+                <div className="flex items-center gap-2">
                   <Badge variant="outline" className={cn("uppercase text-[10px]", sevClass(selected.severity))}>
                     {t(`audit.severity.${selected.severity}`)}
                   </Badge>
                 </div>
-                <SheetTitle className="break-words">{selected.subject}</SheetTitle>
-                <SheetDescription>
-                  {selected.sender_name || t("inbox.systemSender")} ·{" "}
-                  {new Date(selected.created_at).toLocaleString(i18n.language)}
-                </SheetDescription>
+                <SheetTitle className="break-words text-base sm:text-lg">{selected.subject}</SheetTitle>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {selected.deep_link && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const path = selected.deep_link!;
+                        navigate(path);
+                        setSelected(null);
+                      }}
+                    >
+                      {t("inbox.goToModule")} <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  )}
+                  {selected.status !== "done" && filter !== "sent" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        mark.mutate({ id: selected.id, status: "done" });
+                        setSelected(null);
+                      }}
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                      {t("inbox.markDone")}
+                    </Button>
+                  )}
+                </div>
               </SheetHeader>
 
-              {/* Thread history */}
-              {thread.length > 1 ? (
-                <div className="mt-4 space-y-3">
-                  {thread.map((m) => {
-                    const mine = m.sender_id === user?.id;
-                    return (
-                      <div
-                        key={m.id}
-                        className={cn(
-                          "rounded-lg p-3 text-sm max-w-[90%]",
-                          mine
-                            ? "bg-primary/10 border border-primary/30 ml-auto"
-                            : "bg-muted border border-border",
-                        )}
-                      >
-                        <div className="text-xs text-muted-foreground mb-1">
-                          {m.sender_name || t("inbox.systemSender")} ·{" "}
-                          {new Date(m.created_at).toLocaleString(i18n.language)}
-                        </div>
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
+              {/* Thread (scrollable) */}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+                {(thread.length > 0 ? thread : [
+                  {
+                    id: selected.id,
+                    sender_id: selected.sender_id,
+                    sender_name: selected.sender_name,
+                    body: selected.body,
+                    created_at: selected.created_at,
+                  },
+                ]).map((m) => {
+                  const mine = m.sender_id === user?.id;
+                  return (
+                    <div
+                      key={m.id}
+                      className={cn(
+                        "rounded-lg p-3 text-sm max-w-[90%]",
+                        mine
+                          ? "bg-primary/10 border border-primary/30 ml-auto"
+                          : "bg-muted border border-border",
+                      )}
+                    >
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {m.sender_name || t("inbox.systemSender")} ·{" "}
+                        {new Date(m.created_at).toLocaleString(i18n.language)}
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                  {selected.body}
+                      <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
+                    </div>
+                  );
+                })}
+                <div ref={threadEndRef} />
+              </div>
+
+              {/* Reply composer (fixed bottom) */}
+              {canReply && (
+                <div className="border-t p-3 sm:p-4 shrink-0 space-y-2 bg-background">
+                  <Textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder={t("inbox.replyPlaceholder", "Skriv et svar…")}
+                    rows={3}
+                    maxLength={4000}
+                    className="resize-none"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={handleSendReply}
+                      disabled={send.isPending || !replyText.trim()}
+                    >
+                      {send.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      {t("inbox.sendReply", "Send svar")}
+                    </Button>
+                  </div>
                 </div>
               )}
-
-              <div className="mt-6 flex flex-col gap-2">
-                {selected.sender_id && selected.sender_id !== user?.id && (
-                  <Button onClick={openReply}>
-                    <Reply className="w-4 h-4 mr-2" />
-                    {t("inbox.reply", "Reply")}
-                  </Button>
-                )}
-                {selected.deep_link && (
-                  <Button
-                    variant={selected.sender_id ? "outline" : "default"}
-                    onClick={() => {
-                      const path = selected.deep_link!;
-                      navigate(path);
-                      setSelected(null);
-                    }}
-                  >
-                    {t("inbox.goToModule")} <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                )}
-                {selected.status !== "done" && filter !== "sent" && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      mark.mutate({ id: selected.id, status: "done" });
-                      setSelected(null);
-                    }}
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    {t("inbox.markDone")}
-                  </Button>
-                )}
-              </div>
             </>
           )}
         </SheetContent>
@@ -242,7 +279,6 @@ export const InboxTab = () => {
       <ComposeMessageDialog
         open={composeOpen}
         onOpenChange={setComposeOpen}
-        prefill={composePrefill}
       />
     </>
   );
