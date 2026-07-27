@@ -191,6 +191,8 @@ export interface DocumentRow {
   responsible: string | null;
   daysUntilExpiry: number | null;
   status: CheckResult;
+  complianceClass: DocumentComplianceClass;
+  complianceRelevance: DocumentComplianceRelevance;
 }
 
 // ---------- Persisted audit types (Fase B) ----------
