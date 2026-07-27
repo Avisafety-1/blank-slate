@@ -12,20 +12,20 @@ export function daysUntil(iso: string | null | undefined): number | null {
 
 /**
  * Standard expiry mapping used throughout Compliance:
- *   > warnDays days left → pass
- *   0..warnDays days left → warn
- *   < 0 (expired) → fail
- *   no date → unknown
+ *   > warnDays days left → valid
+ *   0..warnDays days left → expiring
+ *   < 0 (expired) → expired
+ *   no date → no_expiry (semantic: not required to expire)
  */
 export function expiryStatus(
   iso: string | null | undefined,
   warnDays = 60,
 ): CheckResult {
   const d = daysUntil(iso);
-  if (d === null) return "unknown";
-  if (d < 0) return "fail";
-  if (d <= warnDays) return "warn";
-  return "pass";
+  if (d === null) return "no_expiry";
+  if (d < 0) return "expired";
+  if (d <= warnDays) return "expiring";
+  return "valid";
 }
 
 export function monthsAgo(n: number): Date {
