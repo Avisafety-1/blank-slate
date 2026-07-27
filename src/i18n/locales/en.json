@@ -7237,7 +7237,15 @@
       "covered": "Covered",
       "lastComputed": "Last computed",
       "notApplicable": "N/A",
-      "scoreLegend": "0–100 based on applicable checks"
+      "scoreLegend": "0–100 based on applicable checks",
+      "activityHeader": "Activity (last 12 months)",
+      "aiInsights": "AI insights",
+      "inspectionCta": {
+        "title": "Inspection package",
+        "body": "Bundle all documents, findings and evidence for an authority visit.",
+        "button": "Generate package",
+        "criticalWarning": "{{count}} critical finding(s) must be closed first"
+      }
     },
     "kpi": {
       "activePilots": "Active pilots",
@@ -7256,7 +7264,11 @@
       "open": "Open",
       "dismiss": "Dismiss",
       "createFinding": "Create finding",
-      "sendReminder": "Send reminder"
+      "sendReminder": "Send reminder",
+      "groupCritical": "Requires action now",
+      "groupWarning": "Should be followed up",
+      "groupInfo": "For information",
+      "showingOf": "Showing {{shown}} of {{total}}"
     },
     "severity": {
       "critical": "Critical",
@@ -7305,7 +7317,9 @@
       "remoteId": "Remote ID",
       "firmware": "Firmware",
       "calibration": "Calibration",
-      "battery": "Battery"
+      "battery": "Battery health",
+      "additionalDetails": "Additional details",
+      "informationalNote": "Informational only — does not affect compliance score."
     },
     "operations": {
       "header": "Operations",
@@ -7315,10 +7329,12 @@
       "total": "Missions evaluated",
       "codes": {
         "missingRiskAssessment": "Missing risk assessment",
-        "missingChecklist": "Incomplete checklist",
+        "missingChecklist": "Missing checklist",
         "missingApproval": "Missing approval",
         "flightNotClosed": "Flight not closed"
-      }
+      },
+      "noIssues": "No operational issues in the last 12 months",
+      "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions"
     },
     "safety": {
       "reported": "Reported",
@@ -7326,7 +7342,9 @@
       "openActions": "Open actions",
       "closedActions": "Closed actions",
       "avgCloseDays": "Avg. close time (days)",
-      "trend": "Trend past 12 mo"
+      "trend": "Trend past 12 mo",
+      "topFindings": "Most common findings",
+      "topFindingsEmpty": "No findings to show"
     },
     "documents": {
       "header": "Documentation",
@@ -7334,7 +7352,19 @@
       "category": "Category",
       "nextReview": "Next review",
       "responsible": "Responsible",
-      "status": "Status"
+      "status": "Status",
+      "class": {
+        "compliance": "Compliance",
+        "operational": "Operational",
+        "mission": "Mission",
+        "other": "Other"
+      },
+      "relevance": {
+        "required": "Required",
+        "recommended": "Recommended",
+        "optional": "Optional"
+      },
+      "emptyClass": "No documents in this category"
     },
     "scanner": {
       "expiredCompetence": {
@@ -7420,15 +7450,37 @@
       "statusInProgress": "In progress",
       "statusClosed": "Closed",
       "closeBlocked": "Cannot close: open critical findings.",
-      "overrideReason": "Override reason"
+      "overrideReason": "Override reason",
+      "newTitle": "Annual internal audit {{year}}"
     },
     "package": {
       "header": "Inspection package",
       "generate": "Generate package",
       "generating": "Generating …",
-      "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file."
+      "description": "Bundles PDF overview, CSV, JSON and manifest into a zip file.",
+      "criticalOpenTitle": "{{count}} critical finding(s) still open",
+      "criticalOpenBody": "Close the critical findings before generating the inspection package."
     },
-    "tabTitle": "Audit"
+    "tabTitle": "Audit",
+    "actionKpi": {
+      "documentsExpiring": "Documents expiring",
+      "documentsExpiringHint": "Expiring within 30 days",
+      "competencyExpiring": "Competencies expiring",
+      "competencyExpiringHint": "{{pilots}} pilot(s) affected",
+      "dronesOverdue": "Drones with overdue service",
+      "dronesRequiringHint": "{{count}} drone(s) need maintenance",
+      "openFindings": "Open findings",
+      "criticalOpen": "{{count}} critical finding(s) open",
+      "overdueActions": "Open actions",
+      "plannedReviews": "Planned reviews",
+      "plannedReviewsHint": "Open the plan for details",
+      "plannedReviewsNone": "None planned",
+      "noActionNeeded": "No action required"
+    },
+    "categoryScore": {
+      "openIssues": "{{count}} open issue(s)",
+      "noIssues": "No open issues"
+    }
   },
   "inbox": {
     "title": "Inbox",

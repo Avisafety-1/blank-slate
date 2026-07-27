@@ -7239,7 +7239,15 @@
       "covered": "Dekket",
       "lastComputed": "Sist beregnet",
       "notApplicable": "N/A",
-      "scoreLegend": "0–100 basert på relevante kontroller"
+      "scoreLegend": "0–100 basert på relevante kontroller",
+      "activityHeader": "Aktivitet (siste 12 mnd)",
+      "aiInsights": "AI-innsikt",
+      "inspectionCta": {
+        "title": "Tilsynspakke",
+        "body": "Samle alle dokumenter, funn og bevis for et myndighetsbesøk.",
+        "button": "Generer pakke",
+        "criticalWarning": "{{count}} kritiske funn må lukkes først"
+      }
     },
     "kpi": {
       "activePilots": "Aktive piloter",
@@ -7258,7 +7266,11 @@
       "open": "Åpne",
       "dismiss": "Skjul",
       "createFinding": "Opprett funn",
-      "sendReminder": "Send påminnelse"
+      "sendReminder": "Send påminnelse",
+      "groupCritical": "Krever handling nå",
+      "groupWarning": "Bør følges opp",
+      "groupInfo": "Til informasjon",
+      "showingOf": "Viser {{shown}} av {{total}}"
     },
     "severity": {
       "critical": "Kritisk",
@@ -7307,7 +7319,9 @@
       "remoteId": "Remote ID",
       "firmware": "Firmware",
       "calibration": "Kalibrering",
-      "battery": "Batteri"
+      "battery": "Batterihelse",
+      "additionalDetails": "Tilleggsinformasjon",
+      "informationalNote": "Kun til informasjon – påvirker ikke compliance-score."
     },
     "operations": {
       "header": "Operasjoner",
@@ -7317,10 +7331,12 @@
       "total": "Analyserte oppdrag",
       "codes": {
         "missingRiskAssessment": "Mangler risikovurdering",
-        "missingChecklist": "Ufullstendig sjekkliste",
+        "missingChecklist": "Mangler sjekkliste",
         "missingApproval": "Mangler godkjenning",
-        "flightNotClosed": "Flygning ikke avsluttet"
-      }
+        "flightNotClosed": "Flygning ikke lukket"
+      },
+      "noIssues": "Ingen operative avvik siste 12 måneder",
+      "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag"
     },
     "safety": {
       "reported": "Rapporterte",
@@ -7328,7 +7344,9 @@
       "openActions": "Åpne tiltak",
       "closedActions": "Lukkede tiltak",
       "avgCloseDays": "Snitt lukketid (dager)",
-      "trend": "Trend siste 12 mnd"
+      "trend": "Trend siste 12 mnd",
+      "topFindings": "Vanligste funn",
+      "topFindingsEmpty": "Ingen funn å vise"
     },
     "documents": {
       "header": "Dokumentasjon",
@@ -7336,7 +7354,19 @@
       "category": "Kategori",
       "nextReview": "Neste revisjon",
       "responsible": "Ansvarlig",
-      "status": "Status"
+      "status": "Status",
+      "class": {
+        "compliance": "Compliance",
+        "operational": "Operativt",
+        "mission": "Oppdrag",
+        "other": "Annet"
+      },
+      "relevance": {
+        "required": "Påkrevd",
+        "recommended": "Anbefalt",
+        "optional": "Valgfritt"
+      },
+      "emptyClass": "Ingen dokumenter i denne kategorien"
     },
     "scanner": {
       "expiredCompetence": {
@@ -7422,15 +7452,37 @@
       "statusInProgress": "Pågår",
       "statusClosed": "Lukket",
       "closeBlocked": "Kan ikke lukkes: åpne kritiske funn.",
-      "overrideReason": "Begrunnelse for overstyring"
+      "overrideReason": "Begrunnelse for overstyring",
+      "newTitle": "Årlig internrevisjon {{year}}"
     },
     "package": {
       "header": "Tilsynspakke",
       "generate": "Generer pakke",
       "generating": "Genererer …",
-      "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil."
+      "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil.",
+      "criticalOpenTitle": "{{count}} kritiske funn er åpne",
+      "criticalOpenBody": "Lukk kritiske funn før du genererer tilsynspakken."
     },
-    "tabTitle": "Revisjon"
+    "tabTitle": "Revisjon",
+    "actionKpi": {
+      "documentsExpiring": "Dokumenter som utløper",
+      "documentsExpiringHint": "Utløper innen 30 dager",
+      "competencyExpiring": "Kompetanser som utløper",
+      "competencyExpiringHint": "{{pilots}} pilot(er) berørt",
+      "dronesOverdue": "Droner med forfalt service",
+      "dronesRequiringHint": "{{count}} drone(r) trenger vedlikehold",
+      "openFindings": "Åpne funn",
+      "criticalOpen": "{{count}} kritiske funn åpne",
+      "overdueActions": "Åpne tiltak",
+      "plannedReviews": "Planlagte revisjoner",
+      "plannedReviewsHint": "Åpne planen for detaljer",
+      "plannedReviewsNone": "Ingen planlagt",
+      "noActionNeeded": "Ingen handling nødvendig"
+    },
+    "categoryScore": {
+      "openIssues": "{{count}} åpne funn",
+      "noIssues": "Ingen åpne funn"
+    }
   },
   "inbox": {
     "title": "Innboks",
