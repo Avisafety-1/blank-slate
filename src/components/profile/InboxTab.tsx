@@ -112,7 +112,7 @@ export const InboxTab = () => {
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="mt-4 whitespace-pre-wrap text-sm">{selected.body}</div>
+              <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{selected.body}</div>
 
               <div className="mt-6 flex flex-col gap-2">
                 {selected.deep_link && (
