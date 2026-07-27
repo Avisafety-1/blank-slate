@@ -249,27 +249,22 @@ export async function fetchOperations(
 ): Promise<{ issues: OperationsIssue[]; total: number }> {
   const ids = await visibleCompanyIds(userId, companyId);
   const since = iso12moAgo();
-  const [missionsRes, soraRes, flightsRes] = await Promise.all([
+  const [missionsRes, soraRes] = await Promise.all([
     supabase
       .from("missions")
-      .select("id, tittel, tidspunkt, checklist_ids, checklist_completed_ids, approval_status, company_id")
+      .select("id, tittel, tidspunkt, checklist_ids, checklist_completed_ids, approval_status, status, company_id")
       .in("company_id", ids)
       .gte("tidspunkt", since),
     supabase.from("mission_sora").select("mission_id").in("company_id", ids),
-    supabase
-      .from("flight_logs")
-      .select("id, mission_id, end_time_utc, flight_date")
-      .in("company_id", ids)
-      .gte("flight_date", iso12moAgoDate()),
   ]);
   const soraSet = new Set((soraRes.data ?? []).map((r: any) => r.mission_id));
-  const flightsByMission = new Map<string, any[]>();
-  for (const f of (flightsRes.data ?? []) as any[]) {
-    if (!f.mission_id) continue;
-    (flightsByMission.get(f.mission_id) ?? flightsByMission.set(f.mission_id, []).get(f.mission_id))!.push(f);
-  }
 
   const missions = (missionsRes.data ?? []) as any[];
+  const nowIso = new Date().toISOString();
+  const CLOSED_STATUSES = new Set([
+    "Fullført", "Fullfoert", "Avbrutt",
+    "Completed", "Aborted", "completed", "aborted",
+  ]);
   const issues: OperationsIssue[] = [];
   for (const m of missions) {
     const title = m.tittel ?? "—";
@@ -282,9 +277,11 @@ export async function fetchOperations(
     if (req.length > 0 && done.length < req.length) {
       issues.push({ id: `${m.id}-chk`, missionId: m.id, missionTitle: title, missionDate: date, code: "missingChecklist" });
     }
-    const flights = flightsByMission.get(m.id) ?? [];
-    const openFlight = flights.some((f) => !f.end_time_utc);
-    if (openFlight) {
+    // A mission is "not closed" when its scheduled time has passed and the
+    // status is still Planlagt/Pågående (never marked Fullført/Avbrutt).
+    const isPast = date && date < nowIso;
+    const status = (m.status ?? "").toString();
+    if (isPast && status && !CLOSED_STATUSES.has(status)) {
       issues.push({ id: `${m.id}-open`, missionId: m.id, missionTitle: title, missionDate: date, code: "flightNotClosed" });
     }
   }
