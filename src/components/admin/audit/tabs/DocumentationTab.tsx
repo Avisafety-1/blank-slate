@@ -4,35 +4,45 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { StatusPill } from "../components/StatusPill";
 import { useAuditDocuments } from "../hooks/useAuditData";
 import { checkToPill, checkLabelKey } from "../utils/statusMapping";
-import type { DocumentComplianceClass, DocumentComplianceRelevance } from "../types";
-import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
+import { auditDeepLink } from "../utils/auditDeepLink";
+import type { CheckResult } from "../types";
 
-const CLASS_ORDER: DocumentComplianceClass[] = ["compliance", "operational", "mission", "other"];
+type StatusTab = "expired" | "expiring" | "valid" | "noExpiry";
 
-const relevanceClass: Record<DocumentComplianceRelevance, string> = {
-  required: "bg-status-red/15 text-status-red border-status-red/30",
-  recommended: "bg-status-yellow/15 text-status-yellow border-status-yellow/30",
-  optional: "bg-muted text-muted-foreground border-border",
-};
+const STATUS_ORDER: StatusTab[] = ["expired", "expiring", "valid", "noExpiry"];
+
+function statusToTab(s: CheckResult): StatusTab {
+  if (s === "expired") return "expired";
+  if (s === "expiring") return "expiring";
+  if (s === "valid") return "valid";
+  return "noExpiry";
+}
 
 export const DocumentationTab = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useAuditDocuments();
-  const [activeClass, setActiveClass] = useState<DocumentComplianceClass>("compliance");
+  const [tab, setTab] = useState<StatusTab>("expired");
 
-  const bucketCounts = useMemo(() => {
-    const c: Record<DocumentComplianceClass, number> = { compliance: 0, operational: 0, mission: 0, other: 0 };
-    for (const d of data ?? []) c[d.complianceClass]++;
+  const counts = useMemo(() => {
+    const c: Record<StatusTab, number> = { expired: 0, expiring: 0, valid: 0, noExpiry: 0 };
+    for (const d of data ?? []) c[statusToTab(d.status)]++;
     return c;
   }, [data]);
 
+  // Default to the tab with content: expired > expiring > valid.
+  const effectiveTab: StatusTab =
+    counts.expired > 0 ? tab : counts.expiring > 0 && tab === "expired" ? "expiring" : tab;
+
   const filtered = useMemo(
-    () => (data ?? []).filter((d) => d.complianceClass === activeClass),
-    [data, activeClass],
+    () => (data ?? []).filter((d) => statusToTab(d.status) === effectiveTab),
+    [data, effectiveTab],
   );
 
   if (isLoading) return <Skeleton className="h-40" />;
@@ -40,21 +50,25 @@ export const DocumentationTab = () => {
 
   return (
     <div className="space-y-4">
-      <Tabs value={activeClass} onValueChange={(v) => setActiveClass(v as DocumentComplianceClass)}>
+      <Tabs value={effectiveTab} onValueChange={(v) => setTab(v as StatusTab)}>
         <TabsList className="h-auto flex flex-wrap gap-1 p-1.5 bg-secondary">
-          {CLASS_ORDER.map((k) => (
+          {STATUS_ORDER.map((k) => (
             <TabsTrigger key={k} value={k} className="gap-2 text-xs sm:text-sm">
-              {t(`audit.documents.class.${k}`)}
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{bucketCounts[k]}</Badge>
+              {t(`audit.documents.statusTabs.${k}`)}
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{counts[k]}</Badge>
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
 
+      {effectiveTab === "noExpiry" && (
+        <p className="text-xs text-muted-foreground">{t("audit.documents.noExpiryHint")}</p>
+      )}
+
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground text-center">
-            {t("audit.documents.emptyClass")}
+            {t("audit.documents.emptyStatus")}
           </CardContent>
         </Card>
       ) : (
@@ -71,18 +85,15 @@ export const DocumentationTab = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant="outline"
-                    className={cn("text-[11px] px-1.5 py-0.5", relevanceClass[d.complianceRelevance])}
-                  >
-                    {t(`audit.documents.relevance.${d.complianceRelevance}`)}
-                  </Badge>
-                </div>
-                <div className="text-muted-foreground">{t("audit.documents.category")}</div>
+                <div className="text-muted-foreground text-xs">{t("audit.documents.category")}</div>
                 <div>{d.category}</div>
-                <div className="text-muted-foreground mt-2">{t("audit.documents.nextReview")}</div>
+                <div className="text-muted-foreground text-xs mt-2">{t("audit.documents.nextReview")}</div>
                 <div>{d.nextReview ? new Date(d.nextReview).toLocaleDateString(i18n.language) : "—"}</div>
+                <div className="pt-2 flex justify-end">
+                  <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("document", d.id).path)}>
+                    {t("audit.documents.open")}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

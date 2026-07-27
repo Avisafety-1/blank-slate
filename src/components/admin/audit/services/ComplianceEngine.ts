@@ -80,13 +80,14 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
     warnings: docResults.map(resolveCheckBucket).filter((b) => b === "warn").length,
   };
 
-  // ---- Fleet (compliance-critical only: service + remoteId) ----
-  // Firmware/battery/calibration surface in the detail view but do NOT drive the
-  // headline score — they are informational rather than compliance-critical today.
+  // ---- Fleet (compliance-critical only: service + open deviations) ----
+  // We treat >0 open log deviations as "warn" and overdue service as "fail".
   const fleetResults: CheckResult[] = [];
   for (const f of input.fleet) {
-    fleetResults.push(f.service, f.remoteId);
+    fleetResults.push(f.service);
+    fleetResults.push(f.openDeviations > 0 ? "warn" : "pass");
   }
+
   const fleet: CategoryScore = {
     key: "fleet",
     score: scoreFromChecks(fleetResults),
