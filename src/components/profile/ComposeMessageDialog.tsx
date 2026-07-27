@@ -9,7 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Send, Search, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchRecipients, type RecipientOption } from "./hooks/useSearchRecipients";
+import {
+  useRecipientsList,
+  useFilteredRecipients,
+  useServerRecipientSearch,
+  type RecipientOption,
+} from "./hooks/useSearchRecipients";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { cn } from "@/lib/utils";
 
