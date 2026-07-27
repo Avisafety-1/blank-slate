@@ -164,12 +164,22 @@ export const InspectionPackageTab = () => {
   const shareHistoric = async (row: HistoryRow) => {
     try {
       const url = await getPackageSignedUrl(row.storage_path);
+      const { data: company } = await supabase
+        .from("companies")
+        .select("navn")
+        .eq("id", companyId!)
+        .maybeSingle();
       const msg = t("audit.package.sendPrefill", {
-        company: overview.company?.navn ?? "",
+        company: (company as any)?.navn ?? "",
         date: new Date(row.generated_at).toLocaleDateString(i18n.language),
         url,
       });
       await navigator.clipboard.writeText(msg);
+      toast.success(t("common.copiedToClipboard", { defaultValue: "Kopiert" }));
+    } catch (e: any) {
+      toast.error(e?.message ?? t("audit.package.genericError"));
+    }
+  };
       toast.success(t("common.copiedToClipboard", { defaultValue: "Kopiert" }));
     } catch (e: any) {
       toast.error(e?.message ?? t("audit.package.genericError"));
