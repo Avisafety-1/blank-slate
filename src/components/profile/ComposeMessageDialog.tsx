@@ -64,8 +64,8 @@ export const ComposeMessageDialog = ({ open, onOpenChange, prefill }: Props) => 
   );
   const send = useSendMessage();
 
-  const lockRecipients = !!prefill?.lockRecipients;
-  const isReply = !!prefill?.parent_id;
+
+
 
   const reset = () => {
     setQuery("");
