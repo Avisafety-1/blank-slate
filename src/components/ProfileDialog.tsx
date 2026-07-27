@@ -2240,7 +2240,7 @@ export const ProfileDialog = () => {
                         {t('profile.pendingApprovalTitle', { count: pendingApprovalMissions.length })}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                       {pendingApprovalMissions.length > 0 ? (
                         <div className="space-y-4">
                           {pendingApprovalMissions.map((mission) => {
@@ -2424,24 +2424,24 @@ export const ProfileDialog = () => {
                   <CardHeader>
                     <CardTitle>{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                     {followUpIncidents.length > 0 ? (
                       <div className="space-y-2">
                         {followUpIncidents.map((incident) => (
                           <div
                             key={incident.id}
-                            className="flex justify-between items-center py-2 cursor-pointer hover:bg-accent/50 rounded-md px-2 transition-colors"
+                            className="flex justify-between items-center gap-2 py-2 cursor-pointer hover:bg-accent/50 rounded-md px-2 transition-colors"
                             onClick={() => handleIncidentClick(incident)}
                           >
-                            <div className="flex-1">
-                              <p className="font-medium">{incident.tittel}</p>
-                              <p className="text-xs text-muted-foreground">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{incident.tittel}</p>
+                              <p className="text-xs text-muted-foreground truncate">
                                 {incident.status} • {formatDate(incident.hendelsestidspunkt)}
                               </p>
                             </div>
                             <Badge
                               variant="outline"
-                              className={severityColors[incident.alvorlighetsgrad as keyof typeof severityColors]}
+                              className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors]} shrink-0 whitespace-nowrap`}
                             >
                               {incident.alvorlighetsgrad}
                             </Badge>
