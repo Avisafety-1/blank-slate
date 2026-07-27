@@ -7438,6 +7438,8 @@
     "markDone": "Mark as done",
     "newMessage": "New message",
     "reply": "Reply",
+    "replyPlaceholder": "Write a reply…",
+    "sendReply": "Send reply",
     "sentTo": "Sent to recipient",
     "filter": {
       "all": "All",
