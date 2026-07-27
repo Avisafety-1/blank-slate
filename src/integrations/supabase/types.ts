@@ -4512,12 +4512,14 @@ export type Database = {
           done_at: string | null
           finding_key: string | null
           id: string
+          parent_id: string | null
           read_at: string | null
           recipient_id: string
           sender_id: string | null
           severity: string
           status: string
           subject: string
+          thread_root_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4529,12 +4531,14 @@ export type Database = {
           done_at?: string | null
           finding_key?: string | null
           id?: string
+          parent_id?: string | null
           read_at?: string | null
           recipient_id: string
           sender_id?: string | null
           severity?: string
           status?: string
           subject: string
+          thread_root_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4546,12 +4550,14 @@ export type Database = {
           done_at?: string | null
           finding_key?: string | null
           id?: string
+          parent_id?: string | null
           read_at?: string | null
           recipient_id?: string
           sender_id?: string | null
           severity?: string
           status?: string
           subject?: string
+          thread_root_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4560,6 +4566,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "internal_messages"
             referencedColumns: ["id"]
           },
           {
@@ -8514,6 +8527,16 @@ export type Database = {
           p_token: string
         }
         Returns: undefined
+      }
+      search_message_recipients: {
+        Args: { _query: string }
+        Returns: {
+          company_id: string
+          company_name: string
+          email: string
+          full_name: string
+          id: string
+        }[]
       }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
