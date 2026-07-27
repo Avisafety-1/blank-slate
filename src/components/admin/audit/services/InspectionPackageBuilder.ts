@@ -47,6 +47,7 @@ export interface BuildResult {
   packageId: string;
   storagePath: string;
   signedUrl: string;
+  fileName: string;
   sizeBytes: number;
   overallScore: number | null;
 }
@@ -528,6 +529,14 @@ export async function buildInspectionPackage(params: {
   progress("uploading");
   const packageId = crypto.randomUUID();
   const storagePath = `${companyId}/inspection-packages/${packageId}.zip`;
+  const companySlug = (company?.navn ?? "company")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "company";
+  const dateSlug = new Date().toISOString().slice(0, 10);
+  const fileName = `inspection-package-${companySlug}-${dateSlug}.zip`;
+
   const { error: uploadErr } = await supabase.storage
     .from("documents")
     .upload(storagePath, blob, {
@@ -538,7 +547,7 @@ export async function buildInspectionPackage(params: {
 
   const { data: signed, error: signErr } = await supabase.storage
     .from("documents")
-    .createSignedUrl(storagePath, SIGN_URL_TTL_SECONDS);
+    .createSignedUrl(storagePath, SIGN_URL_TTL_SECONDS, { download: fileName });
   if (signErr || !signed) throw new Error(signErr?.message ?? "sign failed");
 
   // 5. Persist history ------------------------------------------------
@@ -563,16 +572,22 @@ export async function buildInspectionPackage(params: {
     packageId: inserted.id,
     storagePath,
     signedUrl: signed.signedUrl,
+    fileName,
     sizeBytes: blob.size,
     overallScore: evaluation.overall,
   };
 }
 
 /** Refresh a signed download URL for a historic package. */
-export async function getPackageSignedUrl(storagePath: string): Promise<string> {
+export async function getPackageSignedUrl(
+  storagePath: string,
+  downloadFileName?: string,
+): Promise<string> {
+  const fileName =
+    downloadFileName ?? storagePath.split("/").pop() ?? "inspection-package.zip";
   const { data, error } = await supabase.storage
     .from("documents")
-    .createSignedUrl(storagePath, SIGN_URL_TTL_SECONDS);
+    .createSignedUrl(storagePath, SIGN_URL_TTL_SECONDS, { download: fileName });
   if (error || !data) throw new Error(error?.message ?? "sign failed");
   return data.signedUrl;
 }

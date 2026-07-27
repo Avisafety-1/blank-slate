@@ -112,6 +112,17 @@ export const InspectionPackageTab = () => {
     },
   });
 
+  const triggerDownload = (url: string, fileName: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.rel = "noopener";
+    a.target = "_self";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   const generate = useMutation({
     mutationFn: async () => {
       if (!user?.id || !companyId) throw new Error("no auth");
@@ -125,7 +136,7 @@ export const InspectionPackageTab = () => {
     },
     onSuccess: (res) => {
       toast.success(t("audit.package.success"));
-      window.open(res.signedUrl, "_blank");
+      triggerDownload(res.signedUrl, res.fileName);
       queryClient.invalidateQueries({ queryKey: ["inspection-packages", companyId] });
     },
     onError: (err: any) => {
@@ -154,8 +165,9 @@ export const InspectionPackageTab = () => {
 
   const openHistoric = async (row: HistoryRow) => {
     try {
-      const url = await getPackageSignedUrl(row.storage_path);
-      window.open(url, "_blank");
+      const fileName = row.storage_path.split("/").pop() ?? "inspection-package.zip";
+      const url = await getPackageSignedUrl(row.storage_path, fileName);
+      triggerDownload(url, fileName);
     } catch (e: any) {
       toast.error(e?.message ?? t("audit.package.genericError"));
     }

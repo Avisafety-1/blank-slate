@@ -1,94 +1,53 @@
 
-# Inspection Package — plan
+## Problem
 
-Today "Inspection package" (Revisjon → Inspection package) only lists what *would* be included and shows a "coming soon" toast. This plan turns it into a real, downloadable inspection package a Luftfartstilsynet inspector can be handed directly.
+- "Inspection package" produserer en **ZIP** (PDF + vedlegg), ikke en PDF.
+- Filen åpnes med `window.open(signedUrl, "_blank")` etter en async mutation. På iPad Safari blir dette blokkert som popup, og selv når vinduet åpnes serverer signed URL-en filen `inline` uten filnavn, så en `.zip` bare henger på et blankt fane (som i skjermbildet ditt).
+- Samme problem gjelder "Download"-knappen i historikklisten.
 
-## Goal
+## Fiks
 
-One-click generation of a complete inspection binder for the current company (respecting hierarchy / allowlist), containing:
-- A cover PDF with company info, compliance score, and table of contents
-- Structured PDF sections per audit category
-- Attached source documents (certificates, manuals, insurance, etc.)
-- Delivered as a single ZIP the user can download and email to the inspector
+Kun frontend-endringer i to filer.
 
-## Scope
+### 1. `src/components/admin/audit/services/InspectionPackageBuilder.ts`
 
-### 1. UI (`InspectionPackageTab.tsx`)
-- Keep the existing sections overview and critical-findings warning.
-- Replace the "coming soon" button with a real **Generate package** action:
-  - Options (checkboxes): include attached source documents, include incident reports, include audit reviews, redact personal data (names → initials).
-  - Date range selector (default: last 12 months).
-  - Language selector (NO / EN) — reuses the current i18n language by default.
-- While generating: progress state (fetching data → building PDF → zipping → uploading → ready).
-- On completion: show a download button + a "Send to inspector" link that opens the existing `ComposeMessageDialog` prefilled with a signed URL.
-- History list at the bottom: previously generated packages (last 10) with re-download.
+- Bygg et menneskelesbart filnavn: `inspection-package-<company-slug>-<yyyy-mm-dd>.zip`.
+- Legg til `?download=<filnavn>` på signed URL (Supabase Storage tolker dette som `Content-Disposition: attachment; filename=...`).
+- Returner `fileName` i `BuildResult`.
+- Oppdater `getPackageSignedUrl(storagePath, fileName?)` slik at historikk-nedlasting også får `?download=`.
 
-### 2. Data assembly
-New service `src/components/admin/audit/services/InspectionPackageBuilder.ts` that gathers everything needed from the existing audit queries (no new fetch logic where possible):
-- Company profile (`companies` row + parent chain)
-- Compliance score & category scores (from `ComplianceEngine`)
-- Personnel + competencies (from `useAuditCompetencies`)
-- Fleet: drones, equipment, service status, open log deviations (from `useAuditFleet`)
-- Documents index with expiry status (from `useAuditDocuments`)
-- Operations: missions summary, open issues (from `useAuditOperations`)
-- Safety: incidents summary + closure stats (from `useAuditSafety`)
-- Internal audits: reviews + findings + actions (from `useAuditReviews`)
+### 2. `src/components/admin/audit/tabs/InspectionPackageTab.tsx`
 
-Everything is fetched once, in parallel, scoped by `get_user_visible_company_ids()` so hierarchy rules are preserved.
+Bytt ut `window.open(url, "_blank")` med en robust nedlastingshjelper som:
 
-### 3. PDF generation
-Reuse the existing PDF stack (`jspdf` — already used in `oppdragPdfExport.ts` / `riskAssessmentPdfExport.ts`) to build one cover PDF + one PDF per section, ensuring consistent AviSafe branding (logo, colors from `index.css`).
-- Cover: logo, company name, org.nr, period, overall score ring rendered as SVG → PNG, generation timestamp, generated-by user.
-- TOC with page numbers.
-- One section per category (Documentation, Competency, Fleet, Operations, Safety, Internal audits).
-- Each finding/row uses the same status colors as the UI (`status-red/yellow/green`).
-
-### 4. Attachments
-- Pull document files from the `documents` storage bucket using signed URLs (respecting existing storage RLS).
-- Skip attachments the current user cannot download (fail-soft with a note in the PDF).
-- Group under `attachments/<category>/<filename>`.
-
-### 5. Packaging & delivery
-- Zip everything client-side with `jszip` (already common in the codebase; confirm during build).
-- Upload the ZIP to a new storage path `inspection-packages/<company_id>/<uuid>.zip` in the existing `documents` bucket (company-scoped, matching current storage policy).
-- Return a 7-day signed URL to the UI.
-
-### 6. Persistence
-New table `inspection_packages` to keep history:
-
-```text
-inspection_packages
-├─ id (uuid, pk)
-├─ company_id (uuid, fk companies)
-├─ generated_by (uuid, fk profiles)
-├─ generated_at (timestamptz, default now())
-├─ period_from / period_to (date)
-├─ options (jsonb)          -- which sections/toggles were selected
-├─ overall_score (int)
-├─ storage_path (text)      -- path in documents bucket
-└─ file_size_bytes (bigint)
+```ts
+function triggerDownload(url: string, fileName: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;      // hint til nettleseren
+  a.rel = "noopener";
+  a.target = "_self";         // unngå popup-blokkering på iOS
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 ```
 
-RLS: `SELECT/INSERT` only when `has_role(auth.uid(),'administrator'|'superadmin')` and the row's `company_id` is in `get_user_visible_company_ids(auth.uid())`. Standard GRANTs to `authenticated` and `service_role` per project convention.
+- Bruk denne både etter vellykket generering (`onSuccess`) og i `openHistoric`.
+- For historikk må vi kjenne filnavnet: utled fra `storage_path` (siste segment) eller lagre `file_name` i `inspection_packages`-raden. Enkleste variant nå: derivér `${basename}` fra `storage_path` og bruk som `download=`-verdi – den blir uansett `.zip`, og signed URL-parameteret sørger for attachment-headeren.
 
-### 7. Access control
-- Feature stays inside the Audit tab, which is already limited to "Moderavdeling" + superadmins.
-- Generation button gated to admin/superadmin roles.
-- All queries continue to use the caller's session — no service_role in the browser.
+### Hvorfor dette virker
 
-### 8. i18n
-- New keys under `audit.package.*` (options, statuses, PDF section titles, cover strings) in both `no.json` and `en.json`, per the mandatory i18n rule.
-- PDF text follows the selected language.
+- `?download=filename.zip` på Supabase signed URL setter `Content-Disposition: attachment` slik at iOS/iPadOS faktisk laster ned filen i stedet for å prøve å vise den inline.
+- Å bruke et `<a>`-element med `.click()` i samme mikrotask som brukerens klikk (eller like etter await) er tillatt av iOS så lenge navigasjonen ikke åpner en ny fane – derfor `target="_self"`.
 
-## Out of scope (follow-up)
-- Emailing the ZIP directly from an edge function (we'll rely on the existing internal message flow for now).
-- Scheduled/automatic regeneration.
-- Digital signing of the package.
+### QA
 
-## Deliverables checklist
-1. Migration creating `inspection_packages` (+ grants + RLS).
-2. `InspectionPackageBuilder.ts` service.
-3. PDF renderer helpers under `src/components/admin/audit/pdf/`.
-4. Updated `InspectionPackageTab.tsx` with real generation flow + history list.
-5. i18n keys in `no.json` / `en.json`.
-6. Verified typecheck + a manual smoke test on Moderavdeling.
+1. Generer et nytt package på iPad → skal starte nedlasting av `.zip`.
+2. Klikk "Download" i historikklisten → samme oppførsel.
+3. Verifiser på desktop Chrome/Safari at nedlastingen fortsatt fungerer (fil åpnes/lagres, ingen popup blokkeres).
+
+### Ingen backend-endringer
+
+- Ingen migrasjoner, ingen edge-funksjoner.
+- ZIP-struktur og innhold er uendret.
