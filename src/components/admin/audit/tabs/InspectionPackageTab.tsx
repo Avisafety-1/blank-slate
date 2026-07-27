@@ -180,11 +180,6 @@ export const InspectionPackageTab = () => {
       toast.error(e?.message ?? t("audit.package.genericError"));
     }
   };
-      toast.success(t("common.copiedToClipboard", { defaultValue: "Kopiert" }));
-    } catch (e: any) {
-      toast.error(e?.message ?? t("audit.package.genericError"));
-    }
-  };
 
   return (
     <div className="space-y-6">
