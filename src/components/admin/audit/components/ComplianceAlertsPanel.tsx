@@ -13,8 +13,10 @@ import { SendReminderDialog } from "../SendReminderDialog";
 
 interface Props {
   findings: ScannerFinding[];
-  limit?: number;
+  /** Rows per group shown before the "Show more" toggle expands to the full list. */
+  initialPerGroup?: number;
 }
+
 
 const SEVERITY_ORDER: FindingSeverity[] = ["critical", "warning", "info"];
 
@@ -49,12 +51,17 @@ const sevBadgeClass = (sev: FindingSeverity) =>
       ? "text-black border-status-yellow/60 bg-status-yellow/70"
       : "text-black border-primary/60 bg-primary/70";
 
-export const ComplianceAlertsPanel = ({ findings, limit = 15 }: Props) => {
+export const ComplianceAlertsPanel = ({ findings, initialPerGroup = 5 }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispose = useUpsertDisposition();
   const { data: reminderMap = {} } = useReminderStatuses();
   const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);
+  const [expanded, setExpanded] = useState<Record<FindingSeverity, boolean>>({
+    critical: false,
+    warning: false,
+    info: false,
+  });
 
   const grouped = useMemo(() => {
     const g: Record<FindingSeverity, ScannerFinding[]> = { critical: [], warning: [], info: [] };
@@ -63,18 +70,7 @@ export const ComplianceAlertsPanel = ({ findings, limit = 15 }: Props) => {
   }, [findings]);
 
   const total = findings.length;
-  const shown = useMemo(() => {
-    // Cap total displayed while preserving severity priority.
-    let remaining = limit;
-    const out: Record<FindingSeverity, ScannerFinding[]> = { critical: [], warning: [], info: [] };
-    for (const sev of SEVERITY_ORDER) {
-      if (remaining <= 0) break;
-      const take = grouped[sev].slice(0, remaining);
-      out[sev] = take;
-      remaining -= take.length;
-    }
-    return out;
-  }, [grouped, limit]);
+
 
   const renderReminderBadge = (status: ReminderStatus | undefined) => {
     const state = status?.state ?? "not_sent";
@@ -173,35 +169,56 @@ export const ComplianceAlertsPanel = ({ findings, limit = 15 }: Props) => {
           })}
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-5 max-h-[560px] overflow-y-auto">
         {total === 0 ? (
           <p className="text-sm text-muted-foreground">{t("audit.alerts.empty")}</p>
         ) : (
           SEVERITY_ORDER.map((sev) => {
-            const items = shown[sev];
-            if (!items.length) return null;
+            const all = grouped[sev];
+            if (!all.length) return null;
             const meta = sectionMeta[sev];
             const Icon = meta.icon;
+            const isExpanded = expanded[sev];
+            const items = isExpanded ? all : all.slice(0, initialPerGroup);
+            const hidden = all.length - items.length;
             return (
               <section key={sev} className={cn("rounded-lg border-l-4 pl-3", meta.ringCls)}>
-                <header className={cn("flex items-center gap-2 mb-1", meta.textCls)}>
+                <header className={cn("flex items-center gap-2 mb-1 sticky top-0 bg-card z-10 py-1", meta.textCls)}>
                   <Icon className="w-4 h-4" />
                   <span className="text-sm font-semibold uppercase tracking-wide">
                     {t(meta.titleKey)}
                   </span>
-                  <Badge variant="outline" className="text-xs">{grouped[sev].length}</Badge>
+                  <Badge variant="outline" className="text-xs">{all.length}</Badge>
                 </header>
                 <ul className="divide-y divide-border">{items.map(renderRow)}</ul>
+                {hidden > 0 && (
+                  <div className="pt-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setExpanded((s) => ({ ...s, [sev]: true }))}
+                    >
+                      {t("audit.alerts.loadMore")} ({hidden})
+                    </Button>
+                  </div>
+                )}
+                {isExpanded && all.length > initialPerGroup && (
+                  <div className="pt-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setExpanded((s) => ({ ...s, [sev]: false }))}
+                    >
+                      {t("audit.operations.collapseGroup")}
+                    </Button>
+                  </div>
+                )}
               </section>
             );
           })
         )}
-        {total > limit && (
-          <p className="text-xs text-muted-foreground">
-            {t("audit.alerts.showingOf", { shown: limit, total })}
-          </p>
-        )}
       </CardContent>
+
 
       <SendReminderDialog
         finding={reminderFinding}
