@@ -47,6 +47,7 @@ export interface BuildResult {
   packageId: string;
   storagePath: string;
   signedUrl: string;
+  fileName: string;
   sizeBytes: number;
   overallScore: number | null;
 }
