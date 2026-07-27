@@ -2234,8 +2234,8 @@ export const ProfileDialog = () => {
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <CheckCircle2 className="h-5 w-5" />
                         {t('profile.pendingApprovalTitle', { count: pendingApprovalMissions.length })}
                       </CardTitle>
@@ -2421,8 +2421,8 @@ export const ProfileDialog = () => {
 
                 {/* Follow-up Incidents */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-base sm:text-lg">{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                     {followUpIncidents.length > 0 ? (

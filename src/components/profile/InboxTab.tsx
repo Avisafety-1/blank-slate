@@ -41,21 +41,21 @@ export const InboxTab = () => {
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <Card className="border-0 sm:border shadow-none sm:shadow">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 p-3 sm:p-6">
           <CardTitle className="text-base flex items-center gap-2">
             <Inbox className="w-4 h-4" />
             {t("inbox.title")}
           </CardTitle>
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-            <TabsList>
-              <TabsTrigger value="all">{t("inbox.filter.all")}</TabsTrigger>
-              <TabsTrigger value="unread">{t("inbox.filter.unread")}</TabsTrigger>
-              <TabsTrigger value="done">{t("inbox.filter.done")}</TabsTrigger>
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="all" className="flex-1 sm:flex-none">{t("inbox.filter.all")}</TabsTrigger>
+              <TabsTrigger value="unread" className="flex-1 sm:flex-none">{t("inbox.filter.unread")}</TabsTrigger>
+              <TabsTrigger value="done" className="flex-1 sm:flex-none">{t("inbox.filter.done")}</TabsTrigger>
             </TabsList>
           </Tabs>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : messages.length === 0 ? (
@@ -67,16 +67,16 @@ export const InboxTab = () => {
                   key={m.id}
                   onClick={() => openMessage(m)}
                   className={cn(
-                    "flex items-start gap-3 py-3 px-1 cursor-pointer hover:bg-muted/50 rounded-sm transition",
+                    "flex items-start gap-3 py-2.5 px-1 cursor-pointer hover:bg-muted/50 rounded-sm transition",
                     m.status === "unread" && "font-medium",
                   )}
                 >
-                  <div className="mt-0.5">{sevIcon(m.severity)}</div>
+                  <div className="mt-0.5 shrink-0">{sevIcon(m.severity)}</div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm truncate">{m.subject}</span>
                       {m.status === "done" && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge variant="outline" className="text-[10px] shrink-0">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
                           {t("inbox.status.done")}
                         </Badge>
@@ -87,7 +87,7 @@ export const InboxTab = () => {
                       {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: dateLocale })}
                     </div>
                   </div>
-                  {m.status === "unread" && <div className="w-2 h-2 rounded-full bg-primary mt-2" />}
+                  {m.status === "unread" && <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
                 </li>
               ))}
             </ul>
@@ -96,7 +96,7 @@ export const InboxTab = () => {
       </Card>
 
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-md">
+        <SheetContent className="w-full sm:max-w-md p-4 sm:p-6">
           {selected && (
             <>
               <SheetHeader>
