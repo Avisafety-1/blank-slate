@@ -7270,7 +7270,9 @@
       "groupCritical": "Krever handling nå",
       "groupWarning": "Bør følges opp",
       "groupInfo": "Til informasjon",
-      "showingOf": "Viser {{shown}} av {{total}}"
+      "showingOf": "Viser {{shown}} av {{total}}",
+      "loadMore": "Vis flere",
+      "scrollHint": "Rull for å se alle"
     },
     "severity": {
       "critical": "Kritisk",
@@ -7308,7 +7310,13 @@
       "statusPass": "Gyldig",
       "statusWarn": "Utløper snart",
       "statusFail": "Utløpt",
-      "statusUnknown": "Ukjent"
+      "statusUnknown": "Ukjent",
+      "search": "Søk pilot …",
+      "issueCount": "{{count}} avvik",
+      "allValid": "Alt gyldig",
+      "expand": "Vis detaljer",
+      "openPerson": "Åpne pilot",
+      "worstStatus": "Verste status"
     },
     "fleet": {
       "header": "Flåtestatus",
@@ -7321,7 +7329,12 @@
       "calibration": "Kalibrering",
       "battery": "Batterihelse",
       "additionalDetails": "Tilleggsinformasjon",
-      "informationalNote": "Kun til informasjon – påvirker ikke compliance-score."
+      "informationalNote": "Kun til informasjon – påvirker ikke compliance-score.",
+      "openDeviations": "Åpne loggavvik",
+      "lastInspection": "Siste inspeksjon",
+      "openDrone": "Åpne drone",
+      "noDeviations": "Ingen loggavvik",
+      "deviationsList": "Loggavvik"
     },
     "operations": {
       "header": "Operasjoner",
@@ -7336,7 +7349,9 @@
         "flightNotClosed": "Flygning ikke lukket"
       },
       "noIssues": "Ingen operative avvik siste 12 måneder",
-      "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag"
+      "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag",
+      "expandGroup": "Vis {{count}}",
+      "collapseGroup": "Skjul"
     },
     "safety": {
       "reported": "Rapporterte",
@@ -7346,7 +7361,20 @@
       "avgCloseDays": "Snitt lukketid (dager)",
       "trend": "Trend siste 12 mnd",
       "topFindings": "Vanligste funn",
-      "topFindingsEmpty": "Ingen funn å vise"
+      "topFindingsEmpty": "Ingen funn å vise",
+      "openIncidents": "Åpne hendelser",
+      "criticalIncidents": "Kritiske hendelser",
+      "closedOnTime": "% lukket innen frist",
+      "bySeverity": "Fordeling per alvorlighetsgrad",
+      "byCategory": "Topp kategorier",
+      "noBreakdown": "Ingen hendelser å vise",
+      "severity": {
+        "lav": "Lav",
+        "moderat": "Moderat",
+        "hoy": "Høy",
+        "kritisk": "Kritisk",
+        "ukjent": "Ukjent"
+      }
     },
     "documents": {
       "header": "Dokumentasjon",
@@ -7366,7 +7394,18 @@
         "recommended": "Anbefalt",
         "optional": "Valgfritt"
       },
-      "emptyClass": "Ingen dokumenter i denne kategorien"
+      "emptyClass": "Ingen dokumenter i denne kategorien",
+      "statusTabs": {
+        "expired": "Utløpt",
+        "expiring": "Utløper snart",
+        "valid": "Gyldig",
+        "noExpiry": "Uten utløp"
+      },
+      "emptyStatus": "Ingen dokumenter i denne statusen",
+      "noExpiryHint": "Dokumenter uten utløpsdato regnes ikke som compliance-svikt.",
+      "showNoExpiry": "Vis dokumenter uten utløp ({{count}})",
+      "hideNoExpiry": "Skjul dokumenter uten utløp",
+      "open": "Åpne"
     },
     "scanner": {
       "expiredCompetence": {
@@ -7453,7 +7492,43 @@
       "statusClosed": "Lukket",
       "closeBlocked": "Kan ikke lukkes: åpne kritiske funn.",
       "overrideReason": "Begrunnelse for overstyring",
-      "newTitle": "Årlig internrevisjon {{year}}"
+      "newTitle": "Årlig internrevisjon {{year}}",
+      "department": "Avdeling",
+      "selectDepartment": "Velg avdeling",
+      "suggestions": "Foreslåtte punkter fra systemet",
+      "suggestionsHint": "Bekreft eller konverter til funn.",
+      "confirm": "Bekreft",
+      "confirmed": "Bekreftet",
+      "convertToFinding": "Opprett funn",
+      "noSuggestions": "Ingen forslag – alt ser bra ut.",
+      "sectionOrganization": "Organisasjon",
+      "sectionDocumentation": "Dokumentasjon",
+      "sectionCompetency": "Kompetanse",
+      "sectionOperations": "Operasjoner",
+      "sectionTechnical": "Teknisk",
+      "sectionSafety": "Safety",
+      "findingsHeader": "Funn",
+      "addFinding": "Legg til funn",
+      "noFindings": "Ingen funn registrert.",
+      "category": "Kategori",
+      "categoryPlaceholder": "Kategori",
+      "responsiblePlaceholder": "Ansvarlig",
+      "descriptionPlaceholder": "Beskrivelse",
+      "actions": "Tiltak",
+      "addAction": "Legg til tiltak",
+      "noActions": "Ingen tiltak.",
+      "actionDescription": "Beskrivelse",
+      "actionResponsible": "Ansvarlig",
+      "actionDeadline": "Frist",
+      "actionStatus": "Status",
+      "statusOpen": "Åpen",
+      "statusInProgressShort": "Pågår",
+      "statusClosedShort": "Lukket",
+      "attachmentsSoon": "Vedlegg (kommer)",
+      "cancel": "Avbryt",
+      "save": "Lagre",
+      "openFindings": "Åpne funn",
+      "nextReview": "Dato"
     },
     "package": {
       "header": "Tilsynspakke",
@@ -7461,7 +7536,21 @@
       "generating": "Genererer …",
       "description": "Samler PDF-oversikt, CSV, JSON og manifest i én zip-fil.",
       "criticalOpenTitle": "{{count}} kritiske funn er åpne",
-      "criticalOpenBody": "Lukk kritiske funn før du genererer tilsynspakken."
+      "criticalOpenBody": "Lukk kritiske funn før du genererer tilsynspakken.",
+      "contentsHeader": "Innhold i tilsynspakken",
+      "comingSoon": "PDF-eksport kommer snart.",
+      "section": {
+        "company": "Selskapsinformasjon",
+        "personnel": "Personellregister",
+        "fleet": "Droneregister",
+        "documents": "Manualer og policyer",
+        "activity": "Aktivitet siste 12 mnd",
+        "findings": "Åpne funn og tiltak",
+        "incidents": "Hendelseslogg",
+        "reviews": "Gjennomførte internrevisjoner",
+        "score": "Compliance-score"
+      },
+      "sectionCount": "{{count}} elementer"
     },
     "tabTitle": "Revisjon",
     "actionKpi": {
@@ -7482,6 +7571,16 @@
     "categoryScore": {
       "openIssues": "{{count}} åpne funn",
       "noIssues": "Ingen åpne funn"
+    },
+    "status": {
+      "valid": "Gyldig",
+      "expiring": "Utløper snart",
+      "expired": "Utløpt",
+      "noExpiry": "Uten utløp",
+      "notRequired": "Ikke påkrevd",
+      "notConfigured": "Ikke konfigurert",
+      "notReviewed": "Ikke vurdert",
+      "pending": "Venter"
     }
   },
   "inbox": {
