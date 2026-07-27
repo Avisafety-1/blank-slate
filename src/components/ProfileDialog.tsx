@@ -933,11 +933,11 @@ export const ProfileDialog = () => {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
+      <DialogContent className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[95vw] max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%] p-3 sm:p-6">
         <DialogHeader>
         <DialogTitle>{t('profile.title')}</DialogTitle>
       </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
+        <ScrollArea className="max-h-[calc(90vh-100px)] pr-0 sm:pr-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">{t('common.loading')}</p>
@@ -1008,7 +1008,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-20 md:mt-14 lg:mt-4 mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
+                <div className="mt-4 mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1509,7 +1509,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="security" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.security')}</CardTitle>
@@ -1602,7 +1602,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Competencies Tab */}
-              <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="competencies" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 {/* Guided tour launcher */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -1771,7 +1771,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Emergency Contact Tab */}
-              <TabsContent value="emergency" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="emergency" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -1859,7 +1859,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="notifications" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.notifications')}</CardTitle>
@@ -2230,17 +2230,17 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Oppfølging Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
+              <TabsContent value="incidents" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <CheckCircle2 className="h-5 w-5" />
                         {t('profile.pendingApprovalTitle', { count: pendingApprovalMissions.length })}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                       {pendingApprovalMissions.length > 0 ? (
                         <div className="space-y-4">
                           {pendingApprovalMissions.map((mission) => {
@@ -2248,7 +2248,7 @@ export const ProfileDialog = () => {
                             return (
                             <div
                               key={mission.id}
-                              className="w-full p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                              className="w-full p-3 sm:p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
@@ -2421,27 +2421,27 @@ export const ProfileDialog = () => {
 
                 {/* Follow-up Incidents */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-base sm:text-lg">{t('profile.followUpIncidentsTitle', { count: followUpIncidents.length })}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
                     {followUpIncidents.length > 0 ? (
                       <div className="space-y-2">
                         {followUpIncidents.map((incident) => (
                           <div
                             key={incident.id}
-                            className="flex justify-between items-center py-2 cursor-pointer hover:bg-accent/50 rounded-md px-2 transition-colors"
+                            className="flex justify-between items-center gap-2 py-2 cursor-pointer hover:bg-accent/50 rounded-md px-2 transition-colors"
                             onClick={() => handleIncidentClick(incident)}
                           >
-                            <div className="flex-1">
-                              <p className="font-medium">{incident.tittel}</p>
-                              <p className="text-xs text-muted-foreground">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{incident.tittel}</p>
+                              <p className="text-xs text-muted-foreground truncate">
                                 {incident.status} • {formatDate(incident.hendelsestidspunkt)}
                               </p>
                             </div>
                             <Badge
                               variant="outline"
-                              className={severityColors[incident.alvorlighetsgrad as keyof typeof severityColors]}
+                              className={`${severityColors[incident.alvorlighetsgrad as keyof typeof severityColors]} shrink-0 whitespace-nowrap`}
                             >
                               {incident.alvorlighetsgrad}
                             </Badge>
@@ -2457,7 +2457,7 @@ export const ProfileDialog = () => {
 
               {/* Subscription Tab */}
               {!stripeExempt && (
-              <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
+              <TabsContent value="subscription" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -2708,7 +2708,7 @@ export const ProfileDialog = () => {
                 </Card>
               </TabsContent>
               )}
-              <TabsContent value="inbox" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="inbox" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <InboxTab />
               </TabsContent>
             </Tabs>
