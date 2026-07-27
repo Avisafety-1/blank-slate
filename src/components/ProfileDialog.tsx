@@ -1008,7 +1008,7 @@ export const ProfileDialog = () => {
               </TabsList>
 
               {activeTab === "profile" && (
-                <div className="mt-20 md:mt-14 lg:mt-4 mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
+                <div className="mt-4 mb-4 flex flex-col sm:flex-row flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -1509,7 +1509,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Security Tab */}
-              <TabsContent value="security" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="security" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.security')}</CardTitle>
@@ -1602,7 +1602,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Competencies Tab */}
-              <TabsContent value="competencies" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="competencies" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 {/* Guided tour launcher */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -1771,7 +1771,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Emergency Contact Tab */}
-              <TabsContent value="emergency" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="emergency" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -1859,7 +1859,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="notifications" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.notifications')}</CardTitle>
@@ -2230,7 +2230,7 @@ export const ProfileDialog = () => {
               </TabsContent>
 
               {/* Oppfølging Tab */}
-              <TabsContent value="incidents" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
+              <TabsContent value="incidents" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
                 {/* Pending Approval Missions */}
                 {canApproveMissions && (
                   <Card>
@@ -2457,7 +2457,7 @@ export const ProfileDialog = () => {
 
               {/* Subscription Tab */}
               {!stripeExempt && (
-              <TabsContent value="subscription" className="space-y-4 mt-20 md:mt-14 lg:mt-4">
+              <TabsContent value="subscription" className="space-y-4 mt-4">
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -2708,7 +2708,7 @@ export const ProfileDialog = () => {
                 </Card>
               </TabsContent>
               )}
-              <TabsContent value="inbox" className="space-y-4 mt-20 md:mt-14 lg:mt-4 min-h-[400px] sm:min-h-0">
+              <TabsContent value="inbox" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
                 <InboxTab />
               </TabsContent>
             </Tabs>
