@@ -22,8 +22,14 @@ import {
   Package,
   AlertOctagon,
 } from "lucide-react";
+import { KpiCard } from "../components/KpiCard";
+import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
+import { ComplianceAlertsPanel } from "../components/ComplianceAlertsPanel";
+import { CategoryScoreGrid } from "../components/CategoryScoreGrid";
+import { useAuditOverview } from "../hooks/useAuditData";
 import type { ComplianceCategoryKey } from "../types";
 import type { AuditTabValue } from "../AuditSection";
+
 
 // Which top-level Audit tab each score-ring category maps to.
 const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, AuditTabValue> = {
