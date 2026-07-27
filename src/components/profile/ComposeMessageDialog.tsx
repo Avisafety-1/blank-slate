@@ -9,7 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Send, Search, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchRecipients, type RecipientOption } from "./hooks/useSearchRecipients";
+import {
+  useRecipientsList,
+  useFilteredRecipients,
+  useServerRecipientSearch,
+  type RecipientOption,
+} from "./hooks/useSearchRecipients";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { cn } from "@/lib/utils";
 
@@ -36,16 +41,31 @@ export const ComposeMessageDialog = ({ open, onOpenChange, prefill }: Props) => 
   const [emailChannel, setEmailChannel] = useState(false);
   const [smsChannel, setSmsChannel] = useState(false);
 
-  const { data: results = [], isFetching } = useSearchRecipients(query);
-  const send = useSendMessage();
-
-  const filteredResults = useMemo(
-    () => results.filter((r) => !selected.some((s) => s.id === r.id)),
-    [results, selected],
-  );
-
   const lockRecipients = !!prefill?.lockRecipients;
   const isReply = !!prefill?.parent_id;
+
+  const { data: allRecipients = [], isFetching: isLoadingList } = useRecipientsList(
+    open && !lockRecipients,
+  );
+  const localMatches = useFilteredRecipients(allRecipients, query);
+  // If prefetched list is at server cap (30) and local yields nothing, ask server.
+  const needsServerSearch =
+    !lockRecipients && query.trim().length >= 2 && localMatches.length === 0 && allRecipients.length >= 30;
+  const { data: serverResults = [], isFetching: isSearching } = useServerRecipientSearch(
+    query,
+    needsServerSearch,
+  );
+  const isFetching = isLoadingList || isSearching;
+  const results = needsServerSearch ? serverResults : localMatches;
+
+  const filteredResults = useMemo(
+    () => results.filter((r) => !selected.some((s) => s.id === r.id)).slice(0, 30),
+    [results, selected],
+  );
+  const send = useSendMessage();
+
+
+
 
   const reset = () => {
     setQuery("");
