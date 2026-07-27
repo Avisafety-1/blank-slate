@@ -249,3 +249,6 @@ verify_jwt = false
 
 [functions.send-reminder]
 verify_jwt = true
+
+[functions.send-message]
+verify_jwt = true

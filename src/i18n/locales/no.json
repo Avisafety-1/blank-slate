@@ -7438,13 +7438,32 @@
     "systemSender": "AviSafe",
     "goToModule": "Gå til modul",
     "markDone": "Marker som ferdig",
+    "newMessage": "Ny melding",
+    "reply": "Svar",
+    "sentTo": "Sendt til mottaker",
     "filter": {
       "all": "Alle",
       "unread": "Uleste",
-      "done": "Ferdig"
+      "done": "Ferdig",
+      "sent": "Sendt"
     },
     "status": {
       "done": "Ferdig"
+    },
+    "compose": {
+      "newTitle": "Ny melding",
+      "replyTitle": "Svar",
+      "to": "Til",
+      "searchPlaceholder": "Søk etter person…",
+      "noResults": "Ingen treff",
+      "subject": "Emne",
+      "body": "Melding",
+      "channels": "Lever også via",
+      "email": "E-post",
+      "sms": "SMS",
+      "channelsHint": "Innboks er alltid inkludert.",
+      "send": "Send",
+      "sent": "Sendt til {{count}} mottaker(e)"
     }
   }
 }

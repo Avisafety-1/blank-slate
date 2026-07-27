@@ -7436,13 +7436,32 @@
     "systemSender": "AviSafe",
     "goToModule": "Go to module",
     "markDone": "Mark as done",
+    "newMessage": "New message",
+    "reply": "Reply",
+    "sentTo": "Sent to recipient",
     "filter": {
       "all": "All",
       "unread": "Unread",
-      "done": "Done"
+      "done": "Done",
+      "sent": "Sent"
     },
     "status": {
       "done": "Done"
+    },
+    "compose": {
+      "newTitle": "New message",
+      "replyTitle": "Reply",
+      "to": "To",
+      "searchPlaceholder": "Search people…",
+      "noResults": "No matches",
+      "subject": "Subject",
+      "body": "Message",
+      "channels": "Also deliver via",
+      "email": "Email",
+      "sms": "SMS",
+      "channelsHint": "Inbox delivery is always included.",
+      "send": "Send",
+      "sent": "Sent to {{count}} recipient(s)"
     }
   }
 }
