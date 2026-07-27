@@ -48,7 +48,28 @@ export interface ComplianceInputs {
 }
 
 // ---------- Real domain shapes (Fase 2) ----------
-export type CheckResult = "pass" | "warn" | "fail" | "na" | "unknown";
+// Core scoring buckets:
+//   pass  → counts as compliant
+//   warn  → partial (yellow)
+//   fail  → critical (red)
+//   na    → excluded from scoring
+//   unknown → technical fallback only (should be avoided)
+// Semantic subtypes carry more meaning in the UI but still map back to a
+// scoring bucket via `resolveCheckBucket()` in utils/statusMapping.
+export type CheckResult =
+  | "pass"
+  | "warn"
+  | "fail"
+  | "na"
+  | "unknown"
+  | "valid"
+  | "expiring"
+  | "expired"
+  | "not_reviewed"
+  | "no_expiry"
+  | "not_required"
+  | "not_configured"
+  | "pending";
 export type FindingSeverity = "critical" | "warning" | "info";
 export type ComplianceCategoryKey =
   | "competence"
@@ -56,6 +77,20 @@ export type ComplianceCategoryKey =
   | "fleet"
   | "operations"
   | "safety";
+
+// Which "bucket" the score engine uses this result as.
+export type ScoreBucket = "pass" | "warn" | "fail" | "na";
+
+// Document compliance classification (frontend-derived from category/tags).
+export type DocumentComplianceClass =
+  | "compliance"
+  | "operational"
+  | "mission"
+  | "other";
+export type DocumentComplianceRelevance =
+  | "required"
+  | "recommended"
+  | "optional";
 
 export interface DeepLink {
   path: string;
