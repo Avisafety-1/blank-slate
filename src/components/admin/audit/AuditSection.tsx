@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, FileText, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package, Construction } from "lucide-react";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { DocumentationTab } from "./tabs/DocumentationTab";
 import { CompetencyTab } from "./tabs/CompetencyTab";
@@ -38,10 +38,27 @@ export const AuditSection = () => {
 
   return (
     <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-xl border-2 border-amber-500/60 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-4 sm:p-5 shadow-sm">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex-shrink-0 rounded-lg bg-amber-500/20 p-2 sm:p-3">
+            <Construction className="h-6 w-6 sm:h-7 sm:w-7 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-base sm:text-lg font-bold text-amber-700 dark:text-amber-300">
+              {t("audit.developmentBanner.title")}
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              {t("audit.developmentBanner.body")}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <h2 className="text-2xl font-bold">{t("audit.title")}</h2>
         <p className="text-sm text-muted-foreground">{t("audit.subtitle")}</p>
       </div>
+
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as AuditTabValue)} className="w-full">
         <TabsList className="grid grid-cols-2 sm:inline-flex h-auto w-full sm:w-auto gap-1 p-1.5 bg-secondary rounded-xl flex-wrap">

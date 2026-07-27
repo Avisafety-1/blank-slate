@@ -854,12 +854,10 @@ const Admin = () => {
               <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               <span>{t('admin.training')}</span>
             </TabsTrigger>
-            {companyName?.toLowerCase() === 'moderavdeling' && (
-              <TabsTrigger value="audit" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
-                <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span>{t('audit.tabTitle')}</span>
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="audit" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
+              <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+              <span>{t('audit.tabTitle')}</span>
+            </TabsTrigger>
             {isSuperAdmin && companyName?.toLowerCase() === 'avisafe' && (
               <TabsTrigger value="calculator" className="flex items-center justify-center gap-1.5 text-xs sm:text-sm px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg transition-colors">
                 <Calculator className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
@@ -1664,11 +1662,9 @@ const Admin = () => {
             <TrainingSection />
           </TabsContent>
 
-          {companyName?.toLowerCase() === 'moderavdeling' && (
-            <TabsContent value="audit" className="mt-4 sm:mt-8">
-              <AuditSection />
-            </TabsContent>
-          )}
+          <TabsContent value="audit" className="mt-4 sm:mt-8">
+            <AuditSection />
+          </TabsContent>
         </Tabs>
       </main>
 

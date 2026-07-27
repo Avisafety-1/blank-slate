@@ -7623,6 +7623,10 @@
       "sectionCount": "{{count}} elementer"
     },
     "tabTitle": "Revisjon",
+    "developmentBanner": {
+      "title": "Under utvikling",
+      "body": "Revisjon- og compliance-modulen er under aktiv utvikling. Data og beregninger kan endre seg — bruk foreløpig kun til intern testing og gi oss gjerne tilbakemelding."
+    },
     "actionKpi": {
       "documentsExpiring": "Dokumenter som utløper",
       "documentsExpiringHint": "Utløper innen 30 dager",
