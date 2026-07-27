@@ -7621,6 +7621,10 @@
       "sectionCount": "{{count}} items"
     },
     "tabTitle": "Audit",
+    "developmentBanner": {
+      "title": "Under development",
+      "body": "The audit & compliance module is under active development. Data and calculations may change — use for internal testing only for now and share any feedback with us."
+    },
     "actionKpi": {
       "documentsExpiring": "Documents expiring",
       "documentsExpiringHint": "Expiring within 30 days",
