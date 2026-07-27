@@ -61,20 +61,20 @@ export const InboxTab = () => {
           ) : messages.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">{t("inbox.empty")}</p>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border w-full">
               {messages.map((m) => (
                 <li
                   key={m.id}
                   onClick={() => openMessage(m)}
                   className={cn(
-                    "flex items-start gap-3 py-2.5 px-1 cursor-pointer hover:bg-muted/50 rounded-sm transition",
+                    "flex items-start gap-2 sm:gap-3 py-2.5 px-1 cursor-pointer hover:bg-muted/50 rounded-sm transition w-full",
                     m.status === "unread" && "font-medium",
                   )}
                 >
                   <div className="mt-0.5 shrink-0">{sevIcon(m.severity)}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm truncate">{m.subject}</span>
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <span className="text-sm break-words min-w-0 flex-1">{m.subject}</span>
                       {m.status === "done" && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -82,7 +82,7 @@ export const InboxTab = () => {
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">
+                    <div className="text-xs text-muted-foreground break-words">
                       {m.sender_name || t("inbox.systemSender")} ·{" "}
                       {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: dateLocale })}
                     </div>
