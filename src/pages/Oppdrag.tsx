@@ -129,15 +129,27 @@ const Oppdrag = () => {
 
   const handledScrollRef = useRef<string | null>(null);
 
-  // Deep-link handling: ?id=<mission-uuid> → reuse existing scroll-to-mission infra
-  const [searchParams] = useSearchParams();
+  // Deep-link handling: ?id=<mission-uuid> → open the mission card dialog directly
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledDeepLinkRef = useRef<string | null>(null);
   useEffect(() => {
     const id = searchParams.get("id");
-    if (!id) return;
-    data.navigate("/oppdrag", {
-      replace: true,
-      state: { scrollToMission: true, missionId: id },
-    });
+    if (!id || handledDeepLinkRef.current === id) return;
+    handledDeepLinkRef.current = id;
+    (async () => {
+      const { data: missionData } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (missionData) {
+        setEditingMission(missionData as any);
+        setEditDialogOpen(true);
+      } else {
+        toast.error(t('common.notFound', { defaultValue: 'Could not find the requested item' }));
+      }
+      setSearchParams({}, { replace: true });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
