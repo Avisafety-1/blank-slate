@@ -2248,7 +2248,7 @@ export const ProfileDialog = () => {
                             return (
                             <div
                               key={mission.id}
-                              className="w-full p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                              className="w-full p-3 sm:p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
