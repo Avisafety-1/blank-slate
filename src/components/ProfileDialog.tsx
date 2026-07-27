@@ -933,11 +933,11 @@ export const ProfileDialog = () => {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%]">
+      <DialogContent className="max-w-4xl w-[calc(100vw-1rem)] sm:w-[95vw] max-h-[90vh] top-[5%] translate-y-0 data-[state=open]:slide-in-from-top-[5%] p-3 sm:p-6">
         <DialogHeader>
         <DialogTitle>{t('profile.title')}</DialogTitle>
       </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
+        <ScrollArea className="max-h-[calc(90vh-100px)] pr-0 sm:pr-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">{t('common.loading')}</p>
