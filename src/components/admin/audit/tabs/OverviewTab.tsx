@@ -22,16 +22,11 @@ import {
   Package,
   AlertOctagon,
 } from "lucide-react";
-import { KpiCard } from "../components/KpiCard";
-import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
-import { ComplianceAlertsPanel } from "../components/ComplianceAlertsPanel";
-import { CategoryScoreGrid } from "../components/CategoryScoreGrid";
-import { useAuditOverview } from "../hooks/useAuditData";
 import type { ComplianceCategoryKey } from "../types";
-import { toast } from "sonner";
+import type { AuditTabValue } from "../AuditSection";
 
 // Which top-level Audit tab each score-ring category maps to.
-const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, string> = {
+const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, AuditTabValue> = {
   competence: "competency",
   documentation: "documentation",
   fleet: "fleet",
@@ -39,23 +34,11 @@ const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, string> = {
   safety: "safety",
 };
 
-function scrollToAuditTab(tabValue: string) {
-  const trigger = document.querySelector(
-    `[data-radix-collection-item][role="tab"][value="${tabValue}"]`,
-  ) as HTMLElement | null;
-  const anyTrigger = trigger ?? (document.querySelector(`[role="tab"][data-state]`) as HTMLElement | null);
-  // radix TabsTrigger uses id/aria-controls; try clicking a matching value attr fallback
-  const byText = Array.from(document.querySelectorAll<HTMLElement>('[role="tab"]')).find((el) =>
-    el.getAttribute("data-value") === tabValue || el.getAttribute("value") === tabValue,
-  );
-  const target = trigger ?? byText ?? anyTrigger;
-  if (target) {
-    target.click();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+interface OverviewTabProps {
+  onNavigate: (tab: AuditTabValue) => void;
 }
 
-export const OverviewTab = () => {
+export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
   const { t } = useTranslation();
   const o = useAuditOverview();
   const [showActivity, setShowActivity] = useState(false);
@@ -70,6 +53,7 @@ export const OverviewTab = () => {
   if (o.isError) {
     return <p className="text-sm text-status-red">{t("audit.states.error")}: {o.error?.message}</p>;
   }
+
 
   const score = o.evaluation?.overall ?? 0;
   const dq = o.evaluation?.dataQuality;
