@@ -30,62 +30,64 @@ export type Validator = (ctx: ValidatorContext) => ScannerFinding[];
 // ---------- Competence ----------
 const competenceValidator: Validator = ({ competencies }) =>
   competencies
-    .filter((c) => c.status !== "pass" && c.status !== "unknown")
-    .map((c) => ({
-      code: c.status === "fail" ? "ExpiredCompetence" : "CompetenceExpiringSoon",
-      severity: c.status === "fail" ? "critical" : "warning",
-      categoryKey: "competence",
-      titleKey:
-        c.status === "fail"
+    .filter((c) => c.status === "fail" || c.status === "expired" || c.status === "warn" || c.status === "expiring")
+    .map((c) => {
+      const isFail = c.status === "fail" || c.status === "expired";
+      return {
+        code: isFail ? "ExpiredCompetence" : "CompetenceExpiringSoon",
+        severity: (isFail ? "critical" : "warning") as ScannerFinding["severity"],
+        categoryKey: "competence" as const,
+        titleKey: isFail
           ? "audit.scanner.expiredCompetence.title"
           : "audit.scanner.expiringCompetence.title",
-      bodyKey:
-        c.status === "fail"
+        bodyKey: isFail
           ? "audit.scanner.expiredCompetence.body"
           : "audit.scanner.expiringCompetence.body",
-      titleParams: { pilot: c.pilotName, competency: c.competency },
-      bodyParams: {
-        pilot: c.pilotName,
-        competency: c.competency,
-        days: c.daysUntilExpiry ?? 0,
-      },
-      entityType: "competency",
-      entityId: c.profileId,
-      evidence: { validUntil: c.validUntil, daysUntilExpiry: c.daysUntilExpiry },
-      deepLink: auditDeepLink("profile", c.profileId),
-    }));
+        titleParams: { pilot: c.pilotName, competency: c.competency },
+        bodyParams: {
+          pilot: c.pilotName,
+          competency: c.competency,
+          days: c.daysUntilExpiry ?? 0,
+        },
+        entityType: "competency",
+        entityId: c.profileId,
+        evidence: { validUntil: c.validUntil, daysUntilExpiry: c.daysUntilExpiry },
+        deepLink: auditDeepLink("profile", c.profileId),
+      };
+    });
 
 // ---------- Documentation ----------
 const documentationValidator: Validator = ({ documents }) => {
   const findings: ScannerFinding[] = [];
-  for (const d of documents) {
-    if (d.status === "fail" || d.status === "warn") {
-      findings.push({
-        code: d.status === "fail" ? "ExpiredDocument" : "DocumentReviewOverdue",
-        severity: d.status === "fail" ? "critical" : "warning",
-        categoryKey: "documentation",
-        titleKey:
-          d.status === "fail"
-            ? "audit.scanner.expiredDocument.title"
-            : "audit.scanner.documentReviewOverdue.title",
-        bodyKey:
-          d.status === "fail"
-            ? "audit.scanner.expiredDocument.body"
-            : "audit.scanner.documentReviewOverdue.body",
-        titleParams: { title: d.title },
-        bodyParams: { title: d.title, days: d.daysUntilExpiry ?? 0 },
-        entityType: "document",
-        entityId: d.id,
-        evidence: { nextReview: d.nextReview },
-        deepLink: auditDeepLink("document", d.id),
-      });
-    }
+  // Only surface findings for documents that actually matter for compliance.
+  const scoped = documents.filter((d) => d.complianceRelevance === "required");
+  for (const d of scoped) {
+    const isFail = d.status === "fail" || d.status === "expired";
+    const isWarn = d.status === "warn" || d.status === "expiring";
+    if (!isFail && !isWarn) continue;
+    findings.push({
+      code: isFail ? "ExpiredDocument" : "DocumentReviewOverdue",
+      severity: isFail ? "critical" : "warning",
+      categoryKey: "documentation",
+      titleKey: isFail
+        ? "audit.scanner.expiredDocument.title"
+        : "audit.scanner.documentReviewOverdue.title",
+      bodyKey: isFail
+        ? "audit.scanner.expiredDocument.body"
+        : "audit.scanner.documentReviewOverdue.body",
+      titleParams: { title: d.title },
+      bodyParams: { title: d.title, days: d.daysUntilExpiry ?? 0 },
+      entityType: "document",
+      entityId: d.id,
+      evidence: { nextReview: d.nextReview },
+      deepLink: auditDeepLink("document", d.id),
+    });
   }
-  // Emergency plan missing → look at categories
+  // Emergency plan missing → look at categories (scoped so we don't flag test files)
   const hasEmergency = documents.some((d) =>
     /beredskap|emergency|kriseplan/i.test(`${d.title} ${d.category}`),
   );
-  if (documents.length > 0 && !hasEmergency) {
+  if (scoped.length > 0 && !hasEmergency) {
     findings.push({
       code: "MissingEmergencyPlan",
       severity: "warning",
@@ -104,27 +106,26 @@ const documentationValidator: Validator = ({ documents }) => {
 const fleetValidator: Validator = ({ fleet }) => {
   const findings: ScannerFinding[] = [];
   for (const d of fleet) {
-    if (d.service === "fail" || d.service === "warn") {
-      findings.push({
-        code: d.service === "fail" ? "ServiceExpired" : "ServiceDueSoon",
-        severity: d.service === "fail" ? "critical" : "warning",
-        categoryKey: "fleet",
-        titleKey:
-          d.service === "fail"
-            ? "audit.scanner.serviceExpired.title"
-            : "audit.scanner.serviceDueSoon.title",
-        bodyKey:
-          d.service === "fail"
-            ? "audit.scanner.serviceExpired.body"
-            : "audit.scanner.serviceDueSoon.body",
-        titleParams: { drone: d.droneName },
-        bodyParams: { drone: d.droneName, days: daysUntil(d.nextInspection) ?? 0 },
-        entityType: "drone",
-        entityId: d.id,
-        evidence: { nextInspection: d.nextInspection },
-        deepLink: auditDeepLink("drone", d.id),
-      });
-    }
+    const isFail = d.service === "fail" || d.service === "expired";
+    const isWarn = d.service === "warn" || d.service === "expiring";
+    if (!isFail && !isWarn) continue;
+    findings.push({
+      code: isFail ? "ServiceExpired" : "ServiceDueSoon",
+      severity: isFail ? "critical" : "warning",
+      categoryKey: "fleet",
+      titleKey: isFail
+        ? "audit.scanner.serviceExpired.title"
+        : "audit.scanner.serviceDueSoon.title",
+      bodyKey: isFail
+        ? "audit.scanner.serviceExpired.body"
+        : "audit.scanner.serviceDueSoon.body",
+      titleParams: { drone: d.droneName },
+      bodyParams: { drone: d.droneName, days: daysUntil(d.nextInspection) ?? 0 },
+      entityType: "drone",
+      entityId: d.id,
+      evidence: { nextInspection: d.nextInspection },
+      deepLink: auditDeepLink("drone", d.id),
+    });
   }
   return findings;
 };

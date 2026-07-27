@@ -1,3 +1,4 @@
+import { resolveCheckBucket } from "../utils/statusMapping";
 import type {
   CategoryScore,
   CheckResult,
@@ -8,6 +9,7 @@ import type {
   FleetRow,
   OperationsIssue,
   SafetyAggregate,
+  ScoreBucket,
 } from "../types";
 
 const WEIGHTS: Record<ComplianceCategoryKey, number> = {
@@ -18,22 +20,10 @@ const WEIGHTS: Record<ComplianceCategoryKey, number> = {
   safety: 20,
 };
 
-const emptyCategory = (key: ComplianceCategoryKey): CategoryScore => ({
-  key,
-  score: null,
-  totalChecks: 0,
-  passed: 0,
-  warned: 0,
-  failed: 0,
-  unknown: 0,
-  na: 0,
-  critical: 0,
-  warnings: 0,
-});
-
 /** Convert a list of CheckResult into a normalized 0..100 score. */
 function scoreFromChecks(results: CheckResult[]): CategoryScore["score"] {
-  const relevant = results.filter((r) => r === "pass" || r === "warn" || r === "fail");
+  const buckets = results.map(resolveCheckBucket);
+  const relevant = buckets.filter((b) => b === "pass" || b === "warn" || b === "fail");
   if (relevant.length === 0) return null;
   const points = relevant.reduce(
     (sum, r) => sum + (r === "pass" ? 1 : r === "warn" ? 0.6 : 0),
@@ -45,11 +35,12 @@ function scoreFromChecks(results: CheckResult[]): CategoryScore["score"] {
 function tally(results: CheckResult[]): Omit<CategoryScore, "key" | "score" | "critical" | "warnings"> {
   const t = { totalChecks: results.length, passed: 0, warned: 0, failed: 0, unknown: 0, na: 0 };
   for (const r of results) {
-    if (r === "pass") t.passed++;
-    else if (r === "warn") t.warned++;
-    else if (r === "fail") t.failed++;
+    const b: ScoreBucket = resolveCheckBucket(r);
+    if (b === "pass") t.passed++;
+    else if (b === "warn") t.warned++;
+    else if (b === "fail") t.failed++;
     else if (r === "unknown") t.unknown++;
-    else if (r === "na") t.na++;
+    else t.na++;
   }
   return t;
 }
@@ -66,40 +57,45 @@ export interface ComplianceInput {
 }
 
 export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation {
-  // Competence
+  // ---- Competence ----
   const compResults: CheckResult[] = input.competencies.map((c) => c.status);
   const competence: CategoryScore = {
     key: "competence",
     score: scoreFromChecks(compResults),
     ...tally(compResults),
-    critical: compResults.filter((r) => r === "fail").length,
-    warnings: compResults.filter((r) => r === "warn").length,
+    critical: compResults.map(resolveCheckBucket).filter((b) => b === "fail").length,
+    warnings: compResults.map(resolveCheckBucket).filter((b) => b === "warn").length,
   };
 
-  // Documentation
-  const docResults: CheckResult[] = input.documents.map((d) => d.status);
+  // ---- Documentation ----
+  // Only "required" documents count towards the score. Recommended/optional
+  // still appear in listings but are not compliance failures.
+  const scoredDocs = input.documents.filter((d) => d.complianceRelevance === "required");
+  const docResults: CheckResult[] = scoredDocs.map((d) => d.status);
   const documentation: CategoryScore = {
     key: "documentation",
     score: scoreFromChecks(docResults),
     ...tally(docResults),
-    critical: docResults.filter((r) => r === "fail").length,
-    warnings: docResults.filter((r) => r === "warn").length,
+    critical: docResults.map(resolveCheckBucket).filter((b) => b === "fail").length,
+    warnings: docResults.map(resolveCheckBucket).filter((b) => b === "warn").length,
   };
 
-  // Fleet: aggregate per-drone checks
+  // ---- Fleet (compliance-critical only: service + remoteId) ----
+  // Firmware/battery/calibration surface in the detail view but do NOT drive the
+  // headline score — they are informational rather than compliance-critical today.
   const fleetResults: CheckResult[] = [];
   for (const f of input.fleet) {
-    fleetResults.push(f.service, f.remoteId, f.firmware, f.calibration, f.batteryHealth);
+    fleetResults.push(f.service, f.remoteId);
   }
   const fleet: CategoryScore = {
     key: "fleet",
     score: scoreFromChecks(fleetResults),
     ...tally(fleetResults),
-    critical: fleetResults.filter((r) => r === "fail").length,
-    warnings: fleetResults.filter((r) => r === "warn").length,
+    critical: fleetResults.map(resolveCheckBucket).filter((b) => b === "fail").length,
+    warnings: fleetResults.map(resolveCheckBucket).filter((b) => b === "warn").length,
   };
 
-  // Operations: 1 pass per mission minus 1 fail per issue on that mission
+  // ---- Operations ----
   const opsResults: CheckResult[] = [];
   if (input.operationsTotal > 0) {
     const issueCountByMission = new Map<string, number>();
@@ -107,7 +103,6 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
       issueCountByMission.set(i.missionId, (issueCountByMission.get(i.missionId) ?? 0) + 1);
     }
     for (let i = 0; i < input.operationsTotal; i++) opsResults.push("pass");
-    // subtract one pass and add one fail per unique mission with issues
     let idx = 0;
     for (const _ of issueCountByMission.keys()) {
       if (idx < opsResults.length) {
@@ -124,10 +119,9 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
     warnings: 0,
   };
 
-  // Safety
+  // ---- Safety ----
   const safetyResults: CheckResult[] = [];
   if (input.safety) {
-    // one check per open action: overdue = fail, open = warn, else pass proxy
     for (let i = 0; i < input.safety.openActions; i++) safetyResults.push("warn");
     for (let i = 0; i < input.safety.closedActions; i++) safetyResults.push("pass");
     for (let i = 0; i < input.overdueAuditActions; i++) safetyResults.push("fail");
@@ -148,7 +142,6 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
     safety,
   };
 
-  // Weighted overall over categories with score != null
   let totalWeight = 0;
   let acc = 0;
   for (const key of Object.keys(categories) as ComplianceCategoryKey[]) {
