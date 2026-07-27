@@ -4464,6 +4464,63 @@ export type Database = {
           },
         ]
       }
+      inspection_packages: {
+        Row: {
+          company_id: string
+          created_at: string
+          file_size_bytes: number | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          options: Json
+          overall_score: number | null
+          period_from: string | null
+          period_to: string | null
+          storage_path: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          file_size_bytes?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          options?: Json
+          overall_score?: number | null
+          period_from?: string | null
+          period_to?: string | null
+          storage_path: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          file_size_bytes?: number | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          options?: Json
+          overall_score?: number | null
+          period_from?: string | null
+          period_to?: string | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_packages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspection_packages_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_message_receipts: {
         Row: {
           channel: string
