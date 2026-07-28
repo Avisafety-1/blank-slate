@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 
 export interface SendMessagePayload {
   recipient_ids: string[];
+  audience?: { mode: "all" | "companies"; company_ids?: string[] } | null;
   subject: string;
   body: string;
   parent_id?: string | null;
   severity?: "critical" | "warning" | "info";
   channels?: { email?: boolean; sms?: boolean };
 }
+
 
 export function useSendMessage() {
   const { t } = useTranslation();
