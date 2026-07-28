@@ -77,7 +77,7 @@ export function usePushNotifications() {
   // Request permission and subscribe
   const subscribe = useCallback(async (options?: { silent?: boolean }): Promise<boolean> => {
     const silent = options?.silent === true;
-    const notifyError = (msg: string) => { if (!silent) notifyError(msg); };
+    const notifyError = (msg: string) => { if (!silent) toast.error(msg); };
     if (!isSupported || !user) {
       notifyError('Push-varsler støttes ikke på denne enheten');
       return false;
