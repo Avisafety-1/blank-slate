@@ -170,12 +170,13 @@ export const InboxTab = () => {
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-start gap-2 flex-wrap">
                       <span className="text-sm break-words min-w-0 flex-1">{m.subject}</span>
-                      {m.is_broadcast && (
+                      {m.is_broadcast && m.sender_id === user?.id && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Megaphone className="w-3 h-3 mr-1" />
                           {t("inbox.broadcastBadge", "Broadcast")}
                         </Badge>
                       )}
+
                       {!m.is_broadcast && (m.recipients?.length ?? 0) > 1 && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Users className="w-3 h-3 mr-1" />
