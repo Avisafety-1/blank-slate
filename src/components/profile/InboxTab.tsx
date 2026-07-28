@@ -316,8 +316,12 @@ export const InboxTab = () => {
                     <span className="text-xs text-muted-foreground truncate">
                       {selected.is_broadcast || replyRecipientIds.length <= 1
                         ? t("inbox.replyToSender", "Reply goes to {{name}}", {
-                            name: partyLabel(selected.sender) || t("inbox.senderFallback", "the sender"),
+                            name:
+                              selected.sender_name ||
+                              selected.sender_email ||
+                              t("inbox.senderFallback", "the sender"),
                           })
+
                         : t("inbox.replyToAll", "Reply goes to all participants")}
                     </span>
 
