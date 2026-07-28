@@ -20,9 +20,24 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: async (payload: SendMessagePayload) => {
       const { data, error } = await supabase.functions.invoke("send-message", { body: payload });
-      if (error) throw error;
+      if (error) {
+        // Surface the real server error instead of the generic non-2xx message
+        let details = error.message;
+        const ctx = (error as unknown as { context?: Response }).context;
+        if (ctx && typeof ctx.text === "function") {
+          try {
+            const raw = await ctx.text();
+            const parsed = JSON.parse(raw);
+            details = parsed?.error ?? raw ?? details;
+          } catch {
+            /* keep generic message */
+          }
+        }
+        throw new Error(details);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data;
+
     },
     onSuccess: (data: any) => {
       const ok = (data?.results ?? []).filter((r: any) => r.ok).length;
