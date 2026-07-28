@@ -7349,7 +7349,17 @@
       "noIssues": "No operational issues in the last 12 months",
       "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions",
       "expandGroup": "Show {{count}}",
-      "collapseGroup": "Hide"
+      "collapseGroup": "Hide",
+      "summary": {
+        "completed": "Completed missions",
+        "compliant": "Fully compliant",
+        "withoutRA": "Without risk assessment",
+        "withoutApproval": "Without approval",
+        "complianceRate": "Compliance rate",
+        "chartTitle": "Compliance on completed missions",
+        "compliantSlice": "Compliant",
+        "nonCompliantSlice": "Non-compliant"
+      }
     },
     "safety": {
       "reported": "Reported",
