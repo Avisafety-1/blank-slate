@@ -175,8 +175,16 @@ serve(async (req) => {
     if (!parent && !isBroadcast && !isSuper) {
       const { data: visible } = await admin.rpc("get_user_visible_company_ids", { _user_id: user.id });
       const visibleSet = new Set((visible as string[] | null) ?? []);
-      allowed = recipients.filter((r) => r.company_id && visibleSet.has(r.company_id));
+      // Exception to company isolation: anyone may message superadmins (Avisafe support)
+      const { data: superRows } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "superadmin")
+        .in("user_id", recipients.map((r) => r.id));
+      const superSet = new Set(((superRows as { user_id: string }[] | null) ?? []).map((r) => r.user_id));
+      allowed = recipients.filter((r) => superSet.has(r.id) || (r.company_id && visibleSet.has(r.company_id)));
     }
+
     if (!allowed.length) return json({ error: "no_valid_recipients" }, 403);
 
     const channels = {
