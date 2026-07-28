@@ -3,6 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export interface MessageParty {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  company_name: string | null;
+}
+
 export interface InboxMessage {
   id: string;
   company_id: string;
@@ -19,7 +26,37 @@ export interface InboxMessage {
   created_at: string;
   parent_id: string | null;
   thread_root_id: string | null;
+  is_broadcast?: boolean;
   sender_name?: string | null;
+  sender_email?: string | null;
+  sender_company?: string | null;
+  recipients?: MessageParty[];
+}
+
+/** Fetch profile + company info for a set of user ids. */
+export async function fetchParties(ids: string[]): Promise<Map<string, MessageParty>> {
+  const map = new Map<string, MessageParty>();
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (!unique.length) return map;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, company_id")
+    .in("id", unique);
+  const companyIds = Array.from(new Set((data ?? []).map((p) => p.company_id).filter(Boolean))) as string[];
+  let companyMap = new Map<string, string>();
+  if (companyIds.length) {
+    const { data: comps } = await supabase.from("companies").select("id, navn").in("id", companyIds);
+    companyMap = new Map((comps ?? []).map((c) => [c.id, c.navn as string]));
+  }
+  for (const p of data ?? []) {
+    map.set(p.id, {
+      id: p.id,
+      full_name: p.full_name ?? null,
+      email: (p as { email?: string | null }).email ?? null,
+      company_name: p.company_id ? companyMap.get(p.company_id) ?? null : null,
+    });
+  }
+  return map;
 }
 
 export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "all") {
@@ -32,49 +69,96 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async (): Promise<InboxMessage[]> => {
-      let q = supabase
-        .from("internal_messages")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
+      let rows: Record<string, unknown>[] = [];
+
       if (filter === "sent") {
-        q = q.eq("sender_id", user!.id);
+        const { data, error } = await supabase
+          .from("internal_messages")
+          .select("*")
+          .eq("sender_id", user!.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        rows = (data ?? []) as Record<string, unknown>[];
       } else {
-        q = q.eq("recipient_id", user!.id);
+        let q = supabase
+          .from("internal_message_recipients")
+          .select("status, read_at, done_at, message:internal_messages(*)")
+          .eq("recipient_id", user!.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
         if (filter === "unread") q = q.eq("status", "unread");
         if (filter === "done") q = q.eq("status", "done");
+        const { data, error } = await q;
+        if (error) throw error;
+        rows = (data ?? [])
+          .filter((r) => !!(r as { message?: unknown }).message)
+          .map((r) => {
+            const rec = r as { status: string; read_at: string | null; done_at: string | null; message: Record<string, unknown> };
+            return { ...rec.message, status: rec.status, read_at: rec.read_at, done_at: rec.done_at };
+          });
+        rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
       }
-      const { data, error } = await q;
-      if (error) throw error;
 
-      const senderIds = Array.from(new Set((data ?? []).map((m) => m.sender_id).filter(Boolean))) as string[];
-      let senderMap = new Map<string, string>();
-      if (senderIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in("id", senderIds);
-        senderMap = new Map((profs ?? []).map((p) => [p.id, p.full_name ?? ""]));
+      const messageIds = rows.map((m) => m.id as string);
+      const recipientRows = messageIds.length
+        ? (
+            await supabase
+              .from("internal_message_recipients")
+              .select("message_id, recipient_id")
+              .in("message_id", messageIds)
+          ).data ?? []
+        : [];
+
+      const partyIds = [
+        ...rows.map((m) => m.sender_id as string | null),
+        ...recipientRows.map((r) => r.recipient_id),
+        ...rows.map((m) => m.recipient_id as string | null),
+      ].filter(Boolean) as string[];
+      const parties = await fetchParties(partyIds);
+
+      const byMessage = new Map<string, MessageParty[]>();
+      for (const r of recipientRows) {
+        const p = parties.get(r.recipient_id);
+        if (!p) continue;
+        const list = byMessage.get(r.message_id) ?? [];
+        list.push(p);
+        byMessage.set(r.message_id, list);
       }
-      return (data ?? []).map((m) => ({
-        ...m,
-        sender_name: m.sender_id ? senderMap.get(m.sender_id) ?? null : null,
-      })) as InboxMessage[];
+
+      return rows.map((m) => {
+        const sender = m.sender_id ? parties.get(m.sender_id as string) : null;
+        const fallbackRecipient = m.recipient_id ? parties.get(m.recipient_id as string) : null;
+        return {
+          ...(m as unknown as InboxMessage),
+          sender_name: sender?.full_name ?? null,
+          sender_email: sender?.email ?? null,
+          sender_company: sender?.company_name ?? null,
+          recipients: byMessage.get(m.id as string) ?? (fallbackRecipient ? [fallbackRecipient] : []),
+        } as InboxMessage;
+      });
     },
   });
 
   // Realtime
   useEffect(() => {
     if (!user?.id) return;
+    const invalidate = () => {
+      qc.invalidateQueries({ queryKey: ["inbox"] });
+      qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      qc.invalidateQueries({ queryKey: ["inbox-thread"] });
+    };
     const channel = supabase
-      .channel(`inbox-${user.id}`)
+      .channel(`inbox-${user.id}-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "internal_message_recipients", filter: `recipient_id=eq.${user.id}` },
+        invalidate,
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "internal_messages", filter: `recipient_id=eq.${user.id}` },
-        () => {
-          qc.invalidateQueries({ queryKey: ["inbox"] });
-          qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
-        },
+        invalidate,
       )
       .subscribe();
     return () => {
@@ -87,13 +171,26 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
 
 export function useMarkMessage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "read" | "done" }) => {
       const patch: { status: "read" | "done"; read_at?: string; done_at?: string } = { status };
       if (status === "read") patch.read_at = new Date().toISOString();
       if (status === "done") patch.done_at = new Date().toISOString();
-      const { error } = await supabase.from("internal_messages").update(patch).eq("id", id);
+
+      const { error } = await supabase
+        .from("internal_message_recipients")
+        .update(patch)
+        .eq("message_id", id)
+        .eq("recipient_id", user!.id);
       if (error) throw error;
+
+      // Keep the legacy column in sync for older rows / other readers
+      await supabase
+        .from("internal_messages")
+        .update(patch)
+        .eq("id", id)
+        .eq("recipient_id", user!.id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inbox"] });
