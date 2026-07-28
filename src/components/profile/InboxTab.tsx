@@ -9,10 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Inbox, ArrowRight, CheckCircle2, AlertTriangle, AlertCircle, Info, Plus, Send, Loader2 } from "lucide-react";
+import {
+  Inbox,
+  ArrowRight,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  Plus,
+  Send,
+  Loader2,
+  Users,
+  Megaphone,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInboxMessages, useMarkMessage, type InboxMessage } from "./hooks/useInboxMessages";
+import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
@@ -30,6 +42,9 @@ const sevClass = (s: InboxMessage["severity"]) =>
       ? "text-status-yellow border-status-yellow/40 bg-status-yellow/10"
       : "text-primary border-primary/40 bg-primary/10";
 
+const partyLabel = (p: MessageParty) =>
+  [p.full_name || p.email, p.email && p.full_name ? p.email : null].filter(Boolean).join(" · ");
+
 export const InboxTab = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -45,16 +60,16 @@ export const InboxTab = () => {
   const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
 
   const threadRoot = selected?.thread_root_id ?? selected?.id ?? null;
-  const { data: thread = [] } = useMessageThread(threadRoot);
+  const { data: threadData } = useMessageThread(threadRoot);
+  const thread = threadData?.messages ?? [];
+  const participants = (threadData?.participants ?? []).filter((p) => p.id !== user?.id);
 
-  // Scroll to newest message when thread updates
   useEffect(() => {
     if (thread.length > 0) {
       threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [thread.length]);
 
-  // Reset reply text when switching messages
   useEffect(() => {
     setReplyText("");
   }, [selected?.id]);
@@ -64,17 +79,15 @@ export const InboxTab = () => {
     if (m.status === "unread" && filter !== "sent") mark.mutate({ id: m.id, status: "read" });
   };
 
-  const openCompose = () => {
-    setComposeOpen(true);
-  };
+  const openCompose = () => setComposeOpen(true);
 
-  // Determine reply recipients: everyone in the thread who isn't the current user
+  // Reply targets: for broadcasts only the original sender, otherwise all participants.
   const replyRecipientIds = (() => {
-    const ids = new Set<string>();
-    for (const m of thread) {
-      if (m.sender_id && m.sender_id !== user?.id) ids.add(m.sender_id);
+    if (selected?.is_broadcast) {
+      return selected.sender_id && selected.sender_id !== user?.id ? [selected.sender_id] : [];
     }
-    // Fallback if thread hasn't loaded yet
+    const ids = new Set<string>();
+    for (const p of participants) ids.add(p.id);
     if (ids.size === 0 && selected?.sender_id && selected.sender_id !== user?.id) {
       ids.add(selected.sender_id);
     }
@@ -93,6 +106,19 @@ export const InboxTab = () => {
       parent_id: lastMessage.id,
     });
     setReplyText("");
+  };
+
+  const renderCounterparty = (m: InboxMessage) => {
+    if (filter === "sent") {
+      const list = m.recipients ?? [];
+      if (list.length === 0) return t("inbox.sentTo", "To recipient");
+      const first = partyLabel(list[0]);
+      return list.length > 1
+        ? `${t("inbox.toPrefix", "To")}: ${first} +${list.length - 1}`
+        : `${t("inbox.toPrefix", "To")}: ${first}`;
+    }
+    const name = m.sender_name || t("inbox.systemSender");
+    return [name, m.sender_email, m.sender_company].filter(Boolean).join(" · ");
   };
 
   return (
@@ -144,6 +170,18 @@ export const InboxTab = () => {
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-start gap-2 flex-wrap">
                       <span className="text-sm break-words min-w-0 flex-1">{m.subject}</span>
+                      {m.is_broadcast && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          <Megaphone className="w-3 h-3 mr-1" />
+                          {t("inbox.broadcastBadge", "Broadcast")}
+                        </Badge>
+                      )}
+                      {!m.is_broadcast && (m.recipients?.length ?? 0) > 1 && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          <Users className="w-3 h-3 mr-1" />
+                          {m.recipients!.length + 1}
+                        </Badge>
+                      )}
                       {m.status === "done" && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -152,9 +190,7 @@ export const InboxTab = () => {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground break-words">
-                      {filter === "sent"
-                        ? t("inbox.sentTo", { defaultValue: "To recipient" })
-                        : m.sender_name || t("inbox.systemSender")}
+                      {renderCounterparty(m)}
                       {" · "}
                       {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: dateLocale })}
                     </div>
@@ -175,12 +211,24 @@ export const InboxTab = () => {
             <>
               {/* Header */}
               <SheetHeader className="p-4 sm:p-6 border-b shrink-0 space-y-2 text-left">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className={cn("uppercase text-[10px]", sevClass(selected.severity))}>
                     {t(`audit.severity.${selected.severity}`)}
                   </Badge>
+                  {selected.is_broadcast && (
+                    <Badge variant="outline" className="text-[10px]">
+                      <Megaphone className="w-3 h-3 mr-1" />
+                      {t("inbox.broadcastBadge", "Broadcast")}
+                    </Badge>
+                  )}
                 </div>
                 <SheetTitle className="break-words text-base sm:text-lg">{selected.subject}</SheetTitle>
+                {participants.length > 0 && (
+                  <p className="text-xs text-muted-foreground break-words">
+                    {t("inbox.participants", "Participants")}:{" "}
+                    {participants.map((p) => partyLabel(p)).join(", ")}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {selected.deep_link && (
                     <Button
@@ -213,16 +261,24 @@ export const InboxTab = () => {
 
               {/* Thread (scrollable) */}
               <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
-                {(thread.length > 0 ? thread : [
-                  {
-                    id: selected.id,
-                    sender_id: selected.sender_id,
-                    sender_name: selected.sender_name,
-                    body: selected.body,
-                    created_at: selected.created_at,
-                  },
-                ]).map((m) => {
+                {(thread.length > 0
+                  ? thread
+                  : [
+                      {
+                        id: selected.id,
+                        sender_id: selected.sender_id,
+                        sender_name: selected.sender_name,
+                        sender_email: selected.sender_email,
+                        sender_company: selected.sender_company,
+                        body: selected.body,
+                        created_at: selected.created_at,
+                      },
+                    ]
+                ).map((m) => {
                   const mine = m.sender_id === user?.id;
+                  const meta = [m.sender_name || t("inbox.systemSender"), m.sender_company, m.sender_email]
+                    .filter(Boolean)
+                    .join(" · ");
                   return (
                     <div
                       key={m.id}
@@ -233,9 +289,8 @@ export const InboxTab = () => {
                           : "bg-muted border border-border",
                       )}
                     >
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {m.sender_name || t("inbox.systemSender")} ·{" "}
-                        {new Date(m.created_at).toLocaleString(i18n.language)}
+                      <div className="text-xs text-muted-foreground mb-1 break-words">
+                        {meta} · {new Date(m.created_at).toLocaleString(i18n.language)}
                       </div>
                       <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
                     </div>
@@ -255,12 +310,13 @@ export const InboxTab = () => {
                     maxLength={4000}
                     className="resize-none"
                   />
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      onClick={handleSendReply}
-                      disabled={send.isPending || !replyText.trim()}
-                    >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground truncate">
+                      {selected.is_broadcast
+                        ? t("inbox.replyToSenderOnly", "Reply goes to the sender only")
+                        : t("inbox.replyToAll", "Reply goes to all participants")}
+                    </span>
+                    <Button size="sm" onClick={handleSendReply} disabled={send.isPending || !replyText.trim()}>
                       {send.isPending ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
@@ -276,10 +332,7 @@ export const InboxTab = () => {
         </SheetContent>
       </Sheet>
 
-      <ComposeMessageDialog
-        open={composeOpen}
-        onOpenChange={setComposeOpen}
-      />
+      <ComposeMessageDialog open={composeOpen} onOpenChange={setComposeOpen} />
     </>
   );
 };
