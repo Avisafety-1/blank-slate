@@ -163,7 +163,26 @@ serve(async (req) => {
         }
       }
 
+      // 4. Web push (PWA) — best effort
+      try {
+        await admin.functions.invoke("send-push-notification", {
+          headers: { "x-cron-secret": Deno.env.get("CRON_SHARED_SECRET") ?? "" },
+          body: {
+            userId: r.id,
+            title: payload.subject,
+            body: payload.body.slice(0, 180),
+            tag: `internal-message-${msg.id}`,
+            url: `/?msg=${msg.id}`,
+            data: { type: "internal_message", message_id: msg.id },
+          },
+        });
+        receipts.push({ message_id: msg.id, channel: "push", status: "sent" });
+      } catch (e) {
+        receipts.push({ message_id: msg.id, channel: "push", status: "failed", error: String(e) });
+      }
+
       await admin.from("internal_message_receipts").insert(receipts);
+
       results.push({ recipient_id: r.id, message_id: msg.id, ok: true, receipts });
     }
 
