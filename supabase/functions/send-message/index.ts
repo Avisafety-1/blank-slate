@@ -239,8 +239,31 @@ serve(async (req) => {
         }
       }
 
+      // Web push to the recipients' PWA devices (best effort)
+      try {
+        const targetIds = targets.map((r) => r.id);
+        if (targetIds.length) {
+          await admin.functions.invoke("send-push-notification", {
+            headers: { "x-cron-secret": Deno.env.get("CRON_SHARED_SECRET") ?? "" },
+            body: {
+              userIds: targetIds,
+              title: subject,
+              body: payload.body.slice(0, 180),
+              tag: `internal-message-${msgId}`,
+              url: `/?msg=${msgId}`,
+              data: { type: "internal_message", message_id: msgId },
+            },
+          });
+          receipts.push({ message_id: msgId, channel: "push", status: "sent" });
+        }
+      } catch (e) {
+        console.error("[send-message] push failed", e);
+        receipts.push({ message_id: msgId, channel: "push", status: "failed", error: String(e) });
+      }
+
       if (receipts.length) await admin.from("internal_message_receipts").insert(receipts);
     };
+
 
     if (isBroadcast) {
       // One separate (private) thread per recipient — replies go back to sender only.
