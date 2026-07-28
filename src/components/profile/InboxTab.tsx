@@ -216,12 +216,13 @@ export const InboxTab = () => {
                   <Badge variant="outline" className={cn("uppercase text-[10px]", sevClass(selected.severity))}>
                     {t(`audit.severity.${selected.severity}`)}
                   </Badge>
-                  {selected.is_broadcast && (
+                  {selected.is_broadcast && selected.sender_id === user?.id && (
                     <Badge variant="outline" className="text-[10px]">
                       <Megaphone className="w-3 h-3 mr-1" />
                       {t("inbox.broadcastBadge", "Broadcast")}
                     </Badge>
                   )}
+
                 </div>
                 <SheetTitle className="break-words text-base sm:text-lg">{selected.subject}</SheetTitle>
                 {participants.length > 0 && (
