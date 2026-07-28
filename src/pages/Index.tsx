@@ -87,17 +87,12 @@ const Index = () => {
     };
   }, []);
 
-  // Auto-enable push notifications for PWA users (one-time prompt)
+  // Push-varsler aktiveres automatisk (ingen valg) – stille, og prøver på nytt ved behov
   useEffect(() => {
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches 
-               || (window.navigator as any).standalone === true;
-    
-    if (!isPWA || !pushSupported || pushSubscribed || pushLoading || pushPermission === 'denied') return;
-    if (localStorage.getItem('pwa-push-auto-prompted')) return;
-    
-    localStorage.setItem('pwa-push-auto-prompted', 'true');
-    pushSubscribe();
+    if (!pushSupported || pushSubscribed || pushLoading || pushPermission === 'denied') return;
+    pushSubscribe({ silent: true });
   }, [pushSupported, pushSubscribed, pushLoading, pushPermission, pushSubscribe]);
+
   const [layout, setLayout] = useState(defaultLayout);
   const [logFlightDialogOpen, setLogFlightDialogOpen] = useState(false);
   const [uploadDroneLogOpen, setUploadDroneLogOpen] = useState(false);
