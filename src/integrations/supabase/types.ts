@@ -4559,9 +4559,55 @@ export type Database = {
           },
         ]
       }
+      internal_message_recipients: {
+        Row: {
+          created_at: string
+          done_at: string | null
+          id: string
+          message_id: string
+          read_at: string | null
+          recipient_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          message_id: string
+          read_at?: string | null
+          recipient_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          message_id?: string
+          read_at?: string | null
+          recipient_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_message_recipients_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "internal_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_message_recipients_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_messages: {
         Row: {
           body: string
+          broadcast_scope: Json | null
           channels_sent: Json
           company_id: string
           created_at: string
@@ -4569,6 +4615,7 @@ export type Database = {
           done_at: string | null
           finding_key: string | null
           id: string
+          is_broadcast: boolean
           parent_id: string | null
           read_at: string | null
           recipient_id: string
@@ -4581,6 +4628,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          broadcast_scope?: Json | null
           channels_sent?: Json
           company_id: string
           created_at?: string
@@ -4588,6 +4636,7 @@ export type Database = {
           done_at?: string | null
           finding_key?: string | null
           id?: string
+          is_broadcast?: boolean
           parent_id?: string | null
           read_at?: string | null
           recipient_id: string
@@ -4600,6 +4649,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          broadcast_scope?: Json | null
           channels_sent?: Json
           company_id?: string
           created_at?: string
@@ -4607,6 +4657,7 @@ export type Database = {
           done_at?: string | null
           finding_key?: string | null
           id?: string
+          is_broadcast?: boolean
           parent_id?: string | null
           read_at?: string | null
           recipient_id?: string
@@ -8435,7 +8486,19 @@ export type Database = {
       }
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      is_thread_participant: {
+        Args: { _thread_root: string; _user: string }
+        Returns: boolean
+      }
       is_unified_airspace_enabled_for_me: { Args: never; Returns: boolean }
+      list_broadcast_companies: {
+        Args: never
+        Returns: {
+          id: string
+          navn: string
+          user_count: number
+        }[]
+      }
       log_airspace_shadow_comparison: {
         Args: {
           p_buffer_m: number
@@ -8512,6 +8575,16 @@ export type Database = {
       recompute_profile_flyvetimer: {
         Args: { _profile_id: string }
         Returns: undefined
+      }
+      resolve_broadcast_audience: {
+        Args: { _company_ids?: string[]; _mode: string }
+        Returns: {
+          company_id: string
+          company_name: string
+          email: string
+          full_name: string
+          id: string
+        }[]
       }
       retry_ardupilot_parse_job: {
         Args: { _job_id: string }
