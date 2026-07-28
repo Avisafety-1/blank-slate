@@ -7717,6 +7717,8 @@
     "participants": "Participants",
     "broadcastBadge": "Broadcast",
     "replyToAll": "Reply goes to all participants",
-    "replyToSenderOnly": "Reply goes to the sender only"
+    "replyToSenderOnly": "Reply goes to the sender only",
+    "replyToSender": "Reply goes to {{name}}",
+    "senderFallback": "the sender"
   }
 }

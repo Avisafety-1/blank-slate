@@ -7719,6 +7719,8 @@
     "participants": "Deltakere",
     "broadcastBadge": "Kringkasting",
     "replyToAll": "Svaret går til alle deltakere",
-    "replyToSenderOnly": "Svaret går kun til avsender"
+    "replyToSenderOnly": "Svaret går kun til avsender",
+    "replyToSender": "Svaret går til {{name}}",
+    "senderFallback": "avsenderen"
   }
 }
