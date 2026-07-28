@@ -314,10 +314,13 @@ export const InboxTab = () => {
                   />
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground truncate">
-                      {selected.is_broadcast
-                        ? t("inbox.replyToSenderOnly", "Reply goes to the sender only")
+                      {selected.is_broadcast || replyRecipientIds.length <= 1
+                        ? t("inbox.replyToSender", "Reply goes to {{name}}", {
+                            name: partyLabel(selected.sender) || t("inbox.senderFallback", "the sender"),
+                          })
                         : t("inbox.replyToAll", "Reply goes to all participants")}
                     </span>
+
                     <Button size="sm" onClick={handleSendReply} disabled={send.isPending || !replyText.trim()}>
                       {send.isPending ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
