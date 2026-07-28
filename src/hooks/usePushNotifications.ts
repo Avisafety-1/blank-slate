@@ -75,9 +75,11 @@ export function usePushNotifications() {
   }, []);
 
   // Request permission and subscribe
-  const subscribe = useCallback(async (): Promise<boolean> => {
+  const subscribe = useCallback(async (options?: { silent?: boolean }): Promise<boolean> => {
+    const silent = options?.silent === true;
+    const notifyError = (msg: string) => { if (!silent) notifyError(msg); };
     if (!isSupported || !user) {
-      toast.error('Push-varsler støttes ikke på denne enheten');
+      notifyError('Push-varsler støttes ikke på denne enheten');
       return false;
     }
 
@@ -87,7 +89,7 @@ export function usePushNotifications() {
                || (window.navigator as any).standalone === true;
 
     if (isIOS && !isPWA) {
-      toast.error('På iOS må appen være lagt til hjemskjermen. Gå til Del-menyen og velg "Legg til på Hjem-skjerm".');
+      notifyError('På iOS må appen være lagt til hjemskjermen. Gå til Del-menyen og velg "Legg til på Hjem-skjerm".');
       return false;
     }
 
@@ -99,7 +101,7 @@ export function usePushNotifications() {
       setPermission(permissionResult);
       
       if (permissionResult !== 'granted') {
-        toast.error('Du må tillate varsler for å aktivere push-varsler');
+        notifyError('Du må tillate varsler for å aktivere push-varsler');
         return false;
       }
 
@@ -137,7 +139,7 @@ export function usePushNotifications() {
         .single();
 
       if (!profile?.company_id) {
-        toast.error('Kunne ikke finne firmaet ditt');
+        notifyError('Kunne ikke finne firmaet ditt');
         return false;
       }
 
@@ -157,7 +159,7 @@ export function usePushNotifications() {
 
       if (error) {
         console.error('Error saving subscription:', error);
-        toast.error('Kunne ikke lagre push-abonnement');
+        notifyError('Kunne ikke lagre push-abonnement');
         return false;
       }
 
@@ -168,21 +170,21 @@ export function usePushNotifications() {
         .eq('user_id', user.id);
 
       setIsSubscribed(true);
-      toast.success('Push-varsler aktivert!');
+      if (!silent) toast.success('Push-varsler aktivert!');
       return true;
     } catch (error) {
       console.error('Error subscribing to push:', error);
       
       if (error instanceof DOMException) {
         if (error.name === 'NotAllowedError') {
-          toast.error('Tilgang til push-varsler ble avvist av nettleseren');
+          notifyError('Tilgang til push-varsler ble avvist av nettleseren');
         } else if (error.name === 'AbortError') {
-          toast.error('Push-registrering ble avbrutt');
+          notifyError('Push-registrering ble avbrutt');
         } else {
-          toast.error(`Push-feil: ${error.name} - ${error.message}`);
+          notifyError(`Push-feil: ${error.name} - ${error.message}`);
         }
       } else {
-        toast.error('Kunne ikke aktivere push-varsler. Sjekk konsollen for detaljer.');
+        notifyError('Kunne ikke aktivere push-varsler. Sjekk konsollen for detaljer.');
       }
       return false;
     } finally {
