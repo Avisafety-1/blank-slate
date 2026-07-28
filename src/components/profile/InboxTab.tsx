@@ -170,12 +170,13 @@ export const InboxTab = () => {
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-start gap-2 flex-wrap">
                       <span className="text-sm break-words min-w-0 flex-1">{m.subject}</span>
-                      {m.is_broadcast && (
+                      {m.is_broadcast && m.sender_id === user?.id && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Megaphone className="w-3 h-3 mr-1" />
                           {t("inbox.broadcastBadge", "Broadcast")}
                         </Badge>
                       )}
+
                       {!m.is_broadcast && (m.recipients?.length ?? 0) > 1 && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Users className="w-3 h-3 mr-1" />
@@ -215,12 +216,13 @@ export const InboxTab = () => {
                   <Badge variant="outline" className={cn("uppercase text-[10px]", sevClass(selected.severity))}>
                     {t(`audit.severity.${selected.severity}`)}
                   </Badge>
-                  {selected.is_broadcast && (
+                  {selected.is_broadcast && selected.sender_id === user?.id && (
                     <Badge variant="outline" className="text-[10px]">
                       <Megaphone className="w-3 h-3 mr-1" />
                       {t("inbox.broadcastBadge", "Broadcast")}
                     </Badge>
                   )}
+
                 </div>
                 <SheetTitle className="break-words text-base sm:text-lg">{selected.subject}</SheetTitle>
                 {participants.length > 0 && (
@@ -312,10 +314,17 @@ export const InboxTab = () => {
                   />
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-muted-foreground truncate">
-                      {selected.is_broadcast
-                        ? t("inbox.replyToSenderOnly", "Reply goes to the sender only")
+                      {selected.is_broadcast || replyRecipientIds.length <= 1
+                        ? t("inbox.replyToSender", "Reply goes to {{name}}", {
+                            name:
+                              selected.sender_name ||
+                              selected.sender_email ||
+                              t("inbox.senderFallback", "the sender"),
+                          })
+
                         : t("inbox.replyToAll", "Reply goes to all participants")}
                     </span>
+
                     <Button size="sm" onClick={handleSendReply} disabled={send.isPending || !replyText.trim()}>
                       {send.isPending ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
