@@ -83,18 +83,20 @@ export const InboxTab = () => {
 
   // Reply targets: for broadcasts only the original sender, otherwise all participants.
   const replyRecipientIds = (() => {
-    if (selected?.is_broadcast) {
-      return selected.sender_id && selected.sender_id !== user?.id ? [selected.sender_id] : [];
+    if (selected?.is_broadcast && selected.sender_id !== user?.id) {
+      return selected.sender_id ? [selected.sender_id] : [];
     }
     const ids = new Set<string>();
     for (const p of participants) ids.add(p.id);
-    if (ids.size === 0 && selected?.sender_id && selected.sender_id !== user?.id) {
-      ids.add(selected.sender_id);
+    if (selected?.sender_id && selected.sender_id !== user?.id) ids.add(selected.sender_id);
+    for (const r of selected?.recipients ?? []) {
+      if (r.id && r.id !== user?.id) ids.add(r.id);
     }
     return Array.from(ids);
   })();
 
-  const canReply = replyRecipientIds.length > 0 && filter !== "sent";
+  const canReply = replyRecipientIds.length > 0;
+
 
   const handleSendReply = async () => {
     if (!replyText.trim() || replyRecipientIds.length === 0 || !selected) return;
