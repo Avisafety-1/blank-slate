@@ -1,0 +1,2 @@
+ALTER TABLE public.internal_message_receipts DROP CONSTRAINT internal_message_receipts_channel_check;
+ALTER TABLE public.internal_message_receipts ADD CONSTRAINT internal_message_receipts_channel_check CHECK (channel = ANY (ARRAY['email'::text, 'sms'::text, 'inbox'::text, 'push'::text]));
