@@ -7700,7 +7700,25 @@
       "sms": "SMS",
       "channelsHint": "Innboks er alltid inkludert.",
       "send": "Send",
-      "sent": "Sendt til {{count}} mottaker(e)"
-    }
+      "sent": "Sendt til {{count}} mottaker(e)",
+      "modePeople": "Velg personer",
+      "modeBroadcast": "Kringkasting",
+      "audience": "Mottakergruppe",
+      "audienceAll": "Alle brukere",
+      "audienceCompanies": "Velg selskaper",
+      "searchCompanies": "Søk etter selskap…",
+      "audienceCount": "{{count}} mottakere",
+      "review": "Se over og send",
+      "confirmTitle": "Bekreft kringkasting",
+      "confirmInbox": "Innboks: {{count}} mottakere",
+      "confirmEmail": "E-post: {{count}}",
+      "confirmSms": "SMS til alle med telefonnummer",
+      "confirmHint": "Trykk Send igjen for å bekrefte."
+    },
+    "toPrefix": "Til",
+    "participants": "Deltakere",
+    "broadcastBadge": "Kringkasting",
+    "replyToAll": "Svaret går til alle deltakere",
+    "replyToSenderOnly": "Svaret går kun til avsender"
   }
 }

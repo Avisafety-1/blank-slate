@@ -7698,7 +7698,25 @@
       "sms": "SMS",
       "channelsHint": "Inbox delivery is always included.",
       "send": "Send",
-      "sent": "Sent to {{count}} recipient(s)"
-    }
+      "sent": "Sent to {{count}} recipient(s)",
+      "modePeople": "Select people",
+      "modeBroadcast": "Broadcast",
+      "audience": "Audience",
+      "audienceAll": "All users",
+      "audienceCompanies": "Select companies",
+      "searchCompanies": "Search companies…",
+      "audienceCount": "{{count}} recipients",
+      "review": "Review & send",
+      "confirmTitle": "Confirm broadcast",
+      "confirmInbox": "Inbox: {{count}} recipients",
+      "confirmEmail": "Email: {{count}}",
+      "confirmSms": "SMS to everyone with a phone number",
+      "confirmHint": "Press Send again to confirm."
+    },
+    "toPrefix": "To",
+    "participants": "Participants",
+    "broadcastBadge": "Broadcast",
+    "replyToAll": "Reply goes to all participants",
+    "replyToSenderOnly": "Reply goes to the sender only"
   }
 }
