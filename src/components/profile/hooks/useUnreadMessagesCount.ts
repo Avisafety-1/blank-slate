@@ -14,7 +14,7 @@ export function useUnreadMessagesCount() {
     refetchOnMount: "always",
     queryFn: async (): Promise<number> => {
       const { count, error } = await supabase
-        .from("internal_messages")
+        .from("internal_message_recipients")
         .select("id", { count: "exact", head: true })
         .eq("recipient_id", user!.id)
         .eq("status", "unread");
@@ -31,10 +31,11 @@ export function useUnreadMessagesCount() {
     channel
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "internal_messages", filter: `recipient_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "internal_message_recipients", filter: `recipient_id=eq.${user.id}` },
         () => qc.invalidateQueries({ queryKey: ["inbox-unread-count"] }),
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
