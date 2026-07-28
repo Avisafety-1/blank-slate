@@ -7919,6 +7919,10 @@ export type Database = {
         Returns: boolean
       }
       can_read_folder: { Args: { _folder_id: string }; Returns: boolean }
+      can_see_message_recipients: {
+        Args: { _message_id: string; _user: string }
+        Returns: boolean
+      }
       can_user_access_company: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
