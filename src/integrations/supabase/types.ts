@@ -7914,6 +7914,10 @@ export type Database = {
         Args: { p_features: Json }
         Returns: Json
       }
+      can_access_message: {
+        Args: { _message_id: string; _user: string }
+        Returns: boolean
+      }
       can_read_folder: { Args: { _folder_id: string }; Returns: boolean }
       can_user_access_company: {
         Args: { _company_id: string; _user_id: string }
@@ -8485,6 +8489,10 @@ export type Database = {
         Returns: boolean
       }
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      is_message_sender: {
+        Args: { _message_id: string; _user: string }
+        Returns: boolean
+      }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_thread_participant: {
         Args: { _thread_root: string; _user: string }
