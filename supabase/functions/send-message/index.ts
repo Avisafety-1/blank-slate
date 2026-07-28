@@ -9,8 +9,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface Audience {
+  mode: "all" | "companies";
+  company_ids?: string[];
+}
+
 interface Body {
-  recipient_ids: string[];
+  recipient_ids?: string[];
+  audience?: Audience | null;
   subject: string;
   body: string;
   parent_id?: string | null;
@@ -30,6 +36,14 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+type Recipient = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  telefon: string | null;
+  company_id: string | null;
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -52,7 +66,7 @@ serve(async (req) => {
     if (!user) return json({ error: "unauthorized" }, 401);
 
     const payload = (await req.json()) as Body;
-    if (!payload?.subject || !payload?.body) return json({ error: "invalid_payload" }, 400);
+    if (!payload?.subject?.trim() || !payload?.body?.trim()) return json({ error: "invalid_payload" }, 400);
 
     // Sender profile
     const { data: sender } = await admin
@@ -68,46 +82,103 @@ serve(async (req) => {
     const isSuper = roleSet.has("superadmin");
     const isAdmin = isSuper || roleSet.has("admin") || roleSet.has("administrator");
 
-    // Resolve recipients
-    let parent: any = null;
-    let recipientIds = payload.recipient_ids ?? [];
+    // Is the sender an Avisafe superadmin (allowed to broadcast system-wide)?
+    let isAvisafeSuper = false;
+    if (isSuper && sender.company_id) {
+      const { data: comp } = await admin.from("companies").select("navn").eq("id", sender.company_id).single();
+      isAvisafeSuper = (comp?.navn ?? "").trim().toLowerCase() === "avisafe";
+    }
 
+    let parent:
+      | { id: string; sender_id: string | null; recipient_id: string | null; subject: string; company_id: string; thread_root_id: string | null; is_broadcast: boolean }
+      | null = null;
+    let recipientIds: string[] = payload.recipient_ids ?? [];
+    let isBroadcast = false;
+    let broadcastScope: Record<string, unknown> | null = null;
+
+    // ---- Reply path -------------------------------------------------------
     if (payload.parent_id) {
       const { data: p } = await admin
         .from("internal_messages")
-        .select("id, sender_id, recipient_id, subject, company_id, thread_root_id")
+        .select("id, sender_id, recipient_id, subject, company_id, thread_root_id, is_broadcast")
         .eq("id", payload.parent_id)
         .single();
       if (!p) return json({ error: "parent_not_found" }, 404);
-      // Caller must have been a participant in parent
-      if (p.sender_id !== user.id && p.recipient_id !== user.id) {
-        return json({ error: "not_a_participant" }, 403);
+      parent = p as typeof parent;
+
+      const threadRoot = p.thread_root_id ?? p.id;
+
+      // Collect all participants of the thread
+      const { data: threadMsgs } = await admin
+        .from("internal_messages")
+        .select("id, sender_id, recipient_id")
+        .or(`thread_root_id.eq.${threadRoot},id.eq.${threadRoot}`);
+      const msgIds = (threadMsgs ?? []).map((m) => m.id);
+      const { data: junction } = msgIds.length
+        ? await admin.from("internal_message_recipients").select("recipient_id").in("message_id", msgIds)
+        : { data: [] as { recipient_id: string }[] };
+
+      const participants = new Set<string>();
+      for (const m of threadMsgs ?? []) {
+        if (m.sender_id) participants.add(m.sender_id);
+        if (m.recipient_id) participants.add(m.recipient_id);
       }
-      parent = p;
-      // Reply target = the other participant
-      const target = p.sender_id === user.id ? p.recipient_id : p.sender_id;
-      if (!target) return json({ error: "no_reply_target" }, 400);
-      recipientIds = [target];
+      for (const r of junction ?? []) participants.add(r.recipient_id);
+
+      if (!participants.has(user.id)) return json({ error: "not_a_participant" }, 403);
+
+      if (p.is_broadcast) {
+        // Replies to a broadcast go only to the original sender
+        recipientIds = p.sender_id && p.sender_id !== user.id ? [p.sender_id] : [];
+      } else {
+        participants.delete(user.id);
+        recipientIds = Array.from(participants);
+      }
+      if (!recipientIds.length) return json({ error: "no_reply_target" }, 400);
+    }
+
+    // ---- Broadcast path ---------------------------------------------------
+    if (!parent && payload.audience) {
+      if (!isAvisafeSuper) return json({ error: "broadcast_not_allowed" }, 403);
+      const mode = payload.audience.mode;
+      if (mode !== "all" && mode !== "companies") return json({ error: "invalid_audience" }, 400);
+
+      let q = admin.from("profiles").select("id").neq("id", user.id);
+      if (mode === "companies") {
+        const ids = payload.audience.company_ids ?? [];
+        if (!ids.length) return json({ error: "no_companies_selected" }, 400);
+        q = q.in("company_id", ids);
+      }
+      const { data: audienceRows, error: audErr } = await q;
+      if (audErr) return json({ error: `audience_failed: ${audErr.message}` }, 500);
+      recipientIds = (audienceRows ?? []).map((r) => r.id);
+      isBroadcast = true;
+      broadcastScope = { mode, company_ids: payload.audience.company_ids ?? null };
     }
 
     if (!recipientIds.length) return json({ error: "no_recipients" }, 400);
 
-    const { data: recipients } = await admin
-      .from("profiles")
-      .select("id, full_name, email, telefon, company_id, preferred_language")
-      .in("id", recipientIds);
-    if (!recipients?.length) return json({ error: "recipients_not_found" }, 404);
+    // Fetch recipient profiles (chunked to stay under URL limits)
+    const recipients: Recipient[] = [];
+    for (let i = 0; i < recipientIds.length; i += 200) {
+      const chunk = recipientIds.slice(i, i + 200);
+      const { data } = await admin
+        .from("profiles")
+        .select("id, full_name, email, telefon, company_id")
+        .in("id", chunk);
+      recipients.push(...((data ?? []) as Recipient[]));
+    }
+    if (!recipients.length) return json({ error: "recipients_not_found" }, 404);
 
-    // Access control per recipient (skipped when replying — parent already validates)
-    let allowedRecipients = recipients;
-    if (!parent && !isSuper) {
+    // Access control (skipped when replying or broadcasting — both validated above)
+    let allowed = recipients;
+    if (!parent && !isBroadcast && !isSuper) {
       const { data: visible } = await admin.rpc("get_user_visible_company_ids", { _user_id: user.id });
       const visibleSet = new Set((visible as string[] | null) ?? []);
-      allowedRecipients = recipients.filter((r) => r.company_id && visibleSet.has(r.company_id));
+      allowed = recipients.filter((r) => r.company_id && visibleSet.has(r.company_id));
     }
-    if (!allowedRecipients.length) return json({ error: "no_valid_recipients" }, 403);
+    if (!allowed.length) return json({ error: "no_valid_recipients" }, 403);
 
-    // Email/SMS only for admin/superadmin
     const channels = {
       email: !!payload.channels?.email && isAdmin,
       sms: !!payload.channels?.sms && isAdmin,
@@ -115,81 +186,118 @@ serve(async (req) => {
     };
 
     const companyId = parent?.company_id ?? sender.company_id;
-    const emailCfg = channels.email ? await getEmailConfig(companyId) : null;
+    const emailCfg = channels.email ? await getEmailConfig(companyId).catch(() => null) : null;
     const fromAddress = emailCfg ? formatSenderAddress(emailCfg.fromName, emailCfg.fromEmail) : "";
 
     const subject = parent
-      ? (payload.subject.trim().toLowerCase().startsWith("re:") ? payload.subject : `Re: ${parent.subject}`)
-      : payload.subject;
+      ? (payload.subject.trim().toLowerCase().startsWith("re:") || payload.subject.trim().toLowerCase().startsWith("sv:")
+          ? payload.subject.trim()
+          : `Re: ${parent.subject}`)
+      : payload.subject.trim();
 
     const results: Array<Record<string, unknown>> = [];
 
-    for (const r of allowedRecipients) {
+    const deliver = async (msgId: string, targets: Recipient[]) => {
+      const receipts: Array<Record<string, unknown>> = [
+        { message_id: msgId, channel: "inbox", status: "sent" },
+      ];
+      const deepLinkAbs = `${APP_URL}/?msg=${msgId}`;
+
+      for (const r of targets) {
+        if (channels.email && r.email) {
+          try {
+            const html = `
+              <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px;color:#0f172a">
+                <h2 style="margin:0 0 12px">${esc(subject)}</h2>
+                <p style="white-space:pre-wrap;line-height:1.5">${esc(payload.body)}</p>
+                <p style="margin-top:24px">
+                  <a href="${deepLinkAbs}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Åpne i AviSafe</a>
+                </p>
+                <p style="margin-top:24px;font-size:12px;color:#64748b">Sendt av ${esc(sender.full_name ?? sender.email ?? "AviSafe")}</p>
+              </div>`;
+            const res = await sendEmail({
+              from: fromAddress || "AviSafe <noreply@avisafe.no>",
+              to: r.email,
+              subject: sanitizeSubject(subject),
+              html,
+            });
+            receipts.push({ message_id: msgId, channel: "email", status: "sent", provider_id: (res as any)?.id });
+          } catch (e) {
+            receipts.push({ message_id: msgId, channel: "email", status: "failed", error: String(e) });
+          }
+        }
+
+        if (channels.sms && r.telefon) {
+          const smsText = `${subject}\n${payload.body}\n${deepLinkAbs}`.slice(0, 480);
+          const res = await sendGatewaySms({ phone: r.telefon, message: smsText, reference: msgId });
+          receipts.push({
+            message_id: msgId,
+            channel: "sms",
+            status: res.ok ? "sent" : "failed",
+            error: res.ok ? undefined : res.error,
+          });
+        }
+      }
+
+      if (receipts.length) await admin.from("internal_message_receipts").insert(receipts);
+    };
+
+    if (isBroadcast) {
+      // One separate (private) thread per recipient — replies go back to sender only.
+      for (const r of allowed) {
+        const { data: msg, error: insErr } = await admin
+          .from("internal_messages")
+          .insert({
+            company_id: r.company_id ?? sender.company_id,
+            sender_id: sender.id,
+            recipient_id: r.id,
+            subject,
+            body: payload.body,
+            severity: payload.severity ?? "info",
+            channels_sent: channels,
+            parent_id: null,
+            is_broadcast: true,
+            broadcast_scope: broadcastScope,
+          })
+          .select("id")
+          .single();
+        if (insErr || !msg) {
+          results.push({ recipient_id: r.id, ok: false, error: insErr?.message });
+          continue;
+        }
+        await admin.from("internal_message_recipients").insert({ message_id: msg.id, recipient_id: r.id });
+        await deliver(msg.id, [r]);
+        results.push({ recipient_id: r.id, message_id: msg.id, ok: true });
+      }
+    } else {
+      // One shared message row with all recipients — a real group thread.
       const { data: msg, error: insErr } = await admin
         .from("internal_messages")
         .insert({
-          company_id: parent ? parent.company_id : r.company_id ?? sender.company_id,
+          company_id: parent ? parent.company_id : allowed[0].company_id ?? sender.company_id,
           sender_id: sender.id,
-          recipient_id: r.id,
+          recipient_id: allowed[0].id,
           subject,
           body: payload.body,
           severity: payload.severity ?? "info",
           channels_sent: channels,
           parent_id: parent?.id ?? null,
+          is_broadcast: false,
         })
         .select("id, thread_root_id")
         .single();
+      if (insErr || !msg) return json({ error: `insert_failed: ${insErr?.message}` }, 500);
 
-      if (insErr || !msg) {
-        results.push({ recipient_id: r.id, ok: false, error: insErr?.message });
-        continue;
-      }
+      const { error: junErr } = await admin
+        .from("internal_message_recipients")
+        .insert(allowed.map((r) => ({ message_id: msg.id, recipient_id: r.id })));
+      if (junErr) console.error("[send-message] junction insert failed", junErr);
 
-      const receipts: Array<Record<string, unknown>> = [
-        { message_id: msg.id, channel: "inbox", status: "sent" },
-      ];
-
-      const deepLinkAbs = `${APP_URL}/?msg=${msg.id}`;
-
-      if (channels.email && r.email) {
-        try {
-          const html = `
-            <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px;color:#0f172a">
-              <h2 style="margin:0 0 12px">${esc(subject)}</h2>
-              <p style="white-space:pre-wrap;line-height:1.5">${esc(payload.body)}</p>
-              <p style="margin-top:24px">
-                <a href="${deepLinkAbs}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Åpne i AviSafe</a>
-              </p>
-              <p style="margin-top:24px;font-size:12px;color:#64748b">Sendt av ${esc(sender.full_name ?? sender.email ?? "AviSafe")}</p>
-            </div>`;
-          const res = await sendEmail({
-            from: fromAddress || "AviSafe <noreply@avisafe.no>",
-            to: r.email,
-            subject: sanitizeSubject(subject),
-            html,
-          });
-          receipts.push({ message_id: msg.id, channel: "email", status: "sent", provider_id: (res as any)?.id });
-        } catch (e) {
-          receipts.push({ message_id: msg.id, channel: "email", status: "failed", error: String(e) });
-        }
-      }
-
-      if (channels.sms && r.telefon) {
-        const smsText = `${subject}\n${payload.body}\n${deepLinkAbs}`.slice(0, 480);
-        const res = await sendGatewaySms({ phone: r.telefon, message: smsText, reference: msg.id });
-        receipts.push({
-          message_id: msg.id,
-          channel: "sms",
-          status: res.ok ? "sent" : "failed",
-          error: res.ok ? undefined : res.error,
-        });
-      }
-
-      await admin.from("internal_message_receipts").insert(receipts);
-      results.push({ recipient_id: r.id, message_id: msg.id, ok: true });
+      await deliver(msg.id, allowed);
+      for (const r of allowed) results.push({ recipient_id: r.id, message_id: msg.id, ok: true });
     }
 
-    return json({ success: true, results });
+    return json({ success: true, broadcast: isBroadcast, results });
   } catch (e) {
     console.error("[send-message] error", e);
     return json({ error: String(e) }, 500);
