@@ -7351,7 +7351,17 @@
       "noIssues": "Ingen operative avvik siste 12 måneder",
       "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag",
       "expandGroup": "Vis {{count}}",
-      "collapseGroup": "Skjul"
+      "collapseGroup": "Skjul",
+      "summary": {
+        "completed": "Fullførte oppdrag",
+        "compliant": "Fullt ut i compliance",
+        "withoutRA": "Uten risikovurdering",
+        "withoutApproval": "Uten godkjenning",
+        "complianceRate": "Compliance-grad",
+        "chartTitle": "Compliance på fullførte oppdrag",
+        "compliantSlice": "I compliance",
+        "nonCompliantSlice": "Ikke i compliance"
+      }
     },
     "safety": {
       "reported": "Rapporterte",
