@@ -53,9 +53,10 @@ export function useMessageThread(threadRootId: string | null | undefined) {
       ].filter(Boolean) as string[];
       const parties = await fetchParties(ids);
 
-      const participants = Array.from(new Set(ids))
-        .map((id) => parties.get(id))
-        .filter(Boolean) as MessageParty[];
+      const participants = Array.from(new Set(ids)).map(
+        (id) => parties.get(id) ?? { id, full_name: null, email: null, company_name: null },
+      ) as MessageParty[];
+
 
       const messages = msgs.map((m) => {
         const sender = m.sender_id ? parties.get(m.sender_id) : null;
