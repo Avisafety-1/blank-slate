@@ -94,7 +94,15 @@ export const InboxTab = () => {
     for (const r of selected?.recipients ?? []) {
       if (r.id && r.id !== user?.id) ids.add(r.id);
     }
+    // Fallback: derive from the thread itself so the composer never disappears
+    for (const m of thread) {
+      if (m.sender_id && m.sender_id !== user?.id) ids.add(m.sender_id);
+      const legacy = (m as { recipient_id?: string | null }).recipient_id;
+      if (legacy && legacy !== user?.id) ids.add(legacy);
+    }
+    if (selected?.recipient_id && selected.recipient_id !== user?.id) ids.add(selected.recipient_id);
     return Array.from(ids);
+
   })();
 
   const canReply = replyRecipientIds.length > 0;
