@@ -33,31 +33,23 @@ export interface InboxMessage {
   recipients?: MessageParty[];
 }
 
-/** Fetch profile + company info for a set of user ids. */
+/** Fetch profile + company info for a set of user ids (cross-company safe). */
 export async function fetchParties(ids: string[]): Promise<Map<string, MessageParty>> {
   const map = new Map<string, MessageParty>();
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (!unique.length) return map;
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, company_id")
-    .in("id", unique);
-  const companyIds = Array.from(new Set((data ?? []).map((p) => p.company_id).filter(Boolean))) as string[];
-  let companyMap = new Map<string, string>();
-  if (companyIds.length) {
-    const { data: comps } = await supabase.from("companies").select("id, navn").in("id", companyIds);
-    companyMap = new Map((comps ?? []).map((c) => [c.id, c.navn as string]));
-  }
-  for (const p of data ?? []) {
+  const { data } = await supabase.rpc("get_message_parties", { _ids: unique });
+  for (const p of (data ?? []) as MessageParty[]) {
     map.set(p.id, {
       id: p.id,
       full_name: p.full_name ?? null,
-      email: (p as { email?: string | null }).email ?? null,
-      company_name: p.company_id ? companyMap.get(p.company_id) ?? null : null,
+      email: p.email ?? null,
+      company_name: p.company_name ?? null,
     });
   }
   return map;
 }
+
 
 export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "all") {
   const { user } = useAuth();
@@ -119,12 +111,19 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
 
       const byMessage = new Map<string, MessageParty[]>();
       for (const r of recipientRows) {
-        const p = parties.get(r.recipient_id);
-        if (!p) continue;
+        // Keep the recipient even if we could not resolve their profile, so
+        // reply targets never disappear in cross-company threads.
+        const p: MessageParty = parties.get(r.recipient_id) ?? {
+          id: r.recipient_id,
+          full_name: null,
+          email: null,
+          company_name: null,
+        };
         const list = byMessage.get(r.message_id) ?? [];
         list.push(p);
         byMessage.set(r.message_id, list);
       }
+
 
       return rows.map((m) => {
         const sender = m.sender_id ? parties.get(m.sender_id as string) : null;

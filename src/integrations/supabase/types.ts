@@ -8349,6 +8349,15 @@ export type Database = {
           refresh_token: string
         }[]
       }
+      get_message_parties: {
+        Args: { _ids: string[] }
+        Returns: {
+          company_name: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       get_mission_approvers: {
         Args: { target_company_id: string }
         Returns: {
