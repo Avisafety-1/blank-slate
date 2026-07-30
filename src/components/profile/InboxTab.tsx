@@ -43,7 +43,9 @@ const sevClass = (s: InboxMessage["severity"]) =>
       : "text-primary border-primary/40 bg-primary/10";
 
 const partyLabel = (p: MessageParty) =>
-  [p.full_name || p.email, p.email && p.full_name ? p.email : null].filter(Boolean).join(" · ");
+  [p.full_name || p.email, p.email && p.full_name ? p.email : null].filter(Boolean).join(" · ") ||
+  "—";
+
 
 export const InboxTab = () => {
   const { t, i18n } = useTranslation();
