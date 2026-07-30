@@ -111,12 +111,19 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
 
       const byMessage = new Map<string, MessageParty[]>();
       for (const r of recipientRows) {
-        const p = parties.get(r.recipient_id);
-        if (!p) continue;
+        // Keep the recipient even if we could not resolve their profile, so
+        // reply targets never disappear in cross-company threads.
+        const p: MessageParty = parties.get(r.recipient_id) ?? {
+          id: r.recipient_id,
+          full_name: null,
+          email: null,
+          company_name: null,
+        };
         const list = byMessage.get(r.message_id) ?? [];
         list.push(p);
         byMessage.set(r.message_id, list);
       }
+
 
       return rows.map((m) => {
         const sender = m.sender_id ? parties.get(m.sender_id as string) : null;
