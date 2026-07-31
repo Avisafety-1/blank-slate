@@ -182,6 +182,30 @@ export const MissionCard = ({
             />
           </div>
           <div className="flex flex-wrap gap-2">
+            <MissionStatusDropdown
+              missionId={mission.id}
+              currentStatus={mission.status}
+              onStatusChanged={fetchMissions}
+              statusColors={statusColors}
+              className="text-xs"
+              latitude={effectiveLat}
+              longitude={effectiveLng}
+            />
+            {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
+              <Badge
+                variant="outline"
+                className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={approvalClickable ? (e) => {
+                  e.stopPropagation();
+                  setApprovalConfirmOpen(true);
+                } : undefined}
+              >
+                {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
+                {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
+              </Badge>
+            )}
+            {shouldShowAIRiskBadge(mission.aiRisk) && (
               <Badge 
                 variant="outline" 
                 className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)} cursor-pointer hover:opacity-80 transition-opacity`}
