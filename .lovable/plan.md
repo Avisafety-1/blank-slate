@@ -1,18 +1,25 @@
-## Problem
+## Cause
 
-In "Min profil" → Oppfølging, the content extends past the screen width on mobile. Two causes in `src/components/ProfileDialog.tsx`:
+In `src/components/ProfileDialog.tsx` line 940 the ScrollArea got these classes in the last change:
 
-1. The Radix `ScrollArea` viewport (shadcn default) renders its child with `display: table`, which grows to fit the widest content instead of being capped at 100% width. Long, unbreakable incident titles therefore stretch the whole tab.
-2. The incident row title uses `truncate`, which never kicks in because that ancestor chain is allowed to expand (point 1), so the title renders in full and pushes the card wide.
+```
+[&>div]:!block [&>div]:w-full [&>div]:min-w-0
+```
 
-## Changes (frontend only, one file)
+`&>div` matches **every** direct child of the Radix ScrollArea root — not just the viewport. The root also renders the vertical `ScrollBar` (a div) and `ScrollAreaPrimitive.Corner` (a div). Forcing `display:block; width:100%` on the scrollbar turns the thin track into a full-width grey block that appears while scrolling in every tab.
 
-`src/components/ProfileDialog.tsx`:
+## Fix
 
-- On the `ScrollArea` wrapping the tabs, constrain the viewport child: add `w-full min-w-0` plus `[&>div]:!block [&>div]:w-full [&>div]:min-w-0` so the scroll content can no longer exceed the dialog width.
-- Follow-up incidents card: keep the row as `flex ... min-w-0`, ensure the text column is `min-w-0 flex-1`, and change the title from `truncate` to `break-words` (with `line-clamp-2` so a long title stays on max two lines instead of many). Status/date line stays `truncate`.
-- Verify the pending-approval mission cards in the same tab also stay within width (title already uses `break-words min-w-0`; add `min-w-0` to the card wrapper if needed).
+Replace the generic child selector with a viewport-scoped one:
+
+```
+[&>[data-radix-scroll-area-viewport]]:!block
+[&>[data-radix-scroll-area-viewport]]:w-full
+[&>[data-radix-scroll-area-viewport]]:min-w-0
+```
+
+This keeps the overflow fix from the previous change (viewport child no longer `display: table`) while leaving the scrollbar and corner styling untouched.
 
 ## Verification
 
-Screenshot the profile dialog's Oppfølging tab at 360px width via Playwright and confirm no horizontal overflow and that the long incident title wraps/clamps.
+Open the profile dialog at 360px, scroll each tab, and confirm no grey block appears and the Oppfølging tab still stays inside the screen width.
