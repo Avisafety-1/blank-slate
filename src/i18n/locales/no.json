@@ -7682,6 +7682,8 @@
     "replyPlaceholder": "Skriv et svar…",
     "sendReply": "Send svar",
     "sentTo": "Sendt til mottaker",
+    "newInThread": "{{count}} nye",
+    "threadCount": "{{count}} meldinger",
     "filter": {
       "all": "Alle",
       "unread": "Uleste",
