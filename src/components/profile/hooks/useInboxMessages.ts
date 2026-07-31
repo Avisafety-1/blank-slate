@@ -31,6 +31,12 @@ export interface InboxMessage {
   sender_email?: string | null;
   sender_company?: string | null;
   recipients?: MessageParty[];
+  /** Number of unread messages in this thread (received messages only). */
+  thread_unread_count?: number;
+  /** Total number of messages fetched for this thread. */
+  thread_message_count?: number;
+  /** All message ids belonging to this thread row. */
+  thread_message_ids?: string[];
 }
 
 /** Fetch profile + company info for a set of user ids (cross-company safe). */
