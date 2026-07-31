@@ -180,7 +180,7 @@ export const ApproveMissionButton = ({
     <>
       <Button
         size={size}
-        variant="default"
+        variant={variant}
         className={className}
         disabled={selfBlocked}
         title={selfBlocked ? t("profile.approval.selfBlocked") : undefined}
