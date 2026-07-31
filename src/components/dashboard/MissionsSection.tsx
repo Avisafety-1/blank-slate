@@ -365,14 +365,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                         </Badge>
                       );
                     })()}
-                    <ApproveMissionButton
-                      missionId={mission.id}
-                      missionTitle={mission.tittel}
-                      missionCompanyId={mission.company_id}
-                      approvalStatus={mission.approval_status}
-                      onApproved={fetchMissions}
-                      className="h-7 text-[11px] px-2"
-                    />
                     {shouldShowSoraBadge(missionSoras[mission.id]) && (
                       <Badge 
                         variant="outline"
