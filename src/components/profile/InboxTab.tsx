@@ -276,7 +276,7 @@ export const InboxTab = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        mark.mutate({ id: selected.id, status: "done" });
+                        mark.mutate({ id: selected.id, ids: selected.thread_message_ids, status: "done" });
                         setSelected(null);
                       }}
                     >
