@@ -173,7 +173,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               missionTitle={currentMission.tittel}
               missionCompanyId={currentMission.company_id}
               approvalStatus={currentMission.approval_status}
-              variant="outline"
+              size="sm"
+
               className="w-full sm:w-auto"
               onApproved={() => {
                 onMissionUpdated?.();
