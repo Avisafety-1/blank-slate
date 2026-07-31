@@ -1,31 +1,31 @@
 ## Mål
-Godkjennere skal kunne godkjenne oppdrag direkte fra oppdragskortene (dashboard + /oppdrag), ikke bare fra Profil → Oppfølging.
+En meldingstråd = én rad i inboxen, med badge som viser antall usette meldinger i tråden. Varsel-telleren over profil-ikonet teller tråder, ikke enkeltmeldinger.
 
-## Hva som bygges
+## Slik løses det (frontend, ingen DB-endringer)
 
-**1. Ny delt hook `useMissionApproval`**
-Trekker ut godkjenningslogikken som i dag ligger inne i `ProfileDialog.tsx` (`handleApproveMission`) slik at den kan gjenbrukes:
-- Oppdaterer `missions`: `approval_status = 'approved'`, `approved_by`, `approved_at`, valgfri kommentar i `approval_comment` + `approver_comments`.
-- Sender e-postvarsel `notify_mission_approved` til piloter.
-- Toast ved suksess/feil.
+**1. Gruppering i `useInboxMessages.ts`**
+- Etter at radene er hentet (samme spørringer som i dag), grupperes de på trådnøkkel = `thread_root_id ?? id`.
+- For hver gruppe beholdes den nyeste meldingen som representant, og det legges til:
+  - `thread_unread_count` — antall meldinger i tråden med status `unread` (kun for mottatte, ikke "Sendt"-fanen)
+  - `thread_message_count` — totalt antall meldinger i tråden
+  - `thread_message_ids` — alle id-er i gruppen (brukes ved markering som lest/ferdig)
+  - `status` settes til `unread` hvis minst én melding i tråden er ulest
+- Emnet vises uten «SV:»-prefiks-duplikat: bruk emnet fra den eldste meldingen i gruppen.
+- Filtrene beholdes: «Ulest» viser tråder med minst én ulest melding, «Ferdig» tråder der alle er ferdig, «Sendt» grupperes på samme måte.
 
-**2. Ny komponent `ApproveMissionButton`**
-Tydelig knapp som vises **kun** når alle er sanne:
-- Innlogget bruker har `canApproveMissions`
-- Oppdragets `approval_status === 'pending_approval'`
-- Oppdragets `company_id` er innenfor brukerens `approvalCompanyIds` (samme scoping som Oppfølging-fanen bruker)
+**2. Visning i `InboxTab.tsx`**
+- Ny badge på raden når `thread_unread_count > 1`: f.eks. «3 nye» ved siden av emnet (i tillegg til dagens blå prikk).
+- Behold tråd-ikonet/deltaker-badgen for gruppesamtaler.
+- Når tråden åpnes markeres alle uleste meldinger i tråden som lest (ikke bare den øverste).
 
-Klikk åpner en liten bekreftelsesdialog med valgfritt kommentarfelt og «Godkjenn». Hvis selskapet har `prevent_self_approval` og brukeren er tildelt personell på oppdraget, vises knappen som deaktivert med forklaringstekst (samme regel som i Oppfølging).
+**3. Markering som lest/ferdig (`useMarkMessage`)**
+- Utvides til å ta imot en liste med meldings-id-er og oppdatere `internal_message_recipients` med `.in("message_id", ids)` for gjeldende bruker. «Merk som ferdig» markerer hele tråden.
 
-**3. Plassering**
-- `src/components/oppdrag/MissionCard.tsx` — knappen øverst i kortet, i badge-raden rett ved «Venter på godkjenning».
-- `src/components/dashboard/MissionsSection.tsx` og `src/components/dashboard/MissionDetailDialog.tsx` — samme knapp øverst, over/ved statusbadgene (som på skjermbildene).
+**4. Telleren over profil-ikonet (`useUnreadMessagesCount.ts`)**
+- I stedet for `count: exact` på uleste rader, hentes uleste rader med tilhørende `internal_messages(thread_root_id, id)` og antall unike trådnøkler returneres. Realtime-oppdatering beholdes som i dag.
 
-Etter godkjenning refetches oppdragslisten (`fetchMissions` / eksisterende query-invalidering) slik at badgen umiddelbart blir «Godkjent».
+**5. i18n**
+- Nye nøkler i både `no.json` og `en.json`: `inbox.newInThread` («{{count}} nye» / «{{count}} new») og evt. `inbox.threadCount`.
 
-**4. i18n**
-Alle nye strenger via `t()`, nøkler lagt til i både `no.json` og `en.json` (gjenbruker `profile.approval.*` der det passer, ellers nye `pages.missions.card.approveNow*`).
-
-## Teknisk
-- Ingen databaseendringer; eksisterende RLS på `missions` styrer allerede hvem som kan oppdatere.
-- Personelltildeling for selvgodkjenningssjekken hentes fra dataene kortet allerede har (`mission_personnel` / `personnel`-feltet); hvis feltet mangler på dashboard-kortet, hentes profil-ID-ene ved åpning av bekreftelsesdialogen.
+## Teknisk merknad
+Alt gjøres i eksisterende hooks/komponenter; ingen migrasjoner. Datamengden er allerede begrenset til 200 rader per henting, så gruppering i klienten er trygt.
