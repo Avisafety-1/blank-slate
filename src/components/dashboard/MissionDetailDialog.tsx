@@ -44,6 +44,7 @@ import {
 } from "@/lib/oppdragHelpers";
 import { useTranslation } from "react-i18next";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 
 type Mission = any;
 
@@ -227,6 +228,18 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 </Badge>
               );
             })()}
+            <ApproveMissionButton
+              missionId={currentMission.id}
+              missionTitle={currentMission.tittel}
+              missionCompanyId={currentMission.company_id}
+              approvalStatus={currentMission.approval_status}
+              onApproved={() => {
+                onMissionUpdated?.();
+                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                  if (data) setLiveMission(data);
+                });
+              }}
+            />
             {shouldShowAIRiskBadge(currentMission.aiRisk) && (
               <Badge 
                 className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
