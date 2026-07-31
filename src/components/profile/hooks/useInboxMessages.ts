@@ -205,7 +205,9 @@ export function useMarkMessage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "read" | "done" }) => {
+    mutationFn: async ({ id, ids, status }: { id?: string; ids?: string[]; status: "read" | "done" }) => {
+      const targetIds = Array.from(new Set([...(ids ?? []), ...(id ? [id] : [])])).filter(Boolean);
+      if (targetIds.length === 0) return;
       const patch: { status: "read" | "done"; read_at?: string; done_at?: string } = { status };
       if (status === "read") patch.read_at = new Date().toISOString();
       if (status === "done") patch.done_at = new Date().toISOString();
@@ -213,7 +215,7 @@ export function useMarkMessage() {
       const { error } = await supabase
         .from("internal_message_recipients")
         .update(patch)
-        .eq("message_id", id)
+        .in("message_id", targetIds)
         .eq("recipient_id", user!.id);
       if (error) throw error;
 
@@ -221,7 +223,7 @@ export function useMarkMessage() {
       await supabase
         .from("internal_messages")
         .update(patch)
-        .eq("id", id)
+        .in("id", targetIds)
         .eq("recipient_id", user!.id);
     },
     onSuccess: () => {
