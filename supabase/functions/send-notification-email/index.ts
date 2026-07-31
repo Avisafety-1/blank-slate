@@ -345,22 +345,20 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
 
     // Handle new user notification to admins
     if (type === 'notify_admins_new_user' && companyId && newUser) {
-      const { data: adminRoles } = await supabase.from('user_roles').select('user_id').in('role', ADMIN_ROLES);
-      if (!adminRoles?.length) return new Response(JSON.stringify({ message: 'No admins' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-      const { data: childCompany } = await supabase.from('companies').select('parent_company_id').eq('id', companyId).single();
-      const companyIds = [companyId];
-      if (childCompany?.parent_company_id) {
-        companyIds.push(childCompany.parent_company_id);
+      // Recipients are resolved from stable home membership (user_companies),
+      // not profiles.company_id — the latter changes when an admin switches
+      // department context, which caused parent-company admins to miss alerts.
+      const { data: recipientRows, error: recipientErr } = await supabase
+        .rpc('get_pending_approval_notification_admins', { _company_id: companyId });
+      if (recipientErr) {
+        console.error('get_pending_approval_notification_admins failed', recipientErr);
+      }
+      if (!recipientRows?.length) {
+        return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      const { data: adminProfiles } = await supabase.from('profiles').select('id, company_id').in('company_id', companyIds).in('id', adminRoles.map(r => r.user_id));
-      if (!adminProfiles?.length) return new Response(JSON.stringify({ message: 'No admins in company' }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-      const sameCompanyAdminIds = adminProfiles.filter((p: any) => p.company_id === companyId).map((p: any) => p.id);
-      const parentAdminIds = childCompany?.parent_company_id
-        ? adminProfiles.filter((p: any) => p.company_id === childCompany.parent_company_id).map((p: any) => p.id)
-        : [];
+      const sameCompanyAdminIds = (recipientRows as any[]).filter((r) => !r.is_parent).map((r) => r.user_id);
+      const parentAdminIds = (recipientRows as any[]).filter((r) => r.is_parent).map((r) => r.user_id);
       const [{ data: sameCompanyPrefs }, { data: parentPrefs }] = await Promise.all([
         sameCompanyAdminIds.length
           ? supabase.from('notification_preferences').select('user_id').in('user_id', sameCompanyAdminIds).eq('email_new_user_pending', true)
@@ -373,6 +371,7 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         ...(sameCompanyPrefs || []).map((p: any) => p.user_id),
         ...(parentPrefs || []).map((p: any) => p.user_id),
       ]);
+
 
       // If this user was invited by an Avisafe superadmin, also notify all Avisafe superadmins
       try {
