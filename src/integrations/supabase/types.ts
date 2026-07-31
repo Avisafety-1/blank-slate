@@ -8440,6 +8440,13 @@ export type Database = {
         }[]
       }
       get_parent_company_id: { Args: { _company_id: string }; Returns: string }
+      get_pending_approval_notification_admins: {
+        Args: { _company_id: string }
+        Returns: {
+          is_parent: boolean
+          user_id: string
+        }[]
+      }
       get_platform_statistics: {
         Args: { p_exclude_company_id?: string }
         Returns: Json
