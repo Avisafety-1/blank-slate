@@ -39,6 +39,7 @@ export const ApproveMissionButton = ({
   onApproved,
   className,
   size = "sm",
+  variant = "default",
 }: ApproveMissionButtonProps) => {
   const { t } = useTranslation();
   const { user, companyId, canApproveMissions, approvalCompanyIds } = useAuth();
