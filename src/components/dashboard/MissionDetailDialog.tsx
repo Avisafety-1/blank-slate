@@ -168,6 +168,20 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 </Button>
               </div>
             </div>
+            <ApproveMissionButton
+              missionId={currentMission.id}
+              missionTitle={currentMission.tittel}
+              missionCompanyId={currentMission.company_id}
+              approvalStatus={currentMission.approval_status}
+              variant="outline"
+              className="w-full sm:w-auto"
+              onApproved={() => {
+                onMissionUpdated?.();
+                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                  if (data) setLiveMission(data);
+                });
+              }}
+            />
             <Button 
               size="sm" 
               variant="outline" 
@@ -228,18 +242,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 </Badge>
               );
             })()}
-            <ApproveMissionButton
-              missionId={currentMission.id}
-              missionTitle={currentMission.tittel}
-              missionCompanyId={currentMission.company_id}
-              approvalStatus={currentMission.approval_status}
-              onApproved={() => {
-                onMissionUpdated?.();
-                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
-                  if (data) setLiveMission(data);
-                });
-              }}
-            />
             {shouldShowAIRiskBadge(currentMission.aiRisk) && (
               <Badge 
                 className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}

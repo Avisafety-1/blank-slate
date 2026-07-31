@@ -27,6 +27,7 @@ interface ApproveMissionButtonProps {
   onApproved?: () => void;
   className?: string;
   size?: "sm" | "default";
+  variant?: "default" | "outline";
 }
 
 export const ApproveMissionButton = ({
@@ -38,6 +39,7 @@ export const ApproveMissionButton = ({
   onApproved,
   className,
   size = "sm",
+  variant = "default",
 }: ApproveMissionButtonProps) => {
   const { t } = useTranslation();
   const { user, companyId, canApproveMissions, approvalCompanyIds } = useAuth();
@@ -178,7 +180,7 @@ export const ApproveMissionButton = ({
     <>
       <Button
         size={size}
-        variant="default"
+        variant={variant}
         className={className}
         disabled={selfBlocked}
         title={selfBlocked ? t("profile.approval.selfBlocked") : undefined}
