@@ -78,7 +78,9 @@ export const InboxTab = () => {
 
   const openMessage = (m: InboxMessage) => {
     setSelected(m);
-    if (m.status === "unread" && filter !== "sent") mark.mutate({ id: m.id, status: "read" });
+    if (filter !== "sent" && (m.status === "unread" || (m.thread_unread_count ?? 0) > 0)) {
+      mark.mutate({ id: m.id, ids: m.thread_message_ids, status: "read" });
+    }
   };
 
   const openCompose = () => setComposeOpen(true);
