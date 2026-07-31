@@ -937,7 +937,7 @@ export const ProfileDialog = () => {
         <DialogHeader>
         <DialogTitle>{t('profile.title')}</DialogTitle>
       </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)] w-full min-w-0 pr-0 sm:pr-4 [&>div]:!block [&>div]:w-full [&>div]:min-w-0">
+        <ScrollArea className="max-h-[calc(90vh-100px)] w-full min-w-0 pr-0 sm:pr-4 [&>[data-radix-scroll-area-viewport]]:!block [&>[data-radix-scroll-area-viewport]]:w-full [&>[data-radix-scroll-area-viewport]]:min-w-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">{t('common.loading')}</p>
