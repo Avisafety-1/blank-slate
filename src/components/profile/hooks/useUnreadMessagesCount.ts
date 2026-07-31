@@ -13,13 +13,22 @@ export function useUnreadMessagesCount() {
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async (): Promise<number> => {
-      const { count, error } = await supabase
+      // Count unread *threads*, not individual messages, so a busy conversation
+      // only bumps the badge once.
+      const { data, error } = await supabase
         .from("internal_message_recipients")
-        .select("id", { count: "exact", head: true })
+        .select("message_id, message:internal_messages(id, thread_root_id)")
         .eq("recipient_id", user!.id)
-        .eq("status", "unread");
+        .eq("status", "unread")
+        .limit(500);
       if (error) throw error;
-      return count ?? 0;
+
+      const threads = new Set<string>();
+      for (const row of data ?? []) {
+        const msg = (row as { message?: { id: string; thread_root_id: string | null } | null }).message;
+        threads.add(msg?.thread_root_id ?? msg?.id ?? (row as { message_id: string }).message_id);
+      }
+      return threads.size;
     },
   });
 
