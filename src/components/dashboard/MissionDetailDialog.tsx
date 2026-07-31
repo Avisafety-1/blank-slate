@@ -168,6 +168,20 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 </Button>
               </div>
             </div>
+            <ApproveMissionButton
+              missionId={currentMission.id}
+              missionTitle={currentMission.tittel}
+              missionCompanyId={currentMission.company_id}
+              approvalStatus={currentMission.approval_status}
+              variant="outline"
+              className="w-full sm:w-auto"
+              onApproved={() => {
+                onMissionUpdated?.();
+                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                  if (data) setLiveMission(data);
+                });
+              }}
+            />
             <Button 
               size="sm" 
               variant="outline" 
