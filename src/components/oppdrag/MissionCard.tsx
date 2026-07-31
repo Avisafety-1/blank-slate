@@ -173,13 +173,6 @@ export const MissionCard = ({
                 {mission.company_name}
               </Badge>
             )}
-            <ApproveMissionButton
-              missionId={mission.id}
-              missionTitle={mission.tittel}
-              missionCompanyId={mission.company_id}
-              approvalStatus={mission.approval_status}
-              onApproved={fetchMissions}
-            />
           </div>
           <div className="flex flex-wrap gap-2">
             <MissionStatusDropdown
@@ -280,13 +273,23 @@ export const MissionCard = ({
             )}
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="w-full sm:w-auto">
-              <span>{t('pages.missions.card.moreOptions')}</span>
-              <ChevronDown className="h-4 w-4 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+          <ApproveMissionButton
+            missionId={mission.id}
+            missionTitle={mission.tittel}
+            missionCompanyId={mission.company_id}
+            approvalStatus={mission.approval_status}
+            size="sm"
+            className="w-full sm:w-auto"
+            onApproved={fetchMissions}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="w-full sm:w-auto">
+                <span>{t('pages.missions.card.moreOptions')}</span>
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
             <DropdownMenuItem onClick={() => onEdit(mission)}>
               <Edit className="h-4 w-4 mr-2" />
