@@ -3007,7 +3007,11 @@
         "confirmApproval": "Bekreft godkjenning",
         "ninoxConfirmedToast": "Ninox-godkjenning bekreftet",
         "sendForApprovalTitle": "Send til godkjenning?",
-        "sendForApprovalDescription": "Er du sikker på at du vil sende dette oppdraget til godkjenning?"
+        "sendForApprovalDescription": "Er du sikker på at du vil sende dette oppdraget til godkjenning?",
+        "approveNow": "Godkjenn oppdrag",
+        "approveConfirmDescription": "Godkjenn oppdraget «{{title}}». Du kan legge ved en valgfri kommentar til flyger.",
+        "approveSuccess": "Oppdraget er godkjent",
+        "approveError": "Kunne ikke godkjenne oppdraget"
       }
     },
     "incidents": {

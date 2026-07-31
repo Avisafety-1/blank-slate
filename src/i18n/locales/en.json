@@ -3005,7 +3005,11 @@
         "confirmApproval": "Confirm approval",
         "ninoxConfirmedToast": "Ninox approval confirmed",
         "sendForApprovalTitle": "Send for approval?",
-        "sendForApprovalDescription": "Are you sure you want to send this mission for approval?"
+        "sendForApprovalDescription": "Are you sure you want to send this mission for approval?",
+        "approveNow": "Approve mission",
+        "approveConfirmDescription": "Approve the mission “{{title}}”. You can add an optional comment to the pilot.",
+        "approveSuccess": "Mission approved",
+        "approveError": "Could not approve the mission"
       }
     },
     "incidents": {

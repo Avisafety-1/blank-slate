@@ -39,6 +39,7 @@ import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
+import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
@@ -197,6 +198,13 @@ export const MissionCard = ({
                 {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
               </Badge>
             )}
+            <ApproveMissionButton
+              missionId={mission.id}
+              missionTitle={mission.tittel}
+              missionCompanyId={mission.company_id}
+              approvalStatus={mission.approval_status}
+              onApproved={fetchMissions}
+            />
             {shouldShowAIRiskBadge(mission.aiRisk) && (
               <Badge 
                 variant="outline" 
