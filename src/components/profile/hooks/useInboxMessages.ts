@@ -131,7 +131,7 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
       }
 
 
-      return rows.map((m) => {
+      const enriched = rows.map((m) => {
         const sender = m.sender_id ? parties.get(m.sender_id as string) : null;
         const fallbackRecipient = m.recipient_id ? parties.get(m.recipient_id as string) : null;
         return {
@@ -142,6 +142,33 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
           recipients: byMessage.get(m.id as string) ?? (fallbackRecipient ? [fallbackRecipient] : []),
         } as InboxMessage;
       });
+
+      // Group by thread so a conversation only takes one row in the inbox.
+      const groups = new Map<string, InboxMessage[]>();
+      for (const m of enriched) {
+        const key = m.thread_root_id ?? m.id;
+        const list = groups.get(key) ?? [];
+        list.push(m);
+        groups.set(key, list);
+      }
+
+      const grouped: InboxMessage[] = Array.from(groups.values()).map((list) => {
+        const sorted = [...list].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const oldest = sorted[0];
+        const newest = sorted[sorted.length - 1];
+        const unreadCount = filter === "sent" ? 0 : sorted.filter((m) => m.status === "unread").length;
+        return {
+          ...newest,
+          subject: oldest.subject,
+          status: unreadCount > 0 ? "unread" : newest.status,
+          thread_unread_count: unreadCount,
+          thread_message_count: sorted.length,
+          thread_message_ids: sorted.map((m) => m.id),
+        };
+      });
+
+      grouped.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      return grouped;
     },
   });
 
