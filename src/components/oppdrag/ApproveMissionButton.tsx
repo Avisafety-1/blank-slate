@@ -27,6 +27,7 @@ interface ApproveMissionButtonProps {
   onApproved?: () => void;
   className?: string;
   size?: "sm" | "default";
+  variant?: "default" | "outline";
 }
 
 export const ApproveMissionButton = ({
