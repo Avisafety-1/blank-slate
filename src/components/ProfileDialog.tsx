@@ -937,7 +937,7 @@ export const ProfileDialog = () => {
         <DialogHeader>
         <DialogTitle>{t('profile.title')}</DialogTitle>
       </DialogHeader>
-        <ScrollArea className="max-h-[calc(90vh-100px)] pr-0 sm:pr-4">
+        <ScrollArea className="max-h-[calc(90vh-100px)] w-full min-w-0 pr-0 sm:pr-4 [&>div]:!block [&>div]:w-full [&>div]:min-w-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-muted-foreground">{t('common.loading')}</p>
@@ -2248,7 +2248,7 @@ export const ProfileDialog = () => {
                             return (
                             <div
                               key={mission.id}
-                              className="w-full p-3 sm:p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                              className="w-full min-w-0 p-3 sm:p-4 rounded-lg border-2 border-primary/30 bg-muted/30 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
                               onClick={() => {
                                 setSelectedMission(mission);
                                 setMissionDetailOpen(true);
@@ -2434,7 +2434,7 @@ export const ProfileDialog = () => {
                             onClick={() => handleIncidentClick(incident)}
                           >
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{incident.tittel}</p>
+                              <p className="font-medium break-words line-clamp-2">{incident.tittel}</p>
                               <p className="text-xs text-muted-foreground truncate">
                                 {incident.status} • {formatDate(incident.hendelsestidspunkt)}
                               </p>
