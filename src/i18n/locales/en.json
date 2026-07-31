@@ -7680,6 +7680,8 @@
     "replyPlaceholder": "Write a reply…",
     "sendReply": "Send reply",
     "sentTo": "Sent to recipient",
+    "newInThread": "{{count}} new",
+    "threadCount": "{{count}} messages",
     "filter": {
       "all": "All",
       "unread": "Unread",

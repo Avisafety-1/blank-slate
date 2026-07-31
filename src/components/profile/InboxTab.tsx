@@ -21,6 +21,7 @@ import {
   Loader2,
   Users,
   Megaphone,
+  MessagesSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,7 +79,9 @@ export const InboxTab = () => {
 
   const openMessage = (m: InboxMessage) => {
     setSelected(m);
-    if (m.status === "unread" && filter !== "sent") mark.mutate({ id: m.id, status: "read" });
+    if (filter !== "sent" && (m.status === "unread" || (m.thread_unread_count ?? 0) > 0)) {
+      mark.mutate({ id: m.id, ids: m.thread_message_ids, status: "read" });
+    }
   };
 
   const openCompose = () => setComposeOpen(true);
@@ -182,6 +185,11 @@ export const InboxTab = () => {
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-start gap-2 flex-wrap">
                       <span className="text-sm break-words min-w-0 flex-1">{m.subject}</span>
+                      {(m.thread_unread_count ?? 0) > 1 && (
+                        <Badge className="text-[10px] shrink-0">
+                          {t("inbox.newInThread", "{{count}} new", { count: m.thread_unread_count })}
+                        </Badge>
+                      )}
                       {m.is_broadcast && m.sender_id === user?.id && (
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Megaphone className="w-3 h-3 mr-1" />
@@ -193,6 +201,12 @@ export const InboxTab = () => {
                         <Badge variant="outline" className="text-[10px] shrink-0">
                           <Users className="w-3 h-3 mr-1" />
                           {m.recipients!.length + 1}
+                        </Badge>
+                      )}
+                      {(m.thread_message_count ?? 1) > 1 && (
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          <MessagesSquare className="w-3 h-3 mr-1" />
+                          {m.thread_message_count}
                         </Badge>
                       )}
                       {m.status === "done" && (
@@ -262,7 +276,7 @@ export const InboxTab = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        mark.mutate({ id: selected.id, status: "done" });
+                        mark.mutate({ id: selected.id, ids: selected.thread_message_ids, status: "done" });
                         setSelected(null);
                       }}
                     >

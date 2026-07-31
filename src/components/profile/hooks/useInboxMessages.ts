@@ -31,6 +31,12 @@ export interface InboxMessage {
   sender_email?: string | null;
   sender_company?: string | null;
   recipients?: MessageParty[];
+  /** Number of unread messages in this thread (received messages only). */
+  thread_unread_count?: number;
+  /** Total number of messages fetched for this thread. */
+  thread_message_count?: number;
+  /** All message ids belonging to this thread row. */
+  thread_message_ids?: string[];
 }
 
 /** Fetch profile + company info for a set of user ids (cross-company safe). */
@@ -125,7 +131,7 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
       }
 
 
-      return rows.map((m) => {
+      const enriched = rows.map((m) => {
         const sender = m.sender_id ? parties.get(m.sender_id as string) : null;
         const fallbackRecipient = m.recipient_id ? parties.get(m.recipient_id as string) : null;
         return {
@@ -136,6 +142,33 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
           recipients: byMessage.get(m.id as string) ?? (fallbackRecipient ? [fallbackRecipient] : []),
         } as InboxMessage;
       });
+
+      // Group by thread so a conversation only takes one row in the inbox.
+      const groups = new Map<string, InboxMessage[]>();
+      for (const m of enriched) {
+        const key = m.thread_root_id ?? m.id;
+        const list = groups.get(key) ?? [];
+        list.push(m);
+        groups.set(key, list);
+      }
+
+      const grouped: InboxMessage[] = Array.from(groups.values()).map((list) => {
+        const sorted = [...list].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const oldest = sorted[0];
+        const newest = sorted[sorted.length - 1];
+        const unreadCount = filter === "sent" ? 0 : sorted.filter((m) => m.status === "unread").length;
+        return {
+          ...newest,
+          subject: oldest.subject,
+          status: unreadCount > 0 ? "unread" : newest.status,
+          thread_unread_count: unreadCount,
+          thread_message_count: sorted.length,
+          thread_message_ids: sorted.map((m) => m.id),
+        };
+      });
+
+      grouped.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      return grouped;
     },
   });
 
@@ -172,7 +205,9 @@ export function useMarkMessage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "read" | "done" }) => {
+    mutationFn: async ({ id, ids, status }: { id?: string; ids?: string[]; status: "read" | "done" }) => {
+      const targetIds = Array.from(new Set([...(ids ?? []), ...(id ? [id] : [])])).filter(Boolean);
+      if (targetIds.length === 0) return;
       const patch: { status: "read" | "done"; read_at?: string; done_at?: string } = { status };
       if (status === "read") patch.read_at = new Date().toISOString();
       if (status === "done") patch.done_at = new Date().toISOString();
@@ -180,7 +215,7 @@ export function useMarkMessage() {
       const { error } = await supabase
         .from("internal_message_recipients")
         .update(patch)
-        .eq("message_id", id)
+        .in("message_id", targetIds)
         .eq("recipient_id", user!.id);
       if (error) throw error;
 
@@ -188,7 +223,7 @@ export function useMarkMessage() {
       await supabase
         .from("internal_messages")
         .update(patch)
-        .eq("id", id)
+        .in("id", targetIds)
         .eq("recipient_id", user!.id);
     },
     onSuccess: () => {
