@@ -173,6 +173,13 @@ export const MissionCard = ({
                 {mission.company_name}
               </Badge>
             )}
+            <ApproveMissionButton
+              missionId={mission.id}
+              missionTitle={mission.tittel}
+              missionCompanyId={mission.company_id}
+              approvalStatus={mission.approval_status}
+              onApproved={fetchMissions}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <MissionStatusDropdown
@@ -198,13 +205,6 @@ export const MissionCard = ({
                 {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
               </Badge>
             )}
-            <ApproveMissionButton
-              missionId={mission.id}
-              missionTitle={mission.tittel}
-              missionCompanyId={mission.company_id}
-              approvalStatus={mission.approval_status}
-              onApproved={fetchMissions}
-            />
             {shouldShowAIRiskBadge(mission.aiRisk) && (
               <Badge 
                 variant="outline" 

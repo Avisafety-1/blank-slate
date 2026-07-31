@@ -153,37 +153,35 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 pr-8">
+            <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-1.5 flex-shrink-0">
-                <ApproveMissionButton
-                  missionId={currentMission.id}
-                  missionTitle={currentMission.tittel}
-                  missionCompanyId={currentMission.company_id}
-                  approvalStatus={currentMission.approval_status}
-                  size="sm"
-                  className="w-full sm:w-auto"
-                  onApproved={() => {
-                    onMissionUpdated?.();
-                    supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
-                      if (data) setLiveMission(data);
-                    });
-                  }}
-                />
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {onEditRoute && (
-                    <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)} className="w-full sm:w-auto">
-                      <Route className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{t('dashboard.missionDetail.editRoute')}</span>
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={handleEditClick} className="w-full sm:w-auto">
-                    <Pencil className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{t('dashboard.missionDetail.edit')}</span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {onEditRoute && (
+                  <Button size="sm" variant="outline" onClick={() => onEditRoute(currentMission)}>
+                    <Route className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('dashboard.missionDetail.editRoute')}</span>
                   </Button>
-                </div>
+                )}
+                <Button size="sm" variant="outline" onClick={handleEditClick}>
+                  <Pencil className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{t('dashboard.missionDetail.edit')}</span>
+                </Button>
               </div>
             </div>
+            <ApproveMissionButton
+              missionId={currentMission.id}
+              missionTitle={currentMission.tittel}
+              missionCompanyId={currentMission.company_id}
+              approvalStatus={currentMission.approval_status}
+              size="sm"
+              className="w-full sm:w-auto"
+              onApproved={() => {
+                onMissionUpdated?.();
+                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                  if (data) setLiveMission(data);
+                });
+              }}
+            />
             <Button 
               size="sm" 
               variant="outline" 
