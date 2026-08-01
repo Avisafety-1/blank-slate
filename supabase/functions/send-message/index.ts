@@ -289,6 +289,7 @@ serve(async (req) => {
             channels_sent: channels,
             parent_id: null,
             is_broadcast: true,
+            deep_link: deepLink,
             broadcast_scope: broadcastScope,
           })
           .select("id")
