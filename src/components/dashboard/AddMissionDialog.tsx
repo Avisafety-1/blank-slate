@@ -644,6 +644,14 @@ export const AddMissionDialog = ({
         }
       }
     })));
+
+    await createMissionMentionThread({
+      missionId,
+      missionTitle: formData.tittel || 'Oppdrag uten tittel',
+      note: currentNotes,
+      senderName: senderProfile?.full_name,
+      recipientIds: newMentionIds,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
