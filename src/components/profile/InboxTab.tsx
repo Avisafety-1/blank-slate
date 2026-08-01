@@ -67,6 +67,23 @@ export const InboxTab = () => {
   const thread = threadData?.messages ?? [];
   const participants = (threadData?.participants ?? []).filter((p) => p.id !== user?.id);
 
+  const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
+  const { data: reactions = [] } = useMessageReactions(threadMessageIds);
+  const toggleReaction = useToggleReaction();
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startLongPress = (id: string) => {
+    cancelLongPress();
+    longPressTimer.current = setTimeout(() => setPickerFor(id), 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   useEffect(() => {
     if (thread.length > 0) {
       threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -75,6 +92,7 @@ export const InboxTab = () => {
 
   useEffect(() => {
     setReplyText("");
+    setPickerFor(null);
   }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
