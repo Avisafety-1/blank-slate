@@ -381,18 +381,16 @@ export const InboxTab = () => {
                     <div key={m.id} className={cn("flex flex-col gap-1 max-w-[90%]", mine && "ml-auto items-end")}>
                       <div
                         className={cn(
-                          "rounded-lg p-3 text-sm select-none",
+                          "rounded-lg p-3 text-sm select-none touch-manipulation",
                           mine
                             ? "bg-primary/10 border border-primary/30"
                             : "bg-muted border border-border",
                         )}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setPickerFor((cur) => (cur === m.id ? null : m.id));
-                        }}
-                        onTouchStart={() => startLongPress(m.id)}
+                        style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
+                        onContextMenu={(e) => handleContextMenu(m.id, e)}
+                        onTouchStart={(e) => startLongPress(m.id, e)}
                         onTouchEnd={cancelLongPress}
-                        onTouchMove={cancelLongPress}
+                        onTouchMove={moveLongPress}
                         onTouchCancel={cancelLongPress}
                       >
                         <div className="text-xs text-muted-foreground mb-1 break-words">
@@ -402,7 +400,10 @@ export const InboxTab = () => {
                       </div>
 
                       {pickerFor === m.id && (
-                        <div className="flex flex-wrap gap-1 rounded-full border bg-popover px-2 py-1 shadow-md">
+                        <div
+                          ref={pickerRef}
+                          className="flex flex-wrap gap-1 rounded-full border bg-popover px-2 py-1 shadow-md"
+                        >
                           {REACTION_EMOJIS.map((emoji) => (
                             <button
                               key={emoji}
