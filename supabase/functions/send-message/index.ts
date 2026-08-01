@@ -316,6 +316,7 @@ serve(async (req) => {
           channels_sent: channels,
           parent_id: parent?.id ?? null,
           is_broadcast: false,
+          deep_link: deepLink,
         })
         .select("id, thread_root_id")
         .single();
