@@ -1,25 +1,39 @@
-## Cause
+## Mål
 
-In `src/components/ProfileDialog.tsx` line 940 the ScrollArea got these classes in the last change:
+1. Når noen tagger en person med `@` i et oppdrag (merknader), opprettes det automatisk en meldingstråd (gruppesamtale) i innboksen mellom den som tagger og de taggede — med deeplink til oppdraget. E-postvarselet som sendes i dag beholdes.
+2. Man kan reagere på meldinger med emoji (👍 osv.) ved å holde lenge inne (mobil) eller høyreklikke/klikke reaksjonsknapp (PC).
 
-```
-[&>div]:!block [&>div]:w-full [&>div]:min-w-0
-```
+## Del 1 – Gruppesamtale ved @-tagging
 
-`&>div` matches **every** direct child of the Radix ScrollArea root — not just the viewport. The root also renders the vertical `ScrollBar` (a div) and `ScrollAreaPrimitive.Corner` (a div). Forcing `display:block; width:100%` on the scrollbar turns the thin track into a full-width grey block that appears while scrolling in every tab.
+Dagens flyt: `MissionNotesDialog.tsx` og `AddMissionDialog.tsx` finner taggede profiler og kaller `send-notification-email` (`notify_mission_mention`). Meldingstabellen `internal_messages` har allerede en ubrukt `deep_link`-kolonne, men `send-message`-funksjonen sender den ikke videre.
 
-## Fix
+Endringer:
+- `send-message` edge function: godta `deep_link` i payload og lagre den på meldingsraden (både ny tråd og svar).
+- Ny delt hjelpefunksjon i frontend (f.eks. `src/lib/missionMentionThread.ts`):
+  - Tar mission-id, tittel, merknadstekst og liste over taggede bruker-ID-er.
+  - Slår opp om det allerede finnes en tråd for samme oppdrag (melding med `deep_link = /oppdrag?id=<mission_id>` der bruker er deltaker). Finnes den → send som svar (`parent_id`) i eksisterende tråd. Finnes den ikke → ny melding med alle taggede som mottakere.
+  - Emne: oppdragstittel. Innhold: merknadsteksten + hvem som tagget.
+  - `deep_link`: `/oppdrag?id=<mission_id>` (samme parameter `/oppdrag` allerede leser).
+- Kall hjelperen fra `MissionNotesDialog.tsx` og `AddMissionDialog.tsx` rett etter dagens e-postutsending (e-post + push beholdes; push kommer automatisk via `send-message`).
+- I innboksen (`InboxTab.tsx`): hvis tråden har `deep_link`, vis en knapp «Åpne oppdrag» øverst i tråden som navigerer dit og lukker profildialogen.
+- `useMessageThread`/`useInboxMessages` henter med `deep_link`-feltet.
 
-Replace the generic child selector with a viewport-scoped one:
+## Del 2 – Emoji-reaksjoner
 
-```
-[&>[data-radix-scroll-area-viewport]]:!block
-[&>[data-radix-scroll-area-viewport]]:w-full
-[&>[data-radix-scroll-area-viewport]]:min-w-0
-```
+Database (migrasjon):
+- Ny tabell `internal_message_reactions` (`id`, `message_id` → `internal_messages`, `user_id`, `emoji`, `created_at`, unik på (message_id, user_id, emoji)).
+- GRANT til `authenticated`/`service_role`, RLS på:
+  - SELECT/INSERT/DELETE kun for brukere som har tilgang til meldingen (gjenbruk eksisterende `can_access_message`-funksjon), og DELETE/INSERT kun for egne rader (`auth.uid() = user_id`).
 
-This keeps the overflow fix from the previous change (viewport child no longer `display: table`) while leaving the scrollbar and corner styling untouched.
+Frontend:
+- Ny hook `useMessageReactions(threadRootId)`: henter reaksjoner for alle meldinger i tråden, og mutasjon for å toggle en emoji.
+- I `InboxTab.tsx` meldingsboble:
+  - Langtrykk (~500 ms touch) eller høyreklikk åpner en liten emoji-rad: 👍 ❤️ 😂 🎉 ✅ ❓.
+  - Valgt emoji toggles av/på for innlogget bruker.
+  - Under bobla vises samlede reaksjoner som små pilletegn med antall; egen reaksjon markeres.
+- Realtime/refetch: invalidér reaksjonsspørringen ved endring så begge parter ser oppdatering.
 
-## Verification
+## Teknisk / i18n
 
-Open the profile dialog at 360px, scroll each tab, and confirm no grey block appears and the Oppfølging tab still stays inside the screen width.
+- Alle nye brukervendte tekster («Åpne oppdrag», «Reager», tooltips) legges i både `no.json` og `en.json`.
+- Ingen endringer i eksisterende e-postvarsling eller RLS for `internal_messages`.
