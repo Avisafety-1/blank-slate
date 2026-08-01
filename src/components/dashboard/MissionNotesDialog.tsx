@@ -133,6 +133,14 @@ export const MissionNotesDialog = ({ open, onOpenChange, mission, onSaved }: Mis
         },
       },
     })));
+
+    await createMissionMentionThread({
+      missionId,
+      missionTitle: mission?.tittel || "Oppdrag uten tittel",
+      note: savedNote,
+      senderName: currentProfile.full_name,
+      recipientIds: mentionedIds,
+    });
   };
 
   const handleSave = async () => {
