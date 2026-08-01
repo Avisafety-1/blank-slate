@@ -20,6 +20,7 @@ interface Body {
   subject: string;
   body: string;
   parent_id?: string | null;
+  deep_link?: string | null;
   severity?: "critical" | "warning" | "info";
   channels?: { email?: boolean; sms?: boolean };
 }
@@ -193,6 +194,10 @@ serve(async (req) => {
       inbox: true,
     };
 
+    // Only accept internal, relative deep links (never external URLs)
+    const rawDeepLink = typeof payload.deep_link === "string" ? payload.deep_link.trim() : "";
+    const deepLink = /^\/[A-Za-z0-9\-_/?=&.]*$/.test(rawDeepLink) ? rawDeepLink : null;
+
     const companyId = parent?.company_id ?? sender.company_id;
     const emailCfg = channels.email ? await getEmailConfig(companyId).catch(() => null) : null;
     const fromAddress = emailCfg ? formatSenderAddress(emailCfg.fromName, emailCfg.fromEmail) : "";
@@ -288,6 +293,7 @@ serve(async (req) => {
             channels_sent: channels,
             parent_id: null,
             is_broadcast: true,
+            deep_link: deepLink,
             broadcast_scope: broadcastScope,
           })
           .select("id")
@@ -314,6 +320,7 @@ serve(async (req) => {
           channels_sent: channels,
           parent_id: parent?.id ?? null,
           is_broadcast: false,
+          deep_link: deepLink,
         })
         .select("id, thread_root_id")
         .single();

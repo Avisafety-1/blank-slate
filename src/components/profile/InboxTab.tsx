@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
 import { useSendMessage } from "./hooks/useSendMessage";
+import { useMessageReactions, useToggleReaction, REACTION_EMOJIS } from "./hooks/useMessageReactions";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
@@ -67,6 +68,23 @@ export const InboxTab = () => {
   const thread = threadData?.messages ?? [];
   const participants = (threadData?.participants ?? []).filter((p) => p.id !== user?.id);
 
+  const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
+  const { data: reactions = [] } = useMessageReactions(threadMessageIds);
+  const toggleReaction = useToggleReaction();
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startLongPress = (id: string) => {
+    cancelLongPress();
+    longPressTimer.current = setTimeout(() => setPickerFor(id), 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   useEffect(() => {
     if (thread.length > 0) {
       threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -75,6 +93,7 @@ export const InboxTab = () => {
 
   useEffect(() => {
     setReplyText("");
+    setPickerFor(null);
   }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
@@ -307,20 +326,79 @@ export const InboxTab = () => {
                   const meta = [m.sender_name || t("inbox.systemSender"), m.sender_company, m.sender_email]
                     .filter(Boolean)
                     .join(" · ");
+                  const msgReactions = reactions.filter((r) => r.message_id === m.id);
+                  const grouped = Array.from(
+                    msgReactions.reduce((acc, r) => {
+                      const entry = acc.get(r.emoji) ?? { count: 0, mine: false };
+                      entry.count += 1;
+                      if (r.user_id === user?.id) entry.mine = true;
+                      acc.set(r.emoji, entry);
+                      return acc;
+                    }, new Map<string, { count: number; mine: boolean }>()),
+                  );
                   return (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        "rounded-lg p-3 text-sm max-w-[90%]",
-                        mine
-                          ? "bg-primary/10 border border-primary/30 ml-auto"
-                          : "bg-muted border border-border",
-                      )}
-                    >
-                      <div className="text-xs text-muted-foreground mb-1 break-words">
-                        {meta} · {new Date(m.created_at).toLocaleString(i18n.language)}
+                    <div key={m.id} className={cn("flex flex-col gap-1 max-w-[90%]", mine && "ml-auto items-end")}>
+                      <div
+                        className={cn(
+                          "rounded-lg p-3 text-sm select-none",
+                          mine
+                            ? "bg-primary/10 border border-primary/30"
+                            : "bg-muted border border-border",
+                        )}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setPickerFor((cur) => (cur === m.id ? null : m.id));
+                        }}
+                        onTouchStart={() => startLongPress(m.id)}
+                        onTouchEnd={cancelLongPress}
+                        onTouchMove={cancelLongPress}
+                        onTouchCancel={cancelLongPress}
+                      >
+                        <div className="text-xs text-muted-foreground mb-1 break-words">
+                          {meta} · {new Date(m.created_at).toLocaleString(i18n.language)}
+                        </div>
+                        <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
                       </div>
-                      <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
+
+                      {pickerFor === m.id && (
+                        <div className="flex flex-wrap gap-1 rounded-full border bg-popover px-2 py-1 shadow-md">
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className="text-lg leading-none px-1 py-0.5 rounded hover:bg-muted/70"
+                              aria-label={t("inbox.react", "React")}
+                              onClick={() => {
+                                toggleReaction.mutate({ messageId: m.id, emoji });
+                                setPickerFor(null);
+                              }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {grouped.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {grouped.map(([emoji, info]) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => toggleReaction.mutate({ messageId: m.id, emoji })}
+                              className={cn(
+                                "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition",
+                                info.mine
+                                  ? "border-primary/50 bg-primary/15"
+                                  : "border-border bg-muted/50 hover:bg-muted",
+                              )}
+                            >
+                              <span>{emoji}</span>
+                              <span className="text-muted-foreground">{info.count}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

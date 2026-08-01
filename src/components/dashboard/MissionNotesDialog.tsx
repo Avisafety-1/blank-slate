@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import { createMissionMentionThread } from "@/lib/missionMentionThread";
 
 type Profile = Tables<"profiles">;
 type Mission = {
@@ -133,6 +134,14 @@ export const MissionNotesDialog = ({ open, onOpenChange, mission, onSaved }: Mis
         },
       },
     })));
+
+    await createMissionMentionThread({
+      missionId,
+      missionTitle: mission?.tittel || "Oppdrag uten tittel",
+      note: savedNote,
+      senderName: currentProfile.full_name,
+      recipientIds: mentionedIds,
+    });
   };
 
   const handleSave = async () => {

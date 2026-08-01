@@ -38,6 +38,7 @@ import { MissionConflictWarning } from "@/components/dashboard/MissionConflictWa
 import { useMissionMapConflicts } from "@/hooks/useMissionMapConflicts";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { createMissionMentionThread } from "@/lib/missionMentionThread";
 
 export interface RouteData {
   coordinates: { lat: number; lng: number }[];
@@ -644,6 +645,14 @@ export const AddMissionDialog = ({
         }
       }
     })));
+
+    await createMissionMentionThread({
+      missionId,
+      missionTitle: formData.tittel || 'Oppdrag uten tittel',
+      note: currentNotes,
+      senderName: senderProfile?.full_name,
+      recipientIds: newMentionIds,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
