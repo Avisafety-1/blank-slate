@@ -194,6 +194,10 @@ serve(async (req) => {
       inbox: true,
     };
 
+    // Only accept internal, relative deep links (never external URLs)
+    const rawDeepLink = typeof payload.deep_link === "string" ? payload.deep_link.trim() : "";
+    const deepLink = /^\/[A-Za-z0-9\-_/?=&.]*$/.test(rawDeepLink) ? rawDeepLink : null;
+
     const companyId = parent?.company_id ?? sender.company_id;
     const emailCfg = channels.email ? await getEmailConfig(companyId).catch(() => null) : null;
     const fromAddress = emailCfg ? formatSenderAddress(emailCfg.fromName, emailCfg.fromEmail) : "";
