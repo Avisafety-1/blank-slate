@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
 import { useSendMessage } from "./hooks/useSendMessage";
+import { useMessageReactions, useToggleReaction, REACTION_EMOJIS } from "./hooks/useMessageReactions";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
