@@ -20,6 +20,7 @@ interface Body {
   subject: string;
   body: string;
   parent_id?: string | null;
+  deep_link?: string | null;
   severity?: "critical" | "warning" | "info";
   channels?: { email?: boolean; sms?: boolean };
 }
