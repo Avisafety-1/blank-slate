@@ -1,39 +1,38 @@
 ## Mål
 
-1. Når noen tagger en person med `@` i et oppdrag (merknader), opprettes det automatisk en meldingstråd (gruppesamtale) i innboksen mellom den som tagger og de taggede — med deeplink til oppdraget. E-postvarselet som sendes i dag beholdes.
-2. Man kan reagere på meldinger med emoji (👍 osv.) ved å holde lenge inne (mobil) eller høyreklikke/klikke reaksjonsknapp (PC).
+En visuelt sterk, norsk PowerPoint-CV (9 slides) for søknaden til TUR Digital — med tydelige nøkkeltall først og teknologi/verktøy i fokus, ikke luftfart.
 
-## Del 1 – Gruppesamtale ved @-tagging
+## Kontaktinfo
 
-Dagens flyt: `MissionNotesDialog.tsx` og `AddMissionDialog.tsx` finner taggede profiler og kaller `send-notification-email` (`notify_mission_mention`). Meldingstabellen `internal_messages` har allerede en ubrukt `deep_link`-kolonne, men `send-message`-funksjonen sender den ikke videre.
+Gard Haug-Hansen · Hauggard@gmail.com · avisafe.no · app.avisafe.no (demo på forespørsel). Ingen LinkedIn.
 
-Endringer:
-- `send-message` edge function: godta `deep_link` i payload og lagre den på meldingsraden (både ny tråd og svar).
-- Ny delt hjelpefunksjon i frontend (f.eks. `src/lib/missionMentionThread.ts`):
-  - Tar mission-id, tittel, merknadstekst og liste over taggede bruker-ID-er.
-  - Slår opp om det allerede finnes en tråd for samme oppdrag (melding med `deep_link = /oppdrag?id=<mission_id>` der bruker er deltaker). Finnes den → send som svar (`parent_id`) i eksisterende tråd. Finnes den ikke → ny melding med alle taggede som mottakere.
-  - Emne: oppdragstittel. Innhold: merknadsteksten + hvem som tagget.
-  - `deep_link`: `/oppdrag?id=<mission_id>` (samme parameter `/oppdrag` allerede leser).
-- Kall hjelperen fra `MissionNotesDialog.tsx` og `AddMissionDialog.tsx` rett etter dagens e-postutsending (e-post + push beholdes; push kommer automatisk via `send-message`).
-- I innboksen (`InboxTab.tsx`): hvis tråden har `deep_link`, vis en knapp «Åpne oppdrag» øverst i tråden som navigerer dit og lukker profildialogen.
-- `useMessageThread`/`useInboxMessages` henter med `deep_link`-feltet.
+## Visuell retning
 
-## Del 2 – Emoji-reaksjoner
+- Forside: opplastet blå nettverksgrafikk som fullbleed bakgrunn, navn/tittel venstrestilt i lys tekst.
+- Resten: lys/mørk "sandwich" — lyse innholdsslides, mørk navy avslutning.
+- Palett (matcher AviSafe dark/glass-uttrykk): navy `0B1B33`, elektrisk blå `2E9BFF`, isblå `CADCFC`, off-white `F7F9FC`.
+- Font: Arial Black i titler, Calibri i brødtekst. Motiv som går igjen: tynne kort med blå venstrekant + tall-callouts.
+- Ingen streker under titler, ingen rene tekstslides — hver slide har kort, ikonsirkler, KPI-blokker eller kolonner.
 
-Database (migrasjon):
-- Ny tabell `internal_message_reactions` (`id`, `message_id` → `internal_messages`, `user_id`, `emoji`, `created_at`, unik på (message_id, user_id, emoji)).
-- GRANT til `authenticated`/`service_role`, RLS på:
-  - SELECT/INSERT/DELETE kun for brukere som har tilgang til meldingen (gjenbruk eksisterende `can_access_message`-funksjon), og DELETE/INSERT kun for egne rader (`auth.uid() = user_id`).
+## Slide-struktur
 
-Frontend:
-- Ny hook `useMessageReactions(threadRootId)`: henter reaksjoner for alle meldinger i tråden, og mutasjon for å toggle en emoji.
-- I `InboxTab.tsx` meldingsboble:
-  - Langtrykk (~500 ms touch) eller høyreklikk åpner en liten emoji-rad: 👍 ❤️ 😂 🎉 ✅ ❓.
-  - Valgt emoji toggles av/på for innlogget bruker.
-  - Under bobla vises samlede reaksjoner som små pilletegn med antall; egen reaksjon markeres.
-- Realtime/refetch: invalidér reaksjonsspørringen ved endring så begge parter ser oppdatering.
+1. **Forside** — Navn, "AI Product Engineer · Systemarkitekt · AI-assistert utvikler", kontaktlinje, blå bakgrunn.
+2. **Nøkkeltall / KPI** — 6 store tall: 6 711 AI-dialoger, 3 371 AI-kodeendringer, ~22 prompts/dag siden nov 2025, Top 10 % Builder på Lovable, 1 SaaS fra idé til produksjon, 10 år jagerfly + 2,5 år Safety Manager.
+3. **Profil** — kort avsnitt + 4 kjennetegn. Inkluderer sitatet "Ja – så lenge vi klarer å definere problemet godt nok."
+4. **AI-drevet utviklingsmetode** — hvordan AI brukes gjennom hele løpet (arkitektur, DB-design, refaktorering, test, dok, prompt engineering) + verktøy: Lovable, ChatGPT, Claude, MCP.
+5. **Teknisk stack** — kolonner: Frontend (React, TypeScript, Tailwind, shadcn, React Query, PWA, i18n) · Backend (PostgreSQL, Supabase, Edge Functions, RLS, RPC, cron, realtime, webhooks) · Auth/Sikkerhet (OAuth, OIDC, JWT, Passkeys, TOTP, RBAC, kryptering) · Infra (Fly.io, Docker, GitHub, Sentry, Postman).
+6. **Systemarkitektur i praksis** — multi-tenant SaaS, hierarkisk selskapsmodell med RLS-isolasjon, feature flags, audit trail, eventdrevne flyter, offline-first PWA med køsystem, ytelsesoptimalisering (indekser, viewport-fetching).
+7. **Integrasjoner** — gruppert i 4 kort: Betaling & kommunikasjon (Stripe, Vipps, GatewayAPI SMS, Resend, Web Push), Kart & geodata (Leaflet, WFS/WMTS, ArcGIS, OpenStreetMap/Overpass, Eurostat, nasjonale luftromskilder i 6+ land), Drone & operasjon (DJI FlightHub 2, ArduPilot-parser på Fly.io, SafeSky, DroneTag), Rapportering & marked (ECCAIRS 2, Meta Graph API, LinkedIn API).
+8. **Utvalgte leveranser** — 6 konkrete moduler med resultat: AI-risikovurdering, Audit & Compliance Center, intern meldingsplattform med push/SMS/broadcast, kart- og luftromsmotor for Europa, MCP-server + OIDC for AI-klienter, flyloggsanalyse med 3D-visualisering.
+9. **Erfaring & egenskaper (mørk avslutning)** — AviSafe AS (produktutvikler/systemarkitekt), Safety Manager 2,5 år, Jagerflyger 10 år, kort egenskapsliste + kontaktinfo gjentatt.
 
-## Teknisk / i18n
+## Teknisk gjennomføring
 
-- Alle nye brukervendte tekster («Åpne oppdrag», «Reager», tooltips) legges i både `no.json` og `en.json`.
-- Ingen endringer i eksisterende e-postvarsling eller RLS for `internal_messages`.
+- Bygges med `pptxgenjs` i et Node-script under `/tmp`, bilder embeddes som base64.
+- Innhold hentes fra en faktisk gjennomgang av prosjektet (edge functions, integrasjoner, migrasjoner, minnefiler) slik at listene reflekterer det som faktisk er bygget — ikke bare ChatGPT-utkastet.
+- Ingen oppdiktede tall: kun KPI-ene du selv har oppgitt (6 711 / 3 371 / Top 10 %) og verifiserbare fakta fra kodebasen.
+- Leveres til `/mnt/documents/CV_Gard_Haug-Hansen.pptx`.
+
+## Kvalitetssikring
+
+Validering med `validate_document.py`, konvertering til PDF/bilder og visuell inspeksjon av alle 9 slides (overflow, kontrast, marger, overlapp) med minst én fiks-og-verifiser-runde før levering.
