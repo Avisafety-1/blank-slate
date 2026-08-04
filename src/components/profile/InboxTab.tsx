@@ -472,20 +472,30 @@ export const InboxTab = () => {
                                     />
                                   </a>
                                 ) : (
-                                  <a
+                                  <button
                                     key={a.id}
-                                    href={a.url ?? "#"}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    download={a.file_name}
-                                    className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs hover:bg-muted"
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (a.url) {
+                                        window.open(a.url, "_blank", "noopener");
+                                      } else {
+                                        downloadAttachment(a.storage_path, a.file_name).catch(() =>
+                                          toast.error(
+                                            t("inbox.attachments.downloadFailed", "Could not open attachment"),
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs hover:bg-muted"
                                   >
                                     <FileText className="w-4 h-4 shrink-0" />
-                                    <span className="truncate flex-1">{a.file_name}</span>
+                                    <span className="truncate flex-1 text-left">{a.file_name}</span>
                                     <span className="text-muted-foreground shrink-0">{formatFileSize(a.file_size)}</span>
                                     <Download className="w-3.5 h-3.5 shrink-0" />
-                                  </a>
+                                  </button>
                                 ),
+
                               )}
                           </div>
                         )}
