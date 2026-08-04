@@ -551,21 +551,69 @@ export const InboxTab = () => {
                     maxLength={4000}
                     className="resize-none"
                   />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground truncate">
-                      {selected.is_broadcast || replyRecipientIds.length <= 1
-                        ? t("inbox.replyToSender", "Reply goes to {{name}}", {
-                            name:
-                              selected.sender_name ||
-                              selected.sender_email ||
-                              t("inbox.senderFallback", "the sender"),
-                          })
 
-                        : t("inbox.replyToAll", "Reply goes to all participants")}
-                    </span>
+                  {replyFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {replyFiles.map((f, i) => (
+                        <span
+                          key={`${f.name}-${i}`}
+                          className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs max-w-full"
+                        >
+                          <Paperclip className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[140px]">{f.name}</span>
+                          <span className="text-muted-foreground shrink-0">{formatFileSize(f.size)}</span>
+                          <button
+                            type="button"
+                            aria-label={t("common.remove", "Remove")}
+                            onClick={() => setReplyFiles((cur) => cur.filter((_, idx) => idx !== i))}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                    <Button size="sm" onClick={handleSendReply} disabled={send.isPending || !replyText.trim()}>
-                      {send.isPending ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          addFiles(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={replyFiles.length >= MAX_ATTACHMENTS}
+                      >
+                        <Paperclip className="w-4 h-4 mr-1" />
+                        {t("inbox.attachments.attach", "Attach")}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="reply-email"
+                          checked={replyEmail}
+                          onCheckedChange={(v) => setReplyEmail(v === true)}
+                        />
+                        <Label htmlFor="reply-email" className="text-xs font-normal cursor-pointer">
+                          {t("inbox.attachments.sendEmail", "Also send email")}
+                        </Label>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      onClick={handleSendReply}
+                      disabled={send.isPending || uploading || (!replyText.trim() && replyFiles.length === 0)}
+                    >
+                      {send.isPending || uploading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
                         <Send className="w-4 h-4 mr-2" />
@@ -573,7 +621,19 @@ export const InboxTab = () => {
                       {t("inbox.sendReply", "Send svar")}
                     </Button>
                   </div>
+
+                  <span className="block text-xs text-muted-foreground truncate">
+                    {selected.is_broadcast || replyRecipientIds.length <= 1
+                      ? t("inbox.replyToSender", "Reply goes to {{name}}", {
+                          name:
+                            selected.sender_name ||
+                            selected.sender_email ||
+                            t("inbox.senderFallback", "the sender"),
+                        })
+                      : t("inbox.replyToAll", "Reply goes to all participants")}
+                  </span>
                 </div>
+
               )}
             </>
           )}
