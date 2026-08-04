@@ -302,7 +302,7 @@ const Documents = () => {
                 <DialogHeader>
                   <DialogTitle className="break-words pr-6">{viewingTemplate?.title}</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="flex-1 min-h-0 pr-2 -mr-2">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2 -mr-2">
                   {viewingTemplate && (
                     <EvaluationFormPreview
                       title={viewingTemplate.title}
@@ -311,7 +311,7 @@ const Documents = () => {
                       headerDisabled
                     />
                   )}
-                </ScrollArea>
+                </div>
               </DialogContent>
             </Dialog>
 
