@@ -251,6 +251,12 @@ const Documents = () => {
               onSuccess={() => { refetch(); }}
             />
 
+            <EvaluationFormDialog
+              open={createEvaluationOpen}
+              onOpenChange={setCreateEvaluationOpen}
+            />
+
+
             <DocumentCardModal
               document={selectedDocument}
               isOpen={isModalOpen}
