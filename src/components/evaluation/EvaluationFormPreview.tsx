@@ -30,6 +30,9 @@ interface EvaluationFormPreviewProps {
   evaluatedAtSlot?: React.ReactNode;
   /** Optional visibility/permissions block rendered under the header fields */
   visibilitySlot?: React.ReactNode;
+  /** Optional element rendered inside the overall-assessment card (e.g. AI button) */
+  overallAiSlot?: React.ReactNode;
+
 
   scores?: Record<string, number>;
   comments?: Record<string, string>;
