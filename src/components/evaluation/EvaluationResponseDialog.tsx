@@ -85,7 +85,7 @@ export const EvaluationResponseDialog = ({
     (async () => {
       const { data } = await (supabase
         .from("mission_personnel")
-        .select("profile_id, profiles:profile_id(navn, epost), company_mission_roles:role_id(name)")
+        .select("profile_id, profiles:profile_id(full_name, email), company_mission_roles:role_id(name)")
         .eq("mission_id", mission.id) as any);
       if (cancelled) return;
       const map = new Map<string, PersonOption>();
@@ -102,7 +102,7 @@ export const EvaluationResponseDialog = ({
           }
           map.set(row.profile_id, {
             id: row.profile_id,
-            name: row.profiles?.navn || row.profiles?.epost || "—",
+            name: row.profiles?.full_name || row.profiles?.email || "—",
             role,
           });
         });
@@ -128,14 +128,14 @@ export const EvaluationResponseDialog = ({
     let cancelled = false;
     supabase
       .from("profiles")
-      .select("navn, epost")
+      .select("full_name, email")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
         setMe({
           id: user.id,
-          name: (data as any)?.navn || (data as any)?.epost || user.email || "",
+          name: (data as any)?.full_name || (data as any)?.email || user.email || "",
           role: null,
         });
         setInstructorId((prev) => prev || user.id);
