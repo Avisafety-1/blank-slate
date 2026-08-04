@@ -22,6 +22,7 @@ interface Body {
   parent_id?: string | null;
   deep_link?: string | null;
   severity?: "critical" | "warning" | "info";
+  attachment_count?: number;
   channels?: { email?: boolean; sms?: boolean };
 }
 
