@@ -5,12 +5,14 @@ import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, ListChecks, FolderPlus } from "lucide-react";
+import { Plus, ListChecks, FolderPlus, ClipboardCheck } from "lucide-react";
 import DocumentsFilterBar from "@/components/documents/DocumentsFilterBar";
 import DocumentsList from "@/components/documents/DocumentsList";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
 import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDialog";
+import EvaluationFormDialog from "@/components/documents/EvaluationFormDialog";
+import EvaluationTemplatesSection from "@/components/documents/EvaluationTemplatesSection";
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 import FolderGrid from "@/components/documents/FolderGrid";
@@ -69,6 +71,7 @@ const Documents = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
+  const [createEvaluationOpen, setCreateEvaluationOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
@@ -191,10 +194,14 @@ const Documents = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h1 className="text-4xl font-bold text-foreground">{t('pages.documents.title')}</h1>
               {isAdmin && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={() => setCreateChecklistOpen(true)} variant="secondary" size="default">
                     <ListChecks className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">{t('pages.documents.newChecklist')}</span>
+                  </Button>
+                  <Button onClick={() => setCreateEvaluationOpen(true)} variant="secondary" size="default">
+                    <ClipboardCheck className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('pages.documents.newEvaluationForm')}</span>
                   </Button>
                   <Button onClick={() => setCreateFolderOpen(true)} variant="secondary" size="default">
                     <FolderPlus className="h-4 w-4 sm:mr-2" />
@@ -210,6 +217,10 @@ const Documents = () => {
 
 
             <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
+
+            <EvaluationTemplatesSection isAdmin={isAdmin} />
+
+
 
             <DocumentsFilterBar
               searchQuery={searchQuery}
@@ -239,6 +250,12 @@ const Documents = () => {
               onOpenChange={setCreateChecklistOpen}
               onSuccess={() => { refetch(); }}
             />
+
+            <EvaluationFormDialog
+              open={createEvaluationOpen}
+              onOpenChange={setCreateEvaluationOpen}
+            />
+
 
             <DocumentCardModal
               document={selectedDocument}

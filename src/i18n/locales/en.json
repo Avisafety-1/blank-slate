@@ -64,7 +64,10 @@
     "unknown": "Unknown",
     "unknownError": "Unknown error",
     "eg": "e.g.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "edit": "Edit"
   },
   "auth": {
     "signIn": "Sign in",
@@ -3031,7 +3034,8 @@
       "title": "Documents",
       "newChecklist": "New checklist",
       "newFolder": "New folder",
-      "newDocument": "New document"
+      "newDocument": "New document",
+      "newEvaluationForm": "Evaluation form"
     },
     "calendar": {
       "monthlyView": "Monthly overview",
@@ -7734,6 +7738,73 @@
       "tooMany": "Maximum {{count}} files per message",
       "uploadFailed": "Could not upload attachment",
       "bodyFallback": "(attachment)"
+    }
+  },
+  "evaluation": {
+    "untitled": "Untitled",
+    "fields": {
+      "instructor": "Instructor",
+      "student": "Student",
+      "mission": "Mission",
+      "missionTime": "Mission date and time",
+      "evaluatedAt": "Evaluation completed",
+      "overallComment": "Overall assessment"
+    },
+    "placeholders": {
+      "instructor": "Filled in when used",
+      "student": "Filled in when used",
+      "mission": "Linked to a mission when used",
+      "missionTime": "Taken from the mission",
+      "evaluatedAt": "Set when the evaluation is filled in",
+      "subComment": "Reason for this score…",
+      "overallComment": "Overall assessment of the student…"
+    },
+    "preview": {
+      "empty": "Add a main category to see the form",
+      "categoryIndex": "Main category {{index}}",
+      "untitledCategory": "Untitled",
+      "untitledSubcategory": "Untitled",
+      "noSubcategories": "No subcategories yet",
+      "average": "Avg",
+      "totalAverage": "Total average"
+    },
+    "builder": {
+      "titleLabel": "Form title",
+      "titlePlaceholder": "e.g. Student evaluation – basic course",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Short explanation of what the form is used for",
+      "globalVisibility": "Visible to all companies",
+      "categoryLabel": "Main category {{index}}",
+      "categoryPlaceholder": "e.g. Flying skills",
+      "categoryDescriptionPlaceholder": "Explanatory text (optional)",
+      "subcategoryPlaceholder": "Subcategory, e.g. Precision flying",
+      "subcategoryDescriptionPlaceholder": "Explanatory text – what is assessed here?",
+      "addSubcategory": "Add subcategory",
+      "addCategory": "Add main category"
+    },
+    "dialog": {
+      "createTitle": "New evaluation form",
+      "editTitle": "Edit evaluation form",
+      "description": "Build the form on the left and see how it will look on the right. Score scale 1–6 per subcategory.",
+      "previewLabel": "Preview",
+      "buildTab": "Build",
+      "previewTab": "Preview"
+    },
+    "section": {
+      "title": "Evaluation forms",
+      "categoriesCount": "{{count}} main categories",
+      "subcategoriesCount": "{{count}} subcategories",
+      "view": "View"
+    },
+    "toasts": {
+      "created": "Evaluation form created",
+      "updated": "Evaluation form updated",
+      "deleted": "Evaluation form deleted"
+    },
+    "errors": {
+      "titleRequired": "The form needs a title",
+      "categoryRequired": "Add at least one main category with a subcategory",
+      "saveFailed": "Could not save the form"
     }
   }
 }
