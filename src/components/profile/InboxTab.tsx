@@ -457,7 +457,40 @@ export const InboxTab = () => {
                           {meta} · {new Date(m.created_at).toLocaleString(i18n.language)}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
+                        {attachments.filter((a) => a.message_id === m.id).length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {attachments
+                              .filter((a) => a.message_id === m.id)
+                              .map((a) =>
+                                a.mime_type?.startsWith("image/") && a.url ? (
+                                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block">
+                                    <img
+                                      src={a.url}
+                                      alt={a.file_name}
+                                      loading="lazy"
+                                      className="max-h-48 w-auto rounded-md border border-border object-cover"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    key={a.id}
+                                    href={a.url ?? "#"}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download={a.file_name}
+                                    className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs hover:bg-muted"
+                                  >
+                                    <FileText className="w-4 h-4 shrink-0" />
+                                    <span className="truncate flex-1">{a.file_name}</span>
+                                    <span className="text-muted-foreground shrink-0">{formatFileSize(a.file_size)}</span>
+                                    <Download className="w-3.5 h-3.5 shrink-0" />
+                                  </a>
+                                ),
+                              )}
+                          </div>
+                        )}
                       </div>
+
 
                       {pickerFor === m.id && (
                         <div
