@@ -430,6 +430,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   }, [user, personnel]);
 
+  // Personnel linked to the selected drone (shown highlighted in the pilot list)
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedDroneId) {
+      setDronePersonnelIds([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("drone_personnel")
+        .select("profile_id")
+        .eq("drone_id", selectedDroneId);
+      if (!cancelled) setDronePersonnelIds((data ?? []).map((r: any) => r.profile_id));
+    })();
+    return () => { cancelled = true; };
+  }, [selectedDroneId]);
+
+
+
   useEffect(() => {
     if (!pilotId || !selectedMissionId || selectedMissionId === '__new__') return;
     if (selectedFlightLogChoice) return;
