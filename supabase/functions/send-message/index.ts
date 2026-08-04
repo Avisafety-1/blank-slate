@@ -225,6 +225,11 @@ serve(async (req) => {
               <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px;color:#0f172a">
                 <h2 style="margin:0 0 12px">${esc(subject)}</h2>
                 <p style="white-space:pre-wrap;line-height:1.5">${esc(payload.body)}</p>
+                ${
+                  payload.attachment_count
+                    ? `<p style="font-size:13px;color:#475569">📎 ${payload.attachment_count} vedlegg – åpne meldingen i AviSafe for å se filene.</p>`
+                    : ""
+                }
                 <p style="margin-top:24px">
                   <a href="${deepLinkAbs}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Åpne i AviSafe</a>
                 </p>
