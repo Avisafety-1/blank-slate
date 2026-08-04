@@ -54,6 +54,9 @@ export const EvaluationFormPreview = ({
   studentSlot,
   evaluatedAtSlot,
   visibilitySlot,
+  overallAiSlot,
+
+
 
   scores: controlledScores,
   comments: controlledComments,
