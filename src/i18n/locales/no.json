@@ -7820,7 +7820,8 @@
       "saveError": "Kunne ikke lagre evalueringen",
       "statusDraft": "Utkast",
       "statusCompleted": "Fullført",
-      "selectStudent": "Velg elev..."
+      "selectStudent": "Velg elev...",
+      "selectInstructor": "Velg instruktør..."
     }
   }
 }

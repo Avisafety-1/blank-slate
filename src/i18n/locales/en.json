@@ -7818,7 +7818,8 @@
       "saveError": "Could not save the evaluation",
       "statusDraft": "Draft",
       "statusCompleted": "Completed",
-      "selectStudent": "Select student..."
+      "selectStudent": "Select student...",
+      "selectInstructor": "Select instructor..."
     }
   }
 }
