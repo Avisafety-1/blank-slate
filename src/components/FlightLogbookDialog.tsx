@@ -51,7 +51,17 @@ interface FlightLog {
   } | null;
 }
 
+interface EvaluationLogEntry {
+  id: string;
+  mission_name: string | null;
+  instructor_name: string | null;
+  evaluated_at: string | null;
+  overall_average: number | null;
+  status: string;
+}
+
 interface PersonnelLogEntry {
+
   id: string;
   entry_date: string;
   entry_type: string | null;
