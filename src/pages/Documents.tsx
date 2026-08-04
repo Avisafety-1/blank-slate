@@ -194,10 +194,14 @@ const Documents = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h1 className="text-4xl font-bold text-foreground">{t('pages.documents.title')}</h1>
               {isAdmin && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={() => setCreateChecklistOpen(true)} variant="secondary" size="default">
                     <ListChecks className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">{t('pages.documents.newChecklist')}</span>
+                  </Button>
+                  <Button onClick={() => setCreateEvaluationOpen(true)} variant="secondary" size="default">
+                    <ClipboardCheck className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{t('pages.documents.newEvaluationForm')}</span>
                   </Button>
                   <Button onClick={() => setCreateFolderOpen(true)} variant="secondary" size="default">
                     <FolderPlus className="h-4 w-4 sm:mr-2" />
@@ -213,6 +217,10 @@ const Documents = () => {
 
 
             <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
+
+            <EvaluationTemplatesSection isAdmin={isAdmin} />
+
+
 
             <DocumentsFilterBar
               searchQuery={searchQuery}
