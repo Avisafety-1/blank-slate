@@ -157,7 +157,7 @@ const Documents = () => {
       selectedStatuses.includes(getDocumentStatus(doc));
 
     return matchesSearch && matchesCategory && matchesStatus;
-  })?.sort((a, b) => {
+  }).sort((a, b) => {
     switch (sortOption) {
       case "oldest":
         return new Date(a.opprettet_dato).getTime() - new Date(b.opprettet_dato).getTime();
@@ -177,6 +177,11 @@ const Documents = () => {
   });
 
   const handleOpenDocument = (document: Document) => {
+    const tpl = (document as any).evaluation_template as EvaluationTemplate | undefined;
+    if (tpl) {
+      setViewingTemplate(tpl);
+      return;
+    }
     setSelectedDocument(document);
     setIsCreating(false);
     setIsModalOpen(true);
