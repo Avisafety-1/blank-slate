@@ -64,7 +64,10 @@
     "unknown": "Ukjent",
     "unknownError": "Ukjent feil",
     "eg": "F.eks.",
-    "cancel": "Avbryt"
+    "cancel": "Avbryt",
+    "save": "Lagre",
+    "saving": "Lagrer...",
+    "edit": "Rediger"
   },
   "auth": {
     "signIn": "Logg inn",

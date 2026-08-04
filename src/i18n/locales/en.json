@@ -64,7 +64,10 @@
     "unknown": "Unknown",
     "unknownError": "Unknown error",
     "eg": "e.g.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "edit": "Edit"
   },
   "auth": {
     "signIn": "Sign in",
