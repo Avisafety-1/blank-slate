@@ -47,6 +47,7 @@ import {
   MAX_ATTACHMENT_SIZE,
 } from "./hooks/useMessageAttachments";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
+import { AttachmentLightbox } from "./AttachmentLightbox";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
   if (s === "critical") return <AlertCircle className="w-4 h-4 text-status-red" />;
