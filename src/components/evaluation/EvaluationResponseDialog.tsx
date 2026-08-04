@@ -243,7 +243,7 @@ export const EvaluationResponseDialog = ({
       <SelectContent
         position="popper"
         sideOffset={4}
-        className="z-[300] bg-popover border shadow-lg max-h-60"
+        className="z-[1300] bg-popover border shadow-lg max-h-60"
       >
         {allPeople.length === 0 ? (
           <div className="px-2 py-3 text-sm text-muted-foreground">
