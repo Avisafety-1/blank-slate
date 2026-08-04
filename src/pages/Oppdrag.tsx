@@ -717,6 +717,13 @@ const Oppdrag = () => {
             setNotamMission(null);
           }}
         />
+
+        <EvaluationViewerDialog
+          open={!!deepLinkEvaluationId}
+          responseId={deepLinkEvaluationId}
+          onOpenChange={(o) => { if (!o) setDeepLinkEvaluationId(null); }}
+        />
+
       </div>
     </div>
   );
