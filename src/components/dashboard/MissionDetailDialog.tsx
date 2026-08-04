@@ -45,6 +45,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
+import { EvaluationMissionButton } from "@/components/oppdrag/EvaluationMissionButton";
 
 type Mission = any;
 
