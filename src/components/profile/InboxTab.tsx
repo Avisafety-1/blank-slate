@@ -41,6 +41,8 @@ import {
   useInvalidateAttachments,
   uploadMessageAttachments,
   formatFileSize,
+  downloadAttachment,
+
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_SIZE,
 } from "./hooks/useMessageAttachments";
