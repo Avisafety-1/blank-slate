@@ -156,6 +156,8 @@ export const InboxTab = () => {
   useEffect(() => {
     setReplyText("");
     setPickerFor(null);
+    setReplyFiles([]);
+    setReplyEmail(false);
   }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
