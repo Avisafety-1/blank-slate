@@ -24,6 +24,10 @@ interface EvaluationFormPreviewProps {
   header?: EvaluationHeaderValues;
   /** When true, header fields are disabled (design preview mode) */
   headerDisabled?: boolean;
+  /** Optional custom controls replacing the default header inputs */
+  instructorSlot?: React.ReactNode;
+  studentSlot?: React.ReactNode;
+  evaluatedAtSlot?: React.ReactNode;
   scores?: Record<string, number>;
   comments?: Record<string, string>;
   overallComment?: string;
@@ -40,6 +44,9 @@ export const EvaluationFormPreview = ({
   categories,
   header,
   headerDisabled = true,
+  instructorSlot,
+  studentSlot,
+  evaluatedAtSlot,
   scores: controlledScores,
   comments: controlledComments,
   overallComment: controlledOverall,
@@ -116,33 +123,40 @@ export const EvaluationFormPreview = ({
             <Label className="text-xs flex items-center gap-1.5">
               <GraduationCap className="h-3.5 w-3.5" /> {t("evaluation.fields.instructor")}
             </Label>
-            <Input disabled={headerDisabled} value={header?.instructorName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.instructor")} />
+            {instructorSlot ?? (
+              <Input disabled={headerDisabled} value={header?.instructorName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.instructor")} />
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" /> {t("evaluation.fields.student")}
             </Label>
-            <Input disabled={headerDisabled} value={header?.studentName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.student")} />
+            {studentSlot ?? (
+              <Input disabled={headerDisabled} value={header?.studentName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.student")} />
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <Plane className="h-3.5 w-3.5" /> {t("evaluation.fields.mission")}
             </Label>
-            <Input disabled={headerDisabled} value={header?.missionName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.mission")} />
+            <Input disabled value={header?.missionName ?? ""} readOnly placeholder={t("evaluation.placeholders.mission")} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.missionTime")}
             </Label>
-            <Input disabled={headerDisabled} value={header?.missionTime ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.missionTime")} />
+            <Input disabled value={header?.missionTime ?? ""} readOnly placeholder={t("evaluation.placeholders.missionTime")} />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
             <Label className="text-xs flex items-center gap-1.5">
               <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.evaluatedAt")}
             </Label>
-            <Input disabled={headerDisabled} value={header?.evaluatedAt ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.evaluatedAt")} />
+            {evaluatedAtSlot ?? (
+              <Input disabled={headerDisabled} value={header?.evaluatedAt ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.evaluatedAt")} />
+            )}
           </div>
         </div>
+
       </Card>
 
       {categories.length === 0 && (
