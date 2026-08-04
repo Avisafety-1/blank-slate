@@ -236,10 +236,13 @@ export const EvaluationResponseDialog = ({
         overall_comment: overallComment.trim() || null,
         overall_average: overallAverage,
         status,
+        share_with_admins: shareWithAdmins,
+        extra_viewer_ids: extraViewerIds,
         evaluated_at: evaluatedAt
           ? new Date(evaluatedAt).toISOString()
           : new Date().toISOString(),
       };
+
 
       if (response?.id) {
         const { error } = await supabase
