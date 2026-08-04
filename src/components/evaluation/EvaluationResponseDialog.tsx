@@ -70,6 +70,10 @@ export const EvaluationResponseDialog = ({
   const [overallComment, setOverallComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [me, setMe] = useState<PersonOption | null>(null);
+  const [shareWithAdmins, setShareWithAdmins] = useState(true);
+  const [extraViewerIds, setExtraViewerIds] = useState<string[]>([]);
+  const [companyPeople, setCompanyPeople] = useState<PersonOption[]>([]);
+  const [viewerSearch, setViewerSearch] = useState("");
 
   const locked = response?.status === "completed";
 
@@ -81,7 +85,37 @@ export const EvaluationResponseDialog = ({
     setStudentId(response?.student_id ?? "");
     setInstructorId(response?.instructor_id ?? "");
     setEvaluatedAt(toLocalInput(response?.evaluated_at ?? null));
+    setShareWithAdmins(response?.share_with_admins ?? true);
+    setExtraViewerIds(response?.extra_viewer_ids ?? []);
+    setViewerSearch("");
   }, [open, response]);
+
+  /** Everyone in the company (for the visibility picker) */
+  useEffect(() => {
+    if (!open) return;
+    const cid = mission?.company_id || companyId;
+    if (!cid) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("company_id", cid)
+        .order("full_name", { ascending: true }) as any);
+      if (cancelled) return;
+      setCompanyPeople(
+        (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.full_name || p.email || "—",
+          role: null,
+        }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, mission?.company_id, companyId]);
+
 
   useEffect(() => {
     if (!open || !mission?.id) return;
