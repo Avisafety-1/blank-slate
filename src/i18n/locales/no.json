@@ -7823,7 +7823,10 @@
       "statusCompleted": "Fullført",
       "selectStudent": "Velg elev...",
       "selectInstructor": "Velg instruktør...",
-      "noPersonnel": "Ingen personell funnet"
+      "noPersonnel": "Ingen personell funnet",
+      "inProgress": "Evaluering pågår",
+      "noAccess": "Evaluering utført",
+      "lockedHint": "Du har ikke tilgang til å åpne denne evalueringen ennå"
     },
     "visibility": {
       "title": "Synlighet",
