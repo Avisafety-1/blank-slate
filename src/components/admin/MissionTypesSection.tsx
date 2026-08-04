@@ -177,10 +177,13 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     toast({ title: checked ? t("admin.missionTypes.toastPropagateOn") : t("admin.missionTypes.toastPropagateOff") });
   };
 
-  const setDefaultDocument = async (typeId: string, docId: string | null) => {
+  const setDefaultDocument = async (typeId: string, docId: string | null, isEvaluation = false) => {
+    const payload = isEvaluation
+      ? { default_document_id: null, default_evaluation_template_id: docId }
+      : { default_document_id: docId, default_evaluation_template_id: null };
     const { error } = await (supabase
       .from("company_mission_types")
-      .update({ default_document_id: docId } as any)
+      .update(payload as any)
       .eq("id", typeId) as any);
     if (error) {
       toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
