@@ -62,6 +62,7 @@ export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: At
 
   return createPortal(
     <div
+      ref={rootRef}
       className="fixed inset-0 z-[2000] flex flex-col bg-background/95 backdrop-blur-sm"
       onClick={onClose}
       onTouchStart={(e) => {
