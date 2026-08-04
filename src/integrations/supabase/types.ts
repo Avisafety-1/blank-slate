@@ -3610,6 +3610,7 @@ export type Database = {
       }
       evaluation_responses: {
         Row: {
+          comments: Json
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -3624,12 +3625,14 @@ export type Database = {
           overall_average: number | null
           overall_comment: string | null
           scores: Json
+          status: string
           student_id: string | null
           student_name: string | null
           template_id: string
           updated_at: string
         }
         Insert: {
+          comments?: Json
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3644,12 +3647,14 @@ export type Database = {
           overall_average?: number | null
           overall_comment?: string | null
           scores?: Json
+          status?: string
           student_id?: string | null
           student_name?: string | null
           template_id: string
           updated_at?: string
         }
         Update: {
+          comments?: Json
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3664,6 +3669,7 @@ export type Database = {
           overall_average?: number | null
           overall_comment?: string | null
           scores?: Json
+          status?: string
           student_id?: string | null
           student_name?: string | null
           template_id?: string
