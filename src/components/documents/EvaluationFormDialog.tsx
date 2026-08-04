@@ -288,14 +288,14 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
 
         {/* Desktop: split view */}
         <div className="hidden lg:grid grid-cols-2 gap-4 flex-1 min-h-0">
-          <ScrollArea className="h-full pr-3">
+          <div className="h-full overflow-y-auto overscroll-contain pr-3">
             <div className="pb-4">{builder}</div>
-          </ScrollArea>
+          </div>
           <div className="min-h-0 flex flex-col">
             <p className="text-xs font-medium text-muted-foreground mb-2">{t("evaluation.dialog.previewLabel")}</p>
-            <ScrollArea className="flex-1 rounded-md border bg-muted/20 p-3">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-md border bg-muted/20 p-3">
               <div className="pb-4">{preview}</div>
-            </ScrollArea>
+            </div>
           </div>
         </div>
 
@@ -305,15 +305,11 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
             <TabsTrigger value="build">{t("evaluation.dialog.buildTab")}</TabsTrigger>
             <TabsTrigger value="preview">{t("evaluation.dialog.previewTab")}</TabsTrigger>
           </TabsList>
-          <TabsContent value="build" className="flex-1 min-h-0 mt-3">
-            <ScrollArea className="h-[55vh] pr-2">
-              <div className="pb-4">{builder}</div>
-            </ScrollArea>
+          <TabsContent value="build" className="flex-1 min-h-0 mt-3 overflow-y-auto overscroll-contain pr-2">
+            <div className="pb-4">{builder}</div>
           </TabsContent>
-          <TabsContent value="preview" className="flex-1 min-h-0 mt-3">
-            <ScrollArea className="h-[55vh] pr-2">
-              <div className="pb-4">{preview}</div>
-            </ScrollArea>
+          <TabsContent value="preview" className="flex-1 min-h-0 mt-3 overflow-y-auto overscroll-contain pr-2">
+            <div className="pb-4">{preview}</div>
           </TabsContent>
         </Tabs>
 
