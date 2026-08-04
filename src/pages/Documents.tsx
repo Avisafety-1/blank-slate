@@ -19,7 +19,7 @@ import FolderGrid from "@/components/documents/FolderGrid";
 import { useTranslation } from "react-i18next";
 
 
-export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "operasjonsmanual" | "annet";
+export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "operasjonsmanual" | "vurderingsskjema" | "annet";
 export type DocumentSortOption = "newest" | "oldest" | "expiry" | "alpha_asc" | "alpha_desc";
 export type DocumentStatusFilter = "expired" | "expiring_soon" | "valid" | "no_expiry";
 
