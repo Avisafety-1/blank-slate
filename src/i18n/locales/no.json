@@ -7838,6 +7838,17 @@
       "instructor": "Instruktør",
       "student": "Elev",
       "admins": "Administratorer"
+    },
+    "logbook": {
+      "tab": "Evalueringsskjema",
+      "noMission": "Uten oppdrag",
+      "average": "Snitt"
+    },
+    "notification": {
+      "subject": "Ny evaluering: {{mission}}",
+      "body": "Du har fått en ny evaluering på oppdrag «{{mission}}».",
+      "logbookHint": "Skjemaet kan også finnes i din loggbok.",
+      "unknownMission": "Oppdrag"
     }
   }
 }

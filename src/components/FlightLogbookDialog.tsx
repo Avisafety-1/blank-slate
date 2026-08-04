@@ -16,6 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
+import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
+
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
@@ -49,7 +51,17 @@ interface FlightLog {
   } | null;
 }
 
+interface EvaluationLogEntry {
+  id: string;
+  mission_name: string | null;
+  instructor_name: string | null;
+  evaluated_at: string | null;
+  overall_average: number | null;
+  status: string;
+}
+
 interface PersonnelLogEntry {
+
   id: string;
   entry_date: string;
   entry_type: string | null;
@@ -92,14 +104,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
   });
+  const [evaluations, setEvaluations] = useState<EvaluationLogEntry[]>([]);
+  const [openEvaluationId, setOpenEvaluationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && personId) {
       fetchFlightLogs();
       fetchProfileData();
       fetchPersonnelLogs();
+      fetchEvaluations();
     }
   }, [open, personId]);
+
+  const fetchEvaluations = async () => {
+    const { data, error } = await (supabase as any)
+      .from("evaluation_responses")
+      .select("id, mission_name, instructor_name, evaluated_at, overall_average, status")
+      .eq("student_id", personId)
+      .order("evaluated_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching evaluations:", error);
+      return;
+    }
+    setEvaluations((data || []) as EvaluationLogEntry[]);
+  };
+
 
   const fetchProfileData = async () => {
     const { data } = await supabase
@@ -850,7 +879,52 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               <TabsTrigger value="innlegg" className="flex-1">
                 Logginnlegg {personnelLogs.length > 0 && `(${personnelLogs.length})`}
               </TabsTrigger>
+              {evaluations.length > 0 && (
+                <TabsTrigger value="evalueringer" className="flex-1">
+                  {t("evaluation.logbook.tab")} ({evaluations.length})
+                </TabsTrigger>
+              )}
             </TabsList>
+
+            {evaluations.length > 0 && (
+              <TabsContent value="evalueringer" className="mt-2">
+                <div className="space-y-3 pr-4">
+                  {evaluations.map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => setOpenEvaluationId(ev.id)}
+                      className="w-full text-left p-4 bg-card border border-border rounded-lg space-y-1 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">
+                          {ev.mission_name || t("evaluation.logbook.noMission")}
+                        </span>
+                        <Badge variant={ev.status === "completed" ? "default" : "secondary"}>
+                          {ev.status === "completed"
+                            ? t("evaluation.mission.statusCompleted")
+                            : t("evaluation.mission.statusDraft")}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {ev.evaluated_at
+                          ? format(new Date(ev.evaluated_at), "d. MMMM yyyy", {
+                              locale: i18n.language === "no" ? nb : undefined,
+                            })
+                          : "—"}
+                        {ev.instructor_name ? ` · ${ev.instructor_name}` : ""}
+                      </div>
+                      {typeof ev.overall_average === "number" && (
+                        <div className="text-sm">
+                          {t("evaluation.logbook.average")}: {ev.overall_average.toFixed(1)}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </TabsContent>
+            )}
+
 
             <TabsContent value="flyturer" className="mt-2">
                 {loading ? (
@@ -1045,6 +1119,14 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         flightLogId={editingFlightLogId}
         onSaved={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
       />
+
+      <EvaluationViewerDialog
+        open={!!openEvaluationId}
+        responseId={openEvaluationId}
+        onOpenChange={(o) => { if (!o) setOpenEvaluationId(null); }}
+        onSaved={fetchEvaluations}
+      />
+
     </>
   );
 };

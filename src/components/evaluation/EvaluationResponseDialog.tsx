@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
+import { sendEvaluationNotification } from "@/lib/evaluationNotification";
+
 import type { EvaluationTemplateLite, EvaluationResponseRow } from "@/hooks/useMissionEvaluation";
 
 
@@ -244,6 +246,9 @@ export const EvaluationResponseDialog = ({
       };
 
 
+      let savedId = response?.id ?? null;
+      const wasCompleted = response?.status === "completed";
+
       if (response?.id) {
         const { error } = await supabase
           .from("evaluation_responses")
@@ -251,10 +256,23 @@ export const EvaluationResponseDialog = ({
           .eq("id", response.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("evaluation_responses")
-          .insert({ ...payload, created_by: user.id });
+          .insert({ ...payload, created_by: user.id })
+          .select("id")
+          .maybeSingle();
         if (error) throw error;
+        savedId = (inserted as any)?.id ?? null;
+      }
+
+      // Varsle eleven i innboksen når evalueringen fullføres
+      if (status === "completed" && !wasCompleted && savedId && studentId) {
+        await sendEvaluationNotification({
+          responseId: savedId,
+          studentId,
+          senderId: user.id,
+          missionTitle: mission?.tittel ?? response?.mission_id ?? null,
+        });
       }
 
       toast.success(
@@ -263,6 +281,7 @@ export const EvaluationResponseDialog = ({
           : t("evaluation.mission.saved")
       );
       onSaved?.();
+
       onOpenChange(false);
     } catch (err: any) {
       console.error("Error saving evaluation:", err);

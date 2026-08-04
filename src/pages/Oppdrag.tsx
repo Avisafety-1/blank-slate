@@ -17,6 +17,8 @@ import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
+import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -131,9 +133,18 @@ const Oppdrag = () => {
   const handledScrollRef = useRef<string | null>(null);
 
   // Deep-link handling: ?id=<mission-uuid> → open the mission card dialog directly
+  //                     ?evaluation=<response-uuid> → open the evaluation form directly
   const [searchParams, setSearchParams] = useSearchParams();
   const handledDeepLinkRef = useRef<string | null>(null);
+  const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
+    const evaluationId = searchParams.get("evaluation");
+    if (evaluationId && handledDeepLinkRef.current !== evaluationId) {
+      handledDeepLinkRef.current = evaluationId;
+      setDeepLinkEvaluationId(evaluationId);
+      setSearchParams({}, { replace: true });
+      return;
+    }
     const id = searchParams.get("id");
     if (!id || handledDeepLinkRef.current === id) return;
     handledDeepLinkRef.current = id;
@@ -153,6 +164,7 @@ const Oppdrag = () => {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
 
 
 
@@ -707,6 +719,13 @@ const Oppdrag = () => {
             setNotamMission(null);
           }}
         />
+
+        <EvaluationViewerDialog
+          open={!!deepLinkEvaluationId}
+          responseId={deepLinkEvaluationId}
+          onOpenChange={(o) => { if (!o) setDeepLinkEvaluationId(null); }}
+        />
+
       </div>
     </div>
   );
