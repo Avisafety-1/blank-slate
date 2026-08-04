@@ -24,6 +24,10 @@ interface EvaluationFormPreviewProps {
   header?: EvaluationHeaderValues;
   /** When true, header fields are disabled (design preview mode) */
   headerDisabled?: boolean;
+  /** Optional custom controls replacing the default header inputs */
+  instructorSlot?: React.ReactNode;
+  studentSlot?: React.ReactNode;
+  evaluatedAtSlot?: React.ReactNode;
   scores?: Record<string, number>;
   comments?: Record<string, string>;
   overallComment?: string;
