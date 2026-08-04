@@ -194,17 +194,54 @@ export const InboxTab = () => {
   const canReply = replyRecipientIds.length > 0;
 
 
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    const tooBig = incoming.find((f) => f.size > MAX_ATTACHMENT_SIZE);
+    if (tooBig) {
+      toast.error(t("inbox.attachments.tooLarge", "{{name}} is larger than 10 MB", { name: tooBig.name }));
+      return;
+    }
+    setReplyFiles((cur) => {
+      const next = [...cur, ...incoming].slice(0, MAX_ATTACHMENTS);
+      if (cur.length + incoming.length > MAX_ATTACHMENTS) {
+        toast.error(t("inbox.attachments.tooMany", "Maximum {{count}} files per message", { count: MAX_ATTACHMENTS }));
+      }
+      return next;
+    });
+  };
+
   const handleSendReply = async () => {
-    if (!replyText.trim() || replyRecipientIds.length === 0 || !selected) return;
+    if ((!replyText.trim() && replyFiles.length === 0) || replyRecipientIds.length === 0 || !selected) return;
     const lastMessage = thread[thread.length - 1] ?? selected;
-    await send.mutateAsync({
+    const res: any = await send.mutateAsync({
       recipient_ids: replyRecipientIds,
       subject: selected.subject,
-      body: replyText.trim(),
+      body: replyText.trim() || t("inbox.attachments.bodyFallback", "(attachment)"),
       parent_id: lastMessage.id,
+      channels: replyEmail ? { email: true } : undefined,
+      attachment_count: replyFiles.length || undefined,
     });
+
+    if (replyFiles.length) {
+      const ids = Array.from(
+        new Set(((res?.results ?? []) as any[]).filter((r) => r.ok && r.message_id).map((r) => r.message_id)),
+      ) as string[];
+      setUploading(true);
+      try {
+        for (const id of ids) await uploadMessageAttachments(id, replyFiles);
+        invalidateAttachments();
+      } catch (e: any) {
+        toast.error(t("inbox.attachments.uploadFailed", "Could not upload attachment") + `: ${e?.message ?? ""}`);
+      } finally {
+        setUploading(false);
+      }
+    }
+
     setReplyText("");
+    setReplyFiles([]);
   };
+
 
   const renderCounterparty = (m: InboxMessage) => {
     if (filter === "sent") {
