@@ -850,7 +850,52 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
               <TabsTrigger value="innlegg" className="flex-1">
                 Logginnlegg {personnelLogs.length > 0 && `(${personnelLogs.length})`}
               </TabsTrigger>
+              {evaluations.length > 0 && (
+                <TabsTrigger value="evalueringer" className="flex-1">
+                  {t("evaluation.logbook.tab")} ({evaluations.length})
+                </TabsTrigger>
+              )}
             </TabsList>
+
+            {evaluations.length > 0 && (
+              <TabsContent value="evalueringer" className="mt-2">
+                <div className="space-y-3 pr-4">
+                  {evaluations.map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => setOpenEvaluationId(ev.id)}
+                      className="w-full text-left p-4 bg-card border border-border rounded-lg space-y-1 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">
+                          {ev.mission_name || t("evaluation.logbook.noMission")}
+                        </span>
+                        <Badge variant={ev.status === "completed" ? "default" : "secondary"}>
+                          {ev.status === "completed"
+                            ? t("evaluation.mission.statusCompleted")
+                            : t("evaluation.mission.statusDraft")}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {ev.evaluated_at
+                          ? format(new Date(ev.evaluated_at), "d. MMMM yyyy", {
+                              locale: i18n.language === "no" ? nb : undefined,
+                            })
+                          : "—"}
+                        {ev.instructor_name ? ` · ${ev.instructor_name}` : ""}
+                      </div>
+                      {typeof ev.overall_average === "number" && (
+                        <div className="text-sm">
+                          {t("evaluation.logbook.average")}: {ev.overall_average.toFixed(1)}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </TabsContent>
+            )}
+
 
             <TabsContent value="flyturer" className="mt-2">
                 {loading ? (
