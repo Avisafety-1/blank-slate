@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
+import { sendEvaluationNotification } from "@/lib/evaluationNotification";
+
 import type { EvaluationTemplateLite, EvaluationResponseRow } from "@/hooks/useMissionEvaluation";
 
 
