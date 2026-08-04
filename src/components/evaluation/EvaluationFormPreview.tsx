@@ -30,6 +30,9 @@ interface EvaluationFormPreviewProps {
   evaluatedAtSlot?: React.ReactNode;
   /** Optional visibility/permissions block rendered under the header fields */
   visibilitySlot?: React.ReactNode;
+  /** Optional element rendered inside the overall-assessment card (e.g. AI button) */
+  overallAiSlot?: React.ReactNode;
+
 
   scores?: Record<string, number>;
   comments?: Record<string, string>;
@@ -51,6 +54,9 @@ export const EvaluationFormPreview = ({
   studentSlot,
   evaluatedAtSlot,
   visibilitySlot,
+  overallAiSlot,
+
+
 
   scores: controlledScores,
   comments: controlledComments,
@@ -251,7 +257,9 @@ export const EvaluationFormPreview = ({
             {t("evaluation.preview.totalAverage")}: {fmt(overallAverage)}
           </Badge>
         </div>
+        {overallAiSlot}
         <Textarea
+
           value={overallComment}
           onChange={(e) => setOverall(e.target.value)}
           placeholder={t("evaluation.placeholders.overallComment")}

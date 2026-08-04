@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
+import EvaluationAiSummaryButton from "@/components/evaluation/EvaluationAiSummaryButton";
+
 import { sendEvaluationNotification } from "@/lib/evaluationNotification";
 
 import type { EvaluationTemplateLite, EvaluationResponseRow } from "@/hooks/useMissionEvaluation";
@@ -456,7 +458,21 @@ export const EvaluationResponseDialog = ({
                   disabled={locked}
                 />
               }
+              overallAiSlot={
+                locked ? undefined : (
+                  <EvaluationAiSummaryButton
+                    templateTitle={template.title}
+                    categories={template.structure}
+                    scores={scores}
+                    comments={comments}
+                    overallAverage={overallAverage}
+                    currentText={overallComment}
+                    onGenerated={setOverallComment}
+                  />
+                )
+              }
               scores={scores}
+
               comments={comments}
               overallComment={overallComment}
               onScoreChange={(subId, value) =>
