@@ -16,6 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
+import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
+
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { toast } from "sonner";
