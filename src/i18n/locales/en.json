@@ -7836,6 +7836,17 @@
       "instructor": "Instructor",
       "student": "Student",
       "admins": "Administrators"
+    },
+    "logbook": {
+      "tab": "Evaluation forms",
+      "noMission": "No mission",
+      "average": "Average"
+    },
+    "notification": {
+      "subject": "New evaluation: {{mission}}",
+      "body": "You have received a new evaluation for mission “{{mission}}”.",
+      "logbookHint": "The form can also be found in your logbook.",
+      "unknownMission": "Mission"
     }
   }
 }
