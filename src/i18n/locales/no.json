@@ -7743,7 +7743,11 @@
       "tooMany": "Maks {{count}} filer per melding",
       "uploadFailed": "Kunne ikke laste opp vedlegg",
       "bodyFallback": "(vedlegg)",
-      "downloadFailed": "Kunne ikke åpne vedlegget"
+      "downloadFailed": "Kunne ikke åpne vedlegget",
+      "download": "Last ned",
+      "closePreview": "Lukk forhåndsvisning",
+      "previousImage": "Forrige bilde",
+      "nextImage": "Neste bilde"
     }
   },
   "evaluation": {
