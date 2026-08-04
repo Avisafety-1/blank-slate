@@ -91,6 +91,9 @@ export const InboxTab = () => {
   const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
   const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/") && a.url);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setLightboxIndex(null);
+  }, [selected?.id]);
   const invalidateAttachments = useInvalidateAttachments();
   const toggleReaction = useToggleReaction();
   const [replyEmail, setReplyEmail] = useState(false);
