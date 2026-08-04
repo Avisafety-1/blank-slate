@@ -7847,6 +7847,20 @@
       "body": "You have received a new evaluation for mission “{{mission}}”.",
       "logbookHint": "The form can also be found in your logbook.",
       "unknownMission": "Mission"
+    },
+    "ai": {
+      "button": "Assess with AI",
+      "loading": "Analysing …",
+      "help": "The AI drafts an overall assessment based only on the scores and comments you have filled in. It does not invent information. You can edit the text freely before saving.",
+      "needScores": "Set at least one score to use AI assessment.",
+      "done": "Draft overall assessment inserted.",
+      "error": "Could not generate the AI assessment. Please try again.",
+      "errorRateLimit": "Rate limit reached. Please try again shortly.",
+      "errorCredits": "AI credits exhausted.",
+      "replaceTitle": "Replace existing text?",
+      "replaceDescription": "The overall assessment already contains text. Replace it with the AI draft, or append the draft below?",
+      "replace": "Replace",
+      "append": "Append below"
     }
   }
 }

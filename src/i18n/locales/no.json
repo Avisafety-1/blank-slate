@@ -7849,6 +7849,20 @@
       "body": "Du har fått en ny evaluering på oppdrag «{{mission}}».",
       "logbookHint": "Skjemaet kan også finnes i din loggbok.",
       "unknownMission": "Oppdrag"
+    },
+    "ai": {
+      "button": "Vurder med AI",
+      "loading": "Analyserer …",
+      "help": "AI-en lager et forslag til totalvurdering basert kun på karakterene og kommentarene du har fylt ut i skjemaet. Den finner ikke på informasjon. Du kan redigere teksten fritt før du lagrer.",
+      "needScores": "Sett minst én karakter for å bruke AI-vurdering.",
+      "done": "Forslag til totalvurdering er satt inn.",
+      "error": "Kunne ikke lage AI-vurdering. Prøv igjen.",
+      "errorRateLimit": "Forespørselsgrense nådd. Prøv igjen om litt.",
+      "errorCredits": "AI-kreditter er brukt opp.",
+      "replaceTitle": "Erstatte eksisterende tekst?",
+      "replaceDescription": "Totalvurderingen inneholder allerede tekst. Vil du erstatte den med AI-forslaget, eller legge forslaget til under?",
+      "replace": "Erstatt",
+      "append": "Legg til under"
     }
   }
 }
