@@ -124,7 +124,26 @@ const Documents = () => {
     }
   }, [searchParams, documents, setSearchParams]);
 
-  const filteredDocuments = documents?.filter(doc => {
+  const templateDocuments: Document[] = (evaluationTemplates ?? []).map((tpl) => ({
+    id: tpl.id,
+    tittel: tpl.title,
+    beskrivelse: tpl.description,
+    kategori: "vurderingsskjema",
+    gyldig_til: null,
+    varsel_dager_for_utløp: null,
+    fil_url: null,
+    fil_navn: null,
+    nettside_url: null,
+    opprettet_dato: tpl.created_at,
+    oppdatert_dato: tpl.updated_at,
+    opprettet_av: null,
+    company_id: tpl.company_id,
+    evaluation_template: tpl,
+  } as any));
+
+  const allDocuments = [...(documents ?? []), ...templateDocuments];
+
+  const filteredDocuments = allDocuments.filter(doc => {
     const matchesSearch = searchQuery === "" ||
       doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) ||
