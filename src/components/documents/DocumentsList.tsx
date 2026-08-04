@@ -51,6 +51,9 @@ interface DocumentsListProps {
   isLoading: boolean;
   onDocumentClick: (document: Document) => void;
   getDocumentStatus: (doc: Document) => DocumentStatusFilter;
+  onViewEvaluation?: (doc: Document) => void;
+  onEditEvaluation?: (doc: Document) => void;
+  canEditEvaluation?: boolean;
 }
 
 const CATEGORY_KEYS: Record<string, string> = {
