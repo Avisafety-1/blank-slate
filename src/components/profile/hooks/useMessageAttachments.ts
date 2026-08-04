@@ -111,3 +111,17 @@ export function useInvalidateAttachments() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: ["inbox-attachments"] });
 }
+
+/** Fallback download when a signed URL could not be created. */
+export async function downloadAttachment(path: string, fileName: string) {
+  const { data, error } = await supabase.storage.from(ATTACHMENT_BUCKET).download(path);
+  if (error || !data) throw error ?? new Error("download_failed");
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
