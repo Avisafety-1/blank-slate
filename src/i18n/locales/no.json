@@ -3033,7 +3033,8 @@
       "title": "Dokumenter",
       "newChecklist": "Ny sjekkliste",
       "newFolder": "Ny mappe",
-      "newDocument": "Nytt dokument"
+      "newDocument": "Nytt dokument",
+      "newEvaluationForm": "Evalueringsskjema"
     },
     "calendar": {
       "monthlyView": "Månedsoversikt",
@@ -7736,6 +7737,73 @@
       "tooMany": "Maks {{count}} filer per melding",
       "uploadFailed": "Kunne ikke laste opp vedlegg",
       "bodyFallback": "(vedlegg)"
+    }
+  },
+  "evaluation": {
+    "untitled": "Uten tittel",
+    "fields": {
+      "instructor": "Instruktør",
+      "student": "Elev",
+      "mission": "Oppdrag",
+      "missionTime": "Dato og klokkeslett for oppdraget",
+      "evaluatedAt": "Evaluering gjennomført",
+      "overallComment": "Totalvurdering"
+    },
+    "placeholders": {
+      "instructor": "Fylles ut ved bruk",
+      "student": "Fylles ut ved bruk",
+      "mission": "Knyttes til oppdrag ved bruk",
+      "missionTime": "Hentes fra oppdraget",
+      "evaluatedAt": "Settes når evalueringen fylles ut",
+      "subComment": "Begrunnelse for karakteren…",
+      "overallComment": "Samlet vurdering av eleven…"
+    },
+    "preview": {
+      "empty": "Legg til en hovedkategori for å se skjemaet",
+      "categoryIndex": "Hovedkategori {{index}}",
+      "untitledCategory": "Uten navn",
+      "untitledSubcategory": "Uten navn",
+      "noSubcategories": "Ingen underkategorier ennå",
+      "average": "Snitt",
+      "totalAverage": "Totalsnitt"
+    },
+    "builder": {
+      "titleLabel": "Tittel på skjema",
+      "titlePlaceholder": "F.eks. Evaluering av elev – grunnkurs",
+      "descriptionLabel": "Beskrivelse",
+      "descriptionPlaceholder": "Kort forklaring av hva skjemaet brukes til",
+      "globalVisibility": "Synlig for alle selskaper",
+      "categoryLabel": "Hovedkategori {{index}}",
+      "categoryPlaceholder": "F.eks. Flygeferdigheter",
+      "categoryDescriptionPlaceholder": "Forklarende tekst (valgfritt)",
+      "subcategoryPlaceholder": "Underkategori, f.eks. Presisjonsflyging",
+      "subcategoryDescriptionPlaceholder": "Forklarende tekst – hva vurderes her?",
+      "addSubcategory": "Legg til underkategori",
+      "addCategory": "Legg til hovedkategori"
+    },
+    "dialog": {
+      "createTitle": "Nytt evalueringsskjema",
+      "editTitle": "Rediger evalueringsskjema",
+      "description": "Bygg skjemaet til venstre og se hvordan det blir seende ut til høyre. Karakterskala 1–6 per underkategori.",
+      "previewLabel": "Forhåndsvisning",
+      "buildTab": "Bygg",
+      "previewTab": "Forhåndsvisning"
+    },
+    "section": {
+      "title": "Evalueringsskjemaer",
+      "categoriesCount": "{{count}} hovedkategorier",
+      "subcategoriesCount": "{{count}} underkategorier",
+      "view": "Vis"
+    },
+    "toasts": {
+      "created": "Evalueringsskjema opprettet",
+      "updated": "Evalueringsskjema oppdatert",
+      "deleted": "Evalueringsskjema slettet"
+    },
+    "errors": {
+      "titleRequired": "Skjemaet må ha en tittel",
+      "categoryRequired": "Legg til minst én hovedkategori med underkategori",
+      "saveFailed": "Kunne ikke lagre skjemaet"
     }
   }
 }
