@@ -245,7 +245,9 @@ serve(async (req) => {
               to: r.email,
               subject: sanitizeSubject(subject),
               html,
+              replyTo: sender.email ?? undefined,
             });
+
             receipts.push({ message_id: msgId, channel: "email", status: "sent", provider_id: (res as any)?.id });
           } catch (e) {
             receipts.push({ message_id: msgId, channel: "email", status: "failed", error: String(e) });
