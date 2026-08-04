@@ -19,7 +19,19 @@ interface AttachmentLightboxProps {
 export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: AttachmentLightboxProps) => {
   const { t } = useTranslation();
   const touchStartX = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  // Stop Radix (Sheet/Dialog) from treating clicks inside the lightbox as
+  // "outside" interactions, which would close the underlying message thread.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const stop = (e: Event) => e.stopPropagation();
+    const events = ["pointerdown", "mousedown", "touchstart", "click", "focusin"];
+    events.forEach((ev) => el.addEventListener(ev, stop));
+    return () => events.forEach((ev) => el.removeEventListener(ev, stop));
+  }, [index]);
 
   useEffect(() => setMounted(true), []);
 
