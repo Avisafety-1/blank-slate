@@ -189,7 +189,8 @@ serve(async (req) => {
     if (!allowed.length) return json({ error: "no_valid_recipients" }, 403);
 
     const channels = {
-      email: !!payload.channels?.email && isAdmin,
+      // Replies inside an existing thread may always notify the other participants by email.
+      email: !!payload.channels?.email && (isAdmin || !!parent),
       sms: !!payload.channels?.sms && isAdmin,
       inbox: true,
     };
