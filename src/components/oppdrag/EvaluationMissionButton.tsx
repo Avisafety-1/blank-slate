@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMissionEvaluation } from "@/hooks/useMissionEvaluation";
 import EvaluationResponseDialog from "@/components/evaluation/EvaluationResponseDialog";
@@ -15,35 +15,44 @@ interface Props {
 export const EvaluationMissionButton = ({ mission, className, size = "sm", onSaved }: Props) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { hasEvaluation, template, response, status, reload } = useMissionEvaluation(
+  const { hasEvaluation, template, response, status, canView, reload } = useMissionEvaluation(
     mission?.id,
     mission?.oppdragstype
   );
 
   if (!hasEvaluation || !template) return null;
 
-  const label =
-    status === "completed"
-      ? t("evaluation.mission.view")
-      : status === "draft"
-      ? t("evaluation.mission.continue")
-      : t("evaluation.mission.perform");
+  const locked = !canView;
+
+  const label = locked
+    ? status === "completed"
+      ? t("evaluation.mission.noAccess")
+      : t("evaluation.mission.inProgress")
+    : status === "completed"
+    ? t("evaluation.mission.view")
+    : status === "draft"
+    ? t("evaluation.mission.continue")
+    : t("evaluation.mission.perform");
 
   return (
     <>
       <Button
         size={size}
+        variant={locked ? "outline" : "default"}
+        disabled={locked}
+        title={locked ? t("evaluation.mission.lockedHint") : undefined}
         className={className}
         onClick={(e) => {
           e.stopPropagation();
+          if (locked) return;
           setOpen(true);
         }}
       >
-        <ClipboardCheck className="h-4 w-4 mr-1" />
+        {locked ? <Lock className="h-4 w-4 mr-1" /> : <ClipboardCheck className="h-4 w-4 mr-1" />}
         {label}
       </Button>
 
-      {open && (
+      {open && !locked && (
         <EvaluationResponseDialog
           open={open}
           onOpenChange={setOpen}

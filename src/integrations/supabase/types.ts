@@ -8624,6 +8624,14 @@ export type Database = {
           id: string
         }[]
       }
+      get_mission_evaluation_state: {
+        Args: { p_mission_id: string; p_template_id: string }
+        Returns: {
+          can_view: boolean
+          response_exists: boolean
+          response_status: string
+        }[]
+      }
       get_naturvern_in_bounds: {
         Args: {
           max_lat: number

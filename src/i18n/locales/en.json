@@ -7821,7 +7821,10 @@
       "statusCompleted": "Completed",
       "selectStudent": "Select student...",
       "selectInstructor": "Select instructor...",
-      "noPersonnel": "No personnel found"
+      "noPersonnel": "No personnel found",
+      "inProgress": "Evaluation in progress",
+      "noAccess": "Evaluation completed",
+      "lockedHint": "You do not have access to open this evaluation yet"
     },
     "visibility": {
       "title": "Visibility",
