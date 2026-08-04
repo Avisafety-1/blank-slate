@@ -63,16 +63,34 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     }
   }, [companyId, parentCompanyId, isInherited]);
 
-  // Load documents available for tilknytning (from the owning company of the list)
+  // Load documents + evaluation templates available for tilknytning
   useEffect(() => {
     const source = effectiveCompanyId;
     if (!source) return;
-    (supabase
-      .from("documents")
-      .select("id, tittel, kategori, fil_url, nettside_url")
-      .eq("company_id", source)
-      .order("tittel") as any)
-      .then(({ data }: any) => setDocs((data || []) as DocOption[]));
+    (async () => {
+      const [docRes, evalRes] = await Promise.all([
+        (supabase
+          .from("documents")
+          .select("id, tittel, kategori, fil_url, nettside_url")
+          .eq("company_id", source)
+          .order("tittel") as any),
+        (supabase
+          .from("evaluation_templates")
+          .select("id, title, description")
+          .eq("company_id", source)
+          .order("title") as any),
+      ]);
+      const documents: DocOption[] = (docRes?.data || []) as DocOption[];
+      const evaluations: DocOption[] = ((evalRes?.data || []) as any[]).map((e) => ({
+        id: e.id,
+        tittel: e.title,
+        kategori: "vurderingsskjema",
+        fil_url: null,
+        nettside_url: null,
+        isEvaluation: true,
+      }));
+      setDocs([...documents, ...evaluations].sort((a, b) => a.tittel.localeCompare(b.tittel)));
+    })();
   }, [effectiveCompanyId]);
 
 
