@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
@@ -19,26 +18,6 @@ interface AttachmentLightboxProps {
 export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: AttachmentLightboxProps) => {
   const { t } = useTranslation();
   const touchStartX = useRef<number | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  // Stop Radix (Sheet/Dialog) from treating interactions inside the lightbox as
-  // "outside" interactions, which would close the underlying message thread.
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const stop = (e: Event) => {
-      if (e.type === "touchstart") {
-        touchStartX.current = (e as TouchEvent).touches[0]?.clientX ?? null;
-      }
-      e.stopPropagation();
-    };
-    const events = ["pointerdown", "mousedown", "touchstart", "focusin"];
-    events.forEach((ev) => el.addEventListener(ev, stop));
-    return () => events.forEach((ev) => el.removeEventListener(ev, stop));
-  }, [index]);
-
-  useEffect(() => setMounted(true), []);
 
   const open = index !== null && index >= 0 && index < images.length;
   const current = open ? images[index] : null;
@@ -69,7 +48,7 @@ export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: At
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onClose, goPrev, goNext]);
 
-  if (!mounted || !open || !current) return null;
+  if (!open || !current) return null;
 
   const handleDownload = () => {
     downloadAttachment(current.storage_path, current.file_name).catch(() =>
@@ -77,9 +56,8 @@ export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: At
     );
   };
 
-  return createPortal(
+  return (
     <div
-      ref={rootRef}
       className="fixed inset-0 z-[2000] flex flex-col bg-background/95 backdrop-blur-sm"
       onClick={onClose}
       onTouchStart={(e) => {
@@ -175,7 +153,6 @@ export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: At
           </button>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 };
