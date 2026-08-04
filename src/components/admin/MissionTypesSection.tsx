@@ -215,7 +215,8 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
       <div className="space-y-2">
         {types.map((mt, i) => {
-          const linkedDoc = mt.default_document_id ? docsById.get(mt.default_document_id) : null;
+          const linkedId = mt.default_document_id || mt.default_evaluation_template_id;
+          const linkedDoc = linkedId ? docsById.get(linkedId) : null;
           return (
             <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
               <div className="flex flex-col">
@@ -264,7 +265,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                     </button>
                   )}
                 </Badge>
-              ) : mt.default_document_id ? (
+              ) : linkedId ? (
                 // Dokument-ID lagret, men ikke funnet i listen (kanskje slettet eller annet selskap)
                 <Badge variant="outline" className="gap-1 text-muted-foreground">
                   <FileText className="h-3 w-3" />
@@ -389,14 +390,16 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             ) : (
               <div className="p-2 space-y-1">
                 {filteredDocs.map((doc) => {
-                  const isSelected = pickerOpenFor?.default_document_id === doc.id;
+                  const isSelected =
+                    pickerOpenFor?.default_document_id === doc.id ||
+                    pickerOpenFor?.default_evaluation_template_id === doc.id;
                   return (
                     <button
                       key={doc.id}
                       type="button"
                       onClick={async () => {
                         if (!pickerOpenFor) return;
-                        await setDefaultDocument(pickerOpenFor.id, doc.id);
+                        await setDefaultDocument(pickerOpenFor.id, doc.id, !!doc.isEvaluation);
                         setPickerOpenFor(null);
                         setPickerSearch("");
                       }}
@@ -419,7 +422,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2">
-            {pickerOpenFor?.default_document_id && (
+            {(pickerOpenFor?.default_document_id || pickerOpenFor?.default_evaluation_template_id) && (
               <Button
                 variant="outline"
                 onClick={async () => {
