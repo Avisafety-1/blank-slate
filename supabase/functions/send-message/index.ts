@@ -200,9 +200,14 @@ serve(async (req) => {
     const rawDeepLink = typeof payload.deep_link === "string" ? payload.deep_link.trim() : "";
     const deepLink = /^\/[A-Za-z0-9\-_/?=&.]*$/.test(rawDeepLink) ? rawDeepLink : null;
 
-    const companyId = parent?.company_id ?? sender.company_id;
-    const emailCfg = channels.email ? await getEmailConfig(companyId).catch(() => null) : null;
-    const fromAddress = emailCfg ? formatSenderAddress(emailCfg.fromName, emailCfg.fromEmail) : "";
+    // Interne meldinger sendes alltid nøytralt fra AviSafe med avsenderens navn,
+    // aldri med et annet selskaps merkevare (email_settings.from_name).
+    const senderDisplayName = (sender.full_name ?? sender.email ?? "").trim();
+    const fromAddress = formatSenderAddress(
+      senderDisplayName ? `${senderDisplayName} via AviSafe` : "AviSafe",
+      "noreply@avisafe.no",
+    );
+
 
     const subject = parent
       ? (payload.subject.trim().toLowerCase().startsWith("re:") || payload.subject.trim().toLowerCase().startsWith("sv:")
