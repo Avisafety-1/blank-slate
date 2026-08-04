@@ -85,7 +85,13 @@ export const InboxTab = () => {
 
   const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
   const { data: reactions = [] } = useMessageReactions(threadMessageIds);
+  const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
+  const invalidateAttachments = useInvalidateAttachments();
   const toggleReaction = useToggleReaction();
+  const [replyEmail, setReplyEmail] = useState(false);
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
