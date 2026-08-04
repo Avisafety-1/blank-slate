@@ -248,7 +248,8 @@ const Documents = () => {
 
             <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
 
-            <EvaluationTemplatesSection isAdmin={isAdmin} />
+
+
 
 
 
