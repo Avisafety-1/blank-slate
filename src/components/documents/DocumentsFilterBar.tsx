@@ -28,6 +28,7 @@ const CATEGORY_KEYS: { value: DocumentCategory; key: string }[] = [
   { value: "dokumentstyring", key: "dokumentstyring" },
   { value: "risikovurderinger", key: "risikovurderinger" },
   { value: "operasjonsmanual", key: "operasjonsmanual" },
+  { value: "vurderingsskjema", key: "vurderingsskjema" },
   { value: "annet", key: "annet" },
 ];
 

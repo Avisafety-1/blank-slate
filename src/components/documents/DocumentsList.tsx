@@ -65,6 +65,7 @@ const CATEGORY_KEYS: Record<string, string> = {
   dokumentstyring: "dokumentstyring",
   risikovurderinger: "risikovurderinger",
   operasjonsmanual: "operasjonsmanual",
+  vurderingsskjema: "vurderingsskjema",
   annet: "annet"
 };
 
