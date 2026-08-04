@@ -236,19 +236,30 @@ export const EvaluationResponseDialog = ({
     onChange: (v: string) => void,
     placeholder: string
   ) => (
-    <Select value={value} onValueChange={onChange} disabled={locked}>
+    <Select value={value || undefined} onValueChange={onChange} disabled={locked}>
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent className="z-[100] bg-popover">
-        {allPeople.map((p) => (
-          <SelectItem key={p.id} value={p.id}>
-            {p.name}
-            {p.role ? ` (${p.role})` : ""}
-          </SelectItem>
-        ))}
+      <SelectContent
+        position="popper"
+        sideOffset={4}
+        className="z-[300] bg-popover border shadow-lg max-h-60"
+      >
+        {allPeople.length === 0 ? (
+          <div className="px-2 py-3 text-sm text-muted-foreground">
+            {t("evaluation.mission.noPersonnel", "Ingen personell funnet")}
+          </div>
+        ) : (
+          allPeople.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+              {p.role ? ` (${p.role})` : ""}
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
+
   );
 
   return (
