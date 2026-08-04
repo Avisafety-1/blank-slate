@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -39,6 +39,13 @@ interface PersonOption {
   role: string | null;
 }
 
+const toLocalInput = (iso?: string | null) => {
+  const d = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const EvaluationResponseDialog = ({
   open,
   onOpenChange,
@@ -52,11 +59,13 @@ export const EvaluationResponseDialog = ({
 
   const [people, setPeople] = useState<PersonOption[]>([]);
   const [studentId, setStudentId] = useState<string>("");
+  const [instructorId, setInstructorId] = useState<string>("");
+  const [evaluatedAt, setEvaluatedAt] = useState<string>(toLocalInput());
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
   const [overallComment, setOverallComment] = useState("");
   const [saving, setSaving] = useState(false);
-  const [myName, setMyName] = useState<string>("");
+  const [me, setMe] = useState<PersonOption | null>(null);
 
   const locked = response?.status === "completed";
 
@@ -66,6 +75,8 @@ export const EvaluationResponseDialog = ({
     setComments(response?.comments ?? {});
     setOverallComment(response?.overall_comment ?? "");
     setStudentId(response?.student_id ?? "");
+    setInstructorId(response?.instructor_id ?? "");
+    setEvaluatedAt(toLocalInput(response?.evaluated_at ?? null));
   }, [open, response]);
 
   useEffect(() => {
@@ -77,17 +88,33 @@ export const EvaluationResponseDialog = ({
         .select("profile_id, profiles:profile_id(navn, epost), company_mission_roles:role_id(name)")
         .eq("mission_id", mission.id) as any);
       if (cancelled) return;
-      const options: PersonOption[] = (data || [])
+      const map = new Map<string, PersonOption>();
+      (data || [])
         .filter((row: any) => row.profile_id)
-        .map((row: any) => ({
-          id: row.profile_id,
-          name: row.profiles?.navn || row.profiles?.epost || "—",
-          role: row.company_mission_roles?.name ?? null,
-        }));
+        .forEach((row: any) => {
+          const existing = map.get(row.profile_id);
+          const role = row.company_mission_roles?.name ?? null;
+          if (existing) {
+            if (role && !existing.role?.includes(role)) {
+              existing.role = existing.role ? `${existing.role}, ${role}` : role;
+            }
+            return;
+          }
+          map.set(row.profile_id, {
+            id: row.profile_id,
+            name: row.profiles?.navn || row.profiles?.epost || "—",
+            role,
+          });
+        });
+      const options = Array.from(map.values());
       setPeople(options);
       setStudentId((prev) => {
         if (prev) return prev;
-        const student = options.find((p) => (p.role || "").toLowerCase().includes("elev") || (p.role || "").toLowerCase().includes("student"));
+        const student = options.find(
+          (p) =>
+            (p.role || "").toLowerCase().includes("elev") ||
+            (p.role || "").toLowerCase().includes("student")
+        );
         return student?.id ?? "";
       });
     })();
@@ -105,12 +132,25 @@ export const EvaluationResponseDialog = ({
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!cancelled) setMyName((data as any)?.navn || (data as any)?.epost || user.email || "");
+        if (cancelled) return;
+        setMe({
+          id: user.id,
+          name: (data as any)?.navn || (data as any)?.epost || user.email || "",
+          role: null,
+        });
+        setInstructorId((prev) => prev || user.id);
       });
     return () => {
       cancelled = true;
     };
   }, [open, user]);
+
+  /** Mission personnel + current user (deduped) */
+  const allPeople = useMemo(() => {
+    const list = [...people];
+    if (me && !list.some((p) => p.id === me.id)) list.unshift(me);
+    return list;
+  }, [people, me]);
 
   const missionTime = useMemo(() => {
     const raw = mission?.tidspunkt || mission?.start_time;
@@ -133,7 +173,10 @@ export const EvaluationResponseDialog = ({
     return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
   }, [template.structure, scores]);
 
-  const studentName = people.find((p) => p.id === studentId)?.name ?? response?.student_name ?? "";
+  const studentName =
+    allPeople.find((p) => p.id === studentId)?.name ?? response?.student_name ?? "";
+  const instructorName =
+    allPeople.find((p) => p.id === instructorId)?.name ?? response?.instructor_name ?? "";
 
   const save = async (status: "draft" | "completed") => {
     if (!user) return;
@@ -146,8 +189,8 @@ export const EvaluationResponseDialog = ({
         mission_name: mission?.tittel ?? null,
         mission_start: mission?.tidspunkt ?? null,
         mission_end: mission?.slutt_tidspunkt ?? null,
-        instructor_id: user.id,
-        instructor_name: myName,
+        instructor_id: instructorId || user.id,
+        instructor_name: instructorName,
         student_id: studentId || null,
         student_name: studentName || null,
         scores,
@@ -155,7 +198,9 @@ export const EvaluationResponseDialog = ({
         overall_comment: overallComment.trim() || null,
         overall_average: overallAverage,
         status,
-        evaluated_at: new Date().toISOString(),
+        evaluated_at: evaluatedAt
+          ? new Date(evaluatedAt).toISOString()
+          : new Date().toISOString(),
       };
 
       if (response?.id) {
@@ -186,6 +231,26 @@ export const EvaluationResponseDialog = ({
     }
   };
 
+  const personSelect = (
+    value: string,
+    onChange: (v: string) => void,
+    placeholder: string
+  ) => (
+    <Select value={value} onValueChange={onChange} disabled={locked}>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="z-[100] bg-popover">
+        {allPeople.map((p) => (
+          <SelectItem key={p.id} value={p.id}>
+            {p.name}
+            {p.role ? ` (${p.role})` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -205,36 +270,36 @@ export const EvaluationResponseDialog = ({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs">{t("evaluation.fields.student")}</Label>
-            <Select value={studentId} onValueChange={setStudentId} disabled={locked}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("evaluation.mission.selectStudent")} />
-              </SelectTrigger>
-              <SelectContent>
-                {people.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                    {p.role ? ` (${p.role})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className={locked ? "pointer-events-none opacity-90" : undefined}>
             <EvaluationFormPreview
               title={template.title}
               description={template.description ?? ""}
               categories={template.structure}
               header={{
-                instructorName: myName,
+                instructorName,
                 studentName,
                 missionName: mission?.tittel ?? "",
                 missionTime,
-                evaluatedAt: new Date().toLocaleString(i18n.language === "en" ? "en-GB" : "nb-NO"),
               }}
-              headerDisabled
+              headerDisabled={false}
+              instructorSlot={personSelect(
+                instructorId,
+                setInstructorId,
+                t("evaluation.mission.selectInstructor")
+              )}
+              studentSlot={personSelect(
+                studentId,
+                setStudentId,
+                t("evaluation.mission.selectStudent")
+              )}
+              evaluatedAtSlot={
+                <Input
+                  type="datetime-local"
+                  value={evaluatedAt}
+                  onChange={(e) => setEvaluatedAt(e.target.value)}
+                  disabled={locked}
+                />
+              }
               scores={scores}
               comments={comments}
               overallComment={overallComment}
