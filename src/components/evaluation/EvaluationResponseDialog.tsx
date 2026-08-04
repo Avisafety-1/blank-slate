@@ -427,7 +427,9 @@ export const EvaluationResponseDialog = ({
                 setStudentId,
                 t("evaluation.mission.selectStudent")
               )}
+              visibilitySlot={visibilityBox}
               evaluatedAtSlot={
+
                 <Input
                   type="datetime-local"
                   value={evaluatedAt}
