@@ -29,6 +29,7 @@ interface DocOption {
   kategori: string;
   fil_url: string | null;
   nettside_url: string | null;
+  isEvaluation?: boolean;
 }
 
 
