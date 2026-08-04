@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Inbox,
   ArrowRight,
@@ -22,13 +24,26 @@ import {
   Users,
   Megaphone,
   MessagesSquare,
+  Paperclip,
+  FileText,
+  X,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { useMessageReactions, useToggleReaction, REACTION_EMOJIS } from "./hooks/useMessageReactions";
+import {
+  useMessageAttachments,
+  useInvalidateAttachments,
+  uploadMessageAttachments,
+  formatFileSize,
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_SIZE,
+} from "./hooks/useMessageAttachments";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
