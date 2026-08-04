@@ -4521,6 +4521,47 @@ export type Database = {
           },
         ]
       }
+      internal_message_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          id: string
+          message_id: string
+          mime_type: string | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          message_id: string
+          mime_type?: string | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          message_id?: string
+          mime_type?: string | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "internal_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       internal_message_reactions: {
         Row: {
           created_at: string
@@ -7948,6 +7989,10 @@ export type Database = {
       }
       can_access_message: {
         Args: { _message_id: string; _user: string }
+        Returns: boolean
+      }
+      can_access_message_attachment_path: {
+        Args: { _path: string; _user: string }
         Returns: boolean
       }
       can_read_folder: { Args: { _folder_id: string }; Returns: boolean }
