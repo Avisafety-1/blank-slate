@@ -94,14 +94,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
   });
+  const [evaluations, setEvaluations] = useState<EvaluationLogEntry[]>([]);
+  const [openEvaluationId, setOpenEvaluationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && personId) {
       fetchFlightLogs();
       fetchProfileData();
       fetchPersonnelLogs();
+      fetchEvaluations();
     }
   }, [open, personId]);
+
+  const fetchEvaluations = async () => {
+    const { data, error } = await (supabase as any)
+      .from("evaluation_responses")
+      .select("id, mission_name, instructor_name, evaluated_at, overall_average, status")
+      .eq("student_id", personId)
+      .order("evaluated_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching evaluations:", error);
+      return;
+    }
+    setEvaluations((data || []) as EvaluationLogEntry[]);
+  };
+
 
   const fetchProfileData = async () => {
     const { data } = await supabase
