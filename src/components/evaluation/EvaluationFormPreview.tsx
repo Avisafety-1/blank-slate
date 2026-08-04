@@ -257,7 +257,9 @@ export const EvaluationFormPreview = ({
             {t("evaluation.preview.totalAverage")}: {fmt(overallAverage)}
           </Badge>
         </div>
+        {overallAiSlot}
         <Textarea
+
           value={overallComment}
           onChange={(e) => setOverall(e.target.value)}
           placeholder={t("evaluation.placeholders.overallComment")}
