@@ -7830,7 +7830,7 @@
     },
     "visibility": {
       "title": "Synlighet",
-      "description": "Utkast er synlig for instruktøren. Når evalueringen fullføres blir den også synlig for eleven. Administratorer har alltid innsyn.",
+      "description": "Utkast er synlig for instruktøren. Når evalueringen fullføres blir den også synlig for eleven. Administratorer får kun innsyn hvis bryteren under er på.",
       "shareWithAdmins": "Del med alle administratorer",
       "otherViewers": "Andre personer med innsyn",
       "noPeople": "Ingen personer funnet",
