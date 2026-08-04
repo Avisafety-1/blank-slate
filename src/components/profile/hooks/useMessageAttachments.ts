@@ -61,28 +61,67 @@ export function useMessageAttachments(messageIds: string[]) {
   return useQuery({
     queryKey: ["inbox-attachments", key],
     enabled: messageIds.length > 0,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<MessageAttachment[]> => {
       const { data, error } = await supabase
         .from("internal_message_attachments")
         .select("id, message_id, storage_path, file_name, mime_type, file_size")
         .in("message_id", messageIds)
         .order("created_at", { ascending: true });
-      if (error) throw error;
+      if (error) {
+        console.error("[attachments] could not load rows", error);
+        throw error;
+      }
       const rows = data ?? [];
       if (!rows.length) return [];
 
-      const { data: signed } = await supabase.storage
+      const paths = rows.map((r) => r.storage_path);
+      const urlMap = new Map<string, string>();
+
+      const { data: signed, error: signErr } = await supabase.storage
         .from(ATTACHMENT_BUCKET)
-        .createSignedUrls(rows.map((r) => r.storage_path), 3600);
-      const urlMap = new Map((signed ?? []).map((s) => [s.path ?? "", s.signedUrl]));
+        .createSignedUrls(paths, 3600);
+      if (signErr) console.error("[attachments] batch signing failed", signErr);
+      for (const s of signed ?? []) {
+        if (s.signedUrl && s.path) urlMap.set(s.path, s.signedUrl);
+      }
+
+      // Per-file fallback when the batch call skipped or failed a path
+      const missing = paths.filter((p) => !urlMap.has(p));
+      if (missing.length) {
+        await Promise.all(
+          missing.map(async (p) => {
+            const { data: one, error: oneErr } = await supabase.storage
+              .from(ATTACHMENT_BUCKET)
+              .createSignedUrl(p, 3600);
+            if (one?.signedUrl) urlMap.set(p, one.signedUrl);
+            else console.error("[attachments] could not sign", p, oneErr);
+          }),
+        );
+      }
 
       return rows.map((r) => ({ ...r, url: urlMap.get(r.storage_path) ?? null }));
     },
   });
 }
 
+
 export function useInvalidateAttachments() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: ["inbox-attachments"] });
+}
+
+/** Fallback download when a signed URL could not be created. */
+export async function downloadAttachment(path: string, fileName: string) {
+  const { data, error } = await supabase.storage.from(ATTACHMENT_BUCKET).download(path);
+  if (error || !data) throw error ?? new Error("download_failed");
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
