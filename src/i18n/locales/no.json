@@ -67,7 +67,8 @@
     "cancel": "Avbryt",
     "save": "Lagre",
     "saving": "Lagrer...",
-    "edit": "Rediger"
+    "edit": "Rediger",
+    "search": "Søk"
   },
   "auth": {
     "signIn": "Logg inn",
