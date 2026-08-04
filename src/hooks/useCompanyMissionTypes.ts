@@ -9,6 +9,7 @@ export interface CompanyMissionType {
   sort_order: number;
   is_active: boolean;
   default_document_id: string | null;
+  default_evaluation_template_id: string | null;
 }
 
 export const DEFAULT_MISSION_TYPES = [
@@ -57,7 +58,7 @@ export function useCompanyMissionTypes() {
 
     const { data } = await (supabase
       .from("company_mission_types")
-      .select("id, company_id, label, sort_order, is_active, default_document_id")
+      .select("id, company_id, label, sort_order, is_active, default_document_id, default_evaluation_template_id")
       .eq("company_id", source)
       .order("sort_order", { ascending: true })
       .order("label", { ascending: true }) as any);
