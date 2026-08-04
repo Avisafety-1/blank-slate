@@ -75,6 +75,9 @@ const Documents = () => {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
   const [createEvaluationOpen, setCreateEvaluationOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EvaluationTemplate | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<EvaluationTemplate | null>(null);
+  const { templates: evaluationTemplates } = useEvaluationTemplates();
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
