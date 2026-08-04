@@ -389,6 +389,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // Logbook state
   const [pilotId, setPilotId] = useState("");
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
+  const [dronePersonnelIds, setDronePersonnelIds] = useState<string[]>([]);
+
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(true);
