@@ -41,6 +41,8 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
   const [template, setTemplate] = useState<EvaluationTemplateLite | null>(null);
   const [response, setResponse] = useState<EvaluationResponseRow | null>(null);
   const [loading, setLoading] = useState(false);
+  const [existsStatus, setExistsStatus] = useState<string | null>(null);
+  const [canView, setCanView] = useState(true);
 
   const templateId = useMemo(() => {
     if (!oppdragstype) return null;
@@ -54,6 +56,8 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
     if (!templateId || !missionId) {
       setTemplate(null);
       setResponse(null);
+      setExistsStatus(null);
+      setCanView(true);
       return;
     }
     setLoading(true);
@@ -72,6 +76,15 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
         .limit(1)
         .maybeSingle() as any),
     ]);
+
+    // Access-aware state: tells us if an evaluation exists even when RLS hides it
+    const { data: stateRows } = await (supabase.rpc as any)("get_mission_evaluation_state", {
+      p_mission_id: missionId,
+      p_template_id: templateId,
+    });
+    const state = Array.isArray(stateRows) ? stateRows[0] : stateRows;
+    setExistsStatus(state?.response_exists ? state?.response_status ?? "draft" : null);
+    setCanView(state?.response_exists ? !!state?.can_view : true);
 
     setTemplate(
       tpl
@@ -104,7 +117,8 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
     templateId,
     template,
     response,
-    status: response?.status ?? null,
+    status: response?.status ?? existsStatus,
+    canView,
     loading: loading || typesLoading,
     companyId,
     reload: load,
