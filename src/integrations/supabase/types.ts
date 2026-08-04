@@ -1577,6 +1577,7 @@ export type Database = {
           company_id: string
           created_at: string
           default_document_id: string | null
+          default_evaluation_template_id: string | null
           id: string
           is_active: boolean
           label: string
@@ -1586,6 +1587,7 @@ export type Database = {
           company_id: string
           created_at?: string
           default_document_id?: string | null
+          default_evaluation_template_id?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -1595,6 +1597,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           default_document_id?: string | null
+          default_evaluation_template_id?: string | null
           id?: string
           is_active?: boolean
           label?: string
@@ -1613,6 +1616,13 @@ export type Database = {
             columns: ["default_document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_mission_types_default_evaluation_template_id_fkey"
+            columns: ["default_evaluation_template_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_templates"
             referencedColumns: ["id"]
           },
         ]

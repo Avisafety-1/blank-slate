@@ -29,6 +29,7 @@ interface DocOption {
   kategori: string;
   fil_url: string | null;
   nettside_url: string | null;
+  isEvaluation?: boolean;
 }
 
 
@@ -62,16 +63,34 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     }
   }, [companyId, parentCompanyId, isInherited]);
 
-  // Load documents available for tilknytning (from the owning company of the list)
+  // Load documents + evaluation templates available for tilknytning
   useEffect(() => {
     const source = effectiveCompanyId;
     if (!source) return;
-    (supabase
-      .from("documents")
-      .select("id, tittel, kategori, fil_url, nettside_url")
-      .eq("company_id", source)
-      .order("tittel") as any)
-      .then(({ data }: any) => setDocs((data || []) as DocOption[]));
+    (async () => {
+      const [docRes, evalRes] = await Promise.all([
+        (supabase
+          .from("documents")
+          .select("id, tittel, kategori, fil_url, nettside_url")
+          .eq("company_id", source)
+          .order("tittel") as any),
+        (supabase
+          .from("evaluation_templates")
+          .select("id, title, description")
+          .eq("company_id", source)
+          .order("title") as any),
+      ]);
+      const documents: DocOption[] = (docRes?.data || []) as DocOption[];
+      const evaluations: DocOption[] = ((evalRes?.data || []) as any[]).map((e) => ({
+        id: e.id,
+        tittel: e.title,
+        kategori: "vurderingsskjema",
+        fil_url: null,
+        nettside_url: null,
+        isEvaluation: true,
+      }));
+      setDocs([...documents, ...evaluations].sort((a, b) => a.tittel.localeCompare(b.tittel)));
+    })();
   }, [effectiveCompanyId]);
 
 
@@ -158,10 +177,13 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     toast({ title: checked ? t("admin.missionTypes.toastPropagateOn") : t("admin.missionTypes.toastPropagateOff") });
   };
 
-  const setDefaultDocument = async (typeId: string, docId: string | null) => {
+  const setDefaultDocument = async (typeId: string, docId: string | null, isEvaluation = false) => {
+    const payload = isEvaluation
+      ? { default_document_id: null, default_evaluation_template_id: docId }
+      : { default_document_id: docId, default_evaluation_template_id: null };
     const { error } = await (supabase
       .from("company_mission_types")
-      .update({ default_document_id: docId } as any)
+      .update(payload as any)
       .eq("id", typeId) as any);
     if (error) {
       toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
@@ -193,7 +215,8 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
       <div className="space-y-2">
         {types.map((mt, i) => {
-          const linkedDoc = mt.default_document_id ? docsById.get(mt.default_document_id) : null;
+          const linkedId = mt.default_document_id || mt.default_evaluation_template_id;
+          const linkedDoc = linkedId ? docsById.get(linkedId) : null;
           return (
             <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
               <div className="flex flex-col">
@@ -242,7 +265,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                     </button>
                   )}
                 </Badge>
-              ) : mt.default_document_id ? (
+              ) : linkedId ? (
                 // Dokument-ID lagret, men ikke funnet i listen (kanskje slettet eller annet selskap)
                 <Badge variant="outline" className="gap-1 text-muted-foreground">
                   <FileText className="h-3 w-3" />
@@ -367,14 +390,16 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             ) : (
               <div className="p-2 space-y-1">
                 {filteredDocs.map((doc) => {
-                  const isSelected = pickerOpenFor?.default_document_id === doc.id;
+                  const isSelected =
+                    pickerOpenFor?.default_document_id === doc.id ||
+                    pickerOpenFor?.default_evaluation_template_id === doc.id;
                   return (
                     <button
                       key={doc.id}
                       type="button"
                       onClick={async () => {
                         if (!pickerOpenFor) return;
-                        await setDefaultDocument(pickerOpenFor.id, doc.id);
+                        await setDefaultDocument(pickerOpenFor.id, doc.id, !!doc.isEvaluation);
                         setPickerOpenFor(null);
                         setPickerSearch("");
                       }}
@@ -397,7 +422,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2">
-            {pickerOpenFor?.default_document_id && (
+            {(pickerOpenFor?.default_document_id || pickerOpenFor?.default_evaluation_template_id) && (
               <Button
                 variant="outline"
                 onClick={async () => {
