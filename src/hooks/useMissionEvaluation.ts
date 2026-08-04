@@ -17,6 +17,7 @@ export interface EvaluationResponseRow {
   overall_comment: string | null;
   overall_average: number | null;
   status: string;
+  evaluated_at?: string | null;
 }
 
 export interface EvaluationTemplateLite {
