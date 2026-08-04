@@ -28,6 +28,9 @@ interface EvaluationFormPreviewProps {
   instructorSlot?: React.ReactNode;
   studentSlot?: React.ReactNode;
   evaluatedAtSlot?: React.ReactNode;
+  /** Optional visibility/permissions block rendered under the header fields */
+  visibilitySlot?: React.ReactNode;
+
   scores?: Record<string, number>;
   comments?: Record<string, string>;
   overallComment?: string;
