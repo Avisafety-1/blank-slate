@@ -15,7 +15,7 @@ type ContentItem =
   | { type: 'numbered-list'; items: string[] };
 
 const getSections = (): Section[] => {
-  const sectionsObj = i18n.t('pdf.userManual.sections', { ns: 'pdf', returnObjects: true }) as Record<string, Section>;
+  const sectionsObj = i18n.t('userManual.sections', { ns: 'pdf', returnObjects: true }) as Record<string, Section>;
   return Object.keys(sectionsObj)
     .sort((a, b) => parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10))
     .map((key) => sectionsObj[key]);
@@ -29,19 +29,19 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
   // Title page
   doc.setFontSize(32);
   setFontStyle(doc, "bold");
-  doc.text(i18n.t('pdf.userManual.docTitle', { ns: 'pdf' }), pageWidth / 2, 60, { align: "center" });
+  doc.text(i18n.t('userManual.docTitle', { ns: 'pdf' }), pageWidth / 2, 60, { align: "center" });
   
   doc.setFontSize(18);
   setFontStyle(doc, "normal");
-  doc.text(i18n.t('pdf.userManual.subtitle', { ns: 'pdf' }), pageWidth / 2, 75, { align: "center" });
+  doc.text(i18n.t('userManual.subtitle', { ns: 'pdf' }), pageWidth / 2, 75, { align: "center" });
   
   doc.setFontSize(14);
-  doc.text(i18n.t('pdf.userManual.subtitle2', { ns: 'pdf' }), pageWidth / 2, 90, { align: "center" });
+  doc.text(i18n.t('userManual.subtitle2', { ns: 'pdf' }), pageWidth / 2, 90, { align: "center" });
   
   doc.setFontSize(10);
   doc.setTextColor(100);
   const today = new Date();
-  doc.text(i18n.t('pdf.userManual.version', { ns: 'pdf', date: today.toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO') }), pageWidth / 2, 110, { align: "center" });
+  doc.text(i18n.t('userManual.version', { ns: 'pdf', date: today.toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'nb-NO') }), pageWidth / 2, 110, { align: "center" });
   doc.setTextColor(0);
   
   // Table of contents
@@ -50,7 +50,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
   
   doc.setFontSize(16);
   setFontStyle(doc, "bold");
-  doc.text(i18n.t('pdf.userManual.toc', { ns: 'pdf' }), 14, yPos);
+  doc.text(i18n.t('userManual.toc', { ns: 'pdf' }), 14, yPos);
   yPos += 15;
   
   doc.setFontSize(11);
@@ -141,7 +141,7 @@ export const generateUserManualPDF = async (): Promise<Blob> => {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(i18n.t('pdf.userManual.footer', { ns: 'pdf', page: i, total: pageCount }), pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
+    doc.text(i18n.t('userManual.footer', { ns: 'pdf', page: i, total: pageCount }), pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: "center" });
   }
   
   return doc.output("blob");
