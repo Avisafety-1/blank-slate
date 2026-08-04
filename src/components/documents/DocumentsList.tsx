@@ -105,6 +105,9 @@ const DocumentsList = ({
   isLoading,
   onDocumentClick,
   getDocumentStatus,
+  onViewEvaluation,
+  onEditEvaluation,
+  canEditEvaluation,
 }: DocumentsListProps) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
