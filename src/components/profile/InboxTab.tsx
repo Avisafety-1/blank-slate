@@ -663,6 +663,13 @@ export const InboxTab = () => {
         </SheetContent>
       </Sheet>
 
+      <AttachmentLightbox
+        images={imageAttachments}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+      />
+
       <ComposeMessageDialog open={composeOpen} onOpenChange={setComposeOpen} />
     </>
   );
