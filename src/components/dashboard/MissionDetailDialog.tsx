@@ -182,6 +182,12 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                 });
               }}
             />
+            <EvaluationMissionButton
+              mission={currentMission}
+              size="sm"
+              className="w-full sm:w-auto"
+              onSaved={() => onMissionUpdated?.()}
+            />
             <Button 
               size="sm" 
               variant="outline" 
