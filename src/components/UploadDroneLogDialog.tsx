@@ -2347,15 +2347,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       <SelectValue placeholder="Velg pilot" />
                     </SelectTrigger>
                     <SelectContent>
-                      {personnel.map(p => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.full_name || p.email}
-                          {p.id === user?.id ? ' (deg)' : ''}
-                        </SelectItem>
-                      ))}
+                      {[...personnel]
+                        .sort((a, b) => Number(dronePersonnelIds.includes(b.id)) - Number(dronePersonnelIds.includes(a.id)))
+                        .map(p => {
+                          const linked = dronePersonnelIds.includes(p.id);
+                          return (
+                            <SelectItem
+                              key={p.id}
+                              value={p.id}
+                              className={linked ? "bg-emerald-500/15 focus:bg-emerald-500/25 data-[state=checked]:bg-emerald-500/25" : undefined}
+                            >
+                              {p.full_name || p.email}
+                              {p.id === user?.id ? ' (deg)' : ''}
+                              {linked && (
+                                <span className="ml-1 text-emerald-600 dark:text-emerald-400">
+                                  {t('dronelog.linkedToDrone')}
+                                </span>
+                              )}
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>
+
 
                 {/* Drone selector — reuse existing */}
                 <div className="space-y-1.5">
