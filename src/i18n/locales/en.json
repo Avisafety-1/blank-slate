@@ -7828,7 +7828,7 @@
     },
     "visibility": {
       "title": "Visibility",
-      "description": "Drafts are visible to the instructor. When the evaluation is completed it also becomes visible to the student. Administrators always have access.",
+      "description": "Drafts are visible to the instructor. When the evaluation is completed it also becomes visible to the student. Administrators only get access if the toggle below is on.",
       "shareWithAdmins": "Share with all administrators",
       "otherViewers": "Other people with access",
       "noPeople": "No people found",
