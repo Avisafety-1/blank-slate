@@ -283,6 +283,11 @@ export const MissionCard = ({
             className="w-full sm:w-auto"
             onApproved={fetchMissions}
           />
+          <EvaluationMissionButton
+            mission={mission}
+            size="sm"
+            className="w-full sm:w-auto"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline" className="w-full sm:w-auto">
