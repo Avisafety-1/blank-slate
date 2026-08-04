@@ -71,6 +71,7 @@ const Documents = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
+  const [createEvaluationOpen, setCreateEvaluationOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
