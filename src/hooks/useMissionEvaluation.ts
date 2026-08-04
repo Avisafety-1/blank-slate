@@ -18,7 +18,10 @@ export interface EvaluationResponseRow {
   overall_average: number | null;
   status: string;
   evaluated_at?: string | null;
+  share_with_admins?: boolean | null;
+  extra_viewer_ids?: string[] | null;
 }
+
 
 export interface EvaluationTemplateLite {
   id: string;
