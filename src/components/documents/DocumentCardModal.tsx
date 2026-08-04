@@ -87,7 +87,7 @@ const CATEGORIES: { value: DocumentCategory; labelKey: string }[] = [
 const formSchema = z.object({
   tittel: z.string().min(1, i18n.t("documents.cardModal.validation.titleRequired")).max(200, i18n.t("documents.cardModal.validation.titleTooLong")),
   beskrivelse: z.string().max(100000, i18n.t("documents.cardModal.validation.descriptionTooLong")).optional(),
-  kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "operasjonsmanual", "annet"]),
+  kategori: z.enum(["regelverk", "prosedyrer", "sjekklister", "rapporter", "nettsider", "oppdrag", "loggbok", "kml-kmz", "dokumentstyring", "risikovurderinger", "operasjonsmanual", "vurderingsskjema", "annet"]),
   gyldig_til: z.date().optional(),
   varsel_dager_for_utløp: z.coerce.number().int().min(0).max(365).optional(),
   nettside_url: z.string().max(500, "URL må være under 500 tegn").optional(),

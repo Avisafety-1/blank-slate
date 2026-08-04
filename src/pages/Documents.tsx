@@ -12,14 +12,17 @@ import DocumentCardModal from "@/components/documents/DocumentCardModal";
 import { DocumentUploadDialog } from "@/components/documents/DocumentUploadDialog";
 import { CreateChecklistDialog } from "@/components/documents/CreateChecklistDialog";
 import EvaluationFormDialog from "@/components/documents/EvaluationFormDialog";
-import EvaluationTemplatesSection from "@/components/documents/EvaluationTemplatesSection";
+import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useEvaluationTemplates, type EvaluationTemplate } from "@/hooks/useEvaluationTemplates";
 import { toast } from "sonner";
 import droneBackground from "@/assets/drone-background.png";
 import FolderGrid from "@/components/documents/FolderGrid";
 import { useTranslation } from "react-i18next";
 
 
-export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "operasjonsmanual" | "annet";
+export type DocumentCategory = "regelverk" | "prosedyrer" | "sjekklister" | "rapporter" | "nettsider" | "oppdrag" | "loggbok" | "kml-kmz" | "dokumentstyring" | "risikovurderinger" | "operasjonsmanual" | "vurderingsskjema" | "annet";
 export type DocumentSortOption = "newest" | "oldest" | "expiry" | "alpha_asc" | "alpha_desc";
 export type DocumentStatusFilter = "expired" | "expiring_soon" | "valid" | "no_expiry";
 
@@ -72,6 +75,9 @@ const Documents = () => {
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createChecklistOpen, setCreateChecklistOpen] = useState(false);
   const [createEvaluationOpen, setCreateEvaluationOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<EvaluationTemplate | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<EvaluationTemplate | null>(null);
+  const { templates: evaluationTemplates } = useEvaluationTemplates();
 
   useEffect(() => {
     if (!loading && !user && navigator.onLine) {
@@ -118,7 +124,26 @@ const Documents = () => {
     }
   }, [searchParams, documents, setSearchParams]);
 
-  const filteredDocuments = documents?.filter(doc => {
+  const templateDocuments: Document[] = (evaluationTemplates ?? []).map((tpl) => ({
+    id: tpl.id,
+    tittel: tpl.title,
+    beskrivelse: tpl.description,
+    kategori: "vurderingsskjema",
+    gyldig_til: null,
+    varsel_dager_for_utløp: null,
+    fil_url: null,
+    fil_navn: null,
+    nettside_url: null,
+    opprettet_dato: tpl.created_at,
+    oppdatert_dato: tpl.updated_at,
+    opprettet_av: null,
+    company_id: tpl.company_id,
+    evaluation_template: tpl,
+  } as any));
+
+  const allDocuments = [...(documents ?? []), ...templateDocuments];
+
+  const filteredDocuments = allDocuments.filter(doc => {
     const matchesSearch = searchQuery === "" ||
       doc.tittel.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.beskrivelse?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,7 +157,7 @@ const Documents = () => {
       selectedStatuses.includes(getDocumentStatus(doc));
 
     return matchesSearch && matchesCategory && matchesStatus;
-  })?.sort((a, b) => {
+  }).sort((a, b) => {
     switch (sortOption) {
       case "oldest":
         return new Date(a.opprettet_dato).getTime() - new Date(b.opprettet_dato).getTime();
@@ -152,6 +177,11 @@ const Documents = () => {
   });
 
   const handleOpenDocument = (document: Document) => {
+    const tpl = (document as any).evaluation_template as EvaluationTemplate | undefined;
+    if (tpl) {
+      setViewingTemplate(tpl);
+      return;
+    }
     setSelectedDocument(document);
     setIsCreating(false);
     setIsModalOpen(true);
@@ -218,7 +248,8 @@ const Documents = () => {
 
             <FolderGrid isAdmin={isAdmin} companyId={companyId} createOpen={createFolderOpen} onCreateOpenChange={setCreateFolderOpen} />
 
-            <EvaluationTemplatesSection isAdmin={isAdmin} />
+
+
 
 
 
@@ -238,7 +269,11 @@ const Documents = () => {
               isLoading={isLoading}
               onDocumentClick={handleOpenDocument}
               getDocumentStatus={getDocumentStatus}
+              canEditEvaluation={isAdmin}
+              onViewEvaluation={(doc) => setViewingTemplate((doc as any).evaluation_template)}
+              onEditEvaluation={(doc) => setEditingTemplate((doc as any).evaluation_template)}
             />
+
 
             <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
               refetch();
@@ -255,6 +290,31 @@ const Documents = () => {
               open={createEvaluationOpen}
               onOpenChange={setCreateEvaluationOpen}
             />
+
+            <EvaluationFormDialog
+              open={!!editingTemplate}
+              onOpenChange={(open) => { if (!open) setEditingTemplate(null); }}
+              template={editingTemplate}
+            />
+
+            <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setViewingTemplate(null)}>
+              <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="break-words pr-6">{viewingTemplate?.title}</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1 min-h-0 pr-2 -mr-2">
+                  {viewingTemplate && (
+                    <EvaluationFormPreview
+                      title={viewingTemplate.title}
+                      description={viewingTemplate.description ?? ""}
+                      categories={viewingTemplate.structure}
+                      headerDisabled
+                    />
+                  )}
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+
 
 
             <DocumentCardModal
