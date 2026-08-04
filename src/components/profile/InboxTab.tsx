@@ -47,6 +47,7 @@ import {
   MAX_ATTACHMENT_SIZE,
 } from "./hooks/useMessageAttachments";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
+import { AttachmentLightbox } from "./AttachmentLightbox";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
   if (s === "critical") return <AlertCircle className="w-4 h-4 text-status-red" />;
@@ -88,6 +89,11 @@ export const InboxTab = () => {
   const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
   const { data: reactions = [] } = useMessageReactions(threadMessageIds);
   const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
+  const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/") && a.url);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setLightboxIndex(null);
+  }, [selected?.id]);
   const invalidateAttachments = useInvalidateAttachments();
   const toggleReaction = useToggleReaction();
   const [replyEmail, setReplyEmail] = useState(false);
@@ -465,14 +471,23 @@ export const InboxTab = () => {
                               .filter((a) => a.message_id === m.id)
                               .map((a) =>
                                 a.mime_type?.startsWith("image/") && a.url ? (
-                                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block">
+                                  <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const i = imageAttachments.findIndex((img) => img.id === a.id);
+                                      if (i >= 0) setLightboxIndex(i);
+                                    }}
+                                    className="block"
+                                  >
                                     <img
                                       src={a.url}
                                       alt={a.file_name}
                                       loading="lazy"
                                       className="max-h-48 w-auto rounded-md border border-border object-cover"
                                     />
-                                  </a>
+                                  </button>
                                 ) : (
                                   <button
                                     key={a.id}
@@ -651,6 +666,13 @@ export const InboxTab = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      <AttachmentLightbox
+        images={imageAttachments}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+      />
 
       <ComposeMessageDialog open={composeOpen} onOpenChange={setComposeOpen} />
     </>

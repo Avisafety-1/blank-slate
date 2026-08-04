@@ -7741,7 +7741,11 @@
       "tooMany": "Maximum {{count}} files per message",
       "uploadFailed": "Could not upload attachment",
       "bodyFallback": "(attachment)",
-      "downloadFailed": "Could not open attachment"
+      "downloadFailed": "Could not open attachment",
+      "download": "Download",
+      "closePreview": "Close preview",
+      "previousImage": "Previous image",
+      "nextImage": "Next image"
     }
   },
   "evaluation": {
