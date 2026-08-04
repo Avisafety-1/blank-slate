@@ -22,13 +22,18 @@ export const AttachmentLightbox = ({ images, index, onIndexChange, onClose }: At
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Stop Radix (Sheet/Dialog) from treating clicks inside the lightbox as
+  // Stop Radix (Sheet/Dialog) from treating interactions inside the lightbox as
   // "outside" interactions, which would close the underlying message thread.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
-    const stop = (e: Event) => e.stopPropagation();
-    const events = ["pointerdown", "mousedown", "touchstart", "click", "focusin"];
+    const stop = (e: Event) => {
+      if (e.type === "touchstart") {
+        touchStartX.current = (e as TouchEvent).touches[0]?.clientX ?? null;
+      }
+      e.stopPropagation();
+    };
+    const events = ["pointerdown", "mousedown", "touchstart", "focusin"];
     events.forEach((ev) => el.addEventListener(ev, stop));
     return () => events.forEach((ev) => el.removeEventListener(ev, stop));
   }, [index]);
