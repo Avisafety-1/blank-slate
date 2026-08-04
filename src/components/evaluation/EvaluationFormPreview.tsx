@@ -28,6 +28,9 @@ interface EvaluationFormPreviewProps {
   instructorSlot?: React.ReactNode;
   studentSlot?: React.ReactNode;
   evaluatedAtSlot?: React.ReactNode;
+  /** Optional visibility/permissions block rendered under the header fields */
+  visibilitySlot?: React.ReactNode;
+
   scores?: Record<string, number>;
   comments?: Record<string, string>;
   overallComment?: string;
@@ -47,6 +50,8 @@ export const EvaluationFormPreview = ({
   instructorSlot,
   studentSlot,
   evaluatedAtSlot,
+  visibilitySlot,
+
   scores: controlledScores,
   comments: controlledComments,
   overallComment: controlledOverall,
@@ -157,7 +162,10 @@ export const EvaluationFormPreview = ({
           </div>
         </div>
 
+        {visibilitySlot ? <div className="mt-4">{visibilitySlot}</div> : null}
+
       </Card>
+
 
       {categories.length === 0 && (
         <Card className="p-6 text-center text-sm text-muted-foreground">

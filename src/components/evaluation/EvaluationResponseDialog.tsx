@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, ClipboardCheck } from "lucide-react";
+import { Loader2, Save, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
 import type { EvaluationTemplateLite, EvaluationResponseRow } from "@/hooks/useMissionEvaluation";
+
 
 interface Props {
   open: boolean;
@@ -66,6 +70,10 @@ export const EvaluationResponseDialog = ({
   const [overallComment, setOverallComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [me, setMe] = useState<PersonOption | null>(null);
+  const [shareWithAdmins, setShareWithAdmins] = useState(true);
+  const [extraViewerIds, setExtraViewerIds] = useState<string[]>([]);
+  const [companyPeople, setCompanyPeople] = useState<PersonOption[]>([]);
+  const [viewerSearch, setViewerSearch] = useState("");
 
   const locked = response?.status === "completed";
 
@@ -77,7 +85,37 @@ export const EvaluationResponseDialog = ({
     setStudentId(response?.student_id ?? "");
     setInstructorId(response?.instructor_id ?? "");
     setEvaluatedAt(toLocalInput(response?.evaluated_at ?? null));
+    setShareWithAdmins(response?.share_with_admins ?? true);
+    setExtraViewerIds(response?.extra_viewer_ids ?? []);
+    setViewerSearch("");
   }, [open, response]);
+
+  /** Everyone in the company (for the visibility picker) */
+  useEffect(() => {
+    if (!open) return;
+    const cid = mission?.company_id || companyId;
+    if (!cid) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("company_id", cid)
+        .order("full_name", { ascending: true }) as any);
+      if (cancelled) return;
+      setCompanyPeople(
+        (data || []).map((p: any) => ({
+          id: p.id,
+          name: p.full_name || p.email || "—",
+          role: null,
+        }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, mission?.company_id, companyId]);
+
 
   useEffect(() => {
     if (!open || !mission?.id) return;
@@ -198,10 +236,13 @@ export const EvaluationResponseDialog = ({
         overall_comment: overallComment.trim() || null,
         overall_average: overallAverage,
         status,
+        share_with_admins: shareWithAdmins,
+        extra_viewer_ids: extraViewerIds,
         evaluated_at: evaluatedAt
           ? new Date(evaluatedAt).toISOString()
           : new Date().toISOString(),
       };
+
 
       if (response?.id) {
         const { error } = await supabase
@@ -262,6 +303,89 @@ export const EvaluationResponseDialog = ({
 
   );
 
+  const filteredCompanyPeople = companyPeople.filter((p) =>
+    p.name.toLowerCase().includes(viewerSearch.trim().toLowerCase())
+  );
+
+  const currentViewers = [
+    instructorName || t("evaluation.visibility.instructor"),
+    ...(response?.status === "completed" || locked
+      ? [studentName || t("evaluation.visibility.student")]
+      : []),
+    ...(shareWithAdmins ? [t("evaluation.visibility.admins")] : []),
+    ...extraViewerIds
+      .map((id) => companyPeople.find((p) => p.id === id)?.name)
+      .filter(Boolean as any as (v: string | undefined) => v is string),
+  ];
+
+  const visibilityBox = (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+          {t("evaluation.visibility.title")}
+        </h4>
+      </div>
+      <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
+        {t("evaluation.visibility.description")}
+      </p>
+
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor="eval-share-admins" className="text-sm">
+          {t("evaluation.visibility.shareWithAdmins")}
+        </Label>
+        <Switch
+          id="eval-share-admins"
+          checked={shareWithAdmins}
+          onCheckedChange={setShareWithAdmins}
+          disabled={locked}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-sm">{t("evaluation.visibility.otherViewers")}</Label>
+        <Input
+          value={viewerSearch}
+          onChange={(e) => setViewerSearch(e.target.value)}
+          placeholder={t("common.search")}
+          disabled={locked}
+          className="h-8"
+        />
+        <div className="max-h-40 overflow-y-auto rounded-md border bg-background/70 divide-y">
+          {filteredCompanyPeople.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {t("evaluation.visibility.noPeople")}
+            </p>
+          ) : (
+            filteredCompanyPeople.map((p) => (
+              <label
+                key={p.id}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50"
+              >
+                <Checkbox
+                  checked={extraViewerIds.includes(p.id)}
+                  disabled={locked}
+                  onCheckedChange={(checked) =>
+                    setExtraViewerIds((prev) =>
+                      checked ? [...new Set([...prev, p.id])] : prev.filter((id) => id !== p.id)
+                    )
+                  }
+                />
+                <span className="truncate">{p.name}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </div>
+
+      <p className="text-xs text-amber-900/90 dark:text-amber-200/90">
+        <span className="font-medium">{t("evaluation.visibility.seenBy")}:</span>{" "}
+        {currentViewers.join(", ")}
+      </p>
+    </div>
+  );
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -303,7 +427,9 @@ export const EvaluationResponseDialog = ({
                 setStudentId,
                 t("evaluation.mission.selectStudent")
               )}
+              visibilitySlot={visibilityBox}
               evaluatedAtSlot={
+
                 <Input
                   type="datetime-local"
                   value={evaluatedAt}

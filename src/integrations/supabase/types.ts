@@ -3615,6 +3615,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           evaluated_at: string
+          extra_viewer_ids: string[]
           id: string
           instructor_id: string | null
           instructor_name: string | null
@@ -3625,6 +3626,7 @@ export type Database = {
           overall_average: number | null
           overall_comment: string | null
           scores: Json
+          share_with_admins: boolean
           status: string
           student_id: string | null
           student_name: string | null
@@ -3637,6 +3639,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           evaluated_at?: string
+          extra_viewer_ids?: string[]
           id?: string
           instructor_id?: string | null
           instructor_name?: string | null
@@ -3647,6 +3650,7 @@ export type Database = {
           overall_average?: number | null
           overall_comment?: string | null
           scores?: Json
+          share_with_admins?: boolean
           status?: string
           student_id?: string | null
           student_name?: string | null
@@ -3659,6 +3663,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           evaluated_at?: string
+          extra_viewer_ids?: string[]
           id?: string
           instructor_id?: string | null
           instructor_name?: string | null
@@ -3669,6 +3674,7 @@ export type Database = {
           overall_average?: number | null
           overall_comment?: string | null
           scores?: Json
+          share_with_admins?: boolean
           status?: string
           student_id?: string | null
           student_name?: string | null
