@@ -458,7 +458,21 @@ export const EvaluationResponseDialog = ({
                   disabled={locked}
                 />
               }
+              overallAiSlot={
+                locked ? undefined : (
+                  <EvaluationAiSummaryButton
+                    templateTitle={template.title}
+                    categories={template.structure}
+                    scores={scores}
+                    comments={comments}
+                    overallAverage={overallAverage}
+                    currentText={overallComment}
+                    onGenerated={setOverallComment}
+                  />
+                )
+              }
               scores={scores}
+
               comments={comments}
               overallComment={overallComment}
               onScoreChange={(subId, value) =>
