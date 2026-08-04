@@ -7807,6 +7807,18 @@
       "titleRequired": "The form needs a title",
       "categoryRequired": "Add at least one main category with a subcategory",
       "saveFailed": "Could not save the form"
+    },
+    "mission": {
+      "perform": "Perform evaluation",
+      "continue": "Continue evaluation",
+      "view": "View evaluation",
+      "saveDraft": "Save draft",
+      "draftSaved": "Draft saved",
+      "saved": "Evaluation saved",
+      "saveError": "Could not save the evaluation",
+      "statusDraft": "Draft",
+      "statusCompleted": "Completed",
+      "selectStudent": "Select student..."
     }
   }
 }

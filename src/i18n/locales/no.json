@@ -7809,6 +7809,18 @@
       "titleRequired": "Skjemaet må ha en tittel",
       "categoryRequired": "Legg til minst én hovedkategori med underkategori",
       "saveFailed": "Kunne ikke lagre skjemaet"
+    },
+    "mission": {
+      "perform": "Utfør evaluering",
+      "continue": "Fortsett evaluering",
+      "view": "Se evaluering",
+      "saveDraft": "Lagre utkast",
+      "draftSaved": "Utkast lagret",
+      "saved": "Evaluering lagret",
+      "saveError": "Kunne ikke lagre evalueringen",
+      "statusDraft": "Utkast",
+      "statusCompleted": "Fullført",
+      "selectStudent": "Velg elev..."
     }
   }
 }

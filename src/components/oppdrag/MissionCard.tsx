@@ -40,6 +40,7 @@ import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
+import { EvaluationMissionButton } from "@/components/oppdrag/EvaluationMissionButton";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { DeviationReportsSection } from "@/components/dashboard/DeviationReportsSection";
@@ -282,6 +283,11 @@ export const MissionCard = ({
             size="sm"
             className="w-full sm:w-auto"
             onApproved={fetchMissions}
+          />
+          <EvaluationMissionButton
+            mission={mission}
+            size="sm"
+            className="w-full sm:w-auto"
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
