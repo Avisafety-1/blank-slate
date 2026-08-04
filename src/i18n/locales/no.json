@@ -7742,7 +7742,8 @@
       "tooLarge": "{{name}} er større enn 10 MB",
       "tooMany": "Maks {{count}} filer per melding",
       "uploadFailed": "Kunne ikke laste opp vedlegg",
-      "bodyFallback": "(vedlegg)"
+      "bodyFallback": "(vedlegg)",
+      "downloadFailed": "Kunne ikke åpne vedlegget"
     }
   },
   "evaluation": {

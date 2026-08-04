@@ -7740,7 +7740,8 @@
       "tooLarge": "{{name}} is larger than 10 MB",
       "tooMany": "Maximum {{count}} files per message",
       "uploadFailed": "Could not upload attachment",
-      "bodyFallback": "(attachment)"
+      "bodyFallback": "(attachment)",
+      "downloadFailed": "Could not open attachment"
     }
   },
   "evaluation": {
