@@ -7821,7 +7821,19 @@
       "statusDraft": "Utkast",
       "statusCompleted": "Fullført",
       "selectStudent": "Velg elev...",
-      "selectInstructor": "Velg instruktør..."
+      "selectInstructor": "Velg instruktør...",
+      "noPersonnel": "Ingen personell funnet"
+    },
+    "visibility": {
+      "title": "Synlighet",
+      "description": "Utkast er synlig for instruktøren. Når evalueringen fullføres blir den også synlig for eleven. Administratorer har alltid innsyn.",
+      "shareWithAdmins": "Del med alle administratorer",
+      "otherViewers": "Andre personer med innsyn",
+      "noPeople": "Ingen personer funnet",
+      "seenBy": "Sees nå av",
+      "instructor": "Instruktør",
+      "student": "Elev",
+      "admins": "Administratorer"
     }
   }
 }

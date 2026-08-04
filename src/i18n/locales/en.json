@@ -7819,7 +7819,19 @@
       "statusDraft": "Draft",
       "statusCompleted": "Completed",
       "selectStudent": "Select student...",
-      "selectInstructor": "Select instructor..."
+      "selectInstructor": "Select instructor...",
+      "noPersonnel": "No personnel found"
+    },
+    "visibility": {
+      "title": "Visibility",
+      "description": "Drafts are visible to the instructor. When the evaluation is completed it also becomes visible to the student. Administrators always have access.",
+      "shareWithAdmins": "Share with all administrators",
+      "otherViewers": "Other people with access",
+      "noPeople": "No people found",
+      "seenBy": "Currently seen by",
+      "instructor": "Instructor",
+      "student": "Student",
+      "admins": "Administrators"
     }
   }
 }
