@@ -1,38 +1,26 @@
-## Mål
+# Vedlegg og e-postvarsel i meldingssvar
 
-En visuelt sterk, norsk PowerPoint-CV (9 slides) for søknaden til TUR Digital — med tydelige nøkkeltall først og teknologi/verktøy i fokus, ikke luftfart.
+To utvidelser av inbox/meldingstråder:
+1. Avkrysning "Send også som e-post" i svarfeltet (av som standard).
+2. Opplasting av filer/bilder i chatten, synlig for alle deltakere i tråden.
 
-## Kontaktinfo
+## E-post-avkrysning
 
-Gard Haug-Hansen · Hauggard@gmail.com · avisafe.no · app.avisafe.no (demo på forespørsel). Ingen LinkedIn.
+- Ny checkbox under svarfeltet i meldingsdialogen, umerket som standard, med i18n-nøkler i både `no.json` og `en.json`.
+- Valget sendes videre som `channels: { email: true }` til `send-message`-funksjonen (samme mekanisme som Ny melding-dialogen bruker i dag).
+- I dag ignorerer serveren e-postkanalen for ikke-admins. Svar i en tråd blir unntatt: alle deltakere i en eksisterende tråd får lov til å sende e-postvarsel til de andre deltakerne. Nye meldinger (ikke svar) beholder dagens admin-begrensning.
+- E-posten som sendes får samme utforming som i dag, med lenke tilbake til meldingen i AviSafe, og lister vedlegg som lenker når det finnes vedlegg.
 
-## Visuell retning
+## Vedlegg (fil/bilde)
 
-- Forside: opplastet blå nettverksgrafikk som fullbleed bakgrunn, navn/tittel venstrestilt i lys tekst.
-- Resten: lys/mørk "sandwich" — lyse innholdsslides, mørk navy avslutning.
-- Palett (matcher AviSafe dark/glass-uttrykk): navy `0B1B33`, elektrisk blå `2E9BFF`, isblå `CADCFC`, off-white `F7F9FC`.
-- Font: Arial Black i titler, Calibri i brødtekst. Motiv som går igjen: tynne kort med blå venstrekant + tall-callouts.
-- Ingen streker under titler, ingen rene tekstslides — hver slide har kort, ikonsirkler, KPI-blokker eller kolonner.
+- Ny privat storage-bucket `message-attachments`, filer lagret under `<thread_root_id>/<message_id>/<filnavn>`.
+- Ny tabell `internal_message_attachments` (message_id, storage_path, filnavn, mime-type, størrelse, opplaster, tidspunkt) med GRANT + RLS: lese/skrive kun for deltakere i tråden, gjenbruk av eksisterende `can_access_message`-funksjon.
+- RLS på `storage.objects` for bucketen bruker samme deltakersjekk, slik at kun trådens deltakere kan hente filene. Nedlasting/visning skjer via signerte URL-er (1 time), i tråd med eksisterende mønster i appen.
+- Grensesnitt: binders-ikon ved svarfeltet (og i Ny melding-dialogen), valgte filer vises som fjernbare chips før sending. Bilder vises som miniatyrbilde i meldingsboblen og åpnes i full størrelse ved klikk; andre filer vises som nedlastbar rad med ikon, navn og størrelse.
+- Grense: maks 5 filer per melding, 10 MB per fil, vanlige bilde-/dokumenttyper. Feilmeldinger via toast, i18n.
+- Push-varsel og e-post nevner at meldingen har vedlegg.
 
-## Slide-struktur
+## Teknisk
 
-1. **Forside** — Navn, "AI Product Engineer · Systemarkitekt · AI-assistert utvikler", kontaktlinje, blå bakgrunn.
-2. **Nøkkeltall / KPI** — 6 store tall: 6 711 AI-dialoger, 3 371 AI-kodeendringer, ~22 prompts/dag siden nov 2025, Top 10 % Builder på Lovable, 1 SaaS fra idé til produksjon, 10 år jagerfly + 2,5 år Safety Manager.
-3. **Profil** — kort avsnitt + 4 kjennetegn. Inkluderer sitatet "Ja – så lenge vi klarer å definere problemet godt nok."
-4. **AI-drevet utviklingsmetode** — hvordan AI brukes gjennom hele løpet (arkitektur, DB-design, refaktorering, test, dok, prompt engineering) + verktøy: Lovable, ChatGPT, Claude, MCP.
-5. **Teknisk stack** — kolonner: Frontend (React, TypeScript, Tailwind, shadcn, React Query, PWA, i18n) · Backend (PostgreSQL, Supabase, Edge Functions, RLS, RPC, cron, realtime, webhooks) · Auth/Sikkerhet (OAuth, OIDC, JWT, Passkeys, TOTP, RBAC, kryptering) · Infra (Fly.io, Docker, GitHub, Sentry, Postman).
-6. **Systemarkitektur i praksis** — multi-tenant SaaS, hierarkisk selskapsmodell med RLS-isolasjon, feature flags, audit trail, eventdrevne flyter, offline-first PWA med køsystem, ytelsesoptimalisering (indekser, viewport-fetching).
-7. **Integrasjoner** — gruppert i 4 kort: Betaling & kommunikasjon (Stripe, Vipps, GatewayAPI SMS, Resend, Web Push), Kart & geodata (Leaflet, WFS/WMTS, ArcGIS, OpenStreetMap/Overpass, Eurostat, nasjonale luftromskilder i 6+ land), Drone & operasjon (DJI FlightHub 2, ArduPilot-parser på Fly.io, SafeSky, DroneTag), Rapportering & marked (ECCAIRS 2, Meta Graph API, LinkedIn API).
-8. **Utvalgte leveranser** — 6 konkrete moduler med resultat: AI-risikovurdering, Audit & Compliance Center, intern meldingsplattform med push/SMS/broadcast, kart- og luftromsmotor for Europa, MCP-server + OIDC for AI-klienter, flyloggsanalyse med 3D-visualisering.
-9. **Erfaring & egenskaper (mørk avslutning)** — AviSafe AS (produktutvikler/systemarkitekt), Safety Manager 2,5 år, Jagerflyger 10 år, kort egenskapsliste + kontaktinfo gjentatt.
-
-## Teknisk gjennomføring
-
-- Bygges med `pptxgenjs` i et Node-script under `/tmp`, bilder embeddes som base64.
-- Innhold hentes fra en faktisk gjennomgang av prosjektet (edge functions, integrasjoner, migrasjoner, minnefiler) slik at listene reflekterer det som faktisk er bygget — ikke bare ChatGPT-utkastet.
-- Ingen oppdiktede tall: kun KPI-ene du selv har oppgitt (6 711 / 3 371 / Top 10 %) og verifiserbare fakta fra kodebasen.
-- Leveres til `/mnt/documents/CV_Gard_Haug-Hansen.pptx`.
-
-## Kvalitetssikring
-
-Validering med `validate_document.py`, konvertering til PDF/bilder og visuell inspeksjon av alle 9 slides (overflow, kontrast, marger, overlapp) med minst én fiks-og-verifiser-runde før levering.
+- Filer lastes opp fra klienten etter at meldingen er opprettet: `send-message` returnerer allerede `message_id`, som brukes til opplasting og innsetting av vedleggsrader.
+- Berørte filer: `src/components/profile/InboxTab.tsx`, `ComposeMessageDialog.tsx`, `hooks/useSendMessage.ts`, ny `hooks/useMessageAttachments.ts`, `useMessageThread.ts` (hente vedlegg for tråden), `supabase/functions/send-message/index.ts`, ny migrasjon + bucket, samt `no.json`/`en.json`.
