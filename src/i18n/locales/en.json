@@ -7726,6 +7726,14 @@
     "replyToAll": "Reply goes to all participants",
     "replyToSenderOnly": "Reply goes to the sender only",
     "replyToSender": "Reply goes to {{name}}",
-    "senderFallback": "the sender"
+    "senderFallback": "the sender",
+    "attachments": {
+      "attach": "Attach",
+      "sendEmail": "Also send email",
+      "tooLarge": "{{name}} is larger than 10 MB",
+      "tooMany": "Maximum {{count}} files per message",
+      "uploadFailed": "Could not upload attachment",
+      "bodyFallback": "(attachment)"
+    }
   }
 }

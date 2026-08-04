@@ -7728,6 +7728,14 @@
     "replyToAll": "Svaret går til alle deltakere",
     "replyToSenderOnly": "Svaret går kun til avsender",
     "replyToSender": "Svaret går til {{name}}",
-    "senderFallback": "avsenderen"
+    "senderFallback": "avsenderen",
+    "attachments": {
+      "attach": "Legg ved",
+      "sendEmail": "Send også e-post",
+      "tooLarge": "{{name}} er større enn 10 MB",
+      "tooMany": "Maks {{count}} filer per melding",
+      "uploadFailed": "Kunne ikke laste opp vedlegg",
+      "bodyFallback": "(vedlegg)"
+    }
   }
 }

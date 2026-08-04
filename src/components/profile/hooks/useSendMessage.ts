@@ -11,6 +11,7 @@ export interface SendMessagePayload {
   parent_id?: string | null;
   severity?: "critical" | "warning" | "info";
   channels?: { email?: boolean; sms?: boolean };
+  attachment_count?: number;
 }
 
 

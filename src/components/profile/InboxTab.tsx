@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Inbox,
   ArrowRight,
@@ -22,13 +24,26 @@ import {
   Users,
   Megaphone,
   MessagesSquare,
+  Paperclip,
+  FileText,
+  X,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { useMessageReactions, useToggleReaction, REACTION_EMOJIS } from "./hooks/useMessageReactions";
+import {
+  useMessageAttachments,
+  useInvalidateAttachments,
+  uploadMessageAttachments,
+  formatFileSize,
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_SIZE,
+} from "./hooks/useMessageAttachments";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
@@ -70,7 +85,13 @@ export const InboxTab = () => {
 
   const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
   const { data: reactions = [] } = useMessageReactions(threadMessageIds);
+  const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
+  const invalidateAttachments = useInvalidateAttachments();
   const toggleReaction = useToggleReaction();
+  const [replyEmail, setReplyEmail] = useState(false);
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -135,6 +156,8 @@ export const InboxTab = () => {
   useEffect(() => {
     setReplyText("");
     setPickerFor(null);
+    setReplyFiles([]);
+    setReplyEmail(false);
   }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
@@ -171,17 +194,54 @@ export const InboxTab = () => {
   const canReply = replyRecipientIds.length > 0;
 
 
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    const tooBig = incoming.find((f) => f.size > MAX_ATTACHMENT_SIZE);
+    if (tooBig) {
+      toast.error(t("inbox.attachments.tooLarge", "{{name}} is larger than 10 MB", { name: tooBig.name }));
+      return;
+    }
+    setReplyFiles((cur) => {
+      const next = [...cur, ...incoming].slice(0, MAX_ATTACHMENTS);
+      if (cur.length + incoming.length > MAX_ATTACHMENTS) {
+        toast.error(t("inbox.attachments.tooMany", "Maximum {{count}} files per message", { count: MAX_ATTACHMENTS }));
+      }
+      return next;
+    });
+  };
+
   const handleSendReply = async () => {
-    if (!replyText.trim() || replyRecipientIds.length === 0 || !selected) return;
+    if ((!replyText.trim() && replyFiles.length === 0) || replyRecipientIds.length === 0 || !selected) return;
     const lastMessage = thread[thread.length - 1] ?? selected;
-    await send.mutateAsync({
+    const res: any = await send.mutateAsync({
       recipient_ids: replyRecipientIds,
       subject: selected.subject,
-      body: replyText.trim(),
+      body: replyText.trim() || t("inbox.attachments.bodyFallback", "(attachment)"),
       parent_id: lastMessage.id,
+      channels: replyEmail ? { email: true } : undefined,
+      attachment_count: replyFiles.length || undefined,
     });
+
+    if (replyFiles.length) {
+      const ids = Array.from(
+        new Set(((res?.results ?? []) as any[]).filter((r) => r.ok && r.message_id).map((r) => r.message_id)),
+      ) as string[];
+      setUploading(true);
+      try {
+        for (const id of ids) await uploadMessageAttachments(id, replyFiles);
+        invalidateAttachments();
+      } catch (e: any) {
+        toast.error(t("inbox.attachments.uploadFailed", "Could not upload attachment") + `: ${e?.message ?? ""}`);
+      } finally {
+        setUploading(false);
+      }
+    }
+
     setReplyText("");
+    setReplyFiles([]);
   };
+
 
   const renderCounterparty = (m: InboxMessage) => {
     if (filter === "sent") {
@@ -397,7 +457,40 @@ export const InboxTab = () => {
                           {meta} · {new Date(m.created_at).toLocaleString(i18n.language)}
                         </div>
                         <div className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</div>
+                        {attachments.filter((a) => a.message_id === m.id).length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {attachments
+                              .filter((a) => a.message_id === m.id)
+                              .map((a) =>
+                                a.mime_type?.startsWith("image/") && a.url ? (
+                                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block">
+                                    <img
+                                      src={a.url}
+                                      alt={a.file_name}
+                                      loading="lazy"
+                                      className="max-h-48 w-auto rounded-md border border-border object-cover"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    key={a.id}
+                                    href={a.url ?? "#"}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    download={a.file_name}
+                                    className="flex items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs hover:bg-muted"
+                                  >
+                                    <FileText className="w-4 h-4 shrink-0" />
+                                    <span className="truncate flex-1">{a.file_name}</span>
+                                    <span className="text-muted-foreground shrink-0">{formatFileSize(a.file_size)}</span>
+                                    <Download className="w-3.5 h-3.5 shrink-0" />
+                                  </a>
+                                ),
+                              )}
+                          </div>
+                        )}
                       </div>
+
 
                       {pickerFor === m.id && (
                         <div
@@ -458,21 +551,69 @@ export const InboxTab = () => {
                     maxLength={4000}
                     className="resize-none"
                   />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-muted-foreground truncate">
-                      {selected.is_broadcast || replyRecipientIds.length <= 1
-                        ? t("inbox.replyToSender", "Reply goes to {{name}}", {
-                            name:
-                              selected.sender_name ||
-                              selected.sender_email ||
-                              t("inbox.senderFallback", "the sender"),
-                          })
 
-                        : t("inbox.replyToAll", "Reply goes to all participants")}
-                    </span>
+                  {replyFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {replyFiles.map((f, i) => (
+                        <span
+                          key={`${f.name}-${i}`}
+                          className="flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs max-w-full"
+                        >
+                          <Paperclip className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[140px]">{f.name}</span>
+                          <span className="text-muted-foreground shrink-0">{formatFileSize(f.size)}</span>
+                          <button
+                            type="button"
+                            aria-label={t("common.remove", "Remove")}
+                            onClick={() => setReplyFiles((cur) => cur.filter((_, idx) => idx !== i))}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-                    <Button size="sm" onClick={handleSendReply} disabled={send.isPending || !replyText.trim()}>
-                      {send.isPending ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          addFiles(e.target.files);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={replyFiles.length >= MAX_ATTACHMENTS}
+                      >
+                        <Paperclip className="w-4 h-4 mr-1" />
+                        {t("inbox.attachments.attach", "Attach")}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="reply-email"
+                          checked={replyEmail}
+                          onCheckedChange={(v) => setReplyEmail(v === true)}
+                        />
+                        <Label htmlFor="reply-email" className="text-xs font-normal cursor-pointer">
+                          {t("inbox.attachments.sendEmail", "Also send email")}
+                        </Label>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      onClick={handleSendReply}
+                      disabled={send.isPending || uploading || (!replyText.trim() && replyFiles.length === 0)}
+                    >
+                      {send.isPending || uploading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
                         <Send className="w-4 h-4 mr-2" />
@@ -480,7 +621,19 @@ export const InboxTab = () => {
                       {t("inbox.sendReply", "Send svar")}
                     </Button>
                   </div>
+
+                  <span className="block text-xs text-muted-foreground truncate">
+                    {selected.is_broadcast || replyRecipientIds.length <= 1
+                      ? t("inbox.replyToSender", "Reply goes to {{name}}", {
+                          name:
+                            selected.sender_name ||
+                            selected.sender_email ||
+                            t("inbox.senderFallback", "the sender"),
+                        })
+                      : t("inbox.replyToAll", "Reply goes to all participants")}
+                  </span>
                 </div>
+
               )}
             </>
           )}
