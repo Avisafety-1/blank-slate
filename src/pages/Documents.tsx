@@ -269,7 +269,11 @@ const Documents = () => {
               isLoading={isLoading}
               onDocumentClick={handleOpenDocument}
               getDocumentStatus={getDocumentStatus}
+              canEditEvaluation={isAdmin}
+              onViewEvaluation={(doc) => setViewingTemplate((doc as any).evaluation_template)}
+              onEditEvaluation={(doc) => setEditingTemplate((doc as any).evaluation_template)}
             />
+
 
             <DocumentUploadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={() => {
               refetch();
@@ -286,6 +290,31 @@ const Documents = () => {
               open={createEvaluationOpen}
               onOpenChange={setCreateEvaluationOpen}
             />
+
+            <EvaluationFormDialog
+              open={!!editingTemplate}
+              onOpenChange={(open) => { if (!open) setEditingTemplate(null); }}
+              template={editingTemplate}
+            />
+
+            <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setViewingTemplate(null)}>
+              <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="break-words pr-6">{viewingTemplate?.title}</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1 min-h-0 pr-2 -mr-2">
+                  {viewingTemplate && (
+                    <EvaluationFormPreview
+                      title={viewingTemplate.title}
+                      description={viewingTemplate.description ?? ""}
+                      categories={viewingTemplate.structure}
+                      headerDisabled
+                    />
+                  )}
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+
 
 
             <DocumentCardModal
