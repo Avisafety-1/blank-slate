@@ -1,39 +1,27 @@
-# Hvorfor Sverre ikke vises som "koblet til dronen"
+# Bildevisning i meldingstråden (lightbox)
 
-## Årsaken (bekreftet i databasen)
+## Problem
+Bilder i innboksen ligger i en `<a target="_blank">`. På iPad/Safari bytter dette fane, og når man
+går tilbake er meldingsdialogen lukket fordi appen er lastet på nytt.
 
-To droner i selskapet har **samme serienummer** `1581F9DEC2584029`:
+## Løsning
+Bytt til en intern bildeviser (lightbox) som åpnes oppå meldingstråden, uten navigasjon.
 
-| Drone | Tilknyttet personell |
-|---|---|
-| DJI Mini 5 Sverre | Sverre Rasmussen |
-| DJI Mini 5 Martin Madsbu | (ingen) |
-
-Ved opplasting matches dronen på serienummer, og første treff i listen velges — her ble
-"DJI Mini 5 Martin Madsbu" valgt (synlig i oppsummeringen i skjermbildet: "DJI Mini 5 Martin
-Madsbu +15 min flytid"). Den dronen har ingen tilknyttet personell, derfor blir ingen i
-pilotlisten uthevet. Uthevingen fungerer altså som den skal — den peker bare på feil drone.
-
-## Forslag til løsning
-
-1. **Rydd i data (viktigst):** ett serienummer skal kun ligge på én drone. Enten fjernes/rettes
-   serienummeret på "DJI Mini 5 Martin Madsbu", eller den slettes hvis den er en duplikat-
-   oppføring. Dette gjøres i drone-kortet — jeg kan også gjøre det for deg hvis du sier hvilken
-   som er riktig.
-
-2. **Gjør automatikken robust ved duplikater (kodeendring):**
-   - I `matchDroneFromResult` i `src/components/UploadDroneLogDialog.tsx`: samle *alle* droner
-     som matcher serienummeret i stedet for bare første treff.
-   - Ved flere treff: prioriter dronen som har innlogget bruker i `drone_personnel`, deretter
-     dronen med sist flydd-dato. Vis en tydelig varsel-boks ("Flere droner har dette
-     serienummeret — kontroller at riktig er valgt") med lenke til drone-velgeren.
-   - Ved ett treff: uendret oppførsel.
-
-3. **Uthevingsfarge:** dagens utheving er lysegrønn (`emerald`). Skal den byttes til gul, endres
-   klassene i pilot-listen i samme fil.
+- Klikk på et bilde åpner en overlay-visning i samme dialog — ingen ny fane, meldingsdialogen
+  forblir åpen bak.
+- Viseren viser bildet i full størrelse (tilpasset skjerm) med filnavn i toppen.
+- Er det flere bilder i tråden, kan man bla mellom dem med pil venstre/høyre-knapper,
+  tastaturpiler og sveip på touch. Teller viser «2 / 5».
+- Lukkes med X, Escape eller klikk utenfor bildet.
+- Nedlastingsknapp i viseren for det aktive bildet (bruker eksisterende `downloadAttachment`).
+- Ikke-bilder (PDF o.l.) beholder dagens oppførsel med nedlasting.
 
 ## Teknisk
-
-- Berørt fil: `src/components/UploadDroneLogDialog.tsx` (linje ~686 matchlogikk, ~2366 pilotliste).
-- Ingen databaseendringer eller migrasjoner nødvendig for kodedelen.
-- Nye i18n-nøkler for duplikat-varselet legges i både `no.json` og `en.json`.
+- Ny komponent `src/components/profile/AttachmentLightbox.tsx` bygget på eksisterende
+  `Dialog`-primitiv, med `z-index` over meldingsdialogen.
+- `src/components/profile/InboxTab.tsx`: erstatt `<a target="_blank">` rundt bildet med en knapp
+  som setter `lightboxIndex`. Bildelisten for tråden utledes fra `attachments` filtrert på
+  `mime_type?.startsWith("image/")`, slik at blaing dekker hele tråden (ikke bare én melding).
+- Nye i18n-nøkler (`inbox.attachments.preview*`, next/prev/close/download) i både `no.json` og
+  `en.json`.
+- Ingen databaseendringer.
