@@ -3598,6 +3598,166 @@ export type Database = {
         }
         Relationships: []
       }
+      evaluation_responses: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          evaluated_at: string
+          id: string
+          instructor_id: string | null
+          instructor_name: string | null
+          mission_end: string | null
+          mission_id: string | null
+          mission_name: string | null
+          mission_start: string | null
+          overall_average: number | null
+          overall_comment: string | null
+          scores: Json
+          student_id: string | null
+          student_name: string | null
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          evaluated_at?: string
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          mission_end?: string | null
+          mission_id?: string | null
+          mission_name?: string | null
+          mission_start?: string | null
+          overall_average?: number | null
+          overall_comment?: string | null
+          scores?: Json
+          student_id?: string | null
+          student_name?: string | null
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          evaluated_at?: string
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          mission_end?: string | null
+          mission_id?: string | null
+          mission_name?: string | null
+          mission_start?: string | null
+          overall_average?: number | null
+          overall_comment?: string | null
+          scores?: Json
+          student_id?: string | null
+          student_name?: string | null
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_responses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_responses_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluation_templates: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          global_visibility: boolean
+          id: string
+          is_active: boolean
+          structure: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          global_visibility?: boolean
+          id?: string
+          is_active?: boolean
+          structure?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          global_visibility?: boolean
+          id?: string
+          is_active?: boolean
+          structure?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fh2_airspace_feed_config: {
         Row: {
           api_key_encrypted: string | null
