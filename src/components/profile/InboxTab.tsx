@@ -465,14 +465,23 @@ export const InboxTab = () => {
                               .filter((a) => a.message_id === m.id)
                               .map((a) =>
                                 a.mime_type?.startsWith("image/") && a.url ? (
-                                  <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="block">
+                                  <button
+                                    key={a.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const i = imageAttachments.findIndex((img) => img.id === a.id);
+                                      if (i >= 0) setLightboxIndex(i);
+                                    }}
+                                    className="block"
+                                  >
                                     <img
                                       src={a.url}
                                       alt={a.file_name}
                                       loading="lazy"
                                       className="max-h-48 w-auto rounded-md border border-border object-cover"
                                     />
-                                  </a>
+                                  </button>
                                 ) : (
                                   <button
                                     key={a.id}
