@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File, Building2 } from "lucide-react";
+import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File, Building2, Eye, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -220,6 +220,20 @@ const DocumentsList = ({
                 <TableCell className="bg-slate-200/50 text-slate-950 text-right pl-1 md:pl-4">
                   <TooltipProvider>
                     <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+                      {(doc as any).evaluation_template && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => onViewEvaluation?.(doc)}>
+                            <Eye className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">{t('evaluation.section.view')}</span>
+                          </Button>
+                          {canEditEvaluation && (
+                            <Button variant="outline" size="sm" onClick={() => onEditEvaluation?.(doc)}>
+                              <Pencil className="h-4 w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">{t('common.edit')}</span>
+                            </Button>
+                          )}
+                        </>
+                      )}
                       {doc.nettside_url && (
                         <Tooltip>
                           <TooltipTrigger asChild>
