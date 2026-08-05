@@ -2439,17 +2439,32 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </Select>
                   {(() => {
                     const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
-                    if (!selectedDroneId || !parsedSn || !selectedDrone) return null;
+                    if (!parsedSn) return null;
+                    if (ambiguousDroneMatch) {
+                      return (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
+                          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                          {t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
+                        </p>
+                      );
+                    }
+                    if (!selectedDroneId || !selectedDrone) return null;
                     const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
                     if (!isMatched) return null;
                     const storedSn = (selectedDrone.serienummer || '').trim();
-                    const snDiffers = storedSn && storedSn !== parsedSn;
+                    const canUpdate = parsedSnIsMoreComplete(storedSn, parsedSn);
+                    const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
                     return (
                       <>
                         <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />Auto-matchet via SN
+                          <CheckCircle className="w-3 h-3" />{t('uploadLog.sn.autoMatched')}
                         </p>
-                        {snDiffers && (
+                        {storedIsFuller && (
+                          <p className="text-[11px] leading-tight text-muted-foreground">
+                            {t('uploadLog.sn.storedIsFuller', { stored: storedSn, parsed: parsedSn })}
+                          </p>
+                        )}
+                        {canUpdate && (
                           <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                             <Checkbox
                               id="update-drone-sn"
@@ -2458,7 +2473,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                               className="mt-0.5"
                             />
                             <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
-                              Lagret SN ({storedSn}) er kortere enn loggens SN ({parsedSn}). Oppdater {terminology.vehicle} sitt serienummer til full verdi?
+                              {t('uploadLog.sn.updateToFull', { stored: storedSn, parsed: parsedSn, vehicle: terminology.vehicle })}
                             </Label>
                           </div>
                         )}
