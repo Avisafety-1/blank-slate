@@ -430,6 +430,7 @@ export const InboxTab = () => {
                         sender_company: selected.sender_company,
                         body: selected.body,
                         created_at: selected.created_at,
+                         is_broadcast: selected.is_broadcast,
                       },
                     ]
                 ).map((m) => {
