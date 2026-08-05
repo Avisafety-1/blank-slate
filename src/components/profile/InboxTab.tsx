@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInboxMessages, useMarkMessage, type InboxMessage, type MessageParty } from "./hooks/useInboxMessages";
 import { useMessageThread } from "./hooks/useMessageThread";
+import { useMessageReadReceipts } from "./hooks/useMessageReadReceipts";
 import { useSendMessage } from "./hooks/useSendMessage";
 import { useMessageReactions, useToggleReaction, REACTION_EMOJIS } from "./hooks/useMessageReactions";
 import {
@@ -89,6 +90,7 @@ export const InboxTab = () => {
   const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
   const { data: reactions = [] } = useMessageReactions(threadMessageIds);
   const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
+  const { data: readReceipts = [] } = useMessageReadReceipts(threadMessageIds);
   const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/") && a.url);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   useEffect(() => {
@@ -517,6 +519,47 @@ export const InboxTab = () => {
                           </div>
                         )}
                       </div>
+
+                      {mine && !(m as { is_broadcast?: boolean }).is_broadcast && (() => {
+                        const rows = readReceipts.filter(
+                          (r) => r.message_id === m.id && r.recipient_id !== user?.id,
+                        );
+                        if (rows.length === 0) return null;
+                        const seen = rows.filter((r) => r.read_at);
+                        if (seen.length === 0) {
+                          return (
+                            <div className="text-[11px] text-muted-foreground">
+                              {t("inbox.notReadYet", "Sendt")}
+                            </div>
+                          );
+                        }
+                        const names = seen.map((r) => r.party.full_name || r.party.email || "—");
+                        const label =
+                          seen.length === rows.length && rows.length > 1
+                            ? t("inbox.readByAll", "Sett av alle")
+                            : names.length > 3
+                              ? t("inbox.readByMore", {
+                                  names: names.slice(0, 3).join(", "),
+                                  count: names.length - 3,
+                                  defaultValue: "Sett av {{names}} + {{count}} til",
+                                })
+                              : t("inbox.readBy", { names: names.join(", "), defaultValue: "Sett av {{names}}" });
+                        const title = seen
+                          .map(
+                            (r) =>
+                              `${r.party.full_name || r.party.email || "—"}: ${new Date(
+                                r.read_at as string,
+                              ).toLocaleString(i18n.language)}`,
+                          )
+                          .join("\n");
+                        return (
+                          <div className="text-[11px] text-muted-foreground" title={title}>
+                            {label}
+                          </div>
+                        );
+                      })()}
+
+
 
 
                       {pickerFor === m.id && (
