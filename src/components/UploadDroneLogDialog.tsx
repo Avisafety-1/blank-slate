@@ -709,12 +709,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const matchDroneFromResult = (data: DroneLogResult) => {
     if (!data.aircraftSN && !data.aircraftSerial) {
       setUnmatchedDroneSN(null);
+      setAmbiguousDroneMatch(false);
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-    const match = drones.find(d =>
-      snMatchesDjiSn(d.serienummer, sn) || snMatchesDjiSn(d.internal_serial, sn)
-    );
+    const matches = findSnMatches(drones as any[], sn);
+    if (matches.length > 1) {
+      // Several drones share the same (truncated) SN prefix — let the user choose.
+      setAmbiguousDroneMatch(true);
+      setUnmatchedDroneSN(null);
+      return;
+    }
+    setAmbiguousDroneMatch(false);
+    const match = matches[0];
     if (match) {
       setSelectedDroneId(match.id);
       toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
