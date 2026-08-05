@@ -1,30 +1,28 @@
-# Match drone ut fra loggens eier, ikke innlogget bruker
+# "Sett av …" (lesekvittering) i meldingstråder
 
-## Bekreftet årsak
+## Mål
 
-To droner deler samme 16-tegns SN-prefiks fra DJI-loggen (`1581F9DEC2584029`):
+Under hver melding du selv har sendt vises hvem som har lest den, f.eks. «Sett av Sverre, Martin» — og «Sett av alle» når alle mottakere har lest den.
 
-- `DJI Mini 5 Martin Madsbu` (`...4JC0`) — tilknyttet Martin Sunnevåg Madsbu
-- `DJI Mini 5 Sverre` (`...4G1L`) — tilknyttet Sverre Rasmussen
+## Slik fungerer det
 
-Alle ventende logger med dette SN-et har `matched_drone_id` satt til Martin sin drone — også de som eies av Sverre. Dialogen bruker `matched_drone_id` direkte når den finnes, og faller ellers tilbake på en tiebreaker basert på **innlogget bruker** (deg). Resultatet: Sverre sin logg matcher til Martin sin drone, og piloten står som deg.
-
-## Løsning
-
-Bruk loggens eier (`pending_dji_logs.user_id`) som utgangspunkt, ikke innlogget bruker.
-
-1. Når en ventende logg åpnes:
-   - Sett pilot til loggens eier (Sverre), ikke innlogget bruker. Brukeren kan fortsatt endre pilot manuelt.
-   - Hent dronene den eieren er tilknyttet og bruk dem som tiebreaker ved flere SN-treff.
-2. Overstyr feilaktig forhåndsmatch: hvis lagret `matched_drone_id` peker på en drone som deler SN-prefiks med en drone eieren er tilknyttet, velges eierens drone i stedet.
-3. Når pilot endres manuelt i dialogen, kjøres tiebreakeren på nytt med den nye pilotens tilknyttede droner (kun så lenge dronen ikke er valgt manuelt).
-4. Fortsatt tvetydig (ingen tilknytning, eller flere) → dagens manuelle valg og «tvetydig»-melding.
+- Lesetidspunkt lagres allerede når en mottaker åpner tråden (`internal_message_recipients.read_at` settes ved «marker som lest»).
+- Ny linje nederst i hver melding **du har sendt**, i liten grå tekst:
+  - Ingen har lest: «Sendt»
+  - Noen har lest: «Sett av Fornavn Etternavn» (opptil 3 navn, deretter «+ 2 til»)
+  - Alle mottakere har lest: «Sett av alle»
+- Hover/trykk på linjen viser tidspunkt per person.
+- Kun avsender ser lesestatus for sin egen melding; mottakere ser ingenting nytt.
+- Oppdateres live sammen med resten av tråden (samme realtime-invalidering som i dag).
 
 ## Teknisk
 
-- `src/components/UploadDroneLogDialog.tsx`
-  - Erstatt `myDroneIds` (basert på `user.id`) med `pilotDroneIds`, hentet fra `drone_personnel` for gjeldende `pilotId` (som settes til loggeierens id ved åpning av ventende logg).
-  - `handleSelectPendingLog`: sett `pilotId` fra `pendingLog.user_id` (hvis personen finnes i personellisten), hent eierens tilknyttede droner, og kjør `matchDroneFromResult` med disse — også når `matched_drone_id` finnes, men bare for å bytte til eierens drone innenfor samme SN-treff.
-  - `findSnMatches`-signaturen er uendret; kallstedene (enkel + de to bulk-løkkene) sender `pilotDroneIds`.
-  - Toast-teksten `uploadLog.sn.matchedByLinkedPersonnel` gjenbrukes; ny variant som nevner pilotnavn legges til i `no.json` og `en.json`.
-- Ingen databaseendringer; eksisterende feil `matched_drone_id` i ventende logger korrigeres i UI ved behandling.
+- Ny hook `src/components/profile/hooks/useMessageReadReceipts.ts`
+  - Henter `message_id, recipient_id, read_at` fra `internal_message_recipients` for alle `threadMessageIds`.
+  - Gjenbruker `fetchParties` for navn/e-post. `staleTime: 0`.
+  - RLS er allerede på plass: `can_see_message_recipients` lar trådens deltakere lese andres rader — ingen databaseendring nødvendig.
+- `src/components/profile/InboxTab.tsx`
+  - Kaller hooken med eksisterende `threadMessageIds`.
+  - Rendrer en liten `ReadReceiptLine` under meldingsboblen når `m.sender_id === user.id` og meldingen ikke er broadcast.
+- i18n-nøkler i både `no.json` og `en.json`: `inbox.readBy`, `inbox.readByAll`, `inbox.readByMore`, `inbox.notReadYet`.
+- Ingen endringer i edge functions eller database.
