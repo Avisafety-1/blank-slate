@@ -7748,7 +7748,11 @@
       "closePreview": "Lukk forhåndsvisning",
       "previousImage": "Forrige bilde",
       "nextImage": "Neste bilde"
-    }
+    },
+    "readBy": "Sett av {{names}}",
+    "readByAll": "Sett av alle",
+    "readByMore": "Sett av {{names}} + {{count}} til",
+    "notReadYet": "Sendt"
   },
   "evaluation": {
     "untitled": "Uten tittel",

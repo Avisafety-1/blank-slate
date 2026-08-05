@@ -7746,7 +7746,11 @@
       "closePreview": "Close preview",
       "previousImage": "Previous image",
       "nextImage": "Next image"
-    }
+    },
+    "readBy": "Seen by {{names}}",
+    "readByAll": "Seen by everyone",
+    "readByMore": "Seen by {{names}} + {{count}} more",
+    "notReadYet": "Sent"
   },
   "evaluation": {
     "untitled": "Untitled",
