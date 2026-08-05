@@ -2140,7 +2140,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!updateDroneSnConfirmed || !selectedDroneId || !result) return;
     const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
     const drone = drones.find(d => d.id === selectedDroneId);
-    if (!drone || !parsedSn || (drone.serienummer || '').trim() === parsedSn) return;
+    if (!drone || !parsedSn || !parsedSnIsMoreComplete(drone.serienummer, parsedSn)) return;
     const { error } = await supabase
       .from('drones')
       .update({ serienummer: parsedSn })
