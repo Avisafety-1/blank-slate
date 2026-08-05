@@ -178,6 +178,7 @@ export function useInboxMessages(filter: "all" | "unread" | "done" | "sent" = "a
     const invalidate = () => {
       qc.invalidateQueries({ queryKey: ["inbox"] });
       qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      qc.invalidateQueries({ queryKey: ["message-read-receipts"] });
       qc.invalidateQueries({ queryKey: ["inbox-thread"] });
     };
     const channel = supabase
