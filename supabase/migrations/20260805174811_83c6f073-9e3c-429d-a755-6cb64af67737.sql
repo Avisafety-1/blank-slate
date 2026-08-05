@@ -1,0 +1,2 @@
+ALTER TABLE public.internal_message_recipients REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.internal_message_recipients;
