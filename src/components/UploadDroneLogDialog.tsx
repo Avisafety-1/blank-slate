@@ -982,10 +982,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const match = localDrones.find(d =>
-            snMatchesDjiSn(d.serienummer, sn) ||
-            snMatchesDjiSn(d.internal_serial, sn)
-          );
+          const dMatches = findSnMatches(localDrones as any[], sn);
+          // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
+          const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
@@ -1104,10 +1103,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const match = localDrones.find(d =>
-            snMatchesDjiSn(d.serienummer, sn) ||
-            snMatchesDjiSn(d.internal_serial, sn)
-          );
+          const dMatches = findSnMatches(localDrones as any[], sn);
+          // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
+          const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
