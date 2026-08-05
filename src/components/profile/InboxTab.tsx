@@ -520,10 +520,8 @@ export const InboxTab = () => {
                         )}
                       </div>
 
-                      {mine && !(m as { is_broadcast?: boolean }).is_broadcast && (() => {
-                        const rows = readReceipts.filter(
-                          (r) => r.message_id === m.id && r.recipient_id !== user?.id,
-                        );
+                      {!(m as { is_broadcast?: boolean }).is_broadcast && (() => {
+                        const rows = readReceipts.filter((r) => r.message_id === m.id);
                         if (rows.length === 0) return null;
                         const seen = rows.filter((r) => r.read_at);
                         if (seen.length === 0) {
