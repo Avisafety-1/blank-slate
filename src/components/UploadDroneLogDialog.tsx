@@ -286,6 +286,29 @@ const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | nu
   return false;
 };
 
+// True only when the parsed log SN is MORE complete than the stored one
+// (DJI logs often expose a truncated 16-char SN — never overwrite a full 20-char SN with it).
+const parsedSnIsMoreComplete = (stored: string | null | undefined, parsedSn: string | null | undefined): boolean => {
+  const s = (stored || '').trim().toLowerCase();
+  const p = (parsedSn || '').trim().toLowerCase();
+  if (!p || s === p) return false;
+  if (!s) return true;
+  return p.length > s.length && p.startsWith(s);
+};
+
+// Returns all drones/equipment whose SN matches (exact matches first)
+const findSnMatches = <T extends { serienummer?: string | null; internal_serial?: string | null }>(
+  list: T[],
+  sn: string,
+): T[] => {
+  const matches = list.filter(x => snMatchesDjiSn(x.serienummer, sn) || snMatchesDjiSn(x.internal_serial, sn));
+  const p = sn.trim().toLowerCase();
+  const exact = matches.filter(
+    x => (x.serienummer || '').trim().toLowerCase() === p || (x.internal_serial || '').trim().toLowerCase() === p,
+  );
+  return exact.length > 0 ? exact : matches;
+};
+
 // ── Component ──
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
