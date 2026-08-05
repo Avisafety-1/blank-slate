@@ -297,16 +297,23 @@ const parsedSnIsMoreComplete = (stored: string | null | undefined, parsedSn: str
 };
 
 // Returns all drones/equipment whose SN matches (exact matches first)
-const findSnMatches = <T extends { serienummer?: string | null; internal_serial?: string | null }>(
+const findSnMatches = <T extends { id?: string; serienummer?: string | null; internal_serial?: string | null }>(
   list: T[],
   sn: string,
+  preferredIds?: string[],
 ): T[] => {
   const matches = list.filter(x => snMatchesDjiSn(x.serienummer, sn) || snMatchesDjiSn(x.internal_serial, sn));
   const p = sn.trim().toLowerCase();
   const exact = matches.filter(
     x => (x.serienummer || '').trim().toLowerCase() === p || (x.internal_serial || '').trim().toLowerCase() === p,
   );
-  return exact.length > 0 ? exact : matches;
+  const result = exact.length > 0 ? exact : matches;
+  // Tiebreaker: prefer drones the current user is linked to (drone_personnel)
+  if (result.length > 1 && preferredIds && preferredIds.length > 0) {
+    const preferred = result.filter(x => x.id && preferredIds.includes(x.id));
+    if (preferred.length > 0) return preferred;
+  }
+  return result;
 };
 
 // ── Component ──
@@ -413,6 +420,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [pilotId, setPilotId] = useState("");
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [dronePersonnelIds, setDronePersonnelIds] = useState<string[]>([]);
+  const [myDroneIds, setMyDroneIds] = useState<string[]>([]);
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
@@ -439,6 +447,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   useEffect(() => {
     if (open && companyId) {
       fetchDrones();
+      fetchMyLinkedDrones();
       fetchPersonnel();
       fetchEquipment();
       checkSavedCredentials();
@@ -714,7 +723,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-    const matches = findSnMatches(drones as any[], sn);
+    const matches = findSnMatches(drones as any[], sn, myDroneIds);
     if (matches.length > 1) {
       // Several drones share the same (truncated) SN prefix — let the user choose.
       setAmbiguousDroneMatch(true);
@@ -725,7 +734,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     const match = matches[0];
     if (match) {
       setSelectedDroneId(match.id);
-      toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
+      const viaLink = myDroneIds.includes(match.id);
+      toast.info(
+        viaLink
+          ? t('uploadLog.sn.matchedByLinkedPersonnel', { vehicle: terminology.vehicle, model: match.modell })
+          : `${terminology.vehicle} matchet automatisk: ${match.modell}`,
+      );
       setUnmatchedDroneSN(null);
     } else {
       setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
@@ -761,6 +775,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .eq("aktiv", true)
       .order("modell");
     if (data) setDrones(data);
+  };
+
+  // Drones the current user is linked to — used as tiebreaker when several drones share the same SN prefix
+  const fetchMyLinkedDrones = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("drone_personnel")
+      .select("drone_id")
+      .eq("profile_id", user.id);
+    setMyDroneIds((data ?? []).map((r: any) => r.drone_id));
   };
 
   const fetchPersonnel = async () => {
@@ -982,7 +1006,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const dMatches = findSnMatches(localDrones as any[], sn);
+          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds);
           // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
           const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
@@ -1103,7 +1127,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const dMatches = findSnMatches(localDrones as any[], sn);
+          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds);
           // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
           const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
