@@ -428,6 +428,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+   const [ambiguousDroneMatch, setAmbiguousDroneMatch] = useState(false);
    const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
    const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
    const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
