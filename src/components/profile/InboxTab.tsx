@@ -90,6 +90,7 @@ export const InboxTab = () => {
   const threadMessageIds = thread.length ? thread.map((m) => m.id) : selected ? [selected.id] : [];
   const { data: reactions = [] } = useMessageReactions(threadMessageIds);
   const { data: attachments = [] } = useMessageAttachments(threadMessageIds);
+  const { data: readReceipts = [] } = useMessageReadReceipts(threadMessageIds);
   const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/") && a.url);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   useEffect(() => {
