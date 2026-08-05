@@ -286,6 +286,29 @@ const snMatchesDjiSn = (stored: string | null | undefined, parsedSn: string | nu
   return false;
 };
 
+// True only when the parsed log SN is MORE complete than the stored one
+// (DJI logs often expose a truncated 16-char SN — never overwrite a full 20-char SN with it).
+const parsedSnIsMoreComplete = (stored: string | null | undefined, parsedSn: string | null | undefined): boolean => {
+  const s = (stored || '').trim().toLowerCase();
+  const p = (parsedSn || '').trim().toLowerCase();
+  if (!p || s === p) return false;
+  if (!s) return true;
+  return p.length > s.length && p.startsWith(s);
+};
+
+// Returns all drones/equipment whose SN matches (exact matches first)
+const findSnMatches = <T extends { serienummer?: string | null; internal_serial?: string | null }>(
+  list: T[],
+  sn: string,
+): T[] => {
+  const matches = list.filter(x => snMatchesDjiSn(x.serienummer, sn) || snMatchesDjiSn(x.internal_serial, sn));
+  const p = sn.trim().toLowerCase();
+  const exact = matches.filter(
+    x => (x.serienummer || '').trim().toLowerCase() === p || (x.internal_serial || '').trim().toLowerCase() === p,
+  );
+  return exact.length > 0 ? exact : matches;
+};
+
 // ── Component ──
 
 export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
@@ -405,6 +428,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
    const [unmatchedDroneSN, setUnmatchedDroneSN] = useState<string | null>(null);
+   const [ambiguousDroneMatch, setAmbiguousDroneMatch] = useState(false);
    const [updateDroneSnConfirmed, setUpdateDroneSnConfirmed] = useState(false);
    const [showAddDroneDialog, setShowAddDroneDialog] = useState(false);
    const [linkBatteryToExisting, setLinkBatteryToExisting] = useState(false);
@@ -686,12 +710,19 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const matchDroneFromResult = (data: DroneLogResult) => {
     if (!data.aircraftSN && !data.aircraftSerial) {
       setUnmatchedDroneSN(null);
+      setAmbiguousDroneMatch(false);
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-    const match = drones.find(d =>
-      snMatchesDjiSn(d.serienummer, sn) || snMatchesDjiSn(d.internal_serial, sn)
-    );
+    const matches = findSnMatches(drones as any[], sn);
+    if (matches.length > 1) {
+      // Several drones share the same (truncated) SN prefix — let the user choose.
+      setAmbiguousDroneMatch(true);
+      setUnmatchedDroneSN(null);
+      return;
+    }
+    setAmbiguousDroneMatch(false);
+    const match = matches[0];
     if (match) {
       setSelectedDroneId(match.id);
       toast.info(`${terminology.vehicle} matchet automatisk: ${match.modell}`);
@@ -951,10 +982,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const match = localDrones.find(d =>
-            snMatchesDjiSn(d.serienummer, sn) ||
-            snMatchesDjiSn(d.internal_serial, sn)
-          );
+          const dMatches = findSnMatches(localDrones as any[], sn);
+          // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
+          const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
@@ -1073,10 +1103,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const match = localDrones.find(d =>
-            snMatchesDjiSn(d.serienummer, sn) ||
-            snMatchesDjiSn(d.internal_serial, sn)
-          );
+          const dMatches = findSnMatches(localDrones as any[], sn);
+          // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
+          const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
         }
 
@@ -2109,7 +2138,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!updateDroneSnConfirmed || !selectedDroneId || !result) return;
     const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
     const drone = drones.find(d => d.id === selectedDroneId);
-    if (!drone || !parsedSn || (drone.serienummer || '').trim() === parsedSn) return;
+    if (!drone || !parsedSn || !parsedSnIsMoreComplete(drone.serienummer, parsedSn)) return;
     const { error } = await supabase
       .from('drones')
       .update({ serienummer: parsedSn })
@@ -2408,17 +2437,32 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </Select>
                   {(() => {
                     const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
-                    if (!selectedDroneId || !parsedSn || !selectedDrone) return null;
+                    if (!parsedSn) return null;
+                    if (ambiguousDroneMatch) {
+                      return (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
+                          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                          {t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
+                        </p>
+                      );
+                    }
+                    if (!selectedDroneId || !selectedDrone) return null;
                     const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
                     if (!isMatched) return null;
                     const storedSn = (selectedDrone.serienummer || '').trim();
-                    const snDiffers = storedSn && storedSn !== parsedSn;
+                    const canUpdate = parsedSnIsMoreComplete(storedSn, parsedSn);
+                    const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
                     return (
                       <>
                         <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />Auto-matchet via SN
+                          <CheckCircle className="w-3 h-3" />{t('uploadLog.sn.autoMatched')}
                         </p>
-                        {snDiffers && (
+                        {storedIsFuller && (
+                          <p className="text-[11px] leading-tight text-muted-foreground">
+                            {t('uploadLog.sn.storedIsFuller', { stored: storedSn, parsed: parsedSn })}
+                          </p>
+                        )}
+                        {canUpdate && (
                           <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                             <Checkbox
                               id="update-drone-sn"
@@ -2427,7 +2471,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                               className="mt-0.5"
                             />
                             <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
-                              Lagret SN ({storedSn}) er kortere enn loggens SN ({parsedSn}). Oppdater {terminology.vehicle} sitt serienummer til full verdi?
+                              {t('uploadLog.sn.updateToFull', { stored: storedSn, parsed: parsedSn, vehicle: terminology.vehicle })}
                             </Label>
                           </div>
                         )}

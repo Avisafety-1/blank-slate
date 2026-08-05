@@ -7867,5 +7867,13 @@
       "replace": "Replace",
       "append": "Append below"
     }
+  },
+  "uploadLog": {
+    "sn": {
+      "autoMatched": "Auto-matched via SN",
+      "ambiguousMatch": "Several drones share the same serial number prefix from the log ({{sn}}). Please select the correct one manually.",
+      "storedIsFuller": "Stored SN ({{stored}}) is the complete value; the log shows DJI's shortened SN ({{parsed}}).",
+      "updateToFull": "The log SN ({{parsed}}) is more complete than the stored SN ({{stored}}). Update the {{vehicle}} serial number to the full value?"
+    }
   }
 }
