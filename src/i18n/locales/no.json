@@ -7869,5 +7869,13 @@
       "replace": "Erstatt",
       "append": "Legg til under"
     }
+  },
+  "uploadLog": {
+    "sn": {
+      "autoMatched": "Auto-matchet via SN",
+      "ambiguousMatch": "Flere {{sn}}-droner deler samme serienummer-prefiks fra loggen. Velg riktig drone manuelt.",
+      "storedIsFuller": "Lagret SN ({{stored}}) er den fullstendige verdien; loggen viser DJIs forkortede SN ({{parsed}}).",
+      "updateToFull": "Loggens SN ({{parsed}}) er mer komplett enn lagret SN ({{stored}}). Oppdater {{vehicle}} sitt serienummer til full verdi?"
+    }
   }
 }
