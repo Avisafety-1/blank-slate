@@ -345,7 +345,7 @@ export const EvaluationResponseDialog = ({
     <Collapsible
       open={visibilityOpen}
       onOpenChange={setVisibilityOpen}
-      className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10 overflow-hidden"
+      className="pointer-events-auto rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10 overflow-hidden"
     >
       <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-amber-100/60 dark:hover:bg-amber-500/15">
         <div className="flex items-center gap-3 min-w-0">
