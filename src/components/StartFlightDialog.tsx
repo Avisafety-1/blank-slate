@@ -880,7 +880,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent data-tour="start-flight-dialog" className="w-[95vw] max-w-md max-h-[90vh] flex flex-col">
+        <DialogContent data-tour="start-flight-dialog" className="w-[95vw] max-w-md max-h-[calc(90vh-env(safe-area-inset-top))] flex flex-col mt-[env(safe-area-inset-top)]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('flight.startFlightTitle')}</DialogTitle>
             <DialogDescription>
@@ -888,7 +888,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6" style={{ maxHeight: 'calc(90vh - 180px - env(safe-area-inset-top, 0px))' }}>
             <div className="space-y-6 py-4 pb-6">
             {/* Nearest air traffic info - shown above checklists */}
             {(trafficLoading || nearestTraffic !== null) && (
