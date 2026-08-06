@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { AutoTextarea } from "@/components/ui/auto-textarea";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { GraduationCap, User, Plane, CalendarClock, ClipboardCheck } from "lucide-react";
@@ -253,13 +254,14 @@ export const EvaluationFormPreview = ({
                     })}
                   </div>
                 </div>
-                <Textarea
+                <AutoTextarea
                   value={comments[sub.id] ?? ""}
                   onChange={(e) => setComment(sub.id, e.target.value)}
                   placeholder={t("evaluation.placeholders.subComment")}
-                  rows={2}
+                  minHeight={56}
                   className="text-sm bg-muted/40"
                 />
+
               </div>
             ))}
           </div>
@@ -275,13 +277,13 @@ export const EvaluationFormPreview = ({
           </Badge>
         </div>
         {overallAiSlot}
-        <Textarea
-
+        <AutoTextarea
           value={overallComment}
           onChange={(e) => setOverall(e.target.value)}
           placeholder={t("evaluation.placeholders.overallComment")}
-          rows={4}
+          minHeight={112}
         />
+
       </Card>
     </div>
   );
