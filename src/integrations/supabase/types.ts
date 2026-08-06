@@ -2186,21 +2186,24 @@ export type Database = {
       document_folder_items: {
         Row: {
           added_at: string | null
-          document_id: string
+          document_id: string | null
+          evaluation_template_id: string | null
           folder_id: string
           id: string
           tab_id: string | null
         }
         Insert: {
           added_at?: string | null
-          document_id: string
+          document_id?: string | null
+          evaluation_template_id?: string | null
           folder_id: string
           id?: string
           tab_id?: string | null
         }
         Update: {
           added_at?: string | null
-          document_id?: string
+          document_id?: string | null
+          evaluation_template_id?: string | null
           folder_id?: string
           id?: string
           tab_id?: string | null
@@ -2211,6 +2214,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_folder_items_evaluation_template_id_fkey"
+            columns: ["evaluation_template_id"]
+            isOneToOne: false
+            referencedRelation: "evaluation_templates"
             referencedColumns: ["id"]
           },
           {
