@@ -921,7 +921,7 @@ const Auth = () => {
         <button
           type="button"
           onClick={() => { const target = (i18n.language || 'no').toLowerCase().startsWith('en') ? 'no' : 'en'; i18n.changeLanguage(target); }}
-          className="fixed top-4 right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
+          className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
           aria-label={t('header.switchToLanguage', { lang: (i18n.language || 'no').toLowerCase().startsWith('en') ? 'NO' : 'EN' })}
         >
           <Globe className="h-4 w-4" />
@@ -968,7 +968,7 @@ const Auth = () => {
     <button
       type="button"
       onClick={() => { i18n.changeLanguage(targetLang); }}
-      className="fixed top-4 right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
+      className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-20 h-9 w-9 rounded-md bg-card/80 backdrop-blur-sm border border-border/50 flex items-center justify-center text-foreground hover:bg-card transition-colors"
       title={t('header.switchToLanguage', { lang: targetLang === 'en' ? 'EN' : 'NO' })}
       aria-label={t('header.switchToLanguage', { lang: targetLang === 'en' ? 'EN' : 'NO' })}
     >
