@@ -114,63 +114,70 @@ export const EvaluationFormPreview = ({
   return (
     <div className="space-y-4">
       {/* Header card */}
-      <Card className="p-4 space-y-4 bg-card/80">
-        <div className="flex items-start gap-3">
-          <div className="rounded-md bg-primary/10 p-2 text-primary">
-            <ClipboardCheck className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold break-words">
-              {title.trim() || t("evaluation.untitled")}
-            </h3>
-            {description?.trim() && (
-              <p className="text-sm text-muted-foreground break-words">{description}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5">
-              <GraduationCap className="h-3.5 w-3.5" /> {t("evaluation.fields.instructor")}
-            </Label>
-            {instructorSlot ?? (
-              <Input disabled={headerDisabled} value={header?.instructorName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.instructor")} />
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> {t("evaluation.fields.student")}
-            </Label>
-            {studentSlot ?? (
-              <Input disabled={headerDisabled} value={header?.studentName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.student")} />
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5">
-              <Plane className="h-3.5 w-3.5" /> {t("evaluation.fields.mission")}
-            </Label>
-            <Input disabled value={header?.missionName ?? ""} readOnly placeholder={t("evaluation.placeholders.mission")} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.missionTime")}
-            </Label>
-            <Input disabled value={header?.missionTime ?? ""} readOnly placeholder={t("evaluation.placeholders.missionTime")} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="text-xs flex items-center gap-1.5">
-              <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.evaluatedAt")}
-            </Label>
-            {evaluatedAtSlot ?? (
-              <Input disabled={headerDisabled} value={header?.evaluatedAt ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.evaluatedAt")} />
-            )}
+      <Card className="overflow-hidden p-0 border-evaluation-banner/20">
+        <div className="bg-evaluation-banner text-evaluation-banner-foreground px-4 py-4 sm:px-5">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-evaluation-banner-accent p-2 shrink-0">
+              <ClipboardCheck className="h-5 w-5 text-evaluation-banner-foreground" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-evaluation-banner-muted">
+                {t("evaluation.formLabel")}
+              </p>
+              <h3 className="text-lg font-semibold break-words leading-tight">
+                {title.trim() || t("evaluation.untitled")}
+              </h3>
+              {description?.trim() && (
+                <p className="text-sm text-evaluation-banner-muted break-words mt-0.5">{description}</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {visibilitySlot ? <div className="mt-4">{visibilitySlot}</div> : null}
+        <div className="p-4 sm:p-5 space-y-4 bg-card">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5" /> {t("evaluation.fields.instructor")}
+              </Label>
+              {instructorSlot ?? (
+                <Input disabled={headerDisabled} value={header?.instructorName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.instructor")} />
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" /> {t("evaluation.fields.student")}
+              </Label>
+              {studentSlot ?? (
+                <Input disabled={headerDisabled} value={header?.studentName ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.student")} />
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <Plane className="h-3.5 w-3.5" /> {t("evaluation.fields.mission")}
+              </Label>
+              <Input disabled value={header?.missionName ?? ""} readOnly placeholder={t("evaluation.placeholders.mission")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.missionTime")}
+              </Label>
+              <Input disabled value={header?.missionTime ?? ""} readOnly placeholder={t("evaluation.placeholders.missionTime")} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <CalendarClock className="h-3.5 w-3.5" /> {t("evaluation.fields.evaluatedAt")}
+              </Label>
+              {evaluatedAtSlot ?? (
+                <Input disabled={headerDisabled} value={header?.evaluatedAt ?? ""} readOnly={headerDisabled} placeholder={t("evaluation.placeholders.evaluatedAt")} />
+              )}
+            </div>
+          </div>
 
+          {visibilitySlot ? <div className="pt-1">{visibilitySlot}</div> : null}
+        </div>
       </Card>
+
 
 
       {categories.length === 0 && (
