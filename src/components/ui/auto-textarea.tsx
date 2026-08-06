@@ -39,6 +39,21 @@ const AutoTextarea = React.forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
       resize();
     }, [resize, value]);
 
+    const handleWheel = React.useCallback((e: React.WheelEvent<HTMLTextAreaElement>) => {
+      const el = innerRef.current;
+      if (!el) return;
+      const canScroll = el.scrollHeight > el.clientHeight + 1;
+      if (!canScroll) return;
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      // Keep the scroll inside the textarea unless we're at an edge
+      if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) {
+        e.stopPropagation();
+        el.scrollTop += e.deltaY;
+        e.preventDefault();
+      }
+    }, []);
+
     return (
       <Textarea
         ref={setRefs}
@@ -47,7 +62,15 @@ const AutoTextarea = React.forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
           onChange?.(e);
           resize();
         }}
-        style={{ minHeight, maxHeight, overflowY: "auto", resize: "vertical" }}
+        onWheel={handleWheel}
+        style={{
+          minHeight,
+          maxHeight,
+          overflowY: "auto",
+          resize: "vertical",
+          overscrollBehavior: "contain",
+          touchAction: "pan-y",
+        }}
         className={cn(className)}
         {...props}
       />
