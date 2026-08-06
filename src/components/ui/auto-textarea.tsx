@@ -6,13 +6,15 @@ export interface AutoTextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Minimum height in px (defaults to ~2 rows) */
   minHeight?: number;
+  /** Maximum height in px before the field becomes scrollable */
+  maxHeight?: number;
 }
 
 /**
  * Textarea that grows automatically with its content so all text stays visible.
  */
 const AutoTextarea = React.forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
-  ({ className, value, minHeight = 56, onChange, ...props }, forwardedRef) => {
+  ({ className, value, minHeight = 56, maxHeight, onChange, ...props }, forwardedRef) => {
     const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
 
     const setRefs = React.useCallback(
@@ -28,8 +30,10 @@ const AutoTextarea = React.forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
       const el = innerRef.current;
       if (!el) return;
       el.style.height = "auto";
-      el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
-    }, [minHeight]);
+      const next = Math.max(el.scrollHeight, minHeight);
+      el.style.height = `${maxHeight ? Math.min(next, maxHeight) : next}px`;
+      el.style.overflowY = maxHeight && next > maxHeight ? "auto" : "hidden";
+    }, [minHeight, maxHeight]);
 
     React.useLayoutEffect(() => {
       resize();
@@ -43,7 +47,7 @@ const AutoTextarea = React.forwardRef<HTMLTextAreaElement, AutoTextareaProps>(
           onChange?.(e);
           resize();
         }}
-        style={{ minHeight, overflow: "hidden", resize: "none" }}
+        style={{ minHeight, maxHeight, overflowY: "auto", resize: "vertical" }}
         className={cn(className)}
         {...props}
       />

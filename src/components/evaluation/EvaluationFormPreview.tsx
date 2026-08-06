@@ -282,6 +282,7 @@ export const EvaluationFormPreview = ({
           onChange={(e) => setOverall(e.target.value)}
           placeholder={t("evaluation.placeholders.overallComment")}
           minHeight={112}
+          maxHeight={520}
         />
 
       </Card>
