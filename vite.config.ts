@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => ({
       srcDir: "src",
       filename: "sw.ts",
       registerType: "autoUpdate",
-      injectRegister: "inline",
+      injectRegister: mode === "production" ? "inline" : false,
       includeAssets: ["favicon.png", "robots.txt"],
       manifest: {
         name: "AviSafe - Sikkerhetsstyringssystem",
