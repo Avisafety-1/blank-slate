@@ -278,13 +278,13 @@ export const EvaluationFormPreview = ({
           </Badge>
         </div>
         {overallAiSlot}
-        <Textarea
-
+        <AutoTextarea
           value={overallComment}
           onChange={(e) => setOverall(e.target.value)}
           placeholder={t("evaluation.placeholders.overallComment")}
-          rows={4}
+          minHeight={112}
         />
+
       </Card>
     </div>
   );
