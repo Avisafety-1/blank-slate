@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AutoTextarea } from "@/components/ui/auto-textarea";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { GraduationCap, User, Plane, CalendarClock, ClipboardCheck } from "lucide-react";
