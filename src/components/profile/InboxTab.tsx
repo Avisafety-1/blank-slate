@@ -363,7 +363,7 @@ export const InboxTab = () => {
       </Card>
 
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full gap-0">
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col h-full gap-0 pt-[env(safe-area-inset-top)]">
           {selected && (
             <>
               {/* Header */}
