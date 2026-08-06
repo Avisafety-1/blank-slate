@@ -7875,7 +7875,8 @@
       "replaceDescription": "Totalvurderingen inneholder allerede tekst. Vil du erstatte den med AI-forslaget, eller legge forslaget til under?",
       "replace": "Erstatt",
       "append": "Legg til under"
-    }
+    },
+    "formLabel": "Evaluering"
   },
   "uploadLog": {
     "sn": {

@@ -7873,7 +7873,8 @@
       "replaceDescription": "The overall assessment already contains text. Replace it with the AI draft, or append the draft below?",
       "replace": "Replace",
       "append": "Append below"
-    }
+    },
+    "formLabel": "Evaluation"
   },
   "uploadLog": {
     "sn": {
