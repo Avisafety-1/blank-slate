@@ -166,34 +166,23 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
 
       <div className="space-y-3">
         {categories.map((category, index) => (
-          <Card key={category.id} className="p-3 space-y-3">
-            <div className="flex items-start gap-2">
-              <div className="flex-1 space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {t("evaluation.builder.categoryLabel", { index: index + 1 })}
-                </Label>
-                <Input
-                  value={category.name}
-                  onChange={(e) => updateCategory(category.id, { name: e.target.value })}
-                  placeholder={t("evaluation.builder.categoryPlaceholder")}
-                />
-                <Input
-                  value={category.description}
-                  onChange={(e) => updateCategory(category.id, { description: e.target.value })}
-                  placeholder={t("evaluation.builder.categoryDescriptionPlaceholder")}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Button type="button" variant="ghost" size="icon" onClick={() => moveCategory(category.id, "up")} disabled={index === 0}>
+          <Card key={category.id} className="p-3 space-y-3 bg-muted/40 border-border/70">
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary/60 px-3 py-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                {t("evaluation.builder.categoryLabel", { index: index + 1 })}
+              </span>
+              <div className="flex items-center gap-0.5">
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveCategory(category.id, "up")} disabled={index === 0}>
                   <ChevronUp className="h-4 w-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => moveCategory(category.id, "down")} disabled={index === categories.length - 1}>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveCategory(category.id, "down")} disabled={index === categories.length - 1}>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="h-7 w-7"
                   onClick={() => setCategories((prev) => (prev.length > 1 ? prev.filter((c) => c.id !== category.id) : prev))}
                   disabled={categories.length === 1}
                 >
@@ -201,6 +190,21 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
                 </Button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Input
+                value={category.name}
+                onChange={(e) => updateCategory(category.id, { name: e.target.value })}
+                placeholder={t("evaluation.builder.categoryPlaceholder")}
+                className="bg-background font-medium"
+              />
+              <Input
+                value={category.description}
+                onChange={(e) => updateCategory(category.id, { description: e.target.value })}
+                placeholder={t("evaluation.builder.categoryDescriptionPlaceholder")}
+                className="bg-background"
+              />
+            </div>
+
 
             <div className="space-y-3 pl-3 border-l-2 border-border">
               {category.subcategories.map((sub, subIndex) => (
