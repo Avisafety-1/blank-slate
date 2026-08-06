@@ -14,6 +14,12 @@ export default {
   	},
   	extend: {
   		colors: {
+  			'evaluation-banner': {
+  				DEFAULT: 'hsl(var(--evaluation-banner))',
+  				foreground: 'hsl(var(--evaluation-banner-foreground))',
+  				muted: 'hsl(var(--evaluation-banner-muted))',
+  				accent: 'hsl(var(--evaluation-banner-accent))'
+  			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

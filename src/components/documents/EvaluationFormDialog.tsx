@@ -166,34 +166,23 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
 
       <div className="space-y-3">
         {categories.map((category, index) => (
-          <Card key={category.id} className="p-3 space-y-3">
-            <div className="flex items-start gap-2">
-              <div className="flex-1 space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {t("evaluation.builder.categoryLabel", { index: index + 1 })}
-                </Label>
-                <Input
-                  value={category.name}
-                  onChange={(e) => updateCategory(category.id, { name: e.target.value })}
-                  placeholder={t("evaluation.builder.categoryPlaceholder")}
-                />
-                <Input
-                  value={category.description}
-                  onChange={(e) => updateCategory(category.id, { description: e.target.value })}
-                  placeholder={t("evaluation.builder.categoryDescriptionPlaceholder")}
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <Button type="button" variant="ghost" size="icon" onClick={() => moveCategory(category.id, "up")} disabled={index === 0}>
+          <Card key={category.id} className="p-3 space-y-3 bg-muted/40 border-border/70">
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-secondary/60 px-3 py-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                {t("evaluation.builder.categoryLabel", { index: index + 1 })}
+              </span>
+              <div className="flex items-center gap-0.5">
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveCategory(category.id, "up")} disabled={index === 0}>
                   <ChevronUp className="h-4 w-4" />
                 </Button>
-                <Button type="button" variant="ghost" size="icon" onClick={() => moveCategory(category.id, "down")} disabled={index === categories.length - 1}>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveCategory(category.id, "down")} disabled={index === categories.length - 1}>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="h-7 w-7"
                   onClick={() => setCategories((prev) => (prev.length > 1 ? prev.filter((c) => c.id !== category.id) : prev))}
                   disabled={categories.length === 1}
                 >
@@ -201,60 +190,87 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
                 </Button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Input
+                value={category.name}
+                onChange={(e) => updateCategory(category.id, { name: e.target.value })}
+                placeholder={t("evaluation.builder.categoryPlaceholder")}
+                className="bg-background font-medium"
+              />
+              <Input
+                value={category.description}
+                onChange={(e) => updateCategory(category.id, { description: e.target.value })}
+                placeholder={t("evaluation.builder.categoryDescriptionPlaceholder")}
+                className="bg-background"
+              />
+            </div>
 
-            <div className="space-y-2 pl-2 border-l-2 border-border">
+
+            <div className="space-y-3 pl-3 border-l-2 border-border">
               {category.subcategories.map((sub, subIndex) => (
-                <div key={sub.id} className="flex items-start gap-2">
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      value={sub.name}
-                      onChange={(e) => updateSub(category.id, sub.id, { name: e.target.value })}
-                      placeholder={t("evaluation.builder.subcategoryPlaceholder")}
-                    />
-                    <Textarea
-                      value={sub.description}
-                      onChange={(e) => updateSub(category.id, sub.id, { description: e.target.value })}
-                      placeholder={t("evaluation.builder.subcategoryDescriptionPlaceholder")}
-                      rows={2}
-                      className="text-sm"
-                    />
+                <div
+                  key={sub.id}
+                  className="group relative rounded-xl border bg-background p-3 pt-4 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <span className="absolute -left-[1.45rem] top-4 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-[10px] font-bold text-muted-foreground">
+                    {subIndex + 1}
+                  </span>
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={sub.name}
+                        onChange={(e) => updateSub(category.id, sub.id, { name: e.target.value })}
+                        placeholder={t("evaluation.builder.subcategoryPlaceholder")}
+                        className="font-medium"
+                      />
+                      <Textarea
+                        value={sub.description}
+                        onChange={(e) => updateSub(category.id, sub.id, { description: e.target.value })}
+                        placeholder={t("evaluation.builder.subcategoryDescriptionPlaceholder")}
+                        rows={2}
+                        className="text-sm bg-muted/40"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => moveSub(category.id, sub.id, "up")} disabled={subIndex === 0}>
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => moveSub(category.id, sub.id, "down")} disabled={subIndex === category.subcategories.length - 1}>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => moveSub(category.id, sub.id, "up")} disabled={subIndex === 0}>
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => moveSub(category.id, sub.id, "down")} disabled={subIndex === category.subcategories.length - 1}>
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        updateCategory(category.id, {
-                          subcategories:
-                            category.subcategories.length > 1
-                              ? category.subcategories.filter((s) => s.id !== sub.id)
-                              : category.subcategories,
-                        })
-                      }
-                      disabled={category.subcategories.length === 1}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="absolute -right-2 -top-2 h-7 w-7 rounded-full shadow-sm opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:hidden"
+                    onClick={() =>
+                      updateCategory(category.id, {
+                        subcategories:
+                          category.subcategories.length > 1
+                            ? category.subcategories.filter((s) => s.id !== sub.id)
+                            : category.subcategories,
+                      })
+                    }
+                    disabled={category.subcategories.length === 1}
+                    aria-label={t("common.delete")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
                 </div>
               ))}
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={() => updateCategory(category.id, { subcategories: [...category.subcategories, emptySub()] })}
+                className="w-full border-2 border-dashed border-border text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 {t("evaluation.builder.addSubcategory")}
               </Button>
             </div>
+
           </Card>
         ))}
 

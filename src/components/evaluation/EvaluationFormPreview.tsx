@@ -180,35 +180,44 @@ export const EvaluationFormPreview = ({
       )}
 
       {categories.map((category, catIndex) => (
-        <Card key={category.id} className="overflow-hidden">
-          <div className="flex items-center justify-between gap-3 bg-muted/50 px-4 py-3 border-b">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">
+        <Card key={category.id} className="overflow-hidden shadow-md">
+          <div className="relative overflow-hidden bg-evaluation-banner px-5 py-4 flex items-center justify-between gap-3">
+            <div className="relative z-10 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-evaluation-banner-muted">
                 {t("evaluation.preview.categoryIndex", { index: catIndex + 1 })}
               </p>
-              <h4 className="font-semibold break-words">
+              <h4 className="text-lg font-bold text-evaluation-banner-foreground break-words">
                 {category.name.trim() || t("evaluation.preview.untitledCategory")}
               </h4>
               {category.description?.trim() && (
-                <p className="text-xs text-muted-foreground break-words">{category.description}</p>
+                <p className="text-xs text-evaluation-banner-muted break-words">{category.description}</p>
               )}
             </div>
-            <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
-              {t("evaluation.preview.average")}: {fmt(categoryAverages[category.id] ?? null)}
-            </Badge>
+            <div className="relative z-10 flex flex-col items-end shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-evaluation-banner-muted">
+                {t("evaluation.preview.average")}
+              </span>
+              <span className="mt-0.5 rounded-full bg-evaluation-banner-accent px-3 py-1 text-sm font-bold text-evaluation-banner-foreground">
+                {fmt(categoryAverages[category.id] ?? null)}
+              </span>
+            </div>
+            <div className="pointer-events-none absolute -right-4 -bottom-6 h-24 w-24 rounded-full bg-evaluation-banner-accent opacity-40" />
           </div>
 
-          <div className="divide-y">
+          <div className="space-y-3 bg-muted/30 p-3 sm:p-4">
             {category.subcategories.length === 0 && (
-              <p className="px-4 py-4 text-sm text-muted-foreground">
+              <p className="px-1 py-2 text-sm text-muted-foreground">
                 {t("evaluation.preview.noSubcategories")}
               </p>
             )}
             {category.subcategories.map((sub) => (
-              <div key={sub.id} className="px-4 py-3 space-y-2">
+              <div
+                key={sub.id}
+                className="rounded-xl border bg-background p-4 space-y-3 shadow-sm transition-shadow hover:shadow-md"
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium break-words">
+                    <p className="text-sm font-semibold break-words">
                       {sub.name.trim() || t("evaluation.preview.untitledSubcategory")}
                     </p>
                     {sub.description?.trim() && (
@@ -224,10 +233,10 @@ export const EvaluationFormPreview = ({
                           type="button"
                           onClick={() => setScore(sub.id, value)}
                           className={cn(
-                            "h-8 w-8 rounded-md border text-sm font-medium transition-colors",
+                            "h-8 w-8 rounded-lg border text-sm transition-all active:scale-95",
                             active
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground hover:bg-muted"
+                              ? "bg-primary text-primary-foreground border-primary font-bold shadow-md"
+                              : "bg-background text-muted-foreground border-border font-medium hover:bg-muted"
                           )}
                           aria-label={`${sub.name} – ${value}`}
                         >
@@ -242,13 +251,14 @@ export const EvaluationFormPreview = ({
                   onChange={(e) => setComment(sub.id, e.target.value)}
                   placeholder={t("evaluation.placeholders.subComment")}
                   rows={2}
-                  className="text-sm"
+                  className="text-sm bg-muted/40"
                 />
               </div>
             ))}
           </div>
         </Card>
       ))}
+
 
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
