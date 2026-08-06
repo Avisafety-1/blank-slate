@@ -253,13 +253,14 @@ export const EvaluationFormPreview = ({
                     })}
                   </div>
                 </div>
-                <Textarea
+                <AutoTextarea
                   value={comments[sub.id] ?? ""}
                   onChange={(e) => setComment(sub.id, e.target.value)}
                   placeholder={t("evaluation.placeholders.subComment")}
-                  rows={2}
+                  minHeight={56}
                   className="text-sm bg-muted/40"
                 />
+
               </div>
             ))}
           </div>
