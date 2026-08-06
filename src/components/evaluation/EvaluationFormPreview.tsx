@@ -122,7 +122,7 @@ export const EvaluationFormPreview = ({
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-evaluation-banner-muted">
-                {t("evaluation.formLabel", "Evaluation")}
+                {t("evaluation.formLabel")}
               </p>
               <h3 className="text-lg font-semibold break-words leading-tight">
                 {title.trim() || t("evaluation.untitled")}
