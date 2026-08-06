@@ -4983,7 +4983,7 @@
       "documentCount_other": "{{count}} dokumenter",
       "all": "Alle",
       "tabNamePlaceholder": "Fanenavn...",
-      "searchDocuments": "Søk dokumenter...",
+      "searchDocuments": "Søk dokumenter og skjemaer...",
       "noDocumentsFound": "Ingen dokumenter funnet",
       "cancel": "Avbryt",
       "saveChanges": "Lagre endringer",
@@ -5008,7 +5008,10 @@
         "tabDeleted": "Fane slettet"
       },
       "unknownTitle": "Ukjent",
-      "ok": "OK"
+      "ok": "OK",
+      "evaluationForm": "Evalueringsskjema",
+      "evaluationForms": "Evalueringsskjemaer",
+      "addContent": "Legg til innhold"
     },
     "folderGrid": {
       "itemCount": "{{count}} dok."

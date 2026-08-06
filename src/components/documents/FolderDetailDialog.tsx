@@ -6,12 +6,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Trash2, Plus, FileText, Pencil, X, FolderPlus, Building2 } from "lucide-react";
+import { Trash2, Plus, FileText, Pencil, X, FolderPlus, Building2, ClipboardCheck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
 import { Document } from "@/types";
 import { useTranslation } from "react-i18next";
+import EvaluationFormDialog from "@/components/documents/EvaluationFormDialog";
+import { useEvaluationTemplates, type EvaluationTemplate } from "@/hooks/useEvaluationTemplates";
 
 interface FolderDetailDialogProps {
   folder: { id: string; name: string; company_id?: string; inherited?: boolean } | null;
@@ -30,7 +32,8 @@ interface FolderTab {
 
 interface FolderDoc {
   id: string;
-  document_id: string;
+  document_id: string | null;
+  evaluation_template_id: string | null;
   tab_id: string | null;
   tittel: string;
   kategori: string;
@@ -39,6 +42,7 @@ interface FolderDoc {
 export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAdmin, canManage }: FolderDetailDialogProps) => {
   const { t } = useTranslation();
   const { companyId } = useAuth();
+  const { templates: evaluationTemplates } = useEvaluationTemplates();
   const canManageFolder = canManage ?? (isAdmin && !folder?.inherited);
   const [folderDocs, setFolderDocs] = useState<FolderDoc[]>([]);
   const [tabs, setTabs] = useState<FolderTab[]>([]);
@@ -50,6 +54,9 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<EvaluationTemplate | null>(null);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
   const [docDetailOpen, setDocDetailOpen] = useState(false);
   const [newTabName, setNewTabName] = useState("");
   const [showNewTab, setShowNewTab] = useState(false);
@@ -95,19 +102,33 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     }
   };
 
+  const handleTemplateClick = (templateId: string | null) => {
+    if (!templateId) return;
+    const tpl = evaluationTemplates.find((x) => x.id === templateId);
+    if (!tpl) return;
+    setSelectedTemplate(tpl);
+    setTemplateDialogOpen(true);
+  };
+
   const loadFolderDocs = async () => {
     if (!folder) return;
     const { data } = await supabase
       .from("document_folder_items")
-      .select("id, document_id, tab_id, documents:document_id(tittel, kategori)")
+      .select("id, document_id, evaluation_template_id, tab_id, documents:document_id(tittel, kategori), evaluation_templates:evaluation_template_id(title)")
       .eq("folder_id", folder.id);
     setFolderDocs(
       (data || []).map((d: any) => ({
         id: d.id,
         document_id: d.document_id,
+        evaluation_template_id: d.evaluation_template_id,
         tab_id: d.tab_id,
-        tittel: d.documents?.tittel || t("documents.folderDetail.unknownTitle"),
-        kategori: d.documents?.kategori || "",
+        tittel:
+          d.documents?.tittel ||
+          d.evaluation_templates?.title ||
+          t("documents.folderDetail.unknownTitle"),
+        kategori: d.evaluation_template_id
+          ? t("documents.folderDetail.evaluationForm")
+          : d.documents?.kategori || "",
       }))
     );
   };
@@ -159,14 +180,20 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     const { data } = await supabase.from("documents").select("id, tittel, kategori").order("tittel");
     setAllDocs(data || []);
     // Pre-select docs already in this tab (or all if "Alle" tab)
-    const existing = new Set(
-      folderDocs
-        .filter((d) => activeTab === null || d.tab_id === activeTab)
-        .map((d) => d.document_id)
-    );
-    setSelectedIds(existing);
+    const relevant = folderDocs.filter((d) => activeTab === null || d.tab_id === activeTab);
+    setSelectedIds(new Set(relevant.filter((d) => d.document_id).map((d) => d.document_id as string)));
+    setSelectedTemplateIds(new Set(relevant.filter((d) => d.evaluation_template_id).map((d) => d.evaluation_template_id as string)));
     setShowPicker(true);
     setSearchPicker("");
+  };
+
+  const toggleTemplate = (id: string) => {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const toggleDoc = (docId: string) => {
@@ -184,9 +211,17 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     const relevantDocs = folderDocs.filter((d) =>
       tabFilter === null ? true : d.tab_id === tabFilter
     );
-    const existingIds = new Set(relevantDocs.map((d) => d.document_id));
+    const existingIds = new Set(relevantDocs.filter((d) => d.document_id).map((d) => d.document_id as string));
+    const existingTemplateIds = new Set(
+      relevantDocs.filter((d) => d.evaluation_template_id).map((d) => d.evaluation_template_id as string)
+    );
     const toAdd = [...selectedIds].filter((id) => !existingIds.has(id));
-    const toRemove = relevantDocs.filter((d) => !selectedIds.has(d.document_id));
+    const toAddTemplates = [...selectedTemplateIds].filter((id) => !existingTemplateIds.has(id));
+    const toRemove = relevantDocs.filter((d) =>
+      d.document_id
+        ? !selectedIds.has(d.document_id)
+        : !selectedTemplateIds.has(d.evaluation_template_id as string)
+    );
 
     if (toRemove.length) {
       await supabase.from("document_folder_items").delete().in("id", toRemove.map((d) => d.id));
@@ -198,6 +233,15 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           document_id,
           tab_id: tabFilter,
         }))
+      );
+    }
+    if (toAddTemplates.length) {
+      await supabase.from("document_folder_items").insert(
+        toAddTemplates.map((evaluation_template_id) => ({
+          folder_id: folder.id,
+          evaluation_template_id,
+          tab_id: tabFilter,
+        })) as any
       );
     }
     toast.success(t("documents.folderDetail.toasts.contentUpdated"));
@@ -270,6 +314,10 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     loadTabs();
     loadFolderDocs();
   };
+
+  const filteredPickerTemplates = evaluationTemplates.filter(
+    (tpl) => !searchPicker || tpl.title.toLowerCase().includes(searchPicker.toLowerCase())
+  );
 
   const filteredPickerDocs = allDocs.filter(
     (d) => !searchPicker || d.tittel.toLowerCase().includes(searchPicker.toLowerCase())
@@ -387,7 +435,21 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                   <span className="text-xs text-muted-foreground ml-auto">{doc.kategori}</span>
                 </label>
               ))}
-              {filteredPickerDocs.length === 0 && (
+              {filteredPickerTemplates.length > 0 && (
+                <>
+                  <p className="text-xs font-medium text-muted-foreground mt-3 mb-1 px-1">
+                    {t("documents.folderDetail.evaluationForms")}
+                  </p>
+                  {filteredPickerTemplates.map((tpl) => (
+                    <label key={tpl.id} className="flex items-center gap-2 py-1.5 px-1 hover:bg-accent/10 rounded cursor-pointer">
+                      <Checkbox checked={selectedTemplateIds.has(tpl.id)} onCheckedChange={() => toggleTemplate(tpl.id)} />
+                      <ClipboardCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{tpl.title}</span>
+                    </label>
+                  ))}
+                </>
+              )}
+              {filteredPickerDocs.length === 0 && filteredPickerTemplates.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">{t("documents.folderDetail.noDocumentsFound")}</p>
               )}
             </div>
@@ -406,8 +468,16 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
               ) : (
                 <div className="space-y-1">
                   {visibleDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-start gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer" onClick={() => handleDocClick(doc.document_id)}>
-                      <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div
+                      key={doc.id}
+                      className="flex items-start gap-2 p-2 rounded hover:bg-accent/10 cursor-pointer"
+                      onClick={() => (doc.document_id ? handleDocClick(doc.document_id) : handleTemplateClick(doc.evaluation_template_id))}
+                    >
+                      {doc.evaluation_template_id ? (
+                        <ClipboardCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      )}
                       <span className="text-sm flex-1 break-words leading-snug">{doc.tittel}</span>
                       {canManageFolder && (
                         <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); removeDoc(doc.id); }}>
@@ -433,7 +503,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                     <Trash2 className="h-4 w-4 mr-1" /> {t("documents.folderDetail.deleteFolder")}
                   </Button>
                   <Button size="sm" onClick={openPicker}>
-                    <Plus className="h-4 w-4 mr-1" /> {t("documents.folderDetail.addDocuments")}
+                    <Plus className="h-4 w-4 mr-1" /> {t("documents.folderDetail.addContent")}
                   </Button>
                 </div>
               </div>
@@ -442,6 +512,13 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         )}
       </DialogContent>
     </Dialog>
+
+    <EvaluationFormDialog
+      open={templateDialogOpen}
+      onOpenChange={setTemplateDialogOpen}
+      template={selectedTemplate}
+      onSuccess={loadFolderDocs}
+    />
 
     <DocumentDetailDialog
       open={docDetailOpen}

@@ -4981,7 +4981,7 @@
       "documentCount_other": "{{count}} documents",
       "all": "All",
       "tabNamePlaceholder": "Tab name...",
-      "searchDocuments": "Search documents...",
+      "searchDocuments": "Search documents and forms...",
       "noDocumentsFound": "No documents found",
       "cancel": "Cancel",
       "saveChanges": "Save changes",
@@ -5006,7 +5006,10 @@
         "tabDeleted": "Tab deleted"
       },
       "unknownTitle": "Unknown",
-      "ok": "OK"
+      "ok": "OK",
+      "evaluationForm": "Evaluation form",
+      "evaluationForms": "Evaluation forms",
+      "addContent": "Add content"
     },
     "folderGrid": {
       "itemCount": "{{count}} doc."
