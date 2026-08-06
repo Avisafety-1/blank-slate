@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, ClipboardCheck, ShieldCheck } from "lucide-react";
+import { Loader2, Save, ClipboardCheck, ShieldCheck, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -78,6 +79,7 @@ export const EvaluationResponseDialog = ({
   const [extraViewerIds, setExtraViewerIds] = useState<string[]>([]);
   const [companyPeople, setCompanyPeople] = useState<PersonOption[]>([]);
   const [viewerSearch, setViewerSearch] = useState("");
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
 
   const locked = response?.status === "completed";
 
