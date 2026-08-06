@@ -880,7 +880,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent data-tour="start-flight-dialog" className="w-[95vw] max-w-md max-h-[calc(90vh-env(safe-area-inset-top))] flex flex-col mt-[env(safe-area-inset-top)]">
+        <DialogContent data-tour="start-flight-dialog" className="w-[95vw] max-w-md max-h-[calc(90vh_-_env(safe-area-inset-top))] flex flex-col mt-[env(safe-area-inset-top)]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('flight.startFlightTitle')}</DialogTitle>
             <DialogDescription>
