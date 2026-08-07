@@ -965,8 +965,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       </SelectContent>
                     </Select>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+              </div>
+
 
               {isAdmin && deptVis.hasDepartments && (
                 <div className="border-t border-border pt-4">
