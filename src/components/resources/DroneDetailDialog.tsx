@@ -1625,7 +1625,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </>
            ) : (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
               {/* Left column: core data */}
               <div className="space-y-4 min-w-0">
               {/* Drone catalog selector */}
@@ -1753,6 +1753,144 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
                   rows={3}
                 />
+              </div>
+
+              {/* Checklist selection in edit mode */}
+               {isEditing && checklists.length > 0 && (
+                <>
+                  <div className="border-t pt-4">
+                    <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
+                    <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
+                        {checklists.map((checklist) => (
+                          <SelectItem key={checklist.id} value={checklist.id}>
+                            {checklist.tittel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tt("checklists.inspectionHint")}
+                    </p>
+                  </div>
+                  <div className="border-t pt-4">
+                    <Label>{tt("checklists.operationsLabel")}</Label>
+                    {isMobile ? (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
+                            <span className="min-w-0 flex-1 truncate text-left">
+                              {(formData.operations_checklist_ids || []).length > 0
+                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
+                                : tt("checklists.operationsPlaceholder")}
+                            </span>
+                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="w-[95vw] max-w-md p-0 gap-0">
+                          <DialogHeader className="px-4 py-3 border-b">
+                            <DialogTitle className="text-base">{tt("checklists.operationsLabel")}</DialogTitle>
+                          </DialogHeader>
+                          <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 py-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
+                            {checklists.map((checklist) => (
+                              <label key={checklist.id} className="flex items-center gap-2 py-2 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
+                                  onCheckedChange={(checked) => {
+                                    const current = formData.operations_checklist_ids || [];
+                                    if (checked) {
+                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
+                                    } else {
+                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
+                                    }
+                                  }}
+                                />
+                                <span className="min-w-0 flex-1 break-words">{checklist.tittel}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
+                            <span className="min-w-0 flex-1 truncate text-left">
+                              {(formData.operations_checklist_ids || []).length > 0
+                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
+                                : tt("checklists.operationsPlaceholder")}
+                            </span>
+                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {checklists.map((checklist) => (
+                              <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                                <Checkbox
+                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
+                                  onCheckedChange={(checked) => {
+                                    const current = formData.operations_checklist_ids || [];
+                                    if (checked) {
+                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
+                                    } else {
+                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
+                                    }
+                                  }}
+                                />
+                                {checklist.tittel}
+                              </label>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tt("checklists.operationsHint")}
+                    </p>
+                  </div>
+                  <div className="border-t pt-4">
+                    <Label htmlFor="post_flight_checklist">{tt("checklists.postFlightLabel")}</Label>
+                    <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={tt("checklists.postFlightPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
+                        {checklists.map((checklist) => (
+                          <SelectItem key={checklist.id} value={checklist.id}>
+                            {checklist.tittel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tt("checklists.postFlightHint")}
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Technical responsible dropdown in edit mode */}
+              <div className="border-t pt-4">
+                <Label>{tt("techResponsible.label")}</Label>
+                <SearchablePersonSelect
+                  persons={technicalResponsiblePersons}
+                  value={formTechnicalResponsibleId}
+                  onValueChange={setFormTechnicalResponsibleId}
+                  placeholder={tt("techResponsible.placeholder")}
+                  searchPlaceholder={tt("techResponsible.searchPlaceholder")}
+                  emptyText={tt("techResponsible.emptyText")}
+                  allowNone
+                  noneLabel={tt("techResponsible.noneLabel")}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {tt("techResponsible.hint")}
+                </p>
               </div>
               </div>
 
@@ -1905,144 +2043,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </p>
               </div>
 
-
-              {/* Checklist selection in edit mode */}
-               {isEditing && checklists.length > 0 && (
-                <>
-                  <div className="border-t pt-4">
-                    <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
-                    <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.inspectionHint")}
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
-                    <Label>{tt("checklists.operationsLabel")}</Label>
-                    {isMobile ? (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
-                            <span className="min-w-0 flex-1 truncate text-left">
-                              {(formData.operations_checklist_ids || []).length > 0
-                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
-                                : tt("checklists.operationsPlaceholder")}
-                            </span>
-                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="w-[95vw] max-w-md p-0 gap-0">
-                          <DialogHeader className="px-4 py-3 border-b">
-                            <DialogTitle className="text-base">{tt("checklists.operationsLabel")}</DialogTitle>
-                          </DialogHeader>
-                          <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 py-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
-                            {checklists.map((checklist) => (
-                              <label key={checklist.id} className="flex items-center gap-2 py-2 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                                <Checkbox
-                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
-                                  onCheckedChange={(checked) => {
-                                    const current = formData.operations_checklist_ids || [];
-                                    if (checked) {
-                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
-                                    } else {
-                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
-                                    }
-                                  }}
-                                />
-                                <span className="min-w-0 flex-1 break-words">{checklist.tittel}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    ) : (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
-                            <span className="min-w-0 flex-1 truncate text-left">
-                              {(formData.operations_checklist_ids || []).length > 0
-                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
-                                : tt("checklists.operationsPlaceholder")}
-                            </span>
-                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
-                          <div className="space-y-1 max-h-48 overflow-y-auto">
-                            {checklists.map((checklist) => (
-                              <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                                <Checkbox
-                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
-                                  onCheckedChange={(checked) => {
-                                    const current = formData.operations_checklist_ids || [];
-                                    if (checked) {
-                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
-                                    } else {
-                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
-                                    }
-                                  }}
-                                />
-                                {checklist.tittel}
-                              </label>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.operationsHint")}
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
-                    <Label htmlFor="post_flight_checklist">{tt("checklists.postFlightLabel")}</Label>
-                    <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={tt("checklists.postFlightPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.postFlightHint")}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Technical responsible dropdown in edit mode */}
-              <div className="border-t pt-4">
-                <Label>{tt("techResponsible.label")}</Label>
-                <SearchablePersonSelect
-                  persons={technicalResponsiblePersons}
-                  value={formTechnicalResponsibleId}
-                  onValueChange={setFormTechnicalResponsibleId}
-                  placeholder={tt("techResponsible.placeholder")}
-                  searchPlaceholder={tt("techResponsible.searchPlaceholder")}
-                  emptyText={tt("techResponsible.emptyText")}
-                  allowNone
-                  noneLabel={tt("techResponsible.noneLabel")}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {tt("techResponsible.hint")}
-                </p>
-              </div>
 
               {isAdmin && (deptVis.hasDepartments || (!isSharedFromParent && drone?.company_id)) && (
                 <div className="border-t pt-4 space-y-3">
