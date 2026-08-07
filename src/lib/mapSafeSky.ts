@@ -307,7 +307,9 @@ export function createSafeSkyManager(params: {
       try { safeskyLayer.removeLayer(marker); } catch {}
     }
     safeskyMarkersCache.clear();
+    motionStates.clear();
     clearAllHeliIntervals();
+
   }
 
   async function fetchSafeSkyBeacons() {
