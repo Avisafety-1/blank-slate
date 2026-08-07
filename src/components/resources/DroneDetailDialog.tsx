@@ -856,23 +856,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   // Calculate aggregated status based on drone + accessories + linked equipment
   const linkedEquipmentData = linkedEquipment.map((link: any) => link.equipment).filter(Boolean);
-  const { status: maintenanceAggregated, affectedItems } = calculateDroneAggregatedStatus(
-    {
-      neste_inspeksjon: drone.neste_inspeksjon,
-      varsel_dager: drone.varsel_dager,
-      flyvetimer: drone.flyvetimer,
-      hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
-      inspection_interval_hours: drone.inspection_interval_hours,
-      varsel_timer: drone.varsel_timer,
-      missions_since_inspection: missionsSinceInspection,
-      inspection_interval_missions: drone.inspection_interval_missions,
-      varsel_oppdrag: drone.varsel_oppdrag,
-    },
+  const droneStatusInput = {
+    neste_inspeksjon: drone.neste_inspeksjon,
+    varsel_dager: drone.varsel_dager,
+    flyvetimer: drone.flyvetimer,
+    hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+    inspection_interval_hours: drone.inspection_interval_hours,
+    varsel_timer: drone.varsel_timer,
+    missions_since_inspection: missionsSinceInspection,
+    inspection_interval_missions: drone.inspection_interval_missions,
+    varsel_oppdrag: drone.varsel_oppdrag,
+  };
+  const { status: maintenanceAggregated } = calculateDroneAggregatedStatus(
+    droneStatusInput,
     accessories,
     linkedEquipmentData
   );
   const dbStatus = (drone.status as Status) || "Grønn";
   const aggregatedStatus = worstStatus(maintenanceAggregated, dbStatus);
+  const { reasons: statusReasons } = getDroneStatusReasons({
+    drone: droneStatusInput,
+    accessories,
+    linkedEquipment: linkedEquipmentData,
+    dbStatus,
+    latestWarningTitle: latestWarning?.title ?? null,
+  });
   const droneOwnStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
 
   // Calculate payload status
