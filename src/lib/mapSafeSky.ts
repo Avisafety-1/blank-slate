@@ -254,10 +254,13 @@ export function createSafeSkyManager(params: {
     }
   }
 
-  let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
+  // Polling-kadens for lufttrafikk. Cron-jobben skriver periodisk, så 15s gir
+  // samme oppdateringsfølelse uten realtime-kostnaden.
+  const SAFESKY_POLL_MS = 15000;
   let safeskyDebounceTimer: number | null = null;
   let safeskyPollInterval: number | null = null;
   let warmupTriggered = false;
+
 
   const debouncedFetchSafeSky = () => {
     if (destroyed) return;
