@@ -114,6 +114,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [hoursDialogOpen, setHoursDialogOpen] = useState(false);
+  const [hoursDraft, setHoursDraft] = useState("");
+  const [hoursReason, setHoursReason] = useState("");
+  const [pendingHoursChange, setPendingHoursChange] = useState<{ from: number; to: number; reason: string } | null>(null);
+
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [linkedDocuments, setLinkedDocuments] = useState<any[]>([]);
   const [documentPickerOpen, setDocumentPickerOpen] = useState(false);
@@ -820,6 +825,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         .eq("id", drone.id);
 
       if (error) throw error;
+
+      // Log manual flight-hour changes to the drone logbook
+      if (pendingHoursChange && pendingHoursChange.from !== pendingHoursChange.to && user && companyId) {
+        const suffix = pendingHoursChange.reason
+          ? tt("flightHoursEdit.logReasonSuffix", { reason: pendingHoursChange.reason })
+          : "";
+        await supabase.from("drone_log_entries").insert({
+          drone_id: drone.id,
+          company_id: companyId,
+          user_id: user.id,
+          entry_date: new Date().toISOString().split("T")[0],
+          entry_type: "Endring",
+          title: tt("flightHoursEdit.logTitle"),
+          description: tt("flightHoursEdit.logDescription", {
+            from: pendingHoursChange.from.toFixed(2),
+            to: pendingHoursChange.to.toFixed(2),
+            suffix,
+          }),
+        });
+        setPendingHoursChange(null);
+      }
+
+
 
       // Check resource visibility before persisting department-visibility changes
       const targetDepts = getTargetDeptIds();
@@ -1759,25 +1787,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                {isEditing && checklists.length > 0 && (
                 <>
                   <div className="border-t pt-4">
-                    <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
-                    <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.inspectionHint")}
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
+
                     <Label>{tt("checklists.operationsLabel")}</Label>
                     {isMobile ? (
                       <Dialog>
@@ -1901,15 +1911,30 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="flyvetimer">{tt("labels.flightHours")}</Label>
-                  <Input
-                    id="flyvetimer"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.flyvetimer === 0 ? '' : formData.flyvetimer}
-                    onChange={(e) => setFormData({ ...formData, flyvetimer: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="flyvetimer"
+                      type="text"
+                      readOnly
+                      value={Number(formData.flyvetimer || 0).toFixed(2)}
+                      className="bg-muted/60 cursor-not-allowed"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        setHoursDraft(String(formData.flyvetimer ?? 0));
+                        setHoursReason("");
+                        setHoursDialogOpen(true);
+                      }}
+                    >
+                      {tt("flightHoursEdit.change")}
+                    </Button>
+                  </div>
                 </div>
+
                 <div>
                   <Label htmlFor="status">{tt("labels.status")}</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
@@ -1933,6 +1958,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <Calendar className="w-4 h-4 text-primary" />
                   {tt("inspectionForm.sectionTitle")}
                 </div>
+
+                  {checklists.length > 0 && (
+                    <div>
+                      <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
+                      <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{tt("checklists.none")}</SelectItem>
+                          {checklists.map((checklist) => (
+                            <SelectItem key={checklist.id} value={checklist.id}>
+                              {checklist.tittel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {tt("checklists.inspectionHint")}
+                      </p>
+                    </div>
+                  )}
+
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2175,7 +2223,56 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         }}
       />
 
+      <AlertDialog open={hoursDialogOpen} onOpenChange={setHoursDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tt("flightHoursEdit.dialogTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{tt("flightHoursEdit.dialogDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">{tt("flightHoursEdit.currentLabel")}</Label>
+              <p className="text-sm font-medium">{Number(drone?.flyvetimer ?? 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <Label htmlFor="hours_draft">{tt("flightHoursEdit.newLabel")}</Label>
+              <Input
+                id="hours_draft"
+                type="number"
+                step="0.01"
+                min="0"
+                value={hoursDraft}
+                onChange={(e) => setHoursDraft(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="hours_reason">{tt("flightHoursEdit.reasonLabel")}</Label>
+              <Input
+                id="hours_reason"
+                value={hoursReason}
+                onChange={(e) => setHoursReason(e.target.value)}
+                placeholder={tt("flightHoursEdit.reasonPlaceholder")}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tt("flightHoursEdit.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const parsed = parseFloat(hoursDraft);
+                if (isNaN(parsed) || parsed < 0) return;
+                setFormData({ ...formData, flyvetimer: parsed });
+                setPendingHoursChange({ from: Number(drone?.flyvetimer ?? 0), to: parsed, reason: hoursReason.trim() });
+              }}
+            >
+              {tt("flightHoursEdit.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DroneLogbookDialog
+
         open={logbookOpen}
         onOpenChange={setLogbookOpen}
         droneId={drone?.id || ""}

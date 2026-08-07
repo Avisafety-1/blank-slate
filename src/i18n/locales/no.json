@@ -4713,7 +4713,23 @@
         "weightPlaceholder": "f.eks. 0.9",
         "payloadPlaceholder": "f.eks. 0.5"
       },
+      "flightHoursEdit": {
+        "locked": "Låst",
+        "change": "Endre",
+        "dialogTitle": "Endre flytimer manuelt?",
+        "dialogDesc": "Flytimer oppdateres normalt automatisk fra flyloggene. En manuell endring loggføres i loggboken.",
+        "currentLabel": "Nåværende flytimer",
+        "newLabel": "Nye flytimer",
+        "reasonLabel": "Årsak (valgfritt)",
+        "reasonPlaceholder": "f.eks. korrigering etter import",
+        "cancel": "Avbryt",
+        "confirm": "Bekreft endring",
+        "logTitle": "Flytimer endret manuelt",
+        "logDescription": "Flytimer endret fra {{from}} t til {{to}} t.{{suffix}}",
+        "logReasonSuffix": " Årsak: {{reason}}"
+      },
       "inspectionForm": {
+
         "sectionTitle": "Inspeksjon og vedlikeholdsintervall",
         "startDate": "Startdato",
         "intervalDays": "Intervall (dager)",
