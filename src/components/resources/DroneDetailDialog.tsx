@@ -826,6 +826,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
       if (error) throw error;
 
+      // Log manual flight-hour changes to the drone logbook
+      if (pendingHoursChange && pendingHoursChange.from !== pendingHoursChange.to && user && companyId) {
+        const suffix = pendingHoursChange.reason
+          ? tt("flightHoursEdit.logReasonSuffix", { reason: pendingHoursChange.reason })
+          : "";
+        await supabase.from("drone_log_entries").insert({
+          drone_id: drone.id,
+          company_id: companyId,
+          user_id: user.id,
+          entry_date: new Date().toISOString().split("T")[0],
+          entry_type: "Endring",
+          title: tt("flightHoursEdit.logTitle"),
+          description: tt("flightHoursEdit.logDescription", {
+            from: pendingHoursChange.from.toFixed(2),
+            to: pendingHoursChange.to.toFixed(2),
+            suffix,
+          }),
+        });
+        setPendingHoursChange(null);
+      }
+
+
+
       // Check resource visibility before persisting department-visibility changes
       const targetDepts = getTargetDeptIds();
       if (targetDepts.length > 0) {
