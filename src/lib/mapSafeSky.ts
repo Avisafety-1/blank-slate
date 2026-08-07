@@ -220,6 +220,7 @@ export function createSafeSkyManager(params: {
               existingMarker.setLatLng([lat, lon]);
             }
             existingMarker.setPopupContent(popupHtml);
+            updateMotionState(beaconId, lat, lon, beacon);
             
             if (!isDrone && !isHeli) {
               const el = existingMarker.getElement();
@@ -236,9 +237,11 @@ export function createSafeSkyManager(params: {
           console.warn('SafeSky: marker update error, removing stale marker', err);
           try { safeskyLayer.removeLayer(existingMarker); } catch {}
           safeskyMarkersCache.delete(beaconId);
+          motionStates.delete(beaconId);
           const intervalId = heliAnimIntervals.get(beaconId);
           if (intervalId != null) { clearInterval(intervalId); heliAnimIntervals.delete(beaconId); }
         }
+
       } else {
         try {
           const size = 56;
