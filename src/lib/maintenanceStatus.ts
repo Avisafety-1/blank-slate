@@ -272,17 +272,21 @@ export const calculateDroneAggregatedStatus = (
   }
   
   // Check all linked equipment
+  // Check all linked equipment (maintenance date + log-driven status column)
   for (const eq of linkedEquipment) {
-    const eqStatus = calculateMaintenanceStatus(
+    const eqDateStatus = calculateMaintenanceStatus(
       eq.neste_vedlikehold,
       eq.varsel_dager ?? 14
     );
-    const eqPriority = STATUS_PRIORITY[eqStatus];
+    const eqLogStatus = ((eq.status as Status) || "Grønn");
+    const eqStatus = worstStatus(eqDateStatus, eqLogStatus);
+    const eqPriority = STATUS_PRIORITY[eqStatus] ?? 0;
     if (eqPriority > 0) {
       affectedItems.push((eq as any).navn || i18n.t("resources.equipmentFallback"));
     }
     worstPriority = Math.max(worstPriority, eqPriority);
   }
+
   
   // Find the status with matching priority
   const status = (Object.entries(STATUS_PRIORITY).find(
