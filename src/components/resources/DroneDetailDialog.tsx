@@ -103,6 +103,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
+  // Keeps the ids of linked equipment available inside realtime callbacks
+  const linkedEquipmentIdsRef = useRef<string[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
