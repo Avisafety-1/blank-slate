@@ -3,7 +3,6 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";
 
-
 interface DepartmentItem {
   id: string;
   navn: string;
