@@ -33,7 +33,8 @@ import { checkDroneResourceVisibility, type MissingVisibility } from "@/lib/dron
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
-import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
+import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
