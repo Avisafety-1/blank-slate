@@ -1651,6 +1651,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </p>
               </div>
 
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="modell">{tt("labels.model")}</Label>
