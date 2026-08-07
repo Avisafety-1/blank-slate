@@ -1883,15 +1883,30 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="flyvetimer">{tt("labels.flightHours")}</Label>
-                  <Input
-                    id="flyvetimer"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.flyvetimer === 0 ? '' : formData.flyvetimer}
-                    onChange={(e) => setFormData({ ...formData, flyvetimer: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="flyvetimer"
+                      type="text"
+                      readOnly
+                      value={Number(formData.flyvetimer || 0).toFixed(2)}
+                      className="bg-muted/60 cursor-not-allowed"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        setHoursDraft(String(formData.flyvetimer ?? 0));
+                        setHoursReason("");
+                        setHoursDialogOpen(true);
+                      }}
+                    >
+                      {tt("flightHoursEdit.change")}
+                    </Button>
+                  </div>
                 </div>
+
                 <div>
                   <Label htmlFor="status">{tt("labels.status")}</Label>
                   <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
