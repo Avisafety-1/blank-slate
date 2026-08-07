@@ -132,6 +132,8 @@ const Resources = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_equipment' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_inspections' }, guardedFetch(fetchDrones))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_log_entries' }, guardedFetch(() => { fetchEquipment(); fetchDrones(); }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_log_entries' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, guardedFetch(fetchPersonnel))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, guardedFetch(fetchPersonnel))
