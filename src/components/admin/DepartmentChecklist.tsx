@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 
 interface DepartmentItem {
@@ -66,7 +65,7 @@ export const DepartmentChecklist = ({
               />
             </div>
           )}
-          <ScrollArea className="max-h-[200px]">
+          <div className="max-h-[260px] overflow-y-auto pr-1">
             <div className={departments.length > 6 ? "grid grid-cols-2 gap-x-2 gap-y-0.5" : "space-y-0.5"}>
               {filtered.map((dept) => (
                 <label key={dept.id} className="flex items-center gap-1.5 text-xs cursor-pointer py-0.5">
@@ -83,9 +82,10 @@ export const DepartmentChecklist = ({
                 <p className="text-xs text-muted-foreground col-span-2 py-1">{t('admin.departmentChecklist.noResults')}</p>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </>
       )}
     </div>
   );
 };
+
