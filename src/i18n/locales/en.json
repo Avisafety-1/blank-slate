@@ -7884,5 +7884,31 @@
       "storedIsFuller": "Stored SN ({{stored}}) is the complete value; the log shows DJI's shortened SN ({{parsed}}).",
       "updateToFull": "The log SN ({{parsed}}) is more complete than the stored SN ({{stored}}). Update the {{vehicle}} serial number to the full value?"
     }
+  },
+  "statusReasons": {
+    "kind": {
+      "accessory": "accessory",
+      "equipment": "linked equipment"
+    },
+    "inspectionOverdue": "Inspection overdue since {{date}}",
+    "inspectionSoon": "Inspection due {{date}} (in {{days}} days)",
+    "maintenanceOverdue": "Maintenance overdue since {{date}}",
+    "maintenanceSoon": "Maintenance due {{date}} (in {{days}} days)",
+    "hoursExceeded": "Hours since inspection: {{current}} / {{limit}} – interval exceeded",
+    "hoursNear": "Hours since inspection: {{current}} / {{limit}} – approaching interval",
+    "missionsExceeded": "Missions since inspection: {{current}} / {{limit}} – interval exceeded",
+    "missionsNear": "Missions since inspection: {{current}} / {{limit}} – approaching interval",
+    "eqHoursExceeded": "Hours since maintenance: {{current}} / {{limit}} – interval exceeded",
+    "eqHoursNear": "Hours since maintenance: {{current}} / {{limit}} – approaching interval",
+    "eqMissionsExceeded": "Missions since maintenance: {{current}} / {{limit}} – interval exceeded",
+    "eqMissionsNear": "Missions since maintenance: {{current}} / {{limit}} – approaching interval",
+    "itemOverdue": "{{name}} ({{kind}}): maintenance overdue since {{date}}",
+    "itemSoon": "{{name}} ({{kind}}): maintenance due {{date}} (in {{days}} days)",
+    "hintOverdue": "Maintenance overdue since {{date}}",
+    "hintSoon": "Maintenance due {{date}} (in {{days}} days)",
+    "logWarning": "Deviation from logbook: {{title}}",
+    "logWarningFallback": "Deviation registered in logbook",
+    "title": "What drives the status",
+    "allGreen": "Nothing is affecting the status"
   }
 }
