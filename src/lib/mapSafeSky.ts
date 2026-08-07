@@ -476,7 +476,15 @@ export function createSafeSkyManager(params: {
       if (map) {
         map.on('moveend', onMapMove);
         map.on('zoomend', onMapMove);
+        // Pause interpolasjonen mens kartet selv animerer (zoom/pan).
+        map.on('zoomstart', onMapAnimStart);
+        map.on('movestart', onMapAnimStart);
+        map.on('zoomend', onMapAnimEnd);
+        map.on('moveend', onMapAnimEnd);
       }
+
+      // Jevn bevegelse mellom hentingene (dead reckoning).
+      startAnimationLoop();
     }
   }
 
@@ -489,10 +497,18 @@ export function createSafeSkyManager(params: {
       safeskyMarkersCache.clear();
     }
 
+    stopAnimationLoop();
+    mapIsAnimating = false;
+
     if (map) {
       try { map.off('moveend', onMapMove); } catch {}
       try { map.off('zoomend', onMapMove); } catch {}
+      try { map.off('zoomstart', onMapAnimStart); } catch {}
+      try { map.off('movestart', onMapAnimStart); } catch {}
+      try { map.off('zoomend', onMapAnimEnd); } catch {}
+      try { map.off('moveend', onMapAnimEnd); } catch {}
     }
+
     if (safeskyPollInterval) {
       clearInterval(safeskyPollInterval);
       safeskyPollInterval = null;
