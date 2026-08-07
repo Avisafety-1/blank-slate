@@ -39,6 +39,32 @@ export function createSafeSkyManager(params: {
   
   const safeskyMarkersCache = new Map<string, L.Marker>();
   const heliAnimIntervals = new Map<string, number>();
+
+  // --- Interpolasjon (dead reckoning) -------------------------------------
+  // Vi henter fortsatt posisjon like sjelden som før, men mellom hentingene
+  // flytter vi markørene langs kurs/fart slik at bevegelsen ser jevn ut.
+  interface MotionState {
+    lat: number;          // sist kjente posisjon fra databasen
+    lon: number;
+    dLatPerSec: number;   // avledet hastighetsvektor i grader/sekund
+    dLonPerSec: number;
+    animLat: number;      // gjeldende (interpolerte) posisjon
+    animLon: number;
+    startedAt: number;    // tidspunkt for siste databaseposisjon
+  }
+  const motionStates = new Map<string, MotionState>();
+  // ~8 fps er nok til at øyet oppfatter jevn bevegelse, og holder CPU lav.
+  const ANIM_FRAME_MS = 125;
+  // Slutt å ekstrapolere hvis dataene blir gamle — bedre å stå stille enn å lyve.
+  const MAX_EXTRAPOLATION_MS = 45000;
+  // Over dette antallet markører dropper vi interpolasjon helt (ytelsesvern).
+  const MAX_MARKERS_FOR_ANIMATION = 350;
+  // Under denne farten (m/s) er bevegelsen uansett ikke synlig.
+  const MIN_SPEED_MS_FOR_ANIMATION = 5;
+  let animFrameId: number | null = null;
+  let lastAnimTick = 0;
+  let mapIsAnimating = false;
+
   let destroyed = false;
   let consecutiveFailures = 0;
   let consecutiveEmptyResults = 0;
@@ -59,6 +85,91 @@ export function createSafeSkyManager(params: {
       return false;
     }
   }
+
+  /** Lagrer siste kjente posisjon + hastighetsvektor for én beacon. */
+  function updateMotionState(id: string, lat: number, lon: number, beacon: any) {
+    const speed = typeof beacon.ground_speed === 'number' ? beacon.ground_speed : 0;
+    const course = typeof beacon.course === 'number' ? beacon.course : 0;
+    const moving = !beacon.on_ground && speed >= MIN_SPEED_MS_FOR_ANIMATION;
+
+    let dLatPerSec = 0;
+    let dLonPerSec = 0;
+    if (moving) {
+      const rad = (course * Math.PI) / 180;
+      const metersPerDegLat = 111320;
+      const metersPerDegLon = Math.max(1, 111320 * Math.cos((lat * Math.PI) / 180));
+      dLatPerSec = (speed * Math.cos(rad)) / metersPerDegLat;
+      dLonPerSec = (speed * Math.sin(rad)) / metersPerDegLon;
+    }
+
+    motionStates.set(id, {
+      lat,
+      lon,
+      dLatPerSec,
+      dLonPerSec,
+      animLat: lat,
+      animLon: lon,
+      startedAt: performance.now(),
+    });
+  }
+
+  /** Én felles animasjonsløkke for alle markører. */
+  function animationTick(now: number) {
+    animFrameId = null;
+    if (destroyed) return;
+
+    if (now - lastAnimTick >= ANIM_FRAME_MS) {
+      lastAnimTick = now;
+      const shouldMove =
+        !document.hidden &&
+        !mapIsAnimating &&
+        safeskyMarkersCache.size > 0 &&
+        safeskyMarkersCache.size <= MAX_MARKERS_FOR_ANIMATION;
+
+      if (shouldMove) {
+        for (const [id, state] of motionStates) {
+          if (state.dLatPerSec === 0 && state.dLonPerSec === 0) continue;
+          const marker = safeskyMarkersCache.get(id);
+          if (!marker) continue;
+          const elapsed = now - state.startedAt;
+          if (elapsed > MAX_EXTRAPOLATION_MS) continue;
+          if (!isMarkerAttached(marker)) continue;
+          if (marker.isPopupOpen()) continue;
+
+          const secs = elapsed / 1000;
+          const nextLat = state.lat + state.dLatPerSec * secs;
+          const nextLon = state.lon + state.dLonPerSec * secs;
+          state.animLat = nextLat;
+          state.animLon = nextLon;
+          try {
+            marker.setLatLng([nextLat, nextLon]);
+          } catch {
+            /* markør ute av sync — ryddes ved neste henting */
+          }
+        }
+      }
+    }
+
+    animFrameId = window.requestAnimationFrame(animationTick);
+  }
+
+  function startAnimationLoop() {
+    if (animFrameId !== null || destroyed) return;
+    lastAnimTick = 0;
+    animFrameId = window.requestAnimationFrame(animationTick);
+  }
+
+  function stopAnimationLoop() {
+    if (animFrameId !== null) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+    motionStates.clear();
+  }
+
+  const onMapAnimStart = () => { mapIsAnimating = true; };
+  const onMapAnimEnd = () => { mapIsAnimating = false; };
+
 
   function renderSafeSkyBeacons(beacons: any[]) {
     if (destroyed) return;
