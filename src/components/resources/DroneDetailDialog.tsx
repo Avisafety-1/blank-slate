@@ -1040,21 +1040,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {translateResourceStatus(aggregatedStatus)}
                     </Badge>
                   </div>
-                  {/* Status explanation */}
-                  {aggregatedStatus !== "Grønn" && (
-                    <div className="mt-1.5 space-y-1">
-                      {maintenanceAggregated !== "Grønn" && (
-                        <p className="text-xs text-muted-foreground">
-                          {maintenanceAggregated === "Rød" ? tt("statusHints.maintenanceDue") : tt("statusHints.maintenanceSoon")}
-                        </p>
-                      )}
-                      {dbStatus !== "Grønn" && (
-                        <p className="text-xs text-muted-foreground">
-                          {latestWarning ? tt("statusHints.warningFromLog", { title: latestWarning.title }) : tt("statusHints.warningFromLogFallback")}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Status explanation — concrete drivers */}
+                  {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
                   {/* Show acknowledge button only when DB warning is actually driving the status */}
                   {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceAggregated] && (
                     <AlertDialog>
