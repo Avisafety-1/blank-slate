@@ -7938,5 +7938,11 @@
     "checklists": "Sjekklister",
     "techResponsible": "Teknisk ansvarlig",
     "administration": "Administrasjon"
+  },
+  "idleTimeout": {
+    "title": "Inaktivitet oppdaget",
+    "description": "Du blir logget ut på grunn av inaktivitet.",
+    "logoutNow": "Logg ut nå",
+    "extendSession": "Forleng sesjon"
   }
 }

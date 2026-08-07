@@ -7936,5 +7936,11 @@
     "checklists": "Checklists",
     "techResponsible": "Technical responsible",
     "administration": "Administration"
+  },
+  "idleTimeout": {
+    "title": "Inactivity detected",
+    "description": "You will be logged out due to inactivity.",
+    "logoutNow": "Log out now",
+    "extendSession": "Extend session"
   }
 }
