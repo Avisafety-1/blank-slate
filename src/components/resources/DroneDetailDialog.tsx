@@ -1936,6 +1936,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   {tt("inspectionForm.sectionTitle")}
                 </div>
 
+                  {checklists.length > 0 && (
+                    <div>
+                      <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
+                      <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{tt("checklists.none")}</SelectItem>
+                          {checklists.map((checklist) => (
+                            <SelectItem key={checklist.id} value={checklist.id}>
+                              {checklist.tittel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {tt("checklists.inspectionHint")}
+                      </p>
+                    </div>
+                  )}
+
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
