@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -930,7 +929,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`w-[95vw] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto`}>
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -1626,8 +1625,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </>
            ) : (
             <>
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+              {/* Left column: core data */}
+              <div className="space-y-4 min-w-0">
               {/* Drone catalog selector */}
               <div className="border-b pb-4 mb-4">
+
                 <Label>{tt("catalogSelector.label")}</Label>
                 <Select value={selectedModelId} onValueChange={handleModelSelect}>
                   <SelectTrigger>
@@ -1646,6 +1649,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   {tt("catalogSelector.autofillHint")}
                 </p>
               </div>
+
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1713,6 +1718,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground pt-2">{t("resourceEditLayout.technical")}</p>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vekt">{tt("labels.weightMTOM")} ({tt("kgSuffix")})</Label>
@@ -1737,6 +1744,21 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   />
                 </div>
               </div>
+
+              <div>
+                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
+                <Textarea
+                  id="merknader"
+                  value={formData.merknader}
+                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              </div>
+
+              {/* Right column: status, maintenance, checklists, admin */}
+              <div className="space-y-5 rounded-xl border bg-muted/30 p-4 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.operationalStatus")}</p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -1765,16 +1787,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              {/* Collapsible inspection section */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <button type="button" className="flex items-center gap-2 w-full border-t pt-4 mt-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                    <Calendar className="w-4 h-4" />
-                    {tt("inspectionForm.sectionTitle")}
-                    <ChevronDown className="w-4 h-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
+              {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
+
+              {/* Inspection & maintenance intervals - always visible */}
+              <div className="rounded-lg border bg-background/60 p-3 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  {tt("inspectionForm.sectionTitle")}
+                </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
@@ -1882,8 +1903,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-xs text-muted-foreground">
                     {tt("inspectionForm.statusTriggerHint")}
                   </p>
-                </CollapsibleContent>
-              </Collapsible>
+              </div>
+
 
               {/* Checklist selection in edit mode */}
                {isEditing && checklists.length > 0 && (
@@ -2023,51 +2044,50 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
-                <Textarea
-                  id="merknader"
-                  value={formData.merknader}
-                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-                  rows={3}
-                />
+              {isAdmin && (deptVis.hasDepartments || (!isSharedFromParent && drone?.company_id)) && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.administration")}</p>
+
+                  {deptVis.hasDepartments && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
+                      <DepartmentChecklist
+                        departments={deptVis.childDepartments}
+                        selectedIds={deptVis.selectedDeptIds}
+                        onToggle={deptVis.handleToggle}
+                        allSelected={deptVis.allSelected}
+                        onToggleAll={deptVis.handleToggleAll}
+                        allLabel={tt("deptVisibility.allLabel")}
+                      />
+                    </div>
+                  )}
+
+                  {!isSharedFromParent && drone?.company_id && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMoveOpen(true)}
+                        className="w-full"
+                      >
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        {tt("moveDrone.button")}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {tt("moveDrone.hint")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
               </div>
             </>
           )}
         </div>
 
-        {isEditing && isAdmin && deptVis.hasDepartments && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
-            <DepartmentChecklist
-              departments={deptVis.childDepartments}
-              selectedIds={deptVis.selectedDeptIds}
-              onToggle={deptVis.handleToggle}
-              allSelected={deptVis.allSelected}
-              onToggleAll={deptVis.handleToggleAll}
-              allLabel={tt("deptVisibility.allLabel")}
-            />
-          </div>
-        )}
-
-        {isEditing && isAdmin && !isSharedFromParent && drone?.company_id && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setMoveOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <ArrowRightLeft className="w-4 h-4 mr-2" />
-              {tt("moveDrone.button")}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tt("moveDrone.hint")}
-            </p>
-          </div>
-        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {isAdmin && !isEditing && (

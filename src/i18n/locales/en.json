@@ -7911,5 +7911,14 @@
     "logWarningFallback": "Deviation registered in logbook",
     "title": "What drives the status",
     "allGreen": "Nothing is affecting the status"
+  },
+  "resourceEditLayout": {
+    "general": "General information",
+    "technical": "Technical specifications",
+    "operationalStatus": "Operational status",
+    "maintenance": "Inspection and maintenance intervals",
+    "checklists": "Checklists",
+    "techResponsible": "Technical responsible",
+    "administration": "Administration"
   }
 }

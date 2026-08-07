@@ -84,7 +84,6 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
   const [customType, setCustomType] = useState("");
-  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
   const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
@@ -389,7 +388,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className={`w-[95vw] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto p-4 sm:p-6`}>
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -736,7 +735,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             </>
           ) : (
             <>
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+              {/* Left column: core data */}
+              <div className="space-y-4 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+
                 <div>
                   <Label htmlFor="navn" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.labels.name')}</Label>
                   <Input
@@ -830,15 +834,27 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
               </div>
 
-              {/* Collapsible maintenance settings */}
-              <Collapsible open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
-                <CollapsibleTrigger className="flex items-center gap-2 w-full border-t border-border pt-3">
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${maintenanceOpen ? 'rotate-180' : ''}`} />
-                  <span className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.intervalTitle')}</span>
-                </CollapsibleTrigger>
-                <p className="text-xs text-muted-foreground mt-1 ml-6">{t('resourceDialogs.equipmentDetail.maintenance.intervalHelper')}</p>
+              <div>
+                <Label htmlFor="merknader" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.notes')}</Label>
+                <Textarea
+                  id="merknader"
+                  value={formData.merknader}
+                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
+                  rows={3}
+                  className="text-sm"
+                />
+              </div>
+              </div>
 
-                <CollapsibleContent className="space-y-3 pt-3">
+              {/* Right column: maintenance and admin */}
+              <div className="space-y-5 rounded-xl border bg-muted/30 p-4 min-w-0">
+              <div className="rounded-lg border bg-background/60 p-3 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Wrench className="w-4 h-4 text-primary" />
+                  {t('resourceDialogs.equipmentDetail.maintenance.intervalTitle')}
+                </div>
+                <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalHelper')}</p>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <Label htmlFor="vedlikeholdsintervall_dager" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.maintenance.intervalDaysField')}</Label>
@@ -965,37 +981,29 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       </SelectContent>
                     </Select>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
+              </div>
 
-              <div>
-                <Label htmlFor="merknader" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.notes')}</Label>
-                <Textarea
-                  id="merknader"
-                  value={formData.merknader}
-                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-                  rows={3}
-                  className="text-sm"
-                />
+
+              {isAdmin && deptVis.hasDepartments && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{t("resourceEditLayout.administration")}</p>
+                  <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
+                  <DepartmentChecklist
+                    departments={deptVis.childDepartments}
+                    selectedIds={deptVis.selectedDeptIds}
+                    onToggle={deptVis.handleToggle}
+                    allSelected={deptVis.allSelected}
+                    onToggleAll={deptVis.handleToggleAll}
+                    allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
+                  />
+                </div>
+              )}
+              </div>
               </div>
             </>
           )}
         </div>
 
-        {isEditing && isAdmin && deptVis.hasDepartments && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
-            <DepartmentChecklist
-              departments={deptVis.childDepartments}
-              selectedIds={deptVis.selectedDeptIds}
-              onToggle={deptVis.handleToggle}
-              allSelected={deptVis.allSelected}
-              onToggleAll={deptVis.handleToggleAll}
-              allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
-
-            />
-          </div>
-        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {(() => {

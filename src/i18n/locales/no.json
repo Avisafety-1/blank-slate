@@ -7913,5 +7913,14 @@
     "logWarningFallback": "Avvik registrert i loggbok",
     "title": "Hva driver statusen",
     "allGreen": "Ingen forhold påvirker statusen"
+  },
+  "resourceEditLayout": {
+    "general": "Generell informasjon",
+    "technical": "Tekniske spesifikasjoner",
+    "operationalStatus": "Operativ status",
+    "maintenance": "Inspeksjon og vedlikeholdsintervall",
+    "checklists": "Sjekklister",
+    "techResponsible": "Teknisk ansvarlig",
+    "administration": "Administrasjon"
   }
 }
