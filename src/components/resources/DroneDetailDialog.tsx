@@ -1905,8 +1905,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-xs text-muted-foreground">
                     {tt("inspectionForm.statusTriggerHint")}
                   </p>
-                </CollapsibleContent>
-              </Collapsible>
+              </div>
+
 
               {/* Checklist selection in edit mode */}
                {isEditing && checklists.length > 0 && (
