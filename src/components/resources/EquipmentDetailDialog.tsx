@@ -26,7 +26,8 @@ import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
-import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
+import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintenanceStatus, STATUS_PRIORITY, getEquipmentStatusReasons } from "@/lib/maintenanceStatus";
+import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 
