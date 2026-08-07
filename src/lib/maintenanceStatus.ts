@@ -344,6 +344,24 @@ export const getItemDateReason = (
   };
 };
 
+/** Reason for a log-driven status on a linked item (e.g. a battery flagged Gul/Rød). */
+export const getItemStatusReason = (
+  name: string,
+  itemStatus: Status | string | null | undefined,
+  kind: "accessory" | "equipment",
+): StatusReason | null => {
+  const status = (itemStatus as Status) || "Grønn";
+  if (status !== "Gul" && status !== "Rød") return null;
+  const kindLabel = sr(kind === "accessory" ? "kind.accessory" : "kind.equipment");
+  return {
+    source: kind,
+    status,
+    text: sr("itemStatus", { name, kind: kindLabel, status }),
+  };
+};
+
+
+
 /** Short explanation of why a linked item badge is Gul/Rød (no name prefix). */
 export const getItemDateHint = (
   nextDate: string | null | undefined,
