@@ -33,7 +33,8 @@ import { checkDroneResourceVisibility, type MissingVisibility } from "@/lib/dron
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
-import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY } from "@/lib/maintenanceStatus";
+import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
+import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
@@ -856,23 +857,31 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   // Calculate aggregated status based on drone + accessories + linked equipment
   const linkedEquipmentData = linkedEquipment.map((link: any) => link.equipment).filter(Boolean);
-  const { status: maintenanceAggregated, affectedItems } = calculateDroneAggregatedStatus(
-    {
-      neste_inspeksjon: drone.neste_inspeksjon,
-      varsel_dager: drone.varsel_dager,
-      flyvetimer: drone.flyvetimer,
-      hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
-      inspection_interval_hours: drone.inspection_interval_hours,
-      varsel_timer: drone.varsel_timer,
-      missions_since_inspection: missionsSinceInspection,
-      inspection_interval_missions: drone.inspection_interval_missions,
-      varsel_oppdrag: drone.varsel_oppdrag,
-    },
+  const droneStatusInput = {
+    neste_inspeksjon: drone.neste_inspeksjon,
+    varsel_dager: drone.varsel_dager,
+    flyvetimer: drone.flyvetimer,
+    hours_at_last_inspection: drone.hours_at_last_inspection ?? 0,
+    inspection_interval_hours: drone.inspection_interval_hours,
+    varsel_timer: drone.varsel_timer,
+    missions_since_inspection: missionsSinceInspection,
+    inspection_interval_missions: drone.inspection_interval_missions,
+    varsel_oppdrag: drone.varsel_oppdrag,
+  };
+  const { status: maintenanceAggregated } = calculateDroneAggregatedStatus(
+    droneStatusInput,
     accessories,
     linkedEquipmentData
   );
   const dbStatus = (drone.status as Status) || "Grønn";
   const aggregatedStatus = worstStatus(maintenanceAggregated, dbStatus);
+  const { reasons: statusReasons } = getDroneStatusReasons({
+    drone: droneStatusInput,
+    accessories,
+    linkedEquipment: linkedEquipmentData,
+    dbStatus,
+    latestWarningTitle: latestWarning?.title ?? null,
+  });
   const droneOwnStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
 
   // Calculate payload status
@@ -912,10 +921,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               </Button>
             </div>
           )}
-          {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {tt("statusAffectedBy", { items: affectedItems.join(", ") })}
-            </p>
+          {!isEditing && aggregatedStatus !== "Grønn" && (
+            <StatusReasonList reasons={statusReasons} />
           )}
           {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
             <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
@@ -1033,21 +1040,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {translateResourceStatus(aggregatedStatus)}
                     </Badge>
                   </div>
-                  {/* Status explanation */}
-                  {aggregatedStatus !== "Grønn" && (
-                    <div className="mt-1.5 space-y-1">
-                      {maintenanceAggregated !== "Grønn" && (
-                        <p className="text-xs text-muted-foreground">
-                          {maintenanceAggregated === "Rød" ? tt("statusHints.maintenanceDue") : tt("statusHints.maintenanceSoon")}
-                        </p>
-                      )}
-                      {dbStatus !== "Grønn" && (
-                        <p className="text-xs text-muted-foreground">
-                          {latestWarning ? tt("statusHints.warningFromLog", { title: latestWarning.title }) : tt("statusHints.warningFromLogFallback")}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Status explanation — concrete drivers */}
+                  {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
                   {/* Show acknowledge button only when DB warning is actually driving the status */}
                   {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceAggregated] && (
                     <AlertDialog>
@@ -1270,6 +1264,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     {linkedEquipment.map((link: any) => {
                       const eq = link.equipment;
                       if (!eq) return null;
+                      const eqStatus = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
+                      const eqHint = getItemDateHint(eq.neste_vedlikehold, eq.varsel_dager);
                       return (
                         <div
                           key={link.id}
@@ -1278,11 +1274,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{eq.navn}</p>
-                              <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))} border text-xs`}>
-                                {translateResourceStatus(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))}
+                              <Badge className={`${getStatusColorClasses(eqStatus)} border text-xs`}>
+                                {translateResourceStatus(eqStatus)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • {tt("linkedEquipment.snPrefix")}: {eq.serienummer}</p>
+                            {eqHint && (
+                              <p className={`text-xs ${eqStatus === "Rød" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                {eqHint}
+                              </p>
+                            )}
                           </div>
                           <Button
                             size="sm"

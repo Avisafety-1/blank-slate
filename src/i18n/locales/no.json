@@ -7886,5 +7886,31 @@
       "storedIsFuller": "Lagret SN ({{stored}}) er den fullstendige verdien; loggen viser DJIs forkortede SN ({{parsed}}).",
       "updateToFull": "Loggens SN ({{parsed}}) er mer komplett enn lagret SN ({{stored}}). Oppdater {{vehicle}} sitt serienummer til full verdi?"
     }
+  },
+  "statusReasons": {
+    "kind": {
+      "accessory": "tilbehør",
+      "equipment": "tilknyttet utstyr"
+    },
+    "inspectionOverdue": "Inspeksjon forfalt {{date}}",
+    "inspectionSoon": "Inspeksjon forfaller {{date}} (om {{days}} dager)",
+    "maintenanceOverdue": "Vedlikehold forfalt {{date}}",
+    "maintenanceSoon": "Vedlikehold forfaller {{date}} (om {{days}} dager)",
+    "hoursExceeded": "Timer siden inspeksjon: {{current}} / {{limit}} – intervall overskredet",
+    "hoursNear": "Timer siden inspeksjon: {{current}} / {{limit}} – nærmer seg intervall",
+    "missionsExceeded": "Oppdrag siden inspeksjon: {{current}} / {{limit}} – intervall overskredet",
+    "missionsNear": "Oppdrag siden inspeksjon: {{current}} / {{limit}} – nærmer seg intervall",
+    "eqHoursExceeded": "Timer siden vedlikehold: {{current}} / {{limit}} – intervall overskredet",
+    "eqHoursNear": "Timer siden vedlikehold: {{current}} / {{limit}} – nærmer seg intervall",
+    "eqMissionsExceeded": "Oppdrag siden vedlikehold: {{current}} / {{limit}} – intervall overskredet",
+    "eqMissionsNear": "Oppdrag siden vedlikehold: {{current}} / {{limit}} – nærmer seg intervall",
+    "itemOverdue": "{{name}} ({{kind}}): vedlikehold forfalt {{date}}",
+    "itemSoon": "{{name}} ({{kind}}): vedlikehold forfaller {{date}} (om {{days}} dager)",
+    "hintOverdue": "Vedlikehold forfalt {{date}}",
+    "hintSoon": "Vedlikehold forfaller {{date}} (om {{days}} dager)",
+    "logWarning": "Avvik fra loggbok: {{title}}",
+    "logWarningFallback": "Avvik registrert i loggbok",
+    "title": "Hva driver statusen",
+    "allGreen": "Ingen forhold påvirker statusen"
   }
 }
