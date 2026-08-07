@@ -211,6 +211,8 @@ interface MaintenanceItem {
   neste_inspeksjon?: string | null;
   neste_vedlikehold?: string | null;
   varsel_dager?: number | null;
+  /** Log-driven status column (equipment only) */
+  status?: Status | string | null;
 }
 
 /**
@@ -269,18 +271,21 @@ export const calculateDroneAggregatedStatus = (
     worstPriority = Math.max(worstPriority, accPriority);
   }
   
-  // Check all linked equipment
+  // Check all linked equipment (maintenance date + log-driven status column)
   for (const eq of linkedEquipment) {
-    const eqStatus = calculateMaintenanceStatus(
+    const eqDateStatus = calculateMaintenanceStatus(
       eq.neste_vedlikehold,
       eq.varsel_dager ?? 14
     );
-    const eqPriority = STATUS_PRIORITY[eqStatus];
+    const eqLogStatus = ((eq.status as Status) || "Grønn");
+    const eqStatus = worstStatus(eqDateStatus, eqLogStatus);
+    const eqPriority = STATUS_PRIORITY[eqStatus] ?? 0;
     if (eqPriority > 0) {
       affectedItems.push((eq as any).navn || i18n.t("resources.equipmentFallback"));
     }
     worstPriority = Math.max(worstPriority, eqPriority);
   }
+
   
   // Find the status with matching priority
   const status = (Object.entries(STATUS_PRIORITY).find(
@@ -338,6 +343,24 @@ export const getItemDateReason = (
       : sr("itemSoon", { name, kind: kindLabel, date: fmtDate(nextDate), days: Math.max(0, daysUntil(nextDate)) }),
   };
 };
+
+/** Reason for a log-driven status on a linked item (e.g. a battery flagged Gul/Rød). */
+export const getItemStatusReason = (
+  name: string,
+  itemStatus: Status | string | null | undefined,
+  kind: "accessory" | "equipment",
+): StatusReason | null => {
+  const status = (itemStatus as Status) || "Grønn";
+  if (status !== "Gul" && status !== "Rød") return null;
+  const kindLabel = sr(kind === "accessory" ? "kind.accessory" : "kind.equipment");
+  return {
+    source: kind,
+    status,
+    text: sr("itemStatus", { name, kind: kindLabel, status }),
+  };
+};
+
+
 
 /** Short explanation of why a linked item badge is Gul/Rød (no name prefix). */
 export const getItemDateHint = (
@@ -416,8 +439,11 @@ export const getDroneStatusReasons = (
     if (r) reasons.push(r);
   }
   for (const eq of linkedEquipment || []) {
-    const r = getItemDateReason(eq.navn || i18n.t("resources.equipmentFallback"), eq.neste_vedlikehold, eq.varsel_dager, "equipment");
+    const name = eq.navn || i18n.t("resources.equipmentFallback");
+    const r = getItemDateReason(name, eq.neste_vedlikehold, eq.varsel_dager, "equipment");
     if (r) reasons.push(r);
+    const sReason = getItemStatusReason(name, (eq as any).status, "equipment");
+    if (sReason) reasons.push(sReason);
   }
 
   // --- Log-driven DB warning ---

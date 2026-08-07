@@ -132,6 +132,8 @@ const Resources = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_accessories' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_equipment' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_inspections' }, guardedFetch(fetchDrones))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment_log_entries' }, guardedFetch(() => { fetchEquipment(); fetchDrones(); }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drone_log_entries' }, guardedFetch(fetchDrones))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dronetag_devices' }, guardedFetch(fetchDronetags))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, guardedFetch(fetchPersonnel))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'personnel_competencies' }, guardedFetch(fetchPersonnel))
@@ -189,7 +191,7 @@ const Resources = () => {
           *,
           companies(navn),
           drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
-          drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager)),
+          drone_equipment(drone_id, equipment:equipment_id(id, navn, status, neste_vedlikehold, varsel_dager)),
           drone_personnel(id, profile:profile_id(id, full_name, tittel))
         `)
         .eq("aktiv", true)
