@@ -439,8 +439,11 @@ export const getDroneStatusReasons = (
     if (r) reasons.push(r);
   }
   for (const eq of linkedEquipment || []) {
-    const r = getItemDateReason(eq.navn || i18n.t("resources.equipmentFallback"), eq.neste_vedlikehold, eq.varsel_dager, "equipment");
+    const name = eq.navn || i18n.t("resources.equipmentFallback");
+    const r = getItemDateReason(name, eq.neste_vedlikehold, eq.varsel_dager, "equipment");
     if (r) reasons.push(r);
+    const sReason = getItemStatusReason(name, (eq as any).status, "equipment");
+    if (sReason) reasons.push(sReason);
   }
 
   // --- Log-driven DB warning ---
