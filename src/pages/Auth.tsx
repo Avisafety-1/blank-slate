@@ -1000,7 +1000,6 @@ const Auth = () => {
                 className="h-24 w-auto" 
                 width={301}
                 height={96}
-                fetchPriority="high"
               />
             </div>
             <div className="text-center">

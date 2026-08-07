@@ -4273,6 +4273,7 @@
     },
     "equipmentDetail": {
       "editTitle": "Rediger utstyr",
+      "dialogDescription": "Rediger utstyrsdetaljer og se operativ status",
       "sharedFromParent": "🔒 Dette utstyret er delt fra {{company}} og kan kun redigeres derfra.",
       "sharedFromParentFallback": "mor-selskapet",
       "logbook": "Loggbok",
@@ -4582,6 +4583,7 @@
     },
     "droneDetail": {
       "editTitle": "Rediger {{name}}",
+      "dialogDescription": "Rediger dronedetaljer og se operativ status",
       "sharedFromParent": "🔒 Denne {{name}} er delt fra {{source}} og kan kun redigeres derfra.",
       "sharedFromParentWithName": "mor-selskapet «{{name}}»",
       "sharedFromParentFallback": "mor-selskapet",
@@ -7938,5 +7940,11 @@
     "checklists": "Sjekklister",
     "techResponsible": "Teknisk ansvarlig",
     "administration": "Administrasjon"
+  },
+  "idleTimeout": {
+    "title": "Inaktivitet oppdaget",
+    "description": "Du blir logget ut på grunn av inaktivitet.",
+    "logoutNow": "Logg ut nå",
+    "extendSession": "Forleng sesjon"
   }
 }

@@ -1,5 +1,5 @@
 import { isBatteryType } from "@/config/equipmentCategories";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -394,6 +394,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             <span className="truncate">{isEditing ? t('resourceDialogs.equipmentDetail.editTitle') : equipment.navn}</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">{t('resourceDialogs.equipmentDetail.dialogDescription')}</DialogDescription>
           {(() => {
             const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
             return (

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -963,6 +963,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             <span className="truncate">{isEditing ? tt("editTitle", { name: terminology.vehicleLower }) : drone.modell}</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">{tt("dialogDescription")}</DialogDescription>
           {!isEditing && (
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
               <Button
