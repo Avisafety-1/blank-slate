@@ -1,6 +1,6 @@
 import L from "leaflet";
 import { supabase } from "@/integrations/supabase/client";
-import { createUniqueChannel } from "@/lib/realtimeChannel";
+
 import { getBeaconSvgUrl, isAnimatedType, HELI_ANIM_FRAMES, droneAnimatedIcon } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 
@@ -254,10 +254,13 @@ export function createSafeSkyManager(params: {
     }
   }
 
-  let safeskyChannel: ReturnType<typeof supabase.channel> | null = null;
+  // Polling-kadens for lufttrafikk. Cron-jobben skriver periodisk, så 15s gir
+  // samme oppdateringsfølelse uten realtime-kostnaden.
+  const SAFESKY_POLL_MS = 15000;
   let safeskyDebounceTimer: number | null = null;
   let safeskyPollInterval: number | null = null;
   let warmupTriggered = false;
+
 
   const debouncedFetchSafeSky = () => {
     if (destroyed) return;
@@ -301,11 +304,8 @@ export function createSafeSkyManager(params: {
   function reconnect() {
     if (destroyed) return;
     consecutiveFailures = 0;
-    // Tear down current connections
-    if (safeskyChannel) {
-      try { safeskyChannel.unsubscribe(); } catch {}
-      safeskyChannel = null;
-    }
+    // Tear down current polling
+
     if (safeskyPollInterval) {
       clearInterval(safeskyPollInterval);
       safeskyPollInterval = null;
@@ -327,8 +327,9 @@ export function createSafeSkyManager(params: {
 
   async function start() {
     if (destroyed) return;
-    if (!safeskyChannel) {
-      console.log('Lufttrafikk: Starting real-time subscription');
+    // Nøyaktig ett aktivt polling-interval per manager/kartinstans.
+    if (safeskyPollInterval === null) {
+      console.log('Lufttrafikk: Starting polling');
 
       // Fire-and-forget warm-up (fills DB cache in background)
       warmUpCache();
@@ -342,14 +343,13 @@ export function createSafeSkyManager(params: {
       }
 
       if (destroyed) return;
+      if (safeskyPollInterval !== null) return;
 
-      safeskyChannel = createUniqueChannel('safesky-beacons-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'safesky_beacons' },
-          () => debouncedFetchSafeSky()
-        )
-        .subscribe();
+      // Polling erstatter postgres_changes på safesky_beacons: callbacken brukte
+      // aldri payloaden, og tabellen skrev ~28M WAL-oppdateringer via realtime.
+      safeskyPollInterval = window.setInterval(() => {
+        debouncedFetchSafeSky();
+      }, SAFESKY_POLL_MS);
 
       // Refetch når kartutsnittet endres — kritisk for stor bbox (NO+SE+FI+DE+PL).
       if (map) {
@@ -360,13 +360,14 @@ export function createSafeSkyManager(params: {
   }
 
   function stop() {
-    if (safeskyChannel) {
-      console.log('Lufttrafikk: Stopping subscription');
-      try { safeskyChannel.unsubscribe(); } catch {}
-      safeskyChannel = null;
+    if (safeskyPollInterval !== null) {
+      console.log('Lufttrafikk: Stopping polling');
+      clearInterval(safeskyPollInterval);
+      safeskyPollInterval = null;
       safeskyLayer.clearLayers();
       safeskyMarkersCache.clear();
     }
+
     if (map) {
       try { map.off('moveend', onMapMove); } catch {}
       try { map.off('zoomend', onMapMove); } catch {}
