@@ -7904,6 +7904,7 @@
     "eqMissionsNear": "Missions since maintenance: {{current}} / {{limit}} – approaching interval",
     "itemOverdue": "{{name}} ({{kind}}): maintenance overdue since {{date}}",
     "itemSoon": "{{name}} ({{kind}}): maintenance due {{date}} (in {{days}} days)",
+    "itemStatus": "{{name}} ({{kind}}): status {{status}} – deviation registered",
     "hintOverdue": "Maintenance overdue since {{date}}",
     "hintSoon": "Maintenance due {{date}} (in {{days}} days)",
     "logWarning": "Deviation from logbook: {{title}}",
