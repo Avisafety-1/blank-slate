@@ -4271,6 +4271,7 @@
     },
     "equipmentDetail": {
       "editTitle": "Edit equipment",
+      "dialogDescription": "Edit equipment details and view operational status",
       "sharedFromParent": "🔒 This equipment is shared from {{company}} and can only be edited there.",
       "sharedFromParentFallback": "the parent company",
       "logbook": "Logbook",
@@ -4580,6 +4581,7 @@
     },
     "droneDetail": {
       "editTitle": "Edit {{name}}",
+      "dialogDescription": "Edit drone details and view operational status",
       "sharedFromParent": "🔒 This {{name}} is shared from {{source}} and can only be edited there.",
       "sharedFromParentWithName": "the parent company \"{{name}}\"",
       "sharedFromParentFallback": "the parent company",
