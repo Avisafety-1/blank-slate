@@ -271,7 +271,6 @@ export const calculateDroneAggregatedStatus = (
     worstPriority = Math.max(worstPriority, accPriority);
   }
   
-  // Check all linked equipment
   // Check all linked equipment (maintenance date + log-driven status column)
   for (const eq of linkedEquipment) {
     const eqDateStatus = calculateMaintenanceStatus(
