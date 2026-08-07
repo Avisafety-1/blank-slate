@@ -1788,16 +1788,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              {/* Collapsible inspection section */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <button type="button" className="flex items-center gap-2 w-full border-t pt-4 mt-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                    <Calendar className="w-4 h-4" />
-                    {tt("inspectionForm.sectionTitle")}
-                    <ChevronDown className="w-4 h-4 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
+              {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
+
+              {/* Inspection & maintenance intervals - always visible */}
+              <div className="rounded-lg border bg-background/60 p-3 space-y-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  {tt("inspectionForm.sectionTitle")}
+                </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
