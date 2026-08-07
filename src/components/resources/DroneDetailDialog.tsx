@@ -470,6 +470,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       console.error("Error fetching linked equipment:", error);
     } else {
       setLinkedEquipment(data || []);
+      linkedEquipmentIdsRef.current = (data || [])
+        .map((l: any) => l.equipment?.id)
+        .filter(Boolean);
     }
   };
 
