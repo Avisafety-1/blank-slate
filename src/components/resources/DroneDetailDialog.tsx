@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
@@ -103,6 +103,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
+  // Keeps the ids of linked equipment available inside realtime callbacks
+  const linkedEquipmentIdsRef = useRef<string[]>([]);
   const [linkedPersonnel, setLinkedPersonnel] = useState<any[]>([]);
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
@@ -218,8 +220,30 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           filter: `id=eq.${drone.id}`,
         },
         (payload) => {
-          console.log('Drone updated via realtime:', payload.new);
           setDrone(payload.new as Drone);
+        }
+      )
+      // Accessory maintenance affects the aggregated drone status
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drone_accessories', filter: `drone_id=eq.${drone.id}` },
+        () => { fetchAccessories(); }
+      )
+      // Equipment linked/unlinked
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drone_equipment', filter: `drone_id=eq.${drone.id}` },
+        () => { fetchLinkedEquipment(); }
+      )
+      // Maintenance performed on a linked piece of equipment (e.g. a battery)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'equipment' },
+        (payload: any) => {
+          const changedId = payload?.new?.id;
+          if (changedId && linkedEquipmentIdsRef.current.includes(changedId)) {
+            fetchLinkedEquipment();
+          }
         }
       )
       .subscribe();
@@ -446,6 +470,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       console.error("Error fetching linked equipment:", error);
     } else {
       setLinkedEquipment(data || []);
+      linkedEquipmentIdsRef.current = (data || [])
+        .map((l: any) => l.equipment?.id)
+        .filter(Boolean);
     }
   };
 

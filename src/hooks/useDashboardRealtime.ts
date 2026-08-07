@@ -76,6 +76,8 @@ export function useDashboardRealtime() {
       .on("postgres_changes", { event: "*", schema: "public", table: "equipment" }, (p) => {
         dispatch(mainCallbacksRef, "equipment")(p);
         queryClient.invalidateQueries({ queryKey: ["equipment", companyId] });
+        // Linked equipment maintenance also drives drone status
+        queryClient.invalidateQueries({ queryKey: ["drones", companyId] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, (p) => {
         dispatch(mainCallbacksRef, "profiles")(p);
