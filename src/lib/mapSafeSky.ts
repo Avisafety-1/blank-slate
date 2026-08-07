@@ -304,11 +304,8 @@ export function createSafeSkyManager(params: {
   function reconnect() {
     if (destroyed) return;
     consecutiveFailures = 0;
-    // Tear down current connections
-    if (safeskyChannel) {
-      try { safeskyChannel.unsubscribe(); } catch {}
-      safeskyChannel = null;
-    }
+    // Tear down current polling
+
     if (safeskyPollInterval) {
       clearInterval(safeskyPollInterval);
       safeskyPollInterval = null;
