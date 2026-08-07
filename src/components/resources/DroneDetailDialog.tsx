@@ -2200,7 +2200,56 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         }}
       />
 
+      <AlertDialog open={hoursDialogOpen} onOpenChange={setHoursDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tt("flightHoursEdit.dialogTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{tt("flightHoursEdit.dialogDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">{tt("flightHoursEdit.currentLabel")}</Label>
+              <p className="text-sm font-medium">{Number(drone?.flyvetimer ?? 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <Label htmlFor="hours_draft">{tt("flightHoursEdit.newLabel")}</Label>
+              <Input
+                id="hours_draft"
+                type="number"
+                step="0.01"
+                min="0"
+                value={hoursDraft}
+                onChange={(e) => setHoursDraft(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="hours_reason">{tt("flightHoursEdit.reasonLabel")}</Label>
+              <Input
+                id="hours_reason"
+                value={hoursReason}
+                onChange={(e) => setHoursReason(e.target.value)}
+                placeholder={tt("flightHoursEdit.reasonPlaceholder")}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tt("flightHoursEdit.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const parsed = parseFloat(hoursDraft);
+                if (isNaN(parsed) || parsed < 0) return;
+                setFormData({ ...formData, flyvetimer: parsed });
+                setPendingHoursChange({ from: Number(drone?.flyvetimer ?? 0), to: parsed, reason: hoursReason.trim() });
+              }}
+            >
+              {tt("flightHoursEdit.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DroneLogbookDialog
+
         open={logbookOpen}
         onOpenChange={setLogbookOpen}
         droneId={drone?.id || ""}
