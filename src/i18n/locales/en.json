@@ -4711,7 +4711,23 @@
         "weightPlaceholder": "e.g. 0.9",
         "payloadPlaceholder": "e.g. 0.5"
       },
+      "flightHoursEdit": {
+        "locked": "Locked",
+        "change": "Change",
+        "dialogTitle": "Change flight hours manually?",
+        "dialogDesc": "Flight hours are normally updated automatically from the flight logs. A manual change is recorded in the logbook.",
+        "currentLabel": "Current flight hours",
+        "newLabel": "New flight hours",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "e.g. correction after import",
+        "cancel": "Cancel",
+        "confirm": "Confirm change",
+        "logTitle": "Flight hours changed manually",
+        "logDescription": "Flight hours changed from {{from}} h to {{to}} h.{{suffix}}",
+        "logReasonSuffix": " Reason: {{reason}}"
+      },
       "inspectionForm": {
+
         "sectionTitle": "Inspection and maintenance interval",
         "startDate": "Start date",
         "intervalDays": "Interval (days)",
