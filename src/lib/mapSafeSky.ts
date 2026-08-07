@@ -291,6 +291,7 @@ export function createSafeSkyManager(params: {
       if (!currentIds.has(id)) {
         try { safeskyLayer.removeLayer(marker); } catch {}
         safeskyMarkersCache.delete(id);
+        motionStates.delete(id);
         const intervalId = heliAnimIntervals.get(id);
         if (intervalId != null) {
           clearInterval(intervalId);
@@ -299,6 +300,7 @@ export function createSafeSkyManager(params: {
       }
     }
   }
+
 
   function clearAllMarkers() {
     for (const [, marker] of safeskyMarkersCache) {
