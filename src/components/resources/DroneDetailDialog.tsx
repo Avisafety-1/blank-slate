@@ -920,10 +920,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               </Button>
             </div>
           )}
-          {!isEditing && affectedItems.length > 0 && aggregatedStatus !== "Grønn" && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {tt("statusAffectedBy", { items: affectedItems.join(", ") })}
-            </p>
+          {!isEditing && aggregatedStatus !== "Grønn" && (
+            <StatusReasonList reasons={statusReasons} />
           )}
           {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
             <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
