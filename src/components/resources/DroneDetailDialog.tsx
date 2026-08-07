@@ -235,16 +235,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         { event: '*', schema: 'public', table: 'drone_equipment', filter: `drone_id=eq.${drone.id}` },
         () => { fetchLinkedEquipment(); }
       )
-      // Maintenance performed on a linked piece of equipment (e.g. a battery)
+      // Maintenance or status change on any equipment — refetch linked equipment.
+      // Unfiltered on purpose: the link list can change while the dialog is open.
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'equipment' },
-        (payload: any) => {
-          const changedId = payload?.new?.id;
-          if (changedId && linkedEquipmentIdsRef.current.includes(changedId)) {
-            fetchLinkedEquipment();
-          }
-        }
+        { event: '*', schema: 'public', table: 'equipment' },
+        () => { fetchLinkedEquipment(); }
+      )
+      // Logbook entries can flip an equipment/drone status
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'equipment_log_entries' },
+        () => { fetchLinkedEquipment(); }
       )
       .subscribe();
 
