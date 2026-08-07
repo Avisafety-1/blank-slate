@@ -735,7 +735,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             </>
           ) : (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
               {/* Left column: core data */}
               <div className="space-y-4 min-w-0">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>
