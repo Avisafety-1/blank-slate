@@ -1,47 +1,76 @@
-# Redusere realtime-belastningen på databasen
+# Redusere realtime-belastningen — trinnvis
 
-## Hva målingene viser
+Tilbakemeldingene er gode og planen legges om til fire adskilte trinn. Vi gjør trinn 1 alene, måler effekten, og går videre først når tallene bekrefter hypotesen.
 
-Query Performance-rapporten peker på `realtime.list_changes` som den soleklart største forbrukeren: 1 026 515 kall, 26,5 millioner rader behandlet, 18t 5m total tid (87,3 %).
+## Grunnlaget (verifisert)
 
-Databasen bekrefter årsaken. Tabellstatistikk for tabellene som ligger i `supabase_realtime`-publiseringen:
+`realtime.list_changes`: 1 026 515 kall, 26,5 mill. rader, 18t 5m (87,3 % av total tid).
 
-| Tabell | Endringer (ins+upd+del) |
+Endringsvolum for tabellene som ligger i `supabase_realtime`:
+
+| Tabell | ins + upd + del |
 |---|---|
-| safesky_beacons | ~29,4 millioner |
-| alle andre til sammen | under 2 000 |
+| safesky_beacons | ~29,4 millioner (28,5 mill. UPDATE) |
+| companies | 625 |
+| internal_message_recipients | 505 |
+| alle øvrige til sammen | under 1 000 |
 
-`safesky_beacons` står altså for i praksis 100 % av WAL-trafikken realtime må lese, dekode og RLS-sjekke. Tabellen har i tillegg `REPLICA IDENTITY FULL`, som betyr at hele den gamle raden skrives til WAL ved hver eneste oppdatering — og lufttrafikk-cronen oppdaterer alle beacons kontinuerlig.
+`safesky_beacons` har `REPLICA IDENTITY FULL` og oppdateres kontinuerlig av lufttrafikk-cronen. Lytteren i `src/lib/mapSafeSky.ts` bruker ikke payloaden — den kaller bare `debouncedFetchSafeSky()`.
 
-Frontenden abonnerer på tabellen i `src/lib/mapSafeSky.ts`, men callbacken gjør bare `debouncedFetchSafeSky()` — den bruker ikke payloaden. Vi betaler altså for full radreplikering av 28 millioner oppdateringer for å utløse en debounced refetch.
+---
 
-## Endringer
+## Trinn 1 — Ta safesky_beacons ut av realtime (gjøres nå, alene)
 
-### 1. Ta safesky_beacons ut av realtime (størst effekt)
-- Fjern tabellen fra `supabase_realtime`-publiseringen.
-- Sett `REPLICA IDENTITY DEFAULT` på tabellen så WAL-radene blir små.
-- I `mapSafeSky.ts`: erstatt postgres_changes-abonnementet med et polling-intervall (variabelen `safeskyPollInterval` finnes allerede, men settes aldri) på ca. 15 sekunder, som kaller samme `debouncedFetchSafeSky()`. Kartbevegelse (`moveend`/`zoomend`) fortsetter å trigge refetch som i dag. Intervallet stoppes i `stop()` og når laget skrus av, slik at det bare går når lufttrafikk-laget er synlig.
+**Database (én migrasjon, kun denne tabellen):**
+- `ALTER PUBLICATION supabase_realtime DROP TABLE public.safesky_beacons;`
+- `ALTER TABLE public.safesky_beacons REPLICA IDENTITY DEFAULT;`
 
-Brukeropplevelsen blir tilnærmet uendret — dataene oppdateres uansett bare så ofte som cron-jobben skriver dem.
+**Frontend (`src/lib/mapSafeSky.ts`):**
+- Fjern `postgres_changes`-abonnementet og `safeskyChannel`.
+- Start i stedet ett polling-intervall på 15 sekunder som kaller `debouncedFetchSafeSky()`.
+- Intervallet eies av samme manager-instans som allerede finnes (`createSafeSkyManager` opprettes én gang per kartinstans). `start()` sjekker `if (safeskyPollInterval) return;` før den setter et nytt, så det er garantert nøyaktig ett aktivt interval per kartinstans — uavhengig av re-render. `stop()`, `reconnect()` og `cleanup()` rydder det som i dag.
+- Pollingen kjører kun mens lufttrafikk-laget er aktivt (`start()`/`stop()` styres allerede av laget).
+- Eksisterende adferd beholdes uendret: warm-up, startup-retry-burst, `moveend`/`zoomend`-refetch, zoom-terskel og bbox-filter.
 
-### 2. Rydd bort døde abonnementer
-Flere `postgres_changes`-lyttere peker på tabeller som ikke ligger i publiseringen og derfor aldri kan gi hendelser. De koster kanal-oppsett og RLS-oppslag ved hver tilkobling uten å gi noe:
+**Ingen funksjonalitetstap:** cron-jobben skriver data periodisk, og fetch-logikken er identisk. I praksis blir forskjellen at oppdateringen skjer på fast kadens i stedet for umiddelbart etter cron-skrivingen — maks noen sekunders forsinkelse på trafikkbildet, samtidig som kartpanorering fortsatt oppdaterer umiddelbart.
+
+**Måling:** etter utrulling følger vi `realtime.list_changes` i 12–24 timer. Faller kall/radvolum dramatisk, er hypotesen bekreftet.
+
+---
+
+## Trinn 2 — Rydde subscriptions (etter måling)
+
+Først kartlegger vi, per lytter, hva brukeren faktisk mister uten realtime. Utgangspunktet er "færrest mulig realtime-tabeller", ikke å få eksisterende lyttere til å virke.
+
+Disse tabellene har lyttere i koden, men ligger **ikke** i publiseringen — de gir null hendelser i dag:
 `profiles`, `user_roles`, `personnel_competencies`, `calendar_events`, `documents`, `active_flights`, `flight_logs`, `mission_personnel`, `mission_drones`, `mission_map_publications`, `training_assignments`, `dronetag_devices`, `eccairs_exports`.
+
+Siden funksjonene har fungert akseptabelt uten hendelser hele tiden, er standardvalget **å fjerne lytteren**. Kun `active_flights` peker seg klart ut som reell sanntidskandidat (pågående flygninger på kart og dashbord). For `profiles` (godkjenningsbadge), `personnel_competencies` og `calendar_events` dokumenterer vi konsekvensen først og velger React Query-invalidering/refetch der det holder.
 
 Berørte filer: `useDashboardRealtime.ts`, `Resources.tsx`, `Kalender.tsx`, `Admin.tsx`, `useOppdragData.ts`, `OpenAIPMap.tsx`, `Hendelser.tsx`, `PendingApprovalsBadge.tsx`.
 
-Her er det to valg per tabell, og jeg foreslår:
-- Tabeller der sanntid faktisk gir verdi i dag (`profiles` for godkjenningsbadge, `active_flights` for aktive flygninger, `personnel_competencies`, `calendar_events`) — **legg dem til i publiseringen**, siden endringsvolumet er neglisjerbart. Da begynner funksjonaliteten faktisk å virke.
-- Resten — **fjern lytteren** og la eksisterende refetch/invalidations dekke behovet.
+---
 
-### 3. Filtrer abonnementene på selskap
-Abonnementene på `drones`, `equipment`, `missions`, `incidents` osv. er uten filter, så realtime må RLS-vurdere hver endring mot hver tilkoblede klient. Legg til `filter: company_id=eq.<companyId>` der kolonnen finnes, slik at serveren kan forkaste irrelevante rader tidlig.
+## Trinn 3 — Filtre på selskap (etter trinn 2)
 
-### 4. Slå av REPLICA IDENTITY FULL der det ikke trengs
-`drones`, `equipment`, `incidents`, `drone_log_entries`, `equipment_log_entries`, `customers`, `news`, `internal_message_recipients` m.fl. står på FULL. Ingen av lytterne bruker `payload.old`, så `DEFAULT` holder og halverer WAL-størrelsen.
+Legg til `filter: company_id=eq.<companyId>` på lytterne der kolonnen finnes (`drones`, `equipment`, `missions`, `incidents`).
 
-## Teknisk
+Presisering: dette reduserer autoriserings- og fanout-arbeidet per abonnent, ikke selve WAL-/write-volumet. Databasen må fortsatt dekode hver endring.
 
-- Migrasjoner: `ALTER PUBLICATION supabase_realtime DROP TABLE public.safesky_beacons;`, `ALTER TABLE ... REPLICA IDENTITY DEFAULT;` og `ADD TABLE` for de tabellene vi beholder sanntid på.
-- Ingen endring i datamodell, RLS eller edge functions.
-- Etter utrulling: verifiser i Query Performance at `realtime.list_changes` faller kraftig i kall og radvolum.
+---
+
+## Trinn 4 — REPLICA IDENTITY (til slutt, forsiktig)
+
+Verifisering viser at flere lyttere faktisk bruker `payload.old`:
+- `Hendelser.tsx` leser `old.incident_id` på DELETE fra `eccairs_exports` og `incident_comments` — **må beholde FULL**.
+- `AuthContext.tsx`, `DocumentSection.tsx`, `CalendarWidget.tsx`, `IncidentsSection.tsx` leser `old.id` på DELETE — primærnøkkel er tilgjengelig også med `DEFAULT`, så disse er trygge.
+
+Vi setter derfor `REPLICA IDENTITY DEFAULT` kun på tabeller der ingen kode leser andre felt enn primærnøkkelen fra `old`, og lar resten stå. Endringsvolumet på disse tabellene er uansett under 1 000 rader, så gevinsten er marginal — dette er opprydding, ikke ytelsestiltak.
+
+---
+
+## Teknisk oppsummering
+
+- Trinn 1 er én liten migrasjon + én fil endret. Ingen endring i datamodell, RLS eller edge functions.
+- Hvert trinn kan rulles tilbake for seg.
+- Vi måler mellom hvert trinn i stedet for å gjøre alt i én migrasjon.
