@@ -189,7 +189,7 @@ const Resources = () => {
           *,
           companies(navn),
           drone_accessories(drone_id, neste_vedlikehold, varsel_dager),
-          drone_equipment(drone_id, equipment:equipment_id(id, neste_vedlikehold, varsel_dager)),
+          drone_equipment(drone_id, equipment:equipment_id(id, navn, status, neste_vedlikehold, varsel_dager)),
           drone_personnel(id, profile:profile_id(id, full_name, tittel))
         `)
         .eq("aktiv", true)
