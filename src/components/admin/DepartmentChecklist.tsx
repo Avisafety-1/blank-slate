@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
+
 
 interface DepartmentItem {
   id: string;
