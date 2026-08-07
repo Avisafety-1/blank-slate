@@ -1626,8 +1626,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </>
            ) : (
             <>
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+              {/* Left column: core data */}
+              <div className="space-y-4 min-w-0">
               {/* Drone catalog selector */}
               <div className="border-b pb-4 mb-4">
+
                 <Label>{tt("catalogSelector.label")}</Label>
                 <Select value={selectedModelId} onValueChange={handleModelSelect}>
                   <SelectTrigger>
