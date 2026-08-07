@@ -1264,6 +1264,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     {linkedEquipment.map((link: any) => {
                       const eq = link.equipment;
                       if (!eq) return null;
+                      const eqStatus = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
+                      const eqHint = getItemDateHint(eq.neste_vedlikehold, eq.varsel_dager);
                       return (
                         <div
                           key={link.id}
@@ -1272,11 +1274,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{eq.navn}</p>
-                              <Badge className={`${getStatusColorClasses(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))} border text-xs`}>
-                                {translateResourceStatus(calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14))}
+                              <Badge className={`${getStatusColorClasses(eqStatus)} border text-xs`}>
+                                {translateResourceStatus(eqStatus)}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • {tt("linkedEquipment.snPrefix")}: {eq.serienummer}</p>
+                            {eqHint && (
+                              <p className={`text-xs ${eqStatus === "Rød" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                {eqHint}
+                              </p>
+                            )}
                           </div>
                           <Button
                             size="sm"
