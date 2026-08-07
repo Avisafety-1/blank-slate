@@ -211,6 +211,8 @@ interface MaintenanceItem {
   neste_inspeksjon?: string | null;
   neste_vedlikehold?: string | null;
   varsel_dager?: number | null;
+  /** Log-driven status column (equipment only) */
+  status?: Status | string | null;
 }
 
 /**
