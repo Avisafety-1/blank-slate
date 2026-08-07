@@ -1759,25 +1759,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                {isEditing && checklists.length > 0 && (
                 <>
                   <div className="border-t pt-4">
-                    <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
-                    <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.inspectionHint")}
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
+
                     <Label>{tt("checklists.operationsLabel")}</Label>
                     {isMobile ? (
                       <Dialog>
