@@ -114,6 +114,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
   const [logbookOpen, setLogbookOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [hoursDialogOpen, setHoursDialogOpen] = useState(false);
+  const [hoursDraft, setHoursDraft] = useState("");
+  const [hoursReason, setHoursReason] = useState("");
+  const [pendingHoursChange, setPendingHoursChange] = useState<{ from: number; to: number; reason: string } | null>(null);
+
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [linkedDocuments, setLinkedDocuments] = useState<any[]>([]);
   const [documentPickerOpen, setDocumentPickerOpen] = useState(false);
