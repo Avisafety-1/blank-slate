@@ -327,8 +327,9 @@ export function createSafeSkyManager(params: {
 
   async function start() {
     if (destroyed) return;
-    if (!safeskyChannel) {
-      console.log('Lufttrafikk: Starting real-time subscription');
+    // Nøyaktig ett aktivt polling-interval per manager/kartinstans.
+    if (safeskyPollInterval === null) {
+      console.log('Lufttrafikk: Starting polling');
 
       // Fire-and-forget warm-up (fills DB cache in background)
       warmUpCache();
@@ -342,14 +343,13 @@ export function createSafeSkyManager(params: {
       }
 
       if (destroyed) return;
+      if (safeskyPollInterval !== null) return;
 
-      safeskyChannel = createUniqueChannel('safesky-beacons-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'safesky_beacons' },
-          () => debouncedFetchSafeSky()
-        )
-        .subscribe();
+      // Polling erstatter postgres_changes på safesky_beacons: callbacken brukte
+      // aldri payloaden, og tabellen skrev ~28M WAL-oppdateringer via realtime.
+      safeskyPollInterval = window.setInterval(() => {
+        debouncedFetchSafeSky();
+      }, SAFESKY_POLL_MS);
 
       // Refetch når kartutsnittet endres — kritisk for stor bbox (NO+SE+FI+DE+PL).
       if (map) {
@@ -360,13 +360,14 @@ export function createSafeSkyManager(params: {
   }
 
   function stop() {
-    if (safeskyChannel) {
-      console.log('Lufttrafikk: Stopping subscription');
-      try { safeskyChannel.unsubscribe(); } catch {}
-      safeskyChannel = null;
+    if (safeskyPollInterval !== null) {
+      console.log('Lufttrafikk: Stopping polling');
+      clearInterval(safeskyPollInterval);
+      safeskyPollInterval = null;
       safeskyLayer.clearLayers();
       safeskyMarkersCache.clear();
     }
+
     if (map) {
       try { map.off('moveend', onMapMove); } catch {}
       try { map.off('zoomend', onMapMove); } catch {}
