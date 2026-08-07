@@ -968,34 +968,26 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </CollapsibleContent>
               </Collapsible>
 
-              <div>
-                <Label htmlFor="merknader" className="text-xs sm:text-sm">{t('resourceDialogs.equipmentDetail.notes')}</Label>
-                <Textarea
-                  id="merknader"
-                  value={formData.merknader}
-                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-                  rows={3}
-                  className="text-sm"
-                />
+              {isAdmin && deptVis.hasDepartments && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{t("resourceEditLayout.administration")}</p>
+                  <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
+                  <DepartmentChecklist
+                    departments={deptVis.childDepartments}
+                    selectedIds={deptVis.selectedDeptIds}
+                    onToggle={deptVis.handleToggle}
+                    allSelected={deptVis.allSelected}
+                    onToggleAll={deptVis.handleToggleAll}
+                    allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
+                  />
+                </div>
+              )}
+              </div>
               </div>
             </>
           )}
         </div>
 
-        {isEditing && isAdmin && deptVis.hasDepartments && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{t('resourceDialogs.equipmentDetail.visibleTo')}</Label>
-            <DepartmentChecklist
-              departments={deptVis.childDepartments}
-              selectedIds={deptVis.selectedDeptIds}
-              onToggle={deptVis.handleToggle}
-              allSelected={deptVis.allSelected}
-              onToggleAll={deptVis.handleToggleAll}
-              allLabel={t('resourceDialogs.equipmentDetail.allDepartments')}
-
-            />
-          </div>
-        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {(() => {
