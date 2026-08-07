@@ -7906,6 +7906,7 @@
     "eqMissionsNear": "Oppdrag siden vedlikehold: {{current}} / {{limit}} – nærmer seg intervall",
     "itemOverdue": "{{name}} ({{kind}}): vedlikehold forfalt {{date}}",
     "itemSoon": "{{name}} ({{kind}}): vedlikehold forfaller {{date}} (om {{days}} dager)",
+    "itemStatus": "{{name}} ({{kind}}): status {{status}} – avvik registrert",
     "hintOverdue": "Vedlikehold forfalt {{date}}",
     "hintSoon": "Vedlikehold forfaller {{date}} (om {{days}} dager)",
     "logWarning": "Avvik fra loggbok: {{title}}",
