@@ -475,6 +475,19 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   const dbStatus = (equipment.status as Status) || "Grønn";
                   const aggregatedStatus = STATUS_PRIORITY[dbStatus] >= STATUS_PRIORITY[maintenanceOnlyStatus] ? dbStatus : maintenanceOnlyStatus;
                   const dbDriving = dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceOnlyStatus];
+                  const { reasons: statusReasons } = getEquipmentStatusReasons({
+                    neste_vedlikehold: equipment.neste_vedlikehold,
+                    varsel_dager: equipment.varsel_dager,
+                    flyvetimer: equipment.flyvetimer || 0,
+                    hours_at_last_maintenance: equipment.hours_at_last_maintenance || 0,
+                    inspection_interval_hours: equipment.inspection_interval_hours,
+                    varsel_timer: equipment.varsel_timer,
+                    missions_since_maintenance: missionsSinceMaintenance,
+                    inspection_interval_missions: equipment.inspection_interval_missions,
+                    varsel_oppdrag: equipment.varsel_oppdrag,
+                    dbStatus,
+                    latestWarningTitle: latestWarning?.title ?? null,
+                  });
 
                   return (
                     <div className="flex justify-between sm:block">
@@ -485,24 +498,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                             {translateResourceStatus(aggregatedStatus)}
                           </Badge>
                         </div>
-                        {aggregatedStatus !== "Grønn" && (
-                          <div className="mt-1.5 space-y-1">
-                            {maintenanceOnlyStatus !== "Grønn" && (
-                              <p className="text-xs text-muted-foreground">
-                                {maintenanceOnlyStatus === "Rød"
-                                  ? t('resourceDialogs.equipmentDetail.statusHints.maintenanceDue')
-                                  : t('resourceDialogs.equipmentDetail.statusHints.maintenanceSoon')}
-                              </p>
-                            )}
-                            {dbStatus !== "Grønn" && (
-                              <p className="text-xs text-muted-foreground">
-                                {latestWarning
-                                  ? t('resourceDialogs.equipmentDetail.statusHints.warningFromLog', { title: latestWarning.title })
-                                  : t('resourceDialogs.equipmentDetail.statusHints.warningFromLogFallback')}
-                              </p>
-                            )}
-                          </div>
-                        )}
+                        {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
                         {dbDriving && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
