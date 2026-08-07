@@ -289,3 +289,220 @@ export const calculateDroneAggregatedStatus = (
   
   return { status, affectedItems };
 };
+
+/* =========================================================================
+ * Status reasons — explains WHAT is actually driving a resource status
+ * ========================================================================= */
+
+export type StatusReasonSource = "inspection" | "hours" | "missions" | "accessory" | "equipment" | "log";
+
+export interface StatusReason {
+  source: StatusReasonSource;
+  status: Status;
+  text: string;
+}
+
+const daysUntil = (date: Date | string): number => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return Math.floor((next.getTime() - today.getTime()) / 86400000);
+};
+
+const fmtDate = (date: Date | string): string => {
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? "–" : d.toLocaleDateString();
+};
+
+const sr = (key: string, opts?: Record<string, unknown>) => i18n.t(`statusReasons.${key}`, opts as any) as string;
+
+const sortReasons = (reasons: StatusReason[]) =>
+  [...reasons].sort((a, b) => STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status]);
+
+/** Reason for a single date-driven maintenance item (accessory / linked equipment). */
+export const getItemDateReason = (
+  name: string,
+  nextDate: string | null | undefined,
+  warningDays: number | null | undefined,
+  kind: "accessory" | "equipment",
+): StatusReason | null => {
+  const status = calculateMaintenanceStatus(nextDate, warningDays ?? 14);
+  if (status === "Grønn" || !nextDate) return null;
+  const kindLabel = sr(kind === "accessory" ? "kind.accessory" : "kind.equipment");
+  return {
+    source: kind,
+    status,
+    text: status === "Rød"
+      ? sr("itemOverdue", { name, kind: kindLabel, date: fmtDate(nextDate) })
+      : sr("itemSoon", { name, kind: kindLabel, date: fmtDate(nextDate), days: Math.max(0, daysUntil(nextDate)) }),
+  };
+};
+
+/** Short explanation of why a linked item badge is Gul/Rød (no name prefix). */
+export const getItemDateHint = (
+  nextDate: string | null | undefined,
+  warningDays: number | null | undefined,
+): string | null => {
+  const status = calculateMaintenanceStatus(nextDate, warningDays ?? 14);
+  if (status === "Grønn" || !nextDate) return null;
+  return status === "Rød"
+    ? sr("hintOverdue", { date: fmtDate(nextDate) })
+    : sr("hintSoon", { date: fmtDate(nextDate), days: Math.max(0, daysUntil(nextDate)) });
+};
+
+export interface DroneStatusReasonsInput {
+  drone: DroneMaintenanceItem;
+  accessories: (MaintenanceItem & { navn?: string | null })[];
+  linkedEquipment: (MaintenanceItem & { navn?: string | null })[];
+  /** drones.status from DB (log-driven warning) */
+  dbStatus?: Status;
+  latestWarningTitle?: string | null;
+}
+
+/**
+ * Returns the aggregated drone status together with a structured, translated
+ * list of the reasons that actually drive it.
+ */
+export const getDroneStatusReasons = (
+  input: DroneStatusReasonsInput,
+): { status: Status; reasons: StatusReason[] } => {
+  const { drone, accessories, linkedEquipment } = input;
+  const reasons: StatusReason[] = [];
+
+  // --- Own inspection date ---
+  const dateStatus = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
+  if (dateStatus !== "Grønn" && drone.neste_inspeksjon) {
+    reasons.push({
+      source: "inspection",
+      status: dateStatus,
+      text: dateStatus === "Rød"
+        ? sr("inspectionOverdue", { date: fmtDate(drone.neste_inspeksjon) })
+        : sr("inspectionSoon", { date: fmtDate(drone.neste_inspeksjon), days: Math.max(0, daysUntil(drone.neste_inspeksjon)) }),
+    });
+  }
+
+  // --- Hours since inspection ---
+  const hoursSince = (drone.flyvetimer ?? 0) - (drone.hours_at_last_inspection ?? 0);
+  const hoursStatus = calculateUsageStatus(hoursSince, drone.inspection_interval_hours, drone.varsel_timer);
+  if (hoursStatus !== "Grønn") {
+    reasons.push({
+      source: "hours",
+      status: hoursStatus,
+      text: sr(hoursStatus === "Rød" ? "hoursExceeded" : "hoursNear", {
+        current: hoursSince.toFixed(1),
+        limit: drone.inspection_interval_hours,
+      }),
+    });
+  }
+
+  // --- Missions since inspection ---
+  const missionsSince = drone.missions_since_inspection ?? 0;
+  const missionsStatus = calculateUsageStatus(missionsSince, drone.inspection_interval_missions, drone.varsel_oppdrag);
+  if (missionsStatus !== "Grønn") {
+    reasons.push({
+      source: "missions",
+      status: missionsStatus,
+      text: sr(missionsStatus === "Rød" ? "missionsExceeded" : "missionsNear", {
+        current: missionsSince,
+        limit: drone.inspection_interval_missions,
+      }),
+    });
+  }
+
+  // --- Accessories & linked equipment ---
+  for (const acc of accessories || []) {
+    const r = getItemDateReason(acc.navn || i18n.t("resources.accessoryFallback"), acc.neste_vedlikehold, acc.varsel_dager, "accessory");
+    if (r) reasons.push(r);
+  }
+  for (const eq of linkedEquipment || []) {
+    const r = getItemDateReason(eq.navn || i18n.t("resources.equipmentFallback"), eq.neste_vedlikehold, eq.varsel_dager, "equipment");
+    if (r) reasons.push(r);
+  }
+
+  // --- Log-driven DB warning ---
+  const dbStatus = input.dbStatus ?? "Grønn";
+  if (dbStatus !== "Grønn") {
+    reasons.push({
+      source: "log",
+      status: dbStatus,
+      text: input.latestWarningTitle
+        ? sr("logWarning", { title: input.latestWarningTitle })
+        : sr("logWarningFallback"),
+    });
+  }
+
+  const status = reasons.reduce((worst, r) => worstStatus(worst, r.status), "Grønn" as Status);
+  return { status, reasons: sortReasons(reasons) };
+};
+
+export interface EquipmentStatusReasonsInput {
+  neste_vedlikehold?: string | null;
+  varsel_dager?: number | null;
+  flyvetimer?: number | null;
+  hours_at_last_maintenance?: number | null;
+  inspection_interval_hours?: number | null;
+  varsel_timer?: number | null;
+  missions_since_maintenance?: number | null;
+  inspection_interval_missions?: number | null;
+  varsel_oppdrag?: number | null;
+  dbStatus?: Status;
+  latestWarningTitle?: string | null;
+}
+
+export const getEquipmentStatusReasons = (
+  input: EquipmentStatusReasonsInput,
+): { status: Status; reasons: StatusReason[] } => {
+  const reasons: StatusReason[] = [];
+
+  const dateStatus = calculateMaintenanceStatus(input.neste_vedlikehold, input.varsel_dager ?? 14);
+  if (dateStatus !== "Grønn" && input.neste_vedlikehold) {
+    reasons.push({
+      source: "inspection",
+      status: dateStatus,
+      text: dateStatus === "Rød"
+        ? sr("maintenanceOverdue", { date: fmtDate(input.neste_vedlikehold) })
+        : sr("maintenanceSoon", { date: fmtDate(input.neste_vedlikehold), days: Math.max(0, daysUntil(input.neste_vedlikehold)) }),
+    });
+  }
+
+  const hoursSince = (input.flyvetimer ?? 0) - (input.hours_at_last_maintenance ?? 0);
+  const hoursStatus = calculateUsageStatus(hoursSince, input.inspection_interval_hours, input.varsel_timer);
+  if (hoursStatus !== "Grønn") {
+    reasons.push({
+      source: "hours",
+      status: hoursStatus,
+      text: sr(hoursStatus === "Rød" ? "eqHoursExceeded" : "eqHoursNear", {
+        current: hoursSince.toFixed(1),
+        limit: input.inspection_interval_hours,
+      }),
+    });
+  }
+
+  const missionsSince = input.missions_since_maintenance ?? 0;
+  const missionsStatus = calculateUsageStatus(missionsSince, input.inspection_interval_missions, input.varsel_oppdrag);
+  if (missionsStatus !== "Grønn") {
+    reasons.push({
+      source: "missions",
+      status: missionsStatus,
+      text: sr(missionsStatus === "Rød" ? "eqMissionsExceeded" : "eqMissionsNear", {
+        current: missionsSince,
+        limit: input.inspection_interval_missions,
+      }),
+    });
+  }
+
+  const dbStatus = input.dbStatus ?? "Grønn";
+  if (dbStatus !== "Grønn") {
+    reasons.push({
+      source: "log",
+      status: dbStatus,
+      text: input.latestWarningTitle
+        ? sr("logWarning", { title: input.latestWarningTitle })
+        : sr("logWarningFallback"),
+    });
+  }
+
+  const status = reasons.reduce((worst, r) => worstStatus(worst, r.status), "Grønn" as Status);
+  return { status, reasons: sortReasons(reasons) };
+};
