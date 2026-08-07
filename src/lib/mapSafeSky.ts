@@ -260,6 +260,9 @@ export function createSafeSkyManager(params: {
           marker.bindPopup(popupHtml, { autoPan: false, keepInView: false });
           marker.addTo(safeskyLayer);
           safeskyMarkersCache.set(beaconId, marker);
+          updateMotionState(beaconId, lat, lon, beacon);
+          
+
           
           if (isHeli) {
             let frameIdx = 0;
