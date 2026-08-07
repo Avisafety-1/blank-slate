@@ -1746,6 +1746,21 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
+              <div>
+                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
+                <Textarea
+                  id="merknader"
+                  value={formData.merknader}
+                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              </div>
+
+              {/* Right column: status, maintenance, checklists, admin */}
+              <div className="space-y-5 rounded-xl border bg-muted/30 p-4 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.operationalStatus")}</p>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="flyvetimer">{tt("labels.flightHours")}</Label>
