@@ -218,8 +218,30 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           filter: `id=eq.${drone.id}`,
         },
         (payload) => {
-          console.log('Drone updated via realtime:', payload.new);
           setDrone(payload.new as Drone);
+        }
+      )
+      // Accessory maintenance affects the aggregated drone status
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drone_accessories', filter: `drone_id=eq.${drone.id}` },
+        () => { fetchAccessories(); }
+      )
+      // Equipment linked/unlinked
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drone_equipment', filter: `drone_id=eq.${drone.id}` },
+        () => { fetchLinkedEquipment(); }
+      )
+      // Maintenance performed on a linked piece of equipment (e.g. a battery)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'equipment' },
+        (payload: any) => {
+          const changedId = payload?.new?.id;
+          if (changedId && linkedEquipmentIdsRef.current.includes(changedId)) {
+            fetchLinkedEquipment();
+          }
         }
       )
       .subscribe();
