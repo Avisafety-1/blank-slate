@@ -394,6 +394,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             <span className="truncate">{isEditing ? t('resourceDialogs.equipmentDetail.editTitle') : equipment.navn}</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">{t('resourceDialogs.equipmentDetail.dialogDescription')}</DialogDescription>
           {(() => {
             const isSharedFromParent = !!equipment.company_id && !!companyId && equipment.company_id !== companyId;
             return (
