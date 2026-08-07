@@ -2045,51 +2045,50 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
-                <Textarea
-                  id="merknader"
-                  value={formData.merknader}
-                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-                  rows={3}
-                />
+              {isAdmin && (deptVis.hasDepartments || (!isSharedFromParent && drone?.company_id)) && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.administration")}</p>
+
+                  {deptVis.hasDepartments && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
+                      <DepartmentChecklist
+                        departments={deptVis.childDepartments}
+                        selectedIds={deptVis.selectedDeptIds}
+                        onToggle={deptVis.handleToggle}
+                        allSelected={deptVis.allSelected}
+                        onToggleAll={deptVis.handleToggleAll}
+                        allLabel={tt("deptVisibility.allLabel")}
+                      />
+                    </div>
+                  )}
+
+                  {!isSharedFromParent && drone?.company_id && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMoveOpen(true)}
+                        className="w-full"
+                      >
+                        <ArrowRightLeft className="w-4 h-4 mr-2" />
+                        {tt("moveDrone.button")}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {tt("moveDrone.hint")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
               </div>
             </>
           )}
         </div>
 
-        {isEditing && isAdmin && deptVis.hasDepartments && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
-            <DepartmentChecklist
-              departments={deptVis.childDepartments}
-              selectedIds={deptVis.selectedDeptIds}
-              onToggle={deptVis.handleToggle}
-              allSelected={deptVis.allSelected}
-              onToggleAll={deptVis.handleToggleAll}
-              allLabel={tt("deptVisibility.allLabel")}
-            />
-          </div>
-        )}
-
-        {isEditing && isAdmin && !isSharedFromParent && drone?.company_id && (
-          <div className="border-t border-border pt-3">
-            <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setMoveOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <ArrowRightLeft className="w-4 h-4 mr-2" />
-              {tt("moveDrone.button")}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tt("moveDrone.hint")}
-            </p>
-          </div>
-        )}
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           {isAdmin && !isEditing && (
