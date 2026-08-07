@@ -1719,6 +1719,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground pt-2">{t("resourceEditLayout.technical")}</p>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="vekt">{tt("labels.weightMTOM")} ({tt("kgSuffix")})</Label>
