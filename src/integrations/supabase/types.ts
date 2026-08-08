@@ -8348,6 +8348,14 @@ export type Database = {
         Returns: Json
       }
       disablelongtransactions: { Args: never; Returns: string }
+      document_is_shared_with_user: {
+        Args: { _document_id: string; _user: string }
+        Returns: boolean
+      }
+      document_owner_company: {
+        Args: { _document_id: string }
+        Returns: string
+      }
       dropgeometrycolumn:
         | {
             Args: {
