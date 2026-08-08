@@ -1695,8 +1695,9 @@ export async function fetchNotams(params: {
 }
 
 
-function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, pinPane: string, mode: string, renderer?: L.Renderer) {
-  if (notam.center_lat == null || notam.center_lng == null) return;
+function buildNotamCenterMarker(notam: any, pane: string, pinPane: string, mode: string, renderer?: L.Renderer): L.Layer | null {
+  if (notam.center_lat == null || notam.center_lng == null) return null;
+
 
   const isAerodrome = notam.scope === "A";
 
