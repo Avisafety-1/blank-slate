@@ -44,19 +44,37 @@ interface DocVisibilityRow {
   global_visibility: boolean | null;
 }
 
+/** Fetch explicit per-department sharing rows for the given documents. */
+async function fetchDocShares(docIds: string[]): Promise<Map<string, Set<string>>> {
+  const map = new Map<string, Set<string>>();
+  if (docIds.length === 0) return map;
+  const { data } = await (supabase as any)
+    .from("document_department_visibility")
+    .select("document_id, company_id")
+    .in("document_id", docIds);
+  for (const row of data || []) {
+    if (!map.has(row.document_id)) map.set(row.document_id, new Set());
+    map.get(row.document_id)!.add(row.company_id);
+  }
+  return map;
+}
+
 /** Mirrors the runtime visibility rules used when listing documents/checklists. */
 function docMissingDepts(
   doc: DocVisibilityRow,
   targetDeptIds: string[],
   deptParents: Map<string, string | null>,
+  sharedWith?: Set<string>,
 ): string[] {
   if (doc.global_visibility) return [];
   return targetDeptIds.filter((deptId) => {
     if (deptId === doc.company_id) return false;
+    if (sharedWith?.has(deptId)) return false;
     if (doc.visible_to_children && doc.company_id && deptParents.get(deptId) === doc.company_id) return false;
     return true;
   });
 }
+
 
 export async function checkDroneResourceVisibility(
   droneId: string,
