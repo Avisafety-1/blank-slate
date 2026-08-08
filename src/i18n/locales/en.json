@@ -4875,6 +4875,7 @@
     },
     "list": {
       "titleHeader": "Title",
+      "sharedBadge": "Shared",
       "categoryHeader": "Category",
       "categoryHeaderShort": "Cat.",
       "expiryHeader": "Expiry date",
