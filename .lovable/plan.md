@@ -6,6 +6,14 @@ Databasen er allerede oppdatert (ny delingstabell, ny lesepolicy, `get_company_n
 
 Globalt delte sjekklister beholder global synlighet. Global deling fjernes aldri automatisk av systemet — kun manuelt fra dialogen.
 
+## 0. Rett opp eierskapet på de to sjekklistene
+
+"Preflight drone" og "Before takeoff" ble opprettet i Avisafe, men eierskapet fulgte med da dronen ble flyttet (Trondheim → Moderavdeling → Oslo → Moderavdeling → Bergen). De står nå med "Avdeling Bergen" som eier.
+
+- Sett eier tilbake til Avisafe for begge sjekklistene.
+- Global synlighet beholdes, slik at alle selskaper fortsatt ser dem — nå med riktig "Avisafe"-badge.
+
+
 ## Hva som gjenstår
 
 ### 1. Riktig badge på delte dokumenter
