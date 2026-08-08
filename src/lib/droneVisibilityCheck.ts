@@ -102,25 +102,12 @@ export async function checkDroneResourceVisibility(
     if (id) checklistIds.add(id);
   }
 
-  if (checklistIds.size > 0) {
-    const { data: checklistDocs } = await (supabase as any)
-      .from("documents")
-      .select("id, tittel, company_id, visible_to_children, global_visibility")
-      .in("id", Array.from(checklistIds));
-
-    for (const doc of (checklistDocs || []) as DocVisibilityRow[]) {
-      const missingFor = docMissingDepts(doc, targetDeptIds, deptParents);
-      if (missingFor.length > 0) {
-        missing.push({
-          resourceType: "document",
-          resourceId: doc.id,
-          resourceName: doc.tittel || "Uten tittel",
-          resourceCompanyId: doc.company_id,
-          missingDeptIds: missingFor,
-        });
-      }
-    }
-  }
+  const checklistDocs: DocVisibilityRow[] = checklistIds.size > 0
+    ? (((await (supabase as any)
+        .from("documents")
+        .select("id, tittel, company_id, visible_to_children, global_visibility")
+        .in("id", Array.from(checklistIds))).data) || [])
+    : [];
 
   // 1. Documents
   const { data: docLinks } = await (supabase as any)
@@ -128,11 +115,19 @@ export async function checkDroneResourceVisibility(
     .select("document:document_id(id, tittel, company_id, visible_to_children, global_visibility)")
     .eq("drone_id", droneId);
 
-  for (const link of docLinks || []) {
-    const doc = link.document as DocVisibilityRow | null;
-    if (!doc) continue;
-    if (missing.some((m) => m.resourceType === "document" && m.resourceId === doc.id)) continue;
-    const missingFor = docMissingDepts(doc, targetDeptIds, deptParents);
+  const linkedDocs = (docLinks || [])
+    .map((l: any) => l.document as DocVisibilityRow | null)
+    .filter(Boolean) as DocVisibilityRow[];
+
+  const allDocs: DocVisibilityRow[] = [];
+  for (const doc of [...checklistDocs, ...linkedDocs]) {
+    if (!allDocs.some((d) => d.id === doc.id)) allDocs.push(doc);
+  }
+
+  const docShares = await fetchDocShares(allDocs.map((d) => d.id));
+
+  for (const doc of allDocs) {
+    const missingFor = docMissingDepts(doc, targetDeptIds, deptParents, docShares.get(doc.id));
     if (missingFor.length > 0) {
       missing.push({
         resourceType: "document",
@@ -143,6 +138,7 @@ export async function checkDroneResourceVisibility(
       });
     }
   }
+
 
 
   // 2. Equipment
