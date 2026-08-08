@@ -383,7 +383,7 @@ const DocumentCardModal = ({
         newVersion = incrementVersion(currentVersion);
       }
 
-      const documentData = {
+      const documentData: Record<string, any> = {
         tittel: data.tittel,
         beskrivelse,
         kategori: data.kategori,
@@ -392,16 +392,27 @@ const DocumentCardModal = ({
         nettside_url: data.nettside_url || null,
         fil_url: fileUrl,
         fil_navn: fileName,
-        company_id: companyId,
         opprettet_av: userData.user?.email || null,
         versjon: isCreating ? "1.0" : newVersion,
         oppdatert_dato: new Date().toISOString(),
         visible_to_children: isParentCompany ? visibleToChildren : false,
+        global_visibility: globalVisibility,
       };
+      // Ownership is only set on creation — editing must never re-assign the owning company
+      if (isCreating) {
+        documentData.company_id = companyId;
+      }
+
+      let savedDocumentId = document?.id ?? null;
 
       if (isCreating) {
-        const { error } = await supabase.from("documents").insert(documentData);
+        const { data: inserted, error } = await supabase
+          .from("documents")
+          .insert(documentData)
+          .select("id")
+          .single();
         if (error) throw error;
+        savedDocumentId = inserted?.id ?? null;
       } else if (document) {
         const { error } = await supabase
           .from("documents")
@@ -414,6 +425,29 @@ const DocumentCardModal = ({
           toast.success(t("documents.toasts.updatedToVersion", { version: newVersion }));
         }
       }
+
+      // Persist explicit per-department sharing
+      if (savedDocumentId) {
+        const toAdd = sharedDeptIds.filter((id) => !initialSharedDeptIds.includes(id));
+        const toRemove = initialSharedDeptIds.filter((id) => !sharedDeptIds.includes(id));
+        if (toAdd.length > 0) {
+          await supabase
+            .from("document_department_visibility")
+            .upsert(
+              toAdd.map((cid) => ({ document_id: savedDocumentId, company_id: cid })),
+              { onConflict: "document_id,company_id" }
+            );
+        }
+        if (toRemove.length > 0) {
+          await supabase
+            .from("document_department_visibility")
+            .delete()
+            .eq("document_id", savedDocumentId)
+            .in("company_id", toRemove);
+        }
+        setInitialSharedDeptIds(sharedDeptIds);
+      }
+
 
       onSaveSuccess();
     } catch (error) {
