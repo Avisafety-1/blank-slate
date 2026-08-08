@@ -247,7 +247,9 @@ export async function checkEquipmentResourceVisibility(
   if (!doc) return [];
 
   const deptParents = await fetchDeptParents(targetDeptIds);
-  const missingFor = docMissingDepts(doc as DocVisibilityRow, targetDeptIds, deptParents);
+  const shares = await fetchDocShares([doc.id]);
+  const missingFor = docMissingDepts(doc as DocVisibilityRow, targetDeptIds, deptParents, shares.get(doc.id));
+
 
   if (missingFor.length === 0) return [];
 
