@@ -45,7 +45,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown, Building2 } from "lucide-react";
+
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
