@@ -383,7 +383,7 @@ const DocumentCardModal = ({
         newVersion = incrementVersion(currentVersion);
       }
 
-      const documentData: Record<string, any> = {
+      const documentData: any = {
         tittel: data.tittel,
         beskrivelse,
         kategori: data.kategori,
