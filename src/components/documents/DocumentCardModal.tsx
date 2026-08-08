@@ -129,6 +129,11 @@ const DocumentCardModal = ({
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [isParentCompany, setIsParentCompany] = useState(false);
   const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [otherCompanies, setOtherCompanies] = useState<{ id: string; navn: string }[]>([]);
+  const [sharedDeptIds, setSharedDeptIds] = useState<string[]>([]);
+  const [initialSharedDeptIds, setInitialSharedDeptIds] = useState<string[]>([]);
 
   // Detect if current company is a parent company
   useEffect(() => {
@@ -144,16 +149,53 @@ const DocumentCardModal = ({
     check();
   }, [companyId, isOpen]);
 
-  // Sync visibleToChildren state with document
+  // Load selectable companies for explicit sharing
   useEffect(() => {
-    if (isOpen) {
-      if (document) {
-        setVisibleToChildren(!!(document as any).visible_to_children);
-      } else if (isCreating) {
-        setVisibleToChildren(false);
-      }
+    if (!isOpen || !companyId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id, navn')
+        .neq('id', companyId)
+        .order('navn');
+      setOtherCompanies((data as any[]) ?? []);
+    };
+    load();
+  }, [isOpen, companyId]);
+
+  // Sync visibility state with document
+  useEffect(() => {
+    if (!isOpen) return;
+    if (document) {
+      setVisibleToChildren(!!(document as any).visible_to_children);
+      setGlobalVisibility(!!(document as any).global_visibility);
+    } else if (isCreating) {
+      setVisibleToChildren(false);
+      setGlobalVisibility(false);
     }
+    setVisibilityOpen(false);
   }, [document, isOpen, isCreating]);
+
+  // Load explicit department sharing for this document
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!document || isCreating) {
+      setSharedDeptIds([]);
+      setInitialSharedDeptIds([]);
+      return;
+    }
+    const load = async () => {
+      const { data } = await supabase
+        .from('document_department_visibility')
+        .select('company_id')
+        .eq('document_id', document.id);
+      const ids = ((data as any[]) ?? []).map((r) => r.company_id as string);
+      setSharedDeptIds(ids);
+      setInitialSharedDeptIds(ids);
+    };
+    load();
+  }, [document, isOpen, isCreating]);
+
 
   // Parse checklist JSON when document loads
   useEffect(() => {
