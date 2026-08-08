@@ -2183,6 +2183,42 @@ export type Database = {
         }
         Relationships: []
       }
+      document_department_visibility: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_id: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_id: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_department_visibility_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_department_visibility_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_folder_items: {
         Row: {
           added_at: string | null
@@ -8504,6 +8540,13 @@ export type Database = {
         Returns: {
           company_id: string
           company_name: string
+        }[]
+      }
+      get_company_names: {
+        Args: { _ids: string[] }
+        Returns: {
+          id: string
+          navn: string
         }[]
       }
       get_dk_drone_zones_in_bounds: {
