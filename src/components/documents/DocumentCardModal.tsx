@@ -723,24 +723,67 @@ const DocumentCardModal = ({
                 </div>
               )}
 
-              {!readOnly && isParentCompany && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <div className="space-y-0.5">
-                      <Label htmlFor="edit-visible-children-doc">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {t("documents.cardModal.visibleToChildrenDescription")}
-                      </p>
+              {!readOnly && (
+                <Collapsible open={visibilityOpen} onOpenChange={setVisibilityOpen} className="rounded-lg border bg-muted/30">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="flex w-full items-center justify-between p-3 text-left">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        {t("documents.cardModal.visibilitySectionTitle")}
+                      </span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", visibilityOpen && "rotate-180")} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 p-3 pt-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="edit-global-visibility-doc">{t("documents.cardModal.globalVisibilityLabel")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                      </div>
+                      <Switch
+                        id="edit-global-visibility-doc"
+                        checked={globalVisibility}
+                        onCheckedChange={setGlobalVisibility}
+                      />
                     </div>
-                  </div>
-                  <Switch
-                    id="edit-visible-children-doc"
-                    checked={visibleToChildren}
-                    onCheckedChange={setVisibleToChildren}
-                  />
-                </div>
+
+                    {isParentCompany && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="edit-visible-children-doc">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
+                          <p className="text-xs text-muted-foreground">
+                            {t("documents.cardModal.visibleToChildrenDescription")}
+                          </p>
+                        </div>
+                        <Switch
+                          id="edit-visible-children-doc"
+                          checked={visibleToChildren}
+                          onCheckedChange={setVisibleToChildren}
+                        />
+                      </div>
+                    )}
+
+                    {!globalVisibility && otherCompanies.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label>{t("documents.cardModal.sharedDepartmentsLabel")}</Label>
+                        <DepartmentChecklist
+                          departments={otherCompanies}
+                          selectedIds={sharedDeptIds}
+                          onToggle={(id, checked) =>
+                            setSharedDeptIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+                          }
+                          allSelected={false}
+                          onToggleAll={(checked) =>
+                            setSharedDeptIds(checked ? otherCompanies.map((c) => c.id) : [])
+                          }
+                          allLabel={t("documents.cardModal.selectAllDepartments")}
+                        />
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
+
 
               <DialogFooter className="gap-2 flex-col sm:flex-row">
                 {canManageDocument && !isCreating && (
