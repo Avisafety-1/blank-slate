@@ -4384,6 +4384,7 @@
       "totalHours": "Totalt {{hours}} flyvetimer",
       "addEntry": "Legg til innlegg",
       "exportPdf": "Eksporter PDF",
+      "exporting": "Eksporterer...",
       "type": "Type",
       "date": "Dato",
       "titleField": "Tittel *",
@@ -4480,6 +4481,7 @@
       "totalHours": "Totalt {{hours}} flyvetimer",
       "addEntry": "Legg til",
       "exportPdf": "PDF",
+      "exporting": "Eksporterer...",
       "tabs": {
         "all": "Alle",
         "flights": "Flyturer",

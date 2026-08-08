@@ -38,6 +38,7 @@ import {
   Zap,
   AlertTriangle,
   Pencil,
+  Loader2,
 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { format } from "date-fns";
@@ -101,6 +102,7 @@ export const EquipmentLogbookDialog = ({
   const [activeTab, setActiveTab] = useState("all");
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -445,6 +447,7 @@ export const EquipmentLogbookDialog = ({
       return;
     }
 
+    setExporting(true);
     try {
       const pdf = await createPdfDocument();
       const dateStr = format(new Date(), 'dd.MM.yyyy');
@@ -522,6 +525,8 @@ export const EquipmentLogbookDialog = ({
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
       toast.error(t('resourceDialogs.equipmentLogbook.toasts.exportError', { message: error.message }));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -563,9 +568,10 @@ export const EquipmentLogbookDialog = ({
                   variant="outline" 
                   size="sm" 
                   onClick={handleExportPDF}
+                  disabled={exporting}
                 >
-                  <FileText className="w-4 h-4 mr-1" />
-                  {t('resourceDialogs.equipmentLogbook.exportPdf')}
+                  {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileText className="w-4 h-4 mr-1" />}
+                  {exporting ? t('resourceDialogs.equipmentLogbook.exporting') : t('resourceDialogs.equipmentLogbook.exportPdf')}
                 </Button>
               </div>
             </div>

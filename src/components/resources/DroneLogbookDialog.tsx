@@ -34,6 +34,7 @@ import {
   BarChart3,
   AlertTriangle,
   Pencil,
+  Loader2,
 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
@@ -89,6 +90,7 @@ export const DroneLogbookDialog = ({
   const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
@@ -468,6 +470,7 @@ export const DroneLogbookDialog = ({
       return;
     }
 
+    setExporting(true);
     try {
       const pdf = await createPdfDocument();
       const dateStr = format(new Date(), 'dd.MM.yyyy');
@@ -539,6 +542,8 @@ export const DroneLogbookDialog = ({
     } catch (error: any) {
       console.error('Error exporting PDF:', error);
       toast.error(t('resourceDialogs.droneLogbook.toasts.exportError', { message: error.message }));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -584,10 +589,11 @@ export const DroneLogbookDialog = ({
               size="sm" 
               data-tour="drone-logbook-export"
               onClick={handleExportPDF}
+              disabled={exporting}
               className="w-full sm:w-auto"
             >
-              <FileText className="w-4 h-4 mr-2" />
-              {t('resourceDialogs.droneLogbook.exportPdf')}
+              {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+              {exporting ? t('resourceDialogs.droneLogbook.exporting') : t('resourceDialogs.droneLogbook.exportPdf')}
             </Button>
           </div>
 
