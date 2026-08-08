@@ -45,7 +45,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown, Building2 } from "lucide-react";
+
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -126,6 +129,11 @@ const DocumentCardModal = ({
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [isParentCompany, setIsParentCompany] = useState(false);
   const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [otherCompanies, setOtherCompanies] = useState<{ id: string; navn: string }[]>([]);
+  const [sharedDeptIds, setSharedDeptIds] = useState<string[]>([]);
+  const [initialSharedDeptIds, setInitialSharedDeptIds] = useState<string[]>([]);
 
   // Detect if current company is a parent company
   useEffect(() => {
@@ -141,16 +149,53 @@ const DocumentCardModal = ({
     check();
   }, [companyId, isOpen]);
 
-  // Sync visibleToChildren state with document
+  // Load selectable companies for explicit sharing
   useEffect(() => {
-    if (isOpen) {
-      if (document) {
-        setVisibleToChildren(!!(document as any).visible_to_children);
-      } else if (isCreating) {
-        setVisibleToChildren(false);
-      }
+    if (!isOpen || !companyId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from('companies')
+        .select('id, navn')
+        .neq('id', companyId)
+        .order('navn');
+      setOtherCompanies((data as any[]) ?? []);
+    };
+    load();
+  }, [isOpen, companyId]);
+
+  // Sync visibility state with document
+  useEffect(() => {
+    if (!isOpen) return;
+    if (document) {
+      setVisibleToChildren(!!(document as any).visible_to_children);
+      setGlobalVisibility(!!(document as any).global_visibility);
+    } else if (isCreating) {
+      setVisibleToChildren(false);
+      setGlobalVisibility(false);
     }
+    setVisibilityOpen(false);
   }, [document, isOpen, isCreating]);
+
+  // Load explicit department sharing for this document
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!document || isCreating) {
+      setSharedDeptIds([]);
+      setInitialSharedDeptIds([]);
+      return;
+    }
+    const load = async () => {
+      const { data } = await supabase
+        .from('document_department_visibility')
+        .select('company_id')
+        .eq('document_id', document.id);
+      const ids = ((data as any[]) ?? []).map((r) => r.company_id as string);
+      setSharedDeptIds(ids);
+      setInitialSharedDeptIds(ids);
+    };
+    load();
+  }, [document, isOpen, isCreating]);
+
 
   // Parse checklist JSON when document loads
   useEffect(() => {
@@ -338,7 +383,7 @@ const DocumentCardModal = ({
         newVersion = incrementVersion(currentVersion);
       }
 
-      const documentData = {
+      const documentData: any = {
         tittel: data.tittel,
         beskrivelse,
         kategori: data.kategori,
@@ -347,16 +392,27 @@ const DocumentCardModal = ({
         nettside_url: data.nettside_url || null,
         fil_url: fileUrl,
         fil_navn: fileName,
-        company_id: companyId,
         opprettet_av: userData.user?.email || null,
         versjon: isCreating ? "1.0" : newVersion,
         oppdatert_dato: new Date().toISOString(),
         visible_to_children: isParentCompany ? visibleToChildren : false,
+        global_visibility: globalVisibility,
       };
+      // Ownership is only set on creation — editing must never re-assign the owning company
+      if (isCreating) {
+        documentData.company_id = companyId;
+      }
+
+      let savedDocumentId = document?.id ?? null;
 
       if (isCreating) {
-        const { error } = await supabase.from("documents").insert(documentData);
+        const { data: inserted, error } = await supabase
+          .from("documents")
+          .insert(documentData)
+          .select("id")
+          .single();
         if (error) throw error;
+        savedDocumentId = inserted?.id ?? null;
       } else if (document) {
         const { error } = await supabase
           .from("documents")
@@ -369,6 +425,29 @@ const DocumentCardModal = ({
           toast.success(t("documents.toasts.updatedToVersion", { version: newVersion }));
         }
       }
+
+      // Persist explicit per-department sharing
+      if (savedDocumentId) {
+        const toAdd = sharedDeptIds.filter((id) => !initialSharedDeptIds.includes(id));
+        const toRemove = initialSharedDeptIds.filter((id) => !sharedDeptIds.includes(id));
+        if (toAdd.length > 0) {
+          await supabase
+            .from("document_department_visibility")
+            .upsert(
+              toAdd.map((cid) => ({ document_id: savedDocumentId, company_id: cid })),
+              { onConflict: "document_id,company_id" }
+            );
+        }
+        if (toRemove.length > 0) {
+          await supabase
+            .from("document_department_visibility")
+            .delete()
+            .eq("document_id", savedDocumentId)
+            .in("company_id", toRemove);
+        }
+        setInitialSharedDeptIds(sharedDeptIds);
+      }
+
 
       onSaveSuccess();
     } catch (error) {
@@ -723,24 +802,67 @@ const DocumentCardModal = ({
                 </div>
               )}
 
-              {!readOnly && isParentCompany && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <div className="space-y-0.5">
-                      <Label htmlFor="edit-visible-children-doc">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {t("documents.cardModal.visibleToChildrenDescription")}
-                      </p>
+              {!readOnly && (
+                <Collapsible open={visibilityOpen} onOpenChange={setVisibilityOpen} className="rounded-lg border bg-muted/30">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className="flex w-full items-center justify-between p-3 text-left">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        {t("documents.cardModal.visibilitySectionTitle")}
+                      </span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", visibilityOpen && "rotate-180")} />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 p-3 pt-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="edit-global-visibility-doc">{t("documents.cardModal.globalVisibilityLabel")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                      </div>
+                      <Switch
+                        id="edit-global-visibility-doc"
+                        checked={globalVisibility}
+                        onCheckedChange={setGlobalVisibility}
+                      />
                     </div>
-                  </div>
-                  <Switch
-                    id="edit-visible-children-doc"
-                    checked={visibleToChildren}
-                    onCheckedChange={setVisibleToChildren}
-                  />
-                </div>
+
+                    {isParentCompany && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="edit-visible-children-doc">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
+                          <p className="text-xs text-muted-foreground">
+                            {t("documents.cardModal.visibleToChildrenDescription")}
+                          </p>
+                        </div>
+                        <Switch
+                          id="edit-visible-children-doc"
+                          checked={visibleToChildren}
+                          onCheckedChange={setVisibleToChildren}
+                        />
+                      </div>
+                    )}
+
+                    {!globalVisibility && otherCompanies.length > 0 && (
+                      <div className="space-y-1.5">
+                        <Label>{t("documents.cardModal.sharedDepartmentsLabel")}</Label>
+                        <DepartmentChecklist
+                          departments={otherCompanies}
+                          selectedIds={sharedDeptIds}
+                          onToggle={(id, checked) =>
+                            setSharedDeptIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+                          }
+                          allSelected={false}
+                          onToggleAll={(checked) =>
+                            setSharedDeptIds(checked ? otherCompanies.map((c) => c.id) : [])
+                          }
+                          allLabel={t("documents.cardModal.selectAllDepartments")}
+                        />
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
+
 
               <DialogFooter className="gap-2 flex-col sm:flex-row">
                 {canManageDocument && !isCreating && (

@@ -93,12 +93,20 @@ const Documents = () => {
   const { data: documents, isLoading, refetch } = useQuery({
     queryKey: ["documents", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("documents").select("*, companies:company_id(id, navn)").order("opprettet_dato", { ascending: false });
+      const { data, error } = await supabase.from("documents").select("*").order("opprettet_dato", { ascending: false });
       if (error) throw error;
-      return (data || []).map((d: any) => ({ ...d, company_name: d.companies?.navn || null })) as (Document & { company_name?: string })[];
+      const rows = (data || []) as any[];
+      const ownerIds = Array.from(new Set(rows.map((d) => d.company_id).filter(Boolean))) as string[];
+      let nameMap = new Map<string, string>();
+      if (ownerIds.length > 0) {
+        const { data: names } = await supabase.rpc("get_company_names", { _ids: ownerIds });
+        (names || []).forEach((c: any) => nameMap.set(c.id, c.navn));
+      }
+      return rows.map((d) => ({ ...d, company_name: d.company_id ? nameMap.get(d.company_id) ?? null : null })) as (Document & { company_name?: string })[];
     },
     refetchOnMount: 'always',
   });
+
 
   useEffect(() => {
     const channel = createUniqueChannel('documents-page-changes').on('postgres_changes', {

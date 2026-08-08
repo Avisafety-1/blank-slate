@@ -44,19 +44,37 @@ interface DocVisibilityRow {
   global_visibility: boolean | null;
 }
 
+/** Fetch explicit per-department sharing rows for the given documents. */
+async function fetchDocShares(docIds: string[]): Promise<Map<string, Set<string>>> {
+  const map = new Map<string, Set<string>>();
+  if (docIds.length === 0) return map;
+  const { data } = await (supabase as any)
+    .from("document_department_visibility")
+    .select("document_id, company_id")
+    .in("document_id", docIds);
+  for (const row of data || []) {
+    if (!map.has(row.document_id)) map.set(row.document_id, new Set());
+    map.get(row.document_id)!.add(row.company_id);
+  }
+  return map;
+}
+
 /** Mirrors the runtime visibility rules used when listing documents/checklists. */
 function docMissingDepts(
   doc: DocVisibilityRow,
   targetDeptIds: string[],
   deptParents: Map<string, string | null>,
+  sharedWith?: Set<string>,
 ): string[] {
   if (doc.global_visibility) return [];
   return targetDeptIds.filter((deptId) => {
     if (deptId === doc.company_id) return false;
+    if (sharedWith?.has(deptId)) return false;
     if (doc.visible_to_children && doc.company_id && deptParents.get(deptId) === doc.company_id) return false;
     return true;
   });
 }
+
 
 export async function checkDroneResourceVisibility(
   droneId: string,
@@ -84,25 +102,12 @@ export async function checkDroneResourceVisibility(
     if (id) checklistIds.add(id);
   }
 
-  if (checklistIds.size > 0) {
-    const { data: checklistDocs } = await (supabase as any)
-      .from("documents")
-      .select("id, tittel, company_id, visible_to_children, global_visibility")
-      .in("id", Array.from(checklistIds));
-
-    for (const doc of (checklistDocs || []) as DocVisibilityRow[]) {
-      const missingFor = docMissingDepts(doc, targetDeptIds, deptParents);
-      if (missingFor.length > 0) {
-        missing.push({
-          resourceType: "document",
-          resourceId: doc.id,
-          resourceName: doc.tittel || "Uten tittel",
-          resourceCompanyId: doc.company_id,
-          missingDeptIds: missingFor,
-        });
-      }
-    }
-  }
+  const checklistDocs: DocVisibilityRow[] = checklistIds.size > 0
+    ? (((await (supabase as any)
+        .from("documents")
+        .select("id, tittel, company_id, visible_to_children, global_visibility")
+        .in("id", Array.from(checklistIds))).data) || [])
+    : [];
 
   // 1. Documents
   const { data: docLinks } = await (supabase as any)
@@ -110,11 +115,19 @@ export async function checkDroneResourceVisibility(
     .select("document:document_id(id, tittel, company_id, visible_to_children, global_visibility)")
     .eq("drone_id", droneId);
 
-  for (const link of docLinks || []) {
-    const doc = link.document as DocVisibilityRow | null;
-    if (!doc) continue;
-    if (missing.some((m) => m.resourceType === "document" && m.resourceId === doc.id)) continue;
-    const missingFor = docMissingDepts(doc, targetDeptIds, deptParents);
+  const linkedDocs = (docLinks || [])
+    .map((l: any) => l.document as DocVisibilityRow | null)
+    .filter(Boolean) as DocVisibilityRow[];
+
+  const allDocs: DocVisibilityRow[] = [];
+  for (const doc of [...checklistDocs, ...linkedDocs]) {
+    if (!allDocs.some((d) => d.id === doc.id)) allDocs.push(doc);
+  }
+
+  const docShares = await fetchDocShares(allDocs.map((d) => d.id));
+
+  for (const doc of allDocs) {
+    const missingFor = docMissingDepts(doc, targetDeptIds, deptParents, docShares.get(doc.id));
     if (missingFor.length > 0) {
       missing.push({
         resourceType: "document",
@@ -125,6 +138,7 @@ export async function checkDroneResourceVisibility(
       });
     }
   }
+
 
 
   // 2. Equipment
@@ -233,7 +247,9 @@ export async function checkEquipmentResourceVisibility(
   if (!doc) return [];
 
   const deptParents = await fetchDeptParents(targetDeptIds);
-  const missingFor = docMissingDepts(doc as DocVisibilityRow, targetDeptIds, deptParents);
+  const shares = await fetchDocShares([doc.id]);
+  const missingFor = docMissingDepts(doc as DocVisibilityRow, targetDeptIds, deptParents, shares.get(doc.id));
+
 
   if (missingFor.length === 0) return [];
 
@@ -251,44 +267,25 @@ export async function checkEquipmentResourceVisibility(
 /**
  * Auto-grant visibility for documents and equipment. Personnel cannot be auto-fixed.
  *
- * For documents: `visible_to_children` only reaches direct children of the document's
- * owner company. When a target department is not a direct child (e.g. a sibling
- * department), we also set `global_visibility` so the grant actually takes effect —
- * otherwise the warning dialog would reappear on every save.
+ * Documents are shared explicitly per department via `document_department_visibility`.
+ * Ownership and global visibility are never changed here — sharing a document with a
+ * department must not make it visible to every company in the system.
  */
 export async function grantMissingVisibility(missing: MissingVisibility[]): Promise<void> {
-  const docs = missing.filter((m) => m.resourceType === "document");
-
-  if (docs.length > 0) {
-    const allDeptIds = Array.from(new Set(docs.flatMap((d) => d.missingDeptIds)));
-    const deptParents = await fetchDeptParents(allDeptIds);
-
-    const childrenOnlyDocIds: string[] = [];
-    const globalDocIds: string[] = [];
-
-    for (const doc of docs) {
-      const reachableViaChildren =
-        !!doc.resourceCompanyId &&
-        doc.missingDeptIds.every((deptId) => deptParents.get(deptId) === doc.resourceCompanyId);
-      (reachableViaChildren ? childrenOnlyDocIds : globalDocIds).push(doc.resourceId);
-    }
-
-    if (childrenOnlyDocIds.length > 0) {
-      const { error } = await supabase
-        .from("documents")
-        .update({ visible_to_children: true })
-        .in("id", Array.from(new Set(childrenOnlyDocIds)));
-      if (error) throw error;
-    }
-
-    if (globalDocIds.length > 0) {
-      const { error } = await supabase
-        .from("documents")
-        .update({ visible_to_children: true, global_visibility: true })
-        .in("id", Array.from(new Set(globalDocIds)));
-      if (error) throw error;
+  const docRows: { document_id: string; company_id: string }[] = [];
+  for (const m of missing) {
+    if (m.resourceType !== "document") continue;
+    for (const dept of m.missingDeptIds) {
+      docRows.push({ document_id: m.resourceId, company_id: dept });
     }
   }
+  if (docRows.length > 0) {
+    const { error } = await (supabase as any)
+      .from("document_department_visibility")
+      .upsert(docRows, { onConflict: "document_id,company_id", ignoreDuplicates: true });
+    if (error) throw error;
+  }
+
 
   // Equipment: insert visibility rows for each (equipment, missing dept)
   const eqRows: { equipment_id: string; company_id: string }[] = [];
