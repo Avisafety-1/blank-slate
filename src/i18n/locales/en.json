@@ -4382,6 +4382,7 @@
       "totalHours": "Total {{hours}} flight hours",
       "addEntry": "Add entry",
       "exportPdf": "Export PDF",
+      "exporting": "Exporting...",
       "type": "Type",
       "date": "Date",
       "titleField": "Title *",
@@ -4478,6 +4479,7 @@
       "totalHours": "Total {{hours}} flight hours",
       "addEntry": "Add",
       "exportPdf": "PDF",
+      "exporting": "Exporting...",
       "tabs": {
         "all": "All",
         "flights": "Flights",
