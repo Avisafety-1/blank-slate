@@ -102,7 +102,21 @@ const Documents = () => {
         const { data: names } = await supabase.rpc("get_company_names", { _ids: ownerIds });
         (names || []).forEach((c: any) => nameMap.set(c.id, c.navn));
       }
-      return rows.map((d) => ({ ...d, company_name: d.company_id ? nameMap.get(d.company_id) ?? null : null })) as (Document & { company_name?: string })[];
+      // Documents explicitly shared with other departments
+      const sharedIds = new Set<string>();
+      if (rows.length > 0) {
+        const { data: shares } = await supabase
+          .from("document_department_visibility")
+          .select("document_id")
+          .in("document_id", rows.map((d) => d.id));
+        (shares || []).forEach((s: any) => sharedIds.add(s.document_id));
+      }
+      return rows.map((d) => ({
+        ...d,
+        company_name: d.company_id ? nameMap.get(d.company_id) ?? null : null,
+        is_shared: sharedIds.has(d.id) || d.global_visibility === true || d.visible_to_children === true,
+      })) as (Document & { company_name?: string; is_shared?: boolean })[];
+
     },
     refetchOnMount: 'always',
   });
