@@ -197,7 +197,7 @@ const DocumentsList = ({
               >
                 <TableCell className="font-medium bg-slate-200/50 text-slate-950 shadow-sm rounded-none max-w-[150px] md:max-w-none">
                   <div className="flex flex-col gap-0.5">
-                    {departmentsEnabled && (doc as any).company_id !== companyId && (doc as any).company_name && (
+                    {(doc as any).company_id && (doc as any).company_id !== companyId && (doc as any).company_name && (
                       <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap w-fit gap-0.5 border-primary/30 text-primary">
                         <Building2 className="h-2.5 w-2.5" />
                         {(doc as any).company_name}
