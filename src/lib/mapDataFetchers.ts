@@ -6,7 +6,7 @@ import { droneAnimatedIcon } from "@/lib/mapIcons";
 import droneStaticIcon from "@/assets/drone-static.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
-import { getCache, bboxCovered, padBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
+import { getCache, bboxCovered, padBBox, boundsToBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 import { buildNatureZonePopupHtml, enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
 import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
@@ -1559,6 +1559,8 @@ export async function fetchKraftledningerInBounds(params: {
 
 // --- Live NOTAM ---
 
+let notamLastMode: string | null = null;
+
 export async function fetchNotams(params: {
   layer: L.LayerGroup;
   pane: string;
@@ -1566,8 +1568,6 @@ export async function fetchNotams(params: {
   mode: string;
 }) {
   const { layer, pane, pinPane, mode } = params;
-
-  layer.clearLayers();
 
   // Dedicated SVG renderer bound to notamPane so vectors live in their own SVG container
   const map = (layer as any)._map as L.Map | null;
@@ -1585,15 +1585,27 @@ export async function fetchNotams(params: {
     (layer as any)._notamRenderer = notamRenderer;
   }
 
+  // Mode change (e.g. routePlanning) changes interactivity → full re-render
+  if (notamLastMode !== mode) {
+    resetCache('notam', layer);
+    notamLastMode = mode;
+  }
+
+  const bounds = boundsToBBox(map.getBounds());
+  const cache = getCache('notam');
+  // Viewport already covered by last fetch → keep existing layers (no blink,
+  // and popups stay open while panning)
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds, 0.6);
+
   try {
     // Viewport-scoped fetch via RPC to avoid the 1000-row global cap
     // (previously truncated Poland / other large-country NOTAMs)
-    const b = map.getBounds().pad(0.2);
     const { data, error } = await supabase.rpc("get_notams_in_bounds", {
-      min_lat: b.getSouth(),
-      min_lng: b.getWest(),
-      max_lat: b.getNorth(),
-      max_lng: b.getEast(),
+      min_lat: padded.minLat,
+      min_lng: padded.minLng,
+      max_lat: padded.maxLat,
+      max_lng: padded.maxLng,
     });
 
     if (error) {
@@ -1601,82 +1613,91 @@ export async function fetchNotams(params: {
       return;
     }
 
-    if (!data || data.length === 0) return;
+    const rows: any[] = Array.isArray(data) ? data : [];
 
-    for (const notam of data) {
-      // Try to render geometry
-      if (notam.geometry_geojson) {
-        try {
-          const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
-            pane,
-            renderer: notamRenderer,
-            interactive: mode !== "routePlanning",
-            bubblingMouseEvents: false,
-            pointToLayer: (_feature: any, latlng: L.LatLng) => {
-              return L.marker(latlng, {
-                pane: pinPane,
-                interactive: mode !== "routePlanning",
-                bubblingMouseEvents: false,
-                icon: L.divIcon({
-                  className: 'notam-pin-icon',
-                  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
-                    <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.27 21.73 0 14 0z" fill="#e67e22" stroke="#c0392b" stroke-width="1.5"/>
-                    <circle cx="14" cy="13" r="6" fill="white" opacity="0.9"/>
-                    <text x="14" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22" font-family="Arial,sans-serif">!</text>
-                  </svg>`,
-                  iconSize: [28, 36] as any,
-                  iconAnchor: [14, 36] as any,
-                  popupAnchor: [0, -36] as any,
-                }),
-              });
-            },
-            style: {
-              color: "#e67e22",
-              weight: 2,
-              fillColor: "#f39c12",
-              fillOpacity: 0.15,
-              dashArray: "5, 5",
-            },
-          } as any);
-
-          if (mode !== "routePlanning") {
-            geoLayer.bindPopup(buildNotamPopup(notam));
-            geoLayer.eachLayer((child) => {
-              // Hover-promotion kun på polygon-children (ikke pin-markers i pinPane)
-              if (typeof (child as any).setStyle === "function") {
-                attachHoverPromotion(child, {
-                  paneName: pane,
-                  baseStyle: {
-                    color: "#e67e22",
-                    weight: 2,
-                    fillColor: "#f39c12",
-                    fillOpacity: 0.15,
-                    dashArray: "5, 5",
-                  },
+    diffRender(
+      layer,
+      cache,
+      rows,
+      (notam: any) =>
+        String(
+          notam.id ??
+            notam.notam_id ??
+            hashString(`${notam.location ?? ''}|${notam.qcode ?? ''}|${notam.center_lat ?? ''}|${notam.center_lng ?? ''}|${notam.effective_start ?? ''}`),
+        ),
+      (notam: any) => {
+        if (notam.geometry_geojson) {
+          try {
+            const geoLayer = L.geoJSON(notam.geometry_geojson as any, {
+              pane,
+              renderer: notamRenderer,
+              interactive: mode !== "routePlanning",
+              bubblingMouseEvents: false,
+              pointToLayer: (_feature: any, latlng: L.LatLng) => {
+                return L.marker(latlng, {
+                  pane: pinPane,
+                  interactive: mode !== "routePlanning",
+                  bubblingMouseEvents: false,
+                  icon: L.divIcon({
+                    className: 'notam-pin-icon',
+                    html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+                      <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.27 21.73 0 14 0z" fill="#e67e22" stroke="#c0392b" stroke-width="1.5"/>
+                      <circle cx="14" cy="13" r="6" fill="white" opacity="0.9"/>
+                      <text x="14" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22" font-family="Arial,sans-serif">!</text>
+                    </svg>`,
+                    iconSize: [28, 36] as any,
+                    iconAnchor: [14, 36] as any,
+                    popupAnchor: [0, -36] as any,
+                  }),
                 });
-              }
-            });
+              },
+              style: {
+                color: "#e67e22",
+                weight: 2,
+                fillColor: "#f39c12",
+                fillOpacity: 0.15,
+                dashArray: "5, 5",
+              },
+            } as any);
+
+            if (mode !== "routePlanning") {
+              geoLayer.bindPopup(buildNotamPopup(notam));
+              geoLayer.eachLayer((child) => {
+                // Hover-promotion kun på polygon-children (ikke pin-markers i pinPane)
+                if (typeof (child as any).setStyle === "function") {
+                  attachHoverPromotion(child, {
+                    paneName: pane,
+                    baseStyle: {
+                      color: "#e67e22",
+                      weight: 2,
+                      fillColor: "#f39c12",
+                      fillOpacity: 0.15,
+                      dashArray: "5, 5",
+                    },
+                  });
+                }
+              });
+            }
+
+            return geoLayer;
+          } catch {
+            return buildNotamCenterMarker(notam, pane, pinPane, mode, notamRenderer);
           }
-
-          geoLayer.addTo(layer);
-          geoLayer.bringToFront();
-        } catch {
-          // Fallback to center marker
-          addNotamCenterMarker(notam, layer, pane, pinPane, mode, notamRenderer);
         }
-      } else if (notam.center_lat != null && notam.center_lng != null) {
-        addNotamCenterMarker(notam, layer, pane, pinPane, mode, notamRenderer);
-      }
-    }
+        return buildNotamCenterMarker(notam, pane, pinPane, mode, notamRenderer);
+      },
+    );
 
-    console.log(`[NOTAM] Rendered ${data.length} NOTAMs`);
+    cache.cachedBounds = padded;
   } catch (err) {
     console.error("[NOTAM] Error:", err);
   }
 }
 
-function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, pinPane: string, mode: string, renderer?: L.Renderer) {
-  if (notam.center_lat == null || notam.center_lng == null) return;
+
+function buildNotamCenterMarker(notam: any, pane: string, pinPane: string, mode: string, renderer?: L.Renderer): L.Layer | null {
+  if (notam.center_lat == null || notam.center_lng == null) return null;
+
 
   const isAerodrome = notam.scope === "A";
 
@@ -1718,11 +1739,9 @@ function addNotamCenterMarker(notam: any, layer: L.LayerGroup, pane: string, pin
     (marker as any).bindPopup(buildNotamPopup(notam));
   }
 
-  (marker as any).addTo(layer);
-  if (typeof (marker as any).bringToFront === 'function') {
-    (marker as any).bringToFront();
-  }
+  return marker;
 }
+
 
 function buildNotamPopup(notam: any): string {
   const start = notam.effective_start
