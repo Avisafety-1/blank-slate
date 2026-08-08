@@ -1739,11 +1739,9 @@ function buildNotamCenterMarker(notam: any, pane: string, pinPane: string, mode:
     (marker as any).bindPopup(buildNotamPopup(notam));
   }
 
-  (marker as any).addTo(layer);
-  if (typeof (marker as any).bringToFront === 'function') {
-    (marker as any).bringToFront();
-  }
+  return marker;
 }
+
 
 function buildNotamPopup(notam: any): string {
   const start = notam.effective_start
