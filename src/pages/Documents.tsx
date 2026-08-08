@@ -99,7 +99,7 @@ const Documents = () => {
       const ownerIds = Array.from(new Set(rows.map((d) => d.company_id).filter(Boolean))) as string[];
       let nameMap = new Map<string, string>();
       if (ownerIds.length > 0) {
-        const { data: names } = await supabase.rpc("get_company_names", { _company_ids: ownerIds });
+        const { data: names } = await supabase.rpc("get_company_names", { _ids: ownerIds });
         (names || []).forEach((c: any) => nameMap.set(c.id, c.navn));
       }
       return rows.map((d) => ({ ...d, company_name: d.company_id ? nameMap.get(d.company_id) ?? null : null })) as (Document & { company_name?: string })[];
