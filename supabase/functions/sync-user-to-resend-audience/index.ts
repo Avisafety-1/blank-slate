@@ -40,9 +40,21 @@ async function upsertContact(audienceId: string, email: string, first_name: stri
   if (prevEmail && prevEmail !== email) {
     await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(prevEmail)}`, { method: "DELETE" });
   }
+
+  // IMPORTANT: never send `unsubscribed` — a POST on an existing email is an
+  // upsert in Resend and would re-subscribe someone who has opted out.
+  const existing = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`);
+  if (existing.ok) {
+    const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ first_name: first_name || "", last_name: last_name || "" }),
+    });
+    return { status: patch.status, action: "updated" };
+  }
+
   const create = await resendFetch(`/audiences/${audienceId}/contacts`, {
     method: "POST",
-    body: JSON.stringify({ email, first_name: first_name || "", last_name: last_name || "", unsubscribed: false }),
+    body: JSON.stringify({ email, first_name: first_name || "", last_name: last_name || "" }),
   });
   if (create.ok) return { status: create.status, action: "created" };
   if (create.status === 409) {
