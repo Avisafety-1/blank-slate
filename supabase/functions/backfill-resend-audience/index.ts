@@ -28,9 +28,20 @@ async function resendFetch(path: string, opts: RequestInit = {}) {
 }
 
 async function syncOne(audienceId: string, email: string, first_name: string, last_name: string) {
+  // Never send `unsubscribed` — POST is an upsert in Resend and would
+  // re-subscribe contacts who have opted out. Update existing contacts only.
+  const existing = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`);
+  if (existing.ok) {
+    const patch = await resendFetch(`/audiences/${audienceId}/contacts/${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ first_name, last_name }),
+    });
+    return patch.ok ? "updated" : "failed";
+  }
+
   const r = await resendFetch(`/audiences/${audienceId}/contacts`, {
     method: "POST",
-    body: JSON.stringify({ email, first_name, last_name, unsubscribed: false }),
+    body: JSON.stringify({ email, first_name, last_name }),
   });
   if (r.ok) return "added";
   if (r.status === 409) {
