@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
         recent: list
           .slice()
           .sort((x, y) => (y.created_at || "").localeCompare(x.created_at || ""))
-          .slice(0, 5)
+          .slice(0, 200)
           .map((c) => ({ email: c.email, created_at: c.created_at, unsubscribed: c.unsubscribed })),
       };
     }
