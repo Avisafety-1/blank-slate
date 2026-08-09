@@ -1683,7 +1683,9 @@ export function OpenAIPMap({
       map.off("click");
       mapChannel.unsubscribe();
       routePlanningInteractiveLayerRefs.current = [];
+      resetCache('notam');
       leafletMapRef.current = null;
+
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };
