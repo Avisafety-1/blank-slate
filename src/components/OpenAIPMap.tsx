@@ -1517,6 +1517,8 @@ export function OpenAIPMap({
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
       if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
+      if (e.layer === notamLayer) resetCache('notam', notamLayer);
+
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
       if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:${UNIFIED_COUNTRIES_KEY}`, unifiedMatch[1]);
     });
