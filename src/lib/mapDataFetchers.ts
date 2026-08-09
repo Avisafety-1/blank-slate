@@ -1691,6 +1691,9 @@ export async function fetchNotams(params: {
     );
 
     cache.cachedBounds = padded;
+    cache.layerRef = layer;
+    cache.fetchedAt = Date.now();
+
   } catch (err) {
     console.error("[NOTAM] Error:", err);
   }
