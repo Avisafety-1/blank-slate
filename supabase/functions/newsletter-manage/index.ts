@@ -56,13 +56,14 @@ Deno.serve(async (req) => {
       if (!email || typeof email !== "string" || !email.includes("@")) {
         throw new Error("Ugyldig e-postadresse");
       }
+      // Ikke send `unsubscribed` – POST er en upsert i Resend og ville
+      // re-abonnert noen som har meldt seg av.
       const result = await resendFetch(`/audiences/${audienceId}/contacts`, {
         method: "POST",
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           first_name: first_name || "",
           last_name: last_name || "",
-          unsubscribed: false,
         }),
       });
       return new Response(JSON.stringify({ ok: true, data: result }), {
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
         const { email, first_name, last_name } = body;
         result = await resendFetch(`/audiences/${audienceId}/contacts`, {
           method: "POST",
-          body: JSON.stringify({ email, first_name: first_name || "", last_name: last_name || "", unsubscribed: false }),
+          body: JSON.stringify({ email, first_name: first_name || "", last_name: last_name || "" }),
         });
         break;
       }
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
           try {
             const r = await resendFetch(`/audiences/${audienceId}/contacts`, {
               method: "POST",
-              body: JSON.stringify({ email, unsubscribed: false }),
+              body: JSON.stringify({ email }),
             });
             results.push({ email, ok: true, data: r });
           } catch (e) {
