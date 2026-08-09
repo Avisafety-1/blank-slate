@@ -1592,11 +1592,13 @@ export async function fetchNotams(params: {
   }
 
   const bounds = boundsToBBox(map.getBounds());
+  // Viewport already covered by a recent fetch into THIS layer group → keep
+  // existing layers (no blink, popups stay open). Stale layer group (map
+  // remount) or expired cache (>5 min, e.g. after a NOTAM sync) → refetch.
+  if (isCacheValid('notam', layer, bounds)) return;
   const cache = getCache('notam');
-  // Viewport already covered by last fetch → keep existing layers (no blink,
-  // and popups stay open while panning)
-  if (bboxCovered(cache.cachedBounds, bounds)) return;
   const padded = padBBox(bounds, 0.6);
+
 
   try {
     // Viewport-scoped fetch via RPC to avoid the 1000-row global cap
