@@ -1334,7 +1334,11 @@ export function OpenAIPMap({
     fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
     fetchActiveAdvisories({ activeAdvisoryLayer, flightMarkersRef });
     fetchPilotPositions({ pilotPositionsLayer, flightMarkersRef, mode });
+    // Fresh map instance → drop any NOTAM cache from a previous mount so the
+    // new (empty) layer group actually gets features rendered into it.
+    resetCache('notam');
     fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode });
+
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {
@@ -1517,6 +1521,8 @@ export function OpenAIPMap({
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
       if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
+      if (e.layer === notamLayer) resetCache('notam', notamLayer);
+
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
       if (unifiedMatch) resetCache(`unified:${unifiedMatch[0]}:${UNIFIED_COUNTRIES_KEY}`, unifiedMatch[1]);
     });
@@ -1677,7 +1683,9 @@ export function OpenAIPMap({
       map.off("click");
       mapChannel.unsubscribe();
       routePlanningInteractiveLayerRefs.current = [];
+      resetCache('notam');
       leafletMapRef.current = null;
+
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };

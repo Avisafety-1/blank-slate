@@ -6,7 +6,7 @@ import { droneAnimatedIcon } from "@/lib/mapIcons";
 import droneStaticIcon from "@/assets/drone-static.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
-import { getCache, bboxCovered, padBBox, boundsToBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
+import { getCache, bboxCovered, isCacheValid, padBBox, boundsToBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 import { buildNatureZonePopupHtml, enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
 import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
@@ -1592,11 +1592,13 @@ export async function fetchNotams(params: {
   }
 
   const bounds = boundsToBBox(map.getBounds());
+  // Viewport already covered by a recent fetch into THIS layer group → keep
+  // existing layers (no blink, popups stay open). Stale layer group (map
+  // remount) or expired cache (>5 min, e.g. after a NOTAM sync) → refetch.
+  if (isCacheValid('notam', layer, bounds)) return;
   const cache = getCache('notam');
-  // Viewport already covered by last fetch → keep existing layers (no blink,
-  // and popups stay open while panning)
-  if (bboxCovered(cache.cachedBounds, bounds)) return;
   const padded = padBBox(bounds, 0.6);
+
 
   try {
     // Viewport-scoped fetch via RPC to avoid the 1000-row global cap
@@ -1689,6 +1691,9 @@ export async function fetchNotams(params: {
     );
 
     cache.cachedBounds = padded;
+    cache.layerRef = layer;
+    cache.fetchedAt = Date.now();
+
   } catch (err) {
     console.error("[NOTAM] Error:", err);
   }

@@ -21,6 +21,10 @@ export type BBox = {
 interface CacheEntry {
   cachedBounds: BBox | null;
   features: Map<string, L.Layer>;
+  /** The LayerGroup the features were rendered into (detect map remounts). */
+  layerRef?: L.LayerGroup | null;
+  /** Timestamp of the last successful fetch (ms epoch). */
+  fetchedAt?: number;
 }
 
 const caches = new Map<string, CacheEntry>();
@@ -28,11 +32,36 @@ const caches = new Map<string, CacheEntry>();
 export function getCache(key: string): CacheEntry {
   let c = caches.get(key);
   if (!c) {
-    c = { cachedBounds: null, features: new Map() };
+    c = { cachedBounds: null, features: new Map(), layerRef: null, fetchedAt: 0 };
     caches.set(key, c);
   }
   return c;
 }
+
+/**
+ * True when the cache can be reused: same LayerGroup (still attached to a map),
+ * not older than `maxAgeMs`, and the current viewport already covered.
+ * Otherwise the cache is reset so the caller performs a fresh fetch.
+ */
+export function isCacheValid(
+  key: string,
+  layer: L.LayerGroup,
+  current: BBox,
+  maxAgeMs = 5 * 60 * 1000,
+): boolean {
+  const c = caches.get(key);
+  if (!c) return false;
+  const staleLayer = c.layerRef !== layer || !(layer as any)._map;
+  const expired = !c.fetchedAt || Date.now() - c.fetchedAt > maxAgeMs;
+  if (staleLayer || expired) {
+    // Drop stale state; features belonging to an old layer group are orphaned
+    // with that group, so only clear from the current layer when it matches.
+    resetCache(key, c.layerRef === layer ? layer : undefined);
+    return false;
+  }
+  return bboxCovered(c.cachedBounds, current);
+}
+
 
 /** True if `current` lies entirely within `cached`. */
 export function bboxCovered(cached: BBox | null, current: BBox): boolean {
