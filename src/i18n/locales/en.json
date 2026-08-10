@@ -6936,6 +6936,7 @@
       "metaKommune": "Municipality:",
       "metaVernet": "Protected:",
       "metaIucn": "IUCN:",
+      "linkGuidance": "🔗 {{label}}",
       "linkFactSheet": "📄 Open fact sheet",
       "linkSecureMessage": "✉️ Send application via secure message",
       "linkDroneRules": "ℹ️ Drone rules",

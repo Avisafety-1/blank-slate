@@ -6938,6 +6938,7 @@
       "metaKommune": "Kommune:",
       "metaVernet": "Vernet:",
       "metaIucn": "IUCN:",
+      "linkGuidance": "🔗 {{label}}",
       "linkFactSheet": "📄 Åpne faktaark",
       "linkSecureMessage": "✉️ Send søknad via sikker melding",
       "linkDroneRules": "ℹ️ Regler for droner",
