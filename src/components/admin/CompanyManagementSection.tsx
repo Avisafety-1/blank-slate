@@ -285,6 +285,15 @@ export const CompanyManagementSection = () => {
   const { t } = useTranslation();
   const { companyId, isSuperAdmin, refetchUserInfo, user } = useAuth();
   const isMobile = useIsMobile();
+  // iPad/kompakte skjermer: tabellen er for bred, bruk kortvisning i stedet
+  const [isCompact, setIsCompact] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1279px)");
+    const onChange = () => setIsCompact(mql.matches);
+    onChange();
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
