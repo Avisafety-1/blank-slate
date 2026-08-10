@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2, ChevronUp, ChevronDown, Globe } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ChecklistItem {
@@ -27,9 +30,43 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [otherCompanies, setOtherCompanies] = useState<{ id: string; navn: string }[]>([]);
+  const [sharedDeptIds, setSharedDeptIds] = useState<string[]>([]);
   const [items, setItems] = useState<ChecklistItem[]>([
     { id: crypto.randomUUID(), text: "" }
   ]);
+
+  // Detect if current company is a parent company
+  useEffect(() => {
+    if (!companyId || !open) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId, open]);
+
+  // Load selectable companies for explicit sharing
+  useEffect(() => {
+    if (!open || !companyId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id, navn")
+        .neq("id", companyId)
+        .order("navn");
+      setOtherCompanies((data as any[]) ?? []);
+    };
+    load();
+  }, [open, companyId]);
+
 
   const handleAddItem = () => {
     setItems([...items, { id: crypto.randomUUID(), text: "" }]);
