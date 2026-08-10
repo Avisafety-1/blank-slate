@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Trash2, ChevronUp, ChevronDown, Globe } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ChecklistItem {
@@ -27,9 +30,43 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [isParentCompany, setIsParentCompany] = useState(false);
+  const [visibleToChildren, setVisibleToChildren] = useState(false);
+  const [otherCompanies, setOtherCompanies] = useState<{ id: string; navn: string }[]>([]);
+  const [sharedDeptIds, setSharedDeptIds] = useState<string[]>([]);
   const [items, setItems] = useState<ChecklistItem[]>([
     { id: crypto.randomUUID(), text: "" }
   ]);
+
+  // Detect if current company is a parent company
+  useEffect(() => {
+    if (!companyId || !open) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("parent_company_id", companyId)
+        .limit(1);
+      setIsParentCompany((data?.length ?? 0) > 0);
+    };
+    check();
+  }, [companyId, open]);
+
+  // Load selectable companies for explicit sharing
+  useEffect(() => {
+    if (!open || !companyId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id, navn")
+        .neq("id", companyId)
+        .order("navn");
+      setOtherCompanies((data as any[]) ?? []);
+    };
+    load();
+  }, [open, companyId]);
+
 
   const handleAddItem = () => {
     setItems([...items, { id: crypto.randomUUID(), text: "" }]);
@@ -87,22 +124,36 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
         text: item.text.trim()
       })));
 
-      const { error } = await supabase.from("documents").insert({
-        tittel: title.trim(),
-        kategori: "sjekklister",
-        beskrivelse: checklistData,
-        company_id: companyId,
-        user_id: user.id,
-        opprettet_av: user.email || t('common.unknownName'),
-        global_visibility: isSuperAdmin ? globalVisibility : false,
-      });
+      const { data: inserted, error } = await supabase
+        .from("documents")
+        .insert({
+          tittel: title.trim(),
+          kategori: "sjekklister",
+          beskrivelse: checklistData,
+          company_id: companyId,
+          user_id: user.id,
+          opprettet_av: user.email || t('common.unknownName'),
+          global_visibility: isSuperAdmin ? globalVisibility : false,
+          visible_to_children: isParentCompany ? visibleToChildren : false,
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
+      // Persist explicit per-department sharing
+      if (inserted?.id && sharedDeptIds.length > 0) {
+        const { error: shareError } = await supabase
+          .from("document_department_visibility")
+          .upsert(
+            sharedDeptIds.map((cid) => ({ document_id: inserted.id, company_id: cid })),
+            { onConflict: "document_id,company_id" }
+          );
+        if (shareError) throw shareError;
+      }
+
       toast.success(t('documents.checklistDialog.success'));
-      setTitle("");
-      setGlobalVisibility(false);
-      setItems([{ id: crypto.randomUUID(), text: "" }]);
+      resetForm();
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -113,12 +164,20 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setTitle("");
     setGlobalVisibility(false);
+    setVisibleToChildren(false);
+    setSharedDeptIds([]);
+    setVisibilityOpen(false);
     setItems([{ id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleClose = () => {
+    resetForm();
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -185,27 +244,66 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
             </Button>
           </div>
 
-          {/* Superadmin-only: Global visibility toggle */}
-          {isSuperAdmin && (
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary" />
-                <div>
-                  <Label htmlFor="global-visibility" className="text-sm font-medium">
-                    {t('documents.checklistDialog.globalVisibilityLabel')}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('documents.checklistDialog.globalVisibilityDescription')}
-                  </p>
+          {/* Visibility & sharing */}
+          <Collapsible open={visibilityOpen} onOpenChange={setVisibilityOpen} className="rounded-lg border bg-muted/30">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center justify-between p-3 text-left">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  {t("documents.cardModal.visibilitySectionTitle")}
+                </span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", visibilityOpen && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 p-3 pt-0">
+              {isSuperAdmin && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="new-checklist-global">{t("documents.cardModal.globalVisibilityLabel")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                  </div>
+                  <Switch
+                    id="new-checklist-global"
+                    checked={globalVisibility}
+                    onCheckedChange={setGlobalVisibility}
+                  />
                 </div>
-              </div>
-              <Switch
-                id="global-visibility"
-                checked={globalVisibility}
-                onCheckedChange={setGlobalVisibility}
-              />
-            </div>
-          )}
+              )}
+
+              {isParentCompany && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="new-checklist-children">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("documents.cardModal.visibleToChildrenDescription")}</p>
+                  </div>
+                  <Switch
+                    id="new-checklist-children"
+                    checked={visibleToChildren}
+                    onCheckedChange={setVisibleToChildren}
+                  />
+                </div>
+              )}
+
+              {!globalVisibility && otherCompanies.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t("documents.cardModal.sharedDepartmentsLabel")}</Label>
+                  <DepartmentChecklist
+                    departments={otherCompanies}
+                    selectedIds={sharedDeptIds}
+                    onToggle={(id, checked) =>
+                      setSharedDeptIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+                    }
+                    allSelected={false}
+                    onToggleAll={(checked) =>
+                      setSharedDeptIds(checked ? otherCompanies.map((c) => c.id) : [])
+                    }
+                    allLabel={t("documents.cardModal.selectAllDepartments")}
+                  />
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>
