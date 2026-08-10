@@ -814,17 +814,19 @@ const DocumentCardModal = ({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-3 p-3 pt-0">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="edit-global-visibility-doc">{t("documents.cardModal.globalVisibilityLabel")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                    {isSuperAdmin && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="edit-global-visibility-doc">{t("documents.cardModal.globalVisibilityLabel")}</Label>
+                          <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                        </div>
+                        <Switch
+                          id="edit-global-visibility-doc"
+                          checked={globalVisibility}
+                          onCheckedChange={setGlobalVisibility}
+                        />
                       </div>
-                      <Switch
-                        id="edit-global-visibility-doc"
-                        checked={globalVisibility}
-                        onCheckedChange={setGlobalVisibility}
-                      />
-                    </div>
+                    )}
 
                     {isParentCompany && (
                       <div className="flex items-center justify-between gap-3">
