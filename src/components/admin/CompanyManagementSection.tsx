@@ -625,7 +625,7 @@ export const CompanyManagementSection = () => {
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-muted-foreground">
             {t("admin.companyManagement.noSearchResults", { query: searchQuery })}
           </div>
-        ) : isMobile ? (
+        ) : isMobile || isCompact ? (
           // Mobile: Expandable cards
           <div className="space-y-2">
             {filteredCompanies.map((company) => (
