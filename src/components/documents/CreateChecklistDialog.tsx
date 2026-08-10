@@ -124,22 +124,36 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
         text: item.text.trim()
       })));
 
-      const { error } = await supabase.from("documents").insert({
-        tittel: title.trim(),
-        kategori: "sjekklister",
-        beskrivelse: checklistData,
-        company_id: companyId,
-        user_id: user.id,
-        opprettet_av: user.email || t('common.unknownName'),
-        global_visibility: isSuperAdmin ? globalVisibility : false,
-      });
+      const { data: inserted, error } = await supabase
+        .from("documents")
+        .insert({
+          tittel: title.trim(),
+          kategori: "sjekklister",
+          beskrivelse: checklistData,
+          company_id: companyId,
+          user_id: user.id,
+          opprettet_av: user.email || t('common.unknownName'),
+          global_visibility: isSuperAdmin ? globalVisibility : false,
+          visible_to_children: isParentCompany ? visibleToChildren : false,
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
+      // Persist explicit per-department sharing
+      if (inserted?.id && sharedDeptIds.length > 0) {
+        const { error: shareError } = await supabase
+          .from("document_department_visibility")
+          .upsert(
+            sharedDeptIds.map((cid) => ({ document_id: inserted.id, company_id: cid })),
+            { onConflict: "document_id,company_id" }
+          );
+        if (shareError) throw shareError;
+      }
+
       toast.success(t('documents.checklistDialog.success'));
-      setTitle("");
-      setGlobalVisibility(false);
-      setItems([{ id: crypto.randomUUID(), text: "" }]);
+      resetForm();
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -150,12 +164,20 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
     }
   };
 
-  const handleClose = () => {
+  const resetForm = () => {
     setTitle("");
     setGlobalVisibility(false);
+    setVisibleToChildren(false);
+    setSharedDeptIds([]);
+    setVisibilityOpen(false);
     setItems([{ id: crypto.randomUUID(), text: "" }]);
+  };
+
+  const handleClose = () => {
+    resetForm();
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
