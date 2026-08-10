@@ -222,27 +222,66 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
             </Button>
           </div>
 
-          {/* Superadmin-only: Global visibility toggle */}
-          {isSuperAdmin && (
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary" />
-                <div>
-                  <Label htmlFor="global-visibility" className="text-sm font-medium">
-                    {t('documents.checklistDialog.globalVisibilityLabel')}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('documents.checklistDialog.globalVisibilityDescription')}
-                  </p>
+          {/* Visibility & sharing */}
+          <Collapsible open={visibilityOpen} onOpenChange={setVisibilityOpen} className="rounded-lg border bg-muted/30">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="flex w-full items-center justify-between p-3 text-left">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  {t("documents.cardModal.visibilitySectionTitle")}
+                </span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", visibilityOpen && "rotate-180")} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 p-3 pt-0">
+              {isSuperAdmin && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="new-checklist-global">{t("documents.cardModal.globalVisibilityLabel")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("documents.cardModal.globalVisibilityDescription")}</p>
+                  </div>
+                  <Switch
+                    id="new-checklist-global"
+                    checked={globalVisibility}
+                    onCheckedChange={setGlobalVisibility}
+                  />
                 </div>
-              </div>
-              <Switch
-                id="global-visibility"
-                checked={globalVisibility}
-                onCheckedChange={setGlobalVisibility}
-              />
-            </div>
-          )}
+              )}
+
+              {isParentCompany && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="new-checklist-children">{t("documents.cardModal.visibleToChildrenLabel")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("documents.cardModal.visibleToChildrenDescription")}</p>
+                  </div>
+                  <Switch
+                    id="new-checklist-children"
+                    checked={visibleToChildren}
+                    onCheckedChange={setVisibleToChildren}
+                  />
+                </div>
+              )}
+
+              {!globalVisibility && otherCompanies.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t("documents.cardModal.sharedDepartmentsLabel")}</Label>
+                  <DepartmentChecklist
+                    departments={otherCompanies}
+                    selectedIds={sharedDeptIds}
+                    onToggle={(id, checked) =>
+                      setSharedDeptIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
+                    }
+                    allSelected={false}
+                    onToggleAll={(checked) =>
+                      setSharedDeptIds(checked ? otherCompanies.map((c) => c.id) : [])
+                    }
+                    allLabel={t("documents.cardModal.selectAllDepartments")}
+                  />
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+
 
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={handleClose}>
