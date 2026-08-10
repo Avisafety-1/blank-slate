@@ -646,8 +646,8 @@ export const CompanyManagementSection = () => {
           </div>
         ) : (
           // Desktop: Table view
-          <ScrollArea className="w-full">
-            <div className="min-w-[700px]">
+          <ScrollArea className="w-full max-w-full overflow-x-auto">
+            <div className="min-w-[1200px]">},
               <Table>
                 <TableHeader>
                   <TableRow>
