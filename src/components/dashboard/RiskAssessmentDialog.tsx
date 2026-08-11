@@ -156,6 +156,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               missionId: currentMissionId,
               soraReassessment: true,
               previousAnalysis: currentAssessment,
+              manualGroundMitigations: currentAssessment?.ground_risk_analysis?.mitigations_manual_override
+                ? currentAssessment.ground_risk_analysis.mitigations
+                : undefined,
               pilotComments: categoryComments,
               language: lang,
             });
@@ -399,6 +402,22 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       toast.error(t('riskAssessment.soraSaveError', 'Kunne ikke lagre SORA-analyse: ') + error.message);
     } finally {
       setSoraSaving(false);
+    }
+  };
+
+  const handleGroundRiskChange = async (updated: any) => {
+    setCurrentAssessment((prev: any) => (prev ? { ...prev, ground_risk_analysis: updated } : prev));
+    if (!currentAssessmentId) return;
+    try {
+      const nextAnalysis = { ...(currentAssessment || {}), ground_risk_analysis: updated };
+      const { error } = await supabase
+        .from('mission_risk_assessments')
+        .update({ ai_analysis: nextAnalysis })
+        .eq('id', currentAssessmentId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving ground mitigations:', error);
+      toast.error(t('riskAssessment.ground.saveError', 'Kunne ikke lagre mitigeringsvalg'));
     }
   };
 
@@ -879,6 +898,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       airRiskAnalysis={currentAssessment.air_risk_analysis}
                       groundRiskAnalysis={currentAssessment.ground_risk_analysis}
                       operationClassification={currentAssessment.operation_classification}
+                      onGroundRiskChange={handleGroundRiskChange}
                     />
 
                     {/* Save comments button */}
