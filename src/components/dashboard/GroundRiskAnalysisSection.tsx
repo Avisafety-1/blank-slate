@@ -108,10 +108,35 @@ const formatNumber = (value: number, decimals = 0) =>
     minimumFractionDigits: decimals,
   });
 
-export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionProps) => {
+export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRiskAnalysisSectionProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const mitigationLabels = useMitigationLabels();
+
+  const robustnessLabel = (level: RobustnessLevel) =>
+    t(`riskAssessment.ground.robustness.${level.toLowerCase()}`, level);
+
+  const updateMitigation = (key: string, patch: Partial<MitigationEntry>) => {
+    if (!onChange) return;
+    const current = (data.mitigations || {}) as Record<string, MitigationEntry | undefined>;
+    const existing = current[key] || { applicable: false, robustness: null, reduction: 0 };
+    const next: MitigationEntry = { ...existing, ...patch };
+    const level = normalizeRobustness(next.robustness);
+    next.reduction = next.applicable ? (MITIGATION_MATRIX[key]?.[level] ?? 0) : 0;
+    if (!next.applicable) next.robustness = null;
+    const updated = recomputeGroundRisk({
+      ...data,
+      mitigations: { ...current, [key]: next } as GroundRiskAnalysis["mitigations"],
+      mitigations_manual_override: true,
+    });
+    onChange(updated);
+  };
+
+  const firstAllowedLevel = (key: string): RobustnessLevel => {
+    const allowed = ROBUSTNESS_LEVELS.filter((l) => l !== "None" && MITIGATION_MATRIX[key]?.[l] != null);
+    return allowed[0] ?? "None";
+  };
+
 
   if (!data || (data.igrc == null && data.fgrc == null)) return null;
 
