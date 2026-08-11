@@ -168,6 +168,7 @@ const buildDeterministicGroundRisk = ({
   populationData,
   assignedEquipment,
   lang = 'no',
+  manualMitigations = null,
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -177,6 +178,7 @@ const buildDeterministicGroundRisk = ({
   populationData: any | null;
   assignedEquipment: any[];
   lang?: Lang;
+  manualMitigations?: Record<string, { applicable?: boolean; robustness?: string | null }> | null;
 }) => {
   const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
   const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
@@ -198,8 +200,37 @@ const buildDeterministicGroundRisk = ({
     : parachuteEvidence && /fallskjerm|parachute|moc\s*2512/.test(parachuteText)
       ? -1
       : 0;
-  const reductions = [m2Reduction].filter((r) => r < 0);
-  const totalReduction = reductions.reduce((sum, reduction) => sum + reduction, 0);
+  // SORA robustness matrix (null = N/A for that mitigation)
+  const MITIGATION_MATRIX: Record<string, Record<string, number | null>> = {
+    m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
+    m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
+    m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
+    m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
+  };
+  const normalizeRobustness = (value?: string | null): string => {
+    const v = String(value ?? '').toLowerCase();
+    if (v.startsWith('high') || v.startsWith('høy')) return 'High';
+    if (v.startsWith('med')) return 'Medium';
+    if (v.startsWith('low') || v.startsWith('lav')) return 'Low';
+    return 'None';
+  };
+
+  const manualEntries = manualMitigations && typeof manualMitigations === 'object' ? manualMitigations : null;
+  const manualReduction = (key: string): number | null => {
+    if (!manualEntries) return null;
+    const entry = (manualEntries as any)[key];
+    if (!entry) return null;
+    if (!entry.applicable) return 0;
+    return MITIGATION_MATRIX[key]?.[normalizeRobustness(entry.robustness)] ?? 0;
+  };
+
+  const effective = {
+    m1a_sheltering: manualReduction('m1a_sheltering') ?? 0,
+    m1b_operational_restrictions: manualReduction('m1b_operational_restrictions') ?? 0,
+    m1c_ground_observation: manualReduction('m1c_ground_observation') ?? 0,
+    m2_impact_reduction: manualReduction('m2_impact_reduction') ?? m2Reduction,
+  };
+  const totalReduction = Object.values(effective).reduce((sum, r) => sum + r, 0);
   const fgrc = Math.max(controlledGroundMinimum, igrc + totalReduction);
   const dimensionClass = `≤${GRC_DIMENSION_LIMITS[dimensionIndex]} m`;
   const speedClass = `≤${GRC_SPEED_LIMITS[speedIndex]} m/s`;
@@ -257,6 +288,24 @@ const buildDeterministicGroundRisk = ({
     ? 'SSB population on 250 m grid (2025)'
     : 'SSB befolkning på rutenett 250 m (2025)';
 
+  const manualReasonSuffix = en
+    ? ' Manually selected by the operator.'
+    : ' Manuelt valgt av operatøren.';
+  const buildEntry = (
+    key: string,
+    autoApplicable: boolean,
+    autoRobustness: string | null,
+    autoReduction: number,
+    reasoning: string,
+  ) => {
+    const manual = manualEntries ? (manualEntries as any)[key] : null;
+    if (!manual) return { applicable: autoApplicable, robustness: autoRobustness, reduction: autoReduction, reasoning };
+    const applicable = !!manual.applicable;
+    const robustness = applicable ? normalizeRobustness(manual.robustness) : null;
+    const reduction = applicable ? (MITIGATION_MATRIX[key]?.[robustness as string] ?? 0) : 0;
+    return { applicable, robustness, reduction, reasoning: reasoning + manualReasonSuffix };
+  };
+
   return {
     characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m (${dimensionClass})`,
     max_speed_category: `${fmt(maxSpeedMps, 1)} m/s (${speedClass})`,
@@ -274,14 +323,16 @@ const buildDeterministicGroundRisk = ({
     fgrc,
     total_reduction: fgrc - igrc,
     controlled_ground_area: populationDensityValue <= 0,
+    controlled_ground_minimum: controlledGroundMinimum,
+    mitigations_manual_override: !!manualEntries,
     grc_calculation_method: grcCalcMethod,
     igrc_table_basis: tableBasis,
     igrc_reasoning: igrcReasoning,
     mitigations: {
-      m1a_sheltering: { applicable: false, robustness: null, reduction: 0, reasoning: m1aReason },
-      m1b_operational_restrictions: { applicable: false, robustness: null, reduction: 0, reasoning: m1bReason },
-      m1c_ground_observation: { applicable: false, robustness: null, reduction: 0, reasoning: m1cReason },
-      m2_impact_reduction: { applicable: m2Reduction < 0, robustness: m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, reduction: m2Reduction, reasoning: m2WithEvidence },
+      m1a_sheltering: buildEntry('m1a_sheltering', false, null, 0, m1aReason),
+      m1b_operational_restrictions: buildEntry('m1b_operational_restrictions', false, null, 0, m1bReason),
+      m1c_ground_observation: buildEntry('m1c_ground_observation', false, null, 0, m1cReason),
+      m2_impact_reduction: buildEntry('m2_impact_reduction', m2Reduction < 0, m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, m2Reduction, m2WithEvidence),
     },
     fgrc_reasoning: fgrcReasoning,
   };
@@ -519,7 +570,7 @@ serve(async (req) => {
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -668,7 +719,13 @@ serve(async (req) => {
           const m = v.toLowerCase().match(/[abcd]/);
           return m ? m[0] : null;
         };
-        const fgrcRaw = parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
+        const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
+        const manualFgrc = manualGround?.mitigations_manual_override ? parseFgrc(manualGround.fgrc) : null;
+        const fgrcRaw = manualFgrc ?? parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
+        if (manualFgrc !== null) {
+          soraAnalysis.fgrc = manualFgrc;
+          soraAnalysis.igrc = manualGround?.igrc ?? soraAnalysis.igrc;
+        }
         const arc = parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
         if (fgrcRaw !== null && arc) {
           const rowKey = fgrcRaw <= 2 ? '2' : String(Math.min(fgrcRaw, 7));
@@ -2189,6 +2246,7 @@ serve(async (req) => {
       populationData,
       assignedEquipment,
       lang: grLang,
+      manualMitigations: manualGroundMitigations ?? null,
     });
 
     if (populationData) {
