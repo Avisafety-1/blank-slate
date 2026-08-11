@@ -2706,7 +2706,16 @@
       "m1a": "M1(A) Skjerming",
       "m1b": "M1(B) Operasjonelle restriksjoner",
       "m1c": "M1(C) Bakkeobservasjon",
-      "m2": "M2 Redusert treffenergi"
+      "m2": "M2 Redusert treffenergi",
+      "robustness": {
+        "none": "Ingen",
+        "low": "Lav",
+        "medium": "Middels",
+        "high": "Høy"
+      },
+      "manualOverride": "Manuelt justert",
+      "mitigationsHelp": "Velg hvilke mitigeringer som er dokumentert og hvilken robusthet de har. Nivåer merket N/A er ikke tillatt for kategorien i SORA-tabellen.",
+      "saveError": "Kunne ikke lagre mitigeringsvalg"
     },
     "opClassification": {
       "title": "Operasjonskategorisering (Steg 0)",
@@ -4733,7 +4742,6 @@
         "logReasonSuffix": " Årsak: {{reason}}"
       },
       "inspectionForm": {
-
         "sectionTitle": "Inspeksjon og vedlikeholdsintervall",
         "startDate": "Startdato",
         "intervalDays": "Intervall (dager)",
@@ -4989,7 +4997,6 @@
       "selectAllDepartments": "Alle avdelinger",
       "visibleToChildrenLabel": "Synlig for alle avdelinger",
       "visibleToChildrenDescription": "Deles automatisk med alle underavdelinger",
-
       "delete": "Slett",
       "close": "Lukk",
       "cancel": "Avbryt",
