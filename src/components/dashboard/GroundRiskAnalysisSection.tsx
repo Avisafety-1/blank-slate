@@ -246,39 +246,110 @@ export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRi
           )}
 
           {/* Mitigations table */}
-          {data.mitigations && (
+          {(data.mitigations || editable) && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.mitigations', 'Mitigeringer')}</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.mitigations', 'Mitigeringer')}</p>
+                {data.mitigations_manual_override && (
+                  <Badge variant="outline" className="text-[9px] py-0">{t('riskAssessment.ground.manualOverride', 'Manuelt justert')}</Badge>
+                )}
+              </div>
+              {editable && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('riskAssessment.ground.mitigationsHelp', 'Velg hvilke mitigeringer som er dokumentert og hvilken robusthet de har. Nivåer merket N/A er ikke tillatt for kategorien i SORA-tabellen.')}
+                </p>
+              )}
               <div className="space-y-1.5">
-                {Object.entries(data.mitigations).map(([key, m]) => {
-                  if (!m) return null;
+                {Object.keys(MITIGATION_MATRIX).map((key) => {
+                  const m = ((data.mitigations || {}) as Record<string, MitigationEntry | undefined>)[key];
+                  if (!m && !editable) return null;
+                  const entry: MitigationEntry = m || { applicable: false, robustness: null, reduction: 0 };
                   return (
-                    <div key={key} className="flex items-start gap-1.5 text-xs">
-                      {m.applicable ? (
-                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <XCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      <div className="min-w-0">
-                        <span className={cn("font-medium", m.applicable ? "text-foreground" : "text-muted-foreground")}>
-                          {mitigationLabels[key] || key}
-                        </span>
-                        {m.applicable && m.robustness && (
-                          <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{m.robustness}</Badge>
+                    <div key={key} className={cn("text-xs", editable && "rounded-md border border-border/60 bg-muted/30 p-2")}>
+                      <div className="flex items-start gap-1.5">
+                        {editable ? (
+                          <Switch
+                            checked={entry.applicable}
+                            onCheckedChange={(checked) =>
+                              updateMitigation(key, {
+                                applicable: checked,
+                                robustness: checked
+                                  ? (normalizeRobustness(entry.robustness) !== "None" &&
+                                     MITIGATION_MATRIX[key]?.[normalizeRobustness(entry.robustness)] != null
+                                      ? normalizeRobustness(entry.robustness)
+                                      : firstAllowedLevel(key))
+                                  : null,
+                              })
+                            }
+                            className="mt-0.5 flex-shrink-0 scale-90"
+                            aria-label={mitigationLabels[key] || key}
+                          />
+                        ) : entry.applicable ? (
+                          <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <XCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
                         )}
-                        {m.applicable && m.reduction !== 0 && (
-                          <span className="ml-1.5 text-green-600 dark:text-green-400 font-medium">({m.reduction})</span>
-                        )}
-                        {m.reasoning && (
-                          <p className="text-muted-foreground mt-0.5 break-words">{m.reasoning}</p>
-                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className={cn("font-medium", entry.applicable ? "text-foreground" : "text-muted-foreground")}>
+                            {mitigationLabels[key] || key}
+                          </span>
+                          {!editable && entry.applicable && entry.robustness && (
+                            <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{robustnessLabel(normalizeRobustness(entry.robustness))}</Badge>
+                          )}
+                          {entry.applicable && entry.reduction !== 0 && (
+                            <span className="ml-1.5 text-green-600 dark:text-green-400 font-medium">({entry.reduction})</span>
+                          )}
+
+                          {editable && (
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                              {ROBUSTNESS_LEVELS.map((level) => {
+                                const value = MITIGATION_MATRIX[key]?.[level];
+                                const disabled = value == null || !entry.applicable;
+                                const selected = entry.applicable && normalizeRobustness(entry.robustness) === level;
+                                return (
+                                  <button
+                                    key={level}
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => updateMitigation(key, { applicable: true, robustness: level })}
+                                    className={cn(
+                                      "px-2 py-0.5 rounded border text-[10px] font-medium transition-colors",
+                                      selected
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background text-muted-foreground border-border hover:bg-muted",
+                                      disabled && "opacity-40 cursor-not-allowed hover:bg-background",
+                                    )}
+                                  >
+                                    {robustnessLabel(level)}{' '}
+                                    <span className="opacity-70">{value == null ? 'N/A' : value}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {entry.reasoning && (
+                            <p className="text-muted-foreground mt-1 break-words">{entry.reasoning}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
+              {editable && (
+                <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
+                  <span className="text-muted-foreground">{t('riskAssessment.ground.documentedReduction', 'Dokumentert reduksjon')}:</span>
+                  <span className="font-medium">{data.total_reduction ?? 0}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", grcColor(data.fgrc))}>
+                    fGRC: {data.fgrc}
+                  </span>
+                </div>
+              )}
             </div>
           )}
+
 
           {/* fGRC reasoning */}
           {data.fgrc_reasoning && grcChanged && (
