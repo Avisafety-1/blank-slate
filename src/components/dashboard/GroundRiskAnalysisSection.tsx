@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Shield, ChevronDown, ChevronUp, Layers, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface MitigationEntry {
@@ -38,13 +39,51 @@ interface GroundRiskAnalysis {
   fgrc?: number;
   fgrc_reasoning?: string;
   controlled_ground_area?: boolean;
+  controlled_ground_minimum?: number;
   grc_calculation_method?: string;
   igrc_table_basis?: string;
+  mitigations_manual_override?: boolean;
 }
 
 interface GroundRiskAnalysisSectionProps {
   data: GroundRiskAnalysis;
+  editable?: boolean;
+  onChange?: (updated: GroundRiskAnalysis) => void;
 }
+
+// SORA robustness matrix — null = N/A (not selectable for that mitigation)
+export type RobustnessLevel = "None" | "Low" | "Medium" | "High";
+export const ROBUSTNESS_LEVELS: RobustnessLevel[] = ["None", "Low", "Medium", "High"];
+export const MITIGATION_MATRIX: Record<string, Record<RobustnessLevel, number | null>> = {
+  m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
+  m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
+  m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
+  m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
+};
+
+const normalizeRobustness = (value?: string | null): RobustnessLevel => {
+  const v = String(value ?? "").toLowerCase();
+  if (v.startsWith("high") || v.startsWith("høy")) return "High";
+  if (v.startsWith("med")) return "Medium";
+  if (v.startsWith("low") || v.startsWith("lav")) return "Low";
+  return "None";
+};
+
+export const recomputeGroundRisk = (data: GroundRiskAnalysis): GroundRiskAnalysis => {
+  const mitigations = data.mitigations || {};
+  let total = 0;
+  for (const [key, m] of Object.entries(mitigations) as [string, MitigationEntry | undefined][]) {
+    if (!m || !m.applicable) continue;
+    const level = normalizeRobustness(m.robustness);
+    const reduction = MITIGATION_MATRIX[key]?.[level] ?? 0;
+    total += reduction;
+  }
+  const igrc = data.igrc ?? 0;
+  const floor = data.controlled_ground_minimum ?? 1;
+  const fgrc = Math.max(floor, igrc + total);
+  return { ...data, total_reduction: fgrc - igrc, fgrc };
+};
+
 
 const grcColor = (grc?: number) => {
   if (grc == null) return 'bg-muted text-muted-foreground';
