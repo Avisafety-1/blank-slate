@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Shield, ChevronDown, ChevronUp, Layers, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface MitigationEntry {
@@ -38,13 +39,51 @@ interface GroundRiskAnalysis {
   fgrc?: number;
   fgrc_reasoning?: string;
   controlled_ground_area?: boolean;
+  controlled_ground_minimum?: number;
   grc_calculation_method?: string;
   igrc_table_basis?: string;
+  mitigations_manual_override?: boolean;
 }
 
 interface GroundRiskAnalysisSectionProps {
   data: GroundRiskAnalysis;
+  editable?: boolean;
+  onChange?: (updated: GroundRiskAnalysis) => void;
 }
+
+// SORA robustness matrix — null = N/A (not selectable for that mitigation)
+export type RobustnessLevel = "None" | "Low" | "Medium" | "High";
+export const ROBUSTNESS_LEVELS: RobustnessLevel[] = ["None", "Low", "Medium", "High"];
+export const MITIGATION_MATRIX: Record<string, Record<RobustnessLevel, number | null>> = {
+  m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
+  m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
+  m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
+  m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
+};
+
+const normalizeRobustness = (value?: string | null): RobustnessLevel => {
+  const v = String(value ?? "").toLowerCase();
+  if (v.startsWith("high") || v.startsWith("høy")) return "High";
+  if (v.startsWith("med")) return "Medium";
+  if (v.startsWith("low") || v.startsWith("lav")) return "Low";
+  return "None";
+};
+
+export const recomputeGroundRisk = (data: GroundRiskAnalysis): GroundRiskAnalysis => {
+  const mitigations = data.mitigations || {};
+  let total = 0;
+  for (const [key, m] of Object.entries(mitigations) as [string, MitigationEntry | undefined][]) {
+    if (!m || !m.applicable) continue;
+    const level = normalizeRobustness(m.robustness);
+    const reduction = MITIGATION_MATRIX[key]?.[level] ?? 0;
+    total += reduction;
+  }
+  const igrc = data.igrc ?? 0;
+  const floor = data.controlled_ground_minimum ?? 1;
+  const fgrc = Math.max(floor, igrc + total);
+  return { ...data, total_reduction: fgrc - igrc, fgrc };
+};
+
 
 const grcColor = (grc?: number) => {
   if (grc == null) return 'bg-muted text-muted-foreground';
@@ -69,10 +108,35 @@ const formatNumber = (value: number, decimals = 0) =>
     minimumFractionDigits: decimals,
   });
 
-export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionProps) => {
+export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRiskAnalysisSectionProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const mitigationLabels = useMitigationLabels();
+
+  const robustnessLabel = (level: RobustnessLevel) =>
+    t(`riskAssessment.ground.robustness.${level.toLowerCase()}`, level);
+
+  const updateMitigation = (key: string, patch: Partial<MitigationEntry>) => {
+    if (!onChange) return;
+    const current = (data.mitigations || {}) as Record<string, MitigationEntry | undefined>;
+    const existing = current[key] || { applicable: false, robustness: null, reduction: 0 };
+    const next: MitigationEntry = { ...existing, ...patch };
+    const level = normalizeRobustness(next.robustness);
+    next.reduction = next.applicable ? (MITIGATION_MATRIX[key]?.[level] ?? 0) : 0;
+    if (!next.applicable) next.robustness = null;
+    const updated = recomputeGroundRisk({
+      ...data,
+      mitigations: { ...current, [key]: next } as GroundRiskAnalysis["mitigations"],
+      mitigations_manual_override: true,
+    });
+    onChange(updated);
+  };
+
+  const firstAllowedLevel = (key: string): RobustnessLevel => {
+    const allowed = ROBUSTNESS_LEVELS.filter((l) => l !== "None" && MITIGATION_MATRIX[key]?.[l] != null);
+    return allowed[0] ?? "None";
+  };
+
 
   if (!data || (data.igrc == null && data.fgrc == null)) return null;
 
@@ -182,39 +246,110 @@ export const GroundRiskAnalysisSection = ({ data }: GroundRiskAnalysisSectionPro
           )}
 
           {/* Mitigations table */}
-          {data.mitigations && (
+          {(data.mitigations || editable) && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.mitigations', 'Mitigeringer')}</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.ground.mitigations', 'Mitigeringer')}</p>
+                {data.mitigations_manual_override && (
+                  <Badge variant="outline" className="text-[9px] py-0">{t('riskAssessment.ground.manualOverride', 'Manuelt justert')}</Badge>
+                )}
+              </div>
+              {editable && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('riskAssessment.ground.mitigationsHelp', 'Velg hvilke mitigeringer som er dokumentert og hvilken robusthet de har. Nivåer merket N/A er ikke tillatt for kategorien i SORA-tabellen.')}
+                </p>
+              )}
               <div className="space-y-1.5">
-                {Object.entries(data.mitigations).map(([key, m]) => {
-                  if (!m) return null;
+                {Object.keys(MITIGATION_MATRIX).map((key) => {
+                  const m = ((data.mitigations || {}) as Record<string, MitigationEntry | undefined>)[key];
+                  if (!m && !editable) return null;
+                  const entry: MitigationEntry = m || { applicable: false, robustness: null, reduction: 0 };
                   return (
-                    <div key={key} className="flex items-start gap-1.5 text-xs">
-                      {m.applicable ? (
-                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <XCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      <div className="min-w-0">
-                        <span className={cn("font-medium", m.applicable ? "text-foreground" : "text-muted-foreground")}>
-                          {mitigationLabels[key] || key}
-                        </span>
-                        {m.applicable && m.robustness && (
-                          <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{m.robustness}</Badge>
+                    <div key={key} className={cn("text-xs", editable && "rounded-md border border-border/60 bg-muted/30 p-2")}>
+                      <div className="flex items-start gap-1.5">
+                        {editable ? (
+                          <Switch
+                            checked={entry.applicable}
+                            onCheckedChange={(checked) =>
+                              updateMitigation(key, {
+                                applicable: checked,
+                                robustness: checked
+                                  ? (normalizeRobustness(entry.robustness) !== "None" &&
+                                     MITIGATION_MATRIX[key]?.[normalizeRobustness(entry.robustness)] != null
+                                      ? normalizeRobustness(entry.robustness)
+                                      : firstAllowedLevel(key))
+                                  : null,
+                              })
+                            }
+                            className="mt-0.5 flex-shrink-0 scale-90"
+                            aria-label={mitigationLabels[key] || key}
+                          />
+                        ) : entry.applicable ? (
+                          <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <XCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
                         )}
-                        {m.applicable && m.reduction !== 0 && (
-                          <span className="ml-1.5 text-green-600 dark:text-green-400 font-medium">({m.reduction})</span>
-                        )}
-                        {m.reasoning && (
-                          <p className="text-muted-foreground mt-0.5 break-words">{m.reasoning}</p>
-                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className={cn("font-medium", entry.applicable ? "text-foreground" : "text-muted-foreground")}>
+                            {mitigationLabels[key] || key}
+                          </span>
+                          {!editable && entry.applicable && entry.robustness && (
+                            <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{robustnessLabel(normalizeRobustness(entry.robustness))}</Badge>
+                          )}
+                          {entry.applicable && entry.reduction !== 0 && (
+                            <span className="ml-1.5 text-green-600 dark:text-green-400 font-medium">({entry.reduction})</span>
+                          )}
+
+                          {editable && (
+                            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                              {ROBUSTNESS_LEVELS.map((level) => {
+                                const value = MITIGATION_MATRIX[key]?.[level];
+                                const disabled = value == null || !entry.applicable;
+                                const selected = entry.applicable && normalizeRobustness(entry.robustness) === level;
+                                return (
+                                  <button
+                                    key={level}
+                                    type="button"
+                                    disabled={disabled}
+                                    onClick={() => updateMitigation(key, { applicable: true, robustness: level })}
+                                    className={cn(
+                                      "px-2 py-0.5 rounded border text-[10px] font-medium transition-colors",
+                                      selected
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background text-muted-foreground border-border hover:bg-muted",
+                                      disabled && "opacity-40 cursor-not-allowed hover:bg-background",
+                                    )}
+                                  >
+                                    {robustnessLabel(level)}{' '}
+                                    <span className="opacity-70">{value == null ? 'N/A' : value}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {entry.reasoning && (
+                            <p className="text-muted-foreground mt-1 break-words">{entry.reasoning}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
+              {editable && (
+                <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
+                  <span className="text-muted-foreground">{t('riskAssessment.ground.documentedReduction', 'Dokumentert reduksjon')}:</span>
+                  <span className="font-medium">{data.total_reduction ?? 0}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", grcColor(data.fgrc))}>
+                    fGRC: {data.fgrc}
+                  </span>
+                </div>
+              )}
             </div>
           )}
+
 
           {/* fGRC reasoning */}
           {data.fgrc_reasoning && grcChanged && (

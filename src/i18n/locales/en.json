@@ -2704,7 +2704,16 @@
       "m1a": "M1(A) Sheltering",
       "m1b": "M1(B) Operational restrictions",
       "m1c": "M1(C) Ground observation",
-      "m2": "M2 Reduced impact energy"
+      "m2": "M2 Reduced impact energy",
+      "robustness": {
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "manualOverride": "Manually adjusted",
+      "mitigationsHelp": "Select which mitigations are documented and their robustness level. Levels marked N/A are not permitted for that category in the SORA table.",
+      "saveError": "Could not save mitigation selection"
     },
     "opClassification": {
       "title": "Operation classification (Step 0)",
@@ -4731,7 +4740,6 @@
         "logReasonSuffix": " Reason: {{reason}}"
       },
       "inspectionForm": {
-
         "sectionTitle": "Inspection and maintenance interval",
         "startDate": "Start date",
         "intervalDays": "Interval (days)",
@@ -4987,7 +4995,6 @@
       "selectAllDepartments": "All departments",
       "visibleToChildrenLabel": "Visible to all departments",
       "visibleToChildrenDescription": "Automatically shared with all sub-departments",
-
       "delete": "Delete",
       "close": "Close",
       "cancel": "Cancel",
