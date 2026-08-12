@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
+import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
@@ -69,6 +71,7 @@ export const RiskScoreCard = ({
   const { t } = useTranslation();
   const currentLanguage = getCurrentLanguage();
   const displayRiskText = (value: string) => translatePersistedRiskText(value, currentLanguage);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
 
   const getScoreColor = (score: number) => {
     if (score >= 7) return 'bg-green-500';
@@ -229,82 +232,87 @@ export const RiskScoreCard = ({
       <div className="space-y-3">
         {Object.entries(categories).map(([key, category]) => {
           if (!category) return null;
+          const isOpen = !!openCategories[key];
           return (
-            <div key={key}>
-              <div className="p-3 rounded-lg bg-card border overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                    <span className="font-medium text-sm sm:text-base">{categoryLabels[key] || key}</span>
-                    {getGoDecisionBadge(category.go_decision)}
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium flex-shrink-0">
-                    {typeof category.score === 'number' ? `${category.score.toFixed(1)}/10` : t('riskAssessment.notRated', 'Ikke vurdert')}
-                  </span>
+            <Collapsible
+              key={key}
+              open={isOpen}
+              onOpenChange={(open) => setOpenCategories(prev => ({ ...prev, [key]: open }))}
+            >
+              <div>
+                <div className="p-3 rounded-lg bg-card border overflow-hidden">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left group">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                      <span className="font-medium text-sm sm:text-base">{categoryLabels[key] || key}</span>
+                      {getGoDecisionBadge(category.go_decision)}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-medium">
+                        {typeof category.score === 'number' ? `${category.score.toFixed(1)}/10` : t('riskAssessment.notRated', 'Ikke vurdert')}
+                      </span>
+                      {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  {typeof category.score === 'number' && (
+                    <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
+                      <div
+                        className={cn("h-full transition-all", getScoreColor(category.score))}
+                        style={{ width: `${(category.score / 10) * 100}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
-                {typeof category.score === 'number' && (
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={cn("h-full transition-all", getScoreColor(category.score))}
-                      style={{ width: `${(category.score / 10) * 100}%` }}
+                <CollapsibleContent className="mt-3 space-y-3">
+                  <div className="p-3 rounded-lg bg-card border overflow-hidden space-y-3">
+                    {/* Category details */}
+                    {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
+                      <p className="text-xs text-muted-foreground italic break-words">
+                        {displayRiskText(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors || '')}
+                      </p>
+                    )}
+                    {(category.factors.length > 0 || category.concerns.length > 0) && (
+                      <div className="space-y-1">
+                        {category.factors.map((factor, i) => (
+                          <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
+                            <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span className="break-words">{displayRiskText(factor)}</span>
+                          </p>
+                        ))}
+                        {category.concerns.map((concern, i) => (
+                          <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span className="break-words">{displayRiskText(concern)}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {/* Manual comment */}
+                    <Textarea
+                      placeholder={t('riskAssessment.addComment', 'Legg til kommentar...')}
+                      value={categoryComments?.[key] || ''}
+                      onChange={(e) => onCategoryCommentChange?.(key, e.target.value)}
+                      readOnly={readOnly}
+                      className={cn(
+                        "text-xs min-h-[60px]",
+                        readOnly && "opacity-70 cursor-default"
+                      )}
                     />
                   </div>
-                )}
-                
-                {/* Category details */}
-                {(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors) && (
-                  <p className="text-xs text-muted-foreground mt-2 italic break-words">
-                    {displayRiskText(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors || '')}
-                  </p>
-                )}
-                
-                {(category.factors.length > 0 || category.concerns.length > 0) && (
-                  <div className="mt-2 space-y-1">
-                    {category.factors.map((factor, i) => (
-                      <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
-                        <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <span className="break-words">{displayRiskText(factor)}</span>
-                      </p>
-                    ))}
-                    {category.concerns.map((concern, i) => (
-                      <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
-                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        <span className="break-words">{displayRiskText(concern)}</span>
-                      </p>
-                    ))}
-                  </div>
-                )}
-
-                {/* Manual comment */}
-                <Textarea
-                  placeholder={t('riskAssessment.addComment', 'Legg til kommentar...')}
-                  value={categoryComments?.[key] || ''}
-                  onChange={(e) => onCategoryCommentChange?.(key, e.target.value)}
-                  readOnly={readOnly}
-                  className={cn(
-                    "mt-2 text-xs min-h-[60px]",
-                    readOnly && "opacity-70 cursor-default"
+                  {/* Air Risk Analysis section - shown after airspace category */}
+                  {key === 'airspace' && airRiskAnalysis && (
+                    <AirRiskAnalysisSection data={airRiskAnalysis} />
                   )}
-                />
+                  {/* Ground Risk Analysis section - shown after mission_complexity category */}
+                  {key === 'mission_complexity' && groundRiskAnalysis && (
+                    <GroundRiskAnalysisSection
+                      data={groundRiskAnalysis}
+                      editable={!readOnly && !!onGroundRiskChange}
+                      onChange={onGroundRiskChange}
+                    />
+                  )}
+                </CollapsibleContent>
               </div>
-              
-              {/* Air Risk Analysis section - shown after airspace category */}
-              {key === 'airspace' && airRiskAnalysis && (
-                <div className="mt-3">
-                  <AirRiskAnalysisSection data={airRiskAnalysis} />
-                </div>
-              )}
-              
-              {/* Ground Risk Analysis section - shown after mission_complexity category */}
-              {key === 'mission_complexity' && groundRiskAnalysis && (
-                <div className="mt-3">
-                  <GroundRiskAnalysisSection
-                    data={groundRiskAnalysis}
-                    editable={!readOnly && !!onGroundRiskChange}
-                    onChange={onGroundRiskChange}
-                  />
-                </div>
-              )}
-            </div>
+            </Collapsible>
           );
         })}
       </div>
