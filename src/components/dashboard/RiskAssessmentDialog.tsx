@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -1406,6 +1407,30 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
           </div>
         </Tabs>
       </DialogContent>
+      <AlertDialog open={confirmReassessOpen} onOpenChange={setConfirmReassessOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('riskAssessment.missingCommentsTitle', 'Manglende kommentarer')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('riskAssessment.missingCommentsDescription', 'Følgende kategorier mangler kommentar:')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-5 text-sm text-muted-foreground">
+            {missingCommentCategories.map(c => (
+              <li key={c.key}>{t(c.labelKey)}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium">
+            {t('riskAssessment.missingCommentsConfirm', 'Vil du fortsatt kjøre re-vurdering?')}
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel', 'Avbryt')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmReassessOpen(false); runSoraReassessment(); }}>
+              {t('riskAssessment.runSoraAnyway', 'Kjør re-vurdering')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

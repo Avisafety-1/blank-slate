@@ -2638,7 +2638,6 @@
     "exportPdf": "Eksporter til PDF",
     "runSora": "Kjør SORA-basert re-vurdering",
     "runSoraRunning": "Kjører SORA re-vurdering…",
-    "requireAllComments": "Kreves at alle manuelle felt er fylt inn",
     "exportSoraPdf": "Eksporter SORA-analyse til PDF",
     "noSoraAvailable": "Ingen SORA-analyse tilgjengelig",
     "estimatedTime": "Estimert tid: ~{{seconds}}s",
@@ -2799,7 +2798,11 @@
       "cancel": "Avbryt",
       "save": "Lagre",
       "saving": "Lagrer..."
-    }
+    },
+    "missingCommentsTitle": "Manglende kommentarer",
+    "missingCommentsDescription": "Følgende kategorier mangler kommentar:",
+    "missingCommentsConfirm": "Vil du fortsatt kjøre re-vurdering?",
+    "runSoraAnyway": "Kjør re-vurdering"
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",
