@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
+import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
+
 import {
   calculateDroneAggregatedStatus,
   calculateDroneInspectionStatus,
@@ -570,7 +572,7 @@ serve(async (req) => {
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -726,7 +728,14 @@ serve(async (req) => {
           soraAnalysis.fgrc = manualFgrc;
           soraAnalysis.igrc = manualGround?.igrc ?? soraAnalysis.igrc;
         }
-        const arc = parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
+        const manualArcResidual = (manualAirRisk as any)?.arc_manual_override
+          ? parseArc((manualAirRisk as any)?.residual_arc)
+          : null;
+        const arc = manualArcResidual ?? parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
+        if (manualArcResidual) {
+          soraAnalysis.arc_residual = `ARC-${manualArcResidual}`;
+        }
+
         if (fgrcRaw !== null && arc) {
           const rowKey = fgrcRaw <= 2 ? '2' : String(Math.min(fgrcRaw, 7));
           const computed = SAIL_MATRIX[rowKey]?.[arc];
@@ -2426,16 +2435,11 @@ serve(async (req) => {
       // 2) Rewrite air_risk_analysis fields
       if (aiAnalysis.air_risk_analysis) {
         const reasoning = String(aiAnalysis.air_risk_analysis.aec_reasoning || '');
-        if (!insideAnyCtr && /klasse\s*d|ctr|tiz|kontrollert luftrom/i.test(reasoning)) {
-          aiAnalysis.air_risk_analysis.aec_reasoning =
-            `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Klasse G antas under 500 ft.`;
-          if (/AEC\s*[3-6]/i.test(String(aiAnalysis.air_risk_analysis.aec || ''))) {
-            aiAnalysis.air_risk_analysis.aec = 'AEC 12';
-          }
-        } else {
-          aiAnalysis.air_risk_analysis.aec_reasoning = scrubAirportDistanceText(reasoning);
-        }
+        aiAnalysis.air_risk_analysis.aec_reasoning = !insideAnyCtr && /klasse\s*d|ctr|tiz|kontrollert luftrom/i.test(reasoning)
+          ? `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Ukontrollert luftrom (klasse G) antas.`
+          : scrubAirportDistanceText(reasoning);
       }
+
 
       // 3) Scrub top-level free-text fields that often leak the "X m fra flyplassen" myth
       if (typeof aiAnalysis.summary === 'string') aiAnalysis.summary = scrubAirportDistanceText(aiAnalysis.summary);
@@ -2490,6 +2494,61 @@ serve(async (req) => {
     } catch (guardErr) {
       console.error('Airspace deterministic guard error (non-blocking):', guardErr);
     }
+
+    // ===== DETERMINISTIC AEC / ARC (SORA Annex C, Table 1 + 2) =====
+    // AI models frequently pick the wrong AEC (e.g. AEC 11, which is >FL600).
+    // Derive AEC and initial ARC from server-known facts instead.
+    try {
+      const sum = airspaceFacts?.summary ?? {};
+      const arLang = resolveLang(language);
+      const arEn = arLang === 'en';
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const urban = deterministicPopulationDensityValue >= 500;
+      const airportEnvironment = sum.inside_5km_zone === true || sum.inside_small_airfield_5km_zone === true;
+
+      const aecRow = deriveAec({
+        flightHeightM,
+        insideControlledAirspace: sum.inside_controlled_airspace === true,
+        airportEnvironment,
+        airportAirspaceClass: sum.inside_controlled_airspace === true ? 'D' : 'G',
+        urban,
+      });
+
+      const air = { ...(aiAnalysis.air_risk_analysis || {}) };
+      air.aec = `AEC ${aecRow.aec}`;
+      air.aec_environment = arEn ? aecRow.environment : aecRow.environmentNo;
+      air.aec_density_rating = aecRow.density;
+      air.initial_arc = aecRow.arc;
+      air.aec_reasoning = arEn
+        ? `AEC ${aecRow.aec} per SORA Annex C Table 1: ${aecRow.environment}. Flight height ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'inside controlled airspace' : 'uncontrolled airspace'}, ${urban ? 'urban' : 'rural'} area${airportEnvironment ? ', airport/heliport environment' : ''}. Generalised density rating ${aecRow.density} gives initial ARC ${aecRow.arc}.`
+        : `AEC ${aecRow.aec} etter SORA Annex C tabell 1: ${aecRow.environmentNo}. Flygehøyde ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'innenfor kontrollert luftrom' : 'ukontrollert luftrom'}, ${urban ? 'urbant' : 'landlig'} område${airportEnvironment ? ', flyplass-/heliportmiljø' : ''}. Generalisert tetthetsrating ${aecRow.density} gir initiell ARC ${aecRow.arc}.`;
+
+      // Manual ARC override from the user (Annex C Table 2) wins over AI output.
+      const manual = manualAirRisk ?? null;
+      if (manual && (manual.arc_manual_override === true)) {
+        const density = manual.manual_density_rating ?? null;
+        const atypical = manual.arc_a_atypical === true;
+        const reduced = atypical ? 'ARC-a' : residualArcForDensity(aecRow.aec, density);
+        air.arc_manual_override = true;
+        air.manual_density_rating = density;
+        air.arc_a_atypical = atypical;
+        air.arc_reduction_justification = manual.arc_reduction_justification ?? null;
+        air.residual_arc = reduced ?? aecRow.arc;
+      } else {
+        air.arc_manual_override = false;
+        air.manual_density_rating = null;
+        air.arc_a_atypical = false;
+        // Without documented manual reduction the residual ARC equals the initial ARC.
+        air.residual_arc = aecRow.arc;
+      }
+
+      aiAnalysis.air_risk_analysis = air;
+      console.log(`AEC deterministic: AEC ${aecRow.aec} => iARC=${aecRow.arc}, residual=${air.residual_arc}`);
+    } catch (aecErr) {
+      console.error('AEC deterministic guard error (non-blocking):', aecErr);
+    }
+
+
 
     // ===== DETERMINISTIC EQUIPMENT/MAINTENANCE GUARD =====
     // Hvis serverberegnet aggregert dronestatus eller utstyrsstatus er Rød

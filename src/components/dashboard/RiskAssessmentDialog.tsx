@@ -167,6 +167,15 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               manualGroundMitigations: currentAssessment?.ground_risk_analysis?.mitigations_manual_override
                 ? currentAssessment.ground_risk_analysis.mitigations
                 : undefined,
+              manualAirRisk: currentAssessment?.air_risk_analysis?.arc_manual_override
+                ? {
+                    arc_manual_override: true,
+                    manual_density_rating: currentAssessment.air_risk_analysis.manual_density_rating ?? null,
+                    arc_a_atypical: currentAssessment.air_risk_analysis.arc_a_atypical === true,
+                    arc_reduction_justification: currentAssessment.air_risk_analysis.arc_reduction_justification ?? null,
+                  }
+                : undefined,
+
               pilotComments: categoryComments,
               language: lang,
             });
@@ -428,6 +437,23 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       toast.error(t('riskAssessment.ground.saveError', 'Kunne ikke lagre mitigeringsvalg'));
     }
   };
+
+  const handleAirRiskChange = async (updated: any) => {
+    setCurrentAssessment((prev: any) => (prev ? { ...prev, air_risk_analysis: updated } : prev));
+    if (!currentAssessmentId) return;
+    try {
+      const nextAnalysis = { ...(currentAssessment || {}), air_risk_analysis: updated };
+      const { error } = await supabase
+        .from('mission_risk_assessments')
+        .update({ ai_analysis: nextAnalysis })
+        .eq('id', currentAssessmentId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving manual ARC:', error);
+      toast.error(t('riskAssessment.air.saveError', 'Kunne ikke lagre ARC-valg'));
+    }
+  };
+
 
   const loadPreviousAssessments = async () => {
     if (!currentMissionId) return;
@@ -907,6 +933,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       groundRiskAnalysis={currentAssessment.ground_risk_analysis}
                       operationClassification={currentAssessment.operation_classification}
                       onGroundRiskChange={handleGroundRiskChange}
+                      onAirRiskChange={handleAirRiskChange}
+
                     />
 
                     {/* Save comments button */}

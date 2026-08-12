@@ -2680,7 +2680,19 @@
       "tmprRequirements": "TMPR-krav",
       "vlosNote": "VLOS-operasjon — visuell kontakt med dronen er akseptabel taktisk mitigering for alle ARC-klasser.",
       "detectionSystems": "Anbefalte deteksjonssystemer",
-      "trafficTypes": "Trafikktyper å vurdere"
+      "trafficTypes": "Trafikktyper å vurdere",
+      "densityRating": "Tetthetsrating",
+      "density": "Tetthet",
+      "manualReductionTitle": "Manuell ARC-reduksjon (Annex C, tabell 2)",
+      "manualReductionHelp": "Velg hvilken lokal lufttrafikktetthet du kan dokumentere. Referansemiljøet er alltid AEC 10 (<500 ft AGL over landlig område). Kun nivåer som SORA-tabellen tillater for denne AEC-en kan velges.",
+      "noTableReduction": "Denne AEC-en kan ikke reduseres via tabell 2. Reduksjon er kun mulig til ARC-a via atypisk/segregert luftrom.",
+      "atypicalLabel": "Atypisk/segregert luftrom (ARC-a)",
+      "atypicalHelp": "Krever at alle krav til atypisk/segregert luftrom i Annex G, seksjon 3.20(d) er oppfylt og dokumentert.",
+      "justificationLabel": "Dokumentasjon av lokal tetthet",
+      "justificationPlaceholder": "Beskriv grunnlaget for lavere lokal trafikktetthet (f.eks. avgrenset område, tidspunkt, kort eksponering, NOTAM, elektronisk synlighet).",
+      "authorityNote": "Reduksjon av ARC må dokumenteres og godkjennes av Luftfartstilsynet før den kan legges til grunn.",
+      "saveError": "Kunne ikke lagre ARC-valg"
+
     },
     "ground": {
       "title": "Bakkerisikoanalyse (iGRC/fGRC)",

@@ -2678,7 +2678,19 @@
       "tmprRequirements": "TMPR requirements",
       "vlosNote": "VLOS operation — visual contact with the drone is an acceptable tactical mitigation for all ARC classes.",
       "detectionSystems": "Recommended detection systems",
-      "trafficTypes": "Traffic types to consider"
+      "trafficTypes": "Traffic types to consider",
+      "densityRating": "Density rating",
+      "density": "Density",
+      "manualReductionTitle": "Manual ARC reduction (Annex C, Table 2)",
+      "manualReductionHelp": "Select the local air traffic density you can demonstrate. The reference environment is always AEC 10 (<500 ft AGL over rural area). Only levels the SORA table allows for this AEC can be selected.",
+      "noTableReduction": "This AEC cannot be reduced via Table 2. Reduction is only possible to ARC-a through atypical/segregated airspace.",
+      "atypicalLabel": "Atypical/segregated airspace (ARC-a)",
+      "atypicalHelp": "Requires that all atypical/segregated airspace criteria in Annex G, section 3.20(d) are met and documented.",
+      "justificationLabel": "Local density documentation",
+      "justificationPlaceholder": "Describe the basis for lower local traffic density (e.g. confined area, time of day, short exposure, NOTAM, electronic conspicuity).",
+      "authorityNote": "An ARC reduction must be documented and approved by the CAA before it can be relied upon.",
+      "saveError": "Could not save ARC selection"
+
     },
     "ground": {
       "title": "Ground risk analysis (iGRC/fGRC)",
