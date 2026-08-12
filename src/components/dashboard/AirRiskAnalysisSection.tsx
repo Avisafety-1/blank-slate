@@ -90,7 +90,13 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
 
   const effectiveAec = declaredAtypical ? 12 : aecInconsistent ? null : rawAecNum;
   const aecRow = getAecRow(effectiveAec);
-  const initialArc = declaredAtypical ? 'ARC-a' : (aecRow?.arc ?? storedInitialArc ?? data.initial_arc);
+  // When the stored AEC is inconsistent we cannot trust its iARC either — fall back to the
+  // ARC actually in effect (residual) so the header and the iARC line never contradict.
+  const initialArc = declaredAtypical
+    ? 'ARC-a'
+    : aecInconsistent
+      ? (normalizeArc(data.residual_arc) ?? storedInitialArc ?? data.initial_arc)
+      : (aecRow?.arc ?? storedInitialArc ?? data.initial_arc);
   const densityChoices = densityOptions(effectiveAec);
   const hasReductionOptions = densityChoices.some((d) => d.residualArc);
   const arcChanged = normalizeArc(initialArc) !== normalizeArc(data.residual_arc);
