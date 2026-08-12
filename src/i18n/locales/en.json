@@ -2696,7 +2696,6 @@
       "justificationPlaceholder": "Describe the basis for lower local traffic density (e.g. confined area, time of day, short exposure, NOTAM, electronic conspicuity).",
       "authorityNote": "An ARC reduction must be documented and approved by the CAA before it can be relied upon.",
       "saveError": "Could not save ARC selection"
-
     },
     "ground": {
       "title": "Ground risk analysis (iGRC/fGRC)",
@@ -2818,7 +2817,15 @@
     "missingCommentsTitle": "Missing comments",
     "missingCommentsDescription": "The following categories are missing comments:",
     "missingCommentsConfirm": "Do you still want to run the re-assessment?",
-    "runSoraAnyway": "Run re-assessment"
+    "runSoraAnyway": "Run re-assessment",
+    "preliminaryConclusion": {
+      "title": "Preliminary conclusion",
+      "arcReduced": "Initial ARC",
+      "arcLabel": "ARC (residual)",
+      "fgrcLabel": "fGRC",
+      "sailLabel": "SAIL",
+      "note": "Preliminary conclusion. The mitigations in the ground risk analysis can be changed manually, and SAIL updates automatically."
+    }
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",

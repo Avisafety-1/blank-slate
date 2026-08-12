@@ -2698,7 +2698,6 @@
       "justificationPlaceholder": "Beskriv grunnlaget for lavere lokal trafikktetthet (f.eks. avgrenset område, tidspunkt, kort eksponering, NOTAM, elektronisk synlighet).",
       "authorityNote": "Reduksjon av ARC må dokumenteres og godkjennes av Luftfartstilsynet før den kan legges til grunn.",
       "saveError": "Kunne ikke lagre ARC-valg"
-
     },
     "ground": {
       "title": "Bakkerisikoanalyse (iGRC/fGRC)",
@@ -2820,7 +2819,15 @@
     "missingCommentsTitle": "Manglende kommentarer",
     "missingCommentsDescription": "Følgende kategorier mangler kommentar:",
     "missingCommentsConfirm": "Vil du fortsatt kjøre re-vurdering?",
-    "runSoraAnyway": "Kjør re-vurdering"
+    "runSoraAnyway": "Kjør re-vurdering",
+    "preliminaryConclusion": {
+      "title": "Foreløpig konklusjon",
+      "arcReduced": "Initiell ARC",
+      "arcLabel": "ARC (residual)",
+      "fgrcLabel": "fGRC",
+      "sailLabel": "SAIL",
+      "note": "Foreløpig konklusjon. Mitigeringene under bakkerisikoanalysen kan endres manuelt, og SAIL oppdateres automatisk."
+    }
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",
