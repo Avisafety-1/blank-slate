@@ -122,8 +122,15 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
 
-  const allCommentsComplete = ['weather', 'airspace', 'pilot_experience', 'mission_complexity', 'equipment']
-    .every(k => categoryComments[k]?.trim());
+  const COMMENT_CATEGORIES: { key: string; labelKey: string }[] = [
+    { key: 'weather', labelKey: 'riskAssessment.categories.weather' },
+    { key: 'airspace', labelKey: 'riskAssessment.categories.airspace' },
+    { key: 'pilot_experience', labelKey: 'riskAssessment.categories.pilotExperience' },
+    { key: 'mission_complexity', labelKey: 'riskAssessment.categories.missionComplexity' },
+    { key: 'equipment', labelKey: 'riskAssessment.categories.equipment' },
+  ];
+  const missingCommentCategories = COMMENT_CATEGORIES.filter(c => !categoryComments[c.key]?.trim());
+  const [confirmReassessOpen, setConfirmReassessOpen] = useState(false);
 
   const { canAccess } = usePlanGating();
 
