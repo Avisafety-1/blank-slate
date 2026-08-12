@@ -167,19 +167,27 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             const airOverridden = air?.arc_manual_override === true;
             const effectiveArc = (airOverridden ? air?.residual_arc : null) ?? air?.residual_arc ?? air?.initial_arc ?? null;
             const effectiveFgrc = groundOverridden ? (ground?.fgrc ?? null) : (ground?.fgrc ?? null);
+            const groundMitigationEntries = Array.isArray(ground?.mitigations)
+              ? ground.mitigations.map((mitigation: any, index: number) => [mitigation?.id ?? mitigation?.code ?? String(index), mitigation] as const)
+              : ground?.mitigations && typeof ground.mitigations === 'object'
+                ? Object.entries(ground.mitigations)
+                : [];
             const manualOverrides = (groundOverridden || airOverridden)
               ? {
                   ground_manual_override: groundOverridden,
                   igrc: ground?.igrc ?? null,
                   fgrc: effectiveFgrc,
                   mitigations: groundOverridden
-                    ? (ground?.mitigations ?? []).map((m: any) => ({
-                        id: m.id ?? m.code ?? null,
-                        name: m.name ?? m.title ?? null,
-                        applied: m.applied === true || m.selected === true,
-                        robustness: m.robustness ?? m.robustness_level ?? null,
-                        grc_adjustment: m.grc_adjustment ?? m.adjustment ?? null,
-                      }))
+                    ? groundMitigationEntries.map(([key, value]) => {
+                        const m = value && typeof value === 'object' ? value as any : {};
+                        return {
+                          id: m.id ?? m.code ?? key,
+                          name: m.name ?? m.title ?? key,
+                          applied: m.applied === true || m.selected === true || m.applicable === true,
+                          robustness: m.robustness ?? m.robustness_level ?? null,
+                          grc_adjustment: m.grc_adjustment ?? m.adjustment ?? m.reduction ?? null,
+                        };
+                      })
                     : null,
                   air_manual_override: airOverridden,
                   aec: air?.aec ?? null,
