@@ -2636,7 +2636,6 @@
     "exportPdf": "Export to PDF",
     "runSora": "Run SORA-based reassessment",
     "runSoraRunning": "Running SORA reassessment…",
-    "requireAllComments": "All manual fields must be filled in",
     "exportSoraPdf": "Export SORA analysis to PDF",
     "noSoraAvailable": "No SORA analysis available",
     "estimatedTime": "Estimated time: ~{{seconds}}s",
@@ -2797,7 +2796,11 @@
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving..."
-    }
+    },
+    "missingCommentsTitle": "Missing comments",
+    "missingCommentsDescription": "The following categories are missing comments:",
+    "missingCommentsConfirm": "Do you still want to run the re-assessment?",
+    "runSoraAnyway": "Run re-assessment"
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",

@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -122,8 +123,15 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
 
-  const allCommentsComplete = ['weather', 'airspace', 'pilot_experience', 'mission_complexity', 'equipment']
-    .every(k => categoryComments[k]?.trim());
+  const COMMENT_CATEGORIES: { key: string; labelKey: string }[] = [
+    { key: 'weather', labelKey: 'riskAssessment.categories.weather' },
+    { key: 'airspace', labelKey: 'riskAssessment.categories.airspace' },
+    { key: 'pilot_experience', labelKey: 'riskAssessment.categories.pilotExperience' },
+    { key: 'mission_complexity', labelKey: 'riskAssessment.categories.missionComplexity' },
+    { key: 'equipment', labelKey: 'riskAssessment.categories.equipment' },
+  ];
+  const missingCommentCategories = COMMENT_CATEGORIES.filter(c => !categoryComments[c.key]?.trim());
+  const [confirmReassessOpen, setConfirmReassessOpen] = useState(false);
 
   const { canAccess } = usePlanGating();
 
@@ -939,8 +947,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     {currentAssessmentId && (
                       <div className="space-y-1">
                         <Button
-                          onClick={runSoraReassessment}
-                          disabled={runningSora || !allCommentsComplete}
+                          onClick={() => {
+                            if (missingCommentCategories.length > 0) {
+                              setConfirmReassessOpen(true);
+                            } else {
+                              runSoraReassessment();
+                            }
+                          }}
+                          disabled={runningSora}
                           className="w-full"
                         >
                           {runningSora ? (
@@ -955,11 +969,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             </>
                           )}
                         </Button>
-                        {!allCommentsComplete && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            {t('riskAssessment.requireAllComments', 'Kreves at alle manuelle felt er fylt inn')}
-                          </p>
-                        )}
                       </div>
                     )}
 
@@ -1398,6 +1407,30 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
           </div>
         </Tabs>
       </DialogContent>
+      <AlertDialog open={confirmReassessOpen} onOpenChange={setConfirmReassessOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('riskAssessment.missingCommentsTitle', 'Manglende kommentarer')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('riskAssessment.missingCommentsDescription', 'Følgende kategorier mangler kommentar:')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-5 text-sm text-muted-foreground">
+            {missingCommentCategories.map(c => (
+              <li key={c.key}>{t(c.labelKey)}</li>
+            ))}
+          </ul>
+          <p className="text-sm font-medium">
+            {t('riskAssessment.missingCommentsConfirm', 'Vil du fortsatt kjøre re-vurdering?')}
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel', 'Avbryt')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmReassessOpen(false); runSoraReassessment(); }}>
+              {t('riskAssessment.runSoraAnyway', 'Kjør re-vurdering')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
