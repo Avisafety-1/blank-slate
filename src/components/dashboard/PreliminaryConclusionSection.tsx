@@ -10,49 +10,39 @@ interface PreliminaryConclusionProps {
   manualOverride?: boolean;
 }
 
-type Tone = "green" | "lime" | "yellow" | "orange" | "pink" | "red" | "neutral";
+type Tone = "green" | "yellow" | "red" | "neutral";
 
 const TONE_STYLES: Record<Tone, string> = {
-  green: "bg-emerald-500 border-emerald-600 text-black dark:bg-emerald-400 dark:border-emerald-300 dark:text-black",
-  lime: "bg-lime-400 border-lime-500 text-black dark:bg-lime-300 dark:border-lime-400 dark:text-black",
-  yellow: "bg-yellow-400 border-yellow-500 text-black dark:bg-yellow-300 dark:border-yellow-400 dark:text-black",
-  orange: "bg-orange-500 border-orange-600 text-white dark:bg-orange-500 dark:border-orange-400 dark:text-white",
-  pink: "bg-pink-500 border-pink-600 text-white dark:bg-pink-500 dark:border-pink-400 dark:text-white",
-  red: "bg-red-500 border-red-600 text-white dark:bg-red-500 dark:border-red-400 dark:text-white",
-  neutral: "bg-muted border-border text-foreground",
+  green: "bg-green-500/15 border-green-500/30 text-green-700 dark:text-green-300",
+  yellow: "bg-yellow-500/15 border-yellow-500/30 text-yellow-700 dark:text-yellow-300",
+  red: "bg-red-500/15 border-red-500/30 text-red-700 dark:text-red-300",
+  neutral: "bg-muted/50 border-border text-muted-foreground",
 };
 
 const arcTone = (arc: string | null): Tone => {
   const a = (arc || "").toLowerCase().replace("arc-", "").trim();
-  if (a === "a") return "green";
-  if (a === "b") return "lime";
-  if (a === "c") return "orange";
+  if (a === "a" || a === "b") return "green";
+  if (a === "c") return "yellow";
   if (a === "d") return "red";
   return "neutral";
 };
 
 const fgrcTone = (v: number | null): Tone => {
   if (v === null) return "neutral";
-  if (v <= 2) return "green";
-  if (v === 3) return "lime";
-  if (v === 4) return "yellow";
-  if (v === 5) return "orange";
-  if (v === 6) return "pink";
+  if (v <= 3) return "green";
+  if (v <= 6) return "yellow";
   return "red";
 };
 
 const sailTone = (s: string | null): Tone => {
   switch (s) {
     case "I":
-      return "green";
     case "II":
-      return "lime";
+      return "green";
     case "III":
-      return "yellow";
     case "IV":
-      return "orange";
+      return "yellow";
     case "V":
-      return "pink";
     case "VI":
       return "red";
     default:
