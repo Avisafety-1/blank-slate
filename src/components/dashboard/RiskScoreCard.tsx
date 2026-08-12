@@ -71,6 +71,7 @@ export const RiskScoreCard = ({
   const { t } = useTranslation();
   const currentLanguage = getCurrentLanguage();
   const displayRiskText = (value: string) => translatePersistedRiskText(value, currentLanguage);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
 
   const getScoreColor = (score: number) => {
     if (score >= 7) return 'bg-green-500';
