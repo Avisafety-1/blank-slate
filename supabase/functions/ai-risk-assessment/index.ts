@@ -718,8 +718,9 @@ serve(async (req) => {
         };
         const parseArc = (v: unknown): string | null => {
           if (typeof v !== 'string') return null;
-          const m = v.toLowerCase().match(/[abcd]/);
-          return m ? m[0] : null;
+          const s = v.toLowerCase();
+          const m = s.match(/arc[\s_-]*([abcd])/) ?? s.match(/^\s*([abcd])\s*$/);
+          return m ? m[1] : null;
         };
         const mo = (manualOverrides as any) ?? null;
         const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
