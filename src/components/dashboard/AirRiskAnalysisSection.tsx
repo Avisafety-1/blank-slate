@@ -174,19 +174,42 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
           {data.aec && (
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.encounterCategory', 'Air Encounter Category')}</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-medium">{data.aec}</p>
-                {(data.aec_density_rating ?? aecRow?.density) != null && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {t('riskAssessment.air.densityRating', 'Tetthetsrating')}: {data.aec_density_rating ?? aecRow?.density}
-                  </Badge>
-                )}
-              </div>
-              {(data.aec_environment || aecRow?.environment) && (
-                <p className="text-xs text-muted-foreground">{data.aec_environment || aecRow?.environment}</p>
-              )}
-              {data.aec_reasoning && (
-                <p className="text-xs text-muted-foreground">{data.aec_reasoning}</p>
+              {aecInconsistent ? (
+                <p className="text-xs text-orange-700 dark:text-orange-300 flex items-start gap-1">
+                  <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  {t(
+                    'riskAssessment.air.aecInconsistent',
+                    'AEC-en fra denne analysen ({{aec}}) stemmer ikke med Annex C-tabellene og er derfor ikke lagt til grunn. AEC 11 gjelder kun over FL600, og AEC 12 (atypisk/segregert luftrom) kan bare erklæres manuelt. Kjør en revurdering for å få riktig AEC.',
+                    { aec: data.aec },
+                  )}
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium">{aecRow ? `AEC ${aecRow.aec}` : data.aec}</p>
+                    {(aecRow?.density ?? data.aec_density_rating) != null && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {t('riskAssessment.air.densityRating', 'Tetthetsrating')}: {aecRow?.density ?? data.aec_density_rating}
+                      </Badge>
+                    )}
+                    {declaredAtypical && (
+                      <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-700 dark:text-orange-300 bg-orange-500/10">
+                        {t('riskAssessment.air.declaredByOperator', 'Erklært av operatør')}
+                      </Badge>
+                    )}
+                  </div>
+                  {(data.aec_environment || aecRow?.environment) && (
+                    <p className="text-xs text-muted-foreground">{data.aec_environment || aecRow?.environment}</p>
+                  )}
+                  {data.aec_reasoning && !declaredAtypical && (
+                    <p className="text-xs text-muted-foreground">{data.aec_reasoning}</p>
+                  )}
+                  {declaredAtypical && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('riskAssessment.air.aec12DeclaredHelp', 'Systemet kan ikke utlede atypisk/segregert luftrom. AEC 12 er her erklært manuelt og må dokumenteres etter Annex G seksjon 3.20(d).')}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}
