@@ -572,7 +572,7 @@ serve(async (req) => {
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -651,7 +651,7 @@ serve(async (req) => {
       console.log('[ai-risk-assessment/SORA] Running SORA re-assessment with pilot comments, language:', soraLang);
 
       const soraSystemPrompt = buildSoraReassessSystemPrompt(soraLang);
-      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments);
+      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null);
 
 
       const soraAiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -728,9 +728,32 @@ serve(async (req) => {
           soraAnalysis.fgrc = manualFgrc;
           soraAnalysis.igrc = manualGround?.igrc ?? soraAnalysis.igrc;
         }
-        const manualArcResidual = (manualAirRisk as any)?.arc_manual_override
-          ? parseArc((manualAirRisk as any)?.residual_arc)
+        const manualAir = (manualAirRisk as any) ?? (manualOverrides as any)?.air_manual_override
+          ? ((manualAirRisk as any) ?? {
+              arc_manual_override: (manualOverrides as any)?.air_manual_override === true,
+              arc_a_atypical: (manualOverrides as any)?.arc_a_atypical === true,
+              manual_density_rating: (manualOverrides as any)?.manual_density_rating ?? null,
+              aec: (manualOverrides as any)?.aec ?? null,
+              residual_arc: (manualOverrides as any)?.residual_arc ?? null,
+            })
           : null;
+        // Manual ARC: use the explicit residual ARC when sent, otherwise re-derive it
+        // from the operator's declaration (atypical) or Annex C table 2 density rating.
+        let manualArcResidual: string | null = null;
+        if (manualAir?.arc_manual_override === true) {
+          manualArcResidual = parseArc(manualAir.residual_arc);
+          if (!manualArcResidual && manualAir.arc_a_atypical === true) manualArcResidual = 'a';
+          if (!manualArcResidual && manualAir.manual_density_rating != null) {
+            const aecNum = parseFgrc(manualAir.aec ?? (previousAnalysis as any)?.air_risk_analysis?.aec);
+            if (aecNum !== null) {
+              manualArcResidual = parseArc(residualArcForDensity(aecNum, manualAir.manual_density_rating));
+            }
+          }
+          if (!manualArcResidual) {
+            manualArcResidual = parseArc((previousAnalysis as any)?.air_risk_analysis?.residual_arc)
+              ?? parseArc((previousAnalysis as any)?.air_risk_analysis?.initial_arc);
+          }
+        }
         const arc = manualArcResidual ?? parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
         if (manualArcResidual) {
           soraAnalysis.arc_residual = `ARC-${manualArcResidual}`;
