@@ -2506,22 +2506,34 @@ serve(async (req) => {
       const urban = deterministicPopulationDensityValue >= 500;
       const airportEnvironment = sum.inside_5km_zone === true || sum.inside_small_airfield_5km_zone === true;
 
+      // Atypical/segregated airspace (AEC 12) is NOT something the system can detect —
+      // it must be explicitly declared and documented by the operator (Annex G 3.20(d)).
+      const declaredAtypical = (manualAirRisk as any)?.arc_a_atypical === true;
+
       const aecRow = deriveAec({
         flightHeightM,
         insideControlledAirspace: sum.inside_controlled_airspace === true,
         airportEnvironment,
         airportAirspaceClass: sum.inside_controlled_airspace === true ? 'D' : 'G',
         urban,
+        atypicalSegregated: declaredAtypical,
       });
+
+
 
       const air = { ...(aiAnalysis.air_risk_analysis || {}) };
       air.aec = `AEC ${aecRow.aec}`;
       air.aec_environment = arEn ? aecRow.environment : aecRow.environmentNo;
       air.aec_density_rating = aecRow.density;
       air.initial_arc = aecRow.arc;
-      air.aec_reasoning = arEn
-        ? `AEC ${aecRow.aec} per SORA Annex C Table 1: ${aecRow.environment}. Flight height ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'inside controlled airspace' : 'uncontrolled airspace'}, ${urban ? 'urban' : 'rural'} area${airportEnvironment ? ', airport/heliport environment' : ''}. Generalised density rating ${aecRow.density} gives initial ARC ${aecRow.arc}.`
-        : `AEC ${aecRow.aec} etter SORA Annex C tabell 1: ${aecRow.environmentNo}. Flygehøyde ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'innenfor kontrollert luftrom' : 'ukontrollert luftrom'}, ${urban ? 'urbant' : 'landlig'} område${airportEnvironment ? ', flyplass-/heliportmiljø' : ''}. Generalisert tetthetsrating ${aecRow.density} gir initiell ARC ${aecRow.arc}.`;
+      air.aec_declared_atypical = declaredAtypical;
+      air.aec_reasoning = declaredAtypical
+        ? (arEn
+            ? `AEC 12 (atypical/segregated airspace) is declared by the operator, not derived by the system. Requires that all conditions in Annex G section 3.20(d) are met and documented. Initial ARC ${aecRow.arc}.`
+            : `AEC 12 (atypisk/segregert luftrom) er erklært av operatøren, ikke utledet av systemet. Krever at alle vilkår i Annex G seksjon 3.20(d) er oppfylt og dokumentert. Initiell ARC ${aecRow.arc}.`)
+        : (arEn
+            ? `AEC ${aecRow.aec} per SORA Annex C Table 1: ${aecRow.environment}. Flight height ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'inside controlled airspace' : 'uncontrolled airspace'}, ${urban ? 'urban' : 'rural'} area${airportEnvironment ? ', airport/heliport environment' : ''}. Generalised density rating ${aecRow.density} gives initial ARC ${aecRow.arc}.`
+            : `AEC ${aecRow.aec} etter SORA Annex C tabell 1: ${aecRow.environmentNo}. Flygehøyde ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'innenfor kontrollert luftrom' : 'ukontrollert luftrom'}, ${urban ? 'urbant' : 'landlig'} område${airportEnvironment ? ', flyplass-/heliportmiljø' : ''}. Generalisert tetthetsrating ${aecRow.density} gir initiell ARC ${aecRow.arc}.`);
 
       // Manual ARC override from the user (Annex C Table 2) wins over AI output.
       const manual = manualAirRisk ?? null;
