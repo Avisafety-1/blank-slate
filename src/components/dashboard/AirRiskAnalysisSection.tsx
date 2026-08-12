@@ -72,28 +72,71 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
 
   if (!data || (!data.aec && !data.initial_arc)) return null;
 
-  const aecRow = getAecRow(data.aec);
-  const initialArc = data.initial_arc || aecRow?.arc;
-  const densityChoices = densityOptions(data.aec);
+  const declaredAtypical = data.arc_a_atypical === true;
+  const rawAecNum = parseAecNumber(data.aec);
+  const rawRow = getAecRow(rawAecNum);
+  const storedInitialArc = normalizeArc(data.initial_arc);
+
+  /**
+   * AEC 12 (atypical/segregated) can never be derived by the system — it must be
+   * declared by the operator. AEC 11 is >FL600. If a stored/AI analysis claims either
+   * without a declaration, or its AEC does not match the stored iARC, the AEC is
+   * inconsistent and must not be presented as authoritative.
+   */
+  const aecInconsistent =
+    !declaredAtypical &&
+    rawAecNum != null &&
+    (rawAecNum === 12 || (rawRow != null && storedInitialArc != null && rawRow.arc !== storedInitialArc));
+
+  const effectiveAec = declaredAtypical ? 12 : aecInconsistent ? null : rawAecNum;
+  const aecRow = getAecRow(effectiveAec);
+  const initialArc = declaredAtypical ? 'ARC-a' : (aecRow?.arc ?? storedInitialArc ?? data.initial_arc);
+  const densityChoices = densityOptions(effectiveAec);
   const hasReductionOptions = densityChoices.some((d) => d.residualArc);
-  const arcChanged = initialArc !== data.residual_arc;
+  const arcChanged = normalizeArc(initialArc) !== normalizeArc(data.residual_arc);
 
   const applyChange = (patch: Partial<AirRiskAnalysis>) => {
     if (!onChange) return;
     const next: AirRiskAnalysis = { ...data, ...patch };
+
+    if (patch.arc_a_atypical === true) {
+      // Declaring atypical/segregated airspace redefines the AEC itself (Annex C, AEC 12).
+      next.aec_base = data.aec_base ?? data.aec ?? null;
+      next.aec_environment_base = data.aec_environment_base ?? data.aec_environment ?? null;
+      next.initial_arc_base = data.initial_arc_base ?? data.initial_arc ?? null;
+      next.aec = 'AEC 12';
+      next.aec_environment = t('riskAssessment.air.aec12Environment', 'OPS i atypisk/segregert luftrom (erklært av operatør)');
+      next.aec_density_rating = 1;
+      next.initial_arc = 'ARC-a';
+      next.aec_declared_atypical = true;
+      next.manual_density_rating = null;
+    } else if (patch.arc_a_atypical === false) {
+      next.aec = data.aec_base ?? data.aec;
+      next.aec_environment = data.aec_environment_base ?? data.aec_environment;
+      next.initial_arc = data.initial_arc_base ?? data.initial_arc;
+      next.aec_density_rating = getAecRow(next.aec)?.density ?? data.aec_density_rating;
+      next.aec_base = null;
+      next.aec_environment_base = null;
+      next.initial_arc_base = null;
+      next.aec_declared_atypical = false;
+    }
+
+    const base = next.arc_a_atypical
+      ? 'ARC-a'
+      : (getAecRow(next.aec)?.arc ?? normalizeArc(next.initial_arc) ?? initialArc);
     const reduced = next.arc_a_atypical
       ? 'ARC-a'
       : residualArcForDensity(next.aec, next.manual_density_rating ?? null);
     next.arc_manual_override = Boolean(next.arc_a_atypical || next.manual_density_rating != null);
-    next.residual_arc = next.arc_manual_override ? (reduced ?? initialArc) : initialArc;
+    next.residual_arc = (next.arc_manual_override ? (reduced ?? base) : base) ?? undefined;
     onChange(next);
   };
 
   const selectDensity = (density: number) => {
     if (data.manual_density_rating === density) {
-      applyChange({ manual_density_rating: null, arc_a_atypical: false });
+      applyChange({ manual_density_rating: null });
     } else {
-      applyChange({ manual_density_rating: density, arc_a_atypical: false });
+      applyChange({ manual_density_rating: density });
     }
   };
 
