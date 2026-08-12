@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
+import { PreliminaryConclusionSection } from "./PreliminaryConclusionSection";
 import { getCurrentLanguage, translatePersistedRiskText } from "@/lib/i18nHelpers";
 
 interface CategoryScore {
