@@ -946,8 +946,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     {currentAssessmentId && (
                       <div className="space-y-1">
                         <Button
-                          onClick={runSoraReassessment}
-                          disabled={runningSora || !allCommentsComplete}
+                          onClick={() => {
+                            if (missingCommentCategories.length > 0) {
+                              setConfirmReassessOpen(true);
+                            } else {
+                              runSoraReassessment();
+                            }
+                          }}
+                          disabled={runningSora}
                           className="w-full"
                         >
                           {runningSora ? (
@@ -962,11 +968,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             </>
                           )}
                         </Button>
-                        {!allCommentsComplete && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            {t('riskAssessment.requireAllComments', 'Kreves at alle manuelle felt er fylt inn')}
-                          </p>
-                        )}
                       </div>
                     )}
 
