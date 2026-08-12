@@ -789,6 +789,67 @@ serve(async (req) => {
         console.error('SAIL post-processing failed:', e);
       }
 
+      // Manual overrides must also be reflected in the narrative text — the AI
+      // otherwise keeps writing "no reduction credited" while the numbers show one.
+      try {
+        const mo2 = (manualOverrides as any) ?? null;
+        const ga = (previousAnalysis as any)?.ground_risk_analysis;
+        const aa = (previousAnalysis as any)?.air_risk_analysis;
+        const en = normalizeLang(language) === 'en';
+        const groundManual = ga?.mitigations_manual_override === true || mo2?.ground_manual_override === true;
+        const airManual = aa?.arc_manual_override === true || mo2?.air_manual_override === true;
+
+        if (groundManual) {
+          const mits: any[] = (Array.isArray(ga?.mitigations) ? ga.mitigations : (mo2?.mitigations ?? [])) || [];
+          const applied = mits.filter((m) => m?.applied === true || m?.selected === true);
+          const list = applied
+            .map((m) => `${m?.name ?? m?.title ?? m?.id ?? 'M?'}${m?.robustness ?? m?.robustness_level ? ` (${m.robustness ?? m.robustness_level})` : ''}`)
+            .join(', ');
+          const igrcTxt = ga?.igrc ?? mo2?.igrc ?? soraAnalysis.igrc;
+          const fgrcTxt = soraAnalysis.fgrc;
+          soraAnalysis.ground_mitigations = en
+            ? (applied.length
+                ? `Manually selected by the operator: ${list}. These mitigations are credited manually, which takes iGRC ${igrcTxt} to fGRC ${fgrcTxt}. The selection must be documented and accepted by the authority.`
+                : `The operator manually confirmed that no GRC-reducing mitigations are credited. fGRC is set manually to ${fgrcTxt}.`)
+            : (applied.length
+                ? `Manuelt valgt av operatør: ${list}. Disse mitigeringene er kreditert manuelt, noe som tar iGRC ${igrcTxt} til fGRC ${fgrcTxt}. Valget må dokumenteres og aksepteres av myndighet.`
+                : `Operatøren har manuelt bekreftet at ingen GRC-reduserende mitigeringer krediteres. fGRC er satt manuelt til ${fgrcTxt}.`);
+        }
+
+        if (airManual) {
+          const iarc = aa?.initial_arc ?? mo2?.initial_arc ?? soraAnalysis.arc_initial;
+          const rarc = soraAnalysis.arc_residual;
+          const atypical = aa?.arc_a_atypical === true || mo2?.arc_a_atypical === true;
+          const density = aa?.manual_density_rating ?? mo2?.manual_density_rating ?? null;
+          const just = aa?.arc_reduction_justification ?? mo2?.arc_reduction_justification ?? null;
+          const reason = en
+            ? (atypical
+                ? 'the operator has declared atypical/segregated airspace (AEC 12), which gives ARC-a per Annex C. This is a declaration, not a table reduction, and requires the requirements of Annex G section 3.20(d) to be met and documented'
+                : density != null
+                  ? `the operator has documented a lower local air traffic density (density rating ${density}) and applied the reduction in Annex C, table 2`
+                  : 'the operator has manually set the residual ARC')
+            : (atypical
+                ? 'operatøren har erklært atypisk/segregert luftrom (AEC 12), som gir ARC-a etter Annex C. Dette er en erklæring, ikke en tabellreduksjon, og krever at kravene i Annex G seksjon 3.20(d) er oppfylt og dokumentert'
+                : density != null
+                  ? `operatøren har dokumentert lavere lokal lufttrafikktetthet (tetthetsrating ${density}) og anvendt reduksjonen i Annex C, tabell 2`
+                  : 'operatøren har satt residual ARC manuelt');
+          soraAnalysis.airspace_mitigations = en
+            ? `Initial ARC is ${iarc}. Residual ARC is manually set to ${rarc} because ${reason}.${just ? ` Operator documentation: ${just}` : ''} The reduction must be documented and approved by the CAA before it can be relied on.`
+            : `Initiell ARC er ${iarc}. Residual ARC er manuelt satt til ${rarc} fordi ${reason}.${just ? ` Operatørens dokumentasjon: ${just}` : ''} Reduksjonen må dokumenteres og godkjennes av Luftfartstilsynet før den kan legges til grunn.`;
+        }
+
+        if ((groundManual || airManual) && typeof soraAnalysis.summary === 'string') {
+          const note = en
+            ? ' Note: fGRC and/or ARC in this assessment are manually overridden by the operator and must be documented.'
+            : ' Merk: fGRC og/eller ARC i denne vurderingen er manuelt overstyrt av operatøren og må dokumenteres.';
+          if (!/manuelt overstyrt|manually overridden/i.test(soraAnalysis.summary)) {
+            soraAnalysis.summary = `${soraAnalysis.summary}${note}`;
+          }
+        }
+      } catch (e) {
+        console.error('Manual-override narrative sync failed:', e);
+      }
+
       // Anti-hallucination guard: scrub fabricated drone models / crew claims when
       // there is no grounding in previousAnalysis or substantive pilot comments.
       try {
