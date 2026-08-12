@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
+import { deriveSail } from "@/lib/soraSail";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
