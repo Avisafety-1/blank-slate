@@ -2713,6 +2713,14 @@
       },
       "manualOverride": "Manually adjusted",
       "manualOverrideShort": "Overridden",
+      "preliminaryConclusion": {
+        "title": "Preliminary conclusion",
+        "arcLabel": "ARC (residual)",
+        "fgrcLabel": "fGRC",
+        "sailLabel": "SAIL",
+        "arcReduced": "Initial ARC",
+        "note": "Preliminary conclusion. Mitigations under the ground risk analysis can be changed manually, and SAIL updates automatically."
+      },
       "mitigationsHelp": "Select which mitigations are documented and their robustness level. Levels marked N/A are not permitted for that category in the SORA table.",
       "saveError": "Could not save mitigation selection"
     },

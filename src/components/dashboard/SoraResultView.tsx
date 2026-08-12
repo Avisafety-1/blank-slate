@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Shield, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { SAIL_MATRIX, deriveSail } from "@/lib/soraSail";
 
 interface ContainmentCriterion {
   criterion: string;
@@ -101,15 +102,6 @@ const containmentRobustnessColor = (level: string) => {
   return "bg-muted text-muted-foreground";
 };
 
-// SAIL matrix for visual highlight
-const SAIL_MATRIX: Record<string, Record<string, string>> = {
-  "≤2": { a: "I", b: "II", c: "IV", d: "VI" },
-  "3": { a: "II", b: "II", c: "IV", d: "VI" },
-  "4": { a: "III", b: "III", c: "IV", d: "VI" },
-  "5": { a: "IV", b: "IV", c: "IV", d: "VI" },
-  "6": { a: "V", b: "V", c: "V", d: "VI" },
-  "7": { a: "VI", b: "VI", c: "VI", d: "VI" },
-};
 
 const SailMatrixTable = ({ lookup }: { lookup?: SailLookup }) => {
   const fgrcRows = ["≤2", "3", "4", "5", "6", "7"];
@@ -156,15 +148,8 @@ const SailMatrixTable = ({ lookup }: { lookup?: SailLookup }) => {
   );
 };
 
-const deriveSailFromLookup = (lookup?: SailLookup): string | null => {
-  if (!lookup) return null;
-  const fgrc = typeof lookup.fgrc_used === 'number' ? lookup.fgrc_used : parseInt(String(lookup.fgrc_used ?? ''), 10);
-  const arcRaw = String(lookup.arc_used ?? '').toLowerCase();
-  const arcMatch = arcRaw.match(/[abcd]/);
-  if (!arcMatch || !Number.isFinite(fgrc)) return null;
-  const row = fgrc <= 2 ? '≤2' : String(Math.min(fgrc, 7));
-  return SAIL_MATRIX[row]?.[arcMatch[0]] ?? null;
-};
+const deriveSailFromLookup = (lookup?: SailLookup): string | null =>
+  lookup ? deriveSail(lookup.fgrc_used, lookup.arc_used) : null;
 
 export const SoraResultView = ({ data }: SoraResultViewProps) => {
   const { t } = useTranslation();
