@@ -160,6 +160,11 @@ export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRi
             {data.grc_calculation_method && (
               <Badge variant="secondary" className="text-[10px]">{t('riskAssessment.ground.systemCalculated', 'Systemberegnet')}</Badge>
             )}
+            {data.mitigations_manual_override && (
+              <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-700 dark:text-orange-300 bg-orange-500/10">
+                {t('riskAssessment.ground.manualOverrideShort', 'Overstyrt')}
+              </Badge>
+            )}
           </div>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </CollapsibleTrigger>

@@ -2714,6 +2714,7 @@
         "high": "Høy"
       },
       "manualOverride": "Manuelt justert",
+      "manualOverrideShort": "Overstyrt",
       "mitigationsHelp": "Velg hvilke mitigeringer som er dokumentert og hvilken robusthet de har. Nivåer merket N/A er ikke tillatt for kategorien i SORA-tabellen.",
       "saveError": "Kunne ikke lagre mitigeringsvalg"
     },
