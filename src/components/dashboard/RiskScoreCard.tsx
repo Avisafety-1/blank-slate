@@ -298,24 +298,34 @@ export const RiskScoreCard = ({
                       )}
                     />
                   </div>
-                  {/* Air Risk Analysis section - shown after airspace category */}
-                  {key === 'airspace' && airRiskAnalysis && (
-                    <AirRiskAnalysisSection data={airRiskAnalysis} />
-                  )}
-                  {/* Ground Risk Analysis section - shown after mission_complexity category */}
-                  {key === 'mission_complexity' && groundRiskAnalysis && (
-                    <GroundRiskAnalysisSection
-                      data={groundRiskAnalysis}
-                      editable={!readOnly && !!onGroundRiskChange}
-                      onChange={onGroundRiskChange}
-                    />
-                  )}
                 </CollapsibleContent>
               </div>
             </Collapsible>
           );
         })}
       </div>
+
+      {/* Air Risk Analysis - own top-level section */}
+      {airRiskAnalysis && <AirRiskAnalysisSection data={airRiskAnalysis} />}
+
+      {/* Ground Risk Analysis - own top-level section */}
+      {groundRiskAnalysis && (
+        <GroundRiskAnalysisSection
+          data={groundRiskAnalysis}
+          editable={!readOnly && !!onGroundRiskChange}
+          onChange={onGroundRiskChange}
+        />
+      )}
+
+      {/* Preliminary SORA conclusion */}
+      {(airRiskAnalysis || groundRiskAnalysis) && (
+        <PreliminaryConclusionSection
+          residualArc={airRiskAnalysis?.residual_arc}
+          initialArc={airRiskAnalysis?.initial_arc}
+          fgrc={groundRiskAnalysis?.fgrc}
+          manualOverride={groundRiskAnalysis?.mitigations_manual_override}
+        />
+      )}
     </div>
   );
 };
