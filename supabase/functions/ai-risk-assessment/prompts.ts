@@ -219,29 +219,33 @@ Hvis VLOS (isVlos = true):
 ### LUFTRISIKO — AEC, ARC OG TMPR (EASA SORA)
 Du SKAL alltid utføre en strukturert luftrisikoanalyse og returnere den i feltet "air_risk_analysis".
 
-#### Steg 1: Bestem AEC (Air Encounter Category)
-Bruk følgende tabell basert på luftromsklasse, høyde og lokasjon:
+#### Steg 1: Bestem AEC (Air Encounter Category) — JARUS SORA Annex C, Tabell 1
+Bruk KUN denne tabellen (miljø → AEC → iARC). AEC-numrene beskriver miljøet, ikke luftromsklassen alene:
 
-| AEC | Beskrivelse | ARC |
-|-----|------------|-----|
-| AEC 1 | Luftrom klasse A (IFR only) | ARC-d |
-| AEC 2 | Luftrom klasse B (alle separert) | ARC-d |
-| AEC 3 | Luftrom klasse C, over 500 ft | ARC-d |
-| AEC 4 | Luftrom klasse C, under 500 ft | ARC-c |
-| AEC 5 | Luftrom klasse D, over 500 ft | ARC-d |
-| AEC 6 | Luftrom klasse D, under 500 ft | ARC-c |
-| AEC 7 | Luftrom klasse E/F, over 500 ft | ARC-c |
-| AEC 8 | Luftrom klasse E/F, under 500 ft | ARC-b |
-| AEC 9 | Luftrom klasse G, over 500 ft, Mode-S/TMZ | ARC-c |
-| AEC 10 | Luftrom klasse G, over 500 ft, uten Mode-S | ARC-c |
-| AEC 11 | Luftrom klasse G, under 500 ft, urbant | ARC-b |
-| AEC 12 | Luftrom klasse G, under 500 ft, landlig | ARC-b |
+| Miljø | Tetthet (kol. A) | AEC | iARC |
+|-------|------------------|-----|------|
+| Flyplass-/heliportmiljø i klasse B, C eller D | 5 | AEC 1 | ARC-d |
+| Flyplass-/heliportmiljø i klasse E, F eller G | 3 | AEC 6 | ARC-c |
+| >500 ft AGL, <FL600, i Mode-S Veil eller TMZ | 5 | AEC 2 | ARC-d |
+| >500 ft AGL, <FL600, i kontrollert luftrom | 5 | AEC 3 | ARC-d |
+| >500 ft AGL, <FL600, ukontrollert over urbant område | 3 | AEC 4 | ARC-c |
+| >500 ft AGL, <FL600, ukontrollert over landlig område | 2 | AEC 5 | ARC-c |
+| <500 ft AGL, i Mode-S Veil eller TMZ | 3 | AEC 7 | ARC-c |
+| <500 ft AGL, i kontrollert luftrom | 3 | AEC 8 | ARC-c |
+| <500 ft AGL, ukontrollert over urbant område | 2 | AEC 9 | ARC-c |
+| <500 ft AGL, ukontrollert over landlig område | 1 | AEC 10 | ARC-b |
+| Over FL600 | 1 | AEC 11 | ARC-b |
+| Atypisk/segregert luftrom | 1 | AEC 12 | ARC-a |
+
+KRITISK: AEC 11 gjelder KUN operasjoner over FL600 (ca. 60 000 fot). Bruk den ALDRI for vanlige droneoperasjoner. En typisk VLOS-operasjon under 500 ft (152 m) i ukontrollert luftrom er AEC 10 (landlig) eller AEC 9 (urbant).
 
 Bruk kontekstdata:
-- airspace.warnings: Sjekk om CTR/TIZ (kontrollert luftrom) er i nærheten → klasse D typisk
-- pilotInputs.flightHeight: Over/under 500 ft (~150m)
-- landUse/populationDensity: Urbant vs landlig
-- Hvis ingen spesifikke luftromsadvarsler: Anta klasse G (ukontrollert)
+- airspace.summary.inside_controlled_airspace: true → kontrollert luftrom
+- airspace.summary.inside_5km_zone / flyplassnære soner → flyplass-/heliportmiljø
+- pilotInputs.flightHeight: over/under 500 ft (~152 m AGL)
+- populationDensity/landUse: urbant vs landlig
+- Hvis ingen luftromsadvarsler: anta ukontrollert (klasse G)
+
 
 #### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
 Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
@@ -287,26 +291,28 @@ Eksempel feil → riktig:
 #### Steg 2: Bestem initiell ARC (iARC)
 Sett iARC direkte fra AEC-tabellen ovenfor.
 
-#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC)
-Strategiske mitigeringer kan redusere ARC med opptil 2 nivåer totalt:
+#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC) — Annex C, Tabell 2
+ARC kan KUN reduseres etter Tabell 2, ved å dokumentere at den lokale lufttrafikktettheten er lavere enn den generaliserte tettheten for AEC-en. Referansemiljøet for tetthetsvurdering er alltid AEC 10 (<500 ft AGL over landlig område).
 
-**Operasjonelle restriksjoner (maks 2 nivåer reduksjon):**
-- Avgrensning av operasjonsområdet til område med lite bemannet trafikk
-- Tidspunkt valgt med lav trafikkforventning (tidlig morgen, sein kveld, vinter)
-- Kort eksponering i luftrommet (kort flygetid)
+| AEC | Tetthet (A) | iARC (B) | Dokumentert lokal tetthet (C) | Residual ARC (D) |
+|-----|-------------|----------|-------------------------------|------------------|
+| AEC 1 eller 2 | 5 | ARC-d | 4 eller 3 | ARC-c |
+| AEC 1 eller 2 | 5 | ARC-d | 2 eller 1 | ARC-b |
+| AEC 3 | 4 | ARC-d | 3 eller 2 | ARC-c |
+| AEC 3 | 4 | ARC-d | 1 | ARC-b |
+| AEC 4 | 3 | ARC-c | 1 | ARC-b |
+| AEC 5 | 2 | ARC-c | 1 | ARC-b |
+| AEC 6, 7 eller 8 | 3 | ARC-c | 1 | ARC-b |
+| AEC 9 | 2 | ARC-c | 1 | ARC-b |
 
-**Regler og luftromsstruktur (maks 1 ekstra nivå, KUN under 500 ft):**
-- NOTAM publisert 12+ timer før (obligatorisk for BVLOS uten observatør)
-- Elektronisk synlighet (ADS-B/ADS-L sender, SafeSky)
-- Klarering fra kontrolltårn (Ninox drone)
-- Koordinering med lufttrafikktjeneste
+- AEC 10 og AEC 11 kan IKKE reduseres via Tabell 2.
+- Reduksjon til ARC-a er kun mulig hvis alle krav til atypisk/segregert luftrom (Annex G, seksjon 3.20(d)) er oppfylt og dokumentert.
+- Enhver reduksjon krever dokumentasjon og godkjenning fra myndighet (Luftfartstilsynet). IKKE reduser ARC automatisk — foreslå reduksjon kun når det finnes konkret grunnlag, og forklar hva som må dokumenteres.
 
-**Luftromsanalyse:**
-- For å redusere til ARC-c: Vis at operasjonsvolumet har trafikk som ARC-c luftrom
-- For å redusere til ARC-b: Vis at det tilsvarer luftrom under 500 ft i landlige områder
-- For å redusere til ARC-a: Vis at det tilsvarer segregert luftrom (fareområde, svært lav høyde nær hindre)
+Eksempler på grunnlag for lavere lokal tetthet: avgrenset operasjonsområde med lite bemannet trafikk, tidspunkt med lav trafikkforventning, kort eksponeringstid, NOTAM publisert på forhånd, elektronisk synlighet (ADS-B/ADS-L, SafeSky), koordinering/klarering med lufttrafikktjeneste (Ninox).
 
-Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30m over bakken, eller innenfor 30m fra hindre under 20m, eller innenfor 15m fra hindre over 20m).
+Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30 m over bakken, eller innenfor 30 m fra hindre under 20 m, eller innenfor 15 m fra hindre over 20 m).
+
 
 #### Steg 4: Bestem residual ARC
 Sett residual ARC etter å ha vurdert alle relevante mitigeringer.
@@ -773,29 +779,33 @@ If VLOS (isVlos = true):
 ### AIR RISK — AEC, ARC AND TMPR (EASA SORA)
 You SHALL always perform a structured air risk analysis and return it in the field "air_risk_analysis".
 
-#### Step 1: Determine AEC (Air Encounter Category)
-Use the following table based on airspace class, altitude and location:
+#### Step 1: Determine AEC (Air Encounter Category) — JARUS SORA Annex C, Table 1
+Use ONLY this table (environment → AEC → iARC). The AEC numbers describe the environment, not the airspace class alone:
 
-| AEC | Description | ARC |
-|-----|------------|-----|
-| AEC 1 | Airspace class A (IFR only) | ARC-d |
-| AEC 2 | Airspace class B (all separated) | ARC-d |
-| AEC 3 | Airspace class C, above 500 ft | ARC-d |
-| AEC 4 | Airspace class C, below 500 ft | ARC-c |
-| AEC 5 | Airspace class D, above 500 ft | ARC-d |
-| AEC 6 | Airspace class D, below 500 ft | ARC-c |
-| AEC 7 | Airspace class E/F, above 500 ft | ARC-c |
-| AEC 8 | Airspace class E/F, below 500 ft | ARC-b |
-| AEC 9 | Airspace class G, above 500 ft, Mode-S/TMZ | ARC-c |
-| AEC 10 | Airspace class G, above 500 ft, without Mode-S | ARC-c |
-| AEC 11 | Airspace class G, below 500 ft, urban | ARC-b |
-| AEC 12 | Airspace class G, below 500 ft, rural | ARC-b |
+| Environment | Density (col. A) | AEC | iARC |
+|-------------|------------------|-----|------|
+| Airport/heliport environment in Class B, C or D | 5 | AEC 1 | ARC-d |
+| Airport/heliport environment in Class E, F or G | 3 | AEC 6 | ARC-c |
+| >500 ft AGL, <FL600, in a Mode-S Veil or TMZ | 5 | AEC 2 | ARC-d |
+| >500 ft AGL, <FL600, in controlled airspace | 5 | AEC 3 | ARC-d |
+| >500 ft AGL, <FL600, uncontrolled over urban area | 3 | AEC 4 | ARC-c |
+| >500 ft AGL, <FL600, uncontrolled over rural area | 2 | AEC 5 | ARC-c |
+| <500 ft AGL, in a Mode-S Veil or TMZ | 3 | AEC 7 | ARC-c |
+| <500 ft AGL, in controlled airspace | 3 | AEC 8 | ARC-c |
+| <500 ft AGL, uncontrolled over urban area | 2 | AEC 9 | ARC-c |
+| <500 ft AGL, uncontrolled over rural area | 1 | AEC 10 | ARC-b |
+| Above FL600 | 1 | AEC 11 | ARC-b |
+| Atypical/segregated airspace | 1 | AEC 12 | ARC-a |
+
+CRITICAL: AEC 11 applies ONLY to operations above FL600 (approx. 60,000 ft). NEVER use it for normal drone operations. A typical VLOS operation below 500 ft (152 m) in uncontrolled airspace is AEC 10 (rural) or AEC 9 (urban).
 
 Use the context data:
-- airspace.warnings: Check whether CTR/TIZ (controlled airspace) is nearby → typically class D
-- pilotInputs.flightHeight: Above/below 500 ft (~150m)
-- landUse/populationDensity: Urban vs rural
-- If no specific airspace warnings: Assume class G (uncontrolled)
+- airspace.summary.inside_controlled_airspace: true → controlled airspace
+- airspace.summary.inside_5km_zone / airport-proximity zones → airport/heliport environment
+- pilotInputs.flightHeight: above/below 500 ft (~152 m AGL)
+- populationDensity/landUse: urban vs rural
+- If no airspace warnings: assume uncontrolled (class G)
+
 
 #### CRITICAL: Interpretation of airspace warnings (airspace.warnings and airspace.summary)
 The server has PRE-COMPUTED authoritative text. You MUST use these fields as ground truth and NOT invent your own interpretation:
@@ -841,26 +851,28 @@ Example wrong → right:
 #### Step 2: Determine initial ARC (iARC)
 Set iARC directly from the AEC table above.
 
-#### Step 3: Assess strategic mitigations (may reduce ARC)
-Strategic mitigations can reduce ARC by up to 2 levels in total:
+#### Step 3: Assess strategic mitigations (may reduce ARC) — Annex C, Table 2
+ARC may ONLY be reduced per Table 2, by demonstrating that the local air traffic density is lower than the generalised density for the AEC. The reference environment for density assessment is always AEC 10 (<500 ft AGL over rural areas).
 
-**Operational restrictions (max 2 levels reduction):**
-- Restriction of the operating area to an area with little manned traffic
-- Timing selected for low traffic expectation (early morning, late evening, winter)
-- Short exposure in the airspace (short flight time)
+| AEC | Density (A) | iARC (B) | Demonstrated local density (C) | Residual ARC (D) |
+|-----|-------------|----------|--------------------------------|------------------|
+| AEC 1 or 2 | 5 | ARC-d | 4 or 3 | ARC-c |
+| AEC 1 or 2 | 5 | ARC-d | 2 or 1 | ARC-b |
+| AEC 3 | 4 | ARC-d | 3 or 2 | ARC-c |
+| AEC 3 | 4 | ARC-d | 1 | ARC-b |
+| AEC 4 | 3 | ARC-c | 1 | ARC-b |
+| AEC 5 | 2 | ARC-c | 1 | ARC-b |
+| AEC 6, 7 or 8 | 3 | ARC-c | 1 | ARC-b |
+| AEC 9 | 2 | ARC-c | 1 | ARC-b |
 
-**Rules and airspace structure (max 1 additional level, ONLY below 500 ft):**
-- NOTAM published 12+ hours in advance (mandatory for BVLOS without observer)
-- Electronic visibility (ADS-B/ADS-L transmitter, SafeSky)
-- Clearance from control tower (Ninox drone)
-- Coordination with air traffic service
+- AEC 10 and AEC 11 canNOT be reduced via Table 2.
+- Reduction to ARC-a is only possible if all requirements for Atypical/Segregated airspace (Annex G, section 3.20(d)) are met and documented.
+- Any reduction requires documentation and approval by the competent authority (CAA). Do NOT reduce ARC automatically — propose a reduction only when there is concrete justification, and explain what must be documented.
 
-**Airspace analysis:**
-- To reduce to ARC-c: Show that the operational volume has traffic equivalent to ARC-c airspace
-- To reduce to ARC-b: Show that it corresponds to airspace below 500 ft in rural areas
-- To reduce to ARC-a: Show that it corresponds to segregated airspace (danger area, very low altitude near obstacles)
+Examples of justification for lower local density: confined operating area with little manned traffic, timing with low traffic expectation, short exposure time, NOTAM published in advance, electronic conspicuity (ADS-B/ADS-L, SafeSky), coordination/clearance with air traffic service (Ninox).
 
 Atypical airspace (ARC-a) is defined as airspace where the risk of collision between drone and manned aviation is acceptably low without tactical mitigations. Examples: reserved airspace, operations at very low altitude near objects/the ground (below 30m above ground, or within 30m of obstacles below 20m, or within 15m of obstacles above 20m).
+
 
 #### Step 4: Determine residual ARC
 Set residual ARC after considering all relevant mitigations.

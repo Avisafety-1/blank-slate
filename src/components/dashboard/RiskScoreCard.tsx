@@ -48,6 +48,8 @@ interface RiskScoreCardProps {
   groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
   operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
   onGroundRiskChange?: ComponentProps<typeof GroundRiskAnalysisSection>["onChange"];
+  onAirRiskChange?: ComponentProps<typeof AirRiskAnalysisSection>["onChange"];
+
 }
 
 export const RiskScoreCard = ({ 
@@ -67,7 +69,9 @@ export const RiskScoreCard = ({
   airRiskAnalysis,
   groundRiskAnalysis,
   operationClassification,
-  onGroundRiskChange
+  onGroundRiskChange,
+  onAirRiskChange
+
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
   const currentLanguage = getCurrentLanguage();
@@ -307,7 +311,14 @@ export const RiskScoreCard = ({
       </div>
 
       {/* Air Risk Analysis - own top-level section */}
-      {airRiskAnalysis && <AirRiskAnalysisSection data={airRiskAnalysis} />}
+      {airRiskAnalysis && (
+        <AirRiskAnalysisSection
+          data={airRiskAnalysis}
+          editable={!readOnly && !!onAirRiskChange}
+          onChange={onAirRiskChange}
+        />
+      )}
+
 
       {/* Ground Risk Analysis - own top-level section */}
       {groundRiskAnalysis && (

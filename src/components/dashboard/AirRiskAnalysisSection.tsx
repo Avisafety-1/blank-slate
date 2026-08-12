@@ -1,13 +1,18 @@
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { Shield, ChevronDown, ChevronUp, Radar, Eye, AlertTriangle, CheckCircle } from "lucide-react";
+import { Shield, ChevronDown, ChevronUp, Radar, Eye, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { densityOptions, getAecRow, residualArcForDensity } from "@/lib/soraAirRisk";
 
 interface AirRiskAnalysis {
   aec?: string;
   aec_reasoning?: string;
+  aec_environment?: string;
+  aec_density_rating?: number;
   initial_arc?: string;
   strategic_mitigations_applied?: string[];
   strategic_mitigations_not_applied?: string[];
@@ -24,20 +29,26 @@ interface AirRiskAnalysis {
   vlos_exemption?: boolean;
   traffic_types_to_consider?: string[];
   arc_reduction_reasoning?: string;
+  arc_manual_override?: boolean;
+  manual_density_rating?: number | null;
+  arc_a_atypical?: boolean;
+  arc_reduction_justification?: string | null;
 }
 
 interface AirRiskAnalysisSectionProps {
   data: AirRiskAnalysis;
+  editable?: boolean;
+  onChange?: (updated: AirRiskAnalysis) => void;
 }
 
+
 const arcColor = (arc?: string) => {
-  if (!arc) return 'bg-muted text-muted-foreground';
-  const lower = arc.toLowerCase();
-  if (lower.includes('a')) return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
-  if (lower.includes('b')) return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
-  if (lower.includes('c')) return 'bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30';
-  if (lower.includes('d')) return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
-  return 'bg-muted text-muted-foreground';
+  const letter = String(arc ?? '').toLowerCase().match(/arc-?\s*([abcd])/)?.[1];
+  if (!letter) return 'bg-muted text-muted-foreground';
+  if (letter === 'a') return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30';
+  if (letter === 'b') return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30';
+  if (letter === 'c') return 'bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30';
+  return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30';
 };
 
 const tmprBadgeColor = (level?: string) => {
@@ -50,13 +61,36 @@ const tmprBadgeColor = (level?: string) => {
   return 'secondary' as const;
 };
 
-export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) => {
+export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnalysisSectionProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   if (!data || (!data.aec && !data.initial_arc)) return null;
 
-  const arcChanged = data.initial_arc !== data.residual_arc;
+  const aecRow = getAecRow(data.aec);
+  const initialArc = data.initial_arc || aecRow?.arc;
+  const densityChoices = densityOptions(data.aec);
+  const hasReductionOptions = densityChoices.some((d) => d.residualArc);
+  const arcChanged = initialArc !== data.residual_arc;
+
+  const applyChange = (patch: Partial<AirRiskAnalysis>) => {
+    if (!onChange) return;
+    const next: AirRiskAnalysis = { ...data, ...patch };
+    const reduced = next.arc_a_atypical
+      ? 'ARC-a'
+      : residualArcForDensity(next.aec, next.manual_density_rating ?? null);
+    next.arc_manual_override = Boolean(next.arc_a_atypical || next.manual_density_rating != null);
+    next.residual_arc = next.arc_manual_override ? (reduced ?? initialArc) : initialArc;
+    onChange(next);
+  };
+
+  const selectDensity = (density: number) => {
+    if (data.manual_density_rating === density) {
+      applyChange({ manual_density_rating: null, arc_a_atypical: false });
+    } else {
+      applyChange({ manual_density_rating: density, arc_a_atypical: false });
+    }
+  };
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -78,6 +112,11 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
             {data.vlos_exemption && (
               <Badge variant="outline" className="text-[10px]">VLOS</Badge>
             )}
+            {data.arc_manual_override && (
+              <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-700 dark:text-orange-300 bg-orange-500/10">
+                {t('riskAssessment.ground.manualOverrideShort', 'Overstyrt')}
+              </Badge>
+            )}
           </div>
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </CollapsibleTrigger>
@@ -87,7 +126,17 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           {data.aec && (
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.encounterCategory', 'Air Encounter Category')}</p>
-              <p className="text-sm font-medium">{data.aec}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-medium">{data.aec}</p>
+                {(data.aec_density_rating ?? aecRow?.density) != null && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {t('riskAssessment.air.densityRating', 'Tetthetsrating')}: {data.aec_density_rating ?? aecRow?.density}
+                  </Badge>
+                )}
+              </div>
+              {(data.aec_environment || aecRow?.environment) && (
+                <p className="text-xs text-muted-foreground">{data.aec_environment || aecRow?.environment}</p>
+              )}
               {data.aec_reasoning && (
                 <p className="text-xs text-muted-foreground">{data.aec_reasoning}</p>
               )}
@@ -95,12 +144,12 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
           )}
 
           {/* ARC progression */}
-          {data.initial_arc && (
+          {initialArc && (
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('riskAssessment.air.arc', 'Air Risk Class (ARC)')}</p>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", arcColor(data.initial_arc))}>
-                  iARC: {data.initial_arc}
+                <span className={cn("px-2 py-0.5 rounded text-xs font-semibold border", arcColor(initialArc))}>
+                  iARC: {initialArc}
                 </span>
                 {arcChanged && (
                   <>
@@ -119,6 +168,88 @@ export const AirRiskAnalysisSection = ({ data }: AirRiskAnalysisSectionProps) =>
               )}
             </div>
           )}
+
+          {/* Manual ARC reduction (Annex C, Table 2) */}
+          {editable && (
+            <div className="space-y-2 rounded-md border border-border/60 bg-muted/30 p-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t('riskAssessment.air.manualReductionTitle', 'Manuell ARC-reduksjon (Annex C, tabell 2)')}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {t('riskAssessment.air.manualReductionHelp', 'Velg hvilken lokal lufttrafikktetthet du kan dokumentere. Referansemiljøet er alltid AEC 10 (<500 ft AGL over landlig område). Kun nivåer som SORA-tabellen tillater for denne AEC-en kan velges.')}
+              </p>
+
+              {hasReductionOptions ? (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {densityChoices.map(({ density, residualArc }) => {
+                    const disabled = !residualArc || data.arc_a_atypical === true;
+                    const selected = data.manual_density_rating === density && !data.arc_a_atypical;
+                    return (
+                      <button
+                        key={density}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => selectDensity(density)}
+                        className={cn(
+                          "px-2 py-0.5 rounded border text-[10px] font-medium transition-colors",
+                          selected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-muted-foreground border-border hover:bg-muted",
+                          disabled && "opacity-40 cursor-not-allowed hover:bg-background",
+                        )}
+                      >
+                        {t('riskAssessment.air.density', 'Tetthet')} {density}{' '}
+                        <span className="opacity-70">{residualArc ? `→ ${residualArc}` : 'N/A'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  {t('riskAssessment.air.noTableReduction', 'Denne AEC-en kan ikke reduseres via tabell 2. Reduksjon er kun mulig til ARC-a via atypisk/segregert luftrom.')}
+                </p>
+              )}
+
+              <div className="flex items-start gap-2 pt-1">
+                <Switch
+                  checked={data.arc_a_atypical === true}
+                  onCheckedChange={(checked) =>
+                    applyChange({ arc_a_atypical: checked, manual_density_rating: checked ? null : data.manual_density_rating })
+                  }
+                  className="mt-0.5 flex-shrink-0 scale-90"
+                  aria-label={t('riskAssessment.air.atypicalLabel', 'Atypisk/segregert luftrom (ARC-a)')}
+                />
+                <div className="min-w-0">
+                  <span className="text-xs font-medium">{t('riskAssessment.air.atypicalLabel', 'Atypisk/segregert luftrom (ARC-a)')}</span>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('riskAssessment.air.atypicalHelp', 'Krever at alle krav til atypisk/segregert luftrom i Annex G, seksjon 3.20(d) er oppfylt og dokumentert.')}
+                  </p>
+                </div>
+              </div>
+
+              {(data.arc_manual_override || data.arc_a_atypical) && (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-medium">{t('riskAssessment.air.justificationLabel', 'Dokumentasjon av lokal tetthet')}</p>
+                  <Textarea
+                    value={data.arc_reduction_justification ?? ''}
+                    onChange={(e) => applyChange({ arc_reduction_justification: e.target.value })}
+                    placeholder={t('riskAssessment.air.justificationPlaceholder', 'Beskriv grunnlaget for lavere lokal trafikktetthet (f.eks. avgrenset område, tidspunkt, kort eksponering, NOTAM, elektronisk synlighet).')}
+                    className="text-xs min-h-[70px]"
+                  />
+                  <p className="text-[11px] text-orange-700 dark:text-orange-300 flex items-start gap-1">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    {t('riskAssessment.air.authorityNote', 'Reduksjon av ARC må dokumenteres og godkjennes av Luftfartstilsynet før den kan legges til grunn.')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!editable && data.arc_reduction_justification && (
+            <p className="text-xs text-muted-foreground italic">{data.arc_reduction_justification}</p>
+          )}
+
 
           {/* Strategic mitigations */}
           {(data.strategic_mitigations_applied?.length || 0) > 0 && (
