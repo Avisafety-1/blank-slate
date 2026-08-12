@@ -109,7 +109,9 @@ export const arcRank = (arc?: string | null): number => {
 };
 
 export const normalizeArc = (arc?: string | null): ArcLevel | null => {
-  const m = String(arc ?? "").toLowerCase().match(/([abcd])/);
+  const s = String(arc ?? "").toLowerCase();
+  // "ARC-c", "arc c", "ARCc" → c. Never match the "a" inside the word "arc".
+  const m = s.match(/arc-?\s*([abcd])/) ?? s.match(/^\s*([abcd])\s*$/);
   return m ? (`ARC-${m[1]}` as ArcLevel) : null;
 };
 
