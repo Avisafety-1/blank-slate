@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert } from "lucide-react";
+import { AlertOctagon, CheckCircle, AlertTriangle, Info, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
