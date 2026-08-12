@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { densityOptions, getAecRow, residualArcForDensity } from "@/lib/soraAirRisk";
+import { densityOptions, getAecRow, parseAecNumber, normalizeArc, residualArcForDensity } from "@/lib/soraAirRisk";
 
 interface AirRiskAnalysis {
   aec?: string;
