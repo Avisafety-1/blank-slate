@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
+import { deriveSail } from "@/lib/soraSail";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -160,21 +161,55 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
           body: (() => {
             const lang = getCurrentLanguage();
             console.log('[RiskAssessment/SORA-reassess] Sending language to AI:', lang);
+            const air = currentAssessment?.air_risk_analysis;
+            const ground = currentAssessment?.ground_risk_analysis;
+            const groundOverridden = ground?.mitigations_manual_override === true;
+            const airOverridden = air?.arc_manual_override === true;
+            const effectiveArc = (airOverridden ? air?.residual_arc : null) ?? air?.residual_arc ?? air?.initial_arc ?? null;
+            const effectiveFgrc = groundOverridden ? (ground?.fgrc ?? null) : (ground?.fgrc ?? null);
+            const manualOverrides = (groundOverridden || airOverridden)
+              ? {
+                  ground_manual_override: groundOverridden,
+                  igrc: ground?.igrc ?? null,
+                  fgrc: effectiveFgrc,
+                  mitigations: groundOverridden
+                    ? (ground?.mitigations ?? []).map((m: any) => ({
+                        id: m.id ?? m.code ?? null,
+                        name: m.name ?? m.title ?? null,
+                        applied: m.applied === true || m.selected === true,
+                        robustness: m.robustness ?? m.robustness_level ?? null,
+                        grc_adjustment: m.grc_adjustment ?? m.adjustment ?? null,
+                      }))
+                    : null,
+                  air_manual_override: airOverridden,
+                  aec: air?.aec ?? null,
+                  initial_arc: air?.initial_arc ?? null,
+                  residual_arc: effectiveArc,
+                  arc_a_atypical: air?.arc_a_atypical === true,
+                  manual_density_rating: air?.manual_density_rating ?? null,
+                  arc_reduction_justification: air?.arc_reduction_justification ?? null,
+                  sail: deriveSail(effectiveFgrc, effectiveArc),
+                }
+              : undefined;
+
             return JSON.stringify({
               missionId: currentMissionId,
               soraReassessment: true,
               previousAnalysis: currentAssessment,
-              manualGroundMitigations: currentAssessment?.ground_risk_analysis?.mitigations_manual_override
-                ? currentAssessment.ground_risk_analysis.mitigations
-                : undefined,
-              manualAirRisk: currentAssessment?.air_risk_analysis?.arc_manual_override
+              manualGroundMitigations: groundOverridden ? ground.mitigations : undefined,
+              manualAirRisk: airOverridden
                 ? {
                     arc_manual_override: true,
-                    manual_density_rating: currentAssessment.air_risk_analysis.manual_density_rating ?? null,
-                    arc_a_atypical: currentAssessment.air_risk_analysis.arc_a_atypical === true,
-                    arc_reduction_justification: currentAssessment.air_risk_analysis.arc_reduction_justification ?? null,
+                    manual_density_rating: air.manual_density_rating ?? null,
+                    arc_a_atypical: air.arc_a_atypical === true,
+                    arc_reduction_justification: air.arc_reduction_justification ?? null,
+                    aec: air.aec ?? null,
+                    initial_arc: air.initial_arc ?? null,
+                    residual_arc: air.residual_arc ?? null,
+                    aec_declared_atypical: air.aec_declared_atypical === true,
                   }
                 : undefined,
+              manualOverrides,
 
               pilotComments: categoryComments,
               language: lang,

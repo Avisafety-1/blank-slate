@@ -572,7 +572,7 @@ serve(async (req) => {
       });
     }
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -651,7 +651,7 @@ serve(async (req) => {
       console.log('[ai-risk-assessment/SORA] Running SORA re-assessment with pilot comments, language:', soraLang);
 
       const soraSystemPrompt = buildSoraReassessSystemPrompt(soraLang);
-      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments);
+      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null);
 
 
       const soraAiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -721,16 +721,42 @@ serve(async (req) => {
           const m = v.toLowerCase().match(/[abcd]/);
           return m ? m[0] : null;
         };
+        const mo = (manualOverrides as any) ?? null;
         const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
-        const manualFgrc = manualGround?.mitigations_manual_override ? parseFgrc(manualGround.fgrc) : null;
+        const groundOverridden = manualGround?.mitigations_manual_override === true || mo?.ground_manual_override === true;
+        const manualFgrc = groundOverridden ? (parseFgrc(manualGround?.fgrc) ?? parseFgrc(mo?.fgrc)) : null;
         const fgrcRaw = manualFgrc ?? parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
         if (manualFgrc !== null) {
           soraAnalysis.fgrc = manualFgrc;
-          soraAnalysis.igrc = manualGround?.igrc ?? soraAnalysis.igrc;
+          soraAnalysis.igrc = manualGround?.igrc ?? mo?.igrc ?? soraAnalysis.igrc;
         }
-        const manualArcResidual = (manualAirRisk as any)?.arc_manual_override
-          ? parseArc((manualAirRisk as any)?.residual_arc)
-          : null;
+        const manualAir = (manualAirRisk as any)
+          ?? (mo?.air_manual_override === true
+            ? {
+                arc_manual_override: true,
+                arc_a_atypical: mo?.arc_a_atypical === true,
+                manual_density_rating: mo?.manual_density_rating ?? null,
+                aec: mo?.aec ?? null,
+                residual_arc: mo?.residual_arc ?? null,
+              }
+            : null);
+        // Manual ARC: use the explicit residual ARC when sent, otherwise re-derive it
+        // from the operator's declaration (atypical) or Annex C table 2 density rating.
+        let manualArcResidual: string | null = null;
+        if (manualAir?.arc_manual_override === true) {
+          manualArcResidual = parseArc(manualAir.residual_arc);
+          if (!manualArcResidual && manualAir.arc_a_atypical === true) manualArcResidual = 'a';
+          if (!manualArcResidual && manualAir.manual_density_rating != null) {
+            const aecNum = parseFgrc(manualAir.aec ?? (previousAnalysis as any)?.air_risk_analysis?.aec);
+            if (aecNum !== null) {
+              manualArcResidual = parseArc(residualArcForDensity(aecNum, manualAir.manual_density_rating));
+            }
+          }
+          if (!manualArcResidual) {
+            manualArcResidual = parseArc((previousAnalysis as any)?.air_risk_analysis?.residual_arc)
+              ?? parseArc((previousAnalysis as any)?.air_risk_analysis?.initial_arc);
+          }
+        }
         const arc = manualArcResidual ?? parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
         if (manualArcResidual) {
           soraAnalysis.arc_residual = `ARC-${manualArcResidual}`;

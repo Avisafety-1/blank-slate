@@ -1584,9 +1584,35 @@ export const buildSoraReassessUserPrompt = (
   language: unknown,
   previousAnalysis: unknown,
   pilotComments: unknown,
+  manualOverrides?: unknown,
 ): string => {
   const lang = normalizeLang(language);
   const { ackOnly, substantive } = classifyComments(pilotComments);
+  const mo = manualOverrides && typeof manualOverrides === 'object' ? manualOverrides as Record<string, unknown> : null;
+  const overrideBlockEn = mo
+    ? `
+
+### Operator manual overrides (BINDING — these values are already decided and MUST be used exactly)
+${JSON.stringify(mo, null, 2)}
+
+Rules for these overrides:
+- Use the given fGRC, residual ARC and SAIL as-is. Do NOT recompute, question or contradict them, and do not describe a different fGRC/ARC/SAIL anywhere in the narrative.
+- Only the mitigations marked as applied (with their robustness level) count as ground mitigations; describe the others as not applied.
+- If an atypical/segregated airspace declaration (AEC 12 / ARC-a) is present, treat it as an operator declaration requiring documentation and authority acceptance, not as a table reduction.
+- Derive containment, OSO requirements and recommendations from the overridden SAIL.`
+    : '';
+  const overrideBlockNo = mo
+    ? `
+
+### Manuelle overstyringer fra operatør (BINDENDE — disse verdiene er allerede bestemt og SKAL brukes eksakt)
+${JSON.stringify(mo, null, 2)}
+
+Regler for disse overstyringene:
+- Bruk oppgitt fGRC, residual ARC og SAIL som de er. IKKE beregn på nytt, betvil eller motsi dem, og ikke beskriv en annen fGRC/ARC/SAIL noe sted i teksten.
+- Kun mitigeringer merket som anvendt (med sitt robusthetsnivå) teller som bakkemitigeringer; de øvrige beskrives som ikke anvendt.
+- Hvis atypisk/segregert luftrom (AEC 12 / ARC-a) er erklært, skal det behandles som en operatørerklæring som krever dokumentasjon og aksept fra myndighet, ikke som en tabellreduksjon.
+- Utled containment, OSO-krav og anbefalinger fra den overstyrte SAIL-en.`
+    : '';
   if (lang === 'en') {
     return `CRITICAL: Respond ENTIRELY in English. Translate any Norwegian terms found in the input below.
 
@@ -1606,6 +1632,8 @@ For every category in the acknowledgement-only list, you MUST keep the original 
 
 IMPORTANT: Consider the pilot's comments carefully ONLY for the substantive categories. They may contain mitigations that reduce fGRC and/or ARC further. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix. Never introduce a drone model, equipment, crew member, training event, or operational fact that is not explicitly present in the initial assessment or a substantive comment.
 
+${overrideBlockEn}
+
 Analyze the data and produce a complete SORA assessment with SAIL lookup, containment requirements and OSO table. All output fields must be in English.`;
   }
   return `Generer en SORA-analyse basert på følgende data:
@@ -1623,6 +1651,8 @@ ${JSON.stringify(pilotComments, null, 2)}
 For hver kategori i bekreftelseslisten SKAL du beholde opprinnelig vurderings score, hard stops og bekymringer uendret. Ikke finn på observatører, trening, utstyr, droner, NOTAM, klareringer eller andre fakta for å bortforklare dem.
 
 VIKTIG: Vurder brukerens kommentarer nøye KUN for de substansielle kategoriene. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen. Du skal aldri introdusere en dronemodell, utstyr, mannskap, treningshendelse eller operativt faktum som ikke eksplisitt er til stede i den opprinnelige vurderingen eller en substansiell kommentar.
+
+${overrideBlockNo}
 
 Analyser dataene og produser en komplett SORA-vurdering med SAIL-oppslag, containment-krav og OSO-tabell. Alle felter skal være på norsk.`;
 };
