@@ -13,13 +13,13 @@ interface PreliminaryConclusionProps {
 type Tone = "green" | "lime" | "yellow" | "orange" | "pink" | "red" | "neutral";
 
 const TONE_STYLES: Record<Tone, string> = {
-  green: "bg-emerald-500/12 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
-  lime: "bg-lime-500/12 border-lime-500/40 text-lime-700 dark:text-lime-300",
-  yellow: "bg-yellow-400/15 border-yellow-500/40 text-yellow-700 dark:text-yellow-300",
-  orange: "bg-orange-500/12 border-orange-500/40 text-orange-700 dark:text-orange-300",
-  pink: "bg-pink-500/12 border-pink-500/40 text-pink-700 dark:text-pink-300",
-  red: "bg-red-500/12 border-red-500/40 text-red-700 dark:text-red-300",
-  neutral: "bg-muted/50 border-border text-muted-foreground",
+  green: "bg-emerald-500 border-emerald-600 text-black dark:bg-emerald-400 dark:border-emerald-300 dark:text-black",
+  lime: "bg-lime-400 border-lime-500 text-black dark:bg-lime-300 dark:border-lime-400 dark:text-black",
+  yellow: "bg-yellow-400 border-yellow-500 text-black dark:bg-yellow-300 dark:border-yellow-400 dark:text-black",
+  orange: "bg-orange-500 border-orange-600 text-white dark:bg-orange-500 dark:border-orange-400 dark:text-white",
+  pink: "bg-pink-500 border-pink-600 text-white dark:bg-pink-500 dark:border-pink-400 dark:text-white",
+  red: "bg-red-500 border-red-600 text-white dark:bg-red-500 dark:border-red-400 dark:text-white",
+  neutral: "bg-muted border-border text-foreground",
 };
 
 const arcTone = (arc: string | null): Tone => {
