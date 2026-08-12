@@ -74,29 +74,24 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
 
   const declaredAtypical = data.arc_a_atypical === true;
   const rawAecNum = parseAecNumber(data.aec);
-  const rawRow = getAecRow(rawAecNum);
+  
   const storedInitialArc = normalizeArc(data.initial_arc);
 
   /**
    * AEC 12 (atypical/segregated) can never be derived by the system — it must be
-   * declared by the operator. AEC 11 is >FL600. If a stored/AI analysis claims either
-   * without a declaration, or its AEC does not match the stored iARC, the AEC is
-   * inconsistent and must not be presented as authoritative.
+   * declared by the operator. Anything outside AEC 1-12 is not a valid Annex C row.
+   * A stored iARC that differs from the table is NOT an inconsistency in itself — the
+   * table value simply takes precedence (a legal reduction only affects residual ARC).
    */
   const aecInconsistent =
-    !declaredAtypical &&
-    rawAecNum != null &&
-    (rawAecNum === 12 || (rawRow != null && storedInitialArc != null && rawRow.arc !== storedInitialArc));
+    !declaredAtypical && (rawAecNum === 12 || (data.aec != null && rawAecNum == null));
 
   const effectiveAec = declaredAtypical ? 12 : aecInconsistent ? null : rawAecNum;
   const aecRow = getAecRow(effectiveAec);
-  // When the stored AEC is inconsistent we cannot trust its iARC either — fall back to the
-  // ARC actually in effect (residual) so the header and the iARC line never contradict.
+  // iARC always reflects the initial ARC from Annex C Table 1 (or the operator declaration).
   const initialArc = declaredAtypical
     ? 'ARC-a'
-    : aecInconsistent
-      ? (normalizeArc(data.residual_arc) ?? storedInitialArc ?? data.initial_arc)
-      : (aecRow?.arc ?? storedInitialArc ?? data.initial_arc);
+    : (aecRow?.arc ?? storedInitialArc ?? data.initial_arc);
   const densityChoices = densityOptions(effectiveAec);
   const hasReductionOptions = densityChoices.some((d) => d.residualArc);
   const arcChanged = normalizeArc(initialArc) !== normalizeArc(data.residual_arc);
