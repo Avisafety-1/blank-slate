@@ -12,8 +12,10 @@ export const fgrcRow = (fgrc: number): string =>
   fgrc <= 2 ? "≤2" : String(Math.min(Math.round(fgrc), 7));
 
 export const arcColumn = (arc?: string | null): string | null => {
-  const match = String(arc ?? "").toLowerCase().match(/[abcd]/);
-  return match ? match[0] : null;
+  const s = String(arc ?? "").toLowerCase();
+  // Match the level letter after "arc" (e.g. "arc-c"), never the "a" in "arc".
+  const match = s.match(/arc[\s_-]*([abcd])/) ?? s.match(/^\s*([abcd])\s*$/);
+  return match ? match[1] : null;
 };
 
 /** Derive SAIL (I-VI) from a numeric fGRC and an ARC string (e.g. "ARC-b"). */
