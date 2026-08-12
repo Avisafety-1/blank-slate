@@ -2506,13 +2506,20 @@ serve(async (req) => {
       const urban = deterministicPopulationDensityValue >= 500;
       const airportEnvironment = sum.inside_5km_zone === true || sum.inside_small_airfield_5km_zone === true;
 
+      // Atypical/segregated airspace (AEC 12) is NOT something the system can detect —
+      // it must be explicitly declared and documented by the operator (Annex G 3.20(d)).
+      const declaredAtypical = (manualAirRisk as any)?.arc_a_atypical === true;
+
       const aecRow = deriveAec({
         flightHeightM,
         insideControlledAirspace: sum.inside_controlled_airspace === true,
         airportEnvironment,
         airportAirspaceClass: sum.inside_controlled_airspace === true ? 'D' : 'G',
         urban,
+        atypicalSegregated: declaredAtypical,
       });
+
+
 
       const air = { ...(aiAnalysis.air_risk_analysis || {}) };
       air.aec = `AEC ${aecRow.aec}`;
