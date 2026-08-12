@@ -33,6 +33,11 @@ interface AirRiskAnalysis {
   manual_density_rating?: number | null;
   arc_a_atypical?: boolean;
   arc_reduction_justification?: string | null;
+  aec_declared_atypical?: boolean;
+  /** Snapshot of the system-derived values before an atypical/segregated declaration */
+  aec_base?: string | null;
+  aec_environment_base?: string | null;
+  initial_arc_base?: string | null;
 }
 
 interface AirRiskAnalysisSectionProps {
