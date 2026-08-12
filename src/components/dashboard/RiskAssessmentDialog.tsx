@@ -167,6 +167,15 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               manualGroundMitigations: currentAssessment?.ground_risk_analysis?.mitigations_manual_override
                 ? currentAssessment.ground_risk_analysis.mitigations
                 : undefined,
+              manualAirRisk: currentAssessment?.air_risk_analysis?.arc_manual_override
+                ? {
+                    arc_manual_override: true,
+                    manual_density_rating: currentAssessment.air_risk_analysis.manual_density_rating ?? null,
+                    arc_a_atypical: currentAssessment.air_risk_analysis.arc_a_atypical === true,
+                    arc_reduction_justification: currentAssessment.air_risk_analysis.arc_reduction_justification ?? null,
+                  }
+                : undefined,
+
               pilotComments: categoryComments,
               language: lang,
             });
