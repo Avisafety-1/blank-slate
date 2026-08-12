@@ -246,45 +246,50 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t('riskAssessment.air.manualReductionTitle', 'Manuell ARC-reduksjon (Annex C, tabell 2)')}
               </p>
-              <p className="text-[11px] text-muted-foreground">
-                {t('riskAssessment.air.manualReductionHelp', 'Velg hvilken lokal lufttrafikktetthet du kan dokumentere. Referansemiljøet er alltid AEC 10 (<500 ft AGL over landlig område). Kun nivåer som SORA-tabellen tillater for denne AEC-en kan velges.')}
-              </p>
 
-              {hasReductionOptions ? (
-                <div className="flex items-center gap-1 flex-wrap">
-                  {densityChoices.map(({ density, residualArc }) => {
-                    const disabled = !residualArc || data.arc_a_atypical === true;
-                    const selected = data.manual_density_rating === density && !data.arc_a_atypical;
-                    return (
-                      <button
-                        key={density}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => selectDensity(density)}
-                        className={cn(
-                          "px-2 py-0.5 rounded border text-[10px] font-medium transition-colors",
-                          selected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background text-muted-foreground border-border hover:bg-muted",
-                          disabled && "opacity-40 cursor-not-allowed hover:bg-background",
-                        )}
-                      >
-                        {t('riskAssessment.air.density', 'Tetthet')} {density}{' '}
-                        <span className="opacity-70">{residualArc ? `→ ${residualArc}` : 'N/A'}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground flex items-start gap-1">
-                  <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                  {t('riskAssessment.air.noTableReduction', 'Denne AEC-en kan ikke reduseres via tabell 2. Reduksjon er kun mulig til ARC-a via atypisk/segregert luftrom.')}
-                </p>
+              {!declaredAtypical && (
+                <>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('riskAssessment.air.manualReductionHelp', 'Velg hvilken lokal lufttrafikktetthet du kan dokumentere. Referansemiljøet er alltid AEC 10 (<500 ft AGL over landlig område). Kun nivåer som SORA-tabellen tillater for denne AEC-en kan velges.')}
+                  </p>
+
+                  {hasReductionOptions ? (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {densityChoices.map(({ density, residualArc }) => {
+                        const disabled = !residualArc;
+                        const selected = data.manual_density_rating === density;
+                        return (
+                          <button
+                            key={density}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => selectDensity(density)}
+                            className={cn(
+                              "px-2 py-0.5 rounded border text-[10px] font-medium transition-colors",
+                              selected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground border-border hover:bg-muted",
+                              disabled && "opacity-40 cursor-not-allowed hover:bg-background",
+                            )}
+                          >
+                            {t('riskAssessment.air.density', 'Tetthet')} {density}{' '}
+                            <span className="opacity-70">{residualArc ? `→ ${residualArc}` : 'N/A'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground flex items-start gap-1">
+                      <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      {t('riskAssessment.air.noTableReduction', 'Denne AEC-en kan ikke reduseres via tabell 2. Reduksjon er kun mulig til ARC-a via atypisk/segregert luftrom.')}
+                    </p>
+                  )}
+                </>
               )}
 
               <div className="flex items-start gap-2 pt-1">
                 <Switch
-                  checked={data.arc_a_atypical === true}
+                  checked={declaredAtypical}
                   onCheckedChange={(checked) =>
                     applyChange({ arc_a_atypical: checked, manual_density_rating: checked ? null : data.manual_density_rating })
                   }
@@ -292,9 +297,9 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
                   aria-label={t('riskAssessment.air.atypicalLabel', 'Atypisk/segregert luftrom (ARC-a)')}
                 />
                 <div className="min-w-0">
-                  <span className="text-xs font-medium">{t('riskAssessment.air.atypicalLabel', 'Atypisk/segregert luftrom (ARC-a)')}</span>
+                  <span className="text-xs font-medium">{t('riskAssessment.air.atypicalDeclareLabel', 'Erklær atypisk/segregert luftrom (AEC 12 → ARC-a)')}</span>
                   <p className="text-[11px] text-muted-foreground">
-                    {t('riskAssessment.air.atypicalHelp', 'Krever at alle krav til atypisk/segregert luftrom i Annex G, seksjon 3.20(d) er oppfylt og dokumentert.')}
+                    {t('riskAssessment.air.atypicalDeclareHelp', 'Dette er en erklæring, ikke en tabellreduksjon: AEC settes til 12 og initiell ARC blir ARC-a. Krever at alle krav i Annex G, seksjon 3.20(d) er oppfylt og dokumentert.')}
                   </p>
                 </div>
               </div>
