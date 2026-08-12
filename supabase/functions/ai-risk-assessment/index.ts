@@ -721,22 +721,25 @@ serve(async (req) => {
           const m = v.toLowerCase().match(/[abcd]/);
           return m ? m[0] : null;
         };
+        const mo = (manualOverrides as any) ?? null;
         const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
-        const manualFgrc = manualGround?.mitigations_manual_override ? parseFgrc(manualGround.fgrc) : null;
+        const groundOverridden = manualGround?.mitigations_manual_override === true || mo?.ground_manual_override === true;
+        const manualFgrc = groundOverridden ? (parseFgrc(manualGround?.fgrc) ?? parseFgrc(mo?.fgrc)) : null;
         const fgrcRaw = manualFgrc ?? parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
         if (manualFgrc !== null) {
           soraAnalysis.fgrc = manualFgrc;
-          soraAnalysis.igrc = manualGround?.igrc ?? soraAnalysis.igrc;
+          soraAnalysis.igrc = manualGround?.igrc ?? mo?.igrc ?? soraAnalysis.igrc;
         }
-        const manualAir = (manualAirRisk as any) ?? (manualOverrides as any)?.air_manual_override
-          ? ((manualAirRisk as any) ?? {
-              arc_manual_override: (manualOverrides as any)?.air_manual_override === true,
-              arc_a_atypical: (manualOverrides as any)?.arc_a_atypical === true,
-              manual_density_rating: (manualOverrides as any)?.manual_density_rating ?? null,
-              aec: (manualOverrides as any)?.aec ?? null,
-              residual_arc: (manualOverrides as any)?.residual_arc ?? null,
-            })
-          : null;
+        const manualAir = (manualAirRisk as any)
+          ?? (mo?.air_manual_override === true
+            ? {
+                arc_manual_override: true,
+                arc_a_atypical: mo?.arc_a_atypical === true,
+                manual_density_rating: mo?.manual_density_rating ?? null,
+                aec: mo?.aec ?? null,
+                residual_arc: mo?.residual_arc ?? null,
+              }
+            : null);
         // Manual ARC: use the explicit residual ARC when sent, otherwise re-derive it
         // from the operator's declaration (atypical) or Annex C table 2 density rating.
         let manualArcResidual: string | null = null;
