@@ -429,6 +429,23 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
+  const handleAirRiskChange = async (updated: any) => {
+    setCurrentAssessment((prev: any) => (prev ? { ...prev, air_risk_analysis: updated } : prev));
+    if (!currentAssessmentId) return;
+    try {
+      const nextAnalysis = { ...(currentAssessment || {}), air_risk_analysis: updated };
+      const { error } = await supabase
+        .from('mission_risk_assessments')
+        .update({ ai_analysis: nextAnalysis })
+        .eq('id', currentAssessmentId);
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving manual ARC:', error);
+      toast.error(t('riskAssessment.air.saveError', 'Kunne ikke lagre ARC-valg'));
+    }
+  };
+
+
   const loadPreviousAssessments = async () => {
     if (!currentMissionId) return;
     setLoadingHistory(true);
