@@ -913,11 +913,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, skipWeatherEvaluation: v }))}
                       />
                     </div>
+
+                    <div className="flex items-center justify-between">
+                      <Label>{t('riskAssessment.atypicalSegregated', 'Segregert/atypisk luftrom (NOTAM-området)')}</Label>
+                      <Switch
+                        checked={atypicalSegregated}
+                        onCheckedChange={(v) => setAtypicalSegregated(v)}
+                      />
+                    </div>
                   </div>
 
                   <AutoMitigationsPreview
                     observerCount={pilotInputs.observerCount}
                     assignedEquipment={missionEquipment}
+                    atypicalSegregated={atypicalSegregated}
                   />
 
                   <Button 
