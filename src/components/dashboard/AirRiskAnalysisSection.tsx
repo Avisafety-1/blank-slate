@@ -72,7 +72,7 @@ export const AirRiskAnalysisSection = ({ data, editable, onChange }: AirRiskAnal
 
   if (!data || (!data.aec && !data.initial_arc)) return null;
 
-  const declaredAtypical = data.arc_a_atypical === true;
+  const declaredAtypical = data.arc_a_atypical === true || data.aec_declared_atypical === true;
   const rawAecNum = parseAecNumber(data.aec);
   
   const storedInitialArc = normalizeArc(data.initial_arc);
