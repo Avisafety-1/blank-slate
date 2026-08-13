@@ -2850,8 +2850,12 @@
         "m1cNone": "Add at least one observer to receive an automatic reduction.",
         "m2Equipment": "Based on documented equipment: {{equipment}}.",
         "m2None": "No parachute, MoC 2512 or DVR documentation found on linked equipment."
-      }
-    }
+      },
+      "airRiskLabel": "Air risk: Atypical/segregated airspace",
+      "airRiskReason": "NOTAM area marked as segregated/atypical airspace — initial ARC is set to ARC-a.",
+      "airRiskNotApplied": "Enable the toggle above if the mission should be treated as segregated/atypical airspace."
+    },
+    "atypicalSegregated": "Segregated/atypical airspace (NOTAM area)"
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",
