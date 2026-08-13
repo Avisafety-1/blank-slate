@@ -51,7 +51,6 @@ const Oppdrag = () => {
   const [deletingMission, setDeletingMission] = useState<Mission | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
-  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskAssessmentMission, setRiskAssessmentMission] = useState<Mission | null>(null);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
@@ -436,18 +435,6 @@ const Oppdrag = () => {
     setRiskDialogOpen(true);
   };
 
-  const handleSelectAI = () => {
-    setRiskTypeDialogOpen(false);
-    setRiskDialogInitialTab('input');
-    setRiskDialogOpen(true);
-  };
-
-  const handleSelectManualSORA = () => {
-    setRiskTypeDialogOpen(false);
-    setRiskDialogInitialTab('manual-sora');
-    setRiskDialogOpen(true);
-  };
-
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
     setPdfSections(DEFAULT_PDF_SECTIONS);
@@ -655,10 +642,6 @@ const Oppdrag = () => {
           documentDialogOpen={documentDialogOpen}
           setDocumentDialogOpen={setDocumentDialogOpen}
           selectedDocument={selectedDocument}
-          riskTypeDialogOpen={riskTypeDialogOpen}
-          setRiskTypeDialogOpen={setRiskTypeDialogOpen}
-          onSelectAI={handleSelectAI}
-          onSelectManualSORA={handleSelectManualSORA}
           riskDialogInitialTab={riskDialogInitialTab}
           riskDialogOpen={riskDialogOpen}
           setRiskDialogOpen={setRiskDialogOpen}
