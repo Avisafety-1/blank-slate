@@ -192,7 +192,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={() => setRiskTypeDialogOpen(true)}
+              onClick={() => {
+                setRiskDialogInitialTab('input');
+                setRiskDialogOpen(true);
+              }}
               className="w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
