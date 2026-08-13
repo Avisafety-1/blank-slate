@@ -2852,8 +2852,12 @@
         "m1cNone": "Legg til minst én observatør for å få automatisk reduksjon.",
         "m2Equipment": "Basert på dokumentert utstyr: {{equipment}}.",
         "m2None": "Ingen fallskjerm, MoC 2512 eller DVR-dokumentasjon funnet på tilknyttet utstyr."
-      }
-    }
+      },
+      "airRiskLabel": "Luftrisiko: Atypisk/segregert luftrom",
+      "airRiskReason": "NOTAM-området er markert som segregert/atypisk luftrom — initiell ARC settes til ARC-a.",
+      "airRiskNotApplied": "Slå på bryteren over hvis oppdraget skal behandles som segregert/atypisk luftrom."
+    },
+    "atypicalSegregated": "Segregert/atypisk luftrom (NOTAM-området)"
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",

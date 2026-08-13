@@ -122,6 +122,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     backupLandingAvailable: true,
     skipWeatherEvaluation: false,
   });
+  const [atypicalSegregated, setAtypicalSegregated] = useState(false);
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
@@ -303,6 +304,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       operationType: type === 'Annet' ? 'other' : type,
     }));
   }, [soraMissionDetails?.oppdragstype]);
+
+  // Auto-enable atypical/segregated airspace when the mission has NOTAM text
+  useEffect(() => {
+    const notamText = (soraMissionDetails as any)?.notam_text;
+    if (notamText && String(notamText).trim().length > 0) {
+      setAtypicalSegregated(true);
+    }
+  }, [(soraMissionDetails as any)?.notam_text]);
 
   const fetchMissions = async () => {
     setLoadingMissions(true);
@@ -594,6 +603,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               droneId,
               pilotComments: categoryComments,
               language: lang,
+              manualAirRisk: atypicalSegregated ? { arc_a_atypical: true } : undefined,
             });
           })(),
         }
@@ -904,11 +914,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         onCheckedChange={(v) => setPilotInputs(prev => ({ ...prev, skipWeatherEvaluation: v }))}
                       />
                     </div>
+
+                    <div className="flex items-center justify-between">
+                      <Label>{t('riskAssessment.atypicalSegregated', 'Segregert/atypisk luftrom (NOTAM-området)')}</Label>
+                      <Switch
+                        checked={atypicalSegregated}
+                        onCheckedChange={(v) => setAtypicalSegregated(v)}
+                      />
+                    </div>
                   </div>
 
                   <AutoMitigationsPreview
                     observerCount={pilotInputs.observerCount}
                     assignedEquipment={missionEquipment}
+                    atypicalSegregated={atypicalSegregated}
                   />
 
                   <Button 

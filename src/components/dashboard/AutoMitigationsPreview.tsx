@@ -9,9 +9,10 @@ import { computeAutoMitigations, totalAutoReduction } from "@/lib/soraAutoMitiga
 interface AutoMitigationsPreviewProps {
   observerCount: number;
   assignedEquipment?: Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>;
+  atypicalSegregated?: boolean;
 }
 
-export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [] }: AutoMitigationsPreviewProps) => {
+export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], atypicalSegregated = false }: AutoMitigationsPreviewProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const mitigations = computeAutoMitigations({ observerCount, assignedEquipment });
@@ -44,6 +45,41 @@ export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [] }
           {t('riskAssessment.autoMitigations.description', 'Disse reduksjonene krediteres automatisk i den ferdige risikovurderingen. Du kan overstyre dem manuelt i resultatet.')}
         </p>
         <div className="border-t divide-y">
+          {atypicalSegregated ? (
+            <div className="p-3 flex items-start gap-3">
+              <ShieldCheck className="w-4 h-4 mt-0.5 text-green-600 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {t('riskAssessment.autoMitigations.airRiskLabel', 'Luftrisiko: Atypisk/segregert luftrom')}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-700">
+                    ARC-a
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('riskAssessment.autoMitigations.airRiskReason', 'NOTAM-området er markert som segregert/atypisk luftrom — initiell ARC settes til ARC-a.')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 flex items-start gap-3">
+              <CircleSlash className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {t('riskAssessment.autoMitigations.airRiskLabel', 'Luftrisiko: Atypisk/segregert luftrom')}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    {t('riskAssessment.autoMitigations.notCredited', 'Ikke kreditert')}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('riskAssessment.autoMitigations.airRiskNotApplied', 'Slå på bryteren over hvis oppdraget skal behandles som segregert/atypisk luftrom.')}
+                </p>
+              </div>
+            </div>
+          )}
           {mitigations.map((m) => (
             <div key={m.key} className="p-3 flex items-start gap-3">
               {m.applicable ? (
