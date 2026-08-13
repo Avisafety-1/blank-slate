@@ -897,10 +897,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                   {/* Weather Options */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t('riskAssessment.weatherOptions', 'Væralternativer')}
-                    </h3>
-
                     <div className="flex items-center justify-between">
                       <Label>{t('riskAssessment.skipWeather', 'Ikke vurder vær')}</Label>
                       <Switch
