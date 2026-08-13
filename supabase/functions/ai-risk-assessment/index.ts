@@ -2635,12 +2635,12 @@ serve(async (req) => {
 
       // Manual ARC override from the user (Annex C Table 2) wins over AI output.
       const manual = manualAirRisk ?? null;
-      if (manual && (manual.arc_manual_override === true)) {
+      if (manual && (manual.arc_manual_override === true || declaredAtypical)) {
         const density = manual.manual_density_rating ?? null;
-        const atypical = manual.arc_a_atypical === true;
+        const atypical = declaredAtypical || manual.arc_a_atypical === true;
         const reduced = atypical ? 'ARC-a' : residualArcForDensity(aecRow.aec, density);
         air.arc_manual_override = true;
-        air.manual_density_rating = density;
+        air.manual_density_rating = atypical ? null : density;
         air.arc_a_atypical = atypical;
         air.arc_reduction_justification = manual.arc_reduction_justification ?? null;
         air.residual_arc = reduced ?? aecRow.arc;
