@@ -603,6 +603,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
               droneId,
               pilotComments: categoryComments,
               language: lang,
+              manualAirRisk: atypicalSegregated ? { arc_a_atypical: true } : undefined,
             });
           })(),
         }
