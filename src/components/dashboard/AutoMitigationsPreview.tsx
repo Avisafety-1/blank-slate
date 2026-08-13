@@ -12,7 +12,7 @@ interface AutoMitigationsPreviewProps {
   atypicalSegregated?: boolean;
 }
 
-export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [] }: AutoMitigationsPreviewProps) => {
+export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], atypicalSegregated = false }: AutoMitigationsPreviewProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const mitigations = computeAutoMitigations({ observerCount, assignedEquipment });
