@@ -85,6 +85,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
   const [loadingMissions, setLoadingMissions] = useState(false);
+  const [missionEquipment, setMissionEquipment] = useState<Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>>([]);
 
   // Manual SORA states
   const [soraFormData, setSoraFormData] = useState({
