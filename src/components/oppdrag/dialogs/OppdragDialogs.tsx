@@ -5,7 +5,6 @@ import { AddMissionDialog, RouteData } from "@/components/dashboard/AddMissionDi
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
 
 import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialog";
-import { RiskAssessmentTypeDialog } from "@/components/dashboard/RiskAssessmentTypeDialog";
 import { RiskAssessmentDialog } from "@/components/dashboard/RiskAssessmentDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
@@ -70,10 +69,6 @@ export interface OppdragDialogsProps {
   selectedDocument: any;
 
   // Risk type
-  riskTypeDialogOpen: boolean;
-  setRiskTypeDialogOpen: (open: boolean) => void;
-  onSelectAI: () => void;
-  onSelectManualSORA: () => void;
   riskDialogInitialTab: 'input' | 'result' | 'history' | 'sora' | 'manual-sora';
 
   // Risk assessment
@@ -224,14 +219,6 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
           if (daysUntil <= (props.selectedDocument.varsel_dager_for_utløp || 30)) return t("oppdragDialogs.statusYellow");
           return t("oppdragDialogs.statusGreen");
         })()}
-      />
-
-      {/* Risk Assessment Type Dialog */}
-      <RiskAssessmentTypeDialog
-        open={props.riskTypeDialogOpen}
-        onOpenChange={props.setRiskTypeDialogOpen}
-        onSelectAI={props.onSelectAI}
-        onSelectManualSORA={props.onSelectManualSORA}
       />
 
       {/* AI Risk Assessment Dialog */}

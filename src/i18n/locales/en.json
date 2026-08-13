@@ -2825,6 +2825,32 @@
       "fgrcLabel": "fGRC",
       "sailLabel": "SAIL",
       "note": "Preliminary conclusion. The mitigations in the ground risk analysis can be changed manually, and SAIL updates automatically."
+    },
+    "autoMitigations": {
+      "title": "Mitigations that will be applied",
+      "description": "These reductions are credited automatically in the generated assessment. You can override them manually in the result.",
+      "notCredited": "Not credited",
+      "total": "Total automatic GRC reduction: {{total}}",
+      "labels": {
+        "m1a_sheltering": "M1(A) Sheltering",
+        "m1b_operational_restrictions": "M1(B) Operational restrictions",
+        "m1c_ground_observation": "M1(C) Ground observation",
+        "m2_impact_reduction": "M2 Impact reduction"
+      },
+      "robustness": {
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "reasons": {
+        "m1aNone": "Requires documentation that exposed people are protected by structures.",
+        "m1bNone": "Requires documented time/location restrictions reducing exposed people.",
+        "m1cObservers": "{{count}} observer(s) declared — automatically credited -1 (Low).",
+        "m1cNone": "Add at least one observer to receive an automatic reduction.",
+        "m2Equipment": "Based on documented equipment: {{equipment}}.",
+        "m2None": "No parachute, MoC 2512 or DVR documentation found on linked equipment."
+      }
     }
   },
   "riskAssessmentType": {

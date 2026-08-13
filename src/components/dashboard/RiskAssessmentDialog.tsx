@@ -31,6 +31,7 @@ import { nb } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { deriveSail } from "@/lib/soraSail";
+import { AutoMitigationsPreview } from "./AutoMitigationsPreview";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -85,6 +86,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
   const [loadingMissions, setLoadingMissions] = useState(false);
+  const [missionEquipment, setMissionEquipment] = useState<Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>>([]);
 
   // Manual SORA states
   const [soraFormData, setSoraFormData] = useState({
@@ -279,6 +281,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       fetchSoraMissionDetails();
     }
   }, [currentMissionId]);
+
+  // Assigned equipment (used for automatic M2 mitigation preview)
+  useEffect(() => {
+    if (!currentMissionId || !open) { setMissionEquipment([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('mission_equipment')
+        .select('equipment(navn, type, beskrivelse)')
+        .eq('mission_id', currentMissionId);
+      setMissionEquipment(((data || []) as any[]).map((r) => r.equipment).filter(Boolean));
+    })();
+  }, [currentMissionId, open]);
 
   // Auto-set operation type from mission's oppdragstype
   useEffect(() => {
@@ -895,6 +909,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       />
                     </div>
                   </div>
+
+                  <AutoMitigationsPreview
+                    observerCount={pilotInputs.observerCount}
+                    assignedEquipment={missionEquipment}
+                  />
 
                   <Button 
                     onClick={runAssessment} 

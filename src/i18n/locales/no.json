@@ -2827,6 +2827,32 @@
       "fgrcLabel": "fGRC",
       "sailLabel": "SAIL",
       "note": "Foreløpig konklusjon. Mitigeringene under bakkerisikoanalysen kan endres manuelt, og SAIL oppdateres automatisk."
+    },
+    "autoMitigations": {
+      "title": "Mitigeringer som blir tatt med",
+      "description": "Disse reduksjonene krediteres automatisk i den ferdige risikovurderingen. Du kan overstyre dem manuelt i resultatet.",
+      "notCredited": "Ikke kreditert",
+      "total": "Samlet automatisk GRC-reduksjon: {{total}}",
+      "labels": {
+        "m1a_sheltering": "M1(A) Skjerming",
+        "m1b_operational_restrictions": "M1(B) Operasjonelle begrensninger",
+        "m1c_ground_observation": "M1(C) Bakkeobservasjon",
+        "m2_impact_reduction": "M2 Redusert treffenergi"
+      },
+      "robustness": {
+        "none": "Ingen",
+        "low": "Lav",
+        "medium": "Medium",
+        "high": "Høy"
+      },
+      "reasons": {
+        "m1aNone": "Krever dokumentasjon på at eksponerte personer er beskyttet av strukturer.",
+        "m1bNone": "Krever dokumenterte tid-/stedbegrensninger som reduserer eksponerte personer.",
+        "m1cObservers": "{{count}} observatør(er) oppgitt — gir automatisk -1 (Lav).",
+        "m1cNone": "Legg til minst én observatør for å få automatisk reduksjon.",
+        "m2Equipment": "Basert på dokumentert utstyr: {{equipment}}.",
+        "m2None": "Ingen fallskjerm, MoC 2512 eller DVR-dokumentasjon funnet på tilknyttet utstyr."
+      }
     }
   },
   "riskAssessmentType": {

@@ -20,7 +20,6 @@ import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
-import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
@@ -62,7 +61,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const navigate = useNavigate();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const openMissionInMap = (missionId: string) => {
@@ -192,7 +190,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={() => setRiskTypeDialogOpen(true)}
+              onClick={() => {
+                setRiskDialogInitialTab('input');
+                setRiskDialogOpen(true);
+              }}
               className="w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4 mr-2" />
@@ -571,20 +572,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       mission={currentMission}
     />
 
-    <RiskAssessmentTypeDialog
-      open={riskTypeDialogOpen}
-      onOpenChange={setRiskTypeDialogOpen}
-      onSelectAI={() => {
-        setRiskTypeDialogOpen(false);
-        setRiskDialogInitialTab('input');
-        setRiskDialogOpen(true);
-      }}
-      onSelectManualSORA={() => {
-        setRiskTypeDialogOpen(false);
-        setRiskDialogInitialTab('manual-sora');
-        setRiskDialogOpen(true);
-      }}
-    />
 
     <RiskAssessmentDialog
       open={riskDialogOpen}

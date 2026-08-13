@@ -169,6 +169,7 @@ const buildDeterministicGroundRisk = ({
   populationDensityAverage,
   populationData,
   assignedEquipment,
+  observerCount = 0,
   lang = 'no',
   manualMitigations = null,
 }: {
@@ -179,6 +180,7 @@ const buildDeterministicGroundRisk = ({
   populationDensityAverage: number | null;
   populationData: any | null;
   assignedEquipment: any[];
+  observerCount?: number;
   lang?: Lang;
   manualMitigations?: Record<string, { applicable?: boolean; robustness?: string | null }> | null;
 }) => {
@@ -217,6 +219,9 @@ const buildDeterministicGroundRisk = ({
     return 'None';
   };
 
+  const observers = Number.isFinite(Number(observerCount)) ? Math.max(0, Math.trunc(Number(observerCount))) : 0;
+  const m1cAutoReduction = observers > 0 ? -1 : 0;
+
   const manualEntries = manualMitigations && typeof manualMitigations === 'object' ? manualMitigations : null;
   const manualReduction = (key: string): number | null => {
     if (!manualEntries) return null;
@@ -229,7 +234,7 @@ const buildDeterministicGroundRisk = ({
   const effective = {
     m1a_sheltering: manualReduction('m1a_sheltering') ?? 0,
     m1b_operational_restrictions: manualReduction('m1b_operational_restrictions') ?? 0,
-    m1c_ground_observation: manualReduction('m1c_ground_observation') ?? 0,
+    m1c_ground_observation: manualReduction('m1c_ground_observation') ?? m1cAutoReduction,
     m2_impact_reduction: manualReduction('m2_impact_reduction') ?? m2Reduction,
   };
   const totalReduction = Object.values(effective).reduce((sum, r) => sum + r, 0);
@@ -266,7 +271,11 @@ const buildDeterministicGroundRisk = ({
   const m1bReason = en
     ? 'Not automatically credited. Time/location restrictions must document approx. 90–99% reduction of exposed people.'
     : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.';
-  const m1cReason = en
+  const m1cReason = observers > 0
+    ? (en
+        ? `Automatically credited (Low): ${observers} declared ground observer(s) monitor the overflown area and can alter the flight pattern.`
+        : `Automatisk kreditert (Lav): ${observers} oppgitt(e) bakkeobservatør(er) overvåker overflyst område og kan endre flygemønster.`)
+    : en
     ? 'Not automatically credited. Standard VLOS, pilot or airspace observer does not provide fGRC reduction without explicitly documented ground-based observation of the overflown area and the ability to alter the flight pattern.'
     : 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.';
   const m2NoEvidence = en
@@ -333,7 +342,7 @@ const buildDeterministicGroundRisk = ({
     mitigations: {
       m1a_sheltering: buildEntry('m1a_sheltering', false, null, 0, m1aReason),
       m1b_operational_restrictions: buildEntry('m1b_operational_restrictions', false, null, 0, m1bReason),
-      m1c_ground_observation: buildEntry('m1c_ground_observation', false, null, 0, m1cReason),
+      m1c_ground_observation: buildEntry('m1c_ground_observation', m1cAutoReduction < 0, m1cAutoReduction < 0 ? 'Low' : null, m1cAutoReduction, m1cReason),
       m2_impact_reduction: buildEntry('m2_impact_reduction', m2Reduction < 0, m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, m2Reduction, m2WithEvidence),
     },
     fgrc_reasoning: fgrcReasoning,
@@ -2342,6 +2351,7 @@ serve(async (req) => {
       populationDensityAverage: deterministicPopulationDensityAverage,
       populationData,
       assignedEquipment,
+      observerCount: Number(pilotInputs?.observerCount ?? 0),
       lang: grLang,
       manualMitigations: manualGroundMitigations ?? null,
     });
