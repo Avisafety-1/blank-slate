@@ -48,7 +48,7 @@ export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [] }
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t(`riskAssessment.autoMitigations.reasons.${m.reasonKey}`, m.reasonParams as any)}
+                {t(`riskAssessment.autoMitigations.reasons.${m.reasonKey}`, { ...(m.reasonParams || {}) }) as string}
               </p>
             </div>
           </div>
