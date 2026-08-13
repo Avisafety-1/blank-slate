@@ -122,6 +122,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     backupLandingAvailable: true,
     skipWeatherEvaluation: false,
   });
+  const [atypicalSegregated, setAtypicalSegregated] = useState(false);
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
