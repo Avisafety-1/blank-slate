@@ -31,6 +31,7 @@ import { nb } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { deriveSail } from "@/lib/soraSail";
+import { AutoMitigationsPreview } from "./AutoMitigationsPreview";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -908,6 +909,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       />
                     </div>
                   </div>
+
+                  <AutoMitigationsPreview
+                    observerCount={pilotInputs.observerCount}
+                    assignedEquipment={missionEquipment}
+                  />
 
                   <Button 
                     onClick={runAssessment} 
