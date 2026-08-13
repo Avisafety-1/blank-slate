@@ -432,7 +432,8 @@ const Oppdrag = () => {
 
   const handleNewRiskAssessment = (mission: Mission) => {
     setRiskAssessmentMission(mission);
-    setRiskTypeDialogOpen(true);
+    setRiskDialogInitialTab('input');
+    setRiskDialogOpen(true);
   };
 
   const handleSelectAI = () => {
