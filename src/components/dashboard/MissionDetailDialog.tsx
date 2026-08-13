@@ -20,7 +20,6 @@ import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
 import { RiskAssessmentDialog } from "./RiskAssessmentDialog";
-import { RiskAssessmentTypeDialog } from "./RiskAssessmentTypeDialog";
 import { MissionStatusDropdown } from "./MissionStatusDropdown";
 import { FlightAnalysisDialog } from "./FlightAnalysisDialog";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
@@ -62,7 +61,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const navigate = useNavigate();
   const { companyId } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [riskTypeDialogOpen, setRiskTypeDialogOpen] = useState(false);
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDialogInitialTab, setRiskDialogInitialTab] = useState<'input' | 'result' | 'history' | 'sora' | 'manual-sora'>('input');
   const openMissionInMap = (missionId: string) => {
