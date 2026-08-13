@@ -6,7 +6,7 @@ Legge til en bryter i input-fanen på AI-risikovurderingen: "Segregert/atypisk l
 ## Slik fungerer det for brukeren
 - Ny bryter i input-fanen, plassert sammen med de andre operative valgene (over mitigerings-listen).
 - Hvis oppdraget har NOTAM (samme betingelse som NOTAM-badgen på oppdragskortet: oppdraget har NOTAM-tekst), er bryteren på som standard. Brukeren kan slå den av manuelt.
-- Hjelpetekst under bryteren: erklæringen krever at kravene i Annex G 3.20(d) er oppfylt og dokumentert.
+- Ingen hjelpetekst under bryteren: dette er en initial ARC-fastsettelse (ARC-a), ikke en reduksjon, så Annex G 3.20(d) kreves ikke her.
 - Mitigerings-listen ("Mitigeringer som blir tatt med") får en ekstra linje for luftrisiko som viser ARC-a når bryteren er på, ellers "Ikke kreditert".
 - Resultatet viser da ARC-a med begrunnelse "erklært atypisk/segregert luftrom (NOTAM-område)" — samme logikk som dagens manuelle erklæring i resultatvisningen.
 
