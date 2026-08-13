@@ -9,6 +9,7 @@ import { computeAutoMitigations, totalAutoReduction } from "@/lib/soraAutoMitiga
 interface AutoMitigationsPreviewProps {
   observerCount: number;
   assignedEquipment?: Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>;
+  atypicalSegregated?: boolean;
 }
 
 export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [] }: AutoMitigationsPreviewProps) => {
