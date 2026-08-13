@@ -280,6 +280,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   }, [currentMissionId]);
 
+  // Assigned equipment (used for automatic M2 mitigation preview)
+  useEffect(() => {
+    if (!currentMissionId || !open) { setMissionEquipment([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('mission_equipment')
+        .select('equipment(navn, type, beskrivelse)')
+        .eq('mission_id', currentMissionId);
+      setMissionEquipment(((data || []) as any[]).map((r) => r.equipment).filter(Boolean));
+    })();
+  }, [currentMissionId, open]);
+
   // Auto-set operation type from mission's oppdragstype
   useEffect(() => {
     const type = (soraMissionDetails as any)?.oppdragstype;
