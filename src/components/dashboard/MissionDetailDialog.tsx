@@ -574,20 +574,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       mission={currentMission}
     />
 
-    <RiskAssessmentTypeDialog
-      open={riskTypeDialogOpen}
-      onOpenChange={setRiskTypeDialogOpen}
-      onSelectAI={() => {
-        setRiskTypeDialogOpen(false);
-        setRiskDialogInitialTab('input');
-        setRiskDialogOpen(true);
-      }}
-      onSelectManualSORA={() => {
-        setRiskTypeDialogOpen(false);
-        setRiskDialogInitialTab('manual-sora');
-        setRiskDialogOpen(true);
-      }}
-    />
 
     <RiskAssessmentDialog
       open={riskDialogOpen}
