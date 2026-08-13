@@ -305,6 +305,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }));
   }, [soraMissionDetails?.oppdragstype]);
 
+  // Auto-enable atypical/segregated airspace when the mission has NOTAM text
+  useEffect(() => {
+    const notamText = (soraMissionDetails as any)?.notam_text;
+    if (notamText && String(notamText).trim().length > 0) {
+      setAtypicalSegregated(true);
+    }
+  }, [(soraMissionDetails as any)?.notam_text]);
+
   const fetchMissions = async () => {
     setLoadingMissions(true);
     try {
