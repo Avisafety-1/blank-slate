@@ -564,7 +564,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto px-2">
                 {drones
                   .filter((drone) => {
                     if (droneSearch) {
@@ -702,7 +702,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto px-2">
                 {equipmentTypeFilter !== "__dronetag__" && equipment
                   .filter((item) => {
                     if (equipmentSearch) {
@@ -898,7 +898,7 @@ const Resources = () => {
                 </Select>
               </div>
               
-              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[420px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto px-2">
                 {personnel
                   .filter((person) => {
                     if (personnelSearch) {
