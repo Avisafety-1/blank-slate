@@ -3082,7 +3082,7 @@
         "deleteFlight": "Slett",
         "deleteFlightTitle": "Slette flyturen?",
         "deleteFlightSummary": "Flytur {{date}} · {{minutes}} min · {{drone}} · Pilot: {{pilot}}",
-        "deleteFlightDescription": "Dette sletter også oppføringen i pilotens loggbok og i loggboken til dronen og tilknyttet utstyr, og trekker fra flytimene. Handlingen kan ikke angres.",
+        "deleteFlightDescription": "Dette sletter kun denne flyturen: pilotens loggbokoppføring for turen, eventuelle advarsler som denne flyturen la inn i loggboken til dronen og tilknyttet utstyr, og {{hours}} flytimer trekkes fra drone og utstyr. Andre flyturer, manuelle loggbokoppføringer og andres oppføringer berøres ikke. Handlingen kan ikke angres.",
         "confirmDeleteFlight": "Slett flytur",
         "deletingFlight": "Sletter...",
         "deleteFlightSuccess": "Flyturen og loggbokoppføringene er slettet",

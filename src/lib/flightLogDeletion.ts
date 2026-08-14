@@ -2,18 +2,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Deletes a flight log and everything derived from it:
- * - deletes the flight_logs row (junction tables cascade)
+ * - deletes the personnel logbook entries linked to the flight log
+ *   (must happen BEFORE the flight log is deleted: the FK is ON DELETE SET NULL,
+ *   so deleting the flight log first would orphan the entries)
+ * - deletes the flight_logs row (flight_log_equipment / _personnel / flight_events cascade)
+ * - deletes ONLY the warning entries this flight created in the drone/equipment logbooks
+ *   (matched on resource + exact entry_date + entry_type 'Advarsel' + same author)
  * - subtracts flight hours from drone + linked equipment (DB only has INSERT triggers)
- * - deletes personnel logbook entries linked to the flight log
- * - deletes drone/equipment logbook entries created for this flight
  *
  * Pilot flight hours are recomputed automatically by DB triggers.
- * The flight log row is deleted first, so a permission failure leaves everything untouched.
+ * Nothing else is touched: other flights, other people's logbook entries and
+ * manual maintenance/notes entries are all outside these filters.
  */
 export async function deleteFlightLogWithLogbookEntries(flightLogId: string): Promise<void> {
   const { data: log, error: logErr } = await (supabase as any)
     .from("flight_logs")
-    .select("id, drone_id, flight_date, flight_duration_minutes")
+    .select("id, drone_id, user_id, flight_date, flight_duration_minutes")
     .eq("id", flightLogId)
     .maybeSingle();
   if (logErr) throw logErr;
@@ -28,7 +32,14 @@ export async function deleteFlightLogWithLogbookEntries(flightLogId: string): Pr
     .eq("flight_log_id", flightLogId);
   const equipmentIds: string[] = (eqRows || []).map((r: any) => r.equipment_id).filter(Boolean);
 
-  // 1. Delete the flight log itself (cascades junction tables + events)
+  // 1. Personnel logbook entries — delete FIRST (FK is ON DELETE SET NULL)
+  const { error: pErr } = await (supabase as any)
+    .from("personnel_log_entries")
+    .delete()
+    .eq("flight_log_id", flightLogId);
+  if (pErr) throw pErr;
+
+  // 2. Delete the flight log itself (cascades junction tables + events)
   const { data: deleted, error: delErr } = await (supabase as any)
     .from("flight_logs")
     .delete()
@@ -39,24 +50,25 @@ export async function deleteFlightLogWithLogbookEntries(flightLogId: string): Pr
     throw new Error("Flight log could not be deleted (no permission)");
   }
 
-  // 2. Personnel logbook entries linked to this flight log
-  await (supabase as any).from("personnel_log_entries").delete().eq("flight_log_id", flightLogId);
-
-  // 3. Drone/equipment logbook entries created from this flight (same timestamp)
-  if (log.flight_date) {
+  // 3. Warning entries created by this flight's own upload only
+  if (log.flight_date && log.user_id) {
     if (log.drone_id) {
       await (supabase as any)
         .from("drone_log_entries")
         .delete()
         .eq("drone_id", log.drone_id)
-        .eq("entry_date", log.flight_date);
+        .eq("entry_date", log.flight_date)
+        .eq("entry_type", "Advarsel")
+        .eq("user_id", log.user_id);
     }
     for (const eqId of equipmentIds) {
       await (supabase as any)
         .from("equipment_log_entries")
         .delete()
         .eq("equipment_id", eqId)
-        .eq("entry_date", log.flight_date);
+        .eq("entry_date", log.flight_date)
+        .eq("entry_type", "Advarsel")
+        .eq("user_id", log.user_id);
     }
   }
 
