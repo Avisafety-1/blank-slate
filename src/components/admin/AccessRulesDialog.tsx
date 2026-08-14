@@ -492,7 +492,7 @@ export function AccessRulesDialog({ open, onOpenChange }: AccessRulesDialogProps
 
             <footer className="p-4 border-t border-border/50 bg-card/30 flex justify-end">
               <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-                {t("common.close")}
+                {t("actions.close")}
               </Button>
             </footer>
           </main>
