@@ -1692,6 +1692,8 @@
       },
       "data": {
         "intro": "Some rules are built into the system and control who sees and can change content.",
+        "sectionLabel": "Content",
+        "sectionTitle": "Data and visibility",
         "items": [
           {
             "title": "Evaluation forms",

@@ -1694,6 +1694,8 @@
       },
       "data": {
         "intro": "Noen regler er bygget inn i systemet og styrer hvem som ser og kan endre innhold.",
+        "sectionLabel": "Innhold",
+        "sectionTitle": "Data og synlighet",
         "items": [
           {
             "title": "Evalueringsskjema",
