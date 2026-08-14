@@ -1395,6 +1395,9 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               </div>
             </div>
           )}
+          </>
+          )}
+
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
