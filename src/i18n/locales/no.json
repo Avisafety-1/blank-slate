@@ -1690,7 +1690,7 @@
           "FlightHub 2-nøkler"
         ],
         "visibilityTitle": "Synlighet per avdeling",
-        "visibilityDesc": "Dokumenter, droner og utstyr er som standard synlige for alle avdelinger, men kan begrenses til utvalgte avdelinger."
+        "visibilityDesc": "Personell, Dokumenter, droner og utstyr er som standard kun synlig for egen avdeling, men morselskap kan dele synlighet nedover. Morselskap ser alt. "
       },
       "data": {
         "intro": "Noen regler er bygget inn i systemet og styrer hvem som ser og kan endre innhold.",

@@ -1688,7 +1688,7 @@
           "FlightHub 2 credentials"
         ],
         "visibilityTitle": "Visibility per department",
-        "visibilityDesc": "Documents, drones and equipment are visible to all departments by default, but can be limited to selected departments."
+        "visibilityDesc": "Personnel, Documents, drones and equipment are by default only visible to their own department, but the parent company can share visibility downwards. The parent company sees everything. "
       },
       "data": {
         "intro": "Some rules are built into the system and control who sees and can change content.",
