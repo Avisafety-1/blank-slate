@@ -1186,6 +1186,15 @@ const Admin = () => {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAccessRules(true)}
+                        className="px-2 sm:px-3"
+                      >
+                        <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
+                      </Button>
                       <Input
                         type="text"
                         value={userSearchQuery}
