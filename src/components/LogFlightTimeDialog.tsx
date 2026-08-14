@@ -1401,8 +1401,13 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               {t("logFlight.cancel")}
             </Button>
             <Button data-tour="log-flight-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("logFlight.logging") : t("logFlight.title")}
+              {isSubmitting
+                ? t("logFlight.logging")
+                : skipFlightLog
+                  ? t("logFlight.finish")
+                  : t("logFlight.title")}
             </Button>
+
           </DialogFooter>
         </form>
 
