@@ -286,6 +286,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       setLinkedPersonnel([]);
       setStartTime("");
       setEndTime("");
+      setSkipFlightLog(false);
     }
   }, [open, companyId, user, prefilledDuration]);
 
