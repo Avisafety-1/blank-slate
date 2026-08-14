@@ -584,6 +584,63 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     e.preventDefault();
     
     if (!user || !companyId || isSubmitting) return;
+
+    // === SKIP FLIGHT LOG PATH ===
+    if (skipFlightLog) {
+      setIsSubmitting(true);
+      try {
+        const missionIdToUse = formData.missionId || null;
+
+        if (missionIdToUse && formData.markMissionCompleted && navigator.onLine) {
+          const { error: missionUpdateError } = await supabase
+            .from("missions")
+            .update({ status: "fullfort" })
+            .eq("id", missionIdToUse);
+          if (missionUpdateError) {
+            console.error("Error updating mission status:", missionUpdateError);
+            toast.warning(t("logFlight.toastLoggedButNoStatus"));
+          } else {
+            toast.success(t("logFlight.toastLoggedAndCompleted"));
+          }
+        }
+
+        // Post-flight checklist based on selected drone, or the mission's drone
+        let droneIdForChecklist: string | null = formData.droneId || null;
+        if (!droneIdForChecklist && missionIdToUse && navigator.onLine) {
+          const { data: missionRow } = await supabase
+            .from("missions")
+            .select("drone_id")
+            .eq("id", missionIdToUse)
+            .maybeSingle();
+          droneIdForChecklist = (missionRow as any)?.drone_id || null;
+        }
+
+        if (droneIdForChecklist && navigator.onLine) {
+          const { data: droneData } = await supabase
+            .from("drones")
+            .select("post_flight_checklist_id")
+            .eq("id", droneIdForChecklist)
+            .maybeSingle();
+          const checklistId = (droneData as any)?.post_flight_checklist_id || null;
+          if (checklistId) {
+            setPostFlightChecklistId(checklistId);
+            setPostFlightMissionId(missionIdToUse);
+            setIsSubmitting(false);
+            setPostFlightPromptOpen(true);
+            return;
+          }
+        }
+
+        await finishFlow(missionIdToUse, null);
+      } catch (error: any) {
+        console.error("Error finishing without flight log:", error);
+        toast.error(error.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     
     if (!formData.droneId) {
       toast.error(`Velg en ${terminology.vehicleLower}`);
