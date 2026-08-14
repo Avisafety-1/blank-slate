@@ -225,7 +225,8 @@
     "advisoryTooLargeHint": "Du må redusere rutens størrelse for å kunne publisere en advisory.",
     "advisoryPublishError": "Kunne ikke publisere advisory",
     "prepareEndError": "Kunne ikkje førebu avslutting av flytur. Prøv igjen.",
-    "endError": "Feil ved avslutting av flytur. Prøv igjen."
+    "endError": "Feil ved avslutting av flytur. Prøv igjen.",
+    "safeskyCallsignPreview": "Callsign som publiseres:"
   },
   "dronetag": {
     "addTitle": "Legg til DroneTag",
