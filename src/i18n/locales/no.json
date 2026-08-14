@@ -184,7 +184,7 @@
     "safeskyPublishing": "SafeSky publisering",
     "safeskyOff": "Av",
     "safeskyOffDesc": "Deler kun posisjon internt i selskapet",
-    "safeskyAdvisory": "Advisory (rute)",
+    "safeskyAdvisory": "Live SafeSky advisory",
     "safeskyAdvisoryDesc": "Publiserer planlagt ruteområde som SafeSky-advisory",
     "safeskyAdvisoryRequiresRoute": "Krever oppdrag med planlagt rute",
     "safeskyAdvisoryInfo": "SafeSky-advisoryen oppdateres hvert 10. sekund og avsluttes når du avslutter flyturen.",
