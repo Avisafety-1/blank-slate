@@ -1188,6 +1188,7 @@ const Admin = () => {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
+                      <AccessRulesDialog open={showAccessRules} onOpenChange={setShowAccessRules} />
                       <Button
                         variant="outline"
                         size="sm"
