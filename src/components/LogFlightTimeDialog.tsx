@@ -1102,8 +1102,26 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             )}
           </div>
 
+          {/* Skip flight time logging */}
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-2">
+              <Timer className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="skipFlightLog" className="text-sm cursor-pointer">
+                {t("logFlight.skipFlightLog")}
+              </Label>
+            </div>
+            <Switch
+              id="skipFlightLog"
+              checked={skipFlightLog}
+              onCheckedChange={setSkipFlightLog}
+            />
+          </div>
+
+          {!skipFlightLog && (
+          <>
           {/* Drone/Fly selection */}
           <div data-tour="log-flight-drone">
+
             <Label htmlFor="drone">{terminology.vehicle} *</Label>
             <Select 
               value={formData.droneId} 
