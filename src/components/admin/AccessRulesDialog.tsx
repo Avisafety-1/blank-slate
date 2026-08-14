@@ -431,7 +431,7 @@ export function AccessRulesDialog({ open, onOpenChange }: AccessRulesDialogProps
                     <IntroLine text={t("admin.accessRules.data.intro")} />
                     <div className="space-y-2.5">
                       {objList("admin.accessRules.data.items").map((item, i) => (
-                        <RuleRow key={i} title={item.title} desc={item.desc} index={i} />
+                        <RuleRow key={i} title={item.title} desc={item.desc} index={i} sub={(item as any).sub} />
                       ))}
                     </div>
                   </div>
