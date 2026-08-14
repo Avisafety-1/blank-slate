@@ -86,6 +86,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [missionPopoverOpen, setMissionPopoverOpen] = useState(false);
   const [publishMode, setPublishMode] = useState<PublishMode>('advisory');
+  const [callsignPreview, setCallsignPreview] = useState<string | null>(null);
   const [userPickedMode, setUserPickedMode] = useState(false);
   const [loading, setLoading] = useState(false);
   
