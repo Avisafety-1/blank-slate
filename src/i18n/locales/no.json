@@ -1721,6 +1721,8 @@
       },
       "approval": {
         "intro": "Godkjenning gjelder når selskapet krever det, og styres av rettighet og omfang – ikke av rollen alene.",
+        "sectionLabel": "Prosess",
+        "sectionTitle": "Godkjenningsflyt",
         "flowTitle": "Flyt for oppdrag",
         "flowSteps": [
           "Utkast / planlagt",

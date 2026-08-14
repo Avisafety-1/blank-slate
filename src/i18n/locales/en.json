@@ -1719,6 +1719,8 @@
       },
       "approval": {
         "intro": "Approval applies when the company requires it, and is governed by permission and scope – not by the role alone.",
+        "sectionLabel": "Process",
+        "sectionTitle": "Approval flow",
         "flowTitle": "Mission flow",
         "flowSteps": [
           "Draft / planned",
