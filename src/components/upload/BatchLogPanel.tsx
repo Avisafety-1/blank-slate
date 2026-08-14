@@ -116,11 +116,12 @@ export const BatchLogPanel = ({
   const resolveDroneId = (log: PendingLog): string | null => {
     const sn = (log.aircraft_sn || log.parsed_result?.aircraftSN || log.parsed_result?.aircraftSerial || "").trim();
     if (sn) {
-      const preferred = [
-        ...(log.user_id ? droneIdsByProfile[log.user_id] ?? [] : []),
-        ...myDroneIds,
-      ];
-      const matches = findSnMatches(drones as any[], sn, preferred);
+      const ownerLinked = log.user_id ? droneIdsByProfile[log.user_id] ?? [] : [];
+      // Owner links take priority; fall back to the current user's links.
+      let matches = findSnMatches(drones as any[], sn, ownerLinked);
+      if (matches.length > 1 && myDroneIds.length > 0) {
+        matches = findSnMatches(drones as any[], sn, myDroneIds);
+      }
       if (matches.length === 1) return matches[0].id;
       if (matches.length > 1) return null; // ambiguous — let the user choose
     }
