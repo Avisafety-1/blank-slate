@@ -200,6 +200,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     operationType: "VLOS" as "VLOS" | "BVLOS" | "EVLOS",
   });
 
+  const [skipFlightLog, setSkipFlightLog] = useState(false);
   const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
   const [landingPickerOpen, setLandingPickerOpen] = useState(false);
   const [useTimeRange, setUseTimeRange] = useState(false);
