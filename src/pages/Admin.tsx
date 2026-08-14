@@ -1200,7 +1200,7 @@ const Admin = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAccessRules(true)}
-                        className="order-2 px-2 sm:order-1 sm:px-3"
+                        className="order-2 px-2 sm:order-2 sm:px-3"
                       >
                         <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
                         <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
