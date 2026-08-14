@@ -1016,7 +1016,11 @@ export const MissionCard = ({
                 pilot: flightLogToDelete?.pilot?.full_name || t('pages.missions.card.unknownPilot'),
               })}
             </span>
-            <span className="block">{t('pages.missions.card.deleteFlightDescription')}</span>
+            <span className="block">
+              {t('pages.missions.card.deleteFlightDescription', {
+                hours: ((flightLogToDelete?.flight_duration_minutes ?? 0) / 60).toFixed(1),
+              })}
+            </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
