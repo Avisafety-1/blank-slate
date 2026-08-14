@@ -1112,7 +1112,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     >
                       <Command>
                         <CommandInput placeholder={t('flight.searchMission')} />
-                        <CommandList className="max-h-[50vh]">
+                        <CommandList className="max-h-[min(24rem,55vh)]">
                           <CommandEmpty>{t('flight.noMissionsFound')}</CommandEmpty>
                           <CommandGroup>
                             <CommandItem
