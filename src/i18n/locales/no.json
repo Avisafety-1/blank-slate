@@ -1608,6 +1608,10 @@
       },
       "roles": {
         "intro": "Rollen gir et grovt skille. De fleste spesialrettigheter gis per bruker – se fanen «Rettigheter».",
+        "sectionLabel": "Grunnleggende",
+        "sectionTitle": "Roller og arv",
+        "userBadge": "Standard",
+        "adminBadge": "Full tilgang",
         "userName": "Bruker",
         "userDesc": "Grunntilgang til eget selskap",
         "userItems": [

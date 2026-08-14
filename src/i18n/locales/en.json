@@ -1606,6 +1606,10 @@
       },
       "roles": {
         "intro": "The role gives a coarse split. Most special permissions are granted per user – see the \"Permissions\" tab.",
+        "sectionLabel": "Fundamental",
+        "sectionTitle": "Roles and inheritance",
+        "userBadge": "Standard",
+        "adminBadge": "Full access",
         "userName": "User",
         "userDesc": "Basic access within their own company",
         "userItems": [
