@@ -1660,6 +1660,8 @@
       },
       "org": {
         "intro": "A company can have departments beneath it. The parent company can control both settings and visibility downwards.",
+        "sectionLabel": "Company hierarchy",
+        "sectionTitle": "Parent company and departments",
         "hierarchyTitle": "Parent company and departments",
         "hierarchyDesc": "Departments sit under a parent company. Data is isolated per company as a rule.",
         "adminScopeTitle": "Administrator reach",
