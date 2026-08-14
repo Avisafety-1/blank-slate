@@ -1194,7 +1194,7 @@ const Admin = () => {
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
                         placeholder={t('admin.page.searchByName')}
-                        className="order-1 flex-1 min-w-0 h-9 text-sm sm:order-2 sm:flex-none sm:w-[180px]"
+                        className="order-1 flex-1 min-w-0 h-9 text-sm sm:order-1 sm:flex-none sm:w-[180px]"
                       />
                       <Button
                         variant="outline"
