@@ -221,6 +221,16 @@ function RuleRow({ title, desc, index, sub }: { title: string; desc: string; ind
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+        {sub && sub.length > 0 && (
+          <ul className="mt-2 space-y-1.5 border-l border-border/60 pl-3">
+            {sub.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", dotClasses[accent])} />
+                <span className="leading-relaxed">{s}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
