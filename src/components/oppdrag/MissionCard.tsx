@@ -997,6 +997,54 @@ export const MissionCard = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <AlertDialog open={!!flightLogToDelete} onOpenChange={(o) => { if (!o) setFlightLogToDelete(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-destructive" />
+            {t('pages.missions.card.deleteFlightTitle')}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">
+              {t('pages.missions.card.deleteFlightSummary', {
+                date: flightLogToDelete?.flight_date
+                  ? format(new Date(flightLogToDelete.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb })
+                  : '—',
+                minutes: flightLogToDelete?.flight_duration_minutes ?? 0,
+                drone: flightLogToDelete?.drones?.modell || flightLogToDelete?.drone_model || '—',
+                pilot: flightLogToDelete?.pilot?.full_name || t('pages.missions.card.unknownPilot'),
+              })}
+            </span>
+            <span className="block">{t('pages.missions.card.deleteFlightDescription')}</span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deletingFlightLog}>{t('pages.missions.card.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={deletingFlightLog}
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!flightLogToDelete) return;
+              setDeletingFlightLog(true);
+              try {
+                await deleteFlightLogWithLogbookEntries(flightLogToDelete.id);
+                toast.success(t('pages.missions.card.deleteFlightSuccess'));
+                setFlightLogToDelete(null);
+                await fetchMissions?.();
+              } catch (err: any) {
+                console.error('Delete flight log failed', err);
+                toast.error(t('pages.missions.card.deleteFlightError'));
+              } finally {
+                setDeletingFlightLog(false);
+              }
+            }}
+          >
+            {deletingFlightLog ? t('pages.missions.card.deletingFlight') : t('pages.missions.card.confirmDeleteFlight')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <AlertDialog open={approvalConfirmOpen} onOpenChange={setApprovalConfirmOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
