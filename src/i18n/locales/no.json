@@ -794,7 +794,9 @@
     "toastFlightTimePositive": "Flytid må være større enn 0",
     "toastLoggedButNoStatus": "Flytid logget, men kunne ikke oppdatere oppdragsstatus",
     "toastLoggedAndCompleted": "Flytid logget og oppdrag markert som fullført!",
-    "toastLogged": "Flytid logget!"
+    "toastLogged": "Flytid logget!",
+    "skipFlightLog": "Ikke logg flytid",
+    "finish": "Avslutt"
   },
   "uploadFlightLog": {
     "title": "Last opp flylogg",

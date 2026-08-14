@@ -200,6 +200,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     operationType: "VLOS" as "VLOS" | "BVLOS" | "EVLOS",
   });
 
+  const [skipFlightLog, setSkipFlightLog] = useState(false);
   const [departurePickerOpen, setDeparturePickerOpen] = useState(false);
   const [landingPickerOpen, setLandingPickerOpen] = useState(false);
   const [useTimeRange, setUseTimeRange] = useState(false);
@@ -285,6 +286,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       setLinkedPersonnel([]);
       setStartTime("");
       setEndTime("");
+      setSkipFlightLog(false);
     }
   }, [open, companyId, user, prefilledDuration]);
 
@@ -582,6 +584,63 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     e.preventDefault();
     
     if (!user || !companyId || isSubmitting) return;
+
+    // === SKIP FLIGHT LOG PATH ===
+    if (skipFlightLog) {
+      setIsSubmitting(true);
+      try {
+        const missionIdToUse = formData.missionId || null;
+
+        if (missionIdToUse && formData.markMissionCompleted && navigator.onLine) {
+          const { error: missionUpdateError } = await supabase
+            .from("missions")
+            .update({ status: "Fullført" })
+            .eq("id", missionIdToUse);
+          if (missionUpdateError) {
+            console.error("Error updating mission status:", missionUpdateError);
+            toast.warning(t("logFlight.toastLoggedButNoStatus"));
+          } else {
+            toast.success(t("logFlight.toastLoggedAndCompleted"));
+          }
+        }
+
+        // Post-flight checklist based on selected drone, or the mission's drone
+        let droneIdForChecklist: string | null = formData.droneId || null;
+        if (!droneIdForChecklist && missionIdToUse && navigator.onLine) {
+          const { data: missionRow } = await supabase
+            .from("missions")
+            .select("drone_id")
+            .eq("id", missionIdToUse)
+            .maybeSingle();
+          droneIdForChecklist = (missionRow as any)?.drone_id || null;
+        }
+
+        if (droneIdForChecklist && navigator.onLine) {
+          const { data: droneData } = await supabase
+            .from("drones")
+            .select("post_flight_checklist_id")
+            .eq("id", droneIdForChecklist)
+            .maybeSingle();
+          const checklistId = (droneData as any)?.post_flight_checklist_id || null;
+          if (checklistId) {
+            setPostFlightChecklistId(checklistId);
+            setPostFlightMissionId(missionIdToUse);
+            setIsSubmitting(false);
+            setPostFlightPromptOpen(true);
+            return;
+          }
+        }
+
+        await finishFlow(missionIdToUse, null);
+      } catch (error: any) {
+        console.error("Error finishing without flight log:", error);
+        toast.error(error.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     
     if (!formData.droneId) {
       toast.error(`Velg en ${terminology.vehicleLower}`);
@@ -895,6 +954,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     setEndTime("");
     setPostFlightChecklistId(null);
     setPostFlightMissionId(null);
+    setSkipFlightLog(false);
   };
 
   const finishFlow = async (missionIdForReport: string | null, flightLogIdForReport: string | null) => {
@@ -1041,7 +1101,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Warning when DroneTag was selected but no track recorded */}
-          {dronetagDeviceId && (!flightTrack || flightTrack.length === 0) && (
+          {!skipFlightLog && dronetagDeviceId && (!flightTrack || flightTrack.length === 0) && (
             <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm">
               <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
               <div className="text-yellow-800 dark:text-yellow-200">
@@ -1102,8 +1162,26 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             )}
           </div>
 
+          {/* Skip flight time logging */}
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border/50">
+            <div className="flex items-center gap-2">
+              <Timer className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="skipFlightLog" className="text-sm cursor-pointer">
+                {t("logFlight.skipFlightLog")}
+              </Label>
+            </div>
+            <Switch
+              id="skipFlightLog"
+              checked={skipFlightLog}
+              onCheckedChange={setSkipFlightLog}
+            />
+          </div>
+
+          {!skipFlightLog && (
+          <>
           {/* Drone/Fly selection */}
           <div data-tour="log-flight-drone">
+
             <Label htmlFor="drone">{terminology.vehicle} *</Label>
             <Select 
               value={formData.droneId} 
@@ -1395,14 +1473,22 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               </div>
             </div>
           )}
+          </>
+          )}
+
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>
               {t("logFlight.cancel")}
             </Button>
             <Button data-tour="log-flight-submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t("logFlight.logging") : t("logFlight.title")}
+              {isSubmitting
+                ? t("logFlight.logging")
+                : skipFlightLog
+                  ? t("logFlight.finish")
+                  : t("logFlight.title")}
             </Button>
+
           </DialogFooter>
         </form>
 
