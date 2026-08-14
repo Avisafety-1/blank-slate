@@ -108,6 +108,27 @@ export const BatchLogPanel = ({
     })();
   }, [companyId]);
 
+  /**
+   * Resolve the drone for a pending log using the same SN logic as single-log handling:
+   * exact SN wins, then prefix matches with drones linked to the log owner (fallback: current
+   * user) as tiebreaker. Ambiguous matches are left for the user to resolve.
+   */
+  const resolveDroneId = (log: PendingLog): string | null => {
+    const sn = (log.aircraft_sn || log.parsed_result?.aircraftSN || log.parsed_result?.aircraftSerial || "").trim();
+    if (sn) {
+      const preferred = [
+        ...(log.user_id ? droneIdsByProfile[log.user_id] ?? [] : []),
+        ...myDroneIds,
+      ];
+      const matches = findSnMatches(drones as any[], sn, preferred);
+      if (matches.length === 1) return matches[0].id;
+      if (matches.length > 1) return null; // ambiguous — let the user choose
+    }
+    return log.matched_drone_id || null;
+  };
+
+
+
 
   // Initialize rows when selection changes
   useEffect(() => {
