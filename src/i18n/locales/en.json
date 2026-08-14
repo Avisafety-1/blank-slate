@@ -792,7 +792,9 @@
     "toastFlightTimePositive": "Flight time must be greater than 0",
     "toastLoggedButNoStatus": "Flight time logged, but could not update mission status",
     "toastLoggedAndCompleted": "Flight time logged and mission marked as completed!",
-    "toastLogged": "Flight time logged!"
+    "toastLogged": "Flight time logged!",
+    "skipFlightLog": "Do not log flight time",
+    "finish": "Finish"
   },
   "uploadFlightLog": {
     "title": "Upload flight log",
