@@ -1697,7 +1697,13 @@
         "items": [
           {
             "title": "Evaluation forms",
-            "desc": "Visible within their own company. Created and edited from admin. Global visibility across all companies is not available to regular administrators."
+            "desc": "Visible within their own company. Created and edited from admin. Global visibility across all companies is not available to regular administrators.",
+            "sub": [
+              "Draft: only the instructor filling in the form can see the content.",
+              "Completed/saved: the form also becomes visible to the evaluated student.",
+              "Administrators only get access if “Share with all administrators” is enabled in the form.",
+              "Individual people in the company can additionally be granted access via the visibility option in the form."
+            ]
           },
           {
             "title": "Flights and logbook",
