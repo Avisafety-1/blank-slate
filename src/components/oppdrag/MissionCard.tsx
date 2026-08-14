@@ -33,6 +33,7 @@ import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropd
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
+import { deleteFlightLogWithLogbookEntries } from "@/lib/flightLogDeletion";
 
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
