@@ -1189,27 +1189,27 @@ const Admin = () => {
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
                       <AccessRulesDialog open={showAccessRules} onOpenChange={setShowAccessRules} />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAccessRules(true)}
-                        className="px-2 sm:px-3"
-                      >
-                        <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
-                        <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
-                      </Button>
                       <Input
                         type="text"
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
                         placeholder={t('admin.page.searchByName')}
-                        className="w-[180px] h-9 text-sm"
+                        className="order-1 flex-1 min-w-0 h-9 text-sm sm:order-2 sm:flex-none sm:w-[180px]"
                       />
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => setShowAccessRules(true)}
+                        className="order-2 px-2 sm:order-1 sm:px-3"
+                      >
+                        <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowEmailList(prev => !prev)}
-                        className="px-2 sm:px-3"
+                        className="order-3 px-2 sm:px-3"
                       >
                         <Mail className="w-4 h-4 sm:mr-1.5" />
                         <span className="hidden sm:inline">{showEmailList ? t('admin.page.hideEmailList') : t('admin.page.showEmailList')}</span>
@@ -1229,7 +1229,7 @@ const Admin = () => {
                           navigator.clipboard.writeText(emails.join(', '));
                           toast.success(t('admin.page.emailsCopied', { count: emails.length }));
                         }}
-                        className="px-2 sm:px-3"
+                        className="order-4 px-2 sm:px-3"
                       >
                         <Copy className="w-4 h-4" />
                         <span className="hidden sm:inline ml-1.5">{t('admin.page.copyEmailList')}</span>
