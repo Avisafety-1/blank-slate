@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AccessRulesDialog } from "@/components/admin/AccessRulesDialog";
 import { CompanyManagementSection } from "@/components/admin/CompanyManagementSection";
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { ChildCompaniesSection } from "@/components/admin/ChildCompaniesSection";
