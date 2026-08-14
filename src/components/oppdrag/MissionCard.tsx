@@ -33,6 +33,7 @@ import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropd
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
+import { deleteFlightLogWithLogbookEntries } from "@/lib/flightLogDeletion";
 
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
@@ -120,7 +121,7 @@ export const MissionCard = ({
 }: MissionCardProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { companyId, departmentsEnabled } = useAuth();
+  const { companyId, departmentsEnabled, user } = useAuth();
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
@@ -129,6 +130,8 @@ export const MissionCard = ({
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [uploadLogOpen, setUploadLogOpen] = useState(false);
+  const [flightLogToDelete, setFlightLogToDelete] = useState<any>(null);
+  const [deletingFlightLog, setDeletingFlightLog] = useState(false);
   const companySettings = useCompanySettings();
   const soraApprovalEnabled = useSoraApprovalEnabled();
   const showApproval = companySettings.require_mission_approval || soraApprovalEnabled;
@@ -807,12 +810,10 @@ export const MissionCard = ({
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{log.flight_duration_minutes} {t('pages.missions.card.minutesShort')}</span>
                   </div>
-                  {log.pilot && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{log.pilot.full_name}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{log.pilot?.full_name || t('pages.missions.card.unknownPilot')}</span>
+                  </div>
                   {log.drones && (
                     <div className="flex items-center gap-2">
                       <Plane className="h-3.5 w-3.5 text-muted-foreground" />
@@ -908,6 +909,17 @@ export const MissionCard = ({
                       </Button>
                     </div>
                   )}
+                  {(isAdmin || log.user_id === user?.id) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setFlightLogToDelete(log)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {t('pages.missions.card.deleteFlight')}
+                    </Button>
+                  )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
@@ -982,6 +994,54 @@ export const MissionCard = ({
           <AlertDialogCancel>{t('pages.missions.card.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={handleNinoxConfirm}>
             {t('pages.missions.card.confirmApproval')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    <AlertDialog open={!!flightLogToDelete} onOpenChange={(o) => { if (!o) setFlightLogToDelete(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-destructive" />
+            {t('pages.missions.card.deleteFlightTitle')}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">
+              {t('pages.missions.card.deleteFlightSummary', {
+                date: flightLogToDelete?.flight_date
+                  ? format(new Date(flightLogToDelete.flight_date), "dd. MMMM yyyy HH:mm", { locale: nb })
+                  : '—',
+                minutes: flightLogToDelete?.flight_duration_minutes ?? 0,
+                drone: flightLogToDelete?.drones?.modell || flightLogToDelete?.drone_model || '—',
+                pilot: flightLogToDelete?.pilot?.full_name || t('pages.missions.card.unknownPilot'),
+              })}
+            </span>
+            <span className="block">{t('pages.missions.card.deleteFlightDescription')}</span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deletingFlightLog}>{t('pages.missions.card.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={deletingFlightLog}
+            onClick={async (e) => {
+              e.preventDefault();
+              if (!flightLogToDelete) return;
+              setDeletingFlightLog(true);
+              try {
+                await deleteFlightLogWithLogbookEntries(flightLogToDelete.id);
+                toast.success(t('pages.missions.card.deleteFlightSuccess'));
+                setFlightLogToDelete(null);
+                await fetchMissions?.();
+              } catch (err: any) {
+                console.error('Delete flight log failed', err);
+                toast.error(t('pages.missions.card.deleteFlightError'));
+              } finally {
+                setDeletingFlightLog(false);
+              }
+            }}
+          >
+            {deletingFlightLog ? t('pages.missions.card.deletingFlight') : t('pages.missions.card.confirmDeleteFlight')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
