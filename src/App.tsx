@@ -50,7 +50,6 @@ const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Marketing = React.lazy(() => import("./pages/Marketing"));
 const Priser = React.lazy(() => import("./pages/Priser"));
 const NewsletterSignup = React.lazy(() => import("./pages/NewsletterSignup"));
-const AccessRulesPreview = React.lazy(() => import("./pages/AccessRulesPreview"));
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -237,7 +236,6 @@ const App = () => {
                   <Route path="/sora-prosess" element={<Suspense fallback={<LoadingSpinner />}><SoraProcess /></Suspense>} />
                   <Route path="/bruksanvisning" element={<Suspense fallback={<LoadingSpinner />}><UserManualDownload /></Suspense>} />
                   <Route path="/nyhetsbrev" element={<Suspense fallback={<LoadingSpinner />}><NewsletterSignup /></Suspense>} />
-                  <Route path="/access-rules-preview" element={<Suspense fallback={<LoadingSpinner />}><AccessRulesPreview /></Suspense>} />
                   
                   {/* Protected routes with shared Header - app domain */}
                   <Route element={<AuthenticatedLayout />}>
