@@ -594,7 +594,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
         if (missionIdToUse && formData.markMissionCompleted && navigator.onLine) {
           const { error: missionUpdateError } = await supabase
             .from("missions")
-            .update({ status: "fullfort" })
+            .update({ status: "Fullført" })
             .eq("id", missionIdToUse);
           if (missionUpdateError) {
             console.error("Error updating mission status:", missionUpdateError);
