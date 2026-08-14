@@ -3080,7 +3080,7 @@
         "deleteFlight": "Delete",
         "deleteFlightTitle": "Delete this flight?",
         "deleteFlightSummary": "Flight {{date}} · {{minutes}} min · {{drone}} · Pilot: {{pilot}}",
-        "deleteFlightDescription": "This also deletes the entry in the pilot's logbook and in the logbook of the drone and linked equipment, and subtracts the flight hours. This cannot be undone.",
+        "deleteFlightDescription": "This deletes only this flight: the pilot's logbook entry for it, any warnings this flight added to the drone and linked equipment logbooks, and {{hours}} flight hours are subtracted from the drone and equipment. Other flights, manual logbook entries and other people's entries are not affected. This cannot be undone.",
         "confirmDeleteFlight": "Delete flight",
         "deletingFlight": "Deleting...",
         "deleteFlightSuccess": "Flight and logbook entries deleted",
