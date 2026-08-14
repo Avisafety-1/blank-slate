@@ -809,12 +809,10 @@ export const MissionCard = ({
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                     <span>{log.flight_duration_minutes} {t('pages.missions.card.minutesShort')}</span>
                   </div>
-                  {log.pilot && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{log.pilot.full_name}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{log.pilot?.full_name || t('pages.missions.card.unknownPilot')}</span>
+                  </div>
                   {log.drones && (
                     <div className="flex items-center gap-2">
                       <Plane className="h-3.5 w-3.5 text-muted-foreground" />
