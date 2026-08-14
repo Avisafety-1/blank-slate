@@ -12,6 +12,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
+import { findSnMatches, parseFlightDate } from "@/lib/droneLogMatching";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
@@ -48,6 +49,7 @@ interface RowState {
   missionId: string;
   missionUserOverride: boolean;
   autoMatchedMissionId: string | null;
+  autoMatchedDroneId: string | null;
   operationType: OpType;
   missions: MissionOption[];
   missionsLoaded: boolean;
@@ -64,16 +66,14 @@ interface Props {
   companyId: string;
   userId: string;
   defaultPilotId: string;
+  myDroneIds?: string[];
+  droneIdsByProfile?: Record<string, string[]>;
   onDeselect: (id: string) => void;
   onClose: () => void;
   onSaved: () => void;
 }
 
-const parseDate = (raw: string | null): Date | null => {
-  if (!raw) return null;
-  const d = new Date(raw);
-  return isNaN(d.getTime()) ? null : d;
-};
+const parseDate = (raw: string | null): Date | null => parseFlightDate(raw);
 
 const downsample = <T,>(arr: T[], max: number): T[] => {
   if (arr.length <= max) return arr;
@@ -84,6 +84,7 @@ const downsample = <T,>(arr: T[], max: number): T[] => {
 export const BatchLogPanel = ({
   pendingLogs, drones, personnel, equipmentList,
   companyId, userId, defaultPilotId,
+  myDroneIds = [], droneIdsByProfile = {},
   onDeselect, onClose, onSaved,
 }: Props) => {
   const [rows, setRows] = useState<RowState[]>([]);
@@ -117,6 +118,7 @@ export const BatchLogPanel = ({
         if (existing) return { ...existing, log };
         const eq: string[] = [];
         if (log.matched_battery_id) eq.push(log.matched_battery_id);
+        const autoDroneId = resolveDroneId(log);
         return {
           pendingLogId: log.id,
           log,
@@ -124,11 +126,12 @@ export const BatchLogPanel = ({
           parsing: !log.parsed_result,
           parseError: null,
           pilotId: log.user_id || defaultPilotId || "",
-          droneId: log.matched_drone_id || "",
+          droneId: autoDroneId || "",
           equipmentIds: eq,
           missionId: "",
           missionUserOverride: false,
           autoMatchedMissionId: null,
+          autoMatchedDroneId: autoDroneId,
           operationType: "VLOS",
           missions: [],
           missionsLoaded: false,
@@ -144,9 +147,7 @@ export const BatchLogPanel = ({
     rows.forEach(async (row, idx) => {
       if (!row.parsing && row.parsed) {
         if (!row.missionsLoaded) {
-          const baseDate = row.parsed?.startTime
-            ? new Date(row.parsed.startTime)
-            : (row.log.flight_date ? new Date(row.log.flight_date) : null);
+          const baseDate = parseFlightDate(row.parsed?.startTime) ?? parseFlightDate(row.log.flight_date);
           if (!baseDate || isNaN(baseDate.getTime())) {
             setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId ? { ...r, missionsLoaded: true } : r));
             return;
@@ -201,7 +202,7 @@ export const BatchLogPanel = ({
               ...r,
               parsing: false,
               parsed,
-              droneId: r.droneId || data?.matched_drone_id || "",
+              droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed }) || data?.matched_drone_id || "",
               equipmentIds: r.equipmentIds.length
                 ? r.equipmentIds
                 : (data?.matched_battery_id ? [data.matched_battery_id] : []),
@@ -510,7 +511,7 @@ export const BatchLogPanel = ({
                     <div className="space-y-0.5">
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                         Drone
-                        {row.log.matched_drone_id && row.droneId === row.log.matched_drone_id && (
+                        {row.autoMatchedDroneId && row.droneId === row.autoMatchedDroneId && (
                           <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
                             <Sparkles className="w-2.5 h-2.5" /> auto-matchet
                           </span>
