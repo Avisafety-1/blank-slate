@@ -897,6 +897,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     setEndTime("");
     setPostFlightChecklistId(null);
     setPostFlightMissionId(null);
+    setSkipFlightLog(false);
   };
 
   const finishFlow = async (missionIdForReport: string | null, flightLogIdForReport: string | null) => {
