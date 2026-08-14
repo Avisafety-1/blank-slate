@@ -1041,7 +1041,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Warning when DroneTag was selected but no track recorded */}
-          {dronetagDeviceId && (!flightTrack || flightTrack.length === 0) && (
+          {!skipFlightLog && dronetagDeviceId && (!flightTrack || flightTrack.length === 0) && (
             <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm">
               <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
               <div className="text-yellow-800 dark:text-yellow-200">
