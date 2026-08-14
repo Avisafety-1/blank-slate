@@ -425,6 +425,35 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return () => { cancelled = true; };
   }, [selectedDroneId]);
 
+  // drone_personnel links for the owners of batch-selected logs — used as SN tiebreaker in BatchLogPanel
+  useEffect(() => {
+    if (batchSelectedIds.size === 0) return;
+    let cancelled = false;
+    const ownerIds = Array.from(
+      new Set(
+        (pendingLogsRef.current?.getLogs() || [])
+          .filter((l: any) => batchSelectedIds.has(l.id))
+          .map((l: any) => l.user_id)
+          .filter(Boolean) as string[],
+      ),
+    );
+    if (ownerIds.length === 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from("drone_personnel")
+        .select("profile_id, drone_id")
+        .in("profile_id", ownerIds);
+      if (cancelled) return;
+      const map: Record<string, string[]> = {};
+      (data ?? []).forEach((r: any) => {
+        (map[r.profile_id] ||= []).push(r.drone_id);
+      });
+      setDroneIdsByProfile(map);
+    })();
+    return () => { cancelled = true; };
+  }, [batchSelectedIds]);
+
+
 
 
   useEffect(() => {
