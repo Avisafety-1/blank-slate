@@ -1606,6 +1606,10 @@
       },
       "roles": {
         "intro": "The role gives a coarse split. Most special permissions are granted per user – see the \"Permissions\" tab.",
+        "sectionLabel": "Fundamental",
+        "sectionTitle": "Roles and inheritance",
+        "userBadge": "Standard",
+        "adminBadge": "Full access",
         "userName": "User",
         "userDesc": "Basic access within their own company",
         "userItems": [
@@ -1628,6 +1632,8 @@
       },
       "permissions": {
         "intro": "These permissions are set per user and are independent of the role – a regular user can have them without being an administrator.",
+        "sectionLabel": "Per user",
+        "sectionTitle": "Special permissions",
         "items": [
           {
             "title": "Can approve missions",
@@ -1654,6 +1660,8 @@
       },
       "org": {
         "intro": "A company can have departments beneath it. The parent company can control both settings and visibility downwards.",
+        "sectionLabel": "Company hierarchy",
+        "sectionTitle": "Parent company and departments",
         "hierarchyTitle": "Parent company and departments",
         "hierarchyDesc": "Departments sit under a parent company. Data is isolated per company as a rule.",
         "adminScopeTitle": "Administrator reach",
@@ -1684,6 +1692,8 @@
       },
       "data": {
         "intro": "Some rules are built into the system and control who sees and can change content.",
+        "sectionLabel": "Content",
+        "sectionTitle": "Data and visibility",
         "items": [
           {
             "title": "Evaluation forms",
@@ -1709,6 +1719,8 @@
       },
       "approval": {
         "intro": "Approval applies when the company requires it, and is governed by permission and scope – not by the role alone.",
+        "sectionLabel": "Process",
+        "sectionTitle": "Approval flow",
         "flowTitle": "Mission flow",
         "flowSteps": [
           "Draft / planned",
@@ -1725,6 +1737,9 @@
       },
       "plan": {
         "intro": "Two layers can lock features independently of roles and permissions.",
+        "sectionLabel": "Gating",
+        "sectionTitle": "Subscription and training",
+        "readOnlyNote": "These restrictions are imposed externally and cannot be overridden by an administrator.",
         "subscriptionTitle": "Subscription",
         "subscriptionDesc": "Some features and limits (for example the number of drones) follow the subscription plan and any add-ons. Exempt companies are not limited by plan.",
         "trainingTitle": "Training",
