@@ -1699,7 +1699,13 @@
         "items": [
           {
             "title": "Evalueringsskjema",
-            "desc": "Synlig for eget selskap. Opprettes og redigeres fra admin. Global synlighet på tvers av alle selskaper er ikke tilgjengelig for vanlige administratorer."
+            "desc": "Synlig for eget selskap. Opprettes og redigeres fra admin. Global synlighet på tvers av alle selskaper er ikke tilgjengelig for vanlige administratorer.",
+            "sub": [
+              "Utkast: kun instruktøren som fyller ut skjemaet ser innholdet.",
+              "Fullført/lagret: skjemaet blir også synlig for eleven som er evaluert.",
+              "Administratorer får innsyn kun hvis «Del med alle administratorer» er slått på i skjemaet.",
+              "Enkeltpersoner i selskapet kan i tillegg gis innsyn via synlighetsvalget i skjemaet."
+            ]
           },
           {
             "title": "Flyturer og loggbok",

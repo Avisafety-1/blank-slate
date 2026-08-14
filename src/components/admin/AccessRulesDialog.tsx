@@ -194,7 +194,7 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-function RuleRow({ title, desc, index }: { title: string; desc: string; index: number }) {
+function RuleRow({ title, desc, index, sub }: { title: string; desc: string; index: number; sub?: string[] }) {
   const accents: Array<"primary" | "accent" | "muted" | "success" | "warning"> = [
     "primary",
     "accent",
@@ -221,6 +221,16 @@ function RuleRow({ title, desc, index }: { title: string; desc: string; index: n
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+        {sub && sub.length > 0 && (
+          <ul className="mt-2 space-y-1.5 border-l border-border/60 pl-3">
+            {sub.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", dotClasses[accent])} />
+                <span className="leading-relaxed">{s}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -421,7 +431,7 @@ export function AccessRulesDialog({ open, onOpenChange }: AccessRulesDialogProps
                     <IntroLine text={t("admin.accessRules.data.intro")} />
                     <div className="space-y-2.5">
                       {objList("admin.accessRules.data.items").map((item, i) => (
-                        <RuleRow key={i} title={item.title} desc={item.desc} index={i} />
+                        <RuleRow key={i} title={item.title} desc={item.desc} index={i} sub={(item as any).sub} />
                       ))}
                     </div>
                   </div>

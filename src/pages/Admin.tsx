@@ -1194,13 +1194,13 @@ const Admin = () => {
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
                         placeholder={t('admin.page.searchByName')}
-                        className="order-1 flex-1 min-w-0 h-9 text-sm sm:order-2 sm:flex-none sm:w-[180px]"
+                        className="order-1 flex-1 min-w-0 h-9 text-sm sm:order-1 sm:flex-none sm:w-[180px]"
                       />
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAccessRules(true)}
-                        className="order-2 px-2 sm:order-1 sm:px-3"
+                        className="order-2 px-2 sm:order-2 sm:px-3"
                       >
                         <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
                         <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
