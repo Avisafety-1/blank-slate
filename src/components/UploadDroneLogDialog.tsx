@@ -357,6 +357,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
   const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
+  // drone_personnel links for the owners of the batch-selected logs (profile_id -> drone_ids)
+  const [droneIdsByProfile, setDroneIdsByProfile] = useState<Record<string, string[]>>({});
   const isMobile = useIsMobile();
 
   // Logbook state
