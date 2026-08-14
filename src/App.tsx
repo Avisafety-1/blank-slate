@@ -50,6 +50,7 @@ const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Marketing = React.lazy(() => import("./pages/Marketing"));
 const Priser = React.lazy(() => import("./pages/Priser"));
 const NewsletterSignup = React.lazy(() => import("./pages/NewsletterSignup"));
+const AccessRulesPreview = React.lazy(() => import("./pages/AccessRulesPreview"));
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
