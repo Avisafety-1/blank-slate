@@ -152,9 +152,9 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   // Polls latest FH2 / DroneTag position for the company while the live mode is active.
   const [livePosFreshness, setLivePosFreshness] = useState<{ hasData: boolean; ageSec: number | null; source: 'fh2' | 'dronetag' | null }>({ hasData: false, ageSec: null, source: null });
 
-  // Phone in remarks for advisory mode
+  // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
-  const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(true);
+  const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(false);
   const [manualPhone, setManualPhone] = useState<string>('');
 
   // Fetch the pilot's phone number from their profile
@@ -428,6 +428,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setNinoxChecking(false);
       setShowNinoxConfirm(false);
       setMissingSora(false);
+      setIncludePhoneInRemarks(false);
+      setManualPhone('');
     }
   }, [open]);
 
@@ -1263,7 +1265,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </RadioGroup>
             </div>
 
-            {publishMode === 'advisory' && hasRoute && (
+            {publishMode === 'advisory' && hasRoute && false && (
               <div className="space-y-2">
                 <div className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm">
                   <AlertCircle className="h-4 w-4 text-primary mt-0.5" />
