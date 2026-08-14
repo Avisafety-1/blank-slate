@@ -1594,6 +1594,145 @@
     "readonly": "Bruker"
   },
   "admin": {
+    "accessRules": {
+      "button": "Tilgangsregler",
+      "title": "Tilgangsregler",
+      "description": "Oversikt over hvem som kan se, gjøre og endre hva i AviSafe.",
+      "tabs": {
+        "roles": "Roller",
+        "permissions": "Rettigheter",
+        "org": "Selskap",
+        "data": "Data",
+        "approval": "Godkjenning",
+        "plan": "Abonnement"
+      },
+      "roles": {
+        "intro": "Rollen gir et grovt skille. De fleste spesialrettigheter gis per bruker – se fanen «Rettigheter».",
+        "userName": "Bruker",
+        "userDesc": "Grunntilgang til eget selskap",
+        "userItems": [
+          "Se oppdrag, ressurser, dokumenter og kalender i eget selskap",
+          "Opprette og redigere egne oppdrag",
+          "Logge flytid og laste opp flylogger",
+          "Rapportere hendelser og avvik",
+          "Redigere egne loggbokoppføringer"
+        ],
+        "adminName": "Administrator",
+        "adminDesc": "Alt en bruker kan, i tillegg til administrasjon",
+        "adminItems": [
+          "Godkjenne nye brukere og tildele roller",
+          "Endre selskapsinnstillinger og standardvalg",
+          "Opprette og redigere droner, utstyr og personell",
+          "Opprette dokumenter, sjekklister og evalueringsskjema",
+          "Redigere og slette andres flyturer og loggbokoppføringer"
+        ],
+        "note": "Administrator arver alt en bruker kan gjøre."
+      },
+      "permissions": {
+        "intro": "Disse rettighetene settes per bruker og er uavhengige av rollen – en vanlig bruker kan ha dem uten å være administrator.",
+        "items": [
+          {
+            "title": "Kan godkjenne oppdrag",
+            "desc": "Gir tilgang til å godkjenne eller avvise oppdrag som venter på godkjenning. Omfanget settes til eget selskap, utvalgte avdelinger, eller alle avdelinger."
+          },
+          {
+            "title": "Hendelsesansvarlig",
+            "desc": "Kan settes som ansvarlig for hendelser, og velges hvilke selskaper/avdelinger dette gjelder for."
+          },
+          {
+            "title": "ECCAIRS-tilgang",
+            "desc": "Gir tilgang til å klargjøre og sende hendelsesrapporter til myndighet via ECCAIRS."
+          },
+          {
+            "title": "Teknisk ansvarlig",
+            "desc": "Kan settes som teknisk ansvarlig på en drone og følges opp på vedlikehold og inspeksjoner."
+          },
+          {
+            "title": "Under opplæring / modultilgang",
+            "desc": "Begrenser hvilke moduler brukeren ser til kursene er bestått. Gjelder kun brukere som er merket som under opplæring."
+          }
+        ],
+        "selfApproval": "Selvgodkjenning kan blokkeres av en selskapsinnstilling når brukeren selv står oppført som personell på oppdraget."
+      },
+      "org": {
+        "intro": "Selskapet kan ha avdelinger under seg. Morselskapet kan styre både innstillinger og synlighet nedover.",
+        "hierarchyTitle": "Morselskap og avdelinger",
+        "hierarchyDesc": "Avdelinger ligger under et morselskap. Data er som hovedregel isolert per selskap.",
+        "adminScopeTitle": "Rekkevidde for administrator",
+        "adminScopeDesc": "Administrator i morselskapet kan se og administrere sine avdelinger. Administrator i en avdeling ser kun sin egen avdeling.",
+        "switchTitle": "Bytte av selskap",
+        "switchDesc": "Brukere som har tilgang til flere selskaper kan bytte selskap i toppmenyen.",
+        "propagationTitle": "Propagering av innstillinger",
+        "propagationDesc": "Morselskapet kan låse innstillinger slik at alle avdelinger arver verdien:",
+        "propagationList": [
+          "Krav om oppdragsgodkjenning",
+          "Blokkering av selvgodkjenning",
+          "Krav om SORA på oppdrag",
+          "SORA-konfigurasjon og godkjenning",
+          "SORA buffermodus",
+          "Oppdragstyper",
+          "Oppdragsroller",
+          "Luftromsvarsler",
+          "Flyvarsler og varslingsmottakere",
+          "Avvikskategorier",
+          "Standard kartlag",
+          "Skjuling av rapportøridentitet",
+          "Kvittering på vedlikehold",
+          "Currency-krav",
+          "FlightHub 2-nøkler"
+        ],
+        "visibilityTitle": "Synlighet per avdeling",
+        "visibilityDesc": "Dokumenter, droner og utstyr er som standard synlige for alle avdelinger, men kan begrenses til utvalgte avdelinger."
+      },
+      "data": {
+        "intro": "Noen regler er bygget inn i systemet og styrer hvem som ser og kan endre innhold.",
+        "items": [
+          {
+            "title": "Evalueringsskjema",
+            "desc": "Synlig for eget selskap. Opprettes og redigeres fra admin. Global synlighet på tvers av alle selskaper er ikke tilgjengelig for vanlige administratorer."
+          },
+          {
+            "title": "Flyturer og loggbok",
+            "desc": "Administrator kan redigere og slette flyturer og loggbokoppføringer. En bruker kan redigere sine egne. Sletting av en flytur fjerner også tilhørende loggbokoppføringer og trekker fra flytimer."
+          },
+          {
+            "title": "Dokumenter og sjekklister",
+            "desc": "Synlig for eget selskap, og i tillegg arvet fra morselskapet når innholdet er delt til avdelingene."
+          },
+          {
+            "title": "Oppdrag",
+            "desc": "Synlig for eget selskap, og for personell som er tildelt oppdraget – også på tvers av avdelinger."
+          },
+          {
+            "title": "Meldinger",
+            "desc": "Kun avsender og mottakere ser en meldingstråd."
+          }
+        ]
+      },
+      "approval": {
+        "intro": "Godkjenning gjelder når selskapet krever det, og styres av rettighet og omfang – ikke av rollen alene.",
+        "flowTitle": "Flyt for oppdrag",
+        "flowSteps": [
+          "Utkast / planlagt",
+          "Venter på godkjenning",
+          "Godkjent",
+          "Avvist"
+        ],
+        "whoTitle": "Hvem kan godkjenne",
+        "whoDesc": "Brukere med rettigheten «kan godkjenne oppdrag», og kun for selskapene som ligger i omfanget deres. Er selvgodkjenning blokkert, kan man ikke godkjenne oppdrag man selv er personell på.",
+        "soraTitle": "SORA",
+        "soraDesc": "Når selskapet krever SORA, kan oppdraget ikke godkjennes før de påkrevde SORA-stegene er fullført.",
+        "incidentTitle": "Hendelser",
+        "incidentDesc": "Hendelsesansvarlig behandler hendelser. Rapportørens identitet skjules når hendelsen er meldt anonymt eller selskapet skjuler identitet – kun administrator i morselskapet med avdelinger aktivert ser identiteten."
+      },
+      "plan": {
+        "intro": "To lag kan låse funksjoner uavhengig av roller og rettigheter.",
+        "subscriptionTitle": "Abonnement",
+        "subscriptionDesc": "Enkelte funksjoner og grenser (for eksempel antall droner) følger abonnementsplanen og eventuelle tillegg. Selskaper med fritak er ikke begrenset av plan.",
+        "trainingTitle": "Opplæring",
+        "trainingDesc": "Brukere merket som under opplæring ser kun modulene de har fått tilgang til, inntil kursene er bestått."
+      }
+    },
     "title": "AviSafe Admin",
     "users": "Brukere",
     "customers": "Kunder",
