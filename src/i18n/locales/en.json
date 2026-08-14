@@ -1737,6 +1737,9 @@
       },
       "plan": {
         "intro": "Two layers can lock features independently of roles and permissions.",
+        "sectionLabel": "Gating",
+        "sectionTitle": "Subscription and training",
+        "readOnlyNote": "These restrictions are imposed externally and cannot be overridden by an administrator.",
         "subscriptionTitle": "Subscription",
         "subscriptionDesc": "Some features and limits (for example the number of drones) follow the subscription plan and any add-ons. Exempt companies are not limited by plan.",
         "trainingTitle": "Training",

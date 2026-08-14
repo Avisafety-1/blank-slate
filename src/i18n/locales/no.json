@@ -1739,6 +1739,9 @@
       },
       "plan": {
         "intro": "To lag kan låse funksjoner uavhengig av roller og rettigheter.",
+        "sectionLabel": "Gating",
+        "sectionTitle": "Abonnement og opplæring",
+        "readOnlyNote": "Disse begrensningene er pålagt utenfra og kan ikke overstyres av en administrator.",
         "subscriptionTitle": "Abonnement",
         "subscriptionDesc": "Enkelte funksjoner og grenser (for eksempel antall droner) følger abonnementsplanen og eventuelle tillegg. Selskaper med fritak er ikke begrenset av plan.",
         "trainingTitle": "Opplæring",
