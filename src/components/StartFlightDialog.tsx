@@ -448,6 +448,86 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     })();
   }, [selectedMissionId, companySettings.require_sora_on_missions, companySettings.require_sora_steps, soraApprovalEnabled]);
 
+  // Preview of the SafeSky callsign that will be published (mirrors safesky-advisory logic)
+  useEffect(() => {
+    if (!open || !companyId || publishMode !== 'advisory') {
+      setCallsignPreview(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: company } = await supabase
+          .from('companies')
+          .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
+          .eq('id', companyId)
+          .maybeSingle();
+
+        let companyName = company?.navn || 'avisafe';
+        let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+        let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+
+        if (company?.parent_company_id) {
+          const { data: parentCompany } = await supabase
+            .from('companies')
+            .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+            .eq('id', company.parent_company_id)
+            .maybeSingle();
+          if (parentCompany?.navn) companyName = parentCompany.navn;
+          if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+          if (!company?.safesky_callsign_variable && parentCompany?.safesky_callsign_variable) {
+            variable = parentCompany.safesky_callsign_variable;
+          }
+        }
+
+        const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
+        const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+
+        let suffix = '01';
+        if (variable === 'none') {
+          suffix = '';
+        } else if (variable === 'drone_registration') {
+          suffix = '01';
+          if (selectedMissionId && selectedMissionId !== 'none') {
+            const { data: missionDrone } = await supabase
+              .from('mission_drones')
+              .select('drone_id')
+              .eq('mission_id', selectedMissionId)
+              .limit(1)
+              .maybeSingle();
+            if (missionDrone?.drone_id) {
+              const { data: drone } = await supabase
+                .from('drones')
+                .select('registration_number, serienummer')
+                .eq('id', missionDrone.drone_id)
+                .maybeSingle();
+              const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
+              if (cleaned) suffix = cleaned;
+            }
+          }
+        } else {
+          const parentId = company?.parent_company_id || companyId;
+          const { data: siblingCompanies } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('parent_company_id', parentId);
+          const hierarchyIds = [parentId, ...(siblingCompanies || []).map(c => c.id)];
+          const { count } = await supabase
+            .from('active_flights')
+            .select('mission_id', { count: 'exact', head: true })
+            .in('company_id', hierarchyIds)
+            .eq('publish_mode', 'advisory');
+          suffix = String((count ?? 0) + 1).padStart(2, '0');
+        }
+
+        if (!cancelled) setCallsignPreview(sanitized + suffix);
+      } catch {
+        if (!cancelled) setCallsignPreview(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, companyId, publishMode, selectedMissionId]);
+
   // Check if selected mission is in a 5km zone
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') {
