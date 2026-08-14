@@ -143,6 +143,7 @@ const Admin = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
+  const [showAccessRules, setShowAccessRules] = useState(false);
   const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
   const [childCompanies, setChildCompanies] = useState<ChildCompanyOption[]>([]);
   const [inviteDepartment, setInviteDepartment] = useState<string>("parent");
