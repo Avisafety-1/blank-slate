@@ -1311,6 +1311,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                           ? `SafeSky-advisory krever en rute med minst 3 rutepunkter (denne ruten har ${routeCoordsCount}). Legg til flere veipunkter på oppdraget for å kunne publisere advisory.`
                           : t('flight.safeskyAdvisoryRequiresRoute')}
                     </p>
+                    {hasAdvisoryRoute && callsignPreview && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('flight.safeskyCallsignPreview')}{' '}
+                        <span className="font-mono font-semibold text-foreground">{callsignPreview}</span>
+                      </p>
+                    )}
                   </div>
                 </label>
 
