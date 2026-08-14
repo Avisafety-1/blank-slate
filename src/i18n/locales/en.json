@@ -1592,6 +1592,145 @@
     "readonly": "User"
   },
   "admin": {
+    "accessRules": {
+      "button": "Access rules",
+      "title": "Access rules",
+      "description": "Overview of who can see, do and change what in AviSafe.",
+      "tabs": {
+        "roles": "Roles",
+        "permissions": "Permissions",
+        "org": "Company",
+        "data": "Data",
+        "approval": "Approval",
+        "plan": "Subscription"
+      },
+      "roles": {
+        "intro": "The role gives a coarse split. Most special permissions are granted per user – see the \"Permissions\" tab.",
+        "userName": "User",
+        "userDesc": "Basic access within their own company",
+        "userItems": [
+          "View missions, resources, documents and calendar in their own company",
+          "Create and edit their own missions",
+          "Log flight time and upload flight logs",
+          "Report incidents and deviations",
+          "Edit their own logbook entries"
+        ],
+        "adminName": "Administrator",
+        "adminDesc": "Everything a user can do, plus administration",
+        "adminItems": [
+          "Approve new users and assign roles",
+          "Change company settings and defaults",
+          "Create and edit drones, equipment and personnel",
+          "Create documents, checklists and evaluation forms",
+          "Edit and delete other users' flights and logbook entries"
+        ],
+        "note": "An administrator inherits everything a user can do."
+      },
+      "permissions": {
+        "intro": "These permissions are set per user and are independent of the role – a regular user can have them without being an administrator.",
+        "items": [
+          {
+            "title": "Can approve missions",
+            "desc": "Grants access to approve or reject missions awaiting approval. The scope is set to their own company, selected departments, or all departments."
+          },
+          {
+            "title": "Incident responsible",
+            "desc": "Can be assigned as responsible for incidents, with a choice of which companies/departments this applies to."
+          },
+          {
+            "title": "ECCAIRS access",
+            "desc": "Grants access to prepare and submit incident reports to the authority via ECCAIRS."
+          },
+          {
+            "title": "Technical responsible",
+            "desc": "Can be set as technically responsible for a drone and followed up on maintenance and inspections."
+          },
+          {
+            "title": "Under training / module access",
+            "desc": "Limits which modules the user sees until the courses are completed. Applies only to users marked as under training."
+          }
+        ],
+        "selfApproval": "Self-approval can be blocked by a company setting when the user is listed as personnel on the mission."
+      },
+      "org": {
+        "intro": "A company can have departments beneath it. The parent company can control both settings and visibility downwards.",
+        "hierarchyTitle": "Parent company and departments",
+        "hierarchyDesc": "Departments sit under a parent company. Data is isolated per company as a rule.",
+        "adminScopeTitle": "Administrator reach",
+        "adminScopeDesc": "An administrator in the parent company can view and manage its departments. An administrator in a department only sees their own department.",
+        "switchTitle": "Switching company",
+        "switchDesc": "Users with access to several companies can switch company from the top menu.",
+        "propagationTitle": "Settings propagation",
+        "propagationDesc": "The parent company can lock settings so all departments inherit the value:",
+        "propagationList": [
+          "Mission approval requirement",
+          "Blocking of self-approval",
+          "SORA requirement on missions",
+          "SORA configuration and approval",
+          "SORA buffer mode",
+          "Mission types",
+          "Mission roles",
+          "Airspace warnings",
+          "Flight alerts and alert recipients",
+          "Deviation categories",
+          "Default map layers",
+          "Hiding of reporter identity",
+          "Maintenance acknowledgement",
+          "Currency requirements",
+          "FlightHub 2 credentials"
+        ],
+        "visibilityTitle": "Visibility per department",
+        "visibilityDesc": "Documents, drones and equipment are visible to all departments by default, but can be limited to selected departments."
+      },
+      "data": {
+        "intro": "Some rules are built into the system and control who sees and can change content.",
+        "items": [
+          {
+            "title": "Evaluation forms",
+            "desc": "Visible within their own company. Created and edited from admin. Global visibility across all companies is not available to regular administrators."
+          },
+          {
+            "title": "Flights and logbook",
+            "desc": "Administrators can edit and delete flights and logbook entries. A user can edit their own. Deleting a flight also removes the related logbook entries and subtracts the flight hours."
+          },
+          {
+            "title": "Documents and checklists",
+            "desc": "Visible within their own company, and additionally inherited from the parent company when shared with the departments."
+          },
+          {
+            "title": "Missions",
+            "desc": "Visible within their own company, and to personnel assigned to the mission – also across departments."
+          },
+          {
+            "title": "Messages",
+            "desc": "Only the sender and recipients can see a message thread."
+          }
+        ]
+      },
+      "approval": {
+        "intro": "Approval applies when the company requires it, and is governed by permission and scope – not by the role alone.",
+        "flowTitle": "Mission flow",
+        "flowSteps": [
+          "Draft / planned",
+          "Awaiting approval",
+          "Approved",
+          "Rejected"
+        ],
+        "whoTitle": "Who can approve",
+        "whoDesc": "Users with the \"can approve missions\" permission, and only for the companies within their scope. If self-approval is blocked, they cannot approve missions they are personnel on.",
+        "soraTitle": "SORA",
+        "soraDesc": "When the company requires SORA, a mission cannot be approved until the required SORA steps are completed.",
+        "incidentTitle": "Incidents",
+        "incidentDesc": "The incident responsible handles incidents. The reporter's identity is hidden when the incident is reported anonymously or the company hides identities – only an administrator in the parent company with departments enabled sees the identity."
+      },
+      "plan": {
+        "intro": "Two layers can lock features independently of roles and permissions.",
+        "subscriptionTitle": "Subscription",
+        "subscriptionDesc": "Some features and limits (for example the number of drones) follow the subscription plan and any add-ons. Exempt companies are not limited by plan.",
+        "trainingTitle": "Training",
+        "trainingDesc": "Users marked as under training only see the modules they have been granted, until the courses are completed."
+      }
+    },
     "title": "AviSafe Admin",
     "users": "Users",
     "customers": "Customers",

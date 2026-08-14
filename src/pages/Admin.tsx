@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AccessRulesDialog } from "@/components/admin/AccessRulesDialog";
 import { CompanyManagementSection } from "@/components/admin/CompanyManagementSection";
 import { CustomerManagementSection } from "@/components/admin/CustomerManagementSection";
 import { ChildCompaniesSection } from "@/components/admin/ChildCompaniesSection";
@@ -143,6 +144,7 @@ const Admin = () => {
   const [inviteEmail, setInviteEmail] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showEmailList, setShowEmailList] = useState(false);
+  const [showAccessRules, setShowAccessRules] = useState(false);
   const [pendingApproveUserId, setPendingApproveUserId] = useState<string | null>(null);
   const [childCompanies, setChildCompanies] = useState<ChildCompanyOption[]>([]);
   const [inviteDepartment, setInviteDepartment] = useState<string>("parent");
@@ -1186,6 +1188,16 @@ const Admin = () => {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2" data-tour="admin-approved-actions">
+                      <AccessRulesDialog open={showAccessRules} onOpenChange={setShowAccessRules} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAccessRules(true)}
+                        className="px-2 sm:px-3"
+                      >
+                        <ShieldCheck className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">{t('admin.accessRules.button')}</span>
+                      </Button>
                       <Input
                         type="text"
                         value={userSearchQuery}
