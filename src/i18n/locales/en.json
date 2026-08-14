@@ -1632,6 +1632,8 @@
       },
       "permissions": {
         "intro": "These permissions are set per user and are independent of the role – a regular user can have them without being an administrator.",
+        "sectionLabel": "Per user",
+        "sectionTitle": "Special permissions",
         "items": [
           {
             "title": "Can approve missions",

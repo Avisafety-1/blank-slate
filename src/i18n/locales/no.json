@@ -1634,6 +1634,8 @@
       },
       "permissions": {
         "intro": "Disse rettighetene settes per bruker og er uavhengige av rollen – en vanlig bruker kan ha dem uten å være administrator.",
+        "sectionLabel": "Per bruker",
+        "sectionTitle": "Spesialrettigheter",
         "items": [
           {
             "title": "Kan godkjenne oppdrag",
