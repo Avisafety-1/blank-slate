@@ -194,7 +194,7 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-function RuleRow({ title, desc, index }: { title: string; desc: string; index: number }) {
+function RuleRow({ title, desc, index, sub }: { title: string; desc: string; index: number; sub?: string[] }) {
   const accents: Array<"primary" | "accent" | "muted" | "success" | "warning"> = [
     "primary",
     "accent",
