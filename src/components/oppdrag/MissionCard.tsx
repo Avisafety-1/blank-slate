@@ -908,6 +908,17 @@ export const MissionCard = ({
                       </Button>
                     </div>
                   )}
+                  {(isAdmin || log.user_id === user?.id) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setFlightLogToDelete(log)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {t('pages.missions.card.deleteFlight')}
+                    </Button>
+                  )}
                   {log.safesky_mode && log.safesky_mode !== 'none' && (
                     <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-900 border-blue-500/30">
                       <Radio className="h-3 w-3 mr-1" />
