@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const out = process.argv[2] ?? "/mnt/documents/avisafe-promo.mp4";
+const out = process.argv[2] ?? "/mnt/documents/avisafe-promo-v3.mp4";
 const frames = process.argv[3];
 
 const bundled = await bundle({

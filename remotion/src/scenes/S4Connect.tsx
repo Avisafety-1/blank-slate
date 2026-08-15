@@ -83,12 +83,18 @@ export const S4Connect: React.FC = () => {
       <AbsoluteFill style={{ padding: 90, justifyContent: "flex-start" }}>
         <div
           style={{
+            alignSelf: "flex-start",
             fontFamily: display,
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: 30,
             letterSpacing: 10,
-            color: C.ice,
+            color: C.white,
             opacity: headP,
+            padding: "12px 22px",
+            borderRadius: 10,
+            background: "rgba(4, 9, 16, 0.66)",
+            border: "1px solid rgba(233, 161, 59, 0.22)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
           }}
         >
           CONNECTING

@@ -16,7 +16,7 @@ export const C = {
   navy: "#0C1826",
   navy2: "#122438",
   steel: "#1A5091",
-  ice: "#8FB6DC",
+  ice: "#CFE3F7",
   white: "#F4F8FC",
   amber: "#E9A13B",
   danger: "#D9564C",
