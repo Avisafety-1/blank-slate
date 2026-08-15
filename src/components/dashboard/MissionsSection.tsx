@@ -357,7 +357,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     onChecklistClick={() => setChecklistMission(mission)}
                     onNotamClick={() => setNotamMission(mission)}
                   />
-                  </div>
                 </div>
                 
                 <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-1.5">

@@ -204,7 +204,6 @@ export const MissionCard = ({
             ninoxApproved={ninoxApproved}
             onNinoxClick={() => setNinoxConfirmOpen(true)}
           />
-          </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0 w-full sm:w-auto">
           <ApproveMissionButton

@@ -256,7 +256,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             ninoxApproved={ninoxApproved}
             onNinoxClick={() => setNinoxConfirmOpen(true)}
           />
-          </div>
 
           <div className="space-y-3">
             <div className="flex items-start gap-3">
