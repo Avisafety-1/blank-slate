@@ -212,8 +212,13 @@ const Hendelser = () => {
     fetchIncidents();
   }, [companyId]);
 
-  // Deep-link handling: ?id=<incident-uuid>
+  // Deep-link handling: ?id=<incident-uuid> | ?tab=deviations&deviation=<uuid>
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"incidents" | "deviations">(
+    searchParams.get("tab") === "deviations" ? "deviations" : "incidents"
+  );
+  const focusDeviationId = searchParams.get("deviation");
+
   useEffect(() => {
     const id = searchParams.get("id");
     if (!id || incidents.length === 0) return;
