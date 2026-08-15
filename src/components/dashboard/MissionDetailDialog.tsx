@@ -247,9 +247,9 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
               });
             }}
             onSubmitForApproval={() => setApprovalConfirmOpen(true)}
-            aiRisk={(currentMission as any).aiRisk || null}
+            aiRisk={fetchedAiRisk || (currentMission as any).aiRisk || null}
             onAIRiskClick={() => {
-              setRiskDialogInitialTab((currentMission as any).aiRisk ? 'history' : 'input');
+              setRiskDialogInitialTab((fetchedAiRisk || (currentMission as any).aiRisk) ? 'history' : 'input');
               setRiskDialogOpen(true);
             }}
             sora={soraStatus ? { sora_status: soraStatus } : null}
