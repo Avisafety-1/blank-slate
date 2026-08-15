@@ -8227,7 +8227,10 @@
       "unknownPilot": "Unknown",
       "flightDuration": "{{minutes}} min flight time",
       "linkedIncident": "Linked to incident",
-      "incidentRequested": "Incident requested"
+      "incidentRequested": "Incident requested",
+      "approvedBy": "Approved by: {{name}}",
+      "openMission": "Open mission",
+      "missionNotFound": "Mission not found"
     },
     "actions": {
       "sendMessage": "Send message",

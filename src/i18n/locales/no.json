@@ -8229,7 +8229,10 @@
       "unknownPilot": "Ukjent",
       "flightDuration": "{{minutes}} min flytid",
       "linkedIncident": "Koblet til hendelse",
-      "incidentRequested": "Hendelse etterspurt"
+      "incidentRequested": "Hendelse etterspurt",
+      "approvedBy": "Godkjent av: {{name}}",
+      "openMission": "Åpne oppdrag",
+      "missionNotFound": "Fant ikke oppdraget"
     },
     "actions": {
       "sendMessage": "Send melding",
