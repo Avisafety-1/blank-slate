@@ -691,54 +691,56 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           <section className="space-y-5" data-tour="incident-meta">
             <SectionHeader num="02" title={t('incidents.sections.classification')} />
 
-            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)_minmax(0,1fr)]">
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
-              <Input
-                id="hendelsestidspunkt"
-                type="datetime-local"
-                className="min-w-0 w-full"
-                value={formData.hendelsestidspunkt}
-                onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
-              />
-            </div>
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
+                <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                  <Input
+                    id="hendelsestidspunkt"
+                    type="datetime-local"
+                    className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    value={formData.hendelsestidspunkt}
+                    onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
+                  />
+                </div>
+              </div>
 
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="alvorlighetsgrad">{t('incidents.severityLabel')}</Label>
-              <Select
-                value={formData.alvorlighetsgrad}
-                onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
-              >
-                <SelectTrigger id="alvorlighetsgrad" className="min-w-0 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Lav">{translateSeverity('Lav')}</SelectItem>
-                  <SelectItem value="Middels">{translateSeverity('Middels')}</SelectItem>
-                  <SelectItem value="Høy">{translateSeverity('Høy')}</SelectItem>
-                  <SelectItem value="Kritisk">{translateSeverity('Kritisk')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="alvorlighetsgrad">{t('incidents.severityLabel')}</Label>
+                <Select
+                  value={formData.alvorlighetsgrad}
+                  onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
+                >
+                  <SelectTrigger id="alvorlighetsgrad" className="min-w-0 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Lav">{translateSeverity('Lav')}</SelectItem>
+                    <SelectItem value="Middels">{translateSeverity('Middels')}</SelectItem>
+                    <SelectItem value="Høy">{translateSeverity('Høy')}</SelectItem>
+                    <SelectItem value="Kritisk">{translateSeverity('Kritisk')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="min-w-0 space-y-2">
-              <Label htmlFor="status">{t('missions.status')}</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger id="status" className="min-w-0 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Åpen">{t('incidents.statusValues.Åpen')}</SelectItem>
-                  <SelectItem value="Under behandling">{t('incidents.statusValues.Under behandling')}</SelectItem>
-                  <SelectItem value="Ferdigbehandlet">{t('incidents.statusValues.Ferdigbehandlet')}</SelectItem>
-                  <SelectItem value="Lukket">{t('incidents.statusValues.Lukket')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="min-w-0 space-y-2">
+                <Label htmlFor="status">{t('missions.status')}</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger id="status" className="min-w-0 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Åpen">{t('incidents.statusValues.Åpen')}</SelectItem>
+                    <SelectItem value="Under behandling">{t('incidents.statusValues.Under behandling')}</SelectItem>
+                    <SelectItem value="Ferdigbehandlet">{t('incidents.statusValues.Ferdigbehandlet')}</SelectItem>
+                    <SelectItem value="Lukket">{t('incidents.statusValues.Lukket')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-tour="incident-classification">
           <div className="space-y-2">
