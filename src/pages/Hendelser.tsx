@@ -14,7 +14,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2, FileWarning } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2 } from "lucide-react";
 import { DeviationsView } from "@/components/deviations/DeviationsView";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -958,15 +958,20 @@ const Hendelser = () => {
                 {t('pages.incidents.title')}
               </h1>
             </button>
-            <Button
-              variant={activeTab === "deviations" ? "default" : "outline"}
-              size="lg"
-              className="gap-2 self-start"
+            <button
+              type="button"
               onClick={() => setActiveTab("deviations")}
+              className={cn(
+                "inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm self-start",
+                activeTab === "deviations"
+                  ? "bg-primary/20 border-primary/40"
+                  : "bg-background/40 border-border/50 hover:bg-background/60"
+              )}
             >
-              <FileWarning className="w-4 h-4" />
-              {t('deviations.title')}
-            </Button>
+              <h2 className="text-3xl sm:text-4xl font-bold text-secondary-foreground">
+                {t('deviations.title')}
+              </h2>
+            </button>
           </div>
 
           {activeTab === "deviations" ? (
