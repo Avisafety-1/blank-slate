@@ -946,6 +946,7 @@
     "mustBeLoggedIn": "Du må være logget inn for å rapportere hendelser",
     "savedOffline": "Hendelse lagret lokalt – synkroniseres når nett er tilbake",
     "linkToMission": "Knytt til oppdrag (valgfritt)",
+    "selectMission": "Velg oppdrag...",
     "searchMissions": "Søk i oppdrag...",
     "noMissionsFound": "Ingen oppdrag funnet.",
     "titleLabel": "Tittel",

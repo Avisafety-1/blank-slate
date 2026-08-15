@@ -944,6 +944,7 @@
     "mustBeLoggedIn": "You must be logged in to report incidents",
     "savedOffline": "Incident saved locally – will sync when back online",
     "linkToMission": "Link to mission (optional)",
+    "selectMission": "Select mission...",
     "searchMissions": "Search missions...",
     "noMissionsFound": "No missions found.",
     "titleLabel": "Title",
