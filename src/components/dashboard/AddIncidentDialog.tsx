@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff, Maximize2, Minimize2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,6 +68,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const [droneId, setDroneId] = useState<string | null>(null);
   const [equipmentIds, setEquipmentIds] = useState<string[]>([]);
   const [resourcesOpen, setResourcesOpen] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [reportAnonymously, setReportAnonymously] = useState(false);
 
   // Resource data
@@ -566,19 +567,41 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     );
   };
 
+  const SectionHeader = ({ num, title, hint }: { num: string; title: string; hint?: string }) => (
+    <div className="flex items-center gap-2 pb-2 border-b border-border/70">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded">
+        {num}
+      </span>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{title}</h3>
+      {hint && <span className="text-xs text-muted-foreground font-normal">{hint}</span>}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-tour="incident-dialog">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? t('incidents.dialog.editTitle') : t('incidents.dialog.reportTitle')}</DialogTitle>
+      <DialogContent
+        className="w-[95vw] max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden"
+        data-tour="incident-dialog"
+      >
+        <DialogHeader className="px-5 sm:px-8 py-5 border-b border-border bg-muted/30 text-left space-y-1 shrink-0">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-bold tracking-tight">
+            <span className="w-1.5 h-6 rounded-full bg-primary shrink-0" />
+            {isEditing ? t('incidents.dialog.editTitle') : t('incidents.dialog.reportTitle')}
+          </DialogTitle>
           <DialogDescription>
             {isEditing ? t('incidents.dialog.editDescription') : t('incidents.dialog.reportDescription')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8">
+          {/* 01 – Oversikt */}
+          <section className="space-y-5">
+            <SectionHeader num="01" title={t('incidents.sections.overview')} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2" data-tour="incident-mission">
             <Label>{t('incidents.linkToMission')}</Label>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -616,31 +639,59 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           </div>
 
-          <div className="space-y-4" data-tour="incident-title-desc">
-            <div className="space-y-2">
-              <Label htmlFor="tittel">{t('incidents.titleLabel')} *</Label>
-              <Input
-                id="tittel"
-                value={formData.tittel}
-                onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
-                placeholder={t('incidents.titlePlaceholder')}
-              />
+          <div className="space-y-2" data-tour="incident-title-desc">
+            <Label htmlFor="tittel">{t('incidents.titleLabel')} *</Label>
+            <Input
+              id="tittel"
+              value={formData.tittel}
+              onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
+              placeholder={t('incidents.titlePlaceholder')}
+            />
+          </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="beskrivelse">{t('incidents.description')}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="beskrivelse">{t('incidents.description')}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setDescriptionExpanded((v) => !v)}
+                >
+                  {descriptionExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  {descriptionExpanded ? t('incidents.collapseField') : t('incidents.expandField')}
+                </Button>
+              </div>
               <Textarea
                 id="beskrivelse"
                 value={formData.beskrivelse}
                 onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
                 placeholder={t('incidents.descriptionPlaceholder')}
-                rows={4}
+                className={cn(
+                  "resize-y transition-[min-height] duration-200",
+                  descriptionExpanded ? "min-h-[380px]" : "min-h-[140px]"
+                )}
               />
             </div>
 
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
+              <Input
+                id="lokasjon"
+                value={formData.lokasjon}
+                onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
+                placeholder={t('incidents.locationPlaceholder')}
+              />
+            </div>
+          </section>
 
-          <div className="space-y-4" data-tour="incident-meta">
+          {/* 02 – Klassifisering */}
+          <section className="space-y-5" data-tour="incident-meta">
+            <SectionHeader num="02" title={t('incidents.sections.classification')} />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="space-y-2">
               <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
@@ -688,7 +739,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
           </div>
 
-          <div className="space-y-4" data-tour="incident-classification">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-tour="incident-classification">
           <div className="space-y-2">
             <Label htmlFor="kategori">{t('incidents.categoryOptional')}</Label>
             <Select
@@ -802,26 +853,20 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             )}
           </div>
           </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
-            <Input
-              id="lokasjon"
-              value={formData.lokasjon}
-              onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
-              placeholder={t('incidents.locationPlaceholder')}
-            />
-          </div>
-
-          {/* Ressurser – sammenleggbar seksjon */}
+          {/* 03 – Ressurser */}
+          <section className="space-y-4">
+            <SectionHeader num="03" title={t('incidents.sections.resources')} hint={t('incidents.sections.resourcesHint')} />
           <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" className="w-full justify-between px-3 py-2.5 h-auto text-sm font-medium rounded-lg border border-border bg-muted/30 text-muted-foreground hover:text-foreground">
                 {t('incidents.resourcesOptional')}
                 <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 pt-2">
+            <CollapsibleContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
+
               {/* Pilot */}
               <div className="space-y-1">
                 <Label className="text-sm">{t('incidents.pilot')}</Label>
@@ -932,8 +977,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
             </CollapsibleContent>
           </Collapsible>
+          </section>
 
-          {/* Bildeopplasting */}
+          {/* 04 – Vedlegg og personvern */}
+          <section className="space-y-4">
+            <SectionHeader num="04" title={t('incidents.sections.attachments')} />
           <div className="space-y-2" data-tour="incident-image">
             <Label>{t('incidents.imageOptional')}</Label>
             <input
@@ -1013,30 +1061,31 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </label>
           )}
           </div>
+          </section>
+        </div>
 
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-            >
-              {t('actions.cancel')}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
-              className="flex-1"
-              data-tour="incident-submit"
-            >
-              {submitting
-                ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
-                : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
-            </Button>
-          </div>
-
+        <div className="shrink-0 border-t border-border bg-muted/30 px-5 sm:px-8 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="sm:min-w-[140px]"
+          >
+            {t('actions.cancel')}
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
+            className="sm:min-w-[180px]"
+            data-tour="incident-submit"
+          >
+            {submitting
+              ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
+              : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+
   );
 };

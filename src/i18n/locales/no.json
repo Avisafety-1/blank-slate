@@ -1121,7 +1121,18 @@
         "failed": "Feilet",
         "notExported": "Ikke eksportert"
       }
-    }
+    },
+    "sections": {
+      "overview": "Oversikt",
+      "classification": "Klassifisering",
+      "resources": "Ressurser involvert",
+      "resourcesHint": "Pilot, drone, utstyr",
+      "attachments": "Bilder og vedlegg",
+      "privacy": "Personvern",
+      "followUp": "Oppfølging"
+    },
+    "expandField": "Utvid felt",
+    "collapseField": "Forminsk felt"
   },
   "profile": {
     "title": "Min profil",
