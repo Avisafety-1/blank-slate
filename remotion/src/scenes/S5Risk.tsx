@@ -7,8 +7,8 @@ import { C } from "../theme";
 
 export const S5Risk: React.FC = () => {
   const frame = useCurrentFrame();
-  const scale = interpolate(frame, [0, 150], [1.08, 1.0]);
-  const sweep = interpolate(frame, [20, 70], [-1400, 2400], {
+  const scale = interpolate(frame, [0, 190], [1.1, 1.0]);
+  const sweep = interpolate(frame, [24, 90], [-1400, 2400], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -22,12 +22,12 @@ export const S5Risk: React.FC = () => {
           width={2100}
           clipFrom="bottom"
           zoom={0.1}
-          style={{ position: "absolute", left: -90, top: -80, opacity: 0.85, borderRadius: 0 }}
+          style={{ position: "absolute", left: -90, top: -80, opacity: 1, borderRadius: 0 }}
         />
       </AbsoluteFill>
       <AbsoluteFill
         style={{
-          background: `linear-gradient(180deg, ${C.ink}dd 0%, ${C.ink}66 40%, ${C.ink}f2 100%)`,
+          background: `linear-gradient(180deg, ${C.ink}bb 0%, ${C.ink}22 38%, ${C.ink}e6 100%)`,
         }}
       />
       <AbsoluteFill style={{ overflow: "hidden" }}>

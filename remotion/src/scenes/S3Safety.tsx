@@ -36,7 +36,7 @@ const Stat: React.FC<{ label: string; value: string; delay: number }> = ({
 
 export const S3Safety: React.FC = () => {
   const frame = useCurrentFrame();
-  const y = interpolate(frame, [0, 140], [30, -30]);
+  const y = interpolate(frame, [0, 200], [36, -36]);
   return (
     <AbsoluteFill>
       <Backdrop tilt={-14} />
@@ -44,9 +44,9 @@ export const S3Safety: React.FC = () => {
         <Shot
           src="images/audit.png"
           delay={8}
-          width={1000}
+          width={1060}
           clipFrom="bottom"
-          style={{ position: "absolute", left: -120, top: 260, opacity: 0.85 }}
+          style={{ position: "absolute", left: -100, top: 250, opacity: 1 }}
         />
         <Shot
           src="images/stats.png"
@@ -58,7 +58,7 @@ export const S3Safety: React.FC = () => {
       </AbsoluteFill>
       <AbsoluteFill
         style={{
-          background: `linear-gradient(180deg, ${C.ink}f2 18%, ${C.ink}80 55%, ${C.ink}f5 100%)`,
+          background: `linear-gradient(180deg, ${C.ink}ee 14%, ${C.ink}44 50%, ${C.ink}dd 100%)`,
         }}
       />
       <AbsoluteFill style={{ padding: "110px 120px", justifyContent: "flex-start" }}>
