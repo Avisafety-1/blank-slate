@@ -694,7 +694,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
-                <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring">
+                <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                   <Input
                     id="hendelsestidspunkt"
                     type="datetime-local"
