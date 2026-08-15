@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   Calendar,
   ChevronDown,
-  Drone,
+  Plane,
   FileWarning,
   MapPin,
   MessageSquare,
@@ -191,7 +191,7 @@ export const DeviationCard = ({
         <div className="flex flex-wrap gap-2">
           {mission?.drones.map((d) => (
             <Badge key={`d-${d}`} variant="secondary" className="text-[11px] gap-1">
-              <Drone className="w-3 h-3" />
+              <Plane className="w-3 h-3" />
               {d}
             </Badge>
           ))}
