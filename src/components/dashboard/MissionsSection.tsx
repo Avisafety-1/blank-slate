@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { GlassCard } from "@/components/GlassCard";
 import { Badge } from "@/components/ui/badge";
+import { MissionBadgeRow } from "@/components/oppdrag/MissionBadgeRow";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, MapPin, Plus, FileText, Brain, Building2, Radio, ClipboardCheck } from "lucide-react";
@@ -339,80 +340,23 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       </Badge>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1 items-center">
-                    <MissionStatusDropdown
-                      missionId={mission.id}
-                      currentStatus={mission.status}
-                      onStatusChanged={fetchMissions}
-                      statusColors={statusColors}
-                      className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap"
-                      latitude={mission.latitude}
-                      longitude={mission.longitude}
-                    />
-                    {shouldShowApprovalBadge(showApproval, mission.approval_status) && (() => {
-                      const approvalStatus = mission.approval_status || 'not_approved';
-                      const isClickable = canSubmitForApproval(mission.approval_status);
-                      return (
-                        <Badge 
-                          variant="outline"
-                          className={`${getApprovalStatusColor(approvalStatus)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap ${isClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                          onClick={isClickable ? (e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            setApprovalConfirmMissionId(mission.id);
-                          } : undefined}
-                        >
-                          {getApprovalStatusLabel(approvalStatus, true)}
-                        </Badge>
-                      );
-                    })()}
-                    {shouldShowSoraBadge(missionSoras[mission.id]) && (
-                      <Badge 
-                        variant="outline"
-                        onClick={(e) => handleSoraClick({ ...mission, sora: missionSoras[mission.id] }, e)}
-                        className={`${getSoraBadgeColor(missionSoras[mission.id]?.sora_status)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80`}
-                      >
-                        {t('dashboard.missions.soraStatus', { status: missionSoras[mission.id].sora_status })}
-                      </Badge>
-                    )}
-                    <Badge 
-                      variant="outline"
-                      className={`${missionAIRisks[mission.id] ? getAIRiskBadgeColor(missionAIRisks[mission.id].recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] || null });
-                        setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');
-                        setRiskDialogOpen(true);
-                      }}
-                    >
-                      <Brain className="w-3 h-3 mr-1" />
-                      {missionAIRisks[mission.id] ? missionAIRisks[mission.id].overall_score.toFixed(1) : 'Risiko'}
-                    </Badge>
-                    {mission.checklist_ids?.length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setChecklistMission(mission);
-                        }}
-                      >
-                        <ClipboardCheck className="w-3 h-3 mr-1" />
-                        Sjekkliste
-                      </Badge>
-                    )}
-                    {mission.notam_text && (
-                      <Badge
-                        variant="outline"
-                        className={`${getNotamBadgeColor(!!mission.notam_submitted_at)} text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotamMission(mission);
-                        }}
-                      >
-                        <Radio className="w-3 h-3 mr-1" />
-                        NOTAM
-                      </Badge>
-                    )}
+                  <MissionBadgeRow
+                    mission={mission as any}
+                    size="compact"
+                    showApproval={showApproval}
+                    onStatusChanged={fetchMissions}
+                    onSubmitForApproval={() => setApprovalConfirmMissionId(mission.id)}
+                    aiRisk={missionAIRisks[mission.id] || null}
+                    onAIRiskClick={() => {
+                      setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] || null });
+                      setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');
+                      setRiskDialogOpen(true);
+                    }}
+                    sora={missionSoras[mission.id] || null}
+                    onSoraClick={() => handleSoraClick({ ...mission, sora: missionSoras[mission.id] } as any, undefined as any)}
+                    onChecklistClick={() => setChecklistMission(mission)}
+                    onNotamClick={() => setNotamMission(mission)}
+                  />
                   </div>
                 </div>
                 
