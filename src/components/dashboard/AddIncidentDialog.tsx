@@ -852,26 +852,20 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             )}
           </div>
           </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
-            <Input
-              id="lokasjon"
-              value={formData.lokasjon}
-              onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
-              placeholder={t('incidents.locationPlaceholder')}
-            />
-          </div>
-
-          {/* Ressurser – sammenleggbar seksjon */}
+          {/* 03 – Ressurser */}
+          <section className="space-y-4">
+            <SectionHeader num="03" title={t('incidents.sections.resources')} hint={t('incidents.sections.resourcesHint')} />
           <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen} data-tour="incident-resources">
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between px-2 py-1.5 h-auto text-sm font-medium text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" className="w-full justify-between px-3 py-2.5 h-auto text-sm font-medium rounded-lg border border-border bg-muted/30 text-muted-foreground hover:text-foreground">
                 {t('incidents.resourcesOptional')}
                 <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 pt-2">
+            <CollapsibleContent className="space-y-3 pt-3">
+
               {/* Pilot */}
               <div className="space-y-1">
                 <Label className="text-sm">{t('incidents.pilot')}</Label>
