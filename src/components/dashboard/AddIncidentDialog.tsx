@@ -864,7 +864,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                 <ChevronDown className={cn("h-4 w-4 transition-transform", resourcesOpen && "rotate-180")} />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 pt-3">
+            <CollapsibleContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
 
               {/* Pilot */}
               <div className="space-y-1">
@@ -976,8 +976,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
             </CollapsibleContent>
           </Collapsible>
+          </section>
 
-          {/* Bildeopplasting */}
+          {/* 04 – Vedlegg og personvern */}
+          <section className="space-y-4">
+            <SectionHeader num="04" title={t('incidents.sections.attachments')} />
           <div className="space-y-2" data-tour="incident-image">
             <Label>{t('incidents.imageOptional')}</Label>
             <input
