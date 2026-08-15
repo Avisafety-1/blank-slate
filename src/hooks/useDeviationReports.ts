@@ -10,6 +10,9 @@ export interface DeviationMissionInfo {
   tidspunkt: string | null;
   oppdragstype: string | null;
   risk_nivå: string | null;
+  approved_by: string | null;
+  approver_name: string | null;
+  approved_at: string | null;
   status: string | null;
   overall_score: number | null;
   recommendation: string | null;
@@ -87,7 +90,7 @@ export function useDeviationReports(enabled: boolean) {
       ] = await Promise.all([
         supabase
           .from("missions")
-          .select("id, tittel, lokasjon, tidspunkt, oppdragstype, risk_nivå, status")
+          .select("id, tittel, lokasjon, tidspunkt, oppdragstype, risk_nivå, status, approved_by, approved_at")
           .in("id", missionIds),
         supabase
           .from("mission_risk_assessments")
@@ -116,6 +119,7 @@ export function useDeviationReports(enabled: boolean) {
       const equipmentIds = uniq((meRes.data || []).map((r: any) => r.equipment_id));
       const profileIds = uniq([
         ...rows.map((r) => r.reported_by),
+        ...(((missionsRes as any).data || []) as any[]).map((m) => m.approved_by),
         ...(mpRes.data || []).map((r: any) => r.profile_id),
         ...((flightsRes as any).data || []).map((r: any) => r.user_id),
       ]);
@@ -179,6 +183,9 @@ export function useDeviationReports(enabled: boolean) {
           tidspunkt: m.tidspunkt,
           oppdragstype: m.oppdragstype,
           risk_nivå: (m as any)["risk_nivå"] ?? null,
+          approved_by: m.approved_by ?? null,
+          approver_name: m.approved_by ? nameById[m.approved_by] ?? null : null,
+          approved_at: m.approved_at ?? null,
           status: m.status,
           overall_score: riskByMission[m.id]?.overall_score ?? null,
           recommendation: riskByMission[m.id]?.recommendation ?? null,

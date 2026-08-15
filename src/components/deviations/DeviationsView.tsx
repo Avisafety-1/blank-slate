@@ -9,6 +9,9 @@ import { DeviationCard } from "./DeviationCard";
 import { EditDeviationDialog } from "./EditDeviationDialog";
 import { DeviationMessageDialog } from "./DeviationMessageDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
+import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { translateDeviationCategory } from "@/lib/i18nHelpers";
 
 interface Props {
@@ -25,6 +28,16 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
   const [messageTarget, setMessageTarget] = useState<DeviationReport | null>(null);
   const [messageMode, setMessageMode] = useState<"message" | "request_incident">("message");
   const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+  const [missionDetail, setMissionDetail] = useState<any | null>(null);
+
+  const openMission = async (missionId: string) => {
+    const { data, error } = await supabase.from("missions").select("*").eq("id", missionId).maybeSingle();
+    if (error || !data) {
+      toast.error(t("deviations.card.missionNotFound"));
+      return;
+    }
+    setMissionDetail(data);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -102,10 +115,17 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
                 setMessageTarget(rep);
               }}
               onCreateIncident={(rep) => setIncidentMissionId(rep.mission_id)}
+              onOpenMission={openMission}
             />
           ))}
         </div>
       )}
+
+      <MissionDetailDialog
+        open={!!missionDetail}
+        onOpenChange={(o) => !o && setMissionDetail(null)}
+        mission={missionDetail}
+      />
 
       <EditDeviationDialog
         open={!!editTarget}
