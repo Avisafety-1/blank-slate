@@ -202,8 +202,8 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     setDialogOpen(true);
   };
 
-  const handleSoraClick = (mission: Mission, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSoraClick = (mission: Mission, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSoraMissionForDialog(mission);
     setRiskDialogInitialTab('manual-sora');
     setRiskDialogOpen(true);
@@ -353,7 +353,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       setRiskDialogOpen(true);
                     }}
                     sora={missionSoras[mission.id] || null}
-                    onSoraClick={() => handleSoraClick({ ...mission, sora: missionSoras[mission.id] } as any, undefined as any)}
+                    onSoraClick={() => handleSoraClick({ ...mission, sora: missionSoras[mission.id] } as any)}
                     onChecklistClick={() => setChecklistMission(mission)}
                     onNotamClick={() => setNotamMission(mission)}
                   />
