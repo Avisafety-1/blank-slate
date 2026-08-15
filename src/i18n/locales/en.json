@@ -8266,5 +8266,14 @@
       "requestSubject": "Request incident report – {{mission}}",
       "requestBody": "Hi,\n\nThe deviation \"{{category}}\" from mission \"{{mission}}\" should be registered as an incident. Could you create an incident report?"
     }
+  },
+  "missionBadges": {
+    "ai": "AI",
+    "riskNotAssessed": "Risk",
+    "checklist": "Checklist",
+    "checklistCompleted": "Checklist completed",
+    "checklistExecute": "Run checklist",
+    "ninoxApproved": "Ninox approved",
+    "ninoxNotApproved": "Ninox not approved"
   }
 }

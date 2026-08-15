@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
+import { MissionBadgeRow } from "@/components/oppdrag/MissionBadgeRow";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -220,75 +221,41 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             longitude={currentMission.longitude}
             status={currentMission.status}
           />
-          <div className="flex flex-wrap gap-2">
-            <MissionStatusDropdown
-              missionId={currentMission.id}
-              currentStatus={currentMission.status}
-              onStatusChanged={() => {
-                onMissionUpdated?.();
-                supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
-                  if (data) setLiveMission(data);
-                });
-              }}
-              statusColors={statusColors}
-              className="border"
-              latitude={currentMission.latitude}
-              longitude={currentMission.longitude}
-            />
-            {shouldShowApprovalBadge(showApproval, currentMission.approval_status) && (() => {
-              const approvalStatus = currentMission.approval_status || 'not_approved';
-              const approvalClickable = canSubmitForApproval(currentMission.approval_status);
-              return (
-                <Badge 
-                  variant="outline" 
-                  className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                  onClick={approvalClickable ? () => setApprovalConfirmOpen(true) : undefined}
-                >
-                  {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
-                  {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                  {approvalStatus === 'pending_approval' ? t('dashboard.missionDetail.pendingApproval') : approvalStatus === 'approved' ? t('dashboard.missionDetail.approved') : t('dashboard.missionDetail.notApproved')}
-                </Badge>
-              );
-            })()}
-            {shouldShowAIRiskBadge(currentMission.aiRisk) && (
-              <Badge 
-                className={`${getAIRiskBadgeColor(currentMission.aiRisk.recommendation)} border cursor-pointer hover:opacity-80 transition-opacity`}
-                onClick={() => {
-                  setRiskDialogInitialTab('history');
-                  setRiskDialogOpen(true);
-                }}
-              >
-                <Brain className="w-3 h-3 mr-1" />
-                AI: {getAIRiskLabel(currentMission.aiRisk.recommendation)} ({formatAIRiskScore(currentMission.aiRisk.overall_score)})
-              </Badge>
-            )}
-            {shouldShowSoraBadge(soraStatus) && (
-              <Badge 
-                variant="outline"
-                className={`cursor-pointer hover:opacity-80 transition-opacity ${getSoraBadgeColor(soraStatus)}`}
-                onClick={() => {
-                  setRiskDialogInitialTab('manual-sora');
-                  setRiskDialogOpen(true);
-                }}
-              >
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                SORA: {soraStatus}
-              </Badge>
-            )}
-            {has5kmZone && (
-              <Badge
-                className={`border cursor-pointer hover:opacity-80 transition-opacity ${
-                  ninoxApproved
-                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
-                    : 'bg-red-500/20 text-red-900 border-red-500/30'
-                }`}
-                onClick={() => { if (!ninoxApproved) setNinoxConfirmOpen(true); }}
-              >
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                {ninoxApproved ? t('dashboard.missionDetail.ninoxApproved') : t('dashboard.missionDetail.ninoxNotApproved')}
-              </Badge>
-            )}
-          </div>
+          <MissionBadgeRow
+            mission={{
+              id: currentMission.id,
+              status: currentMission.status,
+              approval_status: currentMission.approval_status,
+              latitude: currentMission.latitude,
+              longitude: currentMission.longitude,
+              notam_text: (currentMission as any).notam_text,
+              notam_submitted_at: (currentMission as any).notam_submitted_at,
+              checklist_ids: (currentMission as any).checklist_ids,
+              checklist_completed_ids: (currentMission as any).checklist_completed_ids,
+            }}
+            showApproval={showApproval}
+            onStatusChanged={() => {
+              onMissionUpdated?.();
+              supabase.from("missions").select("*").eq("id", currentMission.id).single().then(({ data }) => {
+                if (data) setLiveMission(data);
+              });
+            }}
+            onSubmitForApproval={() => setApprovalConfirmOpen(true)}
+            aiRisk={(currentMission as any).aiRisk || null}
+            onAIRiskClick={() => {
+              setRiskDialogInitialTab((currentMission as any).aiRisk ? 'history' : 'input');
+              setRiskDialogOpen(true);
+            }}
+            sora={soraStatus ? { sora_status: soraStatus } : null}
+            onSoraClick={() => {
+              setRiskDialogInitialTab('manual-sora');
+              setRiskDialogOpen(true);
+            }}
+            onNotamClick={() => setNotamDialogOpen(true)}
+            has5kmZone={has5kmZone}
+            ninoxApproved={ninoxApproved}
+            onNinoxClick={() => setNinoxConfirmOpen(true)}
+          />
 
           <div className="space-y-3">
             <div className="flex items-start gap-3">

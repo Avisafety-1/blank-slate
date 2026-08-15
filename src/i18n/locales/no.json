@@ -8268,5 +8268,14 @@
       "requestSubject": "Be om hendelsesrapport – {{mission}}",
       "requestBody": "Hei,\n\nAvviket «{{category}}» fra oppdraget «{{mission}}» bør registreres som en hendelse. Kan du opprette en hendelsesrapport?"
     }
+  },
+  "missionBadges": {
+    "ai": "AI",
+    "riskNotAssessed": "Risiko",
+    "checklist": "Sjekkliste",
+    "checklistCompleted": "Sjekkliste fullført",
+    "checklistExecute": "Utfør sjekkliste",
+    "ninoxApproved": "Ninox godkjent",
+    "ninoxNotApproved": "Ninox ikke godkjent"
   }
 }
