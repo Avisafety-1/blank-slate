@@ -55,6 +55,29 @@ export const Line: React.FC<{
   );
 };
 
+export const Plate: React.FC<{
+  children: React.ReactNode;
+  opacity?: number;
+  style?: React.CSSProperties;
+  padding?: string;
+}> = ({ children, opacity = 1, style, padding = "12px 22px" }) => (
+  <div
+    style={{
+      display: "inline-flex",
+      alignSelf: "flex-start",
+      padding,
+      borderRadius: 10,
+      background: "rgba(4, 9, 16, 0.66)",
+      border: "1px solid rgba(233, 161, 59, 0.22)",
+      boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
+      opacity,
+      ...style,
+    }}
+  >
+    {children}
+  </div>
+);
+
 export const Eyebrow: React.FC<{ text: string; delay?: number }> = ({
   text,
   delay = 0,
@@ -65,22 +88,21 @@ export const Eyebrow: React.FC<{ text: string; delay?: number }> = ({
     extrapolateRight: "clamp",
   });
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 18, overflow: "hidden" }}>
+    <Plate opacity={w} style={{ display: "inline-flex", alignItems: "center", gap: 18 }}>
       <div style={{ width: 64 * w, height: 2, background: C.amber }} />
       <span
         style={{
           fontFamily: display,
-          fontWeight: 600,
-          fontSize: 22,
+          fontWeight: 700,
+          fontSize: 24,
           letterSpacing: 8,
-          color: C.ice,
-          opacity: w,
+          color: C.white,
           textTransform: "uppercase",
         }}
       >
         {text}
       </span>
-    </div>
+    </Plate>
   );
 };
 
