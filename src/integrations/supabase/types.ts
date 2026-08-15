@@ -1969,6 +1969,41 @@ export type Database = {
           },
         ]
       }
+      deviation_report_comments: {
+        Row: {
+          author_id: string | null
+          comment_text: string
+          company_id: string
+          created_at: string
+          deviation_id: string
+          id: string
+        }
+        Insert: {
+          author_id?: string | null
+          comment_text: string
+          company_id: string
+          created_at?: string
+          deviation_id: string
+          id?: string
+        }
+        Update: {
+          author_id?: string | null
+          comment_text?: string
+          company_id?: string
+          created_at?: string
+          deviation_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deviation_report_comments_deviation_id_fkey"
+            columns: ["deviation_id"]
+            isOneToOne: false
+            referencedRelation: "mission_deviation_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dji_credentials: {
         Row: {
           auto_sync_enabled: boolean | null
@@ -5404,8 +5439,14 @@ export type Database = {
           flight_log_id: string | null
           flight_phase: string | null
           id: string
+          incident_id: string | null
+          incident_requested_at: string | null
+          incident_requested_by: string | null
           mission_id: string
           reported_by: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           category_ids?: string[]
@@ -5416,8 +5457,14 @@ export type Database = {
           flight_log_id?: string | null
           flight_phase?: string | null
           id?: string
+          incident_id?: string | null
+          incident_requested_at?: string | null
+          incident_requested_by?: string | null
           mission_id: string
           reported_by?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           category_ids?: string[]
@@ -5428,8 +5475,14 @@ export type Database = {
           flight_log_id?: string | null
           flight_phase?: string | null
           id?: string
+          incident_id?: string | null
+          incident_requested_at?: string | null
+          incident_requested_by?: string | null
           mission_id?: string
           reported_by?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -5437,6 +5490,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_deviation_reports_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
             referencedColumns: ["id"]
           },
           {
