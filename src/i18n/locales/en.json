@@ -1119,7 +1119,18 @@
         "failed": "Failed",
         "notExported": "Not exported"
       }
-    }
+    },
+    "sections": {
+      "overview": "Overview",
+      "classification": "Classification",
+      "resources": "Resources involved",
+      "resourcesHint": "Pilot, drone, equipment",
+      "attachments": "Images and attachments",
+      "privacy": "Privacy",
+      "followUp": "Follow-up"
+    },
+    "expandField": "Expand field",
+    "collapseField": "Shrink field"
   },
   "profile": {
     "title": "My profile",
