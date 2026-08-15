@@ -58,8 +58,9 @@ export const S6End: React.FC = () => {
           style={{
             fontFamily: body,
             fontSize: 26,
+            fontWeight: 600,
             letterSpacing: 4,
-            color: C.ice,
+            color: C.white,
             opacity: url,
           }}
         >

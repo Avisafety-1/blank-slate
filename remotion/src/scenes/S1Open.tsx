@@ -79,9 +79,14 @@ export const S1Open: React.FC = () => {
             fontWeight: 600,
             fontSize: 26,
             letterSpacing: 13,
-            color: C.ice,
+            color: C.white,
             opacity: tagP,
             textTransform: "uppercase",
+            padding: "14px 28px",
+            borderRadius: 10,
+            background: "rgba(4, 9, 16, 0.66)",
+            border: "1px solid rgba(233, 161, 59, 0.22)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
           }}
         >
           Drone Operations · Safety Management

@@ -20,14 +20,20 @@ const Stat: React.FC<{ label: string; value: string; delay: number }> = ({
       style={{
         opacity: p,
         transform: `translateY(${(1 - p) * 24}px)`,
-        borderLeft: `2px solid ${C.amber}`,
+        borderLeft: `3px solid ${C.amber}`,
         paddingLeft: 18,
+        paddingTop: 10,
+        paddingBottom: 10,
+        paddingRight: 22,
+        background: "rgba(4, 9, 16, 0.66)",
+        borderRadius: 8,
+        boxShadow: "0 10px 40px rgba(0,0,0,0.45)",
       }}
     >
       <div style={{ fontFamily: display, fontWeight: 800, fontSize: 54, color: C.white }}>
         {value}
       </div>
-      <div style={{ fontFamily: body, fontSize: 20, letterSpacing: 2, color: C.ice }}>
+      <div style={{ fontFamily: body, fontSize: 21, fontWeight: 600, letterSpacing: 2, color: C.white }}>
         {label}
       </div>
     </div>

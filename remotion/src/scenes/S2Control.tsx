@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
 import { Backdrop } from "../components/Backdrop";
-import { Line, Eyebrow, Reveal } from "../components/Kinetic";
+import { Line, Eyebrow, Reveal, Plate } from "../components/Kinetic";
 import { Shot } from "../components/Shot";
 import { C, body } from "../theme";
 
@@ -32,12 +32,14 @@ export const S2Control: React.FC = () => {
         <Line text="CONTROL" delay={16} size={132} color={C.amber} />
         <div style={{ height: 30 }} />
         <Reveal delay={34}>
+          <Plate padding="18px 26px" style={{ maxWidth: 700 }}>
           <p
             style={{
               fontFamily: body,
               fontSize: 30,
+              fontWeight: 500,
               lineHeight: 1.45,
-              color: C.ice,
+              color: C.white,
               maxWidth: 620,
               margin: 0,
             }}
@@ -45,6 +47,7 @@ export const S2Control: React.FC = () => {
             Airspace, missions and live flights in a single command surface —
             from planning to touchdown.
           </p>
+          </Plate>
         </Reveal>
       </AbsoluteFill>
     </AbsoluteFill>
