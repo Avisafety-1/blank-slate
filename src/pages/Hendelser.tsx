@@ -937,10 +937,36 @@ const Hendelser = () => {
       {/* Content */}
       <div className="relative z-10 w-full">
         <main className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">{t('pages.incidents.title')}</h1>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab("incidents")}
+              className={cn(
+                "inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm",
+                activeTab === "incidents"
+                  ? "bg-primary/20 border-primary/40"
+                  : "bg-background/40 border-border/50 hover:bg-background/60"
+              )}
+            >
+              <h1 className="text-3xl sm:text-4xl font-bold text-secondary-foreground">
+                {t('pages.incidents.title')}
+              </h1>
+            </button>
+            <Button
+              variant={activeTab === "deviations" ? "default" : "outline"}
+              size="lg"
+              className="gap-2 self-start"
+              onClick={() => setActiveTab("deviations")}
+            >
+              <FileWarning className="w-4 h-4" />
+              {t('deviations.title')}
+            </Button>
           </div>
 
+          {activeTab === "deviations" ? (
+            <DeviationsView active={activeTab === "deviations"} focusDeviationId={focusDeviationId} />
+          ) : (
+          <>
           <GlassCard className="mb-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1" data-tour="hendelser-search">
@@ -974,6 +1000,7 @@ const Hendelser = () => {
           </GlassCard>
 
           {loading ? (
+
             <GlassCard>
               <p className="text-center text-muted-foreground py-8">{t('pages.incidents.loadingIncidents')}</p>
             </GlassCard>
