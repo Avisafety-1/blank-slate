@@ -32,7 +32,8 @@
     "create": "Create",
     "update": "Update",
     "view": "View",
-    "report": "Report"
+    "report": "Report",
+    "refresh": "Refresh"
   },
   "common": {
     "optional": "optional",
@@ -8200,5 +8201,67 @@
     "description": "You will be logged out due to inactivity.",
     "logoutNow": "Log out now",
     "extendSession": "Extend session"
+  },
+  "deviations": {
+    "title": "Deviations",
+    "empty": "No deviations reported",
+    "searchPlaceholder": "Search deviations, missions or pilot…",
+    "filters": {
+      "all": "All statuses"
+    },
+    "status": {
+      "new": "New",
+      "in_progress": "In progress",
+      "closed": "Closed"
+    },
+    "phase": {
+      "takeoff": "Take-off",
+      "in_flight": "In flight",
+      "landing": "Landing"
+    },
+    "card": {
+      "mission": "Mission",
+      "riskAssessment": "Risk assessment",
+      "score": "Score",
+      "noCategory": "No category",
+      "unknownPilot": "Unknown",
+      "flightDuration": "{{minutes}} min flight time",
+      "linkedIncident": "Linked to incident",
+      "incidentRequested": "Incident requested"
+    },
+    "actions": {
+      "sendMessage": "Send message",
+      "requestIncident": "Ask pilot for incident",
+      "createIncident": "Create incident"
+    },
+    "comments": {
+      "title": "Comments",
+      "empty": "No comments yet",
+      "placeholder": "Write a comment…",
+      "send": "Send"
+    },
+    "edit": {
+      "title": "Edit deviation",
+      "category": "Category",
+      "searchCategories": "Search categories…",
+      "noMatches": "No matches",
+      "comment": "Comment",
+      "phase": "Critical phase",
+      "status": "Status",
+      "saved": "Deviation updated"
+    },
+    "message": {
+      "title": "Send message",
+      "requestTitle": "Request incident report",
+      "recipient": "Recipient: {{name}}",
+      "subject": "Subject",
+      "body": "Message",
+      "alsoEmail": "Also send as email",
+      "send": "Send",
+      "noRecipient": "No recipient found for this deviation",
+      "defaultSubject": "Deviation – {{mission}}",
+      "requestSubject": "Request incident report – {{mission}}",
+      "requestBody": "Hi,\n\nThe deviation \"{{category}}\" from mission \"{{mission}}\" should be registered as an incident. Could you create an incident report?"
+    }
   }
 }

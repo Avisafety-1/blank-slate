@@ -14,7 +14,8 @@ import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2 } from "lucide-react";
+import { Plus, Search, MessageSquare, MapPin, Calendar, User, Bell, Edit, FileText, Link2, ChevronDown, AlertTriangle, ExternalLink, Loader2, Tags, RefreshCw, Trash2, Paperclip, Settings2, Building2, FileWarning } from "lucide-react";
+import { DeviationsView } from "@/components/deviations/DeviationsView";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -212,8 +213,13 @@ const Hendelser = () => {
     fetchIncidents();
   }, [companyId]);
 
-  // Deep-link handling: ?id=<incident-uuid>
+  // Deep-link handling: ?id=<incident-uuid> | ?tab=deviations&deviation=<uuid>
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"incidents" | "deviations">(
+    searchParams.get("tab") === "deviations" ? "deviations" : "incidents"
+  );
+  const focusDeviationId = searchParams.get("deviation");
+
   useEffect(() => {
     const id = searchParams.get("id");
     if (!id || incidents.length === 0) return;
@@ -937,10 +943,36 @@ const Hendelser = () => {
       {/* Content */}
       <div className="relative z-10 w-full">
         <main className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2 text-secondary-foreground">{t('pages.incidents.title')}</h1>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab("incidents")}
+              className={cn(
+                "inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm",
+                activeTab === "incidents"
+                  ? "bg-primary/20 border-primary/40"
+                  : "bg-background/40 border-border/50 hover:bg-background/60"
+              )}
+            >
+              <h1 className="text-3xl sm:text-4xl font-bold text-secondary-foreground">
+                {t('pages.incidents.title')}
+              </h1>
+            </button>
+            <Button
+              variant={activeTab === "deviations" ? "default" : "outline"}
+              size="lg"
+              className="gap-2 self-start"
+              onClick={() => setActiveTab("deviations")}
+            >
+              <FileWarning className="w-4 h-4" />
+              {t('deviations.title')}
+            </Button>
           </div>
 
+          {activeTab === "deviations" ? (
+            <DeviationsView active={activeTab === "deviations"} focusDeviationId={focusDeviationId} />
+          ) : (
+          <>
           <GlassCard className="mb-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1" data-tour="hendelser-search">
@@ -974,6 +1006,7 @@ const Hendelser = () => {
           </GlassCard>
 
           {loading ? (
+
             <GlassCard>
               <p className="text-center text-muted-foreground py-8">{t('pages.incidents.loadingIncidents')}</p>
             </GlassCard>
@@ -1360,7 +1393,10 @@ const Hendelser = () => {
               ))}
             </div>
           )}
+          </>
+          )}
         </main>
+
       </div>
 
       <AddIncidentDialog 
