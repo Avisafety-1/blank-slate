@@ -40,6 +40,7 @@ import { MissionNotesDialog } from "@/components/dashboard/MissionNotesDialog";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { ChecklistBadges } from "@/components/oppdrag/ChecklistBadges";
+import { MissionBadgeRow } from "@/components/oppdrag/MissionBadgeRow";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 import { EvaluationMissionButton } from "@/components/oppdrag/EvaluationMissionButton";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
@@ -178,103 +179,31 @@ export const MissionCard = ({
               </Badge>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <MissionStatusDropdown
-              missionId={mission.id}
-              currentStatus={mission.status}
-              onStatusChanged={fetchMissions}
-              statusColors={statusColors}
-              className="text-xs"
-              latitude={effectiveLat}
-              longitude={effectiveLng}
-            />
-            {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
-              <Badge
-                variant="outline"
-                className={`text-xs ${getApprovalStatusColor(approvalStatus)} ${approvalClickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                onClick={approvalClickable ? (e) => {
-                  e.stopPropagation();
-                  setApprovalConfirmOpen(true);
-                } : undefined}
-              >
-                {approvalStatus === 'pending_approval' && <Clock className="h-3 w-3 mr-1" />}
-                {approvalStatus === 'approved' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                {approvalStatus === 'pending_approval' ? t('pages.missions.card.approvalPending') : approvalStatus === 'approved' ? t('pages.missions.card.approved') : t('pages.missions.card.notApproved')}
-              </Badge>
-            )}
-            {shouldShowAIRiskBadge(mission.aiRisk) && (
-              <Badge 
-                variant="outline" 
-                className={`text-xs ${getAIRiskBadgeColor(mission.aiRisk.recommendation)} cursor-pointer hover:opacity-80 transition-opacity`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRiskBadgeClick(mission);
-                }}
-              >
-                <Brain className="h-3 w-3 mr-1" />
-                AI: {getAIRiskLabel(mission.aiRisk.recommendation)} ({formatAIRiskScore(mission.aiRisk.overall_score)})
-              </Badge>
-            )}
-            {shouldShowSoraBadge(mission.sora) && (
-              <Badge variant="outline" className="text-xs">
-                <FileText className="h-3 w-3 mr-1" />
-                SORA: {mission.sora.sora_status}
-              </Badge>
-            )}
-            {(mission.checklist_ids?.length > 0) && (
-              <Badge
-                variant="outline"
-                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
-                  mission.checklist_ids.every((id: string) =>
-                    mission.checklist_completed_ids?.includes(id)
-                  )
-                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
-                    : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onExecuteChecklist(mission.id);
-                }}
-              >
-                <ClipboardCheck className="h-3 w-3 mr-1" />
-                {mission.checklist_ids.every((id: string) =>
-                  mission.checklist_completed_ids?.includes(id)
-                )
-                  ? t('pages.missions.card.checklistCompleted')
-                  : t('pages.missions.card.executeChecklist')}
-              </Badge>
-            )}
-            {mission.notam_text && (
-              <Badge
-                variant="outline"
-                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
-                  mission.notam_submitted_at
-                    ? getNotamBadgeColor(true)
-                    : getNotamBadgeColor(false)
-                }`}
-                onClick={(e) => { e.stopPropagation(); onNotam?.(mission); }}
-              >
-                <RadioIcon className="h-3 w-3 mr-1" />
-                NOTAM
-              </Badge>
-            )}
-            {has5kmZone && (
-              <Badge
-                variant="outline"
-                className={`text-xs cursor-pointer hover:opacity-80 transition-opacity ${
-                  ninoxApproved
-                    ? 'bg-green-500/20 text-green-900 border-green-500/30'
-                    : 'bg-red-500/20 text-red-900 border-red-500/30'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!ninoxApproved) setNinoxConfirmOpen(true);
-                }}
-              >
-                <ShieldCheck className="h-3 w-3 mr-1" />
-                {ninoxApproved ? t('pages.missions.card.ninoxApproved') : t('pages.missions.card.ninoxNotApproved')}
-              </Badge>
-            )}
+          <MissionBadgeRow
+            mission={{
+              id: mission.id,
+              status: mission.status,
+              approval_status: mission.approval_status,
+              latitude: effectiveLat,
+              longitude: effectiveLng,
+              notam_text: (mission as any).notam_text,
+              notam_submitted_at: (mission as any).notam_submitted_at,
+              checklist_ids: (mission as any).checklist_ids,
+              checklist_completed_ids: (mission as any).checklist_completed_ids,
+            }}
+            showApproval={showApproval}
+            onStatusChanged={fetchMissions}
+            onSubmitForApproval={() => setApprovalConfirmOpen(true)}
+            aiRisk={(mission as any).aiRisk || null}
+            onAIRiskClick={() => onRiskBadgeClick(mission)}
+            sora={(mission as any).sora || null}
+            onSoraClick={() => onOpenSora?.(mission)}
+            onChecklistClick={() => onExecuteChecklist(mission.id)}
+            onNotamClick={() => onNotam?.(mission)}
+            has5kmZone={has5kmZone}
+            ninoxApproved={ninoxApproved}
+            onNinoxClick={() => setNinoxConfirmOpen(true)}
+          />
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-shrink-0 w-full sm:w-auto">
