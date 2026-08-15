@@ -19,42 +19,42 @@ import { C } from "./theme";
 export const MainVideo: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: C.ink }}>
     <TransitionSeries>
-      <TransitionSeries.Sequence durationInFrames={105}>
+      <TransitionSeries.Sequence durationInFrames={230}>
         <S1Open />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={wipe({ direction: "from-right" })}
         timing={springTiming({ config: { damping: 200 }, durationInFrames: 24 })}
       />
-      <TransitionSeries.Sequence durationInFrames={140}>
+      <TransitionSeries.Sequence durationInFrames={190}>
         <S2Control />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={slide({ direction: "from-bottom" })}
         timing={springTiming({ config: { damping: 200 }, durationInFrames: 22 })}
       />
-      <TransitionSeries.Sequence durationInFrames={150}>
+      <TransitionSeries.Sequence durationInFrames={200}>
         <S3Safety />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
         timing={linearTiming({ durationInFrames: 14 })}
       />
-      <TransitionSeries.Sequence durationInFrames={160}>
+      <TransitionSeries.Sequence durationInFrames={230}>
         <S4Connect />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={wipe({ direction: "from-bottom" })}
         timing={springTiming({ config: { damping: 200 }, durationInFrames: 24 })}
       />
-      <TransitionSeries.Sequence durationInFrames={150}>
+      <TransitionSeries.Sequence durationInFrames={190}>
         <S5Risk />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
         timing={linearTiming({ durationInFrames: 18 })}
       />
-      <TransitionSeries.Sequence durationInFrames={130}>
+      <TransitionSeries.Sequence durationInFrames={150}>
         <S6End />
       </TransitionSeries.Sequence>
     </TransitionSeries>
