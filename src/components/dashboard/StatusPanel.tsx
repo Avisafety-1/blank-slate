@@ -34,14 +34,14 @@ const StatusCard = ({
   onSegmentClick: (status: Status) => void;
 }) => {
   return (
-    <div className="flex w-full gap-1.5 sm:gap-2 overflow-hidden">
+    <div className="flex w-full gap-1.5 sm:gap-2">
       {statusSegments.map(({ key, bg, border }) =>
         counts[key] > 0 ? (
           <button
             key={key}
             type="button"
             style={{ flexGrow: counts[key] }}
-            className={`${bg} ${border} border-2 rounded px-2 py-1 sm:px-3 sm:py-1.5 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex items-center gap-2 sm:gap-3 overflow-hidden`}
+            className={`${bg} ${border} border-2 rounded px-2 py-1 sm:px-3 sm:py-1.5 transition-all hover:scale-105 cursor-pointer text-gray-700 dark:text-gray-200 min-w-0 flex items-center gap-2 sm:gap-3`}
             onClick={() => onSegmentClick(key)}
           >
             <Icon className="w-4 h-4 shrink-0" />
@@ -92,7 +92,7 @@ export const StatusPanel = () => {
 
   return (
     <>
-      <GlassCard className="overflow-hidden">
+      <GlassCard>
         <h2 className="text-sm sm:text-base font-semibold mb-2">{t('dashboard.status.title')}</h2>
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2 w-full">
           {isLoading ? (
