@@ -32,7 +32,8 @@
     "create": "Opprett",
     "update": "Oppdater",
     "view": "Vis",
-    "report": "Rapporter"
+    "report": "Rapporter",
+    "refresh": "Oppdater"
   },
   "common": {
     "optional": "valgfritt",
@@ -8202,5 +8203,67 @@
     "description": "Du blir logget ut på grunn av inaktivitet.",
     "logoutNow": "Logg ut nå",
     "extendSession": "Forleng sesjon"
+  },
+  "deviations": {
+    "title": "Avvik",
+    "empty": "Ingen avvik rapportert",
+    "searchPlaceholder": "Søk i avvik, oppdrag eller pilot…",
+    "filters": {
+      "all": "Alle statuser"
+    },
+    "status": {
+      "new": "Ny",
+      "in_progress": "Under behandling",
+      "closed": "Lukket"
+    },
+    "phase": {
+      "takeoff": "Take-off",
+      "in_flight": "Under flyging",
+      "landing": "Landing"
+    },
+    "card": {
+      "mission": "Oppdrag",
+      "riskAssessment": "Risikovurdering",
+      "score": "Score",
+      "noCategory": "Uten kategori",
+      "unknownPilot": "Ukjent",
+      "flightDuration": "{{minutes}} min flytid",
+      "linkedIncident": "Koblet til hendelse",
+      "incidentRequested": "Hendelse etterspurt"
+    },
+    "actions": {
+      "sendMessage": "Send melding",
+      "requestIncident": "Be pilot om hendelse",
+      "createIncident": "Opprett hendelse"
+    },
+    "comments": {
+      "title": "Kommentarer",
+      "empty": "Ingen kommentarer ennå",
+      "placeholder": "Skriv en kommentar…",
+      "send": "Send"
+    },
+    "edit": {
+      "title": "Rediger avvik",
+      "category": "Kategori",
+      "searchCategories": "Søk i kategorier…",
+      "noMatches": "Ingen treff",
+      "comment": "Kommentar",
+      "phase": "Kritisk fase",
+      "status": "Status",
+      "saved": "Avvik oppdatert"
+    },
+    "message": {
+      "title": "Send melding",
+      "requestTitle": "Be om hendelsesrapport",
+      "recipient": "Mottaker: {{name}}",
+      "subject": "Emne",
+      "body": "Melding",
+      "alsoEmail": "Send også som e-post",
+      "send": "Send",
+      "noRecipient": "Fant ingen mottaker for dette avviket",
+      "defaultSubject": "Avvik – {{mission}}",
+      "requestSubject": "Be om hendelsesrapport – {{mission}}",
+      "requestBody": "Hei,\n\nAvviket «{{category}}» fra oppdraget «{{mission}}» bør registreres som en hendelse. Kan du opprette en hendelsesrapport?"
+    }
   }
 }
