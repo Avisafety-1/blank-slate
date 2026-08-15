@@ -566,19 +566,41 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     );
   };
 
+  const SectionHeader = ({ num, title, hint }: { num: string; title: string; hint?: string }) => (
+    <div className="flex items-center gap-2 pb-2 border-b border-border/70">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded">
+        {num}
+      </span>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{title}</h3>
+      {hint && <span className="text-xs text-muted-foreground font-normal">{hint}</span>}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6" data-tour="incident-dialog">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? t('incidents.dialog.editTitle') : t('incidents.dialog.reportTitle')}</DialogTitle>
+      <DialogContent
+        className="w-[95vw] max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col overflow-hidden"
+        data-tour="incident-dialog"
+      >
+        <DialogHeader className="px-5 sm:px-8 py-5 border-b border-border bg-muted/30 text-left space-y-1 shrink-0">
+          <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-bold tracking-tight">
+            <span className="w-1.5 h-6 rounded-full bg-primary shrink-0" />
+            {isEditing ? t('incidents.dialog.editTitle') : t('incidents.dialog.reportTitle')}
+          </DialogTitle>
           <DialogDescription>
             {isEditing ? t('incidents.dialog.editDescription') : t('incidents.dialog.reportDescription')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8">
+          {/* 01 – Oversikt */}
+          <section className="space-y-5">
+            <SectionHeader num="01" title={t('incidents.sections.overview')} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-2" data-tour="incident-mission">
             <Label>{t('incidents.linkToMission')}</Label>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button
