@@ -197,7 +197,7 @@ export const MissionCard = ({
             aiRisk={(mission as any).aiRisk || null}
             onAIRiskClick={() => onRiskBadgeClick(mission)}
             sora={(mission as any).sora || null}
-            onSoraClick={() => onOpenSora?.(mission)}
+            onSoraClick={() => onOpenSora(mission.id)}
             onChecklistClick={() => onExecuteChecklist(mission.id)}
             onNotamClick={() => onNotam?.(mission)}
             has5kmZone={has5kmZone}
