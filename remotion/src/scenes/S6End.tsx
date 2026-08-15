@@ -23,7 +23,7 @@ export const S6End: React.FC = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const fadeOut = interpolate(frame, [96, 120], [0, 1], {
+  const fadeOut = interpolate(frame, [112, 129], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
