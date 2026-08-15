@@ -691,24 +691,25 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           <section className="space-y-5" data-tour="incident-meta">
             <SectionHeader num="02" title={t('incidents.sections.classification')} />
 
-            <div className="grid grid-cols-1 md:grid-cols-[0.85fr_1fr_1fr] gap-5">
-            <div className="space-y-2">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
                 id="hendelsestidspunkt"
                 type="datetime-local"
+                className="min-w-0 w-full"
                 value={formData.hendelsestidspunkt}
                 onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="alvorlighetsgrad">{t('incidents.severityLabel')}</Label>
               <Select
                 value={formData.alvorlighetsgrad}
                 onValueChange={(value) => setFormData({ ...formData, alvorlighetsgrad: value })}
               >
-                <SelectTrigger id="alvorlighetsgrad">
+                <SelectTrigger id="alvorlighetsgrad" className="min-w-0 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -720,13 +721,13 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="status">{t('missions.status')}</Label>
               <Select
                 value={formData.status}
                 onValueChange={(value) => setFormData({ ...formData, status: value })}
               >
-                <SelectTrigger id="status">
+                <SelectTrigger id="status" className="min-w-0 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
