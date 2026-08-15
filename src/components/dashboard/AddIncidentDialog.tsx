@@ -739,7 +739,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-tour="incident-classification">
-
+          <div className="space-y-2">
+            <Label htmlFor="kategori">{t('incidents.categoryOptional')}</Label>
             <Select
               value={formData.kategori}
               onValueChange={(value) => setFormData({ ...formData, kategori: value })}
