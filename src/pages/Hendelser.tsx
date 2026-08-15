@@ -1360,7 +1360,10 @@ const Hendelser = () => {
               ))}
             </div>
           )}
+          </>
+          )}
         </main>
+
       </div>
 
       <AddIncidentDialog 
