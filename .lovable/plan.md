@@ -1,34 +1,37 @@
-# Justeringer på Avvik-fanen
+# Samme badger på oppdragskort som på dashbordet
 
-## Om "Ny"-badgen (svar)
+## Problem
 
-Badgen viser feltet `status` på avviket. Logikken i dag:
+Dashbordets oppdragsliste og oppdragskortene på /oppdrag (samt oppdrags-dialogen) rendrer badgene hver for seg med litt ulike regler:
 
-- **Ny** — standardverdien når piloten sender inn avviket etter flyturen. Ingen har behandlet det ennå.
-- **Under behandling** — settes automatisk når noen trykker "Be pilot om hendelse", eller manuelt i Rediger-dialogen.
-- **Lukket** — settes kun manuelt i Rediger-dialogen.
+| Badge | Dashbord | Oppdragskort /oppdrag | Oppdragsdialog |
+| --- | --- | --- | --- |
+| Status | ja | ja | ja |
+| Godkjenning | ja | ja | ja |
+| AI-risiko | **alltid** (grå "Risiko"-badge når analysen mangler, klikkbar for å starte analyse) | kun når analyse finnes | kun når analyse finnes |
+| SORA | farget etter status | uten farge | farget |
+| Sjekkliste | ja | ja | nei |
+| NOTAM | ja | ja | ja |
+| Ninox (5 km) | nei | ja | nei |
 
-Det er altså en ren saksbehandlingsstatus, ikke tidsbasert (den blir ikke "gammel" av seg selv). Ingen endring foreslås her med mindre du ønsker det.
+Derfor mangler f.eks. AI-risikoscore på oppdragskortet/dialogen når analysen ikke er kjørt ennå (som i skjermbildet).
 
-## Endringer
+## Løsning
 
-1. **Avvik-knappen får samme utseende som "Hendelser"**
-   Knappen byttes ut med samme pille-element: samme ramme, avrunding, bakgrunnsglass og samme store, fete overskriftstekst. Aktiv fane får den fremhevede bakgrunnen, inaktiv fane den nøytrale — slik at de to fungerer som et likeverdig fanepar.
+Lag én felles badge-rad som brukes alle tre stedene, slik at samme sett med badger alltid vises.
 
-2. **Lenke til oppdraget i oppdrags-seksjonen**
-   Oppdragstittelen på avvikskortet blir klikkbar (med lenke-ikon) og åpner oppdraget på /oppdrag i oppdragsdetaljene.
-
-3. **Godkjenner vises**
-   Hvis oppdraget er godkjent, vises "Godkjent av: <navn>" (med dato) i oppdrags-seksjonen på kortet. Vises kun når det finnes en godkjenner.
-
-4. **Risikoscore-badge**
-   Teksten i score-badgen endres fra farget til mørk/nøytral tekst, mens den fargede bakgrunnen (grønn/gul/rød etter score) beholdes.
-
-5. **Fjerner det gule ikonet** ved siden av kategoritittelen (f.eks. "Klima").
+- Ny komponent `src/components/oppdrag/MissionBadgeRow.tsx` som rendrer: status, godkjenning, AI-risiko, SORA, sjekkliste, NOTAM og Ninox (5 km) — hver med sin eksisterende klikk-handling sendt inn som callback.
+- AI-risiko vises **alltid**: viser `AI: <anbefaling> (score)` når analysen finnes, ellers en nøytral grå "Risiko"-badge som åpner risikodialogen for å kjøre analysen (samme oppførsel som på dashbordet).
+- SORA-badgen bruker `getSoraBadgeColor()` overalt.
+- Badger som ikke er relevante for en flate (f.eks. Ninox uten 5 km-sone, sjekkliste uten sjekklister) skjules automatisk basert på data — ikke basert på hvilken flate den står i.
+- Størrelse styres av en `size`-prop (`compact` for dashbordlisten, `default` for kort og dialog), slik at det visuelle uttrykket på dashbordet beholdes.
 
 ## Teknisk
 
-- `src/pages/Hendelser.tsx`: Avvik-knappen erstattes av samme `button`-pille som "Hendelser", med `t('deviations.title')` i samme typografi.
-- `src/components/deviations/DeviationCard.tsx`: fjerner `FileWarning`-ikonet i headeren, gjør oppdragstittelen til en lenke (`/oppdrag?id=<mission_id>`), legger inn godkjenner-linje, og endrer `scoreTone` slik at tekstfargen bruker et nøytralt token med beholdt bakgrunnstint.
-- `src/hooks/useDeviationReports.ts`: henter i tillegg `approved_by`, `approved_at` og `approval_status` fra `missions`, og slår opp godkjennerens navn i det eksisterende profil-oppslaget.
-- Nye i18n-nøkler (`deviations.card.approvedBy`, `deviations.card.openMission`) legges til i både no.json og en.json.
+- Felles logikk og farger ligger allerede i `src/lib/oppdragHelpers.ts`; `shouldShowAIRiskBadge` erstattes/utfases der AI-badgen alltid skal vises.
+- Flatene som byttes om til å bruke `MissionBadgeRow`:
+  - `src/components/dashboard/MissionsSection.tsx`
+  - `src/components/oppdrag/MissionCard.tsx`
+  - `src/components/dashboard/MissionDetailDialog.tsx`
+- Dialogen og oppdragskortet må få tilgang til sjekkliste- og Ninox-data de allerede henter (ingen nye spørringer mot databasen forventes; der data mangler i dialogen brukes eksisterende `currentMission`-felter).
+- Alle tekster via `t()`, nye nøkler legges i både `no.json` og `en.json` (bl.a. placeholder-teksten for AI-risiko).
