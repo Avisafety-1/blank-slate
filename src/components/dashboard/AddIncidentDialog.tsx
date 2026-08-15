@@ -638,31 +638,59 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
           </div>
 
-          <div className="space-y-4" data-tour="incident-title-desc">
-            <div className="space-y-2">
-              <Label htmlFor="tittel">{t('incidents.titleLabel')} *</Label>
-              <Input
-                id="tittel"
-                value={formData.tittel}
-                onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
-                placeholder={t('incidents.titlePlaceholder')}
-              />
+          <div className="space-y-2" data-tour="incident-title-desc">
+            <Label htmlFor="tittel">{t('incidents.titleLabel')} *</Label>
+            <Input
+              id="tittel"
+              value={formData.tittel}
+              onChange={(e) => setFormData({ ...formData, tittel: e.target.value })}
+              placeholder={t('incidents.titlePlaceholder')}
+            />
+          </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="beskrivelse">{t('incidents.description')}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="beskrivelse">{t('incidents.description')}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setDescriptionExpanded((v) => !v)}
+                >
+                  {descriptionExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  {descriptionExpanded ? t('incidents.collapseField') : t('incidents.expandField')}
+                </Button>
+              </div>
               <Textarea
                 id="beskrivelse"
                 value={formData.beskrivelse}
                 onChange={(e) => setFormData({ ...formData, beskrivelse: e.target.value })}
                 placeholder={t('incidents.descriptionPlaceholder')}
-                rows={4}
+                className={cn(
+                  "resize-y transition-[min-height] duration-200",
+                  descriptionExpanded ? "min-h-[380px]" : "min-h-[140px]"
+                )}
               />
             </div>
 
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="lokasjon">{t('incidents.locationOptional')}</Label>
+              <Input
+                id="lokasjon"
+                value={formData.lokasjon}
+                onChange={(e) => setFormData({ ...formData, lokasjon: e.target.value })}
+                placeholder={t('incidents.locationPlaceholder')}
+              />
+            </div>
+          </section>
 
-          <div className="space-y-4" data-tour="incident-meta">
+          {/* 02 – Klassifisering */}
+          <section className="space-y-5" data-tour="incident-meta">
+            <SectionHeader num="02" title={t('incidents.sections.classification')} />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div className="space-y-2">
               <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
@@ -710,9 +738,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </div>
           </div>
 
-          <div className="space-y-4" data-tour="incident-classification">
-          <div className="space-y-2">
-            <Label htmlFor="kategori">{t('incidents.categoryOptional')}</Label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5" data-tour="incident-classification">
+
             <Select
               value={formData.kategori}
               onValueChange={(value) => setFormData({ ...formData, kategori: value })}
