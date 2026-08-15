@@ -7,7 +7,7 @@ import { C, body } from "../theme";
 
 export const S2Control: React.FC = () => {
   const frame = useCurrentFrame();
-  const px = interpolate(frame, [0, 130], [40, -40]);
+  const px = interpolate(frame, [0, 190], [50, -50]);
   return (
     <AbsoluteFill>
       <Backdrop tilt={10} />
@@ -15,14 +15,14 @@ export const S2Control: React.FC = () => {
         <Shot
           src="images/map.webp"
           delay={6}
-          width={1180}
+          width={1260}
           clipFrom="right"
-          style={{ position: "absolute", right: -180, top: 90, opacity: 0.9 }}
+          style={{ position: "absolute", right: -140, top: 70, opacity: 1 }}
         />
       </AbsoluteFill>
       <AbsoluteFill
         style={{
-          background: `linear-gradient(90deg, ${C.ink} 22%, ${C.ink}dd 42%, transparent 72%)`,
+          background: `linear-gradient(90deg, ${C.ink} 14%, ${C.ink}cc 34%, transparent 58%)`,
         }}
       />
       <AbsoluteFill style={{ padding: "0 0 0 120px", justifyContent: "center" }}>
