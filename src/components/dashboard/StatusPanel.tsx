@@ -92,7 +92,7 @@ export const StatusPanel = () => {
 
   return (
     <>
-      <GlassCard className="overflow-hidden">
+      <GlassCard>
         <h2 className="text-sm sm:text-base font-semibold mb-2">{t('dashboard.status.title')}</h2>
         <div className="grid grid-cols-1 gap-1.5 sm:gap-2 w-full">
           {isLoading ? (
