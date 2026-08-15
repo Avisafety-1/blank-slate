@@ -1060,30 +1060,31 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             </label>
           )}
           </div>
+          </section>
+        </div>
 
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-            >
-              {t('actions.cancel')}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
-              className="flex-1"
-              data-tour="incident-submit"
-            >
-              {submitting
-                ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
-                : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
-            </Button>
-          </div>
-
+        <div className="shrink-0 border-t border-border bg-muted/30 px-5 sm:px-8 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="sm:min-w-[140px]"
+          >
+            {t('actions.cancel')}
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting || !formData.tittel || !formData.hendelsestidspunkt}
+            className="sm:min-w-[180px]"
+            data-tour="incident-submit"
+          >
+            {submitting
+              ? (isEditing ? t('incidents.saving') : t('incidents.reporting'))
+              : (isEditing ? t('incidents.saveChanges') : t('incidents.report'))}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
+
   );
 };
