@@ -610,8 +610,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                   className="w-full justify-between font-normal"
                 >
                   {formData.mission_id
-                    ? missions.find(m => m.id === formData.mission_id)?.tittel || t('missions.selectCustomer')
-                    : t('missions.selectCustomer')}
+                    ? missions.find(m => m.id === formData.mission_id)?.tittel || t('incidents.selectMission')
+                    : t('incidents.selectMission')}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -691,7 +691,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
           <section className="space-y-5" data-tour="incident-meta">
             <SectionHeader num="02" title={t('incidents.sections.classification')} />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-[0.85fr_1fr_1fr] gap-5">
             <div className="space-y-2">
               <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
               <Input
