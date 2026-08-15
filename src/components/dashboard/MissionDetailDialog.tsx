@@ -71,6 +71,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
   const [soraStatus, setSoraStatus] = useState<string | null>(null);
+  const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string } | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
