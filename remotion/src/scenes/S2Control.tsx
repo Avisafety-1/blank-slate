@@ -13,7 +13,7 @@ export const S2Control: React.FC = () => {
       <Backdrop tilt={10} />
       <AbsoluteFill style={{ transform: `translateX(${px}px)` }}>
         <Shot
-          src="images/map.webp"
+          src="images/stable/map.jpg"
           delay={6}
           width={1260}
           clipFrom="right"

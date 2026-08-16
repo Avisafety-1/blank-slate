@@ -13,10 +13,10 @@ import { C, display } from "../theme";
 
 const WORDS = ["PILOTS", "RESOURCES", "DATA", "PROCEDURES"];
 const SHOTS = [
-  "images/resources.png",
-  "images/dashboard.png",
-  "images/analysis.png",
-  "images/sora.webp",
+  "images/stable/resources.jpg",
+  "images/stable/dashboard.jpg",
+  "images/stable/analysis.jpg",
+  "images/stable/sora.jpg",
 ];
 
 const Panel: React.FC<{ i: number }> = ({ i }) => {

@@ -17,7 +17,7 @@ export const S5Risk: React.FC = () => {
       <Backdrop tilt={-6} />
       <AbsoluteFill style={{ transform: `scale(${scale})` }}>
         <Shot
-          src="images/sora.webp"
+          src="images/stable/sora.jpg"
           delay={2}
           width={2100}
           clipFrom="bottom"
