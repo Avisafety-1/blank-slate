@@ -23,10 +23,11 @@ export const S6End: React.FC = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const fadeOut = interpolate(frame, [132, 149], [0, 1], {
+  const fadeOut = interpolate(frame, [216, 239], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+
   return (
     <AbsoluteFill>
       <Backdrop />
