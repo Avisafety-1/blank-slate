@@ -48,14 +48,14 @@ export const S3Safety: React.FC = () => {
       <Backdrop tilt={-14} />
       <AbsoluteFill style={{ transform: `translateY(${y}px)` }}>
         <Shot
-          src="images/audit.png"
+          src="images/stable/audit.jpg"
           delay={8}
           width={1060}
           clipFrom="bottom"
           style={{ position: "absolute", left: -100, top: 250, opacity: 1 }}
         />
         <Shot
-          src="images/stats.png"
+          src="images/stable/stats.jpg"
           delay={20}
           width={860}
           clipFrom="left"
