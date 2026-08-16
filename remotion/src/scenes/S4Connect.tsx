@@ -81,10 +81,11 @@ export const S4Connect: React.FC = () => {
     <AbsoluteFill>
       <Backdrop tilt={4} />
       {[0, 1, 2, 3].map((i) => (
-        <Sequence key={i} from={i * 50} durationInFrames={64}>
+        <Sequence key={i} from={i * 56} durationInFrames={82}>
           <Panel i={i} />
         </Sequence>
       ))}
+
       <AbsoluteFill style={{ padding: 90, justifyContent: "flex-start" }}>
         <div
           style={{
