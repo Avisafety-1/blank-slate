@@ -34,7 +34,7 @@ await renderMedia({
   outputLocation: out,
   puppeteerInstance: browser,
   muted: true,
-  concurrency: 2,
+  concurrency: 1,
   frameRange: frames ? frames.split("-").map(Number) : undefined,
 });
 
