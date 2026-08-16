@@ -1,13 +1,8 @@
 import React from "react";
 import { AbsoluteFill } from "remotion";
-import {
-  TransitionSeries,
-  linearTiming,
-  springTiming,
-} from "@remotion/transitions";
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { wipe } from "@remotion/transitions/wipe";
-import { slide } from "@remotion/transitions/slide";
+
 import { S1Open } from "./scenes/S1Open";
 import { S2Control } from "./scenes/S2Control";
 import { S3Safety } from "./scenes/S3Safety";
