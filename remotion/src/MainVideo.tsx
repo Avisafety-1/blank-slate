@@ -23,40 +23,41 @@ export const MainVideo: React.FC = () => (
         <S1Open />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={wipe({ direction: "from-right" })}
-        timing={springTiming({ config: { damping: 200 }, durationInFrames: 24 })}
+        presentation={fade()}
+        timing={linearTiming({ durationInFrames: 22 })}
       />
       <TransitionSeries.Sequence durationInFrames={190}>
         <S2Control />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={slide({ direction: "from-bottom" })}
-        timing={springTiming({ config: { damping: 200 }, durationInFrames: 22 })}
+        presentation={fade()}
+        timing={linearTiming({ durationInFrames: 22 })}
       />
       <TransitionSeries.Sequence durationInFrames={200}>
         <S3Safety />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
-        timing={linearTiming({ durationInFrames: 14 })}
+        timing={linearTiming({ durationInFrames: 22 })}
       />
       <TransitionSeries.Sequence durationInFrames={230}>
         <S4Connect />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
-        presentation={wipe({ direction: "from-bottom" })}
-        timing={springTiming({ config: { damping: 200 }, durationInFrames: 24 })}
+        presentation={fade()}
+        timing={linearTiming({ durationInFrames: 22 })}
       />
       <TransitionSeries.Sequence durationInFrames={190}>
         <S5Risk />
       </TransitionSeries.Sequence>
       <TransitionSeries.Transition
         presentation={fade()}
-        timing={linearTiming({ durationInFrames: 18 })}
+        timing={linearTiming({ durationInFrames: 24 })}
       />
-      <TransitionSeries.Sequence durationInFrames={150}>
+      <TransitionSeries.Sequence durationInFrames={240}>
         <S6End />
       </TransitionSeries.Sequence>
     </TransitionSeries>
   </AbsoluteFill>
 );
+
