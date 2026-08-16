@@ -22,8 +22,12 @@ const SHOTS = [
 const Panel: React.FC<{ i: number }> = ({ i }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const p = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 30 });
-  const out = interpolate(frame, [46, 60], [0, 1], {
+  const p = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 34 });
+  const fadeIn = interpolate(frame, [0, 14], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const out = interpolate(frame, [56, 78], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -32,8 +36,8 @@ const Panel: React.FC<{ i: number }> = ({ i }) => {
       style={{
         justifyContent: "center",
         alignItems: "center",
-        transform: `translateY(${out * -70}px)`,
-        opacity: 1 - out,
+        transform: `translateY(${out * -60}px)`,
+        opacity: fadeIn * (1 - out),
       }}
     >
       <Shot
@@ -43,6 +47,7 @@ const Panel: React.FC<{ i: number }> = ({ i }) => {
         clipFrom={i % 2 === 0 ? "left" : "right"}
         style={{ opacity: 0.95 }}
       />
+
       <AbsoluteFill
         style={{
           justifyContent: "center",
@@ -76,10 +81,11 @@ export const S4Connect: React.FC = () => {
     <AbsoluteFill>
       <Backdrop tilt={4} />
       {[0, 1, 2, 3].map((i) => (
-        <Sequence key={i} from={i * 50} durationInFrames={64}>
+        <Sequence key={i} from={i * 56} durationInFrames={82}>
           <Panel i={i} />
         </Sequence>
       ))}
+
       <AbsoluteFill style={{ padding: 90, justifyContent: "flex-start" }}>
         <div
           style={{

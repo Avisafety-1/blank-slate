@@ -55,7 +55,7 @@ export const S1Open: React.FC = () => {
   const logoP = spring({ frame: frame - 26, fps, config: { damping: 200 }, durationInFrames: 32 });
   const lineW = interpolate(frame, [58, 84], [0, 620], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const tagP = interpolate(frame, [70, 92], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const flash = interpolate(frame, [24, 32], [0.55, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const flash = interpolate(frame, [20, 26, 46], [0, 0.28, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill>
