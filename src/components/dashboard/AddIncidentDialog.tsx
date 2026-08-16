@@ -694,15 +694,16 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
             <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <div className="min-w-0 space-y-2">
                 <Label htmlFor="hendelsestidspunkt">{t('incidents.incidentTime')} *</Label>
-                <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <div className="flex h-10 w-full min-w-0 items-center overflow-hidden rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                   <Input
                     id="hendelsestidspunkt"
                     type="datetime-local"
-                    className="h-full w-full min-w-0 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="h-full w-full min-w-0 max-w-full flex-1 border-0 bg-transparent p-0 text-left text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 [&::-webkit-date-and-time-value]:text-left [&::-webkit-datetime-edit]:p-0"
                     value={formData.hendelsestidspunkt}
                     onChange={(e) => setFormData({ ...formData, hendelsestidspunkt: e.target.value })}
                   />
                 </div>
+
               </div>
 
               <div className="min-w-0 space-y-2">
