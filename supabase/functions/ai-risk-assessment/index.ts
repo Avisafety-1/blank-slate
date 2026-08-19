@@ -1526,7 +1526,7 @@ serve(async (req) => {
         const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
-        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
         const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
 
         if (computed) {
@@ -1573,7 +1573,7 @@ serve(async (req) => {
         const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
-        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
         const computed = await computeEurostatPopulationDensity(routeCoords, footprintBufferM, resolveLang(language), supabase);
 
         if (computed) {
