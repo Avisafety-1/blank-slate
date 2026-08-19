@@ -508,10 +508,13 @@ export const MissionCard = ({
                 <button
                   key={d.document_id}
                   onClick={() => onDocumentClick(doc)}
-                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                  title={doc?.tittel}
+                  className="flex items-center gap-1.5 text-sm text-primary hover:underline min-w-0 max-w-full"
                 >
-                  <FileText className="h-3.5 w-3.5" />
-                  {doc?.tittel}
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="break-all sm:break-words min-w-0">
+                    {doc?.tittel}
+                  </span>
                 </button>
               );
             })}
