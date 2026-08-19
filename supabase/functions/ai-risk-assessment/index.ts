@@ -394,12 +394,73 @@ const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[], lang: Lang = 'no
   return `${best.label}${suffix(Math.round(best.distance))}`;
 };
 
+// Point-in-polygon (ray casting) on lat/lng — adequate at cell scale.
+const pointInRing = (p: RouteCoord, ring: RouteCoord[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i].lat, xi = ring[i].lng;
+    const yj = ring[j].lat, xj = ring[j].lng;
+    const intersect = (yi > p.lat) !== (yj > p.lat) &&
+      p.lng < ((xj - xi) * (p.lat - yi)) / ((yj - yi) || 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+// True when a grid cell polygon actually intersects the buffered route corridor
+// (the exact footprint rendered on the map), not just its centroid proximity.
+const cellIntersectsRouteBuffer = (ring: RouteCoord[], route: RouteCoord[], bufferM: number): boolean => {
+  if (ring.length < 3 || route.length < 1) return false;
+
+  // 1) Any route vertex inside the cell → overlap.
+  for (const point of route) {
+    if (pointInRing(point, ring)) return true;
+  }
+
+  // 2) Any sampled point on the cell outline within bufferM of the route.
+  const samples: RouteCoord[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    const steps = 8;
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      samples.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+    }
+  }
+  for (const sample of samples) {
+    if (route.length === 1) {
+      if (distanceMeters(sample, route[0]) <= bufferM) return true;
+      continue;
+    }
+    for (let i = 0; i < route.length - 1; i++) {
+      if (distanceToSegmentMeters(sample, route[i], route[i + 1]) <= bufferM) return true;
+    }
+  }
+  return false;
+};
+
+// Exact SORA footprint radius from the route centerline. When the mission has no
+// calculated SORA buffer we fall back to a sensible default corridor instead of
+// inflating the search area.
+const DEFAULT_POPULATION_BUFFER_M = 150;
+const resolveFootprintBufferM = (fg: number, contingency: number, grb: number): number => {
+  const hasSora = fg > 0 || grb > 0;
+  if (!hasSora) return DEFAULT_POPULATION_BUFFER_M;
+  const sum = fg + contingency + grb;
+  return sum > 0 ? sum : DEFAULT_POPULATION_BUFFER_M;
+};
+
 async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number, lang: Lang = 'no') {
+
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
-  const degLat = footprintBufferM / metersPerDegLat;
-  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  // Pad bbox by buffer + one cell size so partially overlapping cells are fetched.
+  const bboxPadM = footprintBufferM + 300;
+  const degLat = bboxPadM / metersPerDegLat;
+  const degLng = bboxPadM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+
   let minLat = Math.min(...route.map(p => p.lat)) - degLat;
   let maxLat = Math.max(...route.map(p => p.lat)) + degLat;
   let minLng = Math.min(...route.map(p => p.lng)) - degLng;
@@ -412,7 +473,7 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   if (!resp.ok) throw new Error(`SSB 250m WFS ${resp.status}`);
   const gml = await resp.text();
 
-  const cells: Array<{ population: number; centroid: RouteCoord }> = [];
+  const cells: Array<{ population: number; centroid: RouteCoord; ring: RouteCoord[] }> = [];
   const memberRegex = /<gml:featureMember>([\s\S]*?)<\/gml:featureMember>/g;
   let match;
   while ((match = memberRegex.exec(gml)) !== null) {
@@ -423,21 +484,27 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     const posListMatch = block.match(/<gml:posList[^>]*>([\s\S]*?)<\/gml:posList>/);
     if (!posListMatch) continue;
     const coords = posListMatch[1].trim().split(/\s+/).map(Number);
-    let sumLat = 0, sumLng = 0, count = 0;
-    for (let i = 0; i < coords.length - 2; i += 2) {
-      sumLat += coords[i];
-      sumLng += coords[i + 1];
-      count++;
+    const ring: RouteCoord[] = [];
+    for (let i = 0; i < coords.length - 1; i += 2) {
+      if (Number.isFinite(coords[i]) && Number.isFinite(coords[i + 1])) {
+        ring.push({ lat: coords[i], lng: coords[i + 1] });
+      }
     }
-    if (count > 0) cells.push({ population, centroid: { lat: sumLat / count, lng: sumLng / count } });
+    if (ring.length === 0) continue;
+    const sumLat = ring.reduce((s, p) => s + p.lat, 0);
+    const sumLng = ring.reduce((s, p) => s + p.lng, 0);
+    cells.push({
+      population,
+      centroid: { lat: sumLat / ring.length, lng: sumLng / ring.length },
+      ring,
+    });
   }
 
-  const overlapping = cells.filter(cell => {
-    for (let i = 0; i < route.length - 1; i++) {
-      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 180) return true;
-    }
-    return false;
-  });
+  // Overlap test against the EXACT footprint drawn on the map (buffered route
+  // polyline). A cell counts only if its polygon actually intersects the buffer:
+  // either a sampled point on the cell outline lies within footprintBufferM of
+  // the route, or a route vertex lies inside the cell.
+  const overlapping = cells.filter(cell => cellIntersectsRouteBuffer(cell.ring, route, footprintBufferM));
   if (overlapping.length === 0) return null;
 
   const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
@@ -445,6 +512,7 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   const maxDensity = maxCell.population * 16;
   const avgDensity = totalPopulation / Math.max(overlapping.length * 0.0625, 0.0625);
   const driver = nearestRouteDriver(maxCell.centroid, route, lang);
+
 
   const en = lang === 'en';
   const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
@@ -483,8 +551,9 @@ async function computeEurostatPopulationDensity(
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
-  const degLat = footprintBufferM / metersPerDegLat;
-  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  const bboxPadM = footprintBufferM + 1200;
+  const degLat = bboxPadM / metersPerDegLat;
+  const degLng = bboxPadM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
   const minLat = Math.min(...route.map(p => p.lat)) - degLat;
   const maxLat = Math.max(...route.map(p => p.lat)) + degLat;
   const minLng = Math.min(...route.map(p => p.lng)) - degLng;
@@ -503,13 +572,20 @@ async function computeEurostatPopulationDensity(
     }))
     .filter((c: any) => c.population > 0 && Number.isFinite(c.centroid.lat) && Number.isFinite(c.centroid.lng));
 
-  // 1 km cell → tolerate up to ~720 m from segment centerline (half-diagonal).
-  const overlapping = cells.filter(cell => {
-    for (let i = 0; i < route.length - 1; i++) {
-      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 720) return true;
-    }
-    return false;
-  });
+  // Reconstruct the 1 km cell square around each centroid and test true overlap
+  // against the exact footprint (buffered route), same rule as the map.
+  const cellRing = (c: RouteCoord): RouteCoord[] => {
+    const dLat = 500 / metersPerDegLat;
+    const dLng = 500 / (metersPerDegLat * Math.cos(c.lat * Math.PI / 180));
+    return [
+      { lat: c.lat - dLat, lng: c.lng - dLng },
+      { lat: c.lat - dLat, lng: c.lng + dLng },
+      { lat: c.lat + dLat, lng: c.lng + dLng },
+      { lat: c.lat + dLat, lng: c.lng - dLng },
+    ];
+  };
+  const overlapping = cells.filter(cell => cellIntersectsRouteBuffer(cellRing(cell.centroid), route, footprintBufferM));
+
   if (overlapping.length === 0) return null;
 
   const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
@@ -1450,7 +1526,7 @@ serve(async (req) => {
         const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
-        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
         const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
 
         if (computed) {
@@ -1497,7 +1573,7 @@ serve(async (req) => {
         const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
-        const footprintBufferM = Math.max(fg + contingency + grb, 250);
+        const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
         const computed = await computeEurostatPopulationDensity(routeCoords, footprintBufferM, resolveLang(language), supabase);
 
         if (computed) {
