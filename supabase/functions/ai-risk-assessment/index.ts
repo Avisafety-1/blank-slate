@@ -394,7 +394,65 @@ const nearestRouteDriver = (p: RouteCoord, route: RouteCoord[], lang: Lang = 'no
   return `${best.label}${suffix(Math.round(best.distance))}`;
 };
 
+// Point-in-polygon (ray casting) on lat/lng — adequate at cell scale.
+const pointInRing = (p: RouteCoord, ring: RouteCoord[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = ring[i].lat, xi = ring[i].lng;
+    const yj = ring[j].lat, xj = ring[j].lng;
+    const intersect = (yi > p.lat) !== (yj > p.lat) &&
+      p.lng < ((xj - xi) * (p.lat - yi)) / ((yj - yi) || 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+// True when a grid cell polygon actually intersects the buffered route corridor
+// (the exact footprint rendered on the map), not just its centroid proximity.
+const cellIntersectsRouteBuffer = (ring: RouteCoord[], route: RouteCoord[], bufferM: number): boolean => {
+  if (ring.length < 3 || route.length < 1) return false;
+
+  // 1) Any route vertex inside the cell → overlap.
+  for (const point of route) {
+    if (pointInRing(point, ring)) return true;
+  }
+
+  // 2) Any sampled point on the cell outline within bufferM of the route.
+  const samples: RouteCoord[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    const steps = 8;
+    for (let s = 0; s < steps; s++) {
+      const t = s / steps;
+      samples.push({ lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t });
+    }
+  }
+  for (const sample of samples) {
+    if (route.length === 1) {
+      if (distanceMeters(sample, route[0]) <= bufferM) return true;
+      continue;
+    }
+    for (let i = 0; i < route.length - 1; i++) {
+      if (distanceToSegmentMeters(sample, route[i], route[i + 1]) <= bufferM) return true;
+    }
+  }
+  return false;
+};
+
+// Exact SORA footprint radius from the route centerline. When the mission has no
+// calculated SORA buffer we fall back to a sensible default corridor instead of
+// inflating the search area.
+const DEFAULT_POPULATION_BUFFER_M = 150;
+const resolveFootprintBufferM = (fg: number, contingency: number, grb: number): number => {
+  const hasSora = fg > 0 || grb > 0;
+  if (!hasSora) return DEFAULT_POPULATION_BUFFER_M;
+  const sum = fg + contingency + grb;
+  return sum > 0 ? sum : DEFAULT_POPULATION_BUFFER_M;
+};
+
 async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBufferM: number, lang: Lang = 'no') {
+
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
