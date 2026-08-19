@@ -456,8 +456,11 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
-  const degLat = footprintBufferM / metersPerDegLat;
-  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  // Pad bbox by buffer + one cell size so partially overlapping cells are fetched.
+  const bboxPadM = footprintBufferM + 300;
+  const degLat = bboxPadM / metersPerDegLat;
+  const degLng = bboxPadM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+
   let minLat = Math.min(...route.map(p => p.lat)) - degLat;
   let maxLat = Math.max(...route.map(p => p.lat)) + degLat;
   let minLng = Math.min(...route.map(p => p.lng)) - degLng;
