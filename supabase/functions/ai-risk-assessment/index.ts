@@ -412,7 +412,7 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   if (!resp.ok) throw new Error(`SSB 250m WFS ${resp.status}`);
   const gml = await resp.text();
 
-  const cells: Array<{ population: number; centroid: RouteCoord }> = [];
+  const cells: Array<{ population: number; centroid: RouteCoord; ring: RouteCoord[] }> = [];
   const memberRegex = /<gml:featureMember>([\s\S]*?)<\/gml:featureMember>/g;
   let match;
   while ((match = memberRegex.exec(gml)) !== null) {
@@ -423,21 +423,27 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
     const posListMatch = block.match(/<gml:posList[^>]*>([\s\S]*?)<\/gml:posList>/);
     if (!posListMatch) continue;
     const coords = posListMatch[1].trim().split(/\s+/).map(Number);
-    let sumLat = 0, sumLng = 0, count = 0;
-    for (let i = 0; i < coords.length - 2; i += 2) {
-      sumLat += coords[i];
-      sumLng += coords[i + 1];
-      count++;
+    const ring: RouteCoord[] = [];
+    for (let i = 0; i < coords.length - 1; i += 2) {
+      if (Number.isFinite(coords[i]) && Number.isFinite(coords[i + 1])) {
+        ring.push({ lat: coords[i], lng: coords[i + 1] });
+      }
     }
-    if (count > 0) cells.push({ population, centroid: { lat: sumLat / count, lng: sumLng / count } });
+    if (ring.length === 0) continue;
+    const sumLat = ring.reduce((s, p) => s + p.lat, 0);
+    const sumLng = ring.reduce((s, p) => s + p.lng, 0);
+    cells.push({
+      population,
+      centroid: { lat: sumLat / ring.length, lng: sumLng / ring.length },
+      ring,
+    });
   }
 
-  const overlapping = cells.filter(cell => {
-    for (let i = 0; i < route.length - 1; i++) {
-      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 180) return true;
-    }
-    return false;
-  });
+  // Overlap test against the EXACT footprint drawn on the map (buffered route
+  // polyline). A cell counts only if its polygon actually intersects the buffer:
+  // either a sampled point on the cell outline lies within footprintBufferM of
+  // the route, or a route vertex lies inside the cell.
+  const overlapping = cells.filter(cell => cellIntersectsRouteBuffer(cell.ring, route, footprintBufferM));
   if (overlapping.length === 0) return null;
 
   const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
@@ -445,6 +451,7 @@ async function computeSsb250PopulationDensity(route: RouteCoord[], footprintBuff
   const maxDensity = maxCell.population * 16;
   const avgDensity = totalPopulation / Math.max(overlapping.length * 0.0625, 0.0625);
   const driver = nearestRouteDriver(maxCell.centroid, route, lang);
+
 
   const en = lang === 'en';
   const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
