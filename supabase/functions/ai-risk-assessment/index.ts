@@ -551,8 +551,9 @@ async function computeEurostatPopulationDensity(
   if (route.length < 2) return null;
 
   const avgLat = route.reduce((sum, p) => sum + p.lat, 0) / route.length;
-  const degLat = footprintBufferM / metersPerDegLat;
-  const degLng = footprintBufferM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
+  const bboxPadM = footprintBufferM + 1200;
+  const degLat = bboxPadM / metersPerDegLat;
+  const degLng = bboxPadM / (metersPerDegLat * Math.cos(avgLat * Math.PI / 180));
   const minLat = Math.min(...route.map(p => p.lat)) - degLat;
   const maxLat = Math.max(...route.map(p => p.lat)) + degLat;
   const minLng = Math.min(...route.map(p => p.lng)) - degLng;
@@ -571,13 +572,20 @@ async function computeEurostatPopulationDensity(
     }))
     .filter((c: any) => c.population > 0 && Number.isFinite(c.centroid.lat) && Number.isFinite(c.centroid.lng));
 
-  // 1 km cell → tolerate up to ~720 m from segment centerline (half-diagonal).
-  const overlapping = cells.filter(cell => {
-    for (let i = 0; i < route.length - 1; i++) {
-      if (distanceToSegmentMeters(cell.centroid, route[i], route[i + 1]) <= footprintBufferM + 720) return true;
-    }
-    return false;
-  });
+  // Reconstruct the 1 km cell square around each centroid and test true overlap
+  // against the exact footprint (buffered route), same rule as the map.
+  const cellRing = (c: RouteCoord): RouteCoord[] => {
+    const dLat = 500 / metersPerDegLat;
+    const dLng = 500 / (metersPerDegLat * Math.cos(c.lat * Math.PI / 180));
+    return [
+      { lat: c.lat - dLat, lng: c.lng - dLng },
+      { lat: c.lat - dLat, lng: c.lng + dLng },
+      { lat: c.lat + dLat, lng: c.lng + dLng },
+      { lat: c.lat + dLat, lng: c.lng - dLng },
+    ];
+  };
+  const overlapping = cells.filter(cell => cellIntersectsRouteBuffer(cellRing(cell.centroid), route, footprintBufferM));
+
   if (overlapping.length === 0) return null;
 
   const maxCell = overlapping.reduce((best, cell) => cell.population > best.population ? cell : best, overlapping[0]);
