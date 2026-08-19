@@ -1,33 +1,36 @@
-# Hvorfor «Treningsflyving» får 5024 personer/km²
+# Dokumenter på Tensio-oppdrag: funn og forslag
 
-## Bekreftet årsak
+## Hva dataene viser
 
-Jeg hentet oppdragets rute (6 punkter, Utleirvegen 99 i Trondheim) og de samme SSB 250 m-rutene som AI-analysen bruker, og regnet etter:
+Jeg sjekket oppdraget "Treningsflyving" (Tensio Sør, opprettet 19.08.2026 av Magnus A. Aspås, 10 dokumenter):
 
-- SORA-fotavtrykket for oppdraget er 30 m (flight geography) + 77,4 m (contingency) + 76 m (ground risk buffer) = **183 m** fra ruten.
-- Den dimensjonerende SSB-ruten med 314 personer (314 × 16 = **5024/km²**) har senter **331 m** fra ruten — altså godt utenfor fotavtrykket.
-- Innenfor det faktiske fotavtrykket er største rute **3 personer = 48/km²** (nest størst 2 personer). Det stemmer med kartet, som viser pådriver 80/km².
+- Alle 10 dokumentene ligger som faktiske koblinger i oppdragets dokumentliste. Kortet viser altså kun det som er lagret på oppdraget — ingenting hentes "live" fra drona.
+- Drona på oppdraget (MATRICE 4E, SN 1581F7FVC251600CT1K5) har **null** dokumenter knyttet til seg. Din antakelse stemmer: dokumentene kommer ikke fra drona.
+- Av de 10: 7 eies av Tensio (OM, SORA-rapporter, PDRA-G03, sjekkliste Matrice) og 3 eies av Avisafe ("Before takeoff", "Droneregler", "Brosjyre.pdf") fordi de er satt til global synlighet.
+- I hele Tensio-hierarkiet er de vanligste vedleggene Avisafe sine globale dokumenter: "Before takeoff" (29 oppdrag), "Preflight drone" (27), samt "Brosjyre.pdf" og AviSafe-dokumentasjons-PDF-er.
 
-To feil i `computeSsb250PopulationDensity` i `supabase/functions/ai-risk-assessment/index.ts` skaper avviket:
+## Hvor dokumentene faktisk kommer fra
 
-1. Bufferen har et gulv på 250 m (`Math.max(fg + contingency + grb, 250)`), selv når det reelle fotavtrykket er 183 m.
-2. Utvalget legger på ytterligere 180 m slack og måler til **rutens senterpunkt**: `distanceToSegmentMeters(...) <= footprintBufferM + 180`. Resultatet ble en søkeradius på 430 m, som trekker inn boligblokkene vest for ruten.
+Det finnes tre veier i dagens kode, og ingen av dem er drone-basert i dette tilfellet:
 
-I tillegg regnes snittet (971/km²) over de samme for vide cellene, og kartets pådriver bruker en annen (korrekt) metode — polygon-overlapp mot faktisk bufferpolygon i `src/lib/adjacentAreaCalculator.ts`. Derfor spriker kart (80/km²) og AI (5024/km²).
+1. Manuelt valg i "Nytt/Rediger oppdrag" — velgeren lister **alle** dokumenter brukeren har tilgang til, inkludert Avisafe sine globale (brosjyre, dokumentasjons-PDF-er) og alle morselskapets dokumenter. Det er lett å hake av for mange.
+2. Autoutfylling ved nytt oppdrag: dokumenter knyttet til dronene brukeren er tilknyttet. (Her tomt, så ikke årsaken denne gangen — men det er denne mekanismen du tenkte på.)
+3. Standarddokument per oppdragstype. Tensio har ingen slike satt.
 
-## Foreslått løsning
+## Forslag til opprydding (velg omfang)
 
-1. Fjern 250 m-gulvet: bruk det faktiske fotavtrykket (fg + contingency + ground risk buffer), med et lavt sikkerhetsgulv kun når SORA-verdier mangler.
-2. Bytt utvalgskriteriet fra «senter innenfor buffer + 180 m» til **geometrisk overlapp mellom SSB-cellepolygonet og bufferen** — samme regel som kartet bruker. Da samsvarer AI-tallet med pådriveren som vises i kartet.
-3. La `maxDensity` og `avgDensity` regnes kun fra de overlappende cellene etter ny regel, og ta med cellens avstand/kilde i `calculation`-teksten så det er sporbart.
-4. Etter endringen bør risikovurderingen for dette oppdraget kjøres på nytt; HARD STOP mot selskapets grense på 500/km² vil da ikke lenger utløses av befolkningstetthet (48/km² i fotavtrykket). Hard stop for pilotinaktivitet (111 dager) består.
+1. **Rydd i dokumentvelgeren i oppdragsdialogen**
+   - Grupper listen: "Egen avdeling" / "Morselskap" / "Delt fra Avisafe", med eier-badge på hvert dokument.
+   - Skjul Avisafe-globale markedsførings-/dokumentasjonsfiler (kategori `annet` og `dokumentstyring`) fra standardlisten; de kan hentes fram med en "Vis delte fra Avisafe"-bryter.
+
+2. **Tydeligere visning på oppdragskortet**
+   - Vis eier-badge på dokumentene, og gjør lange lister kollapsbare ("Vis alle 10 dokumenter") slik at kortet ikke drukner.
+
+3. **Valgfritt: rydde eksisterende data**
+   - Fjerne Avisafe-eide markedsføringsdokumenter (f.eks. "Brosjyre.pdf", "AviSafe - Sikkerhetsdokumentasjon.pdf") fra kundeoppdrag i én engangsopprydding.
 
 ## Teknisk
 
-- Fil: `supabase/functions/ai-risk-assessment/index.ts`, funksjonen `computeSsb250PopulationDensity` (linje ~397-472) og bufferberegningen i seksjon 9c (linje ~1445-1460). Samme justering gjøres i Eurostat-varianten for oppdrag utenfor Norge, slik at metodene er like.
-- SSB GML parses allerede med `posList`; vi beholder polygonringen i stedet for bare sentroiden, og gjenbruker overlapp-logikken (punkt-i-polygon / cellehjørne innenfor buffer) tilsvarende `cellTouchesMultiPolygon` i `src/lib/adjacentAreaCalculator.ts`.
-- Ingen databaseendringer.
-
-## Spørsmål
-
-Skal jeg beholde en liten margin (f.eks. 25 m) rundt bufferen for å være konservativ, eller bruke fotavtrykket helt eksakt slik kartet gjør?
+- Berørte filer: `src/components/dashboard/AddMissionDialog.tsx` (dokumenthenting/-velger), `src/components/oppdrag/MissionCard.tsx` og `src/components/dashboard/MissionDetailDialog.tsx` (visning).
+- Ingen databaseendring nødvendig for punkt 1 og 2; punkt 3 er en ren datarydding.
+- All ny tekst legges i både `no.json` og `en.json`.
