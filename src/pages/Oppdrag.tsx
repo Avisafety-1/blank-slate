@@ -243,7 +243,6 @@ const Oppdrag = () => {
           // Already loaded — DOM node will appear on next tick
         } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
 
-        } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
           loadMoreCalls += 1;
           try {
             await data.loadMore();
