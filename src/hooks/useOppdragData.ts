@@ -89,15 +89,23 @@ export const useOppdragData = () => {
     }
   }, [filterTab, companyId]);
 
-  // Load filter options for the active tab (only customers/pilots/drones with missions in that tab)
+  // Load filter options for the active tab, cross-filtered by the other active selections
   useEffect(() => {
     if (!companyId) return;
-    const cacheKey = `offline_mission_filter_options_${companyId}_${filterTab}`;
+    const selCustomer = filters.customerId !== 'alle' ? filters.customerId : null;
+    const selPilot = filters.pilotId !== 'alle' ? filters.pilotId : null;
+    const selDrone = filters.droneId !== 'alle' ? filters.droneId : null;
+    const cacheKey = `offline_mission_filter_options_${companyId}_${filterTab}_${selCustomer || '-'}_${selPilot || '-'}_${selDrone || '-'}`;
     const cached = getCachedData<MissionFilterOptions>(cacheKey);
     if (cached) setFilterOptions(cached);
     if (!navigator.onLine) return;
     (async () => {
-      const { data, error } = await supabase.rpc('get_mission_filter_options', { p_tab: filterTab });
+      const { data, error } = await supabase.rpc('get_mission_filter_options', {
+        p_tab: filterTab,
+        p_customer_id: selCustomer,
+        p_pilot_id: selPilot,
+        p_drone_id: selDrone,
+      } as any);
       if (error) {
         console.error('Error loading mission filter options:', error);
         return;
@@ -111,7 +119,7 @@ export const useOppdragData = () => {
       setFilterOptions(normalized);
       setCachedData(cacheKey, normalized);
     })();
-  }, [companyId, filterTab]);
+  }, [companyId, filterTab, filters.customerId, filters.pilotId, filters.droneId]);
 
   // Drop selected filters that no longer exist in the current tab's options
   useEffect(() => {

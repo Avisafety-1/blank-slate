@@ -8756,6 +8756,15 @@ export type Database = {
       get_mission_filter_options:
         | { Args: never; Returns: Json }
         | { Args: { p_tab?: string }; Returns: Json }
+        | {
+            Args: {
+              p_customer_id?: string
+              p_drone_id?: string
+              p_pilot_id?: string
+              p_tab?: string
+            }
+            Returns: Json
+          }
       get_naturvern_in_bounds: {
         Args: {
           max_lat: number
