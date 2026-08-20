@@ -366,10 +366,11 @@ export const useOppdragData = () => {
     const tab = filterTab;
     const currentCount = tab === 'active' ? activeMissions.length : completedMissions.length;
     fetchMissionsForTab(tab, currentCount, PAGE_SIZE, true);
-  }, [filterTab, activeMissions.length, completedMissions.length]);
+  }, [filterTab, activeMissions.length, completedMissions.length, filters]);
 
   // Server-side search
   const searchMissions = useCallback(async (query: string, tab: 'active' | 'completed') => {
+    lastSearchQueryRef.current = query;
     if (!query.trim()) {
       setSearchActive(false);
       setSearchResults([]);
@@ -378,6 +379,14 @@ export const useOppdragData = () => {
     setSearchActive(true);
     setIsSearching(true);
     try {
+      const activeFilters = filtersRef.current;
+      const relationIds = await getFilteredMissionIds(activeFilters);
+      if (relationIds !== null && relationIds.length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
       const q = `%${query}%`;
       let dbQuery = supabase
         .from("missions")
@@ -392,8 +401,16 @@ export const useOppdragData = () => {
         dbQuery = dbQuery.in("status", ["Fullført", "Avbrutt"]);
       }
 
+      if (activeFilters.customerId !== 'alle') {
+        dbQuery = dbQuery.eq('customer_id', activeFilters.customerId);
+      }
+      if (relationIds !== null) {
+        dbQuery = dbQuery.in('id', relationIds);
+      }
+
       const { data, error } = await dbQuery;
       if (error) throw error;
+
 
       const missionsList = data || [];
       if (missionsList.length === 0) {
