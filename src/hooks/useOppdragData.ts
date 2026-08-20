@@ -10,7 +10,20 @@ import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Mission = any;
 
+export interface MissionFilters {
+  customerId: string;
+  pilotId: string;
+  droneId: string;
+}
+
+export interface MissionFilterOptions {
+  customers: { id: string; navn: string }[];
+  pilots: { id: string; full_name: string }[];
+  drones: { id: string; modell: string; serienummer: string | null }[];
+}
+
 const PAGE_SIZE = 10;
+
 
 export const useOppdragData = () => {
   const { user, loading, companyId } = useAuth();
@@ -32,6 +45,14 @@ export const useOppdragData = () => {
   // Pagination
   const [hasMoreActive, setHasMoreActive] = useState(true);
   const [hasMoreCompleted, setHasMoreCompleted] = useState(true);
+
+  // Server-side filters (all missions, not just loaded page)
+  const [filters, setFilters] = useState<MissionFilters>({ customerId: 'alle', pilotId: 'alle', droneId: 'alle' });
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const [filterOptions, setFilterOptions] = useState<MissionFilterOptions>({ customers: [], pilots: [], drones: [] });
+  const lastSearchQueryRef = useRef<string>("");
+
 
   // KML import state
   const [kmlImportMissionId, setKmlImportMissionId] = useState<string | null>(null);
@@ -68,6 +89,48 @@ export const useOppdragData = () => {
     }
   }, [filterTab, companyId]);
 
+  // Load full filter options (all customers/pilots/drones attached to any visible mission)
+  useEffect(() => {
+    if (!companyId) return;
+    const cacheKey = `offline_mission_filter_options_${companyId}`;
+    const cached = getCachedData<MissionFilterOptions>(cacheKey);
+    if (cached) setFilterOptions(cached);
+    if (!navigator.onLine) return;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_mission_filter_options');
+      if (error) {
+        console.error('Error loading mission filter options:', error);
+        return;
+      }
+      const opts = (data || { customers: [], pilots: [], drones: [] }) as unknown as MissionFilterOptions;
+      const normalized: MissionFilterOptions = {
+        customers: opts.customers || [],
+        pilots: opts.pilots || [],
+        drones: opts.drones || [],
+      };
+      setFilterOptions(normalized);
+      setCachedData(cacheKey, normalized);
+    })();
+  }, [companyId]);
+
+  // Refetch from page 0 whenever filters change
+  const filtersInitRef = useRef(true);
+  useEffect(() => {
+    if (!companyId) return;
+    if (filtersInitRef.current) {
+      filtersInitRef.current = false;
+      return;
+    }
+    setHasMoreActive(true);
+    setHasMoreCompleted(true);
+    if (filterTab === 'completed') completedLoadedRef.current = true;
+    fetchMissionsForTab(filterTab, 0, PAGE_SIZE, false);
+    if (searchActive && lastSearchQueryRef.current) {
+      searchMissions(lastSearchQueryRef.current, filterTab);
+    }
+  }, [filters, companyId]);
+
+
   // Real-time subscription — refresh KUN den synlige taben (debounce 5s)
   useEffect(() => {
     let debounceTimer: number | null = null;
@@ -99,13 +162,42 @@ export const useOppdragData = () => {
     };
   }, [companyId, filterTab, activeMissions.length, completedMissions.length]);
 
+  const hasActiveFilters = (f: MissionFilters) =>
+    f.customerId !== 'alle' || f.pilotId !== 'alle' || f.droneId !== 'alle';
+
+  // Resolve mission ids matching pilot/drone filters. Returns null when no such filter is active.
+  const getFilteredMissionIds = async (f: MissionFilters): Promise<string[] | null> => {
+    let ids: string[] | null = null;
+
+    if (f.pilotId !== 'alle') {
+      const { data } = await supabase
+        .from('mission_personnel')
+        .select('mission_id')
+        .eq('profile_id', f.pilotId);
+      ids = [...new Set((data || []).map((r: any) => r.mission_id))];
+    }
+
+    if (f.droneId !== 'alle') {
+      const { data } = await supabase
+        .from('mission_drones')
+        .select('mission_id')
+        .eq('drone_id', f.droneId);
+      const droneIds = new Set((data || []).map((r: any) => r.mission_id));
+      ids = ids === null ? [...droneIds] : ids.filter((id) => droneIds.has(id));
+    }
+
+    return ids;
+  };
+
   const fetchMissionsForTab = async (tab: 'active' | 'completed', offset: number, limit: number, append: boolean) => {
     const setData = tab === 'active' ? setActiveMissions : setCompletedMissions;
     const setLoadingFn = append ? setIsLoadingMore : (tab === 'active' ? setIsLoadingActive : setIsLoadingCompleted);
     const setHasMore = tab === 'active' ? setHasMoreActive : setHasMoreCompleted;
+    const activeFilters = filtersRef.current;
+    const filtersOn = hasActiveFilters(activeFilters);
 
-    // Show cache on initial load only
-    if (!append && offset === 0 && companyId) {
+    // Show cache on initial load only (never when filtering — cache is unfiltered)
+    if (!append && offset === 0 && companyId && !filtersOn) {
       const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${tab}`);
       if (cached) {
         setData(cached);
@@ -120,6 +212,14 @@ export const useOppdragData = () => {
 
     setLoadingFn(true);
     try {
+      const relationIds = await getFilteredMissionIds(activeFilters);
+      if (relationIds !== null && relationIds.length === 0) {
+        setHasMore(false);
+        if (!append) setData([]);
+        setLoadingFn(false);
+        return;
+      }
+
       let query = supabase
         .from("missions")
         .select(`*, customers (id, navn, kontaktperson, telefon, epost), companies:company_id(id, navn)`)
@@ -132,8 +232,17 @@ export const useOppdragData = () => {
         query = query.in("status", ["Fullført", "Avbrutt"]);
       }
 
+      if (activeFilters.customerId !== 'alle') {
+        query = query.eq('customer_id', activeFilters.customerId);
+      }
+      if (relationIds !== null) {
+        query = query.in('id', relationIds);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
+
+
 
       const missionsList = data || [];
       setHasMore(missionsList.length >= limit);
@@ -145,7 +254,8 @@ export const useOppdragData = () => {
           // No more to append
         } else {
           setData([]);
-          if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+          if (companyId && !hasActiveFilters(activeFilters)) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+
         }
         setLoadingFn(false);
         return;
@@ -230,7 +340,8 @@ export const useOppdragData = () => {
         setData(prev => [...prev, ...missionsWithDetails]);
       } else {
         setData(missionsWithDetails);
-        if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+        if (companyId && !hasActiveFilters(activeFilters)) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+
       }
     } catch (error) {
       console.error("Error fetching missions:", error);
@@ -255,10 +366,11 @@ export const useOppdragData = () => {
     const tab = filterTab;
     const currentCount = tab === 'active' ? activeMissions.length : completedMissions.length;
     fetchMissionsForTab(tab, currentCount, PAGE_SIZE, true);
-  }, [filterTab, activeMissions.length, completedMissions.length]);
+  }, [filterTab, activeMissions.length, completedMissions.length, filters]);
 
   // Server-side search
   const searchMissions = useCallback(async (query: string, tab: 'active' | 'completed') => {
+    lastSearchQueryRef.current = query;
     if (!query.trim()) {
       setSearchActive(false);
       setSearchResults([]);
@@ -267,6 +379,14 @@ export const useOppdragData = () => {
     setSearchActive(true);
     setIsSearching(true);
     try {
+      const activeFilters = filtersRef.current;
+      const relationIds = await getFilteredMissionIds(activeFilters);
+      if (relationIds !== null && relationIds.length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
       const q = `%${query}%`;
       let dbQuery = supabase
         .from("missions")
@@ -281,8 +401,16 @@ export const useOppdragData = () => {
         dbQuery = dbQuery.in("status", ["Fullført", "Avbrutt"]);
       }
 
+      if (activeFilters.customerId !== 'alle') {
+        dbQuery = dbQuery.eq('customer_id', activeFilters.customerId);
+      }
+      if (relationIds !== null) {
+        dbQuery = dbQuery.in('id', relationIds);
+      }
+
       const { data, error } = await dbQuery;
       if (error) throw error;
+
 
       const missionsList = data || [];
       if (missionsList.length === 0) {
@@ -571,6 +699,12 @@ export const useOppdragData = () => {
     hasMoreData,
     filterTab,
     setFilterTab,
+
+    // Filters
+    filters,
+    setFilters,
+    filterOptions,
+
 
     // Actions
     fetchMissions,

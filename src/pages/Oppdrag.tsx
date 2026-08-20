@@ -35,11 +35,14 @@ const Oppdrag = () => {
   const { t } = useTranslation();
 
 
-  // Search/filter state
+  // Search state (filters live server-side in useOppdragData)
   const [searchQuery, setSearchQuery] = useState("");
-  const [customerFilter, setCustomerFilter] = useState("alle");
-  const [pilotFilter, setPilotFilter] = useState("alle");
-  const [droneFilter, setDroneFilter] = useState("alle");
+  const { customerId: customerFilter, pilotId: pilotFilter, droneId: droneFilter } = data.filters;
+  const setCustomerFilter = (v: string) => data.setFilters(prev => ({ ...prev, customerId: v }));
+  const setPilotFilter = (v: string) => data.setFilters(prev => ({ ...prev, pilotId: v }));
+  const setDroneFilter = (v: string) => data.setFilters(prev => ({ ...prev, droneId: v }));
+  const resetFilters = () => data.setFilters({ customerId: "alle", pilotId: "alle", droneId: "alle" });
+
 
   // Dialog state
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
@@ -99,14 +102,8 @@ const Oppdrag = () => {
     })();
   }, [authCompanyId]);
 
-  // Infinite scroll
-  const [visibleCount, setVisibleCount] = useState(10);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [customerFilter, pilotFilter, droneFilter, data.filterTab]);
 
   // Debounced server-side search
   useEffect(() => {
@@ -243,11 +240,9 @@ const Oppdrag = () => {
 
         const index = filteredMissions.findIndex((m: Mission) => m.id === missionId);
         if (index >= 0) {
-          // Loaded but hidden by local slicing — expand only if needed
-          if (visibleCount <= index) {
-            setVisibleCount(index + 1);
-          }
+          // Already loaded — DOM node will appear on next tick
         } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
+
           loadMoreCalls += 1;
           try {
             await data.loadMore();
@@ -298,43 +293,10 @@ const Oppdrag = () => {
   }, [data.location.state]);
 
 
-  // Computed filter options from current data source
-  const displayMissions = data.missions;
-  const uniqueCustomers = [...new Set(displayMissions.map(m => m.customers?.navn).filter(Boolean))].sort();
-  const uniquePilots = [...new Set(displayMissions.flatMap(m => (m.personnel || []).map((p: any) => p.profiles?.full_name).filter(Boolean)))].sort();
-  const uniqueDrones = [...new Set(displayMissions.flatMap(m => (m.drones || []).map((d: any) => d.drones?.modell).filter(Boolean)))].sort();
+  // Missions come pre-filtered from the server (filters apply to ALL missions, not just loaded page)
+  const filteredMissions = data.missions;
+  const visibleMissions = filteredMissions;
 
-  const filteredMissions = displayMissions.filter((mission) => {
-    if (customerFilter !== "alle" && mission.customers?.navn !== customerFilter) return false;
-    if (pilotFilter !== "alle") {
-      const hasPilot = (mission.personnel || []).some((p: any) => p.profiles?.full_name === pilotFilter);
-      if (!hasPilot) return false;
-    }
-    if (droneFilter !== "alle") {
-      const hasDrone = (mission.drones || []).some((d: any) => d.drones?.modell === droneFilter);
-      if (!hasDrone) return false;
-    }
-    return true;
-  });
-
-  const visibleMissions = filteredMissions.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredMissions.length;
-
-  // IntersectionObserver for infinite scroll
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => prev + 10);
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore]);
 
   // Handlers
   const clearInitialData = () => {
@@ -506,9 +468,11 @@ const Oppdrag = () => {
               onPilotFilterChange={setPilotFilter}
               droneFilter={droneFilter}
               onDroneFilterChange={setDroneFilter}
-              uniqueCustomers={uniqueCustomers}
-              uniquePilots={uniquePilots}
-              uniqueDrones={uniqueDrones}
+              customerOptions={data.filterOptions.customers}
+              pilotOptions={data.filterOptions.pilots}
+              droneOptions={data.filterOptions.drones}
+              onResetFilters={resetFilters}
+
               onAddMission={() => setAddDialogOpen(true)}
             />
 
@@ -576,13 +540,8 @@ const Oppdrag = () => {
                     }}
                   />
                 ))}
-                {hasMore && (
+                {data.hasMoreData && (
                   <div ref={sentinelRef} className="flex items-center justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                {!hasMore && data.hasMoreData && (
-                  <div className="flex items-center justify-center py-4">
                     <button
                       onClick={data.loadMore}
                       disabled={data.isLoadingMore}
@@ -593,6 +552,7 @@ const Oppdrag = () => {
                     </button>
                   </div>
                 )}
+
               </div>
             )}
           </div>
