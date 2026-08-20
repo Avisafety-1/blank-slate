@@ -254,7 +254,8 @@ export const useOppdragData = () => {
           // No more to append
         } else {
           setData([]);
-          if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+          if (companyId && !hasActiveFilters(activeFilters)) setCachedData(`offline_missions_${companyId}_${tab}`, []);
+
         }
         setLoadingFn(false);
         return;
