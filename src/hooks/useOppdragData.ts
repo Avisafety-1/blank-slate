@@ -113,6 +113,17 @@ export const useOppdragData = () => {
     })();
   }, [companyId, filterTab]);
 
+  // Drop selected filters that no longer exist in the current tab's options
+  useEffect(() => {
+    setFilters(prev => {
+      const next = { ...prev };
+      if (next.customerId !== 'alle' && !filterOptions.customers.some(c => c.id === next.customerId)) next.customerId = 'alle';
+      if (next.pilotId !== 'alle' && !filterOptions.pilots.some(p => p.id === next.pilotId)) next.pilotId = 'alle';
+      if (next.droneId !== 'alle' && !filterOptions.drones.some(d => d.id === next.droneId)) next.droneId = 'alle';
+      return (next.customerId === prev.customerId && next.pilotId === prev.pilotId && next.droneId === prev.droneId) ? prev : next;
+    });
+  }, [filterOptions]);
+
 
   // Refetch from page 0 whenever filters change
   const filtersInitRef = useRef(true);
