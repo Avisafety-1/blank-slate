@@ -255,10 +255,17 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   // Viser «14:00» eller «14:00–20:00» avhengig av oppløsning
   const formatSlot = (iso: string, stepHours?: number) => {
     const step = stepHours ?? forecastStepHours;
-    if (!step || step <= 1) return formatTime(iso);
-    const end = new Date(new Date(iso).getTime() + step * 60 * 60 * 1000);
-    return `${formatTime(iso)}–${formatTime(end.toISOString())}`;
+    const start = new Date(iso);
+    const dayLabel = start.toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (!step || step <= 1) return `${dayLabel} ${formatTime(iso)}`;
+    const end = new Date(start.getTime() + step * 60 * 60 * 1000);
+    const sameDay = end.toDateString() === start.toDateString();
+    const endLabel = sameDay
+      ? formatTime(end.toISOString())
+      : `${end.toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric', month: 'short' })} ${formatTime(end.toISOString())}`;
+    return `${dayLabel} ${formatTime(iso)}–${endLabel}`;
   };
+
 
   // Viser «0–3 mm» når MET oppgir intervall, ellers «0.0 mm»
   const formatPrecip = (p: {
