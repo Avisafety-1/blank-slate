@@ -584,7 +584,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                     </div>
                   </PopoverTrigger>
                   <PopoverContent side="top" className="w-auto p-3 text-xs space-y-1.5 max-w-[200px]">
-                    <div className="font-semibold text-sm">{formatTime(hour.time)}</div>
+                    <div className="font-semibold text-sm">{formatSlot(hour.time, hour.step_hours)}</div>
                     <div className="flex items-center gap-2">
                       <Thermometer className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{hour.temperature?.toFixed(1)}°C</span>
