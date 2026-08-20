@@ -20,7 +20,34 @@ function getCacheKey(lat: number, lon: number): string {
 }
 
 // Evaluerer drone-advarsler basert på værforhold for ett tidspunkt
-function evaluateWeatherConditions(current: any, next1h: any) {
+// Velg beste tilgjengelige nedbør-/symbolperiode for et timeseries-punkt.
+// Langt frem i tid finnes bare next_6_hours / next_12_hours.
+function pickPeriod(entry: any): { data: any; hours: number } | null {
+  const d = entry?.data;
+  if (!d) return null;
+  if (d.next_1_hours) return { data: d.next_1_hours, hours: 1 };
+  if (d.next_6_hours) return { data: d.next_6_hours, hours: 6 };
+  if (d.next_12_hours) return { data: d.next_12_hours, hours: 12 };
+  return null;
+}
+
+function precipInfo(period: { data: any; hours: number } | null) {
+  const det = period?.data?.details || {};
+  const amount = det.precipitation_amount ?? 0;
+  const min = det.precipitation_amount_min ?? null;
+  const max = det.precipitation_amount_max ?? null;
+  return {
+    amount,
+    min,
+    max,
+    // Bruk maks når MET oppgir intervall (0–3 mm) for advarselsvurdering
+    worst: Math.max(amount ?? 0, max ?? 0),
+    hours: period?.hours ?? 1,
+    symbol: period?.data?.summary?.symbol_code || 'unknown',
+  };
+}
+
+function evaluateWeatherConditions(current: any, next1h: any, periodHours = 1) {
   const warnings: any[] = [];
 
   if (!current) {
@@ -29,10 +56,19 @@ function evaluateWeatherConditions(current: any, next1h: any) {
 
   const windSpeed = current.wind_speed || 0;
   const windGust = current.wind_speed_of_gust || 0;
-  const precipitation = next1h?.details?.precipitation_amount || 0;
+  const precipDetails = next1h?.details || {};
+  // Bruk maks-verdien når MET oppgir intervall, slik at «0–3 mm» ikke vises som 0
+  const rawPrecip = Math.max(
+    precipDetails.precipitation_amount ?? 0,
+    precipDetails.precipitation_amount_max ?? 0,
+  );
+  // Normaliser til mm/t når perioden er lengre enn 1 time
+  const precipitation = periodHours > 1 ? rawPrecip / periodHours : rawPrecip;
   const temperature = current.air_temperature || 0;
   const symbolCode = next1h?.summary?.symbol_code || '';
   const dewPoint = current.dew_point_temperature;
+
+
 
   // Vind advarsler
   if (windSpeed > 10) {
