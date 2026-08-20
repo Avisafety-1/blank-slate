@@ -7158,6 +7158,8 @@
       "weatherAlerts": "Væradvarsler",
       "tabNow": "Nå",
       "tabForecast": "Prognose 24t",
+      "forecastWord": "Prognose",
+
       "hourlyForecast": "Timeprognose",
       "bestFlightWindowLong": "Beste flyvindu: {{start}} - {{end}} ({{hours}} timer)",
       "footerSource": "Værdata fra MET Norway • Oppdatert {{time}}",
