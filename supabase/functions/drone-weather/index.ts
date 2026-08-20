@@ -216,10 +216,12 @@ function evaluateWeatherConditions(current: any, next1h: any, periodHours = 1) {
 
 // Wrapper for bakoverkompatibilitet
 function evaluateWeatherForDrone(data: any, index = 0) {
-  const current = data.properties?.timeseries?.[index]?.data?.instant?.details;
-  const next1h = data.properties?.timeseries?.[index]?.data?.next_1_hours;
-  return evaluateWeatherConditions(current, next1h);
+  const entry = data.properties?.timeseries?.[index];
+  const current = entry?.data?.instant?.details;
+  const period = pickPeriod(entry);
+  return evaluateWeatherConditions(current, period?.data, period?.hours ?? 1);
 }
+
 
 // Finn indeksen i timeseries nærmest ønsket tidspunkt
 function findClosestIndex(timeseries: any[], targetTime?: string | null): number {
