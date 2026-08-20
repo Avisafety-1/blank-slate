@@ -320,9 +320,16 @@ function findBestFlightWindow(hourlyForecast: any[]) {
     return null;
   }
 
+  // Varighet i faktiske timer (punkter × steglengde), ikke antall punkter
+  const durationHours = hourlyForecast
+    .slice(bestStart, bestStart + bestLength)
+    .reduce((sum: number, h: any) => sum + (h.step_hours || 1), 0);
+
   return {
     start_time: hourlyForecast[bestStart].time,
     end_time: hourlyForecast[bestStart + bestLength - 1].time,
+    duration_hours: durationHours,
+
     duration_hours: bestLength,
   };
 }
