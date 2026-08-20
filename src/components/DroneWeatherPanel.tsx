@@ -530,7 +530,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Droplets className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium text-foreground">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+            <span className="font-medium text-foreground">{formatPrecip(weatherData.current)}</span>
           </div>
           {weatherData.current.dew_point != null && (
             <div className="flex items-center gap-1.5 text-sm">
