@@ -700,6 +700,12 @@ export const useOppdragData = () => {
     filterTab,
     setFilterTab,
 
+    // Filters
+    filters,
+    setFilters,
+    filterOptions,
+
+
     // Actions
     fetchMissions,
     loadMore,
