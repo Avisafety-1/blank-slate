@@ -415,9 +415,16 @@ serve(async (req) => {
 
     // Bygg response
     const current = forecastEntry?.data?.instant?.details;
-    const next1h = forecastEntry?.data?.next_1_hours;
+    const targetPeriod = pickPeriod(forecastEntry);
+    const targetPrecip = precipInfo(targetPeriod);
     const sixIndex = Math.min(targetIndex + 6, Math.max(0, timeseries.length - 1));
     const forecast6h = timeseries[sixIndex]?.data?.instant?.details;
+
+    // Oppløsning på prognosen rundt måltidspunktet (1t nær i tid, 6t langt frem)
+    const nextEntryTime = timeseries[targetIndex + 1]?.time;
+    const stepHours = nextEntryTime && forecastTime
+      ? Math.max(1, Math.round((new Date(nextEntryTime).getTime() - new Date(forecastTime).getTime()) / 3600000))
+      : targetPrecip.hours;
 
     const response = {
       location: { lat: truncatedLat, lon: truncatedLon },
@@ -425,24 +432,29 @@ serve(async (req) => {
       target_time: targetIso,
       forecast_time: forecastTime,
       out_of_range: outOfRange,
+      step_hours: stepHours,
       current: {
-        temperature: current?.air_temperature || null,
-        wind_speed: current?.wind_speed || null,
-        wind_gust: current?.wind_speed_of_gust || null,
-        wind_direction: current?.wind_from_direction || null,
-        humidity: current?.relative_humidity || null,
+        temperature: current?.air_temperature ?? null,
+        wind_speed: current?.wind_speed ?? null,
+        wind_gust: current?.wind_speed_of_gust ?? null,
+        wind_direction: current?.wind_from_direction ?? null,
+        humidity: current?.relative_humidity ?? null,
         dew_point: current?.dew_point_temperature ?? null,
-        precipitation: next1h?.details?.precipitation_amount || 0,
-        symbol: next1h?.summary?.symbol_code || 'unknown',
+        precipitation: targetPrecip.amount,
+        precipitation_min: targetPrecip.min,
+        precipitation_max: targetPrecip.max,
+        precipitation_period_hours: targetPrecip.hours,
+        symbol: targetPrecip.symbol,
       },
       warnings,
       hourly_forecast: hourlyForecast,
       best_flight_window: bestFlightWindow,
       forecast_6h: forecast6h ? {
-        temperature: forecast6h.air_temperature || null,
-        wind_speed: forecast6h.wind_speed || null,
-        precipitation: timeseries[sixIndex]?.data?.next_1_hours?.details?.precipitation_amount || 0,
+        temperature: forecast6h.air_temperature ?? null,
+        wind_speed: forecast6h.wind_speed ?? null,
+        precipitation: precipInfo(pickPeriod(timeseries[sixIndex])).amount,
       } : null,
+
       drone_flight_recommendation: recommendation,
       met_data_updated: metData.properties?.meta?.updated_at || null,
     };
