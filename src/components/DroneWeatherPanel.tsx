@@ -106,7 +106,7 @@ interface WeatherData {
   drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
 }
 
-export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedWeatherData }: DroneWeatherPanelProps) => {
+export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedWeatherData, targetTime }: DroneWeatherPanelProps) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +115,36 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
   // Hvis vi har lagrede værdata (historisk), vis disse i stedet for å hente nye
   const isHistorical = !!savedWeatherData;
+
+  // Er oppdragstidspunktet utenfor MET sin prognoserekkevidde (10 døgn)?
+  const targetDate = targetTime ? new Date(targetTime) : null;
+  const validTarget = targetDate && Number.isFinite(targetDate.getTime()) ? targetDate : null;
+  const beyondForecastRange = !!validTarget &&
+    (validTarget.getTime() - Date.now()) > WEATHER_FORECAST_MAX_DAYS * 24 * 60 * 60 * 1000;
+
+  const formatForecastMoment = (iso: string) =>
+    new Date(iso).toLocaleString('nb-NO', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+
+  // Etikett som viser hvilket tidspunkt prognosen gjelder for
+  const renderForecastLabel = () => {
+    if (!validTarget || !weatherData?.forecast_time) return null;
+    const drift = Math.abs(new Date(weatherData.forecast_time).getTime() - validTarget.getTime());
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="secondary" className="text-[10px] gap-1">
+          <Clock className="w-3 h-3" />
+          {t('safety.weatherPanel.forecastFor', { time: formatForecastMoment(weatherData.forecast_time) })}
+        </Badge>
+        {drift >= 60 * 60 * 1000 && (
+          <span className="text-[10px] text-muted-foreground">
+            {t('safety.weatherPanel.nearestForecastNote')}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   // Helper functions - definert først for å kunne brukes i hele komponenten
   const getRecommendationColor = (recommendation: string) => {
