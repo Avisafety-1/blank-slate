@@ -330,7 +330,6 @@ function findBestFlightWindow(hourlyForecast: any[]) {
     end_time: hourlyForecast[bestStart + bestLength - 1].time,
     duration_hours: durationHours,
 
-    duration_hours: bestLength,
   };
 }
 
