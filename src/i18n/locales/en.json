@@ -7156,6 +7156,8 @@
       "weatherAlerts": "Weather alerts",
       "tabNow": "Now",
       "tabForecast": "24h forecast",
+      "forecastWord": "Forecast",
+
       "hourlyForecast": "Hourly forecast",
       "bestFlightWindowLong": "Best flight window: {{start}} - {{end}} ({{hours}} hours)",
       "footerSource": "Weather data from MET Norway • Updated {{time}}",
