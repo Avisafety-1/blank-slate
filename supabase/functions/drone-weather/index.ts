@@ -179,20 +179,41 @@ function evaluateWeatherConditions(current: any, next1h: any) {
 }
 
 // Wrapper for bakoverkompatibilitet
-function evaluateWeatherForDrone(data: any) {
-  const current = data.properties?.timeseries?.[0]?.data?.instant?.details;
-  const next1h = data.properties?.timeseries?.[0]?.data?.next_1_hours;
+function evaluateWeatherForDrone(data: any, index = 0) {
+  const current = data.properties?.timeseries?.[index]?.data?.instant?.details;
+  const next1h = data.properties?.timeseries?.[index]?.data?.next_1_hours;
   return evaluateWeatherConditions(current, next1h);
 }
 
-// Generer timeprognose for de neste 24 timene
-function generateHourlyForecast(timeseries: any[]) {
+// Finn indeksen i timeseries nærmest ønsket tidspunkt
+function findClosestIndex(timeseries: any[], targetTime?: string | null): number {
+  if (!targetTime) return 0;
+  const target = new Date(targetTime).getTime();
+  if (!Number.isFinite(target)) return 0;
+
+  let bestIndex = 0;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < timeseries.length; i++) {
+    const t = new Date(timeseries[i]?.time).getTime();
+    if (!Number.isFinite(t)) continue;
+    const diff = Math.abs(t - target);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+// Generer timeprognose (24 punkter) rundt et startpunkt
+function generateHourlyForecast(timeseries: any[], startIndex = 0) {
   const hourlyForecast: any[] = [];
-  
-  // Ta de neste 24 timene (eller så mange som er tilgjengelige)
-  const hoursToForecast = Math.min(24, timeseries.length);
-  
-  for (let i = 0; i < hoursToForecast; i++) {
+
+  const start = Math.max(0, Math.min(startIndex, Math.max(0, timeseries.length - 1)));
+  const hoursToForecast = Math.min(24, Math.max(0, timeseries.length - start));
+
+  for (let k = 0; k < hoursToForecast; k++) {
+    const i = start + k;
     const entry = timeseries[i];
     if (!entry) continue;
     
