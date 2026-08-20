@@ -138,15 +138,19 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     });
 
   // Etikett som viser hvilket tidspunkt prognosen gjelder for
-  const renderForecastLabel = () => {
+  const renderForecastLabel = (showBadge = true) => {
     if (!validTarget || !weatherData?.forecast_time) return null;
     const drift = Math.abs(new Date(weatherData.forecast_time).getTime() - validTarget.getTime());
+    const notes = (drift >= 60 * 60 * 1000) || (weatherData?.step_hours && weatherData.step_hours > 1);
+    if (!showBadge && !notes) return null;
     return (
       <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="secondary" className="text-[10px] gap-1">
-          <Clock className="w-3 h-3" />
-          {t('safety.weatherPanel.forecastFor', { time: formatForecastMoment(weatherData.forecast_time) })}
-        </Badge>
+        {showBadge && (
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Clock className="w-3 h-3" />
+            {t('safety.weatherPanel.forecastFor', { time: formatForecastMoment(weatherData.forecast_time) })}
+          </Badge>
+        )}
         {drift >= 60 * 60 * 1000 && (
           <span className="text-[10px] text-muted-foreground">
             {t('safety.weatherPanel.nearestForecastNote')}
@@ -161,6 +165,27 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       </div>
     );
   };
+
+  // Fanenavn som forteller hvilken dag/tid været gjelder for
+  const tabNowLabel = (() => {
+    const iso = weatherData?.forecast_time;
+    if (!validTarget || !iso) return t('safety.weatherPanel.tabNow');
+    return new Date(iso).toLocaleString('nb-NO', {
+      weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  })();
+
+  const tabForecastLabel = (() => {
+    const list = weatherData?.hourly_forecast?.slice(0, 24) ?? [];
+    if (!list.length) return t('safety.weatherPanel.tabForecast');
+    const first = new Date(list[0].time);
+    const last = new Date(list[list.length - 1].time);
+    const d = (x: Date) => x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+    return first.toDateString() === last.toDateString()
+      ? `${t('safety.weatherPanel.forecastWord')} ${d(first)}`
+      : `${t('safety.weatherPanel.forecastWord')} ${d(first)}–${d(last)}`;
+  })();
+
 
   // Helper functions - definert først for å kunne brukes i hele komponenten
   const getRecommendationColor = (recommendation: string) => {
@@ -653,7 +678,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
-          {renderForecastLabel()}
+          {renderForecastLabel(false)}
         </div>
         <div className={cn(
           "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium shrink-0",
@@ -666,8 +691,9 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
       <Tabs defaultValue="now" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="now">{t('safety.weatherPanel.tabNow')}</TabsTrigger>
-          <TabsTrigger value="forecast">{t('safety.weatherPanel.tabForecast')}</TabsTrigger>
+          <TabsTrigger value="now" className="text-xs">{tabNowLabel}</TabsTrigger>
+          <TabsTrigger value="forecast" className="text-xs">{tabForecastLabel}</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="now" className="space-y-3 mt-3">
