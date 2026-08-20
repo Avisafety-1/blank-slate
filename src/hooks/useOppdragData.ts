@@ -89,6 +89,48 @@ export const useOppdragData = () => {
     }
   }, [filterTab, companyId]);
 
+  // Load full filter options (all customers/pilots/drones attached to any visible mission)
+  useEffect(() => {
+    if (!companyId) return;
+    const cacheKey = `offline_mission_filter_options_${companyId}`;
+    const cached = getCachedData<MissionFilterOptions>(cacheKey);
+    if (cached) setFilterOptions(cached);
+    if (!navigator.onLine) return;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_mission_filter_options');
+      if (error) {
+        console.error('Error loading mission filter options:', error);
+        return;
+      }
+      const opts = (data || { customers: [], pilots: [], drones: [] }) as unknown as MissionFilterOptions;
+      const normalized: MissionFilterOptions = {
+        customers: opts.customers || [],
+        pilots: opts.pilots || [],
+        drones: opts.drones || [],
+      };
+      setFilterOptions(normalized);
+      setCachedData(cacheKey, normalized);
+    })();
+  }, [companyId]);
+
+  // Refetch from page 0 whenever filters change
+  const filtersInitRef = useRef(true);
+  useEffect(() => {
+    if (!companyId) return;
+    if (filtersInitRef.current) {
+      filtersInitRef.current = false;
+      return;
+    }
+    setHasMoreActive(true);
+    setHasMoreCompleted(true);
+    if (filterTab === 'completed') completedLoadedRef.current = true;
+    fetchMissionsForTab(filterTab, 0, PAGE_SIZE, false);
+    if (searchActive && lastSearchQueryRef.current) {
+      searchMissions(lastSearchQueryRef.current, filterTab);
+    }
+  }, [filters, companyId]);
+
+
   // Real-time subscription — refresh KUN den synlige taben (debounce 5s)
   useEffect(() => {
     let debounceTimer: number | null = null;
