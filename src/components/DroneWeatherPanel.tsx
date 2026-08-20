@@ -437,21 +437,24 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     return (
       <Card className="mt-3 p-3 space-y-3 bg-card/50 border">
         {/* Header with status */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
-            <span className="text-xs text-muted-foreground">
-              • {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
-            </span>
+            {validTarget ? renderForecastLabel() : (
+              <span className="text-xs text-muted-foreground">
+                • {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
           <div className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium",
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium shrink-0",
             getRecommendationColor(weatherData.drone_flight_recommendation)
           )}>
             {getRecommendationIcon(weatherData.drone_flight_recommendation)}
             <span>{getRecommendationText(weatherData.drone_flight_recommendation)}</span>
           </div>
         </div>
+
 
         {/* Warnings */}
         {weatherData.warnings.length > 0 && (
