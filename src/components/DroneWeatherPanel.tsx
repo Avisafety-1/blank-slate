@@ -691,8 +691,9 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
       <Tabs defaultValue="now" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="now">{t('safety.weatherPanel.tabNow')}</TabsTrigger>
-          <TabsTrigger value="forecast">{t('safety.weatherPanel.tabForecast')}</TabsTrigger>
+          <TabsTrigger value="now" className="text-xs">{tabNowLabel}</TabsTrigger>
+          <TabsTrigger value="forecast" className="text-xs">{tabForecastLabel}</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="now" className="space-y-3 mt-3">
