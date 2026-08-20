@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+interface CustomerOption { id: string; navn: string }
+interface PilotOption { id: string; full_name: string }
+interface DroneOption { id: string; modell: string; serienummer: string | null }
 
 interface OppdragFilterBarProps {
   filterTab: "active" | "completed";
@@ -17,9 +21,10 @@ interface OppdragFilterBarProps {
   onPilotFilterChange: (value: string) => void;
   droneFilter: string;
   onDroneFilterChange: (value: string) => void;
-  uniqueCustomers: string[];
-  uniquePilots: string[];
-  uniqueDrones: string[];
+  customerOptions: CustomerOption[];
+  pilotOptions: PilotOption[];
+  droneOptions: DroneOption[];
+  onResetFilters: () => void;
   onAddMission: () => void;
 }
 
@@ -34,12 +39,24 @@ export const OppdragFilterBar = ({
   onPilotFilterChange,
   droneFilter,
   onDroneFilterChange,
-  uniqueCustomers,
-  uniquePilots,
-  uniqueDrones,
+  customerOptions,
+  pilotOptions,
+  droneOptions,
+  onResetFilters,
   onAddMission,
 }: OppdragFilterBarProps) => {
   const { t } = useTranslation();
+
+  const hasActiveFilters = customerFilter !== "alle" || pilotFilter !== "alle" || droneFilter !== "alle";
+
+  // Show serial number only when several drones share the same model
+  const modelCounts = droneOptions.reduce<Record<string, number>>((acc, d) => {
+    acc[d.modell] = (acc[d.modell] || 0) + 1;
+    return acc;
+  }, {});
+  const droneLabel = (d: DroneOption) =>
+    modelCounts[d.modell] > 1 && d.serienummer ? `${d.modell} (${d.serienummer})` : d.modell;
+
   return (
     <GlassCard className="p-3 sm:p-4 space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -71,10 +88,10 @@ export const OppdragFilterBar = ({
           <SelectTrigger className="h-8 text-xs flex-1">
             <SelectValue placeholder={t('pages.missions.filterBar.customer')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-72">
             <SelectItem value="alle">{t('pages.missions.filterBar.allCustomers')}</SelectItem>
-            {uniqueCustomers.map(c => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+            {customerOptions.map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -82,10 +99,10 @@ export const OppdragFilterBar = ({
           <SelectTrigger className="h-8 text-xs flex-1">
             <SelectValue placeholder={t('pages.missions.filterBar.pilot')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-72">
             <SelectItem value="alle">{t('pages.missions.filterBar.allPilots')}</SelectItem>
-            {uniquePilots.map(p => (
-              <SelectItem key={p} value={p}>{p}</SelectItem>
+            {pilotOptions.map(p => (
+              <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -93,13 +110,19 @@ export const OppdragFilterBar = ({
           <SelectTrigger className="h-8 text-xs flex-1">
             <SelectValue placeholder={t('pages.missions.filterBar.drone')} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-72">
             <SelectItem value="alle">{t('pages.missions.filterBar.allDrones')}</SelectItem>
-            {uniqueDrones.map(d => (
-              <SelectItem key={d} value={d}>{d}</SelectItem>
+            {droneOptions.map(d => (
+              <SelectItem key={d.id} value={d.id}>{droneLabel(d)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onResetFilters}>
+            <X className="h-3.5 w-3.5 mr-1" />
+            {t('pages.missions.filterBar.resetFilters')}
+          </Button>
+        )}
       </div>
     </GlassCard>
   );
