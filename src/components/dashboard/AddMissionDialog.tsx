@@ -1216,6 +1216,7 @@ export const AddMissionDialog = ({
               latitude={formData.latitude} 
               longitude={formData.longitude}
               compact={true}
+              targetTime={formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : null}
             />
           </div>
 
