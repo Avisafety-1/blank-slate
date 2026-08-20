@@ -3198,7 +3198,9 @@
         "pilot": "Pilot",
         "allPilots": "Alle piloter",
         "drone": "Drone",
-        "allDrones": "Alle droner"
+        "allDrones": "Alle droner",
+        "resetFilters": "Nullstill filtre"
+
       },
       "card": {
         "approvalPending": "Venter på godkjenning",
