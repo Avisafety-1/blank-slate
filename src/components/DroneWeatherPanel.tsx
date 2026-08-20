@@ -285,6 +285,24 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     return null;
   }
 
+  // Oppdraget er mer enn 10 døgn frem i tid – ingen værdata tilgjengelig ennå
+  if (!savedWeatherData && beyondForecastRange) {
+    return (
+      <Card className="mt-3 p-3 bg-card/50 border">
+        <div className="flex items-center gap-2 mb-1">
+          <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Clock className="w-3 h-3" />
+            {t('safety.weatherPanel.outOfRangeTitle')}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('safety.weatherPanel.outOfRangeDescription')}
+        </p>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
