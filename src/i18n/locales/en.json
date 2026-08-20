@@ -7129,6 +7129,9 @@
       "actualWeather": "Actual weather",
       "forecastFor": "Forecast for {{time}}",
       "nearestForecastNote": "Nearest available forecast point",
+      "coarseResolutionNote": "Forecast has {{hours}}-hour resolution this far ahead – gets more detailed closer to the mission",
+      "coarseForecast": "{{hours}}-hour forecast",
+
       "outOfRangeTitle": "No forecast yet",
       "outOfRangeDescription": "Weather data is only available up to 10 days ahead. The forecast updates automatically when the mission is less than 10 days away.",
       "recordedAt": "Weather recorded at completion: {{date}}",
