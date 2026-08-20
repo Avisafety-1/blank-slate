@@ -243,7 +243,9 @@ function findClosestIndex(timeseries: any[], targetTime?: string | null): number
   return bestIndex;
 }
 
-// Generer timeprognose (24 punkter) rundt et startpunkt
+// Generer prognosepunkter (inntil 24 punkter) rundt et startpunkt.
+// MERK: punktene er ikke nødvendigvis 1 time fra hverandre — langt frem i tid
+// leverer MET 6-timers steg. Steglengden returneres som step_hours.
 function generateHourlyForecast(timeseries: any[], startIndex = 0) {
   const hourlyForecast: any[] = [];
 
@@ -254,26 +256,39 @@ function generateHourlyForecast(timeseries: any[], startIndex = 0) {
     const i = start + k;
     const entry = timeseries[i];
     if (!entry) continue;
-    
+
     const current = entry.data?.instant?.details;
-    const next1h = entry.data?.next_1_hours;
-    
-    const { recommendation } = evaluateWeatherConditions(current, next1h);
-    
+    const period = pickPeriod(entry);
+    const p = precipInfo(period);
+
+    const { recommendation } = evaluateWeatherConditions(current, period?.data, p.hours);
+
+    // Faktisk steglengde til neste punkt (fallback til periodens lengde)
+    const nextTime = timeseries[i + 1]?.time;
+    const stepHours = nextTime
+      ? Math.max(1, Math.round((new Date(nextTime).getTime() - new Date(entry.time).getTime()) / 3600000))
+      : p.hours;
+
     hourlyForecast.push({
       time: entry.time,
-      temperature: current?.air_temperature || null,
-      wind_speed: current?.wind_speed || null,
-      wind_gust: current?.wind_speed_of_gust || null,
+      temperature: current?.air_temperature ?? null,
+      wind_speed: current?.wind_speed ?? null,
+      wind_gust: current?.wind_speed_of_gust ?? null,
       dew_point: current?.dew_point_temperature ?? null,
-      precipitation: next1h?.details?.precipitation_amount || 0,
-      symbol: next1h?.summary?.symbol_code || 'unknown',
+      precipitation: p.amount,
+      precipitation_min: p.min,
+      precipitation_max: p.max,
+      precipitation_period_hours: p.hours,
+      step_hours: stepHours,
+      symbol: p.symbol,
       recommendation,
     });
   }
-  
+
   return hourlyForecast;
 }
+
+
 
 // Finn beste flyvindu (lengste sammenhengende periode med "ok")
 function findBestFlightWindow(hourlyForecast: any[]) {
