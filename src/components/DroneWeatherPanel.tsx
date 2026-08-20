@@ -243,13 +243,21 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       setWeatherData(null);
       return;
     }
-    
+
+    // Ingen prognose tilgjengelig mer enn 10 døgn frem i tid
+    if (beyondForecastRange) {
+      setWeatherData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (latitude && longitude) {
       fetchWeather();
     } else {
       setWeatherData(null);
     }
-  }, [latitude, longitude, savedWeatherData]);
+  }, [latitude, longitude, savedWeatherData, targetTime, beyondForecastRange]);
 
   const fetchWeather = async () => {
     if (!latitude || !longitude) return;
@@ -259,7 +267,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
     try {
       const { data, error: functionError } = await supabase.functions.invoke('drone-weather', {
-        body: { lat: latitude, lon: longitude }
+        body: { lat: latitude, lon: longitude, targetTime: validTarget?.toISOString() ?? null }
       });
 
       if (functionError) throw functionError;
