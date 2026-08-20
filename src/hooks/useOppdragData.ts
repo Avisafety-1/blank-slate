@@ -10,7 +10,20 @@ import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 type Mission = any;
 
+export interface MissionFilters {
+  customerId: string;
+  pilotId: string;
+  droneId: string;
+}
+
+export interface MissionFilterOptions {
+  customers: { id: string; navn: string }[];
+  pilots: { id: string; full_name: string }[];
+  drones: { id: string; modell: string; serienummer: string | null }[];
+}
+
 const PAGE_SIZE = 10;
+
 
 export const useOppdragData = () => {
   const { user, loading, companyId } = useAuth();
