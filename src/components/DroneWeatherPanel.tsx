@@ -82,6 +82,9 @@ interface BestFlightWindow {
 interface WeatherData {
   location: { lat: number; lon: number };
   timestamp: string;
+  target_time?: string | null;
+  forecast_time?: string | null;
+  out_of_range?: boolean;
   current: {
     temperature: number | null;
     wind_speed: number | null;
