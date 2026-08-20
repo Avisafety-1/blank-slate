@@ -217,6 +217,33 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     return new Date(isoString).getHours().toString().padStart(2, '0');
   };
 
+  // Oppløsningen på prognosen: 1 time nær i tid, 6 timer langt frem
+  const forecastStepHours = weatherData?.step_hours ?? 1;
+  const isCoarseForecast = forecastStepHours > 1;
+
+  // Viser «14:00» eller «14:00–20:00» avhengig av oppløsning
+  const formatSlot = (iso: string, stepHours?: number) => {
+    const step = stepHours ?? forecastStepHours;
+    if (!step || step <= 1) return formatTime(iso);
+    const end = new Date(new Date(iso).getTime() + step * 60 * 60 * 1000);
+    return `${formatTime(iso)}–${formatTime(end.toISOString())}`;
+  };
+
+  // Viser «0–3 mm» når MET oppgir intervall, ellers «0.0 mm»
+  const formatPrecip = (p: {
+    precipitation?: number | null;
+    precipitation_min?: number | null;
+    precipitation_max?: number | null;
+  }) => {
+    const min = p.precipitation_min;
+    const max = p.precipitation_max;
+    if (min != null && max != null && max > min) {
+      return `${min.toFixed(min % 1 === 0 ? 0 : 1)}–${max.toFixed(max % 1 === 0 ? 0 : 1)} mm`;
+    }
+    return `${(p.precipitation ?? 0).toFixed(1)} mm`;
+  };
+
+
   // Forklarer hvorfor en time har en bestemt anbefaling
   const getReasonForRecommendation = (hour: HourlyForecast) => {
     const reasons: string[] = [];
