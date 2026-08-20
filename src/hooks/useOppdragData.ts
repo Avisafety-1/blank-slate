@@ -33,6 +33,14 @@ export const useOppdragData = () => {
   const [hasMoreActive, setHasMoreActive] = useState(true);
   const [hasMoreCompleted, setHasMoreCompleted] = useState(true);
 
+  // Server-side filters (all missions, not just loaded page)
+  const [filters, setFilters] = useState<MissionFilters>({ customerId: 'alle', pilotId: 'alle', droneId: 'alle' });
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const [filterOptions, setFilterOptions] = useState<MissionFilterOptions>({ customers: [], pilots: [], drones: [] });
+  const lastSearchQueryRef = useRef<string>("");
+
+
   // KML import state
   const [kmlImportMissionId, setKmlImportMissionId] = useState<string | null>(null);
   const [importingKml, setImportingKml] = useState(false);
