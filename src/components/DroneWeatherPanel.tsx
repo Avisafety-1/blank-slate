@@ -780,7 +780,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs space-y-1">
-                      <div className="font-semibold">{formatTime(hour.time)}</div>
+                      <div className="font-semibold">{formatSlot(hour.time, hour.step_hours)}</div>
                       <div className="flex items-center gap-2">
                         <Thermometer className="w-3 h-3" />
                         <span>{hour.temperature?.toFixed(1)}°C</span>
