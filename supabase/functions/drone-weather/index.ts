@@ -382,7 +382,7 @@ serve(async (req) => {
       forecast_6h: forecast6h ? {
         temperature: forecast6h.air_temperature || null,
         wind_speed: forecast6h.wind_speed || null,
-        precipitation: metData.properties?.timeseries?.[6]?.data?.next_1_hours?.details?.precipitation_amount || 0,
+        precipitation: timeseries[sixIndex]?.data?.next_1_hours?.details?.precipitation_amount || 0,
       } : null,
       drone_flight_recommendation: recommendation,
       met_data_updated: metData.properties?.meta?.updated_at || null,
