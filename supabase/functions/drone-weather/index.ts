@@ -332,23 +332,40 @@ serve(async (req) => {
     }
 
     const metData = await metResponse.json();
-    
-    // Evaluer værforhold for drone
-    const { warnings, recommendation } = evaluateWeatherForDrone(metData);
-    
-    // Generer timeprognose
+
     const timeseries = metData.properties?.timeseries || [];
-    const hourlyForecast = generateHourlyForecast(timeseries);
+
+    // Finn prognosepunktet nærmest oppdragstidspunktet
+    const targetIndex = findClosestIndex(timeseries, targetIso);
+    const forecastEntry = timeseries[targetIndex];
+    const forecastTime: string | null = forecastEntry?.time ?? null;
+
+    // Utenfor rekkevidde hvis ønsket tid er mer enn 6 timer fra nærmeste punkt
+    const outOfRange = !!targetIso && (
+      !forecastTime ||
+      Math.abs(new Date(forecastTime).getTime() - new Date(targetIso).getTime()) > 6 * 60 * 60 * 1000
+    );
+
+    // Evaluer værforhold for drone på måltidspunktet
+    const { warnings, recommendation } = evaluateWeatherForDrone(metData, targetIndex);
+
+    // Timeprognose: start litt før måltidspunktet
+    const startIndex = targetIso ? Math.max(0, targetIndex - 3) : 0;
+    const hourlyForecast = generateHourlyForecast(timeseries, startIndex);
     const bestFlightWindow = findBestFlightWindow(hourlyForecast);
-    
+
     // Bygg response
-    const current = metData.properties?.timeseries?.[0]?.data?.instant?.details;
-    const next1h = metData.properties?.timeseries?.[0]?.data?.next_1_hours;
-    const forecast6h = metData.properties?.timeseries?.[6]?.data?.instant?.details;
+    const current = forecastEntry?.data?.instant?.details;
+    const next1h = forecastEntry?.data?.next_1_hours;
+    const sixIndex = Math.min(targetIndex + 6, Math.max(0, timeseries.length - 1));
+    const forecast6h = timeseries[sixIndex]?.data?.instant?.details;
 
     const response = {
       location: { lat: truncatedLat, lon: truncatedLon },
-      timestamp: metData.properties?.timeseries?.[0]?.time || new Date().toISOString(),
+      timestamp: forecastTime || new Date().toISOString(),
+      target_time: targetIso,
+      forecast_time: forecastTime,
+      out_of_range: outOfRange,
       current: {
         temperature: current?.air_temperature || null,
         wind_speed: current?.wind_speed || null,
