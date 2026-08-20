@@ -468,9 +468,11 @@ const Oppdrag = () => {
               onPilotFilterChange={setPilotFilter}
               droneFilter={droneFilter}
               onDroneFilterChange={setDroneFilter}
-              uniqueCustomers={uniqueCustomers}
-              uniquePilots={uniquePilots}
-              uniqueDrones={uniqueDrones}
+              customerOptions={data.filterOptions.customers}
+              pilotOptions={data.filterOptions.pilots}
+              droneOptions={data.filterOptions.drones}
+              onResetFilters={resetFilters}
+
               onAddMission={() => setAddDialogOpen(true)}
             />
 
