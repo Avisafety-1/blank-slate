@@ -606,10 +606,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   // Extended view with tabs
   return (
     <Card className="mt-2 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
+          {renderForecastLabel()}
+        </div>
         <div className={cn(
-          "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
+          "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium shrink-0",
           getRecommendationColor(weatherData.drone_flight_recommendation)
         )}>
           {getRecommendationIcon(weatherData.drone_flight_recommendation)}
