@@ -54,7 +54,13 @@ interface DroneWeatherPanelProps {
   longitude: number | null;
   compact?: boolean;
   savedWeatherData?: SavedWeatherData | null;
+  /** ISO-tidspunkt for oppdragsstart. Prognosen hentes for dette tidspunktet. */
+  targetTime?: string | null;
 }
+
+/** MET leverer prognose ~10 døgn frem i tid */
+export const WEATHER_FORECAST_MAX_DAYS = 10;
+
 
 interface HourlyForecast {
   time: string;
@@ -76,6 +82,9 @@ interface BestFlightWindow {
 interface WeatherData {
   location: { lat: number; lon: number };
   timestamp: string;
+  target_time?: string | null;
+  forecast_time?: string | null;
+  out_of_range?: boolean;
   current: {
     temperature: number | null;
     wind_speed: number | null;
@@ -97,7 +106,7 @@ interface WeatherData {
   drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
 }
 
-export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedWeatherData }: DroneWeatherPanelProps) => {
+export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedWeatherData, targetTime }: DroneWeatherPanelProps) => {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +115,36 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
   // Hvis vi har lagrede værdata (historisk), vis disse i stedet for å hente nye
   const isHistorical = !!savedWeatherData;
+
+  // Er oppdragstidspunktet utenfor MET sin prognoserekkevidde (10 døgn)?
+  const targetDate = targetTime ? new Date(targetTime) : null;
+  const validTarget = targetDate && Number.isFinite(targetDate.getTime()) ? targetDate : null;
+  const beyondForecastRange = !!validTarget &&
+    (validTarget.getTime() - Date.now()) > WEATHER_FORECAST_MAX_DAYS * 24 * 60 * 60 * 1000;
+
+  const formatForecastMoment = (iso: string) =>
+    new Date(iso).toLocaleString('nb-NO', {
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+
+  // Etikett som viser hvilket tidspunkt prognosen gjelder for
+  const renderForecastLabel = () => {
+    if (!validTarget || !weatherData?.forecast_time) return null;
+    const drift = Math.abs(new Date(weatherData.forecast_time).getTime() - validTarget.getTime());
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="secondary" className="text-[10px] gap-1">
+          <Clock className="w-3 h-3" />
+          {t('safety.weatherPanel.forecastFor', { time: formatForecastMoment(weatherData.forecast_time) })}
+        </Badge>
+        {drift >= 60 * 60 * 1000 && (
+          <span className="text-[10px] text-muted-foreground">
+            {t('safety.weatherPanel.nearestForecastNote')}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   // Helper functions - definert først for å kunne brukes i hele komponenten
   const getRecommendationColor = (recommendation: string) => {
@@ -204,13 +243,21 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
       setWeatherData(null);
       return;
     }
-    
+
+    // Ingen prognose tilgjengelig mer enn 10 døgn frem i tid
+    if (beyondForecastRange) {
+      setWeatherData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     if (latitude && longitude) {
       fetchWeather();
     } else {
       setWeatherData(null);
     }
-  }, [latitude, longitude, savedWeatherData]);
+  }, [latitude, longitude, savedWeatherData, targetTime, beyondForecastRange]);
 
   const fetchWeather = async () => {
     if (!latitude || !longitude) return;
@@ -220,7 +267,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
     try {
       const { data, error: functionError } = await supabase.functions.invoke('drone-weather', {
-        body: { lat: latitude, lon: longitude }
+        body: { lat: latitude, lon: longitude, targetTime: validTarget?.toISOString() ?? null }
       });
 
       if (functionError) throw functionError;
@@ -236,6 +283,24 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
   if (!latitude || !longitude) {
     return null;
+  }
+
+  // Oppdraget er mer enn 10 døgn frem i tid – ingen værdata tilgjengelig ennå
+  if (!savedWeatherData && beyondForecastRange) {
+    return (
+      <Card className="mt-3 p-3 bg-card/50 border">
+        <div className="flex items-center gap-2 mb-1">
+          <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Clock className="w-3 h-3" />
+            {t('safety.weatherPanel.outOfRangeTitle')}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('safety.weatherPanel.outOfRangeDescription')}
+        </p>
+      </Card>
+    );
   }
 
   if (loading) {
@@ -372,21 +437,24 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     return (
       <Card className="mt-3 p-3 space-y-3 bg-card/50 border">
         {/* Header with status */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-sm font-semibold">{terminology.vehicleWeather}</h4>
-            <span className="text-xs text-muted-foreground">
-              • {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
-            </span>
+            {validTarget ? renderForecastLabel() : (
+              <span className="text-xs text-muted-foreground">
+                • {new Date(weatherData.timestamp).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
           <div className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium",
+            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium shrink-0",
             getRecommendationColor(weatherData.drone_flight_recommendation)
           )}>
             {getRecommendationIcon(weatherData.drone_flight_recommendation)}
             <span>{getRecommendationText(weatherData.drone_flight_recommendation)}</span>
           </div>
         </div>
+
 
         {/* Warnings */}
         {weatherData.warnings.length > 0 && (
@@ -538,10 +606,13 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   // Extended view with tabs
   return (
     <Card className="mt-2 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold">{terminology.vehicleWeather}</h3>
+          {renderForecastLabel()}
+        </div>
         <div className={cn(
-          "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
+          "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium shrink-0",
           getRecommendationColor(weatherData.drone_flight_recommendation)
         )}>
           {getRecommendationIcon(weatherData.drone_flight_recommendation)}

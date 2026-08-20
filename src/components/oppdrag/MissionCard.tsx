@@ -571,6 +571,7 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               savedWeatherData={effectiveSavedWeather}
+              targetTime={mission.tidspunkt ?? null}
             />
             <AirspaceWarnings
               latitude={effectiveLat}

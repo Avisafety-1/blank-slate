@@ -179,20 +179,41 @@ function evaluateWeatherConditions(current: any, next1h: any) {
 }
 
 // Wrapper for bakoverkompatibilitet
-function evaluateWeatherForDrone(data: any) {
-  const current = data.properties?.timeseries?.[0]?.data?.instant?.details;
-  const next1h = data.properties?.timeseries?.[0]?.data?.next_1_hours;
+function evaluateWeatherForDrone(data: any, index = 0) {
+  const current = data.properties?.timeseries?.[index]?.data?.instant?.details;
+  const next1h = data.properties?.timeseries?.[index]?.data?.next_1_hours;
   return evaluateWeatherConditions(current, next1h);
 }
 
-// Generer timeprognose for de neste 24 timene
-function generateHourlyForecast(timeseries: any[]) {
+// Finn indeksen i timeseries nærmest ønsket tidspunkt
+function findClosestIndex(timeseries: any[], targetTime?: string | null): number {
+  if (!targetTime) return 0;
+  const target = new Date(targetTime).getTime();
+  if (!Number.isFinite(target)) return 0;
+
+  let bestIndex = 0;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < timeseries.length; i++) {
+    const t = new Date(timeseries[i]?.time).getTime();
+    if (!Number.isFinite(t)) continue;
+    const diff = Math.abs(t - target);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+// Generer timeprognose (24 punkter) rundt et startpunkt
+function generateHourlyForecast(timeseries: any[], startIndex = 0) {
   const hourlyForecast: any[] = [];
-  
-  // Ta de neste 24 timene (eller så mange som er tilgjengelige)
-  const hoursToForecast = Math.min(24, timeseries.length);
-  
-  for (let i = 0; i < hoursToForecast; i++) {
+
+  const start = Math.max(0, Math.min(startIndex, Math.max(0, timeseries.length - 1)));
+  const hoursToForecast = Math.min(24, Math.max(0, timeseries.length - start));
+
+  for (let k = 0; k < hoursToForecast; k++) {
+    const i = start + k;
     const entry = timeseries[i];
     if (!entry) continue;
     
@@ -260,7 +281,7 @@ serve(async (req) => {
   }
 
   try {
-    const { lat, lon } = await req.json();
+    const { lat, lon, targetTime } = await req.json();
 
     if (!lat || !lon) {
       return new Response(
@@ -269,10 +290,20 @@ serve(async (req) => {
       );
     }
 
+    // Normaliser måltidspunkt til hel time (for cache-nøkkel)
+    let targetIso: string | null = null;
+    if (targetTime) {
+      const parsed = new Date(targetTime);
+      if (Number.isFinite(parsed.getTime())) {
+        parsed.setUTCMinutes(0, 0, 0);
+        targetIso = parsed.toISOString();
+      }
+    }
+
     // Trunkerer koordinater
     const truncatedLat = truncateCoord(lat);
     const truncatedLon = truncateCoord(lon);
-    const cacheKey = getCacheKey(truncatedLat, truncatedLon);
+    const cacheKey = `${getCacheKey(truncatedLat, truncatedLon)}|${targetIso ?? 'now'}`;
 
     // Sjekk cache
     const cached = cache.get(cacheKey);
@@ -301,23 +332,40 @@ serve(async (req) => {
     }
 
     const metData = await metResponse.json();
-    
-    // Evaluer værforhold for drone
-    const { warnings, recommendation } = evaluateWeatherForDrone(metData);
-    
-    // Generer timeprognose
+
     const timeseries = metData.properties?.timeseries || [];
-    const hourlyForecast = generateHourlyForecast(timeseries);
+
+    // Finn prognosepunktet nærmest oppdragstidspunktet
+    const targetIndex = findClosestIndex(timeseries, targetIso);
+    const forecastEntry = timeseries[targetIndex];
+    const forecastTime: string | null = forecastEntry?.time ?? null;
+
+    // Utenfor rekkevidde hvis ønsket tid er mer enn 6 timer fra nærmeste punkt
+    const outOfRange = !!targetIso && (
+      !forecastTime ||
+      Math.abs(new Date(forecastTime).getTime() - new Date(targetIso).getTime()) > 6 * 60 * 60 * 1000
+    );
+
+    // Evaluer værforhold for drone på måltidspunktet
+    const { warnings, recommendation } = evaluateWeatherForDrone(metData, targetIndex);
+
+    // Timeprognose: start litt før måltidspunktet
+    const startIndex = targetIso ? Math.max(0, targetIndex - 3) : 0;
+    const hourlyForecast = generateHourlyForecast(timeseries, startIndex);
     const bestFlightWindow = findBestFlightWindow(hourlyForecast);
-    
+
     // Bygg response
-    const current = metData.properties?.timeseries?.[0]?.data?.instant?.details;
-    const next1h = metData.properties?.timeseries?.[0]?.data?.next_1_hours;
-    const forecast6h = metData.properties?.timeseries?.[6]?.data?.instant?.details;
+    const current = forecastEntry?.data?.instant?.details;
+    const next1h = forecastEntry?.data?.next_1_hours;
+    const sixIndex = Math.min(targetIndex + 6, Math.max(0, timeseries.length - 1));
+    const forecast6h = timeseries[sixIndex]?.data?.instant?.details;
 
     const response = {
       location: { lat: truncatedLat, lon: truncatedLon },
-      timestamp: metData.properties?.timeseries?.[0]?.time || new Date().toISOString(),
+      timestamp: forecastTime || new Date().toISOString(),
+      target_time: targetIso,
+      forecast_time: forecastTime,
+      out_of_range: outOfRange,
       current: {
         temperature: current?.air_temperature || null,
         wind_speed: current?.wind_speed || null,
@@ -334,7 +382,7 @@ serve(async (req) => {
       forecast_6h: forecast6h ? {
         temperature: forecast6h.air_temperature || null,
         wind_speed: forecast6h.wind_speed || null,
-        precipitation: metData.properties?.timeseries?.[6]?.data?.next_1_hours?.details?.precipitation_amount || 0,
+        precipitation: timeseries[sixIndex]?.data?.next_1_hours?.details?.precipitation_amount || 0,
       } : null,
       drone_flight_recommendation: recommendation,
       met_data_updated: metData.properties?.meta?.updated_at || null,

@@ -311,6 +311,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
                     savedWeatherData={effectiveSavedWeather}
+                    targetTime={currentMission.tidspunkt ?? null}
                   />
                 </>
               );
