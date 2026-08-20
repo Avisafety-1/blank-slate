@@ -538,13 +538,8 @@ const Oppdrag = () => {
                     }}
                   />
                 ))}
-                {hasMore && (
+                {data.hasMoreData && (
                   <div ref={sentinelRef} className="flex items-center justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                {!hasMore && data.hasMoreData && (
-                  <div className="flex items-center justify-center py-4">
                     <button
                       onClick={data.loadMore}
                       disabled={data.isLoadingMore}
@@ -555,6 +550,7 @@ const Oppdrag = () => {
                     </button>
                   </div>
                 )}
+
               </div>
             )}
           </div>
