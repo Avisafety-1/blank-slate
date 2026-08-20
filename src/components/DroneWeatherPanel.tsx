@@ -700,7 +700,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                 <Droplets className="w-4 h-4" />
                 <span>{t('safety.weatherPanel.precipitation')}</span>
               </div>
-              <div className="font-medium">{weatherData.current.precipitation?.toFixed(1) || '0'} mm/t</div>
+              <div className="font-medium">{formatPrecip(weatherData.current)}{weatherData.current.precipitation_period_hours && weatherData.current.precipitation_period_hours > 1 ? `/${weatherData.current.precipitation_period_hours}t` : '/t'}</div>
             </div>
 
             <div className="space-y-1">
