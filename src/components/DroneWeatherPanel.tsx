@@ -152,6 +152,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
             {t('safety.weatherPanel.nearestForecastNote')}
           </span>
         )}
+        {weatherData?.step_hours && weatherData.step_hours > 1 && (
+          <span className="text-[10px] text-muted-foreground">
+            {t('safety.weatherPanel.coarseResolutionNote', { hours: weatherData.step_hours })}
+
+          </span>
+        )}
       </div>
     );
   };
