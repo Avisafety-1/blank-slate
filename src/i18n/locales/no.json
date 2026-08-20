@@ -7131,6 +7131,9 @@
       "actualWeather": "Faktisk vær",
       "forecastFor": "Varsel for {{time}}",
       "nearestForecastNote": "Nærmeste tilgjengelige prognosepunkt",
+      "coarseResolutionNote": "Prognosen har {{hours}}-timers oppløsning så langt frem – blir mer detaljert nærmere oppdraget",
+      "coarseForecast": "{{hours}}-timersprognose",
+
       "outOfRangeTitle": "Ingen prognose ennå",
       "outOfRangeDescription": "Værdata er kun tilgjengelig inntil 10 dager frem i tid. Prognosen oppdateres automatisk når det er mindre enn 10 dager til oppdragsstart.",
       "recordedAt": "Værdata registrert ved fullføring: {{date}}",

@@ -69,6 +69,10 @@ interface HourlyForecast {
   wind_gust: number | null;
   dew_point: number | null;
   precipitation: number;
+  precipitation_min?: number | null;
+  precipitation_max?: number | null;
+  precipitation_period_hours?: number;
+  step_hours?: number;
   symbol: string;
   recommendation: 'ok' | 'caution' | 'warning';
 }
@@ -85,6 +89,8 @@ interface WeatherData {
   target_time?: string | null;
   forecast_time?: string | null;
   out_of_range?: boolean;
+  /** Oppløsning på prognosen: 1 time nær i tid, 6 timer langt frem */
+  step_hours?: number;
   current: {
     temperature: number | null;
     wind_speed: number | null;
@@ -93,6 +99,9 @@ interface WeatherData {
     humidity: number | null;
     dew_point: number | null;
     precipitation: number;
+    precipitation_min?: number | null;
+    precipitation_max?: number | null;
+    precipitation_period_hours?: number;
     symbol: string;
   };
   warnings: WeatherWarning[];
@@ -103,6 +112,7 @@ interface WeatherData {
     wind_speed: number | null;
     precipitation: number;
   } | null;
+
   drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
 }
 
@@ -140,6 +150,12 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
         {drift >= 60 * 60 * 1000 && (
           <span className="text-[10px] text-muted-foreground">
             {t('safety.weatherPanel.nearestForecastNote')}
+          </span>
+        )}
+        {weatherData?.step_hours && weatherData.step_hours > 1 && (
+          <span className="text-[10px] text-muted-foreground">
+            {t('safety.weatherPanel.coarseResolutionNote', { hours: weatherData.step_hours })}
+
           </span>
         )}
       </div>
@@ -206,6 +222,33 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   const formatHour = (isoString: string) => {
     return new Date(isoString).getHours().toString().padStart(2, '0');
   };
+
+  // Oppløsningen på prognosen: 1 time nær i tid, 6 timer langt frem
+  const forecastStepHours = weatherData?.step_hours ?? 1;
+  const isCoarseForecast = forecastStepHours > 1;
+
+  // Viser «14:00» eller «14:00–20:00» avhengig av oppløsning
+  const formatSlot = (iso: string, stepHours?: number) => {
+    const step = stepHours ?? forecastStepHours;
+    if (!step || step <= 1) return formatTime(iso);
+    const end = new Date(new Date(iso).getTime() + step * 60 * 60 * 1000);
+    return `${formatTime(iso)}–${formatTime(end.toISOString())}`;
+  };
+
+  // Viser «0–3 mm» når MET oppgir intervall, ellers «0.0 mm»
+  const formatPrecip = (p: {
+    precipitation?: number | null;
+    precipitation_min?: number | null;
+    precipitation_max?: number | null;
+  }) => {
+    const min = p.precipitation_min;
+    const max = p.precipitation_max;
+    if (min != null && max != null && max > min) {
+      return `${min.toFixed(min % 1 === 0 ? 0 : 1)}–${max.toFixed(max % 1 === 0 ? 0 : 1)} mm`;
+    }
+    return `${(p.precipitation ?? 0).toFixed(1)} mm`;
+  };
+
 
   // Forklarer hvorfor en time har en bestemt anbefaling
   const getReasonForRecommendation = (hour: HourlyForecast) => {
@@ -487,7 +530,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Droplets className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium text-foreground">{weatherData.current.precipitation?.toFixed(1) || '0'} mm</span>
+            <span className="font-medium text-foreground">{formatPrecip(weatherData.current)}</span>
           </div>
           {weatherData.current.dew_point != null && (
             <div className="flex items-center gap-1.5 text-sm">
@@ -541,7 +584,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                     </div>
                   </PopoverTrigger>
                   <PopoverContent side="top" className="w-auto p-3 text-xs space-y-1.5 max-w-[200px]">
-                    <div className="font-semibold text-sm">{formatTime(hour.time)}</div>
+                    <div className="font-semibold text-sm">{formatSlot(hour.time, hour.step_hours)}</div>
                     <div className="flex items-center gap-2">
                       <Thermometer className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{hour.temperature?.toFixed(1)}°C</span>
@@ -555,7 +598,8 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                     </div>
                     <div className="flex items-center gap-2">
                       <Droplets className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>{hour.precipitation?.toFixed(1)} mm</span>
+                      <span>{formatPrecip(hour)}</span>
+
                     </div>
                     {hour.dew_point != null && (
                       <div className="flex items-center gap-2">
@@ -656,7 +700,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                 <Droplets className="w-4 h-4" />
                 <span>{t('safety.weatherPanel.precipitation')}</span>
               </div>
-              <div className="font-medium">{weatherData.current.precipitation?.toFixed(1) || '0'} mm/t</div>
+              <div className="font-medium">{formatPrecip(weatherData.current)}{weatherData.current.precipitation_period_hours && weatherData.current.precipitation_period_hours > 1 ? `/${weatherData.current.precipitation_period_hours}t` : '/t'}</div>
             </div>
 
             <div className="space-y-1">
@@ -714,7 +758,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
           <div className="space-y-2">
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="w-3 h-3" />
-              <span>{t('safety.weatherPanel.hourlyForecast')}</span>
+              <span>{isCoarseForecast ? t('safety.weatherPanel.coarseForecast', { hours: forecastStepHours }) : t('safety.weatherPanel.hourlyForecast')}</span>
             </div>
             
             <TooltipProvider>
@@ -736,7 +780,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs space-y-1">
-                      <div className="font-semibold">{formatTime(hour.time)}</div>
+                      <div className="font-semibold">{formatSlot(hour.time, hour.step_hours)}</div>
                       <div className="flex items-center gap-2">
                         <Thermometer className="w-3 h-3" />
                         <span>{hour.temperature?.toFixed(1)}°C</span>
@@ -750,7 +794,7 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
                       </div>
                       <div className="flex items-center gap-2">
                         <Droplets className="w-3 h-3" />
-                        <span>{hour.precipitation?.toFixed(1)} mm</span>
+                        <span>{formatPrecip(hour)}</span>
                       </div>
                       {hour.dew_point != null && (
                         <div className="flex items-center gap-2">

@@ -20,7 +20,34 @@ function getCacheKey(lat: number, lon: number): string {
 }
 
 // Evaluerer drone-advarsler basert på værforhold for ett tidspunkt
-function evaluateWeatherConditions(current: any, next1h: any) {
+// Velg beste tilgjengelige nedbør-/symbolperiode for et timeseries-punkt.
+// Langt frem i tid finnes bare next_6_hours / next_12_hours.
+function pickPeriod(entry: any): { data: any; hours: number } | null {
+  const d = entry?.data;
+  if (!d) return null;
+  if (d.next_1_hours) return { data: d.next_1_hours, hours: 1 };
+  if (d.next_6_hours) return { data: d.next_6_hours, hours: 6 };
+  if (d.next_12_hours) return { data: d.next_12_hours, hours: 12 };
+  return null;
+}
+
+function precipInfo(period: { data: any; hours: number } | null) {
+  const det = period?.data?.details || {};
+  const amount = det.precipitation_amount ?? 0;
+  const min = det.precipitation_amount_min ?? null;
+  const max = det.precipitation_amount_max ?? null;
+  return {
+    amount,
+    min,
+    max,
+    // Bruk maks når MET oppgir intervall (0–3 mm) for advarselsvurdering
+    worst: Math.max(amount ?? 0, max ?? 0),
+    hours: period?.hours ?? 1,
+    symbol: period?.data?.summary?.symbol_code || 'unknown',
+  };
+}
+
+function evaluateWeatherConditions(current: any, next1h: any, periodHours = 1) {
   const warnings: any[] = [];
 
   if (!current) {
@@ -29,10 +56,19 @@ function evaluateWeatherConditions(current: any, next1h: any) {
 
   const windSpeed = current.wind_speed || 0;
   const windGust = current.wind_speed_of_gust || 0;
-  const precipitation = next1h?.details?.precipitation_amount || 0;
+  const precipDetails = next1h?.details || {};
+  // Bruk maks-verdien når MET oppgir intervall, slik at «0–3 mm» ikke vises som 0
+  const rawPrecip = Math.max(
+    precipDetails.precipitation_amount ?? 0,
+    precipDetails.precipitation_amount_max ?? 0,
+  );
+  // Normaliser til mm/t når perioden er lengre enn 1 time
+  const precipitation = periodHours > 1 ? rawPrecip / periodHours : rawPrecip;
   const temperature = current.air_temperature || 0;
   const symbolCode = next1h?.summary?.symbol_code || '';
   const dewPoint = current.dew_point_temperature;
+
+
 
   // Vind advarsler
   if (windSpeed > 10) {
@@ -180,10 +216,12 @@ function evaluateWeatherConditions(current: any, next1h: any) {
 
 // Wrapper for bakoverkompatibilitet
 function evaluateWeatherForDrone(data: any, index = 0) {
-  const current = data.properties?.timeseries?.[index]?.data?.instant?.details;
-  const next1h = data.properties?.timeseries?.[index]?.data?.next_1_hours;
-  return evaluateWeatherConditions(current, next1h);
+  const entry = data.properties?.timeseries?.[index];
+  const current = entry?.data?.instant?.details;
+  const period = pickPeriod(entry);
+  return evaluateWeatherConditions(current, period?.data, period?.hours ?? 1);
 }
+
 
 // Finn indeksen i timeseries nærmest ønsket tidspunkt
 function findClosestIndex(timeseries: any[], targetTime?: string | null): number {
@@ -205,7 +243,9 @@ function findClosestIndex(timeseries: any[], targetTime?: string | null): number
   return bestIndex;
 }
 
-// Generer timeprognose (24 punkter) rundt et startpunkt
+// Generer prognosepunkter (inntil 24 punkter) rundt et startpunkt.
+// MERK: punktene er ikke nødvendigvis 1 time fra hverandre — langt frem i tid
+// leverer MET 6-timers steg. Steglengden returneres som step_hours.
 function generateHourlyForecast(timeseries: any[], startIndex = 0) {
   const hourlyForecast: any[] = [];
 
@@ -216,26 +256,39 @@ function generateHourlyForecast(timeseries: any[], startIndex = 0) {
     const i = start + k;
     const entry = timeseries[i];
     if (!entry) continue;
-    
+
     const current = entry.data?.instant?.details;
-    const next1h = entry.data?.next_1_hours;
-    
-    const { recommendation } = evaluateWeatherConditions(current, next1h);
-    
+    const period = pickPeriod(entry);
+    const p = precipInfo(period);
+
+    const { recommendation } = evaluateWeatherConditions(current, period?.data, p.hours);
+
+    // Faktisk steglengde til neste punkt (fallback til periodens lengde)
+    const nextTime = timeseries[i + 1]?.time;
+    const stepHours = nextTime
+      ? Math.max(1, Math.round((new Date(nextTime).getTime() - new Date(entry.time).getTime()) / 3600000))
+      : p.hours;
+
     hourlyForecast.push({
       time: entry.time,
-      temperature: current?.air_temperature || null,
-      wind_speed: current?.wind_speed || null,
-      wind_gust: current?.wind_speed_of_gust || null,
+      temperature: current?.air_temperature ?? null,
+      wind_speed: current?.wind_speed ?? null,
+      wind_gust: current?.wind_speed_of_gust ?? null,
       dew_point: current?.dew_point_temperature ?? null,
-      precipitation: next1h?.details?.precipitation_amount || 0,
-      symbol: next1h?.summary?.symbol_code || 'unknown',
+      precipitation: p.amount,
+      precipitation_min: p.min,
+      precipitation_max: p.max,
+      precipitation_period_hours: p.hours,
+      step_hours: stepHours,
+      symbol: p.symbol,
       recommendation,
     });
   }
-  
+
   return hourlyForecast;
 }
+
+
 
 // Finn beste flyvindu (lengste sammenhengende periode med "ok")
 function findBestFlightWindow(hourlyForecast: any[]) {
@@ -267,10 +320,16 @@ function findBestFlightWindow(hourlyForecast: any[]) {
     return null;
   }
 
+  // Varighet i faktiske timer (punkter × steglengde), ikke antall punkter
+  const durationHours = hourlyForecast
+    .slice(bestStart, bestStart + bestLength)
+    .reduce((sum: number, h: any) => sum + (h.step_hours || 1), 0);
+
   return {
     start_time: hourlyForecast[bestStart].time,
     end_time: hourlyForecast[bestStart + bestLength - 1].time,
-    duration_hours: bestLength,
+    duration_hours: durationHours,
+
   };
 }
 
@@ -356,9 +415,16 @@ serve(async (req) => {
 
     // Bygg response
     const current = forecastEntry?.data?.instant?.details;
-    const next1h = forecastEntry?.data?.next_1_hours;
+    const targetPeriod = pickPeriod(forecastEntry);
+    const targetPrecip = precipInfo(targetPeriod);
     const sixIndex = Math.min(targetIndex + 6, Math.max(0, timeseries.length - 1));
     const forecast6h = timeseries[sixIndex]?.data?.instant?.details;
+
+    // Oppløsning på prognosen rundt måltidspunktet (1t nær i tid, 6t langt frem)
+    const nextEntryTime = timeseries[targetIndex + 1]?.time;
+    const stepHours = nextEntryTime && forecastTime
+      ? Math.max(1, Math.round((new Date(nextEntryTime).getTime() - new Date(forecastTime).getTime()) / 3600000))
+      : targetPrecip.hours;
 
     const response = {
       location: { lat: truncatedLat, lon: truncatedLon },
@@ -366,24 +432,29 @@ serve(async (req) => {
       target_time: targetIso,
       forecast_time: forecastTime,
       out_of_range: outOfRange,
+      step_hours: stepHours,
       current: {
-        temperature: current?.air_temperature || null,
-        wind_speed: current?.wind_speed || null,
-        wind_gust: current?.wind_speed_of_gust || null,
-        wind_direction: current?.wind_from_direction || null,
-        humidity: current?.relative_humidity || null,
+        temperature: current?.air_temperature ?? null,
+        wind_speed: current?.wind_speed ?? null,
+        wind_gust: current?.wind_speed_of_gust ?? null,
+        wind_direction: current?.wind_from_direction ?? null,
+        humidity: current?.relative_humidity ?? null,
         dew_point: current?.dew_point_temperature ?? null,
-        precipitation: next1h?.details?.precipitation_amount || 0,
-        symbol: next1h?.summary?.symbol_code || 'unknown',
+        precipitation: targetPrecip.amount,
+        precipitation_min: targetPrecip.min,
+        precipitation_max: targetPrecip.max,
+        precipitation_period_hours: targetPrecip.hours,
+        symbol: targetPrecip.symbol,
       },
       warnings,
       hourly_forecast: hourlyForecast,
       best_flight_window: bestFlightWindow,
       forecast_6h: forecast6h ? {
-        temperature: forecast6h.air_temperature || null,
-        wind_speed: forecast6h.wind_speed || null,
-        precipitation: timeseries[sixIndex]?.data?.next_1_hours?.details?.precipitation_amount || 0,
+        temperature: forecast6h.air_temperature ?? null,
+        wind_speed: forecast6h.wind_speed ?? null,
+        precipitation: precipInfo(pickPeriod(timeseries[sixIndex])).amount,
       } : null,
+
       drone_flight_recommendation: recommendation,
       met_data_updated: metData.properties?.meta?.updated_at || null,
     };
