@@ -240,10 +240,9 @@ const Oppdrag = () => {
 
         const index = filteredMissions.findIndex((m: Mission) => m.id === missionId);
         if (index >= 0) {
-          // Loaded but hidden by local slicing — expand only if needed
-          if (visibleCount <= index) {
-            setVisibleCount(index + 1);
-          }
+          // Already loaded — DOM node will appear on next tick
+        } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
+
         } else if (data.hasMoreData && loadMoreCalls < MAX_LOAD_MORE) {
           loadMoreCalls += 1;
           try {
