@@ -69,6 +69,10 @@ interface HourlyForecast {
   wind_gust: number | null;
   dew_point: number | null;
   precipitation: number;
+  precipitation_min?: number | null;
+  precipitation_max?: number | null;
+  precipitation_period_hours?: number;
+  step_hours?: number;
   symbol: string;
   recommendation: 'ok' | 'caution' | 'warning';
 }
@@ -85,6 +89,8 @@ interface WeatherData {
   target_time?: string | null;
   forecast_time?: string | null;
   out_of_range?: boolean;
+  /** Oppløsning på prognosen: 1 time nær i tid, 6 timer langt frem */
+  step_hours?: number;
   current: {
     temperature: number | null;
     wind_speed: number | null;
@@ -93,6 +99,9 @@ interface WeatherData {
     humidity: number | null;
     dew_point: number | null;
     precipitation: number;
+    precipitation_min?: number | null;
+    precipitation_max?: number | null;
+    precipitation_period_hours?: number;
     symbol: string;
   };
   warnings: WeatherWarning[];
@@ -103,6 +112,7 @@ interface WeatherData {
     wind_speed: number | null;
     precipitation: number;
   } | null;
+
   drone_flight_recommendation: 'ok' | 'caution' | 'warning' | 'unknown';
 }
 
