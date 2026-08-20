@@ -295,43 +295,10 @@ const Oppdrag = () => {
   }, [data.location.state]);
 
 
-  // Computed filter options from current data source
-  const displayMissions = data.missions;
-  const uniqueCustomers = [...new Set(displayMissions.map(m => m.customers?.navn).filter(Boolean))].sort();
-  const uniquePilots = [...new Set(displayMissions.flatMap(m => (m.personnel || []).map((p: any) => p.profiles?.full_name).filter(Boolean)))].sort();
-  const uniqueDrones = [...new Set(displayMissions.flatMap(m => (m.drones || []).map((d: any) => d.drones?.modell).filter(Boolean)))].sort();
+  // Missions come pre-filtered from the server (filters apply to ALL missions, not just loaded page)
+  const filteredMissions = data.missions;
+  const visibleMissions = filteredMissions;
 
-  const filteredMissions = displayMissions.filter((mission) => {
-    if (customerFilter !== "alle" && mission.customers?.navn !== customerFilter) return false;
-    if (pilotFilter !== "alle") {
-      const hasPilot = (mission.personnel || []).some((p: any) => p.profiles?.full_name === pilotFilter);
-      if (!hasPilot) return false;
-    }
-    if (droneFilter !== "alle") {
-      const hasDrone = (mission.drones || []).some((d: any) => d.drones?.modell === droneFilter);
-      if (!hasDrone) return false;
-    }
-    return true;
-  });
-
-  const visibleMissions = filteredMissions.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredMissions.length;
-
-  // IntersectionObserver for infinite scroll
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => prev + 10);
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore]);
 
   // Handlers
   const clearInitialData = () => {
