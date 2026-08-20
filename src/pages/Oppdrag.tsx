@@ -102,14 +102,8 @@ const Oppdrag = () => {
     })();
   }, [authCompanyId]);
 
-  // Infinite scroll
-  const [visibleCount, setVisibleCount] = useState(10);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Reset visible count when filters change
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [customerFilter, pilotFilter, droneFilter, data.filterTab]);
 
   // Debounced server-side search
   useEffect(() => {
