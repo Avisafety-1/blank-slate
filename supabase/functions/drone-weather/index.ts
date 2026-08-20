@@ -281,7 +281,7 @@ serve(async (req) => {
   }
 
   try {
-    const { lat, lon } = await req.json();
+    const { lat, lon, targetTime } = await req.json();
 
     if (!lat || !lon) {
       return new Response(
@@ -290,10 +290,20 @@ serve(async (req) => {
       );
     }
 
+    // Normaliser måltidspunkt til hel time (for cache-nøkkel)
+    let targetIso: string | null = null;
+    if (targetTime) {
+      const parsed = new Date(targetTime);
+      if (Number.isFinite(parsed.getTime())) {
+        parsed.setUTCMinutes(0, 0, 0);
+        targetIso = parsed.toISOString();
+      }
+    }
+
     // Trunkerer koordinater
     const truncatedLat = truncateCoord(lat);
     const truncatedLon = truncateCoord(lon);
-    const cacheKey = getCacheKey(truncatedLat, truncatedLon);
+    const cacheKey = `${getCacheKey(truncatedLat, truncatedLon)}|${targetIso ?? 'now'}`;
 
     // Sjekk cache
     const cached = cache.get(cacheKey);
