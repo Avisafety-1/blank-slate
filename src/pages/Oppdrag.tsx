@@ -35,11 +35,14 @@ const Oppdrag = () => {
   const { t } = useTranslation();
 
 
-  // Search/filter state
+  // Search state (filters live server-side in useOppdragData)
   const [searchQuery, setSearchQuery] = useState("");
-  const [customerFilter, setCustomerFilter] = useState("alle");
-  const [pilotFilter, setPilotFilter] = useState("alle");
-  const [droneFilter, setDroneFilter] = useState("alle");
+  const { customerId: customerFilter, pilotId: pilotFilter, droneId: droneFilter } = data.filters;
+  const setCustomerFilter = (v: string) => data.setFilters(prev => ({ ...prev, customerId: v }));
+  const setPilotFilter = (v: string) => data.setFilters(prev => ({ ...prev, pilotId: v }));
+  const setDroneFilter = (v: string) => data.setFilters(prev => ({ ...prev, droneId: v }));
+  const resetFilters = () => data.setFilters({ customerId: "alle", pilotId: "alle", droneId: "alle" });
+
 
   // Dialog state
   const [editingMission, setEditingMission] = useState<Mission | null>(null);
