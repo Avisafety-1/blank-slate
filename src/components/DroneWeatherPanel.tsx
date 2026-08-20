@@ -54,7 +54,13 @@ interface DroneWeatherPanelProps {
   longitude: number | null;
   compact?: boolean;
   savedWeatherData?: SavedWeatherData | null;
+  /** ISO-tidspunkt for oppdragsstart. Prognosen hentes for dette tidspunktet. */
+  targetTime?: string | null;
 }
+
+/** MET leverer prognose ~10 døgn frem i tid */
+export const WEATHER_FORECAST_MAX_DAYS = 10;
+
 
 interface HourlyForecast {
   time: string;
