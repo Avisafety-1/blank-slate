@@ -89,15 +89,15 @@ export const useOppdragData = () => {
     }
   }, [filterTab, companyId]);
 
-  // Load full filter options (all customers/pilots/drones attached to any visible mission)
+  // Load filter options for the active tab (only customers/pilots/drones with missions in that tab)
   useEffect(() => {
     if (!companyId) return;
-    const cacheKey = `offline_mission_filter_options_${companyId}`;
+    const cacheKey = `offline_mission_filter_options_${companyId}_${filterTab}`;
     const cached = getCachedData<MissionFilterOptions>(cacheKey);
     if (cached) setFilterOptions(cached);
     if (!navigator.onLine) return;
     (async () => {
-      const { data, error } = await supabase.rpc('get_mission_filter_options');
+      const { data, error } = await supabase.rpc('get_mission_filter_options', { p_tab: filterTab });
       if (error) {
         console.error('Error loading mission filter options:', error);
         return;
@@ -111,7 +111,8 @@ export const useOppdragData = () => {
       setFilterOptions(normalized);
       setCachedData(cacheKey, normalized);
     })();
-  }, [companyId]);
+  }, [companyId, filterTab]);
+
 
   // Refetch from page 0 whenever filters change
   const filtersInitRef = useRef(true);
