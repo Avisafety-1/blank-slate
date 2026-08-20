@@ -340,7 +340,8 @@ export const useOppdragData = () => {
         setData(prev => [...prev, ...missionsWithDetails]);
       } else {
         setData(missionsWithDetails);
-        if (companyId) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+        if (companyId && !hasActiveFilters(activeFilters)) setCachedData(`offline_missions_${companyId}_${tab}`, missionsWithDetails);
+
       }
     } catch (error) {
       console.error("Error fetching missions:", error);
