@@ -8753,6 +8753,7 @@ export type Database = {
           response_status: string
         }[]
       }
+      get_mission_filter_options: { Args: never; Returns: Json }
       get_naturvern_in_bounds: {
         Args: {
           max_lat: number
