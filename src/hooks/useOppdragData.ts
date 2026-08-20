@@ -162,13 +162,42 @@ export const useOppdragData = () => {
     };
   }, [companyId, filterTab, activeMissions.length, completedMissions.length]);
 
+  const hasActiveFilters = (f: MissionFilters) =>
+    f.customerId !== 'alle' || f.pilotId !== 'alle' || f.droneId !== 'alle';
+
+  // Resolve mission ids matching pilot/drone filters. Returns null when no such filter is active.
+  const getFilteredMissionIds = async (f: MissionFilters): Promise<string[] | null> => {
+    let ids: string[] | null = null;
+
+    if (f.pilotId !== 'alle') {
+      const { data } = await supabase
+        .from('mission_personnel')
+        .select('mission_id')
+        .eq('profile_id', f.pilotId);
+      ids = [...new Set((data || []).map((r: any) => r.mission_id))];
+    }
+
+    if (f.droneId !== 'alle') {
+      const { data } = await supabase
+        .from('mission_drones')
+        .select('mission_id')
+        .eq('drone_id', f.droneId);
+      const droneIds = new Set((data || []).map((r: any) => r.mission_id));
+      ids = ids === null ? [...droneIds] : ids.filter((id) => droneIds.has(id));
+    }
+
+    return ids;
+  };
+
   const fetchMissionsForTab = async (tab: 'active' | 'completed', offset: number, limit: number, append: boolean) => {
     const setData = tab === 'active' ? setActiveMissions : setCompletedMissions;
     const setLoadingFn = append ? setIsLoadingMore : (tab === 'active' ? setIsLoadingActive : setIsLoadingCompleted);
     const setHasMore = tab === 'active' ? setHasMoreActive : setHasMoreCompleted;
+    const activeFilters = filtersRef.current;
+    const filtersOn = hasActiveFilters(activeFilters);
 
-    // Show cache on initial load only
-    if (!append && offset === 0 && companyId) {
+    // Show cache on initial load only (never when filtering — cache is unfiltered)
+    if (!append && offset === 0 && companyId && !filtersOn) {
       const cached = getCachedData<Mission[]>(`offline_missions_${companyId}_${tab}`);
       if (cached) {
         setData(cached);
@@ -183,6 +212,14 @@ export const useOppdragData = () => {
 
     setLoadingFn(true);
     try {
+      const relationIds = await getFilteredMissionIds(activeFilters);
+      if (relationIds !== null && relationIds.length === 0) {
+        setHasMore(false);
+        if (!append) setData([]);
+        setLoadingFn(false);
+        return;
+      }
+
       let query = supabase
         .from("missions")
         .select(`*, customers (id, navn, kontaktperson, telefon, epost), companies:company_id(id, navn)`)
@@ -195,8 +232,17 @@ export const useOppdragData = () => {
         query = query.in("status", ["Fullført", "Avbrutt"]);
       }
 
+      if (activeFilters.customerId !== 'alle') {
+        query = query.eq('customer_id', activeFilters.customerId);
+      }
+      if (relationIds !== null) {
+        query = query.in('id', relationIds);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
+
+
 
       const missionsList = data || [];
       setHasMore(missionsList.length >= limit);
