@@ -38,26 +38,76 @@ export const ReassignFlightLogDialog = ({
   const [droneId, setDroneId] = useState<string>(currentDroneId || "");
   const [pilotId, setPilotId] = useState<string>(currentPilotId || "");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setDroneId(currentDroneId || "");
     setPilotId(currentPilotId || "");
-    if (!effectiveCompanyId) return;
+    if (!effectiveCompanyId && !user?.id) return;
     (async () => {
-      const [{ data: droneRows }, { data: profileRows }] = await Promise.all([
-        (supabase as any).from("drones").select("id, navn, modell").eq("company_id", effectiveCompanyId).order("navn"),
-        (supabase as any).from("profiles").select("id, full_name").eq("company_id", effectiveCompanyId).order("full_name"),
-      ]);
-      setDrones(
-        (droneRows || []).map((d: any) => ({
-          id: d.id,
-          label: [d.navn, d.modell].filter(Boolean).join(" – ") || d.id,
-        }))
-      );
-      setPilots((profileRows || []).map((p: any) => ({ id: p.id, label: p.full_name || p.id })));
+      setLoading(true);
+      try {
+        let companyIds: string[] = effectiveCompanyId ? [effectiveCompanyId] : [];
+        if (user?.id) {
+          const { data: visible } = await (supabase as any).rpc("get_user_visible_company_ids", { _user_id: user.id });
+          const ids = (visible || []).map((v: any) => (typeof v === "string" ? v : v?.company_id)).filter(Boolean);
+          if (ids.length) companyIds = Array.from(new Set([...companyIds, ...ids]));
+        }
+        if (!companyIds.length) {
+          setDrones([]);
+          setPilots([]);
+          return;
+        }
+
+        const [droneRes, profileRes, companyRes] = await Promise.all([
+          (supabase as any)
+            .from("drones")
+            .select("id, modell, serienummer, internal_serial, registration_number, company_id, aktiv")
+            .in("company_id", companyIds)
+            .order("modell"),
+          (supabase as any)
+            .from("profiles")
+            .select("id, full_name, company_id")
+            .in("company_id", companyIds)
+            .order("full_name"),
+          companyIds.length > 1
+            ? (supabase as any).from("companies").select("id, navn").in("id", companyIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        if (droneRes.error) throw droneRes.error;
+        if (profileRes.error) throw profileRes.error;
+
+        const companyNames = new Map<string, string>(
+          (companyRes.data || []).map((c: any) => [c.id, c.navn])
+        );
+        const suffix = (cid: string | null) =>
+          companyIds.length > 1 && cid && companyNames.get(cid) ? ` · ${companyNames.get(cid)}` : "";
+
+        setDrones(
+          (droneRes.data || [])
+            .filter((d: any) => d.aktiv !== false || d.id === currentDroneId)
+            .map((d: any) => ({
+              id: d.id,
+              label: (droneDisplayLabel(d) || d.id) + suffix(d.company_id),
+            }))
+        );
+        setPilots(
+          (profileRes.data || []).map((p: any) => ({
+            id: p.id,
+            label: (p.full_name || p.id) + suffix(p.company_id),
+          }))
+        );
+      } catch (e: any) {
+        toast.error(t("dashboard.flightAnalysis.logDetails.reassignLoadError"), { description: e?.message });
+        setDrones([]);
+        setPilots([]);
+      } finally {
+        setLoading(false);
+      }
     })();
-  }, [open, effectiveCompanyId, currentDroneId, currentPilotId]);
+  }, [open, effectiveCompanyId, currentDroneId, currentPilotId, user?.id, t]);
 
   const handleSave = async () => {
     setSaving(true);
