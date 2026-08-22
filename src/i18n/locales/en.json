@@ -641,7 +641,17 @@
         "reassignCancel": "Cancel",
         "reassignSuccess": "Flight was moved",
         "reassignError": "Could not move the flight",
-        "reassignWarning": "This updates flight hours on both drones and moves the logbook entries to the new pilot."
+        "reassignWarning": "This updates flight hours on both drones and moves the logbook entries to the new pilot.",
+        "reassignLoading": "Loading …",
+        "reassignNoDrones": "No drones available",
+        "reassignNoPilots": "No personnel available",
+        "reassignLoadError": "Could not load drones and personnel",
+        "traceTitle": "What this log updated",
+        "traceNoDrone": "This flight is not linked to a drone. No flight hours or logbook entries have been updated for any drone. Use \"Change\" to link the log to the correct drone.",
+        "traceContribution": "Flight time from this log",
+        "traceDroneTotal": "Drone accumulated flight time",
+        "traceDroneEntries": "Entries in the drone logbook",
+        "tracePilotEntries": "Entries in the pilot logbook"
       }
     },
     "missionDetail": {

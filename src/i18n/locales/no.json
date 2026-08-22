@@ -643,7 +643,17 @@
         "reassignCancel": "Avbryt",
         "reassignSuccess": "Flyturen ble flyttet",
         "reassignError": "Kunne ikke flytte flyturen",
-        "reassignWarning": "Dette oppdaterer flytimer på begge droner og flytter loggbokoppføringene til ny pilot."
+        "reassignWarning": "Dette oppdaterer flytimer på begge droner og flytter loggbokoppføringene til ny pilot.",
+        "reassignLoading": "Laster …",
+        "reassignNoDrones": "Ingen droner tilgjengelig",
+        "reassignNoPilots": "Ingen personell tilgjengelig",
+        "reassignLoadError": "Kunne ikke hente droner og personell",
+        "traceTitle": "Hva denne loggen har oppdatert",
+        "traceNoDrone": "Flyturen er ikke knyttet til en drone. Ingen flytimer eller loggbokoppføringer er oppdatert på noen drone. Bruk «Endre» for å knytte loggen til riktig drone.",
+        "traceContribution": "Flytid fra denne loggen",
+        "traceDroneTotal": "Dronens akkumulerte flytid",
+        "traceDroneEntries": "Oppføringer i dronens loggbok",
+        "tracePilotEntries": "Oppføringer i pilotens loggbok"
       }
     },
     "missionDetail": {
