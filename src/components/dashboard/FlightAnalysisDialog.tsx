@@ -32,6 +32,7 @@ interface FlightAnalysisDialogProps {
   } | null;
   flightDate?: string;
   droneName?: string;
+  onReassigned?: () => void;
 }
 
 const getEventColor = (type: string) => {
@@ -56,7 +57,7 @@ const getSpeedColor = (speed: number, maxSpeed: number) => {
   return 'hsl(0, 84%, 60%)';                      // red
 };
 
-export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName }: FlightAnalysisDialogProps) => {
+export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDate, droneName, onReassigned }: FlightAnalysisDialogProps) => {
   const { t, i18n } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mapReady, setMapReady] = useState(false);
@@ -406,7 +407,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
         <div className="flex-1 min-h-0 overflow-y-auto -mx-3 px-3 sm:-mx-4 sm:px-4 space-y-3">
         {flightTrack?.summary && (
-          <FlightSummaryPanel summary={flightTrack.summary} events={events} />
+          <FlightSummaryPanel summary={flightTrack.summary} events={events} onReassigned={onReassigned} />
         )}
 
         {/* Map */}
