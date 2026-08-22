@@ -238,3 +238,14 @@ Følgende felter brukes i `process-dronelog` edge-funksjonen:
 | `OSD.flyTime [ms]` | `OSD.flyTime [ms]` | Flytid millisekunder |
 | `OSD.hSpeed [m/s]` | `OSD.hSpeed [m/s]` | Hastighet m/s |
 | `BATTERY.chargeLevel [%]` | `BATTERY.chargeLevel [%]` | Batterinivå |
+
+## Hardware-identifikatorer (innhentet, ikke i bruk for matching)
+
+Fra og med nå hentes disse feltene i tillegg fra DroneLog-API-et og lagres i `parsed_result`:
+
+- `DETAILS.fcSN` → `fcSN` (flightcontroller)
+- `DETAILS.rcSN` → `rcSN` (fjernkontroll)
+- `DETAILS.cameraSN` → `cameraSN`
+- `DETAILS.gimbalSN` → `gimbalSN`
+
+De vises kun som lesbar info i opplastingsdialogen ("Loggidentifikatorer"). Ingen matching-logikk bruker dem ennå.
