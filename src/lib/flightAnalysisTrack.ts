@@ -243,6 +243,9 @@ export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?:
       pilotName: context?.pilotName ?? null,
       missionId: context?.missionId ?? log?.mission_id ?? null,
       missionName: context?.missionName ?? null,
+      droneTotalHours: context?.droneTotalHours ?? null,
+      droneLogEntryCount: context?.droneLogEntryCount ?? null,
+      personnelLogEntryCount: context?.personnelLogEntryCount ?? null,
     },
   };
 }
