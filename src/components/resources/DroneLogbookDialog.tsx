@@ -193,7 +193,7 @@ export const DroneLogbookDialog = ({
               ...buildFlightAnalysisTrack(log, existingTrack.events || eventsByLogId.get(log.id) || [], {
                 flightLogId: log.id,
                 droneId,
-                droneName,
+                droneModelName: droneModell,
                 pilotProfileId: pilotByLogId.get(log.id) || log.user_id || null,
                 pilotName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || null,
                 missionId: (log as any).mission_id ?? null,
