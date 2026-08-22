@@ -64,6 +64,10 @@ export interface FlightSummary {
   pilotName?: string | null;
   missionId?: string | null;
   missionName?: string | null;
+  // Traceability
+  droneTotalHours?: number | null;
+  droneLogEntryCount?: number | null;
+  personnelLogEntryCount?: number | null;
 }
 
 interface FlightSummaryPanelProps {
