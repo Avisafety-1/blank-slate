@@ -27,7 +27,14 @@ export interface FlightLogContext {
   missionName?: string | null;
   /** Traceability: what this flight log actually produced */
   droneTotalHours?: number | null;
+  pilotTotalHours?: number | null;
+  /** The flight appears in the drone logbook when drone_id is set */
+  inDroneLogbook?: boolean;
+  /** The flight appears in the pilot logbook when a flight_log_personnel row exists */
+  inPilotLogbook?: boolean;
+  /** Extra warning entries saved to the drone logbook for this flight date */
   droneLogEntryCount?: number | null;
+  /** Manual personnel logbook entries explicitly linked to this flight log */
   personnelLogEntryCount?: number | null;
 }
 
@@ -66,17 +73,27 @@ export async function loadFlightLogContext(log: any): Promise<FlightLogContext> 
     );
   }
 
+  // The flight itself is shown in the drone logbook purely via flight_logs.drone_id.
+  ctx.inDroneLogbook = !!log?.drone_id;
+
   if (log?.id) {
-    tasks.push(
-      (supabase as any)
-        .from("drone_log_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("drone_id", log.drone_id ?? "00000000-0000-0000-0000-000000000000")
-        .eq("entry_date", log.flight_date ?? "1970-01-01")
-        .then(({ count }: any) => {
-          ctx.droneLogEntryCount = count ?? 0;
-        })
-    );
+    // Extra warning entries saved to the drone logbook for this flight (not the flight itself).
+    if (log?.drone_id && log?.flight_date) {
+      tasks.push(
+        (supabase as any)
+          .from("drone_log_entries")
+          .select("id", { count: "exact", head: true })
+          .eq("drone_id", log.drone_id)
+          .eq("entry_type", "Advarsel")
+          .gte("entry_date", new Date(new Date(log.flight_date).setHours(0, 0, 0, 0)).toISOString())
+          .lte("entry_date", new Date(new Date(log.flight_date).setHours(23, 59, 59, 999)).toISOString())
+          .then(({ count }: any) => {
+            ctx.droneLogEntryCount = count ?? 0;
+          })
+      );
+    } else {
+      ctx.droneLogEntryCount = 0;
+    }
     tasks.push(
       (supabase as any)
         .from("personnel_log_entries")
@@ -108,15 +125,18 @@ export async function loadFlightLogContext(log: any): Promise<FlightLogContext> 
       .eq("flight_log_id", log?.id)
       .limit(1)
       .then(async ({ data }: any) => {
+        // The flight only appears in a pilot's logbook when a flight_log_personnel row exists.
+        ctx.inPilotLogbook = !!data?.[0]?.profile_id;
         const profileId = data?.[0]?.profile_id ?? log?.user_id ?? null;
         ctx.pilotProfileId = profileId;
         if (profileId) {
           const { data: p } = await (supabase as any)
             .from("profiles")
-            .select("id, full_name")
+            .select("id, full_name, flyvetimer")
             .eq("id", profileId)
             .maybeSingle();
           ctx.pilotName = p?.full_name ?? null;
+          ctx.pilotTotalHours = p?.flyvetimer != null ? Number(p.flyvetimer) : null;
         }
       })
   );
@@ -244,6 +264,9 @@ export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?:
       missionId: context?.missionId ?? log?.mission_id ?? null,
       missionName: context?.missionName ?? null,
       droneTotalHours: context?.droneTotalHours ?? null,
+      pilotTotalHours: context?.pilotTotalHours ?? null,
+      inDroneLogbook: context?.inDroneLogbook ?? false,
+      inPilotLogbook: context?.inPilotLogbook ?? false,
       droneLogEntryCount: context?.droneLogEntryCount ?? null,
       personnelLogEntryCount: context?.personnelLogEntryCount ?? null,
     },
