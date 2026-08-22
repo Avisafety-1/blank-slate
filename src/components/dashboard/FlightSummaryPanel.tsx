@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { ReassignFlightLogDialog } from "./ReassignFlightLogDialog";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
   Activity, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
+  User, Target, Pencil,
 } from "lucide-react";
 
 export interface FlightSummary {
