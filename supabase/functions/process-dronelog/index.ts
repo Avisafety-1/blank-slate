@@ -356,6 +356,20 @@ function parseCsvToResult(csvText: string) {
   const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
 
+  // Hardware identifiers (flight controller, remote controller, camera, gimbal).
+  // Collected for future drone identification work — NOT used by matching logic today.
+  const fcSN = detFcSNIdx >= 0 ? stripQuotes(firstRow[detFcSNIdx]) : "";
+  const rcSN = detRcSNIdx >= 0 ? stripQuotes(firstRow[detRcSNIdx]) : "";
+  const cameraSN = detCameraSNIdx >= 0 ? stripQuotes(firstRow[detCameraSNIdx]) : "";
+  const gimbalSN = detGimbalSNIdx >= 0 ? stripQuotes(firstRow[detGimbalSNIdx]) : "";
+  console.log("[DIAG] Hardware identifiers —",
+    "aircraftName:", aircraftName || "(none)",
+    "| aircraftSN:", aircraftSN || "(none)",
+    "| fcSN:", fcSN || "(none)",
+    "| rcSN:", rcSN || "(none)",
+    "| cameraSN:", cameraSN || "(none)",
+    "| gimbalSN:", gimbalSN || "(none)");
+
   // === DIAGNOSTIC: Inspect ALL battery-related headers and unique SN values across rows ===
   const batteryHeaders = headers.filter(h => /battery/i.test(h) && /SN|serial/i.test(h));
   console.log("[DIAG] Battery-related SN headers found in CSV:", JSON.stringify(batteryHeaders));
