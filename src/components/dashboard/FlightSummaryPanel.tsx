@@ -278,6 +278,53 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
         </div>
       )}
 
+      {showLoggedOn && (
+        <div className="rounded-xl border border-border bg-card/60 p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('dashboard.flightAnalysis.logDetails.loggedOn')}
+            </span>
+            {canReassign && (
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setReassignOpen(true)}>
+                <Pencil className="w-3 h-3" />
+                {t('dashboard.flightAnalysis.logDetails.reassign')}
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { icon: Plane, label: t('dashboard.flightAnalysis.logDetails.loggedOnDrone'), value: s.droneName || s.droneModelName },
+              { icon: User, label: t('dashboard.flightAnalysis.logDetails.loggedOnPilot'), value: s.pilotName },
+              { icon: Target, label: t('dashboard.flightAnalysis.logDetails.loggedOnMission'), value: s.missionName },
+            ].map((row, i) => {
+              const Icon = row.icon;
+              return (
+                <div key={i} className="p-2 rounded-lg bg-muted/30 space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Icon className="w-3 h-3" />{row.label}
+                  </div>
+                  <p className="text-sm font-medium break-words">
+                    {row.value || <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.loggedOnNone')}</span>}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {s.flightLogId && (
+        <ReassignFlightLogDialog
+          open={reassignOpen}
+          onOpenChange={setReassignOpen}
+          flightLogId={s.flightLogId}
+          companyId={s.companyId}
+          currentDroneId={s.droneId}
+          currentPilotId={s.pilotProfileId}
+          onReassigned={() => onReassigned?.()}
+        />
+      )}
+
       {(detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
           <Tabs className="w-full">
