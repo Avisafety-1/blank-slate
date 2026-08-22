@@ -1,47 +1,38 @@
-# Unik identifikasjon av droner i flylogger (Elverum vgs)
+# Hent flere identifikatorer fra flyloggene (uten å endre matching)
 
 ## Bekreftet nåsituasjon
 
-- Elverum vgs har 8 DJI Mini 5 registrert med fulle 20-tegns serienumre, men DroneLog API leverer kun de 16 første tegnene i loggen. Det gir kollisjoner:
-  - `1581F9DEC2584029` → DM5P-01 og DM5P-02 (120 logger)
-  - `1581F9DEC259D029` → DM5P-05, DM5P-06 og DM5P-07 (38 logger)
-  - `259A029` (DM5P-03) og `259B029` (DM5P-04) er entydige i dag.
-- `parsed_result` i loggene inneholder i dag kun `aircraftSN`, `aircraftName`, `batterySN`, `droneType` som identifiserende felt.
-- `aircraftName` er «DJI Mini 5 Pro» på alle Elverum-loggene — altså standardnavnet, ikke satt per drone.
-- DroneLog API tilbyr flere felter vi **ikke** ber om i dag: `DETAILS.fcSN` (flight controller), `DETAILS.cameraSN`, `DETAILS.gimbalSN`, `DETAILS.rcSN` og `SERIAL.aircraftSN`. Feltlista i `process-dronelog` inneholder ingen av disse.
-- DM5P-08 er lagret med serienummer `1591F9DEC259D029Y2FS` — «1591» skiller seg fra «1581» på alle andre og ser ut som en tastefeil; den vil aldri matche.
+- DroneLog API leverer bare de 16 første tegnene av dronens serienummer. Hos Elverum vgs gir det kollisjoner: `1581F9DEC2584029` deles av DM5P-01 og DM5P-02, og `1581F9DEC259D029` deles av DM5P-05, -06 og -07.
+- `parsed_result` inneholder i dag kun `aircraftSN`, `aircraftName`, `batterySN` og `droneType` som identifiserende felt.
+- DroneLog API tilbyr i tillegg `DETAILS.fcSN` (flight controller), `DETAILS.rcSN` (fjernkontroll), `DETAILS.cameraSN` og `DETAILS.gimbalSN`. Ingen av disse ligger i feltlista `process-dronelog` sender i dag.
+- `aircraftName` er «DJI Mini 5 Pro» på alle Elverum-loggene — standardnavnet, altså ikke satt per drone ennå.
 
-## Løsning
+## Hva som gjøres
 
-### 1. Hent flere identifikatorer fra loggen (hovedgrepet)
+Kun datainnsamling og synliggjøring. **Ingen endring i automatch-logikken** — den fortsetter nøyaktig som i dag.
 
-Utvid feltlista mot DroneLog API med `DETAILS.fcSN`, `DETAILS.cameraSN`, `DETAILS.gimbalSN`, `DETAILS.rcSN` og `SERIAL.aircraftSN`, og lagre dem i `parsed_result`. Flight controller-serienummeret er unikt per luftfartøy og er ikke avkortet på samme måte som DJIs aircraft-SN. Første steg er en verifisering: kjør noen av Elverum-loggene på nytt og kontroller at `fcSN` faktisk kommer med og er forskjellig for de kolliderende dronene, før matchingen bygges på det.
+1. **Utvid feltlista mot DroneLog API** med `DETAILS.fcSN`, `DETAILS.rcSN`, `DETAILS.cameraSN` og `DETAILS.gimbalSN`, i tillegg til dagens felter.
+2. **Les feltene ut av CSV-responsen** og lagre dem i `parsed_result` som `fcSN`, `rcSN`, `cameraSN`, `gimbalSN`. Ingen nye databasekolonner er nødvendig — `parsed_result` er JSON.
+3. **Samme felt fra vår egen Fly.io-parser** (`dji-parse-proxy`), slik at ArduPilot-/fallback-veien gir samme struktur der parseren eksponerer verdiene.
+4. **Vis identifikatorene i UI** som en liten «Loggidentifikatorer»-seksjon i opplastingsdialogen (dronenavn fra loggen, drone-SN, fjernkontroll-SN, kamera-SN, gimbal-SN, batteri-SN). Kun informasjon — ingenting er koblet til matching.
+5. **Diagnostikklogg** i edge-funksjonen som skriver hvilke identifikatorer som faktisk kom med, slik at vi raskt kan se hvilke DJI-modeller som leverer hva.
 
-### 2. Nye identifikatorfelt på dronekortet
+Feltene begynner å samles inn fra og med neste innkomne logg. Eldre logger får dem ikke uten reprosessering.
 
-Legg til `flight_controller_sn` (og `camera_sn`) på drone, redigerbart i «Rediger drone». Matchelogikken i `droneLogMatching.ts` prøver i rekkefølge:
-1. Eksakt `fcSN` → entydig treff
-2. Eksakt aircraft-SN
-3. Prefiks-match på aircraft-SN (dagens oppførsel), med tilknyttet personell som tiebreaker
+## Om navnendring i DJI-kontrolleren
 
-### 3. Selvlærende kobling
+Å gi hver drone et unikt navn i DJI Fly / Pilot 2 er riktig vei: navnet skrives inn i loggen og hentes allerede ut som `aircraftName`. Etter at Elverum har navngitt dronene (f.eks. «DM5P-01»…«DM5P-08») vil navnet dukke opp i den nye identifikatorseksjonen, og vi har et konkret, unikt felt å bygge matching på når vi tar det steget senere.
 
-Når brukeren manuelt velger drone på en logg som ikke kunne automatches, lagres loggens `fcSN` på den valgte dronen (etter bekreftelse). Da automatches alle framtidige logger fra samme luftfartøy — Elverum trenger å velge manuelt én gang per drone.
-
-### 4. Batteri som støttesignal, ikke nøkkel
-
-`batterySN` finnes allerede i loggene og er unikt per batteri, men på en skole roterer batteriene mellom droner. Det brukes derfor bare som svakt hint (rangering av forslag), ikke som match-nøkkel.
-
-## Svar på spørsmålet om DJI-siden
-
-- **Endre navn på selve loggfilen har ingen effekt** for automatisk matching i dag — filnavnet leses ikke, og DJI genererer navnet ut fra dato/tid.
-- **Det som virker fra DJI-siden:** gi hver drone et unikt kallenavn i DJI Fly / Pilot 2 (f.eks. «DM5P-01»). Navnet skrives inn i loggen som `DETAILS.aircraftName` og hentes allerede ut. Dette er det enkleste umiddelbare tiltaket for Elverum og krever ingen kodeendring for å bli synlig i loggene — kun at matchingen også ser på navnet (dekkes av punkt 2).
-- Selve serienummeravkortingen kan ikke endres i DJI-innstillingene; den ligger i loggformatet.
+Filnavnet på selve loggfilen leses ikke og har ingen effekt.
 
 ## Teknisk
 
-- `supabase/functions/process-dronelog/index.ts`: utvid feltlista og CSV-header-uttrekket med de nye `DETAILS.*`- og `SERIAL.*`-feltene; ta dem med i returobjektet (`fcSN`, `cameraSN`, `gimbalSN`, `rcSN`).
-- Migrasjon: nye kolonner `flight_controller_sn`, `camera_sn` på `drones` (nullable, indeksert per selskap).
-- `src/lib/droneLogMatching.ts`: ny `findDroneMatches` med prioritert nøkkelrekkefølge (fcSN → eksakt SN → kallenavn → prefiks + tiebreaker); brukes av både `UploadDroneLogDialog` og `BatchLogPanel`.
-- UI: identifikatorfelt i drone-redigering, «husk denne dronen for dette luftfartøyet»-valg ved manuell match, i18n-nøkler i `no.json` og `en.json`.
-- Datarydding: bekreft med Elverum om `1591F9DEC259D029Y2FS` skal rettes til `1581...`.
+- `supabase/functions/process-dronelog/index.ts`
+  - Legg `DETAILS.fcSN`, `DETAILS.rcSN`, `DETAILS.cameraSN`, `DETAILS.gimbalSN` til feltlista (linje ~158).
+  - Nye `findHeaderIndex`-oppslag ved siden av dagens `detAircraftSNIdx`/`detBatterySNIdx`, med samme rensing (fjern hermetegn, trim).
+  - Ta med `fcSN`, `rcSN`, `cameraSN`, `gimbalSN` i returobjektet (rundt linje 782–806).
+- `supabase/functions/dji-parse-proxy/index.ts`: map `details.fc_sn`, `details.rc_sn`, `details.camera_sn`, `details.gimbal_sn` til de tilsvarende `DETAILS.*`-kolonnene i `mapFrame`.
+- `supabase/functions/dji-process-single` og `dji-auto-sync`: samme feltliste hvis de har egne kopier.
+- `src/components/UploadDroneLogDialog.tsx`: read-only visning av identifikatorene fra `parsed_result`, med i18n-nøkler i `no.json` og `en.json`.
+- `docs/dronelog-api-fields.md`: oppdater tabellen «Felter brukt i AviSafe-integrasjonen».
+- Ingen databasemigrasjon, ingen endring i `src/lib/droneLogMatching.ts`.
