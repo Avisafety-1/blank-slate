@@ -595,9 +595,40 @@
         "minVoltage": "Min. voltage",
         "maxDistance": "Max distance",
         "maxVSpeed": "Max V-speed",
-        "cellDeviation": "Cell deviation"
+        "cellDeviation": "Cell deviation",
+        "avgSpeed": "Average speed",
+        "maxWind": "Max wind",
+        "maxMsl": "Max altitude MSL",
+        "modeChanges": "Flight mode changes",
+        "warningCount": "Log warnings"
+      },
+      "logDetails": {
+        "title": "Log details and identifiers",
+        "drone": "Drone",
+        "model": "Model",
+        "aircraftName": "Aircraft name in log",
+        "aircraftSerial": "Aircraft serial",
+        "hardware": "Sensors and hardware",
+        "fcSerial": "Flight controller S/N",
+        "rcSerial": "Remote controller S/N",
+        "cameraSerial": "Camera S/N",
+        "gimbalSerial": "Gimbal S/N",
+        "battery": "Battery",
+        "batterySn": "Battery S/N",
+        "batteryCycles": "Cycles",
+        "batteryHealth": "Battery health",
+        "batteryCapacity": "Full capacity",
+        "log": "Log file",
+        "entrySource": "Source",
+        "startTime": "Start (UTC)",
+        "endTime": "End (UTC)",
+        "sha256": "SHA256",
+        "guid": "Log ID",
+        "copied": "Copied",
+        "copy": "Copy"
       }
     },
+
     "missionDetail": {
       "riskAssessment": "Risk assessment",
       "notam": "NOTAM",
