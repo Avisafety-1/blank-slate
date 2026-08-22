@@ -195,6 +195,18 @@ export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?:
       endTimeUtc: log?.end_time_utc ?? null,
       sha256: log?.dronelog_sha256 ?? null,
       logGuid: identifiers.guid ?? null,
+
+      // "Logged on" context (drone / pilot / mission)
+      flightLogId: log?.id ?? null,
+      flightDate: log?.flight_date ?? null,
+      companyId: log?.company_id ?? null,
+      droneId: context?.droneId ?? log?.drone_id ?? null,
+      droneName: context?.droneName ?? null,
+      droneModelName: context?.droneModelName ?? null,
+      pilotProfileId: context?.pilotProfileId ?? log?.user_id ?? null,
+      pilotName: context?.pilotName ?? null,
+      missionId: context?.missionId ?? log?.mission_id ?? null,
+      missionName: context?.missionName ?? null,
     },
   };
 }
