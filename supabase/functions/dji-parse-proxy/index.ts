@@ -271,6 +271,11 @@ function mapFrame(f: any, t: number, details: any): Record<string, unknown> {
     "DETAILS.aircraftSN": details.aircraft_sn,
     "DETAILS.batterySN": details.battery_sn,
     "DETAILS.startTime": details.start_time,
+    // Hardware identifiers (informational only — no matching logic uses these yet)
+    "DETAILS.fcSN": details.fc_sn,
+    "DETAILS.rcSN": details.rc_sn,
+    "DETAILS.cameraSN": details.camera_sn,
+    "DETAILS.gimbalSN": details.gimbal_sn,
   };
   // cellVoltage1..N
   const cells = battery.cell_voltages ?? battery.cells ?? [];

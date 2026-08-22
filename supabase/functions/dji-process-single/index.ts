@@ -234,6 +234,11 @@ function parseCsvMinimal(csvText: string) {
     aircraftSN,
     batterySN,
     sha256Hash,
+    // Hardware identifiers (informational only — no matching logic uses these yet)
+    fcSN: get("DETAILS.fcSN") || null,
+    rcSN: get("DETAILS.rcSN") || null,
+    cameraSN: get("DETAILS.cameraSN") || null,
+    gimbalSN: get("DETAILS.gimbalSN") || null,
     durationMinutes,
     durationSeconds: totalTimeSec ?? durationMinutes * 60,
     startTime: startTime || null,
