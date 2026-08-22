@@ -329,6 +329,7 @@ function parseCsvToResult(csvText: string) {
   const detRcSNIdx = findHeaderIndex(headers, "DETAILS.rcSN");
   const detCameraSNIdx = findHeaderIndex(headers, "DETAILS.cameraSN");
   const detGimbalSNIdx = findHeaderIndex(headers, "DETAILS.gimbalSN");
+  const serialAircraftSNIdx = findHeaderIndex(headers, "SERIAL.aircraftSN");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
