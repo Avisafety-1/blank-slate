@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
-  ChevronDown,
+  ChevronDown, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
 } from "lucide-react";
 
 export interface FlightSummary {
@@ -25,12 +26,56 @@ export interface FlightSummary {
   batteryCellDeviationV?: number | null;
   rthTriggered?: boolean | null;
   source?: string | null;
+  // Derived
+  avgSpeedMs?: number | null;
+  maxWindMs?: number | null;
+  maxMslM?: number | null;
+  modeChanges?: number | null;
+  warningCount?: number | null;
+  // Identifiers / log metadata
+  droneModel?: string | null;
+  aircraftName?: string | null;
+  aircraftSerial?: string | null;
+  fcSerial?: string | null;
+  rcSerial?: string | null;
+  cameraSerial?: string | null;
+  gimbalSerial?: string | null;
+  batterySn?: string | null;
+  batteryCycles?: number | null;
+  batteryHealthPct?: number | null;
+  batteryFullCapacityMah?: number | null;
+  entrySource?: string | null;
+  startTimeUtc?: string | null;
+  endTimeUtc?: string | null;
+  sha256?: string | null;
+  logGuid?: string | null;
 }
 
 interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
 }
+
+const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
+  const [copied, setCopied] = useState(false);
+  const shown = truncate && value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1 text-left font-mono text-xs break-all hover:text-primary transition-colors"
+      onClick={() => {
+        navigator.clipboard?.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title={value}
+    >
+      <span>{shown}</span>
+      {copied ? <Check className="w-3 h-3 shrink-0 text-green-600 dark:text-green-400" /> : <Copy className="w-3 h-3 shrink-0 opacity-50" />}
+    </button>
+  );
+};
+
 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
@@ -81,7 +126,69 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
       value: s.batteryCellDeviationV != null ? `${s.batteryCellDeviationV.toFixed(3)} V` : null,
       warn: s.batteryCellDeviationV != null && s.batteryCellDeviationV > 0.1,
     },
+    { icon: Gauge, label: t('dashboard.flightAnalysis.labels.avgSpeed'), value: s.avgSpeedMs != null ? `${s.avgSpeedMs} m/s` : null },
+    {
+      icon: Wind,
+      label: t('dashboard.flightAnalysis.labels.maxWind'),
+      value: s.maxWindMs != null ? `${s.maxWindMs} m/s` : null,
+      warn: s.maxWindMs != null && s.maxWindMs > 10,
+    },
+    { icon: Mountain, label: t('dashboard.flightAnalysis.labels.maxMsl'), value: s.maxMslM != null ? `${s.maxMslM} m` : null },
+    { icon: Repeat, label: t('dashboard.flightAnalysis.labels.modeChanges'), value: s.modeChanges != null && s.modeChanges > 0 ? `${s.modeChanges}` : null },
+    {
+      icon: AlertTriangle,
+      label: t('dashboard.flightAnalysis.labels.warningCount'),
+      value: s.warningCount != null && s.warningCount > 0 ? `${s.warningCount}` : null,
+      warn: true,
+    },
   ];
+
+  const detailGroups: Array<{ icon: any; title: string; rows: Array<{ label: string; value: string | null; mono?: boolean; truncate?: boolean }> }> = [
+    {
+      icon: Plane,
+      title: t('dashboard.flightAnalysis.logDetails.drone'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.model'), value: s.droneModel ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.aircraftName'), value: s.aircraftName ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.aircraftSerial'), value: s.aircraftSerial ?? null, mono: true },
+      ],
+    },
+    {
+      icon: Cpu,
+      title: t('dashboard.flightAnalysis.logDetails.hardware'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.fcSerial'), value: s.fcSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.rcSerial'), value: s.rcSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.cameraSerial'), value: s.cameraSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.gimbalSerial'), value: s.gimbalSerial ?? null, mono: true },
+      ],
+    },
+    {
+      icon: Battery,
+      title: t('dashboard.flightAnalysis.logDetails.battery'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.batterySn'), value: s.batterySn ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryCycles'), value: s.batteryCycles != null ? `${s.batteryCycles}` : null },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryHealth'), value: s.batteryHealthPct != null ? `${s.batteryHealthPct}%` : null },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryCapacity'), value: s.batteryFullCapacityMah != null ? `${s.batteryFullCapacityMah} mAh` : null },
+      ],
+    },
+    {
+      icon: FileText,
+      title: t('dashboard.flightAnalysis.logDetails.log'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.entrySource'), value: s.entrySource ?? s.source ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.startTime'), value: s.startTimeUtc ? new Date(s.startTimeUtc).toISOString().replace('T', ' ').slice(0, 19) : null },
+        { label: t('dashboard.flightAnalysis.logDetails.endTime'), value: s.endTimeUtc ? new Date(s.endTimeUtc).toISOString().replace('T', ' ').slice(0, 19) : null },
+        { label: t('dashboard.flightAnalysis.logDetails.sha256'), value: s.sha256 ?? null, mono: true, truncate: true },
+        { label: t('dashboard.flightAnalysis.logDetails.guid'), value: s.logGuid ?? null, mono: true, truncate: true },
+      ],
+    },
+  ];
+
+  const detailGroupsShown = detailGroups
+    .map(g => ({ ...g, rows: g.rows.filter(r => r.value != null && r.value !== "") }))
+    .filter(g => g.rows.length > 0);
 
   const primaryShown = primary.filter(p => p.value != null);
   const extendedShown = extended.filter(p => p.value != null);
@@ -99,9 +206,12 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
   const appWarningEvents = grouped.filter(g => g.ev.type === "APP_WARNING" || g.ev.type === "message");
 
   const hasAnything =
-    primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0;
+    primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0 ||
+    detailGroupsShown.length > 0;
 
   if (!hasAnything) return null;
+
+
 
   return (
     <div className="space-y-2">
@@ -145,6 +255,43 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
           </p>
         </div>
       )}
+
+      {detailGroupsShown.length > 0 && (
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
+            <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
+            <p className="text-xs font-medium text-muted-foreground">
+              {t('dashboard.flightAnalysis.logDetails.title')}
+            </p>
+            <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {detailGroupsShown.map((g, gi) => {
+                const Icon = g.icon;
+                return (
+                  <div key={gi} className="p-2.5 rounded-lg bg-muted/30 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                      <Icon className="w-3 h-3" />{g.title}
+                    </div>
+                    {g.rows.map((r, ri) => (
+                      <div key={ri} className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground shrink-0">{r.label}</span>
+                        {r.mono ? (
+                          <CopyableValue value={r.value as string} truncate={r.truncate} />
+                        ) : (
+                          <span className="font-medium text-right break-words">{r.value}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
 
       {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <Collapsible defaultOpen={false}>

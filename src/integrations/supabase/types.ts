@@ -4136,6 +4136,7 @@ export type Database = {
           gps_sat_min: number | null
           id: string
           landing_location: string
+          log_identifiers: Json | null
           max_distance_m: number | null
           max_height_m: number | null
           max_horiz_speed_ms: number | null
@@ -4179,6 +4180,7 @@ export type Database = {
           gps_sat_min?: number | null
           id?: string
           landing_location: string
+          log_identifiers?: Json | null
           max_distance_m?: number | null
           max_height_m?: number | null
           max_horiz_speed_ms?: number | null
@@ -4222,6 +4224,7 @@ export type Database = {
           gps_sat_min?: number | null
           id?: string
           landing_location?: string
+          log_identifiers?: Json | null
           max_distance_m?: number | null
           max_height_m?: number | null
           max_horiz_speed_ms?: number | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.flight_logs ADD COLUMN IF NOT EXISTS log_identifiers jsonb;

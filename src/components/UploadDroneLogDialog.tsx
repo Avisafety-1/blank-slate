@@ -1645,6 +1645,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       max_vert_speed_ms: r.maxVSpeed || null,
       drone_model: r.droneType || null,
       aircraft_serial: r.aircraftSerial || r.aircraftSN || null,
+      log_identifiers: { aircraftName: r.aircraftName ?? null, droneType: r.droneType ?? null, guid: r.guid ?? null, fcSN: r.fcSN ?? null, rcSN: r.rcSN ?? null, cameraSN: r.cameraSN ?? null, gimbalSN: r.gimbalSN ?? null } as any,
       battery_cycles: (worstCycles && worstCycles > 0) ? worstCycles : (r.batteryCycles || null),
       battery_temp_min_c: r.batteryTempMin || null,
       battery_temp_max_c: (worstTemp && worstTemp > -999) ? worstTemp : null,

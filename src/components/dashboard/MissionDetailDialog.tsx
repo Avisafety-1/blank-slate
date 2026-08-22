@@ -1,3 +1,4 @@
+import { loadFlightAnalysisTrack, buildFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tables } from "@/integrations/supabase/types";
@@ -107,7 +108,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       const [missionRes, soraRes, logsRes, riskRes] = await Promise.all([
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
-        supabase.from("flight_logs").select("id, flight_date, flight_track, flight_duration_minutes, departure_location, landing_location, source, total_distance_m, max_distance_m, max_height_m, max_horiz_speed_ms, max_vert_speed_ms, rth_triggered, battery_voltage_min_v, battery_cell_deviation_max_v, battery_temp_min_c, battery_temp_max_c, gps_sat_min, gps_sat_max")
+        supabase.from("flight_logs").select(FLIGHT_ANALYSIS_COLUMNS)
           .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
         supabase.from("mission_risk_assessments").select("overall_score, recommendation")
           .eq("mission_id", mission.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -377,36 +378,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                           size="sm"
                           className="h-7 px-2 text-xs"
                           onClick={async () => {
-                            const summary = {
-                              durationMinutes: log.flight_duration_minutes ?? null,
-                              maxSpeedMs: (log as any).max_horiz_speed_ms ?? null,
-                              minBatteryV: (log as any).battery_voltage_min_v ?? null,
-                              totalRows: log.flight_track?.positions?.length ?? null,
-                              totalDistanceM: (log as any).total_distance_m ?? null,
-                              maxAltitudeM: (log as any).max_height_m ?? null,
-                              minGpsSat: (log as any).gps_sat_min ?? null,
-                              maxGpsSat: (log as any).gps_sat_max ?? null,
-                              batteryTempMaxC: (log as any).battery_temp_max_c ?? null,
-                              batteryTempMinC: (log as any).battery_temp_min_c ?? null,
-                              batteryVoltageMinV: (log as any).battery_voltage_min_v ?? null,
-                              maxDistanceM: (log as any).max_distance_m ?? null,
-                              maxVSpeedMs: (log as any).max_vert_speed_ms ?? null,
-                              batteryCellDeviationV: (log as any).battery_cell_deviation_max_v ?? null,
-                              rthTriggered: (log as any).rth_triggered ?? false,
-                              source: (log as any).source ?? null,
-                            };
-                            const { data: evRows } = await supabase
-                              .from('flight_events' as any)
-                              .select('t_offset_ms, type, message')
-                              .eq('flight_log_id', log.id)
-                              .order('t_offset_ms', { ascending: true });
-                            setAnalysisTrack({
-                              positions: log.flight_track?.positions || [],
-                              events: (evRows as any[]) || [],
-                              summary,
-                            });
+                            setAnalysisTrack(await loadFlightAnalysisTrack(log));
                             setAnalysisOpen(true);
                           }}
+
                         >
                           <BarChart3 className="w-3.5 h-3.5 mr-1" />
                           Analyser
