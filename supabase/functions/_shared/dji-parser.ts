@@ -27,6 +27,8 @@ export const FIELDS = [
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
+  // Hardware identifiers (collected for future drone identification — not used for matching yet)
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN",
   "APP.warn",
 ].join(",");
 
@@ -207,6 +209,11 @@ export function parseCsvMinimal(csvText: string) {
 
   return {
     aircraftSN, batterySN, sha256Hash,
+    // Hardware identifiers (informational only — no matching logic uses these yet)
+    fcSN: get("DETAILS.fcSN") || null,
+    rcSN: get("DETAILS.rcSN") || null,
+    cameraSN: get("DETAILS.cameraSN") || null,
+    gimbalSN: get("DETAILS.gimbalSN") || null,
     durationMinutes,
     durationSeconds: totalTimeSec ?? durationMinutes * 60,
     startTime: startTime || null,

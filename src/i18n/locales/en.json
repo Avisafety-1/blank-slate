@@ -3198,7 +3198,6 @@
         "drone": "Drone",
         "allDrones": "All drones",
         "resetFilters": "Reset filters"
-
       },
       "card": {
         "approvalPending": "Pending approval",
@@ -7131,7 +7130,6 @@
       "nearestForecastNote": "Nearest available forecast point",
       "coarseResolutionNote": "Forecast has {{hours}}-hour resolution this far ahead – gets more detailed closer to the mission",
       "coarseForecast": "{{hours}}-hour forecast",
-
       "outOfRangeTitle": "No forecast yet",
       "outOfRangeDescription": "Weather data is only available up to 10 days ahead. The forecast updates automatically when the mission is less than 10 days away.",
       "recordedAt": "Weather recorded at completion: {{date}}",
@@ -7157,7 +7155,6 @@
       "tabNow": "Now",
       "tabForecast": "24h forecast",
       "forecastWord": "Forecast",
-
       "hourlyForecast": "Hourly forecast",
       "bestFlightWindowLong": "Best flight window: {{start}} - {{end}} ({{hours}} hours)",
       "footerSource": "Weather data from MET Norway • Updated {{time}}",
@@ -8181,6 +8178,16 @@
       "matchedByLinkedPersonnel": "{{vehicle}} auto-matched via your assignment: {{model}}",
       "storedIsFuller": "Stored SN ({{stored}}) is the complete value; the log shows DJI's shortened SN ({{parsed}}).",
       "updateToFull": "The log SN ({{parsed}}) is more complete than the stored SN ({{stored}}). Update the {{vehicle}} serial number to the full value?"
+    },
+    "identifiers": {
+      "title": "Log identifiers",
+      "aircraftName": "Aircraft name",
+      "aircraftSN": "Aircraft SN",
+      "rcSN": "Controller SN",
+      "fcSN": "Flight controller SN",
+      "cameraSN": "Camera SN",
+      "gimbalSN": "Gimbal SN",
+      "batterySN": "Battery SN"
     }
   },
   "statusReasons": {

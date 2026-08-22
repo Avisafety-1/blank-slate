@@ -3200,7 +3200,6 @@
         "drone": "Drone",
         "allDrones": "Alle droner",
         "resetFilters": "Nullstill filtre"
-
       },
       "card": {
         "approvalPending": "Venter på godkjenning",
@@ -7133,7 +7132,6 @@
       "nearestForecastNote": "Nærmeste tilgjengelige prognosepunkt",
       "coarseResolutionNote": "Prognosen har {{hours}}-timers oppløsning så langt frem – blir mer detaljert nærmere oppdraget",
       "coarseForecast": "{{hours}}-timersprognose",
-
       "outOfRangeTitle": "Ingen prognose ennå",
       "outOfRangeDescription": "Værdata er kun tilgjengelig inntil 10 dager frem i tid. Prognosen oppdateres automatisk når det er mindre enn 10 dager til oppdragsstart.",
       "recordedAt": "Værdata registrert ved fullføring: {{date}}",
@@ -7159,7 +7157,6 @@
       "tabNow": "Nå",
       "tabForecast": "Prognose 24t",
       "forecastWord": "Prognose",
-
       "hourlyForecast": "Timeprognose",
       "bestFlightWindowLong": "Beste flyvindu: {{start}} - {{end}} ({{hours}} timer)",
       "footerSource": "Værdata fra MET Norway • Oppdatert {{time}}",
@@ -8183,6 +8180,16 @@
       "matchedByLinkedPersonnel": "{{vehicle}} auto-matchet via din tilknytning: {{model}}",
       "storedIsFuller": "Lagret SN ({{stored}}) er den fullstendige verdien; loggen viser DJIs forkortede SN ({{parsed}}).",
       "updateToFull": "Loggens SN ({{parsed}}) er mer komplett enn lagret SN ({{stored}}). Oppdater {{vehicle}} sitt serienummer til full verdi?"
+    },
+    "identifiers": {
+      "title": "Loggidentifikatorer",
+      "aircraftName": "Dronenavn",
+      "aircraftSN": "Drone SN",
+      "rcSN": "Kontroller SN",
+      "fcSN": "Flightcontroller SN",
+      "cameraSN": "Kamera SN",
+      "gimbalSN": "Gimbal SN",
+      "batterySN": "Batteri SN"
     }
   },
   "statusReasons": {

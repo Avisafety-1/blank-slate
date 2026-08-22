@@ -158,6 +158,8 @@ const FIELDS = [
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
+  // Hardware identifiers (collected for future drone identification — not used for matching yet)
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN",
   "APP.warning",
 ].join(",");
 
@@ -323,6 +325,10 @@ function parseCsvToResult(csvText: string) {
   const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVerticalSpeed [m/s]");
   const detSha256Idx = findHeaderIndex(headers, "DETAILS.sha256Hash");
   const detGuidIdx = findHeaderIndex(headers, "DETAILS.guid");
+  const detFcSNIdx = findHeaderIndex(headers, "DETAILS.fcSN");
+  const detRcSNIdx = findHeaderIndex(headers, "DETAILS.rcSN");
+  const detCameraSNIdx = findHeaderIndex(headers, "DETAILS.cameraSN");
+  const detGimbalSNIdx = findHeaderIndex(headers, "DETAILS.gimbalSN");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
@@ -349,6 +355,20 @@ function parseCsvToResult(csvText: string) {
   const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
   const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
   console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
+
+  // Hardware identifiers (flight controller, remote controller, camera, gimbal).
+  // Collected for future drone identification work — NOT used by matching logic today.
+  const fcSN = detFcSNIdx >= 0 ? stripQuotes(firstRow[detFcSNIdx]) : "";
+  const rcSN = detRcSNIdx >= 0 ? stripQuotes(firstRow[detRcSNIdx]) : "";
+  const cameraSN = detCameraSNIdx >= 0 ? stripQuotes(firstRow[detCameraSNIdx]) : "";
+  const gimbalSN = detGimbalSNIdx >= 0 ? stripQuotes(firstRow[detGimbalSNIdx]) : "";
+  console.log("[DIAG] Hardware identifiers —",
+    "aircraftName:", aircraftName || "(none)",
+    "| aircraftSN:", aircraftSN || "(none)",
+    "| fcSN:", fcSN || "(none)",
+    "| rcSN:", rcSN || "(none)",
+    "| cameraSN:", cameraSN || "(none)",
+    "| gimbalSN:", gimbalSN || "(none)");
 
   // === DIAGNOSTIC: Inspect ALL battery-related headers and unique SN values across rows ===
   const batteryHeaders = headers.filter(h => /battery/i.test(h) && /SN|serial/i.test(h));
@@ -782,6 +802,11 @@ function parseCsvToResult(csvText: string) {
     aircraftSN: aircraftSN || null,
     aircraftSerial: aircraftSerial || null,
     droneType: droneType || null,
+    // Hardware identifiers (informational only — no matching logic uses these yet)
+    fcSN: fcSN || null,
+    rcSN: rcSN || null,
+    cameraSN: cameraSN || null,
+    gimbalSN: gimbalSN || null,
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
