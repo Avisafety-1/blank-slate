@@ -87,6 +87,15 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
     const parsed = await uploadAndParse(dronelogKey, bytes, ".txt", job.dji_log_id);
     step_durations.parse_ms = Date.now() - upStart;
 
+    // [DIAG] Hardware identifiers — informational only, no matching logic uses these yet
+    console.log(`[DIAG] log ${job.dji_log_id} identifiers —`,
+      "aircraftName:", (parsed as any).aircraftName || "(none)",
+      "| aircraftSN:", (parsed as any).aircraftSN || "(none)",
+      "| fcSN:", (parsed as any).fcSN || "(none)",
+      "| rcSN:", (parsed as any).rcSN || "(none)",
+      "| cameraSN:", (parsed as any).cameraSN || "(none)",
+      "| gimbalSN:", (parsed as any).gimbalSN || "(none)");
+
     // 3. Match drone + battery
     const matchStart = Date.now();
     const { matchedDroneId, matchedBatteryId, snMismatchSuggestion } =
