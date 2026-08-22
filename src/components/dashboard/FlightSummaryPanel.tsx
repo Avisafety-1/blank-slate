@@ -66,6 +66,9 @@ export interface FlightSummary {
   missionName?: string | null;
   // Traceability
   droneTotalHours?: number | null;
+  pilotTotalHours?: number | null;
+  inDroneLogbook?: boolean;
+  inPilotLogbook?: boolean;
   droneLogEntryCount?: number | null;
   personnelLogEntryCount?: number | null;
 }
