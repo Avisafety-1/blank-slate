@@ -27,7 +27,14 @@ export interface FlightLogContext {
   missionName?: string | null;
   /** Traceability: what this flight log actually produced */
   droneTotalHours?: number | null;
+  pilotTotalHours?: number | null;
+  /** The flight appears in the drone logbook when drone_id is set */
+  inDroneLogbook?: boolean;
+  /** The flight appears in the pilot logbook when a flight_log_personnel row exists */
+  inPilotLogbook?: boolean;
+  /** Extra warning entries saved to the drone logbook for this flight date */
   droneLogEntryCount?: number | null;
+  /** Manual personnel logbook entries explicitly linked to this flight log */
   personnelLogEntryCount?: number | null;
 }
 
