@@ -270,18 +270,34 @@ export const ReassignFlightLogDialog = ({
             <span>{t("dashboard.flightAnalysis.logDetails.reassignWarning")}</span>
           </div>
         </div>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            {t("dashboard.flightAnalysis.logDetails.reassignCancel")}
-          </Button>
           <Button
-            onClick={handleSave}
-            disabled={saving || (droneId === (currentDroneId || "") && pilotId === (currentPilotId || ""))}
+            variant="outline"
+            onClick={() => (preview ? setPreview(null) : onOpenChange(false))}
+            disabled={saving}
           >
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("dashboard.flightAnalysis.logDetails.reassignSave")}
+            {preview
+              ? t("dashboard.flightAnalysis.logDetails.reassignBack")
+              : t("dashboard.flightAnalysis.logDetails.reassignCancel")}
           </Button>
+          {preview ? (
+            <Button onClick={handleSave} disabled={saving || (!preview.droneChanged && !preview.pilotChanged)}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("dashboard.flightAnalysis.logDetails.reassignConfirm")}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleReview}
+              disabled={
+                previewLoading || (droneId === (currentDroneId || "") && pilotId === (currentPilotId || ""))
+              }
+            >
+              {previewLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("dashboard.flightAnalysis.logDetails.reassignReview")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
