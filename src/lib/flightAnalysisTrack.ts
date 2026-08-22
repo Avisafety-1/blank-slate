@@ -12,7 +12,83 @@ export const FLIGHT_ANALYSIS_COLUMNS =
   "start_time_utc, end_time_utc, total_distance_m, max_distance_m, max_height_m, max_horiz_speed_ms, " +
   "max_vert_speed_ms, rth_triggered, battery_sn, battery_cycles, battery_health_pct, " +
   "battery_full_capacity_mah, battery_voltage_min_v, battery_cell_deviation_max_v, " +
-  "battery_temp_min_c, battery_temp_max_c, gps_sat_min, gps_sat_max";
+  "battery_temp_min_c, battery_temp_max_c, gps_sat_min, gps_sat_max, " +
+  "drone_id, mission_id, user_id, company_id";
+
+export interface FlightLogContext {
+  flightLogId?: string | null;
+  companyId?: string | null;
+  droneId?: string | null;
+  droneName?: string | null;
+  droneModelName?: string | null;
+  pilotProfileId?: string | null;
+  pilotName?: string | null;
+  missionId?: string | null;
+  missionName?: string | null;
+}
+
+/** Resolves drone / pilot / mission names for the "logged on" section. */
+export async function loadFlightLogContext(log: any): Promise<FlightLogContext> {
+  const ctx: FlightLogContext = {
+    flightLogId: log?.id ?? null,
+    companyId: log?.company_id ?? null,
+    droneId: log?.drone_id ?? null,
+    missionId: log?.mission_id ?? null,
+  };
+
+  const tasks: Promise<any>[] = [];
+
+  if (log?.drone_id) {
+    tasks.push(
+      (supabase as any)
+        .from("drones")
+        .select("id, navn, modell")
+        .eq("id", log.drone_id)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          ctx.droneName = data?.navn ?? null;
+          ctx.droneModelName = data?.modell ?? null;
+        })
+    );
+  }
+
+  if (log?.mission_id) {
+    tasks.push(
+      (supabase as any)
+        .from("missions")
+        .select("id, title")
+        .eq("id", log.mission_id)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          ctx.missionName = data?.title ?? null;
+        })
+    );
+  }
+
+  tasks.push(
+    (supabase as any)
+      .from("flight_log_personnel")
+      .select("profile_id")
+      .eq("flight_log_id", log?.id)
+      .limit(1)
+      .then(async ({ data }: any) => {
+        const profileId = data?.[0]?.profile_id ?? log?.user_id ?? null;
+        ctx.pilotProfileId = profileId;
+        if (profileId) {
+          const { data: p } = await (supabase as any)
+            .from("profiles")
+            .select("id, full_name")
+            .eq("id", profileId)
+            .maybeSingle();
+          ctx.pilotName = p?.full_name ?? null;
+        }
+      })
+  );
+
+  await Promise.all(tasks);
+  return ctx;
+}
+
 
 const num = (v: any): number | null => {
   if (v === null || v === undefined || v === "") return null;
