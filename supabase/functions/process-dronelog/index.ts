@@ -158,6 +158,8 @@ const FIELDS = [
   "DETAILS.startTime","DETAILS.aircraftName","DETAILS.aircraftSN","DETAILS.aircraftSerial","DETAILS.droneType",
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
+  // Hardware identifiers (collected for future drone identification — not used for matching yet)
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN",
   "APP.warning",
 ].join(",");
 
@@ -323,6 +325,10 @@ function parseCsvToResult(csvText: string) {
   const detMaxVSpeedIdx = findHeaderIndex(headers, "DETAILS.maxVerticalSpeed [m/s]");
   const detSha256Idx = findHeaderIndex(headers, "DETAILS.sha256Hash");
   const detGuidIdx = findHeaderIndex(headers, "DETAILS.guid");
+  const detFcSNIdx = findHeaderIndex(headers, "DETAILS.fcSN");
+  const detRcSNIdx = findHeaderIndex(headers, "DETAILS.rcSN");
+  const detCameraSNIdx = findHeaderIndex(headers, "DETAILS.cameraSN");
+  const detGimbalSNIdx = findHeaderIndex(headers, "DETAILS.gimbalSN");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
