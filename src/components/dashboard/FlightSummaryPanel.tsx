@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { ReassignFlightLogDialog } from "./ReassignFlightLogDialog";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
   Activity, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
+  User, Target, Pencil,
 } from "lucide-react";
 
 export interface FlightSummary {
@@ -49,11 +54,22 @@ export interface FlightSummary {
   endTimeUtc?: string | null;
   sha256?: string | null;
   logGuid?: string | null;
+  // "Logged on" context
+  flightLogId?: string | null;
+  companyId?: string | null;
+  droneId?: string | null;
+  droneName?: string | null;
+  droneModelName?: string | null;
+  pilotProfileId?: string | null;
+  pilotName?: string | null;
+  missionId?: string | null;
+  missionName?: string | null;
 }
 
 interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
+  onReassigned?: () => void;
 }
 
 const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
@@ -80,8 +96,11 @@ const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
-export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelProps) => {
+export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: FlightSummaryPanelProps) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { isAdmin } = useRoleCheck();
+  const [reassignOpen, setReassignOpen] = useState(false);
   const s = summary;
   const isArdu = s.source === "ardupilot";
 
@@ -205,9 +224,12 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
   const mainEvents = grouped.filter(g => !["APP_WARNING", "message"].includes(g.ev.type));
   const appWarningEvents = grouped.filter(g => g.ev.type === "APP_WARNING" || g.ev.type === "message");
 
+  const canReassign = !!s.flightLogId && (isAdmin || (!!user?.id && s.pilotProfileId === user.id));
+  const showLoggedOn = !!s.flightLogId;
+
   const hasAnything =
     primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0 ||
-    detailGroupsShown.length > 0;
+    detailGroupsShown.length > 0 || showLoggedOn;
 
   if (!hasAnything) return null;
 
@@ -254,6 +276,53 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
             {t('dashboard.flightAnalysis.rthTriggered')}
           </p>
         </div>
+      )}
+
+      {showLoggedOn && (
+        <div className="rounded-xl border border-border bg-card/60 p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('dashboard.flightAnalysis.logDetails.loggedOn')}
+            </span>
+            {canReassign && (
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setReassignOpen(true)}>
+                <Pencil className="w-3 h-3" />
+                {t('dashboard.flightAnalysis.logDetails.reassign')}
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { icon: Plane, label: t('dashboard.flightAnalysis.logDetails.loggedOnDrone'), value: s.droneName || s.droneModelName },
+              { icon: User, label: t('dashboard.flightAnalysis.logDetails.loggedOnPilot'), value: s.pilotName },
+              { icon: Target, label: t('dashboard.flightAnalysis.logDetails.loggedOnMission'), value: s.missionName },
+            ].map((row, i) => {
+              const Icon = row.icon;
+              return (
+                <div key={i} className="p-2 rounded-lg bg-muted/30 space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <Icon className="w-3 h-3" />{row.label}
+                  </div>
+                  <p className="text-sm font-medium break-words">
+                    {row.value || <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.loggedOnNone')}</span>}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {s.flightLogId && (
+        <ReassignFlightLogDialog
+          open={reassignOpen}
+          onOpenChange={setReassignOpen}
+          flightLogId={s.flightLogId}
+          companyId={s.companyId}
+          currentDroneId={s.droneId}
+          currentPilotId={s.pilotProfileId}
+          onReassigned={() => onReassigned?.()}
+        />
       )}
 
       {(detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (

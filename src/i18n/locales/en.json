@@ -625,10 +625,24 @@
         "sha256": "SHA256",
         "guid": "Log ID",
         "copied": "Copied",
-        "copy": "Copy"
+        "copy": "Copy",
+        "loggedOn": "Logged on",
+        "loggedOnDrone": "Drone",
+        "loggedOnPilot": "Pilot",
+        "loggedOnMission": "Mission",
+        "loggedOnNone": "Not set",
+        "reassign": "Change",
+        "reassignTitle": "Change drone and pilot",
+        "reassignDesc": "The flight is moved to the selected drone and pilot. Accumulated flight time and logbook entries are moved automatically.",
+        "reassignDrone": "Drone",
+        "reassignPilot": "Pilot",
+        "reassignSave": "Save changes",
+        "reassignCancel": "Cancel",
+        "reassignSuccess": "Flight was moved",
+        "reassignError": "Could not move the flight",
+        "reassignWarning": "This updates flight hours on both drones and moves the logbook entries to the new pilot."
       }
     },
-
     "missionDetail": {
       "riskAssessment": "Risk assessment",
       "notam": "NOTAM",

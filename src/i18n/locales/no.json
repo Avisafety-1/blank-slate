@@ -627,10 +627,24 @@
         "sha256": "SHA256",
         "guid": "Logg-ID",
         "copied": "Kopiert",
-        "copy": "Kopier"
+        "copy": "Kopier",
+        "loggedOn": "Loggført på",
+        "loggedOnDrone": "Drone",
+        "loggedOnPilot": "Pilot",
+        "loggedOnMission": "Oppdrag",
+        "loggedOnNone": "Ikke satt",
+        "reassign": "Endre",
+        "reassignTitle": "Endre drone og pilot",
+        "reassignDesc": "Flyturen flyttes til valgt drone og pilot. Akkumulert flytid og loggbokoppføringer flyttes automatisk.",
+        "reassignDrone": "Drone",
+        "reassignPilot": "Pilot",
+        "reassignSave": "Lagre endringer",
+        "reassignCancel": "Avbryt",
+        "reassignSuccess": "Flyturen ble flyttet",
+        "reassignError": "Kunne ikke flytte flyturen",
+        "reassignWarning": "Dette oppdaterer flytimer på begge droner og flytter loggbokoppføringene til ny pilot."
       }
     },
-
     "missionDetail": {
       "riskAssessment": "Risikovurdering",
       "notam": "NOTAM",

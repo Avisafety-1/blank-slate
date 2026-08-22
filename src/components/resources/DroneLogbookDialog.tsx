@@ -133,7 +133,7 @@ export const DroneLogbookDialog = ({
       // Fetch flight logs
       const { data: flightLogs } = await supabase
         .from("flight_logs")
-        .select(`${FLIGHT_ANALYSIS_COLUMNS}, notes, movements, user_id`)
+        .select(`${FLIGHT_ANALYSIS_COLUMNS}, notes, movements`)
         .eq("drone_id", droneId)
         .order("flight_date", { ascending: false });
 
@@ -190,7 +190,14 @@ export const DroneLogbookDialog = ({
             badgeText: t('resourceDialogs.droneLogbook.badges.flight'),
             flightTrack: {
               ...existingTrack,
-              ...buildFlightAnalysisTrack(log, existingTrack.events || eventsByLogId.get(log.id) || []),
+              ...buildFlightAnalysisTrack(log, existingTrack.events || eventsByLogId.get(log.id) || [], {
+                flightLogId: log.id,
+                droneId,
+                droneModelName: droneModell,
+                pilotProfileId: pilotByLogId.get(log.id) || log.user_id || null,
+                pilotName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || null,
+                missionId: (log as any).mission_id ?? null,
+              }),
             },
 
             flightDate: log.flight_date,
@@ -832,6 +839,7 @@ export const DroneLogbookDialog = ({
         flightTrack={analysisTrack}
         flightDate={analysisDate}
         droneName={droneModell}
+        onReassigned={() => { setAnalysisOpen(false); fetchAllLogs(); }}
       />
 
       <EditFlightLogDialog
