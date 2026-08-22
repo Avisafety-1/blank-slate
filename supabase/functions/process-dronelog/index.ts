@@ -363,13 +363,15 @@ function parseCsvToResult(csvText: string) {
   const rcSN = detRcSNIdx >= 0 ? stripQuotes(firstRow[detRcSNIdx]) : "";
   const cameraSN = detCameraSNIdx >= 0 ? stripQuotes(firstRow[detCameraSNIdx]) : "";
   const gimbalSN = detGimbalSNIdx >= 0 ? stripQuotes(firstRow[detGimbalSNIdx]) : "";
+  const serialAircraftSN = serialAircraftSNIdx >= 0 ? stripQuotes(firstRow[serialAircraftSNIdx]) : "";
   console.log("[DIAG] Hardware identifiers —",
     "aircraftName:", aircraftName || "(none)",
     "| aircraftSN:", aircraftSN || "(none)",
     "| fcSN:", fcSN || "(none)",
     "| rcSN:", rcSN || "(none)",
     "| cameraSN:", cameraSN || "(none)",
-    "| gimbalSN:", gimbalSN || "(none)");
+    "| gimbalSN:", gimbalSN || "(none)",
+    "| SERIAL.aircraftSN:", serialAircraftSN || "(none)");
 
   // === DIAGNOSTIC: Inspect ALL battery-related headers and unique SN values across rows ===
   const batteryHeaders = headers.filter(h => /battery/i.test(h) && /SN|serial/i.test(h));
