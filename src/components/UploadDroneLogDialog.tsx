@@ -2486,6 +2486,39 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {/* Equipment selector */}
                 {equipmentList.length > 0 && (
                   <div className="space-y-1.5">
+
+                {/* Log identifiers — read-only, collected for future drone identification */}
+                {(() => {
+                  const ids: Array<{ label: string; value: string }> = [
+                    { label: t('uploadLog.identifiers.aircraftName'), value: (result.aircraftName || '').trim() },
+                    { label: t('uploadLog.identifiers.aircraftSN'), value: (result.aircraftSN || result.aircraftSerial || '').trim() },
+                    { label: t('uploadLog.identifiers.rcSN'), value: (result.rcSN || '').trim() },
+                    { label: t('uploadLog.identifiers.fcSN'), value: (result.fcSN || '').trim() },
+                    { label: t('uploadLog.identifiers.cameraSN'), value: (result.cameraSN || '').trim() },
+                    { label: t('uploadLog.identifiers.gimbalSN'), value: (result.gimbalSN || '').trim() },
+                    { label: t('uploadLog.identifiers.batterySN'), value: (result.batterySN || '').trim() },
+                  ].filter(i => i.value);
+                  if (ids.length === 0) return null;
+                  return (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Info className="w-3 h-3" />{t('uploadLog.identifiers.title')}
+                      </Label>
+                      <div className="rounded-md border border-border/50 bg-muted/30 p-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+                        {ids.map(i => (
+                          <div key={i.label} className="flex items-baseline justify-between gap-2 min-w-0">
+                            <span className="text-[11px] text-muted-foreground shrink-0">{i.label}</span>
+                            <span className="text-[11px] font-mono truncate" title={i.value}>{i.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Equipment selector */}
+                {equipmentList.length > 0 && (
+                  <div className="space-y-1.5">
                     <Label className="text-xs flex items-center gap-1"><Wrench className="w-3 h-3" />Utstyr</Label>
                     {(() => {
                       const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
