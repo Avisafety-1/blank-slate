@@ -25,7 +25,20 @@ export interface FlightLogContext {
   pilotName?: string | null;
   missionId?: string | null;
   missionName?: string | null;
+  /** Traceability: what this flight log actually produced */
+  droneTotalHours?: number | null;
+  droneLogEntryCount?: number | null;
+  personnelLogEntryCount?: number | null;
 }
+
+/** Builds a readable drone label: model + serial / registration. */
+export const droneDisplayLabel = (d: any): string | null => {
+  if (!d) return null;
+  const serial = d.registration_number || d.serienummer || d.internal_serial;
+  const model = d.modell || null;
+  if (model && serial) return `${model} (${serial})`;
+  return model || serial || null;
+};
 
 /** Resolves drone / pilot / mission names for the "logged on" section. */
 export async function loadFlightLogContext(log: any): Promise<FlightLogContext> {
@@ -42,12 +55,34 @@ export async function loadFlightLogContext(log: any): Promise<FlightLogContext> 
     tasks.push(
       (supabase as any)
         .from("drones")
-        .select("id, navn, modell")
+        .select("id, modell, serienummer, internal_serial, registration_number, flyvetimer")
         .eq("id", log.drone_id)
         .maybeSingle()
         .then(({ data }: any) => {
-          ctx.droneName = data?.navn ?? null;
+          ctx.droneName = droneDisplayLabel(data);
           ctx.droneModelName = data?.modell ?? null;
+          ctx.droneTotalHours = data?.flyvetimer != null ? Number(data.flyvetimer) : null;
+        })
+    );
+  }
+
+  if (log?.id) {
+    tasks.push(
+      (supabase as any)
+        .from("drone_log_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("flight_log_id", log.id)
+        .then(({ count }: any) => {
+          ctx.droneLogEntryCount = count ?? 0;
+        })
+    );
+    tasks.push(
+      (supabase as any)
+        .from("personnel_log_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("flight_log_id", log.id)
+        .then(({ count }: any) => {
+          ctx.personnelLogEntryCount = count ?? 0;
         })
     );
   }
