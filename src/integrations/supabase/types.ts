@@ -9003,6 +9003,14 @@ export type Database = {
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
       purge_old_flighthub2_positions: { Args: never; Returns: undefined }
+      reassign_flight_log: {
+        Args: {
+          p_drone_id?: string
+          p_flight_log_id: string
+          p_pilot_id?: string
+        }
+        Returns: Json
+      }
       recompute_profile_flyvetimer: {
         Args: { _profile_id: string }
         Returns: undefined
