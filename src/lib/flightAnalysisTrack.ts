@@ -213,10 +213,13 @@ export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?:
 
 /** Loads flight events for a log and returns the ready-to-use analysis payload. */
 export async function loadFlightAnalysisTrack(log: any) {
-  const { data: evRows } = await supabase
-    .from("flight_events" as any)
-    .select("t_offset_ms, type, message")
-    .eq("flight_log_id", log.id)
-    .order("t_offset_ms", { ascending: true });
-  return buildFlightAnalysisTrack(log, (evRows as any[]) || []);
+  const [{ data: evRows }, context] = await Promise.all([
+    supabase
+      .from("flight_events" as any)
+      .select("t_offset_ms, type, message")
+      .eq("flight_log_id", log.id)
+      .order("t_offset_ms", { ascending: true }),
+    loadFlightLogContext(log).catch(() => ({} as FlightLogContext)),
+  ]);
+  return buildFlightAnalysisTrack(log, (evRows as any[]) || [], context);
 }
