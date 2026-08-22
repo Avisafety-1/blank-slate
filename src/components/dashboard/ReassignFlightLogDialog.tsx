@@ -151,7 +151,7 @@ export const ReassignFlightLogDialog = ({
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="z-[100]">
+              <SelectContent position="popper" className="z-[1400]">
                 {drones.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.label}
@@ -175,7 +175,7 @@ export const ReassignFlightLogDialog = ({
                   }
                 />
               </SelectTrigger>
-              <SelectContent className="z-[100]">
+              <SelectContent position="popper" className="z-[1400]">
                 {pilots.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.label}
