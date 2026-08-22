@@ -126,7 +126,69 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
       value: s.batteryCellDeviationV != null ? `${s.batteryCellDeviationV.toFixed(3)} V` : null,
       warn: s.batteryCellDeviationV != null && s.batteryCellDeviationV > 0.1,
     },
+    { icon: Gauge, label: t('dashboard.flightAnalysis.labels.avgSpeed'), value: s.avgSpeedMs != null ? `${s.avgSpeedMs} m/s` : null },
+    {
+      icon: Wind,
+      label: t('dashboard.flightAnalysis.labels.maxWind'),
+      value: s.maxWindMs != null ? `${s.maxWindMs} m/s` : null,
+      warn: s.maxWindMs != null && s.maxWindMs > 10,
+    },
+    { icon: Mountain, label: t('dashboard.flightAnalysis.labels.maxMsl'), value: s.maxMslM != null ? `${s.maxMslM} m` : null },
+    { icon: Repeat, label: t('dashboard.flightAnalysis.labels.modeChanges'), value: s.modeChanges != null && s.modeChanges > 0 ? `${s.modeChanges}` : null },
+    {
+      icon: AlertTriangle,
+      label: t('dashboard.flightAnalysis.labels.warningCount'),
+      value: s.warningCount != null && s.warningCount > 0 ? `${s.warningCount}` : null,
+      warn: true,
+    },
   ];
+
+  const detailGroups: Array<{ icon: any; title: string; rows: Array<{ label: string; value: string | null; mono?: boolean; truncate?: boolean }> }> = [
+    {
+      icon: Plane,
+      title: t('dashboard.flightAnalysis.logDetails.drone'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.model'), value: s.droneModel ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.aircraftName'), value: s.aircraftName ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.aircraftSerial'), value: s.aircraftSerial ?? null, mono: true },
+      ],
+    },
+    {
+      icon: Cpu,
+      title: t('dashboard.flightAnalysis.logDetails.hardware'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.fcSerial'), value: s.fcSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.rcSerial'), value: s.rcSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.cameraSerial'), value: s.cameraSerial ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.gimbalSerial'), value: s.gimbalSerial ?? null, mono: true },
+      ],
+    },
+    {
+      icon: Battery,
+      title: t('dashboard.flightAnalysis.logDetails.battery'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.batterySn'), value: s.batterySn ?? null, mono: true },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryCycles'), value: s.batteryCycles != null ? `${s.batteryCycles}` : null },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryHealth'), value: s.batteryHealthPct != null ? `${s.batteryHealthPct}%` : null },
+        { label: t('dashboard.flightAnalysis.logDetails.batteryCapacity'), value: s.batteryFullCapacityMah != null ? `${s.batteryFullCapacityMah} mAh` : null },
+      ],
+    },
+    {
+      icon: FileText,
+      title: t('dashboard.flightAnalysis.logDetails.log'),
+      rows: [
+        { label: t('dashboard.flightAnalysis.logDetails.entrySource'), value: s.entrySource ?? s.source ?? null },
+        { label: t('dashboard.flightAnalysis.logDetails.startTime'), value: s.startTimeUtc ? new Date(s.startTimeUtc).toISOString().replace('T', ' ').slice(0, 19) : null },
+        { label: t('dashboard.flightAnalysis.logDetails.endTime'), value: s.endTimeUtc ? new Date(s.endTimeUtc).toISOString().replace('T', ' ').slice(0, 19) : null },
+        { label: t('dashboard.flightAnalysis.logDetails.sha256'), value: s.sha256 ?? null, mono: true, truncate: true },
+        { label: t('dashboard.flightAnalysis.logDetails.guid'), value: s.logGuid ?? null, mono: true, truncate: true },
+      ],
+    },
+  ];
+
+  const detailGroupsShown = detailGroups
+    .map(g => ({ ...g, rows: g.rows.filter(r => r.value != null && r.value !== "") }))
+    .filter(g => g.rows.length > 0);
 
   const primaryShown = primary.filter(p => p.value != null);
   const extendedShown = extended.filter(p => p.value != null);
@@ -144,9 +206,12 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
   const appWarningEvents = grouped.filter(g => g.ev.type === "APP_WARNING" || g.ev.type === "message");
 
   const hasAnything =
-    primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0;
+    primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0 ||
+    detailGroupsShown.length > 0;
 
   if (!hasAnything) return null;
+
+
 
   return (
     <div className="space-y-2">
