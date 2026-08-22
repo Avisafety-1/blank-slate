@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { droneDisplayLabel } from "@/lib/flightAnalysisTrack";
 
 export interface ReassignFlightLogInput {
   flightLogId: string;
@@ -6,108 +7,138 @@ export interface ReassignFlightLogInput {
   newPilotId?: string | null;
 }
 
-const moveHours = async (fromId: string | null, toId: string | null, hours: number) => {
-  if (hours <= 0) return;
-  const adjust = async (id: string, delta: number) => {
-    const { data: row } = await (supabase as any)
-      .from("drones")
-      .select("flyvetimer")
-      .eq("id", id)
-      .maybeSingle();
-    if (!row) return;
-    const next = Math.max(0, Number(row.flyvetimer || 0) + delta);
-    await (supabase as any).from("drones").update({ flyvetimer: next }).eq("id", id);
-  };
-  if (fromId) await adjust(fromId, -hours);
-  if (toId) await adjust(toId, hours);
+export interface ReassignPreview {
+  droneChanged: boolean;
+  pilotChanged: boolean;
+  hours: number;
+  fromDrone: string | null;
+  toDrone: string | null;
+  fromPilot: string | null;
+  toPilot: string | null;
+  warningEntries: number;
+  personnelEntries: number;
+  otherCrew: number;
+}
+
+export interface ReassignResult {
+  changed: boolean;
+  drone_changed?: boolean;
+  pilot_changed?: boolean;
+  hours_moved?: number;
+  warnings_moved?: number;
+  personnel_entries_moved?: number;
+}
+
+const droneLabel = async (id?: string | null): Promise<string | null> => {
+  if (!id) return null;
+  const { data } = await (supabase as any)
+    .from("drones")
+    .select("modell, serienummer, internal_serial, registration_number")
+    .eq("id", id)
+    .maybeSingle();
+  return data ? droneDisplayLabel(data) || id : id;
+};
+
+const pilotLabel = async (id?: string | null): Promise<string | null> => {
+  if (!id) return null;
+  const { data } = await (supabase as any).from("profiles").select("full_name").eq("id", id).maybeSingle();
+  return data?.full_name || id;
 };
 
 /**
- * Moves a flight log to another drone and/or pilot and keeps all derived data in sync:
- * - flight_logs.drone_id / user_id
- * - accumulated drone flight hours (drones.flyvetimer) are moved between the drones
- * - warning entries in the drone logbook are moved to the new drone
- * - personnel logbook entries are deleted from the old pilot and recreated for the new pilot
- * - flight_log_personnel is updated, which recomputes pilot flight hours via DB triggers
+ * Reads (never writes) everything needed to show the user exactly what a
+ * reassignment will move before they confirm it.
  */
-export async function reassignFlightLog({ flightLogId, newDroneId, newPilotId }: ReassignFlightLogInput): Promise<void> {
-  const { data: log, error: logErr } = await (supabase as any)
+export async function previewFlightLogReassign({
+  flightLogId,
+  newDroneId,
+  newPilotId,
+}: ReassignFlightLogInput): Promise<ReassignPreview> {
+  const { data: log, error } = await (supabase as any)
     .from("flight_logs")
-    .select("id, drone_id, user_id, company_id, flight_date, flight_duration_minutes, departure_location, landing_location")
+    .select("id, drone_id, user_id, flight_date, flight_duration_minutes, created_at")
     .eq("id", flightLogId)
     .maybeSingle();
-  if (logErr) throw logErr;
+  if (error) throw error;
   if (!log) throw new Error("Flight log not found");
 
-  const hours = Number(log.flight_duration_minutes || 0) / 60;
-  const droneChanged = !!newDroneId && newDroneId !== log.drone_id;
-
-  // Current pilot (personnel row takes precedence over flight_logs.user_id)
   const { data: personnelRows } = await (supabase as any)
     .from("flight_log_personnel")
-    .select("id, profile_id")
+    .select("profile_id")
     .eq("flight_log_id", flightLogId);
   const currentPilotId: string | null = personnelRows?.[0]?.profile_id ?? log.user_id ?? null;
+
+  const droneChanged = !!newDroneId && newDroneId !== log.drone_id;
   const pilotChanged = !!newPilotId && newPilotId !== currentPilotId;
 
-  if (!droneChanged && !pilotChanged) return;
-
-  // ---- Drone ----
-  if (droneChanged) {
-    const { error: updErr } = await (supabase as any)
-      .from("flight_logs")
-      .update({ drone_id: newDroneId })
-      .eq("id", flightLogId);
-    if (updErr) throw updErr;
-
-    // Move warning entries created by this flight to the new drone
-    if (log.drone_id && log.flight_date) {
-      await (supabase as any)
-        .from("drone_log_entries")
-        .update({ drone_id: newDroneId })
-        .eq("drone_id", log.drone_id)
-        .eq("entry_date", log.flight_date)
-        .eq("entry_type", "Advarsel")
-        .eq("user_id", log.user_id);
-    }
-
-    await moveHours(log.drone_id, newDroneId!, hours);
+  // Warning entries that clearly belong to this flight (same window as the DB function)
+  let warningEntries = 0;
+  if (droneChanged && log.drone_id && log.user_id && log.created_at) {
+    const from = new Date(new Date(log.created_at).getTime() - 10 * 60 * 1000).toISOString();
+    const to = new Date(new Date(log.created_at).getTime() + 10 * 60 * 1000).toISOString();
+    const { count } = await (supabase as any)
+      .from("drone_log_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("drone_id", log.drone_id)
+      .eq("entry_type", "Advarsel")
+      .eq("entry_date", log.flight_date)
+      .eq("user_id", log.user_id)
+      .gte("created_at", from)
+      .lte("created_at", to);
+    warningEntries = count || 0;
   }
 
-  // ---- Pilot ----
+  let personnelEntries = 0;
   if (pilotChanged) {
-    const { error: updErr } = await (supabase as any)
-      .from("flight_logs")
-      .update({ user_id: newPilotId })
-      .eq("id", flightLogId);
-    if (updErr) throw updErr;
-
-    if (personnelRows && personnelRows.length > 0) {
-      // Remove old links, then add the new pilot (triggers recompute pilot hours)
-      await (supabase as any).from("flight_log_personnel").delete().eq("flight_log_id", flightLogId);
-    }
-    const { error: insErr } = await (supabase as any)
-      .from("flight_log_personnel")
-      .insert({ flight_log_id: flightLogId, profile_id: newPilotId });
-    if (insErr) throw insErr;
-
-    // Move the personnel logbook entries: delete the old pilot's and recreate for the new one
-    const { data: oldEntries } = await (supabase as any)
+    const { count } = await (supabase as any)
       .from("personnel_log_entries")
-      .select("title, description, entry_type, entry_date, image_url, company_id, user_id")
+      .select("id", { count: "exact", head: true })
       .eq("flight_log_id", flightLogId);
-
-    await (supabase as any).from("personnel_log_entries").delete().eq("flight_log_id", flightLogId);
-
-    if (oldEntries && oldEntries.length > 0) {
-      const rows = oldEntries.map((e: any) => ({
-        ...e,
-        profile_id: newPilotId,
-        flight_log_id: flightLogId,
-        company_id: e.company_id || log.company_id,
-      }));
-      const { error: reInsErr } = await (supabase as any).from("personnel_log_entries").insert(rows);
-      if (reInsErr) throw reInsErr;
-    }
+    personnelEntries = count || 0;
   }
+
+  const otherCrew = (personnelRows || []).filter((r: any) => r.profile_id !== currentPilotId).length;
+
+  const [fromDrone, toDrone, fromPilot, toPilot] = await Promise.all([
+    droneChanged ? droneLabel(log.drone_id) : Promise.resolve(null),
+    droneChanged ? droneLabel(newDroneId) : Promise.resolve(null),
+    pilotChanged ? pilotLabel(currentPilotId) : Promise.resolve(null),
+    pilotChanged ? pilotLabel(newPilotId) : Promise.resolve(null),
+  ]);
+
+  return {
+    droneChanged,
+    pilotChanged,
+    hours: Number(log.flight_duration_minutes || 0) / 60,
+    fromDrone,
+    toDrone,
+    fromPilot,
+    toPilot,
+    warningEntries,
+    personnelEntries,
+    otherCrew,
+  };
+}
+
+/**
+ * Moves a flight log to another drone and/or pilot.
+ *
+ * Everything happens inside a single transactional SECURITY DEFINER function
+ * (`public.reassign_flight_log`): flight_logs.drone_id/user_id, accumulated
+ * drone hours, warning entries in the drone logbook, the pilot row in
+ * flight_log_personnel (other crew is kept) and the personnel logbook entries.
+ * Either all of it succeeds, or nothing is changed.
+ */
+export async function reassignFlightLog({
+  flightLogId,
+  newDroneId,
+  newPilotId,
+}: ReassignFlightLogInput): Promise<ReassignResult> {
+  const { data, error } = await (supabase as any).rpc("reassign_flight_log", {
+    p_flight_log_id: flightLogId,
+    p_drone_id: newDroneId || null,
+    p_pilot_id: newPilotId || null,
+  });
+  if (error) throw error;
+  return (data || { changed: false }) as ReassignResult;
 }

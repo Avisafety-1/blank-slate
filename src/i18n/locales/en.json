@@ -660,7 +660,19 @@
         "traceEntriesHint": "The flight itself always appears in the logbooks through this log. The numbers above only cover extra warnings and notes.",
         "traceLogId": "Log ID",
         "traceDroneEntries": "Entries in the drone logbook",
-        "tracePilotEntries": "Entries in the pilot logbook"
+        "tracePilotEntries": "Entries in the pilot logbook",
+        "reassignReview": "Review changes",
+        "reassignBack": "Back",
+        "reassignConfirm": "Confirm move",
+        "reassignConfirmDesc": "This will be moved:",
+        "reassignSummaryDrone": "The flight log moves from {{from}} to {{to}}.",
+        "reassignSummaryHours": "{{hours}} flight hours are subtracted from the old drone and added to the new one.",
+        "reassignSummaryWarnings": "{{count}} warning entries in the drone logbook are moved.",
+        "reassignSummaryPilot": "The pilot changes from {{from}} to {{to}}.",
+        "reassignSummaryPersonnel": "{{count}} entries in the personnel logbook are moved.",
+        "reassignSummaryCrewKept": "{{count}} other people on the flight are kept unchanged.",
+        "reassignSummaryMaintenance": "Moving flight hours also affects maintenance status on both drones. The change is traced in the logbooks.",
+        "reassignSummaryNoChange": "No changes to save."
       }
     },
     "missionDetail": {

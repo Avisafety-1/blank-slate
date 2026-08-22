@@ -8,7 +8,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { reassignFlightLog } from "@/lib/flightLogReassign";
+import { previewFlightLogReassign, reassignFlightLog, type ReassignPreview } from "@/lib/flightLogReassign";
 import { droneDisplayLabel } from "@/lib/flightAnalysisTrack";
 
 interface Props {
@@ -40,11 +40,14 @@ export const ReassignFlightLogDialog = ({
   const [pilotId, setPilotId] = useState<string>(currentPilotId || "");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<ReassignPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setDroneId(currentDroneId || "");
     setPilotId(currentPilotId || "");
+    setPreview(null);
     if (!effectiveCompanyId && !user?.id) return;
     (async () => {
       setLoading(true);
@@ -110,6 +113,22 @@ export const ReassignFlightLogDialog = ({
     })();
   }, [open, effectiveCompanyId, currentDroneId, currentPilotId, user?.id, t]);
 
+  const handleReview = async () => {
+    setPreviewLoading(true);
+    try {
+      const p = await previewFlightLogReassign({
+        flightLogId,
+        newDroneId: droneId || null,
+        newPilotId: pilotId || null,
+      });
+      setPreview(p);
+    } catch (e: any) {
+      toast.error(t("dashboard.flightAnalysis.logDetails.reassignError"), { description: e?.message });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -136,6 +155,66 @@ export const ReassignFlightLogDialog = ({
           <DialogDescription>{t("dashboard.flightAnalysis.logDetails.reassignDesc")}</DialogDescription>
         </DialogHeader>
 
+        {preview ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.flightAnalysis.logDetails.reassignConfirmDesc")}
+            </p>
+            <ul className="space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+              {preview.droneChanged && (
+                <>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryDrone", {
+                      from: preview.fromDrone || t("dashboard.flightAnalysis.logDetails.loggedOnNone"),
+                      to: preview.toDrone,
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryHours", {
+                      hours: preview.hours.toFixed(2),
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryWarnings", {
+                      count: preview.warningEntries,
+                    })}
+                  </li>
+                </>
+              )}
+              {preview.pilotChanged && (
+                <>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryPilot", {
+                      from: preview.fromPilot || t("dashboard.flightAnalysis.logDetails.loggedOnNone"),
+                      to: preview.toPilot,
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryPersonnel", {
+                      count: preview.personnelEntries,
+                    })}
+                  </li>
+                  {preview.otherCrew > 0 && (
+                    <li>
+                      {t("dashboard.flightAnalysis.logDetails.reassignSummaryCrewKept", {
+                        count: preview.otherCrew,
+                      })}
+                    </li>
+                  )}
+                </>
+              )}
+              {!preview.droneChanged && !preview.pilotChanged && (
+                <li>{t("dashboard.flightAnalysis.logDetails.reassignSummaryNoChange")}</li>
+              )}
+            </ul>
+            {preview.droneChanged && (
+              <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <span>{t("dashboard.flightAnalysis.logDetails.reassignSummaryMaintenance")}</span>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{t("dashboard.flightAnalysis.logDetails.reassignDrone")}</Label>
@@ -191,18 +270,34 @@ export const ReassignFlightLogDialog = ({
             <span>{t("dashboard.flightAnalysis.logDetails.reassignWarning")}</span>
           </div>
         </div>
+        )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            {t("dashboard.flightAnalysis.logDetails.reassignCancel")}
-          </Button>
           <Button
-            onClick={handleSave}
-            disabled={saving || (droneId === (currentDroneId || "") && pilotId === (currentPilotId || ""))}
+            variant="outline"
+            onClick={() => (preview ? setPreview(null) : onOpenChange(false))}
+            disabled={saving}
           >
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {t("dashboard.flightAnalysis.logDetails.reassignSave")}
+            {preview
+              ? t("dashboard.flightAnalysis.logDetails.reassignBack")
+              : t("dashboard.flightAnalysis.logDetails.reassignCancel")}
           </Button>
+          {preview ? (
+            <Button onClick={handleSave} disabled={saving || (!preview.droneChanged && !preview.pilotChanged)}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("dashboard.flightAnalysis.logDetails.reassignConfirm")}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleReview}
+              disabled={
+                previewLoading || (droneId === (currentDroneId || "") && pilotId === (currentPilotId || ""))
+              }
+            >
+              {previewLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("dashboard.flightAnalysis.logDetails.reassignReview")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
