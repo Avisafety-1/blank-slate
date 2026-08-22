@@ -129,7 +129,7 @@ function deriveFromPositions(positions: any[]) {
   };
 }
 
-export function buildFlightAnalysisTrack(log: any, events: any[] = []) {
+export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?: FlightLogContext) {
   const positions = log?.flight_track?.positions || [];
   const identifiers = (log?.log_identifiers as any) || {};
   const derived = deriveFromPositions(positions);
