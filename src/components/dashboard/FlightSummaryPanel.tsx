@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
-  ChevronDown,
+  ChevronDown, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
 } from "lucide-react";
 
 export interface FlightSummary {
@@ -25,12 +26,56 @@ export interface FlightSummary {
   batteryCellDeviationV?: number | null;
   rthTriggered?: boolean | null;
   source?: string | null;
+  // Derived
+  avgSpeedMs?: number | null;
+  maxWindMs?: number | null;
+  maxMslM?: number | null;
+  modeChanges?: number | null;
+  warningCount?: number | null;
+  // Identifiers / log metadata
+  droneModel?: string | null;
+  aircraftName?: string | null;
+  aircraftSerial?: string | null;
+  fcSerial?: string | null;
+  rcSerial?: string | null;
+  cameraSerial?: string | null;
+  gimbalSerial?: string | null;
+  batterySn?: string | null;
+  batteryCycles?: number | null;
+  batteryHealthPct?: number | null;
+  batteryFullCapacityMah?: number | null;
+  entrySource?: string | null;
+  startTimeUtc?: string | null;
+  endTimeUtc?: string | null;
+  sha256?: string | null;
+  logGuid?: string | null;
 }
 
 interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
 }
+
+const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
+  const [copied, setCopied] = useState(false);
+  const shown = truncate && value.length > 18 ? `${value.slice(0, 10)}…${value.slice(-6)}` : value;
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1 text-left font-mono text-xs break-all hover:text-primary transition-colors"
+      onClick={() => {
+        navigator.clipboard?.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title={value}
+    >
+      <span>{shown}</span>
+      {copied ? <Check className="w-3 h-3 shrink-0 text-green-600 dark:text-green-400" /> : <Copy className="w-3 h-3 shrink-0 opacity-50" />}
+    </button>
+  );
+};
+
 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
