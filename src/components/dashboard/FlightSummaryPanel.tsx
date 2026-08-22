@@ -224,9 +224,12 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
   const mainEvents = grouped.filter(g => !["APP_WARNING", "message"].includes(g.ev.type));
   const appWarningEvents = grouped.filter(g => g.ev.type === "APP_WARNING" || g.ev.type === "message");
 
+  const canReassign = !!s.flightLogId && (isAdmin || (!!user?.id && s.pilotProfileId === user.id));
+  const showLoggedOn = !!s.flightLogId;
+
   const hasAnything =
     primaryShown.length > 0 || extendedShown.length > 0 || s.rthTriggered || events.length > 0 ||
-    detailGroupsShown.length > 0;
+    detailGroupsShown.length > 0 || showLoggedOn;
 
   if (!hasAnything) return null;
 
