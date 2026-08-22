@@ -802,6 +802,11 @@ function parseCsvToResult(csvText: string) {
     aircraftSN: aircraftSN || null,
     aircraftSerial: aircraftSerial || null,
     droneType: droneType || null,
+    // Hardware identifiers (informational only — no matching logic uses these yet)
+    fcSN: fcSN || null,
+    rcSN: rcSN || null,
+    cameraSN: cameraSN || null,
+    gimbalSN: gimbalSN || null,
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
