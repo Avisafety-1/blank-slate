@@ -30,7 +30,7 @@ export const ReassignFlightLogDialog = ({
   onReassigned,
 }: Props) => {
   const { t } = useTranslation();
-  const { companyId: authCompanyId } = useAuth();
+  const { companyId: authCompanyId, user } = useAuth();
   const effectiveCompanyId = companyId || authCompanyId;
 
   const [drones, setDrones] = useState<Array<{ id: string; label: string }>>([]);
