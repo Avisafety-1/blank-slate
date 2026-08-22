@@ -258,7 +258,7 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
 
       {(detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
-          <Tabs defaultValue={detailGroupsShown.length > 0 ? "details" : "events"} className="w-full">
+          <Tabs className="w-full">
             <TabsList className="w-full justify-start rounded-none border-b border-border bg-muted/40 p-0 h-auto">
               {detailGroupsShown.length > 0 && (
                 <TabsTrigger
@@ -309,40 +309,27 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
 
             {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
               <TabsContent value="events" className="m-0 p-3 space-y-1.5">
-                {mainEvents.map(({ ev, count }, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-xs">
-                    {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                    {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                    {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                    {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
-                    {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
-                    {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary shrink-0" />}
-                    {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change"].includes(ev.type) && (
-                      <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                {[...mainEvents, ...appWarningEvents].map(({ ev, count }, i) => (
+                  <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-xs">
+                    {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />}
+                    {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive mt-0.5 shrink-0" />}
+                    {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />}
+                    {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />}
+                    {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />}
+                    {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary mt-0.5 shrink-0" />}
+                    {ev.type === "APP_WARNING" && <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />}
+                    {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change", "APP_WARNING"].includes(ev.type) && (
+                      <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                     )}
-                    <span className="font-medium">{ev.type}</span>
-                    {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
-                    {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{ev.type}</span>
+                        {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                      </div>
+                      {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
+                    </div>
                   </div>
                 ))}
-                {appWarningEvents.length > 0 && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full px-2 py-1.5 rounded-lg border border-dashed border-border/70">
-                      <Info className="w-3 h-3 shrink-0" />
-                      <span>{t('dashboard.flightAnalysis.appWarnings', { count: appWarningEvents.reduce((s, g) => s + g.count, 0) })}</span>
-                      <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-1 mt-1">
-                      {appWarningEvents.map(({ ev, count }, i) => (
-                        <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded-lg bg-muted/20 border border-border/40 text-xs">
-                          <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                          <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
-                          {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
               </TabsContent>
             )}
           </Tabs>
