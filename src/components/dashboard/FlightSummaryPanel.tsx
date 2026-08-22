@@ -64,6 +64,10 @@ export interface FlightSummary {
   pilotName?: string | null;
   missionId?: string | null;
   missionName?: string | null;
+  // Traceability
+  droneTotalHours?: number | null;
+  droneLogEntryCount?: number | null;
+  personnelLogEntryCount?: number | null;
 }
 
 interface FlightSummaryPanelProps {
@@ -354,6 +358,42 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
                       </div>
                     );
                   })}
+                </div>
+
+                <div className="mt-3 p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <FileText className="w-3 h-3" />
+                    {t('dashboard.flightAnalysis.logDetails.traceTitle')}
+                  </div>
+                  {!s.droneId ? (
+                    <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoDrone')}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceContribution')}</span>
+                        <span className="font-medium text-right">
+                          {s.durationMinutes != null ? `${Math.round(s.durationMinutes)} min` : '–'}
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneTotal')}</span>
+                        <span className="font-medium text-right">
+                          {s.droneTotalHours != null ? `${s.droneTotalHours.toFixed(1)} t` : '–'}
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneEntries')}</span>
+                        <span className="font-medium text-right">{s.droneLogEntryCount ?? 0}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.tracePilotEntries')}</span>
+                    <span className="font-medium text-right">{s.personnelLogEntryCount ?? 0}</span>
+                  </div>
                 </div>
               </TabsContent>
             )}
