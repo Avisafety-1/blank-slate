@@ -278,41 +278,6 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
         </div>
       )}
 
-      {showLoggedOn && (
-        <div className="rounded-xl border border-border bg-card/60 p-3">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('dashboard.flightAnalysis.logDetails.loggedOn')}
-            </span>
-            {canReassign && (
-              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setReassignOpen(true)}>
-                <Pencil className="w-3 h-3" />
-                {t('dashboard.flightAnalysis.logDetails.reassign')}
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {[
-              { icon: Plane, label: t('dashboard.flightAnalysis.logDetails.loggedOnDrone'), value: s.droneName || s.droneModelName },
-              { icon: User, label: t('dashboard.flightAnalysis.logDetails.loggedOnPilot'), value: s.pilotName },
-              { icon: Target, label: t('dashboard.flightAnalysis.logDetails.loggedOnMission'), value: s.missionName },
-            ].map((row, i) => {
-              const Icon = row.icon;
-              return (
-                <div key={i} className="p-2 rounded-lg bg-muted/30 space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Icon className="w-3 h-3" />{row.label}
-                  </div>
-                  <p className="text-sm font-medium break-words">
-                    {row.value || <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.loggedOnNone')}</span>}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {s.flightLogId && (
         <ReassignFlightLogDialog
           open={reassignOpen}
@@ -325,10 +290,19 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
         />
       )}
 
-      {(detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
+      {(showLoggedOn || detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
           <Tabs className="w-full">
             <TabsList className="w-full justify-start rounded-none border-b border-border bg-muted/40 p-0 h-auto">
+              {showLoggedOn && (
+                <TabsTrigger
+                  value="loggedOn"
+                  className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  <Plane className="w-3.5 h-3.5" />
+                  {t('dashboard.flightAnalysis.logDetails.loggedOn')}
+                </TabsTrigger>
+              )}
               {detailGroupsShown.length > 0 && (
                 <TabsTrigger
                   value="details"
@@ -348,6 +322,41 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
                 </TabsTrigger>
               )}
             </TabsList>
+
+            {showLoggedOn && (
+              <TabsContent value="loggedOn" className="m-0 p-3">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="text-xs text-muted-foreground">
+                    {t('dashboard.flightAnalysis.logDetails.loggedOnDescription')}
+                  </span>
+                  {canReassign && (
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs shrink-0" onClick={() => setReassignOpen(true)}>
+                      <Pencil className="w-3 h-3" />
+                      {t('dashboard.flightAnalysis.logDetails.reassign')}
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { icon: Plane, label: t('dashboard.flightAnalysis.logDetails.loggedOnDrone'), value: s.droneName || s.droneModelName },
+                    { icon: User, label: t('dashboard.flightAnalysis.logDetails.loggedOnPilot'), value: s.pilotName },
+                    { icon: Target, label: t('dashboard.flightAnalysis.logDetails.loggedOnMission'), value: s.missionName },
+                  ].map((row, i) => {
+                    const Icon = row.icon;
+                    return (
+                      <div key={i} className="p-2.5 rounded-lg border border-border/60 bg-muted/30 space-y-1 min-w-0">
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <Icon className="w-3 h-3" />{row.label}
+                        </div>
+                        <p className="text-sm font-medium break-words">
+                          {row.value || <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.loggedOnNone')}</span>}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            )}
 
             {detailGroupsShown.length > 0 && (
               <TabsContent value="details" className="m-0 p-3">
