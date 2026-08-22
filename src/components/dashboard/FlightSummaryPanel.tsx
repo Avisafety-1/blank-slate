@@ -256,6 +256,43 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         </div>
       )}
 
+      {detailGroupsShown.length > 0 && (
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
+            <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
+            <p className="text-xs font-medium text-muted-foreground">
+              {t('dashboard.flightAnalysis.logDetails.title')}
+            </p>
+            <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {detailGroupsShown.map((g, gi) => {
+                const Icon = g.icon;
+                return (
+                  <div key={gi} className="p-2.5 rounded-lg bg-muted/30 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                      <Icon className="w-3 h-3" />{g.title}
+                    </div>
+                    {g.rows.map((r, ri) => (
+                      <div key={ri} className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground shrink-0">{r.label}</span>
+                        {r.mono ? (
+                          <CopyableValue value={r.value as string} truncate={r.truncate} />
+                        ) : (
+                          <span className="font-medium text-right break-words">{r.value}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+
       {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <Collapsible defaultOpen={false}>
           <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
