@@ -2483,9 +2483,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   })()}
                 </div>
 
-                {/* Equipment selector */}
-                {equipmentList.length > 0 && (
-                  <div className="space-y-1.5">
 
                 {/* Log identifiers — read-only, collected for future drone identification */}
                 {(() => {
