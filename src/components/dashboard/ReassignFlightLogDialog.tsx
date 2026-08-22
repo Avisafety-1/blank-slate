@@ -40,11 +40,14 @@ export const ReassignFlightLogDialog = ({
   const [pilotId, setPilotId] = useState<string>(currentPilotId || "");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<ReassignPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setDroneId(currentDroneId || "");
     setPilotId(currentPilotId || "");
+    setPreview(null);
     if (!effectiveCompanyId && !user?.id) return;
     (async () => {
       setLoading(true);
