@@ -49,11 +49,22 @@ export interface FlightSummary {
   endTimeUtc?: string | null;
   sha256?: string | null;
   logGuid?: string | null;
+  // "Logged on" context
+  flightLogId?: string | null;
+  companyId?: string | null;
+  droneId?: string | null;
+  droneName?: string | null;
+  droneModelName?: string | null;
+  pilotProfileId?: string | null;
+  pilotName?: string | null;
+  missionId?: string | null;
+  missionName?: string | null;
 }
 
 interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
+  onReassigned?: () => void;
 }
 
 const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
