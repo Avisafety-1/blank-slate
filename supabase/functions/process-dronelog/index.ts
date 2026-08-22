@@ -810,6 +810,7 @@ function parseCsvToResult(csvText: string) {
     rcSN: rcSN || null,
     cameraSN: cameraSN || null,
     gimbalSN: gimbalSN || null,
+    serialAircraftSN: serialAircraftSN || null,
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
