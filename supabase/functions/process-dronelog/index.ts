@@ -159,7 +159,7 @@ const FIELDS = [
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
   // Hardware identifiers (collected for future drone identification — not used for matching yet)
-  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN",
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN",
   "APP.warning",
 ].join(",");
 
@@ -329,6 +329,7 @@ function parseCsvToResult(csvText: string) {
   const detRcSNIdx = findHeaderIndex(headers, "DETAILS.rcSN");
   const detCameraSNIdx = findHeaderIndex(headers, "DETAILS.cameraSN");
   const detGimbalSNIdx = findHeaderIndex(headers, "DETAILS.gimbalSN");
+  const serialAircraftSNIdx = findHeaderIndex(headers, "SERIAL.aircraftSN");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
@@ -362,13 +363,15 @@ function parseCsvToResult(csvText: string) {
   const rcSN = detRcSNIdx >= 0 ? stripQuotes(firstRow[detRcSNIdx]) : "";
   const cameraSN = detCameraSNIdx >= 0 ? stripQuotes(firstRow[detCameraSNIdx]) : "";
   const gimbalSN = detGimbalSNIdx >= 0 ? stripQuotes(firstRow[detGimbalSNIdx]) : "";
+  const serialAircraftSN = serialAircraftSNIdx >= 0 ? stripQuotes(firstRow[serialAircraftSNIdx]) : "";
   console.log("[DIAG] Hardware identifiers —",
     "aircraftName:", aircraftName || "(none)",
     "| aircraftSN:", aircraftSN || "(none)",
     "| fcSN:", fcSN || "(none)",
     "| rcSN:", rcSN || "(none)",
     "| cameraSN:", cameraSN || "(none)",
-    "| gimbalSN:", gimbalSN || "(none)");
+    "| gimbalSN:", gimbalSN || "(none)",
+    "| SERIAL.aircraftSN:", serialAircraftSN || "(none)");
 
   // === DIAGNOSTIC: Inspect ALL battery-related headers and unique SN values across rows ===
   const batteryHeaders = headers.filter(h => /battery/i.test(h) && /SN|serial/i.test(h));
@@ -807,6 +810,7 @@ function parseCsvToResult(csvText: string) {
     rcSN: rcSN || null,
     cameraSN: cameraSN || null,
     gimbalSN: gimbalSN || null,
+    serialAircraftSN: serialAircraftSN || null,
     totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,

@@ -94,7 +94,8 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
       "| fcSN:", (parsed as any).fcSN || "(none)",
       "| rcSN:", (parsed as any).rcSN || "(none)",
       "| cameraSN:", (parsed as any).cameraSN || "(none)",
-      "| gimbalSN:", (parsed as any).gimbalSN || "(none)");
+      "| gimbalSN:", (parsed as any).gimbalSN || "(none)",
+      "| SERIAL.aircraftSN:", (parsed as any).serialAircraftSN || "(none)");
 
     // 3. Match drone + battery
     const matchStart = Date.now();
