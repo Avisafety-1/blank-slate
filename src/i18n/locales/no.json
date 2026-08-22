@@ -629,6 +629,7 @@
         "copied": "Kopiert",
         "copy": "Kopier",
         "loggedOn": "Loggført på",
+        "loggedOnDescription": "Drone, pilot og oppdrag denne flyturen er loggført på.",
         "loggedOnDrone": "Drone",
         "loggedOnPilot": "Pilot",
         "loggedOnMission": "Oppdrag",
