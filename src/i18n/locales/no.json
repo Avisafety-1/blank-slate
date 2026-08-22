@@ -662,7 +662,19 @@
         "traceEntriesHint": "Selve flyturen vises alltid i loggbøkene via denne loggen. Tallene over gjelder kun ekstra advarsler og notater.",
         "traceLogId": "Logg-ID",
         "traceDroneEntries": "Oppføringer i dronens loggbok",
-        "tracePilotEntries": "Oppføringer i pilotens loggbok"
+        "tracePilotEntries": "Oppføringer i pilotens loggbok",
+        "reassignReview": "Se gjennom endringer",
+        "reassignBack": "Tilbake",
+        "reassignConfirm": "Bekreft flytting",
+        "reassignConfirmDesc": "Dette blir flyttet:",
+        "reassignSummaryDrone": "Flyloggen flyttes fra {{from}} til {{to}}.",
+        "reassignSummaryHours": "{{hours}} flytimer trekkes fra gammel drone og legges til ny drone.",
+        "reassignSummaryWarnings": "{{count}} advarsler i dronens loggbok flyttes.",
+        "reassignSummaryPilot": "Piloten byttes fra {{from}} til {{to}}.",
+        "reassignSummaryPersonnel": "{{count}} oppføringer i personell-loggboken flyttes.",
+        "reassignSummaryCrewKept": "{{count}} andre personer på flyturen beholdes uendret.",
+        "reassignSummaryMaintenance": "Flytting av flytimer påvirker også vedlikeholdsstatus på begge droner. Endringen spores i loggbøkene.",
+        "reassignSummaryNoChange": "Ingen endringer å lagre."
       }
     },
     "missionDetail": {
