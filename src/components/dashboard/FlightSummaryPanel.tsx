@@ -360,41 +360,83 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
                   })}
                 </div>
 
-                <div className="mt-3 p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1.5">
+                <div className="mt-3 p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-2">
                   <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <FileText className="w-3 h-3" />
                     {t('dashboard.flightAnalysis.logDetails.traceTitle')}
                   </div>
-                  {!s.droneId ? (
+
+                  {/* In drone logbook */}
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceInDroneLogbook')}</span>
+                    <span className={`font-medium text-right ${s.inDroneLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {s.inDroneLogbook ? t('common.yes') : t('common.no')}
+                    </span>
+                  </div>
+                  {!s.inDroneLogbook && (
                     <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoDrone')}</span>
+                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoDroneHint')}</span>
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex items-start justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceContribution')}</span>
-                        <span className="font-medium text-right">
-                          {s.durationMinutes != null ? `${Math.round(s.durationMinutes)} min` : '–'}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneTotal')}</span>
-                        <span className="font-medium text-right">
-                          {s.droneTotalHours != null ? `${s.droneTotalHours.toFixed(1)} t` : '–'}
-                        </span>
-                      </div>
-                      <div className="flex items-start justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneEntries')}</span>
-                        <span className="font-medium text-right">{s.droneLogEntryCount ?? 0}</span>
-                      </div>
-                    </>
                   )}
+
+                  {/* In pilot logbook */}
                   <div className="flex items-start justify-between gap-3 text-xs">
-                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.tracePilotEntries')}</span>
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceInPilotLogbook')}</span>
+                    <span className={`font-medium text-right ${s.inPilotLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {s.inPilotLogbook ? t('common.yes') : t('common.no')}
+                    </span>
+                  </div>
+                  {!s.inPilotLogbook && (
+                    <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoPilotHint')}</span>
+                    </div>
+                  )}
+
+                  <div className="h-px bg-border/60 my-1" />
+
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceContribution')}</span>
+                    <span className="font-medium text-right">
+                      {s.durationMinutes != null ? `${Math.round(s.durationMinutes)} min` : '–'}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneTotal')}</span>
+                    <span className="font-medium text-right">
+                      {s.droneTotalHours != null ? `${s.droneTotalHours.toFixed(1)} t` : '–'}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.tracePilotTotal')}</span>
+                    <span className="font-medium text-right">
+                      {s.pilotTotalHours != null ? `${s.pilotTotalHours.toFixed(1)} t` : '–'}
+                    </span>
+                  </div>
+
+                  <div className="h-px bg-border/60 my-1" />
+
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceDroneWarningEntries')}</span>
+                    <span className="font-medium text-right">{s.droneLogEntryCount ?? 0}</span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.tracePilotNoteEntries')}</span>
                     <span className="font-medium text-right">{s.personnelLogEntryCount ?? 0}</span>
                   </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    {t('dashboard.flightAnalysis.logDetails.traceEntriesHint')}
+                  </p>
+
+                  {s.flightLogId && (
+                    <div className="flex items-start justify-between gap-3 text-xs pt-1">
+                      <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceLogId')}</span>
+                      <span className="font-mono text-right break-all">{String(s.flightLogId).slice(0, 8)}</span>
+                    </div>
+                  )}
                 </div>
+
               </TabsContent>
             )}
 
