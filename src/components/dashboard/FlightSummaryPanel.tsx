@@ -91,8 +91,11 @@ const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
-export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelProps) => {
+export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: FlightSummaryPanelProps) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { isAdmin } = useRoleCheck();
+  const [reassignOpen, setReassignOpen] = useState(false);
   const s = summary;
   const isArdu = s.source === "ardupilot";
 
