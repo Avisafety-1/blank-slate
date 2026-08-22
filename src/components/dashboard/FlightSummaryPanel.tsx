@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
-  ChevronDown, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
+  ChevronDown, Activity, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
 } from "lucide-react";
 
 export interface FlightSummary {
@@ -256,89 +257,99 @@ export const FlightSummaryPanel = ({ summary, events = [] }: FlightSummaryPanelP
         </div>
       )}
 
-      {detailGroupsShown.length > 0 && (
-        <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
-            <Cpu className="w-3.5 h-3.5 text-muted-foreground" />
-            <p className="text-xs font-medium text-muted-foreground">
-              {t('dashboard.flightAnalysis.logDetails.title')}
-            </p>
-            <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-1.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {detailGroupsShown.map((g, gi) => {
-                const Icon = g.icon;
-                return (
-                  <div key={gi} className="p-2.5 rounded-lg bg-muted/30 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                      <Icon className="w-3 h-3" />{g.title}
-                    </div>
-                    {g.rows.map((r, ri) => (
-                      <div key={ri} className="flex items-start justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground shrink-0">{r.label}</span>
-                        {r.mono ? (
-                          <CopyableValue value={r.value as string} truncate={r.truncate} />
-                        ) : (
-                          <span className="font-medium text-right break-words">{r.value}</span>
-                        )}
+      {(detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
+        <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
+          <Tabs defaultValue={detailGroupsShown.length > 0 ? "details" : "events"} className="w-full">
+            <TabsList className="w-full justify-start rounded-none border-b border-border bg-muted/40 p-0 h-auto">
+              {detailGroupsShown.length > 0 && (
+                <TabsTrigger
+                  value="details"
+                  className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  <Cpu className="w-3.5 h-3.5" />
+                  {t('dashboard.flightAnalysis.logDetails.title')}
+                </TabsTrigger>
+              )}
+              {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
+                <TabsTrigger
+                  value="events"
+                  className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  {t('dashboard.flightAnalysis.flightEvents', { count: mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0) })}
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            {detailGroupsShown.length > 0 && (
+              <TabsContent value="details" className="m-0 p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {detailGroupsShown.map((g, gi) => {
+                    const Icon = g.icon;
+                    return (
+                      <div key={gi} className="p-2.5 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <Icon className="w-3 h-3" />{g.title}
+                        </div>
+                        {g.rows.map((r, ri) => (
+                          <div key={ri} className="flex items-start justify-between gap-3 text-xs">
+                            <span className="text-muted-foreground shrink-0">{r.label}</span>
+                            {r.mono ? (
+                              <CopyableValue value={r.value as string} truncate={r.truncate} />
+                            ) : (
+                              <span className="font-medium text-right break-words">{r.value}</span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-
-      {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
-        <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 rounded hover:bg-muted/40 transition-colors">
-            <p className="text-xs font-medium text-muted-foreground">
-              {t('dashboard.flightAnalysis.flightEvents', { count: mainEvents.reduce((s, g) => s + g.count, 0) + appWarningEvents.reduce((s, g) => s + g.count, 0) })}
-            </p>
-            <ChevronDown className="w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-1.5 mt-1.5">
-            {mainEvents.map(({ ev, count }, i) => (
-              <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-muted/40 text-xs">
-                {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive shrink-0" />}
-                {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
-                {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
-                {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary shrink-0" />}
-                {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change"].includes(ev.type) && (
-                  <Info className="w-3 h-3 text-muted-foreground shrink-0" />
-                )}
-                <span className="font-medium">{ev.type}</span>
-                {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
-                {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
-              </div>
-            ))}
-            {appWarningEvents.length > 0 && (
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
-                  <Info className="w-3 h-3 shrink-0" />
-                  <span>{t('dashboard.flightAnalysis.appWarnings', { count: appWarningEvents.reduce((s, g) => s + g.count, 0) })}</span>
-                  <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 mt-1">
-                  {appWarningEvents.map(({ ev, count }, i) => (
-                    <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded bg-muted/30 text-xs">
-                      <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                      <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
-                      {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
-                    </div>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
+                    );
+                  })}
+                </div>
+              </TabsContent>
             )}
-          </CollapsibleContent>
-        </Collapsible>
+
+            {(mainEvents.length > 0 || appWarningEvents.length > 0) && (
+              <TabsContent value="events" className="m-0 p-3 space-y-1.5">
+                {mainEvents.map(({ ev, count }, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border/60 bg-muted/30 text-xs">
+                    {ev.type === "RTH" && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                    {ev.type === "LOW_BATTERY" && <Battery className="w-3 h-3 text-destructive shrink-0" />}
+                    {(ev.type === "error" || ev.type === "failsafe") && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                    {ev.type === "arm" && <LogIn className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />}
+                    {ev.type === "disarm" && <LogOut className="w-3 h-3 text-muted-foreground shrink-0" />}
+                    {ev.type === "mode_change" && <Plane className="w-3 h-3 text-primary shrink-0" />}
+                    {!["RTH", "LOW_BATTERY", "error", "failsafe", "arm", "disarm", "mode_change"].includes(ev.type) && (
+                      <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="font-medium">{ev.type}</span>
+                    {ev.message && <span className="text-muted-foreground break-words whitespace-normal">{ev.message}</span>}
+                    {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                  </div>
+                ))}
+                {appWarningEvents.length > 0 && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full px-2 py-1.5 rounded-lg border border-dashed border-border/70">
+                      <Info className="w-3 h-3 shrink-0" />
+                      <span>{t('dashboard.flightAnalysis.appWarnings', { count: appWarningEvents.reduce((s, g) => s + g.count, 0) })}</span>
+                      <ChevronDown className="w-3 h-3 ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 mt-1">
+                      {appWarningEvents.map(({ ev, count }, i) => (
+                        <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded-lg bg-muted/20 border border-border/40 text-xs">
+                          <Info className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
+                          <span className="text-muted-foreground break-words whitespace-normal flex-1">{ev.message}</span>
+                          {count > 1 && <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0">×{count}</Badge>}
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </TabsContent>
+            )}
+          </Tabs>
+        </div>
       )}
+
     </div>
   );
 };
