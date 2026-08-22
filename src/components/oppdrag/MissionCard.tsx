@@ -977,6 +977,7 @@ export const MissionCard = ({
       onOpenChange={setAnalysisOpen}
       flightTrack={analysisTrack}
       droneName={mission.tittel}
+      onReassigned={() => { setAnalysisOpen(false); fetchMissions?.(); }}
     />
     <MissionNotesDialog
       open={notesDialogOpen}

@@ -839,6 +839,7 @@ export const DroneLogbookDialog = ({
         flightTrack={analysisTrack}
         flightDate={analysisDate}
         droneName={droneModell}
+        onReassigned={() => { setAnalysisOpen(false); fetchAllLogs(); }}
       />
 
       <EditFlightLogDialog

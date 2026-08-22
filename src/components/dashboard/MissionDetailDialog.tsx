@@ -643,6 +643,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       flightTrack={analysisTrack}
       flightDate={undefined}
       droneName={currentMission?.tittel}
+      onReassigned={() => setAnalysisOpen(false)}
     />
 
     <NotamDialog
