@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "react-i18next";
 import {
   Clock, Zap, Battery, MapPin, Route, Mountain, Satellite,
   Thermometer, Ruler, AlertTriangle, Info, LogIn, LogOut, Plane,
-  ChevronDown, Activity, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
+  Activity, Wind, Gauge, Repeat, Copy, Check, Cpu, FileText,
 } from "lucide-react";
 
 export interface FlightSummary {
