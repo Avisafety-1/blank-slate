@@ -190,7 +190,14 @@ export const DroneLogbookDialog = ({
             badgeText: t('resourceDialogs.droneLogbook.badges.flight'),
             flightTrack: {
               ...existingTrack,
-              ...buildFlightAnalysisTrack(log, existingTrack.events || eventsByLogId.get(log.id) || []),
+              ...buildFlightAnalysisTrack(log, existingTrack.events || eventsByLogId.get(log.id) || [], {
+                flightLogId: log.id,
+                droneId,
+                droneName,
+                pilotProfileId: pilotByLogId.get(log.id) || log.user_id || null,
+                pilotName: userMap.get(pilotByLogId.get(log.id) || log.user_id) || null,
+                missionId: (log as any).mission_id ?? null,
+              }),
             },
 
             flightDate: log.flight_date,
