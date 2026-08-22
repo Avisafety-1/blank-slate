@@ -59,6 +59,11 @@ interface DroneLogResult {
   aircraftSN: string | null;
   aircraftSerial: string | null;
   droneType: string | null;
+  // Hardware identifiers from the log — informational only, not used for matching
+  fcSN?: string | null;
+  rcSN?: string | null;
+  cameraSN?: string | null;
+  gimbalSN?: string | null;
   totalDistance: number | null;
   maxAltitude: number | null;
   detailsMaxSpeed: number | null;
