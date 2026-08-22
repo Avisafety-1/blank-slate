@@ -56,11 +56,11 @@ export async function loadFlightLogContext(log: any): Promise<FlightLogContext> 
     tasks.push(
       (supabase as any)
         .from("missions")
-        .select("id, title")
+        .select("id, tittel")
         .eq("id", log.mission_id)
         .maybeSingle()
         .then(({ data }: any) => {
-          ctx.missionName = data?.title ?? null;
+          ctx.missionName = data?.tittel ?? null;
         })
     );
   }
