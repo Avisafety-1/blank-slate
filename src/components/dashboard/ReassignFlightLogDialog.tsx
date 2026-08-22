@@ -155,6 +155,66 @@ export const ReassignFlightLogDialog = ({
           <DialogDescription>{t("dashboard.flightAnalysis.logDetails.reassignDesc")}</DialogDescription>
         </DialogHeader>
 
+        {preview ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.flightAnalysis.logDetails.reassignConfirmDesc")}
+            </p>
+            <ul className="space-y-2 rounded-lg border border-border bg-muted/40 p-3 text-sm">
+              {preview.droneChanged && (
+                <>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryDrone", {
+                      from: preview.fromDrone || t("dashboard.flightAnalysis.logDetails.loggedOnNone"),
+                      to: preview.toDrone,
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryHours", {
+                      hours: preview.hours.toFixed(2),
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryWarnings", {
+                      count: preview.warningEntries,
+                    })}
+                  </li>
+                </>
+              )}
+              {preview.pilotChanged && (
+                <>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryPilot", {
+                      from: preview.fromPilot || t("dashboard.flightAnalysis.logDetails.loggedOnNone"),
+                      to: preview.toPilot,
+                    })}
+                  </li>
+                  <li>
+                    {t("dashboard.flightAnalysis.logDetails.reassignSummaryPersonnel", {
+                      count: preview.personnelEntries,
+                    })}
+                  </li>
+                  {preview.otherCrew > 0 && (
+                    <li>
+                      {t("dashboard.flightAnalysis.logDetails.reassignSummaryCrewKept", {
+                        count: preview.otherCrew,
+                      })}
+                    </li>
+                  )}
+                </>
+              )}
+              {!preview.droneChanged && !preview.pilotChanged && (
+                <li>{t("dashboard.flightAnalysis.logDetails.reassignSummaryNoChange")}</li>
+              )}
+            </ul>
+            {preview.droneChanged && (
+              <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                <span>{t("dashboard.flightAnalysis.logDetails.reassignSummaryMaintenance")}</span>
+              </div>
+            )}
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{t("dashboard.flightAnalysis.logDetails.reassignDrone")}</Label>
