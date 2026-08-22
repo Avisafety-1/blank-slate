@@ -597,9 +597,40 @@
         "minVoltage": "Min. spenning",
         "maxDistance": "Maks avstand",
         "maxVSpeed": "Maks V-fart",
-        "cellDeviation": "Celleavvik"
+        "cellDeviation": "Celleavvik",
+        "avgSpeed": "Snitthastighet",
+        "maxWind": "Maks vind",
+        "maxMsl": "Maks høyde MSL",
+        "modeChanges": "Flymodus-endringer",
+        "warningCount": "Loggvarsler"
+      },
+      "logDetails": {
+        "title": "Loggdetaljer og identifikatorer",
+        "drone": "Drone",
+        "model": "Modell",
+        "aircraftName": "Dronenavn i logg",
+        "aircraftSerial": "Serienummer fly",
+        "hardware": "Sensorer og maskinvare",
+        "fcSerial": "Flykontroller S/N",
+        "rcSerial": "Fjernkontroll S/N",
+        "cameraSerial": "Kamera S/N",
+        "gimbalSerial": "Gimbal S/N",
+        "battery": "Batteri",
+        "batterySn": "Batteri S/N",
+        "batteryCycles": "Sykluser",
+        "batteryHealth": "Batterihelse",
+        "batteryCapacity": "Full kapasitet",
+        "log": "Loggfil",
+        "entrySource": "Kilde",
+        "startTime": "Start (UTC)",
+        "endTime": "Slutt (UTC)",
+        "sha256": "SHA256",
+        "guid": "Logg-ID",
+        "copied": "Kopiert",
+        "copy": "Kopier"
       }
     },
+
     "missionDetail": {
       "riskAssessment": "Risikovurdering",
       "notam": "NOTAM",
