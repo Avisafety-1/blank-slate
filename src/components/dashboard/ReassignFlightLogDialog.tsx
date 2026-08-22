@@ -139,9 +139,17 @@ export const ReassignFlightLogDialog = ({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>{t("dashboard.flightAnalysis.logDetails.reassignDrone")}</Label>
-            <Select value={droneId} onValueChange={setDroneId}>
+            <Select value={droneId} onValueChange={setDroneId} disabled={loading || drones.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={t("dashboard.flightAnalysis.logDetails.loggedOnNone")} />
+                <SelectValue
+                  placeholder={
+                    loading
+                      ? t("dashboard.flightAnalysis.logDetails.reassignLoading")
+                      : drones.length === 0
+                      ? t("dashboard.flightAnalysis.logDetails.reassignNoDrones")
+                      : t("dashboard.flightAnalysis.logDetails.loggedOnNone")
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="z-[100]">
                 {drones.map((d) => (
@@ -155,9 +163,17 @@ export const ReassignFlightLogDialog = ({
 
           <div className="space-y-2">
             <Label>{t("dashboard.flightAnalysis.logDetails.reassignPilot")}</Label>
-            <Select value={pilotId} onValueChange={setPilotId}>
+            <Select value={pilotId} onValueChange={setPilotId} disabled={loading || pilots.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={t("dashboard.flightAnalysis.logDetails.loggedOnNone")} />
+                <SelectValue
+                  placeholder={
+                    loading
+                      ? t("dashboard.flightAnalysis.logDetails.reassignLoading")
+                      : pilots.length === 0
+                      ? t("dashboard.flightAnalysis.logDetails.reassignNoPilots")
+                      : t("dashboard.flightAnalysis.logDetails.loggedOnNone")
+                  }
+                />
               </SelectTrigger>
               <SelectContent className="z-[100]">
                 {pilots.map((p) => (
@@ -168,6 +184,7 @@ export const ReassignFlightLogDialog = ({
               </SelectContent>
             </Select>
           </div>
+
 
           <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
