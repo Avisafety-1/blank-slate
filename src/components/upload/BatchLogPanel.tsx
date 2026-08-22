@@ -266,6 +266,7 @@ export const BatchLogPanel = ({
       max_vert_speed_ms: parsed.maxVSpeed || null,
       drone_model: parsed.droneType || null,
       aircraft_serial: parsed.aircraftSerial || parsed.aircraftSN || null,
+      log_identifiers: { aircraftName: parsed.aircraftName ?? null, droneType: parsed.droneType ?? null, guid: parsed.guid ?? null, fcSN: parsed.fcSN ?? null, rcSN: parsed.rcSN ?? null, cameraSN: parsed.cameraSN ?? null, gimbalSN: parsed.gimbalSN ?? null } as any,
       battery_cycles: parsed.batteryCycles || null,
       battery_temp_min_c: parsed.batteryTempMin || null,
       battery_temp_max_c: parsed.batteryTemperature || null,
