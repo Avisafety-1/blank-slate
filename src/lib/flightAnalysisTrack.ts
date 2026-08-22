@@ -71,7 +71,8 @@ export async function loadFlightLogContext(log: any): Promise<FlightLogContext> 
       (supabase as any)
         .from("drone_log_entries")
         .select("id", { count: "exact", head: true })
-        .eq("flight_log_id", log.id)
+        .eq("drone_id", log.drone_id ?? "00000000-0000-0000-0000-000000000000")
+        .eq("entry_date", log.flight_date ?? "1970-01-01")
         .then(({ count }: any) => {
           ctx.droneLogEntryCount = count ?? 0;
         })
