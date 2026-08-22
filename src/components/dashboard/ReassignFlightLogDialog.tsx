@@ -113,6 +113,22 @@ export const ReassignFlightLogDialog = ({
     })();
   }, [open, effectiveCompanyId, currentDroneId, currentPilotId, user?.id, t]);
 
+  const handleReview = async () => {
+    setPreviewLoading(true);
+    try {
+      const p = await previewFlightLogReassign({
+        flightLogId,
+        newDroneId: droneId || null,
+        newPilotId: pilotId || null,
+      });
+      setPreview(p);
+    } catch (e: any) {
+      toast.error(t("dashboard.flightAnalysis.logDetails.reassignError"), { description: e?.message });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
