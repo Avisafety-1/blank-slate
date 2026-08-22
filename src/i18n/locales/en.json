@@ -627,6 +627,7 @@
         "copied": "Copied",
         "copy": "Copy",
         "loggedOn": "Logged on",
+        "loggedOnDescription": "Drone, pilot and mission this flight is logged against.",
         "loggedOnDrone": "Drone",
         "loggedOnPilot": "Pilot",
         "loggedOnMission": "Mission",
