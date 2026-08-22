@@ -378,36 +378,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                           size="sm"
                           className="h-7 px-2 text-xs"
                           onClick={async () => {
-                            const summary = {
-                              durationMinutes: log.flight_duration_minutes ?? null,
-                              maxSpeedMs: (log as any).max_horiz_speed_ms ?? null,
-                              minBatteryV: (log as any).battery_voltage_min_v ?? null,
-                              totalRows: log.flight_track?.positions?.length ?? null,
-                              totalDistanceM: (log as any).total_distance_m ?? null,
-                              maxAltitudeM: (log as any).max_height_m ?? null,
-                              minGpsSat: (log as any).gps_sat_min ?? null,
-                              maxGpsSat: (log as any).gps_sat_max ?? null,
-                              batteryTempMaxC: (log as any).battery_temp_max_c ?? null,
-                              batteryTempMinC: (log as any).battery_temp_min_c ?? null,
-                              batteryVoltageMinV: (log as any).battery_voltage_min_v ?? null,
-                              maxDistanceM: (log as any).max_distance_m ?? null,
-                              maxVSpeedMs: (log as any).max_vert_speed_ms ?? null,
-                              batteryCellDeviationV: (log as any).battery_cell_deviation_max_v ?? null,
-                              rthTriggered: (log as any).rth_triggered ?? false,
-                              source: (log as any).source ?? null,
-                            };
-                            const { data: evRows } = await supabase
-                              .from('flight_events' as any)
-                              .select('t_offset_ms, type, message')
-                              .eq('flight_log_id', log.id)
-                              .order('t_offset_ms', { ascending: true });
-                            setAnalysisTrack({
-                              positions: log.flight_track?.positions || [],
-                              events: (evRows as any[]) || [],
-                              summary,
-                            });
+                            setAnalysisTrack(await loadFlightAnalysisTrack(log));
                             setAnalysisOpen(true);
                           }}
+
                         >
                           <BarChart3 className="w-3.5 h-3.5 mr-1" />
                           Analyser
