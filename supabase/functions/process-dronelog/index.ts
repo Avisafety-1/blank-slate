@@ -1287,15 +1287,22 @@ Deno.serve(async (req) => {
 
     console.log("Upload: manual multipart, fields:", fieldList.length, "file:", fileName, "size:", fileBytes.length);
 
-    const dronelogResponse = await fetch(`${DRONELOG_BASE}/logs/upload`, {
+    const postUpload = (key: string) => fetch(`${DRONELOG_BASE}/logs/upload`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${dronelogKey}`,
+        Authorization: `Bearer ${key}`,
         Accept: "application/json",
         "Content-Type": `multipart/form-data; boundary=${boundary}`,
       },
       body: uploadBody,
     });
+
+    let dronelogResponse = await postUpload(dronelogKey!);
+    // Ugyldig/utløpt selskapsnøkkel → fall tilbake til Avisafe sin globale nøkkel
+    if (dronelogResponse.status === 401 && usingCompanyKey && globalKey && globalKey !== dronelogKey) {
+      console.warn("[process-dronelog] company key rejected (401), retrying with global key");
+      dronelogResponse = await postUpload(globalKey);
+    }
 
     if (!dronelogResponse.ok) {
       const errText = await dronelogResponse.text();
