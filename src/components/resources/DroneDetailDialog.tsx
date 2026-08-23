@@ -1009,8 +1009,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   <p className="text-sm sm:text-base">{drone.modell}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.serial")}</p>
-                  <p className="text-sm sm:text-base">{drone.serienummer}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.droneName")}</p>
+                  <p className="text-sm sm:text-base">{(drone as any).dji_aircraft_name || tt("dash")}</p>
                 </div>
               </div>
 
@@ -1021,12 +1021,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               )}
 
-              {(drone as any).dji_aircraft_name && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.droneName")}</p>
-                  <p className="text-sm sm:text-base">{(drone as any).dji_aircraft_name}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">{tt("labels.serial")}</p>
+                <p className="text-sm sm:text-base">{drone.serienummer}</p>
+              </div>
 
               {(drone as any).registration_number && (
                 <div>
