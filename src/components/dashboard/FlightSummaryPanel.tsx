@@ -300,12 +300,11 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
 
       {(showLoggedOn || detailGroupsShown.length > 0 || mainEvents.length > 0 || appWarningEvents.length > 0) && (
         <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
-          <Tabs className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(prev => prev === v ? '' : v)} className="w-full">
             <TabsList className="w-full flex-wrap justify-start gap-2 rounded-none border-b border-border bg-muted/60 p-2 h-auto">
               {showLoggedOn && (
                 <TabsTrigger
                   value="loggedOn"
-                  onClick={() => onClose?.()}
                   className="gap-1.5 rounded-lg border border-border bg-background/70 px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-background/95 hover:text-foreground hover:shadow data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
                 >
                   <Plane className="w-3.5 h-3.5" />
