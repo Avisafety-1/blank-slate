@@ -916,6 +916,7 @@ Deno.serve(async (req) => {
 
         if (company?.dronelog_api_key) {
           dronelogKey = company.dronelog_api_key;
+          usingCompanyKey = true;
           console.log("Using per-company DroneLog key for company:", profile.company_id);
         }
       }
