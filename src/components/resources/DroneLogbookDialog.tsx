@@ -71,6 +71,7 @@ interface LogEntry {
   flightLogId?: string;
   manualEntryId?: string;
   rawEntry?: { entry_type: string | null; title: string; description: string | null; entry_date: string };
+  rawFlightLog?: any;
 }
 
 export const DroneLogbookDialog = ({ 
