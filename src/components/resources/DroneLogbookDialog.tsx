@@ -768,10 +768,21 @@ export const DroneLogbookDialog = ({
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-primary shrink-0"
                                   title={t('resourceDialogs.droneLogbook.analyzeFlight')}
-                                  onClick={() => {
-                                    setAnalysisTrack(log.flightTrack);
+                                  disabled={analysisLoadingId === log.flightLogId}
+                                  onClick={async () => {
                                     setAnalysisDate(log.flightDate);
-                                    setAnalysisOpen(true);
+                                    setAnalysisTrack(log.flightTrack);
+                                    if (!log.rawFlightLog) { setAnalysisOpen(true); return; }
+                                    setAnalysisLoadingId(log.flightLogId || null);
+                                    try {
+                                      const full = await loadFlightAnalysisTrack(log.rawFlightLog);
+                                      setAnalysisTrack({ ...log.flightTrack, ...full });
+                                    } catch {
+                                      /* keep the lightweight track as fallback */
+                                    } finally {
+                                      setAnalysisLoadingId(null);
+                                      setAnalysisOpen(true);
+                                    }
                                   }}
                                 >
                                   <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
