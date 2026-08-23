@@ -13,9 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil, BarChart3 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
+import { loadFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
 import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
 
 import { format } from "date-fns";
