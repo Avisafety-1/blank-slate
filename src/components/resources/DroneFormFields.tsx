@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,6 +112,7 @@ export const DroneFormFields = ({
 }: DroneFormFieldsProps) => {
   const { t } = useTranslation();
   const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
+  const isTouch = useIsTouchDevice();
 
   const selectedOps = values.operations_checklist_ids || [];
 
@@ -175,18 +177,34 @@ export const DroneFormFields = ({
           <div>
             <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
               {tt("labels.droneName")}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+              {isTouch ? (
+                <Dialog>
+                  <DialogTrigger asChild>
                     <button type="button" className="text-muted-foreground hover:text-foreground">
                       <Info className="h-3.5 w-3.5" />
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
-                    {tt("labels.droneNameInfo")}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-[320px]">
+                    <DialogHeader>
+                      <DialogTitle>{tt("labels.droneName")}</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">{tt("labels.droneNameInfo")}</p>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground">
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
+                      {tt("labels.droneNameInfo")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </Label>
             <Input
               id="dji_aircraft_name"
