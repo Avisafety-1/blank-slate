@@ -600,6 +600,9 @@ const Resources = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="min-w-0 flex-1 pr-2">
                         <h3 className="font-semibold">{drone.modell}</h3>
+                        {(drone as any).dji_aircraft_name && (
+                          <p className="text-sm text-muted-foreground truncate">{t("resources.cards.droneName")}: {(drone as any).dji_aircraft_name}</p>
+                        )}
                         {getDronePilotLabel(drone) && (
                           <p className="text-sm text-muted-foreground truncate">Pilot: {getDronePilotLabel(drone)}</p>
                         )}
