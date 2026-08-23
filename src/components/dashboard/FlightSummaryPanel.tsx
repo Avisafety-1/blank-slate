@@ -104,7 +104,7 @@ const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
-export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: FlightSummaryPanelProps) => {
+export const FlightSummaryPanel = ({ summary, events = [], onReassigned, onClose }: FlightSummaryPanelProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { isAdmin } = useRoleCheck();
