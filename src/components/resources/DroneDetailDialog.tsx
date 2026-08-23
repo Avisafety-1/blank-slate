@@ -34,6 +34,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
+import { DroneFormFields } from "./DroneFormFields";
+
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
@@ -1663,287 +1665,41 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </>
            ) : (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 items-start">
-              {/* Left column: core data */}
-              <div className="space-y-4 min-w-0">
-              {/* Drone catalog selector */}
-              <div className="border-b pb-4 mb-4">
-
-                <Label>{tt("catalogSelector.label")}</Label>
-                <Select value={selectedModelId} onValueChange={handleModelSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={tt("catalogSelector.placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">{tt("catalogSelector.manual")}</SelectItem>
-                    {droneModels.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.name} ({model.eu_class})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {tt("catalogSelector.autofillHint")}
-                </p>
-              </div>
-
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="modell">{tt("labels.model")}</Label>
-                  <Input
-                    id="modell"
-                    value={formData.modell}
-                    onChange={(e) => setFormData({ ...formData, modell: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
-                    {tt("labels.droneName")}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" className="text-muted-foreground hover:text-foreground">
-                            <Info className="h-3.5 w-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
-                          {tt("labels.droneNameInfo")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </Label>
-                  <Input
-                    id="dji_aircraft_name"
-                    value={formData.dji_aircraft_name}
-                    onChange={(e) => setFormData({ ...formData, dji_aircraft_name: e.target.value })}
-                    placeholder={tt("form.internalSerialPlaceholder")}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="internal_serial">{tt("labels.internalSerial")}</Label>
-                <Input
-                  id="internal_serial"
-                  value={formData.internal_serial}
-                  onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
-                  placeholder={tt("form.internalSerialPlaceholder")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="serienummer">{tt("labels.serial")}</Label>
-                <Input
-                  id="serienummer"
-                  value={formData.serienummer}
-                  onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="registration_number">{tt("labels.registrationNumber")}</Label>
-                <Input
-                  id="registration_number"
-                  value={formData.registration_number}
-                  onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
-                  placeholder={tt("form.registrationNumberPlaceholder")}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="klasse">{tt("labels.class")}</Label>
-                  <Select value={formData.klasse || ""} onValueChange={(value) => setFormData({ ...formData, klasse: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={tt("form.chooseClass")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="C0">C0</SelectItem>
-                      <SelectItem value="C1">C1</SelectItem>
-                      <SelectItem value="C2">C2</SelectItem>
-                      <SelectItem value="C3">C3</SelectItem>
-                      <SelectItem value="C4">C4</SelectItem>
-                      <SelectItem value="C5">C5</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="kjøpsdato">{tt("labels.purchaseDate")}</Label>
-                  <Input
-                    id="kjøpsdato"
-                    type="date"
-                    value={formData.kjøpsdato}
-                    onChange={(e) => setFormData({ ...formData, kjøpsdato: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground pt-2">{t("resourceEditLayout.technical")}</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="vekt">{tt("labels.weightMTOM")} ({tt("kgSuffix")})</Label>
-                  <Input
-                    id="vekt"
-                    type="number"
-                    step="0.01"
-                    value={formData.vekt}
-                    onChange={(e) => setFormData({ ...formData, vekt: e.target.value })}
-                    placeholder={tt("form.weightPlaceholder")}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="payload">{tt("labels.payload")} ({tt("kgSuffix")})</Label>
-                  <Input
-                    id="payload"
-                    type="number"
-                    step="0.01"
-                    value={formData.payload}
-                    onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
-                    placeholder={tt("form.payloadPlaceholder")}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="merknader">{tt("labels.notes")}</Label>
-                <Textarea
-                  id="merknader"
-                  value={formData.merknader}
-                  onChange={(e) => setFormData({ ...formData, merknader: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              {/* Checklist selection in edit mode */}
-               {isEditing && checklists.length > 0 && (
-                <>
-                  <div className="border-t pt-4">
-
-                    <Label>{tt("checklists.operationsLabel")}</Label>
-                    {isMobile ? (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
-                            <span className="min-w-0 flex-1 truncate text-left">
-                              {(formData.operations_checklist_ids || []).length > 0
-                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
-                                : tt("checklists.operationsPlaceholder")}
-                            </span>
-                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="w-[95vw] max-w-md p-0 gap-0">
-                          <DialogHeader className="px-4 py-3 border-b">
-                            <DialogTitle className="text-base">{tt("checklists.operationsLabel")}</DialogTitle>
-                          </DialogHeader>
-                          <div className="max-h-[60vh] overflow-y-auto overscroll-contain px-2 py-2" style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
-                            {checklists.map((checklist) => (
-                              <label key={checklist.id} className="flex items-center gap-2 py-2 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                                <Checkbox
-                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
-                                  onCheckedChange={(checked) => {
-                                    const current = formData.operations_checklist_ids || [];
-                                    if (checked) {
-                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
-                                    } else {
-                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
-                                    }
-                                  }}
-                                />
-                                <span className="min-w-0 flex-1 break-words">{checklist.tittel}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    ) : (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal" disabled={!isEditing}>
-                            <span className="min-w-0 flex-1 truncate text-left">
-                              {(formData.operations_checklist_ids || []).length > 0
-                                ? tt("checklists.operationsSelected", { count: (formData.operations_checklist_ids || []).length })
-                                : tt("checklists.operationsPlaceholder")}
-                            </span>
-                            <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
-                          <div className="space-y-1 max-h-48 overflow-y-auto">
-                            {checklists.map((checklist) => (
-                              <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                                <Checkbox
-                                  checked={(formData.operations_checklist_ids || []).includes(checklist.id)}
-                                  onCheckedChange={(checked) => {
-                                    const current = formData.operations_checklist_ids || [];
-                                    if (checked) {
-                                      setFormData({ ...formData, operations_checklist_ids: [...current, checklist.id] });
-                                    } else {
-                                      setFormData({ ...formData, operations_checklist_ids: current.filter((id: string) => id !== checklist.id) });
-                                    }
-                                  }}
-                                />
-                                {checklist.tittel}
-                              </label>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.operationsHint")}
-                    </p>
-                  </div>
-                  <div className="border-t pt-4">
-                    <Label htmlFor="post_flight_checklist">{tt("checklists.postFlightLabel")}</Label>
-                    <Select value={formData.post_flight_checklist_id} onValueChange={(value) => setFormData({ ...formData, post_flight_checklist_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={tt("checklists.postFlightPlaceholder")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                        {checklists.map((checklist) => (
-                          <SelectItem key={checklist.id} value={checklist.id}>
-                            {checklist.tittel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {tt("checklists.postFlightHint")}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Technical responsible dropdown in edit mode */}
-              <div className="border-t pt-4">
-                <Label>{tt("techResponsible.label")}</Label>
-                <SearchablePersonSelect
-                  persons={technicalResponsiblePersons}
-                  value={formTechnicalResponsibleId}
-                  onValueChange={setFormTechnicalResponsibleId}
-                  placeholder={tt("techResponsible.placeholder")}
-                  searchPlaceholder={tt("techResponsible.searchPlaceholder")}
-                  emptyText={tt("techResponsible.emptyText")}
-                  allowNone
-                  noneLabel={tt("techResponsible.noneLabel")}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {tt("techResponsible.hint")}
-                </p>
-              </div>
-              </div>
-
-              {/* Right column: status, maintenance, checklists, admin */}
-              <div className="space-y-5 rounded-xl border bg-muted/30 p-4 min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.operationalStatus")}</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="flyvetimer">{tt("labels.flightHours")}</Label>
+              <DroneFormFields
+                values={{
+                  modell: formData.modell ?? "",
+                  dji_aircraft_name: formData.dji_aircraft_name ?? "",
+                  internal_serial: formData.internal_serial ?? "",
+                  serienummer: formData.serienummer ?? "",
+                  registration_number: formData.registration_number ?? "",
+                  klasse: formData.klasse ?? "",
+                  kjøpsdato: formData.kjøpsdato ?? "",
+                  vekt: formData.vekt ?? "",
+                  payload: formData.payload ?? "",
+                  merknader: formData.merknader ?? "",
+                  status: formData.status ?? "Grønn",
+                  flyvetimer: formData.flyvetimer ?? 0,
+                  sjekkliste_id: formData.sjekkliste_id ?? "none",
+                  operations_checklist_ids: formData.operations_checklist_ids || [],
+                  post_flight_checklist_id: formData.post_flight_checklist_id ?? "none",
+                  sist_inspeksjon: formData.sist_inspeksjon ?? "",
+                  neste_inspeksjon: formData.neste_inspeksjon ?? "",
+                  inspection_start_date: formData.inspection_start_date ?? "",
+                  inspection_interval_days: formData.inspection_interval_days ?? "",
+                  inspection_interval_hours: formData.inspection_interval_hours ?? "",
+                  inspection_interval_missions: formData.inspection_interval_missions ?? "",
+                  varsel_dager: formData.varsel_dager ?? "",
+                  varsel_timer: formData.varsel_timer ?? "",
+                  varsel_oppdrag: formData.varsel_oppdrag ?? "",
+                }}
+                onChange={(patch) => setFormData((prev: any) => ({ ...prev, ...patch }))}
+                mode="edit"
+                droneModels={droneModels}
+                selectedModelId={selectedModelId}
+                onModelSelect={handleModelSelect}
+                checklists={checklists}
+                isMobile={isMobile}
+                flightHoursControl={
                   <div className="flex gap-2">
                     <Input
                       id="flyvetimer"
@@ -1966,206 +1722,70 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       {tt("flightHoursEdit.change")}
                     </Button>
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="status">{tt("labels.status")}</Label>
-                  <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Grønn">Grønn</SelectItem>
-                      <SelectItem value="Gul">Gul</SelectItem>
-                      <SelectItem value="Rød">Rød</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
-
-              {/* Inspection & maintenance intervals - always visible */}
-              <div className="rounded-lg border bg-background/60 p-3 space-y-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  {tt("inspectionForm.sectionTitle")}
-                </div>
-
-                  {checklists.length > 0 && (
-                    <div>
-                      <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
-                      <Select value={formData.sjekkliste_id} onValueChange={(value) => setFormData({ ...formData, sjekkliste_id: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                          {checklists.map((checklist) => (
-                            <SelectItem key={checklist.id} value={checklist.id}>
-                              {checklist.tittel}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {tt("checklists.inspectionHint")}
-                      </p>
-                    </div>
-                  )}
-
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
-                      <Input
-                        id="sist_inspeksjon"
-                        type="date"
-                        value={formData.sist_inspeksjon}
-                        onChange={(e) => setFormData({ ...formData, sist_inspeksjon: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="neste_inspeksjon">{tt("inspection.nextInspection")}</Label>
-                      <Input
-                        id="neste_inspeksjon"
-                        type="date"
-                        value={formData.neste_inspeksjon}
-                        onChange={(e) => setFormData({ ...formData, neste_inspeksjon: e.target.value })}
-                        disabled={!!formData.inspection_interval_days}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="inspection_start_date">{tt("inspectionForm.startDate")}</Label>
-                      <Input 
-                        id="inspection_start_date" 
-                        type="date" 
-                        value={formData.inspection_start_date}
-                        onChange={(e) => setFormData({ ...formData, inspection_start_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="inspection_interval_days">{tt("inspectionForm.intervalDays")}</Label>
-                      <Input 
-                        id="inspection_interval_days" 
-                        type="number" 
-                        placeholder={tt("inspectionForm.intervalDaysPlaceholder")}
-                        value={formData.inspection_interval_days}
-                        onChange={(e) => setFormData({ ...formData, inspection_interval_days: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="inspection_interval_hours">{tt("inspectionForm.intervalHours")}</Label>
-                      <Input 
-                        id="inspection_interval_hours" 
-                        type="number" 
-                        step="0.1"
-                        placeholder={tt("inspectionForm.intervalHoursPlaceholder")}
-                        value={formData.inspection_interval_hours}
-                        onChange={(e) => setFormData({ ...formData, inspection_interval_hours: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="inspection_interval_missions">{tt("inspectionForm.intervalMissions")}</Label>
-                      <Input 
-                        id="inspection_interval_missions" 
-                        type="number" 
-                        placeholder={tt("inspectionForm.intervalMissionsPlaceholder")}
-                        value={formData.inspection_interval_missions}
-                        onChange={(e) => setFormData({ ...formData, inspection_interval_missions: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="varsel_dager">{tt("inspectionForm.warnDays")}</Label>
-                      <Input 
-                        id="varsel_dager" 
-                        type="number" 
-                        placeholder={tt("inspectionForm.warnDaysPlaceholder")}
-                        value={formData.varsel_dager}
-                        onChange={(e) => setFormData({ ...formData, varsel_dager: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="varsel_timer">{tt("inspectionForm.warnHours")}</Label>
-                      <Input 
-                        id="varsel_timer" 
-                        type="number" 
-                        step="0.1"
-                        placeholder={tt("inspectionForm.warnHoursPlaceholder")}
-                        value={formData.varsel_timer}
-                        onChange={(e) => setFormData({ ...formData, varsel_timer: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="varsel_oppdrag">{tt("inspectionForm.warnMissions")}</Label>
-                      <Input 
-                        id="varsel_oppdrag" 
-                        type="number" 
-                        placeholder={tt("inspectionForm.warnMissionsPlaceholder")}
-                        value={formData.varsel_oppdrag}
-                        onChange={(e) => setFormData({ ...formData, varsel_oppdrag: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  {formData.inspection_start_date && formData.inspection_interval_days && (
-                    <p className="text-sm text-muted-foreground">
-                      {tt("inspectionForm.autoCalcHint")}
+                }
+                statusReasonsSlot={aggregatedStatus !== "Grønn" ? <StatusReasonList reasons={statusReasons} /> : null}
+                technicalResponsibleSlot={
+                  <div className="border-t pt-4">
+                    <Label>{tt("techResponsible.label")}</Label>
+                    <SearchablePersonSelect
+                      persons={technicalResponsiblePersons}
+                      value={formTechnicalResponsibleId}
+                      onValueChange={setFormTechnicalResponsibleId}
+                      placeholder={tt("techResponsible.placeholder")}
+                      searchPlaceholder={tt("techResponsible.searchPlaceholder")}
+                      emptyText={tt("techResponsible.emptyText")}
+                      allowNone
+                      noneLabel={tt("techResponsible.noneLabel")}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tt("techResponsible.hint")}
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {tt("inspectionForm.statusTriggerHint")}
-                  </p>
-              </div>
+                  </div>
+                }
+                adminSlot={
+                  isAdmin && (deptVis.hasDepartments || (!isSharedFromParent && drone?.company_id)) ? (
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.administration")}</p>
 
+                      {deptVis.hasDepartments && (
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
+                          <DepartmentChecklist
+                            departments={deptVis.childDepartments}
+                            selectedIds={deptVis.selectedDeptIds}
+                            onToggle={deptVis.handleToggle}
+                            allSelected={deptVis.allSelected}
+                            onToggleAll={deptVis.handleToggleAll}
+                            allLabel={tt("deptVisibility.allLabel")}
+                          />
+                        </div>
+                      )}
 
-              {isAdmin && (deptVis.hasDepartments || (!isSharedFromParent && drone?.company_id)) && (
-                <div className="border-t pt-4 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.administration")}</p>
-
-                  {deptVis.hasDepartments && (
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
-                      <DepartmentChecklist
-                        departments={deptVis.childDepartments}
-                        selectedIds={deptVis.selectedDeptIds}
-                        onToggle={deptVis.handleToggle}
-                        allSelected={deptVis.allSelected}
-                        onToggleAll={deptVis.handleToggleAll}
-                        allLabel={tt("deptVisibility.allLabel")}
-                      />
+                      {!isSharedFromParent && drone?.company_id && (
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setMoveOpen(true)}
+                            className="w-full"
+                          >
+                            <ArrowRightLeft className="w-4 h-4 mr-2" />
+                            {tt("moveDrone.button")}
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {tt("moveDrone.hint")}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ) : null
+                }
+              />
 
-                  {!isSharedFromParent && drone?.company_id && (
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">{tt("moveDrone.label")}</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setMoveOpen(true)}
-                        className="w-full"
-                      >
-                        <ArrowRightLeft className="w-4 h-4 mr-2" />
-                        {tt("moveDrone.button")}
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {tt("moveDrone.hint")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>
-              </div>
             </>
+
           )}
         </div>
 
