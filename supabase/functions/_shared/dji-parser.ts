@@ -334,6 +334,16 @@ async function getSearchCompanyIds(serviceClient: any, companyId: string): Promi
   return Array.from(ids);
 }
 
+/** True when the drone's stored name (DJI Fly nickname) appears in the log's aircraft name. */
+function djiNameMatches(storedName: string | null | undefined, logName: string | null | undefined): boolean {
+  const st = (storedName || "").trim().toLowerCase();
+  const lg = (logName || "").trim().toLowerCase();
+  if (!st || !lg || st.length < 2) return false;
+  if (st === lg) return true;
+  const escaped = st.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|\\W)${escaped}(\\W|$)`).test(lg);
+}
+
 export async function matchDroneAndBattery(
   serviceClient: any, companyId: string, parsed: ReturnType<typeof parseCsvMinimal>,
 ) {
@@ -344,14 +354,24 @@ export async function matchDroneAndBattery(
 
   if (parsed.aircraftSN) {
     const { data: drones } = await serviceClient
-      .from("drones").select("id, serienummer, internal_serial, company_id").in("company_id", searchIds);
+      .from("drones").select("id, serienummer, internal_serial, dji_aircraft_name, company_id").in("company_id", searchIds);
     if (drones) {
-      const ownMatch = drones.find((d: any) =>
-        d.company_id === companyId &&
-        (snMatches(d.serienummer, parsed.aircraftSN!) || snMatches(d.internal_serial, parsed.aircraftSN!)));
-      const anyMatch = ownMatch || drones.find((d: any) =>
+      const snCandidates = drones.filter((d: any) =>
         snMatches(d.serienummer, parsed.aircraftSN!) || snMatches(d.internal_serial, parsed.aircraftSN!));
+      const logName = (parsed as any).aircraftName as string | null | undefined;
+      // Several drones can share a truncated 16-char DJI SN — the drone name (from DJI Fly)
+      // breaks the tie when it is stored on the drone card.
+      const nameCandidates = logName
+        ? snCandidates.filter((d: any) => djiNameMatches(d.dji_aircraft_name, logName))
+        : [];
+      const pool = nameCandidates.length > 0 ? nameCandidates : snCandidates;
+      const ownMatch = pool.find((d: any) => d.company_id === companyId);
+      const anyMatch = ownMatch || pool[0];
       if (anyMatch) {
+        // Auto-learn: store the log's aircraft name when the SN match is unambiguous.
+        if (logName && snCandidates.length === 1 && !((anyMatch.dji_aircraft_name || "").trim())) {
+          await serviceClient.from("drones").update({ dji_aircraft_name: logName }).eq("id", anyMatch.id);
+        }
         matchedDroneId = anyMatch.id;
         const storedSn = (anyMatch.serienummer || "").trim();
         const parsedSn = parsed.aircraftSN.trim();
