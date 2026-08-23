@@ -77,7 +77,6 @@ interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
   onReassigned?: () => void;
-  onClose?: () => void;
 }
 
 const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
