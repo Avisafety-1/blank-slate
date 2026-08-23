@@ -1,20 +1,19 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useTerminology } from "@/hooks/useTerminology";
 import { useChecklists } from "@/hooks/useChecklists";
 import { usePlanGating } from "@/hooks/usePlanGating";
-import { useTranslation } from "react-i18next";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
+import { useAuth } from "@/contexts/AuthContext";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
+import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
+import { DroneFormFields, DroneFormValues, emptyDroneFormValues } from "./DroneFormFields";
 
 interface DroneModel {
   id: string;
@@ -50,31 +49,24 @@ interface AddDroneDialogProps {
 
 export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defaultValues, onDroneCreated }: AddDroneDialogProps) => {
   const { t } = useTranslation();
+  const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
   const [companyId, setCompanyId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [inspectionStartDate, setInspectionStartDate] = useState<string>("");
-  const [inspectionIntervalDays, setInspectionIntervalDays] = useState<string>("");
-  const [calculatedNextInspection, setCalculatedNextInspection] = useState<string>("");
-  const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
-  const [selectedOpsChecklistIds, setSelectedOpsChecklistIds] = useState<string[]>([]);
-  const [selectedPostFlightChecklistId, setSelectedPostFlightChecklistId] = useState<string>("");
   const [droneCount, setDroneCount] = useState(0);
-  const [djiAircraftName, setDjiAircraftName] = useState("");
+  const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [values, setValues] = useState<DroneFormValues>(emptyDroneFormValues);
+  const [technicalResponsibleId, setTechnicalResponsibleId] = useState<string | null>(null);
+  const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{ id: string; full_name: string | null }[]>([]);
+
   const terminology = useTerminology();
   const { checklists } = useChecklists();
   const { maxDrones, currentPlan, seatCount } = usePlanGating();
+  const isMobile = useIsMobile();
+  const { isAdmin } = useAuth();
+  const deptVis = useDepartmentVisibility("drone", undefined, companyId || undefined, open);
 
-  // Drone catalog state
-  const [droneModels, setDroneModels] = useState<DroneModel[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
-
-  // Controlled form fields for auto-fill
-  const [modell, setModell] = useState("");
-  const [klasse, setKlasse] = useState("");
-  const [vekt, setVekt] = useState("");
-  const [payload, setPayload] = useState("");
-  const [merknader, setMerknader] = useState("");
-  const [internalSerial, setInternalSerial] = useState("");
+  const onChange = (patch: Partial<DroneFormValues>) => setValues((prev) => ({ ...prev, ...patch }));
 
   useEffect(() => {
     const fetchCompanyId = async () => {
@@ -83,10 +75,9 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         .select("company_id")
         .eq("id", userId)
         .single();
-      
+
       if (data) {
         setCompanyId(data.company_id);
-        // Count existing drones for plan limit check
         const { count } = await supabase
           .from("drones")
           .select("id", { count: 'exact', head: true })
@@ -94,7 +85,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         setDroneCount(count ?? 0);
       }
     };
-    
+
     if (userId) {
       fetchCompanyId();
     }
@@ -107,126 +98,129 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         .from("drone_models")
         .select("*")
         .order("name");
-      
+
       if (data && !error) {
         setDroneModels(data as DroneModel[]);
       }
     };
-    
+
     if (open) {
       fetchDroneModels();
     }
   }, [open]);
 
+  // Fetch technical responsible candidates
+  useEffect(() => {
+    if (!companyId || !open) return;
+    const fetchTechPersons = async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("id, full_name")
+        .eq("company_id", companyId)
+        .eq("is_technical_responsible", true)
+        .eq("approved", true);
+      setTechnicalResponsiblePersons(data || []);
+    };
+    fetchTechPersons();
+  }, [companyId, open]);
+
   // Reset form when dialog closes, pre-populate from defaultValues when opening
   useEffect(() => {
     if (!open) {
       setSelectedModelId("");
-      setModell("");
-      setKlasse("");
-      setVekt("");
-      setPayload("");
-      setMerknader("");
-      setInternalSerial("");
-      setDjiAircraftName("");
-      setInspectionStartDate("");
-      setInspectionIntervalDays("");
-      setCalculatedNextInspection("");
-      setSelectedChecklistId("");
-      setSelectedOpsChecklistIds([]);
-      setSelectedPostFlightChecklistId("");
-    } else if (defaultValues) {
-      if (defaultValues.modell) setModell(defaultValues.modell);
-      if (defaultValues.merknader) setMerknader(defaultValues.merknader);
-      if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
-      if (defaultValues.dji_aircraft_name) setDjiAircraftName(defaultValues.dji_aircraft_name);
+      setValues(emptyDroneFormValues);
+      setTechnicalResponsibleId(null);
+    } else {
+      setValues({
+        ...emptyDroneFormValues,
+        modell: defaultValues?.modell || "",
+        serienummer: defaultValues?.serienummer || "",
+        internal_serial: defaultValues?.internal_serial || "",
+        merknader: defaultValues?.merknader || "",
+        dji_aircraft_name: defaultValues?.dji_aircraft_name || "",
+      });
     }
   }, [open, defaultValues]);
 
-  // Calculate next inspection when start date or interval changes
-  useEffect(() => {
-    if (inspectionStartDate && inspectionIntervalDays) {
-      const startDate = new Date(inspectionStartDate);
-      const days = parseInt(inspectionIntervalDays);
+  // Auto-calculated next inspection from start date + interval
+  const calculatedNextInspection = (() => {
+    if (values.inspection_start_date && values.inspection_interval_days) {
+      const days = parseInt(values.inspection_interval_days);
       if (!isNaN(days) && days > 0) {
-        const nextDate = new Date(startDate);
+        const nextDate = new Date(values.inspection_start_date);
         nextDate.setDate(nextDate.getDate() + days);
-        setCalculatedNextInspection(nextDate.toISOString().split('T')[0]);
+        return nextDate.toISOString().split('T')[0];
       }
-    } else {
-      setCalculatedNextInspection("");
     }
-  }, [inspectionStartDate, inspectionIntervalDays]);
+    return "";
+  })();
 
-  // Handle catalog selection
   const handleModelSelect = (modelId: string) => {
     setSelectedModelId(modelId);
     if (modelId && modelId !== "manual") {
       const model = droneModels.find(m => m.id === modelId);
       if (model) {
-        setModell(model.name);
-        setKlasse(model.eu_class);
-        setVekt(model.weight_kg.toString());
-        setPayload(model.payload_kg.toString());
-        setMerknader(model.comment || "");
+        onChange({
+          modell: model.name,
+          klasse: model.eu_class,
+          vekt: model.weight_kg?.toString() ?? "",
+          payload: model.payload_kg?.toString() ?? "",
+          merknader: model.comment || "",
+        });
       }
     } else {
-      // Reset for manual input
-      setModell("");
-      setKlasse("");
-      setVekt("");
-      setPayload("");
-      setMerknader("");
+      onChange({ modell: "", klasse: "", vekt: "", payload: "", merknader: "" });
     }
   };
 
   const handleAddDrone = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (isSubmitting) return;
 
-    // Check drone limit
     if (droneCount >= maxDrones) {
       toast.error(t('resourceDialogs.addDrone.naddMaks', { max: maxDrones, plan: currentPlan.name, perUser: currentPlan.maxDrones, seats: seatCount }));
       return;
     }
 
-    setIsSubmitting(true);
-    
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    
     if (!companyId) {
       toast.error(t('resourceDialogs.addDrone.kunneIkkeHenteBruker'));
-      setIsSubmitting(false);
       return;
     }
 
-    const nesteInspeksjon = calculatedNextInspection || (formData.get("neste_inspeksjon") as string) || null;
-    
+    setIsSubmitting(true);
+
+    const num = (v: string) => (v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+
     try {
       const { data: droneData, error } = await (supabase as any).from("drones").insert([{
         user_id: userId,
         company_id: companyId,
-        modell: modell || (formData.get("modell") as string),
-        serienummer: (formData.get("serienummer") as string) || '',
-        internal_serial: internalSerial || null,
-        dji_aircraft_name: djiAircraftName || null,
-        registration_number: (formData.get("registration_number") as string) || null,
-        status: (formData.get("status") as string) || "Grønn",
-        flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
-        merknader: merknader || null,
-        sist_inspeksjon: (formData.get("sist_inspeksjon") as string) || null,
-        neste_inspeksjon: nesteInspeksjon,
-        kjøpsdato: (formData.get("kjøpsdato") as string) || null,
-        klasse: klasse || null,
-        vekt: vekt ? parseFloat(vekt) : null,
-        payload: payload ? parseFloat(payload) : null,
-        inspection_start_date: inspectionStartDate || null,
-        inspection_interval_days: inspectionIntervalDays ? parseInt(inspectionIntervalDays) : null,
-        sjekkliste_id: selectedChecklistId && selectedChecklistId !== "none" ? selectedChecklistId : null,
-        operations_checklist_ids: selectedOpsChecklistIds.length > 0 ? selectedOpsChecklistIds : null,
-        post_flight_checklist_id: selectedPostFlightChecklistId && selectedPostFlightChecklistId !== "none" ? selectedPostFlightChecklistId : null,
+        modell: values.modell,
+        serienummer: values.serienummer || '',
+        internal_serial: values.internal_serial || null,
+        dji_aircraft_name: values.dji_aircraft_name || null,
+        registration_number: values.registration_number || null,
+        status: values.status || "Grønn",
+        flyvetimer: num(String(values.flyvetimer)) ?? 0,
+        merknader: values.merknader || null,
+        sist_inspeksjon: values.sist_inspeksjon || null,
+        neste_inspeksjon: calculatedNextInspection || values.neste_inspeksjon || null,
+        kjøpsdato: values.kjøpsdato || null,
+        klasse: values.klasse || null,
+        vekt: num(values.vekt),
+        payload: num(values.payload),
+        inspection_start_date: values.inspection_start_date || null,
+        inspection_interval_days: num(values.inspection_interval_days),
+        inspection_interval_hours: num(values.inspection_interval_hours),
+        inspection_interval_missions: num(values.inspection_interval_missions),
+        varsel_dager: num(values.varsel_dager),
+        varsel_timer: num(values.varsel_timer),
+        varsel_oppdrag: num(values.varsel_oppdrag),
+        technical_responsible_id: technicalResponsibleId || null,
+        sjekkliste_id: values.sjekkliste_id && values.sjekkliste_id !== "none" ? values.sjekkliste_id : null,
+        operations_checklist_ids: values.operations_checklist_ids.length > 0 ? values.operations_checklist_ids : null,
+        post_flight_checklist_id: values.post_flight_checklist_id && values.post_flight_checklist_id !== "none" ? values.post_flight_checklist_id : null,
       }]).select().single();
 
       if (error) {
@@ -236,28 +230,30 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         } else {
           toast.error(t('resourceDialogs.addDrone.kunneIkkeLeggeTil', { vehicle: terminology.vehicleLower, message: error.message || t('resourceDialogs.addDrone.ukjentFeil') }));
         }
-      } else {
-        toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
-        form.reset();
-        setInspectionStartDate("");
-        setInspectionIntervalDays("");
-        setCalculatedNextInspection("");
-        setSelectedChecklistId("");
-        setSelectedOpsChecklistIds([]);
-        setSelectedPostFlightChecklistId("");
-        setSelectedModelId("");
-        setModell("");
-        setKlasse("");
-        setVekt("");
-        setPayload("");
-        setMerknader("");
-        setInternalSerial("");
-        if (onDroneCreated && droneData) {
-          onDroneCreated({ id: droneData.id, modell: droneData.modell, serienummer: droneData.serienummer });
-        }
-        onDroneAdded();
-        onOpenChange(false);
+        return;
       }
+
+      // Persist department visibility for the new drone
+      if (droneData?.id && deptVis.hasDepartments) {
+        const idsToInsert = deptVis.allSelected
+          ? deptVis.childDepartments.map(d => d.id)
+          : deptVis.selectedDeptIds;
+        if (idsToInsert.length > 0) {
+          await (supabase as any).from("drone_department_visibility").insert(
+            idsToInsert.map(cid => ({ drone_id: droneData.id, company_id: cid }))
+          );
+        }
+      }
+
+      toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
+      setValues(emptyDroneFormValues);
+      setSelectedModelId("");
+      setTechnicalResponsibleId(null);
+      if (onDroneCreated && droneData) {
+        onDroneCreated({ id: droneData.id, modell: droneData.modell, serienummer: droneData.serienummer });
+      }
+      onDroneAdded();
+      onOpenChange(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -265,333 +261,65 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <span data-tour="add-drone-marker" className="hidden" /><DialogHeader>
+      <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] overflow-y-auto">
+        <span data-tour="add-drone-marker" className="hidden" />
+        <DialogHeader>
           <DialogTitle>{terminology.addVehicle}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleAddDrone} className="space-y-4">
-          {/* Drone catalog selector */}
-          <div className="border-b pb-4 mb-4">
-            <Label>{t('resourceDialogs.addDrone.velgFraKatalog')}</Label>
-            <Select value={selectedModelId} onValueChange={handleModelSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('resourceDialogs.addDrone.velgDroneModell')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">{t('resourceDialogs.addDrone.angiManuelt')}</SelectItem>
-                {droneModels.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name} ({model.eu_class})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('resourceDialogs.addDrone.katalogHint')}
-            </p>
-          </div>
-
-          <div>
-            <Label htmlFor="modell">{t('resourceDialogs.addDrone.modell')}</Label>
-            <Input 
-              id="modell" 
-              name="modell" 
-              required 
-              value={modell}
-              onChange={(e) => setModell(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="serienummer">{t('resourceDialogs.addDrone.serienummer')}</Label>
-            <Input id="serienummer" name="serienummer" defaultValue={defaultValues?.serienummer || ''} />
-          </div>
-          <div>
-            <Label htmlFor="internal_serial">{t('resourceDialogs.addDrone.internalSerial')}</Label>
-            <Input 
-              id="internal_serial" 
-              value={internalSerial}
-              onChange={(e) => setInternalSerial(e.target.value)}
-              placeholder={t('resourceDialogs.addDrone.valgfritt')}
-            />
-          </div>
-          <div>
-            <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
-              {t('resourceDialogs.addDrone.droneName')}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" className="text-muted-foreground hover:text-foreground">
-                      <Info className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
-                    {t('resourceDialogs.addDrone.droneNameInfo')}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </Label>
-            <Input
-              id="dji_aircraft_name"
-              value={djiAircraftName}
-              onChange={(e) => setDjiAircraftName(e.target.value)}
-              placeholder={t('resourceDialogs.addDrone.valgfritt')}
-            />
-          </div>
-          <div>
-            <Label htmlFor="registration_number">{t('resourceDialogs.addDrone.registration')}</Label>
-            <Input id="registration_number" name="registration_number" placeholder={t('resourceDialogs.addDrone.valgfritt')} />
-          </div>
-          <div>
-            <Label htmlFor="klasse">{t('resourceDialogs.addDrone.klasse')}</Label>
-            <Select value={klasse} onValueChange={setKlasse}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('resourceDialogs.addDrone.velgKlasse')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="C0">C0</SelectItem>
-                <SelectItem value="C1">C1</SelectItem>
-                <SelectItem value="C2">C2</SelectItem>
-                <SelectItem value="C3">C3</SelectItem>
-                <SelectItem value="C4">C4</SelectItem>
-                <SelectItem value="C5">C5</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="vekt">{t('resourceDialogs.addDrone.mtow')}</Label>
-              <Input 
-                id="vekt" 
-                name="vekt" 
-                type="number" 
-                step="0.001" 
-                placeholder={t('resourceDialogs.addDrone.mtowPlaceholder')} 
-                value={vekt}
-                onChange={(e) => setVekt(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="payload">{t('resourceDialogs.addDrone.payload')}</Label>
-              <Input 
-                id="payload" 
-                name="payload" 
-                type="number" 
-                step="0.001" 
-                placeholder={t('resourceDialogs.addDrone.payloadPlaceholder')} 
-                value={payload}
-                onChange={(e) => setPayload(e.target.value)}
-              />
-            </div>
-          </div>
-          {selectedModelId && selectedModelId !== "manual" && (() => {
-            const model = droneModels.find(m => m.id === selectedModelId);
-            if (!model || (!model.weight_without_payload_kg && !model.standard_takeoff_weight_kg && !model.endurance_min && !model.max_wind_mps && !model.sensor_type && !model.category)) return null;
-            return (
-          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
-                {model.weight_without_payload_kg != null && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.vektUtenPayload')}</span> {model.weight_without_payload_kg} kg
-                  </div>
-                )}
-                {model.standard_takeoff_weight_kg != null && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.standardTakeoff')}</span> {model.standard_takeoff_weight_kg} kg
-                  </div>
-                )}
-                {model.endurance_min != null && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.flygetid')}</span> {model.endurance_min} min
-                  </div>
-                )}
-                {model.max_wind_mps != null && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.maksVind')}</span> {model.max_wind_mps} m/s
-                  </div>
-                )}
-                {model.sensor_type && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.sensor')}</span> {model.sensor_type}
-                  </div>
-                )}
-                {model.category && (
-                  <div>
-                    <span className="font-medium">{t('resourceDialogs.addDrone.kategori')}</span> {model.category}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-          <div>
-            <Label htmlFor="kjøpsdato">{t('resourceDialogs.addDrone.kjopsdato')}</Label>
-            <Input id="kjøpsdato" name="kjøpsdato" type="date" />
-          </div>
-          <div>
-            <Label htmlFor="status">{t('resourceDialogs.addDrone.status')}</Label>
-            <Select name="status" defaultValue="Grønn">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Grønn">{t('resourceDialogs.addDrone.green')}</SelectItem>
-                <SelectItem value="Gul">{t('resourceDialogs.addDrone.yellow')}</SelectItem>
-                <SelectItem value="Rød">{t('resourceDialogs.addDrone.red')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="flyvetimer">{terminology.flightHours}</Label>
-            <Input id="flyvetimer" name="flyvetimer" type="number" defaultValue={0} />
-          </div>
-          <div>
-            <Label htmlFor="sist_inspeksjon">{t('resourceDialogs.addDrone.sistInspeksjon')}</Label>
-            <Input id="sist_inspeksjon" name="sist_inspeksjon" type="date" />
-          </div>
-          
-          {/* Inspection interval section */}
-          <div className="border-t pt-4 mt-4">
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">{t('resourceDialogs.addDrone.inspeksjonsintervall')}</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="inspection_start_date">{t('resourceDialogs.addDrone.startdato')}</Label>
-                <Input 
-                  id="inspection_start_date" 
-                  type="date" 
-                  value={inspectionStartDate}
-                  onChange={(e) => setInspectionStartDate(e.target.value)}
+          <DroneFormFields
+            values={values}
+            onChange={onChange}
+            mode="create"
+            droneModels={droneModels}
+            selectedModelId={selectedModelId}
+            onModelSelect={handleModelSelect}
+            checklists={checklists}
+            isMobile={isMobile}
+            technicalResponsibleSlot={
+              <div className="border-t pt-4">
+                <Label>{tt("techResponsible.label")}</Label>
+                <SearchablePersonSelect
+                  persons={technicalResponsiblePersons}
+                  value={technicalResponsibleId}
+                  onValueChange={setTechnicalResponsibleId}
+                  placeholder={tt("techResponsible.placeholder")}
+                  searchPlaceholder={tt("techResponsible.searchPlaceholder")}
+                  emptyText={tt("techResponsible.emptyText")}
+                  allowNone
+                  noneLabel={tt("techResponsible.noneLabel")}
                 />
+                <p className="text-xs text-muted-foreground mt-1">{tt("techResponsible.hint")}</p>
               </div>
-              <div>
-                <Label htmlFor="inspection_interval_days">{t('resourceDialogs.addDrone.intervallDager')}</Label>
-                <Input 
-                  id="inspection_interval_days" 
-                  type="number" 
-                  placeholder={t('resourceDialogs.addDrone.intervallPlaceholder')}
-                  value={inspectionIntervalDays}
-                  onChange={(e) => setInspectionIntervalDays(e.target.value)}
-                />
-              </div>
-            </div>
-            {calculatedNextInspection && (
-              <p className="text-sm text-muted-foreground mt-2">
-                {t('resourceDialogs.addDrone.beregnetNesteInspeksjon')} <span className="font-medium">{new Date(calculatedNextInspection).toLocaleDateString('nb-NO')}</span>
-              </p>
-            )}
-          </div>
-          
-          {/* Checklist selection */}
-          {checklists.length > 0 && (
-            <div className="border-t pt-4 mt-4">
-              <Label htmlFor="sjekkliste">{t('resourceDialogs.addDrone.sjekklisteInspeksjon')}</Label>
-              <Select value={selectedChecklistId} onValueChange={setSelectedChecklistId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgSjekkliste')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('resourceDialogs.addDrone.sjekklisteHint')}
-              </p>
-            </div>
-          )}
-          
-          {/* Operations checklist multi-select */}
-          {checklists.length > 0 && (
-            <div className="border-t pt-4 mt-4">
-              <Label>{t('resourceDialogs.addDrone.operasjonsSjekklister')}</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="mt-1 flex w-full min-w-0 max-w-full justify-between overflow-hidden font-normal">
-                    <span className="min-w-0 flex-1 truncate text-left">
-                      {selectedOpsChecklistIds.length > 0
-                        ? t('resourceDialogs.addDrone.sjekklisterValgt', { count: selectedOpsChecklistIds.length })
-                        : t('resourceDialogs.addDrone.velgSjekklister')}
-                    </span>
-                    <ChevronDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[min(var(--radix-popover-trigger-width),calc(100vw-2rem))] p-2" align="start">
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {checklists.map((checklist) => (
-                      <label key={checklist.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                        <Checkbox
-                          checked={selectedOpsChecklistIds.includes(checklist.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedOpsChecklistIds(prev => [...prev, checklist.id]);
-                            } else {
-                              setSelectedOpsChecklistIds(prev => prev.filter(id => id !== checklist.id));
-                            }
-                          }}
-                        />
-                        {checklist.tittel}
-                      </label>
-                    ))}
+            }
+            adminSlot={
+              isAdmin && deptVis.hasDepartments ? (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.administration")}</p>
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">{tt("deptVisibility.label")}</Label>
+                    <DepartmentChecklist
+                      departments={deptVis.childDepartments}
+                      selectedIds={deptVis.selectedDeptIds}
+                      onToggle={deptVis.handleToggle}
+                      allSelected={deptVis.allSelected}
+                      onToggleAll={deptVis.handleToggleAll}
+                      allLabel={tt("deptVisibility.allLabel")}
+                    />
                   </div>
-                </PopoverContent>
-              </Popover>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('resourceDialogs.addDrone.opsHint')}
-              </p>
-            </div>
-          )}
+                </div>
+              ) : null
+            }
+          />
 
-          {/* Post flight checklist selection */}
-          {checklists.length > 0 && (
-            <div className="border-t pt-4 mt-4">
-              <Label htmlFor="post_flight_checklist">{t('resourceDialogs.addDrone.postFlight')}</Label>
-              <Select value={selectedPostFlightChecklistId} onValueChange={setSelectedPostFlightChecklistId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('resourceDialogs.addDrone.velgPostFlight')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('resourceDialogs.addDrone.ingenSjekkliste')}</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('resourceDialogs.addDrone.postFlightHint')}
-              </p>
-            </div>
-          )}
-          
-          <div>
-            <Label htmlFor="neste_inspeksjon">{t('resourceDialogs.addDrone.nesteInspeksjon')} {calculatedNextInspection && t('resourceDialogs.addDrone.overstyrtAvIntervall')}</Label>
-            <Input 
-              id="neste_inspeksjon" 
-              name="neste_inspeksjon" 
-              type="date" 
-              value={calculatedNextInspection}
-              onChange={(e) => {
-                if (!inspectionIntervalDays) {
-                  setCalculatedNextInspection(e.target.value);
-                }
-              }}
-              disabled={!!calculatedNextInspection}
-            />
-          </div>
-          <div>
-            <Label htmlFor="merknader">{t('resourceDialogs.addDrone.merknader')}</Label>
-            <Textarea 
-              id="merknader" 
-              name="merknader" 
-              value={merknader}
-              onChange={(e) => setMerknader(e.target.value)}
-            />
-          </div>
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? t('resourceDialogs.addDrone.leggerTil') : terminology.addVehicle}
-          </Button>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {terminology.addVehicle}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
