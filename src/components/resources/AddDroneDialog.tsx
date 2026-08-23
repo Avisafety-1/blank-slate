@@ -36,6 +36,7 @@ export interface DroneDefaultValues {
   serienummer?: string;
   internal_serial?: string;
   merknader?: string;
+  dji_aircraft_name?: string;
 }
 
 interface AddDroneDialogProps {
