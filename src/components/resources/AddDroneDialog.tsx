@@ -139,6 +139,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       if (defaultValues.modell) setModell(defaultValues.modell);
       if (defaultValues.merknader) setMerknader(defaultValues.merknader);
       if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
+      if (defaultValues.dji_aircraft_name) setDjiAircraftName(defaultValues.dji_aircraft_name);
     }
   }, [open, defaultValues]);
 
