@@ -710,9 +710,22 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
 
       <Tabs defaultValue="now" className="w-full">
         <TabsList className="w-full grid grid-cols-2">
-          <TabsTrigger value="now" className="text-xs">{tabNowLabel}</TabsTrigger>
-          <TabsTrigger value="forecast" className="text-xs">{tabForecastLabel}</TabsTrigger>
-
+          <TabsTrigger value="now" className="text-xs">
+            {typeof tabNowLabel === 'string' ? tabNowLabel : (
+              <>
+                <span className="hidden sm:inline">{tabNowLabel.long}</span>
+                <span className="inline sm:hidden">{tabNowLabel.short}</span>
+              </>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="forecast" className="text-xs">
+            {typeof tabForecastLabel === 'string' ? tabForecastLabel : (
+              <>
+                <span className="hidden sm:inline">{tabForecastLabel.long}</span>
+                <span className="inline sm:hidden">{tabForecastLabel.short}</span>
+              </>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="now" className="space-y-3 mt-3">
