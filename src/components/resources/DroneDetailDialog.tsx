@@ -34,6 +34,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
+import { DroneFormFields } from "./DroneFormFields";
+
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
