@@ -81,6 +81,9 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-lg">{drone.modell}</h3>
+                  {(drone as any).dji_aircraft_name && (
+                    <p className="text-sm text-muted-foreground">{t("resources.cards.droneName")}: {(drone as any).dji_aircraft_name}</p>
+                  )}
                   {drone.registration_number && (
                     <p className="text-sm text-muted-foreground">{t("resources.cards.regNumber")}: {drone.registration_number}</p>
                   )}
