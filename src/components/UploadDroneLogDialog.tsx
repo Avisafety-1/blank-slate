@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
 import { AddDroneDialog, DroneDefaultValues } from "@/components/resources/AddDroneDialog";
+import { DroneOptionContent } from "@/components/resources/DroneOptionLabel";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PendingDjiLogsSection, type PendingDjiLogsSectionRef } from "@/components/PendingDjiLogsSection";
 import { BatchLogPanel } from "@/components/upload/BatchLogPanel";
@@ -2436,7 +2437,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     </SelectTrigger>
                     <SelectContent>
                       {drones.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{droneOptionLabel(d)}</SelectItem>
+                        <SelectItem key={d.id} value={d.id} textValue={droneOptionLabel(d)} className="items-start py-2 min-h-[2.5rem]">
+                          <DroneOptionContent
+                            modell={d.modell}
+                            dji_aircraft_name={(d as any).dji_aircraft_name}
+                            serienummer={d.serienummer}
+                          />
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -3114,8 +3121,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </SelectTrigger>
                   <SelectContent>
                     {drones.map(d => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {droneOptionLabel(d)}
+                      <SelectItem key={d.id} value={d.id} textValue={droneOptionLabel(d)} className="items-start py-2 min-h-[2.5rem]">
+                        <DroneOptionContent
+                          modell={d.modell}
+                          dji_aircraft_name={(d as any).dji_aircraft_name}
+                          serienummer={d.serienummer}
+                        />
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -806,10 +806,10 @@ const ComboPicker = ({ value, options, placeholder, searchPlaceholder, onChange 
                   key={o.id}
                   value={`${o.id}__${o.search}`}
                   onSelect={() => { onChange(o.id); setOpen(false); }}
-                  className="text-xs"
+                  className="text-xs items-start py-2"
                 >
-                  <Check className={cn("mr-2 h-3 w-3 shrink-0", value === o.id ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">{o.label}</span>
+                  <Check className={cn("mr-2 h-3 w-3 shrink-0 mt-0.5", value === o.id ? "opacity-100" : "opacity-0")} />
+                  <span className="whitespace-normal break-words leading-snug">{o.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
