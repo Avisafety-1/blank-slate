@@ -29,14 +29,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate } from "@/lib/droneLogMatching";
-
-/** Label for a drone in pickers: "Modell – Navn (SN)" — name only when set. */
-export const droneOptionLabel = (d: { modell?: string | null; serienummer?: string | null; dji_aircraft_name?: string | null }) => {
-  const name = (d.dji_aircraft_name || '').trim();
-  const sn = (d.serienummer || '').trim();
-  return `${d.modell || ''}${name ? ` – ${name}` : ''}${sn ? ` (${sn})` : ''}`;
-};
+import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel } from "@/lib/droneLogMatching";
 
 // ── Types ──
 
