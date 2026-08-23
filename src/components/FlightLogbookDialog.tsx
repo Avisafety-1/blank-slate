@@ -13,9 +13,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil } from "lucide-react";
+import { Book, Plane, MapPin, Clock, Calendar, Plus, FileText, Edit, Trash2, ImagePlus, X, ZoomIn, User, Pencil, BarChart3 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
+import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
+import { loadFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
 import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
 
 import { format } from "date-fns";
@@ -42,6 +44,7 @@ interface FlightLog {
   movements: number;
   notes: string | null;
   entry_source?: 'logged' | 'manual' | null;
+  has_track?: boolean;
   drone: {
     modell: string;
     serienummer: string;
@@ -78,6 +81,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
   const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisDate, setAnalysisDate] = useState<string | undefined>();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [analysisLoadingId, setAnalysisLoadingId] = useState<string | null>(null);
+
+  const openAnalysis = async (log: FlightLog) => {
+    setAnalysisLoadingId(log.id);
+    try {
+      const { data } = await (supabase as any)
+        .from("flight_logs")
+        .select(FLIGHT_ANALYSIS_COLUMNS)
+        .eq("id", log.id)
+        .maybeSingle();
+      if (!data) return;
+      const track = await loadFlightAnalysisTrack(data);
+      if (!track) return;
+      setAnalysisTrack(track);
+      setAnalysisDate(log.flight_date);
+      setAnalysisOpen(true);
+    } catch {
+      toast.error(t('common.error'));
+    } finally {
+      setAnalysisLoadingId(null);
+    }
+  };
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
@@ -315,7 +343,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         .order("flight_date", { ascending: false });
 
       if (logs) {
-        setFlightLogs(logs);
+        const { data: tracked } = await (supabase as any)
+          .from("flight_logs")
+          .select("id")
+          .in("id", logIds)
+          .not("flight_track", "is", null);
+        const trackedIds = new Set((tracked || []).map((t: any) => t.id));
+        setFlightLogs((logs as any[]).map((l) => ({ ...l, has_track: trackedIds.has(l.id) })));
         let logged = 0;
         let manual = 0;
         for (const log of logs as FlightLog[]) {
@@ -952,6 +986,18 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                            {log.has_track && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title={t('resourceDialogs.droneLogbook.analyzeFlight')}
+                                disabled={analysisLoadingId === log.id}
+                                onClick={() => openAnalysis(log)}
+                              >
+                                <BarChart3 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                             {isAdmin && (
                               <Button
                                 variant="ghost"
@@ -1118,6 +1164,14 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         onOpenChange={(o) => { if (!o) setEditingFlightLogId(null); }}
         flightLogId={editingFlightLogId}
         onSaved={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
+      />
+
+      <FlightAnalysisDialog
+        open={analysisOpen}
+        onOpenChange={setAnalysisOpen}
+        flightTrack={analysisTrack}
+        flightDate={analysisDate}
+        onReassigned={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
       />
 
       <EvaluationViewerDialog
