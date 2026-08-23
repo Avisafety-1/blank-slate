@@ -77,6 +77,7 @@ interface FlightSummaryPanelProps {
   summary: FlightSummary;
   events?: any[];
   onReassigned?: () => void;
+  onClose?: () => void;
 }
 
 const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean }) => {
@@ -103,7 +104,7 @@ const CopyableValue = ({ value, truncate }: { value: string; truncate?: boolean 
 const formatDistance = (m: number) =>
   m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
 
-export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: FlightSummaryPanelProps) => {
+export const FlightSummaryPanel = ({ summary, events = [], onReassigned, onClose }: FlightSummaryPanelProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { isAdmin } = useRoleCheck();
@@ -304,6 +305,7 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
               {showLoggedOn && (
                 <TabsTrigger
                   value="loggedOn"
+                  onClick={() => onClose?.()}
                   className="gap-1.5 rounded-lg border border-border bg-background/70 px-3 py-2 text-xs font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-background/95 hover:text-foreground hover:shadow data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow"
                 >
                   <Plane className="w-3.5 h-3.5" />
