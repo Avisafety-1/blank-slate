@@ -986,6 +986,18 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">{formatDuration(log.flight_duration_minutes)}</Badge>
+                            {log.has_track && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title={t('resourceDialogs.droneLogbook.analyzeFlight')}
+                                disabled={analysisLoadingId === log.id}
+                                onClick={() => openAnalysis(log)}
+                              >
+                                <BarChart3 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                             {isAdmin && (
                               <Button
                                 variant="ghost"
