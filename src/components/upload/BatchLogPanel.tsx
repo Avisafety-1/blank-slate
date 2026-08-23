@@ -118,9 +118,10 @@ export const BatchLogPanel = ({
     if (sn) {
       const ownerLinked = log.user_id ? droneIdsByProfile[log.user_id] ?? [] : [];
       // Owner links take priority; fall back to the current user's links.
-      let matches = findSnMatches(drones as any[], sn, ownerLinked);
+      const logName = log.aircraft_name || log.parsed_result?.aircraftName || null;
+      let matches = findSnMatches(drones as any[], sn, ownerLinked, logName);
       if (matches.length > 1 && myDroneIds.length > 0) {
-        matches = findSnMatches(drones as any[], sn, myDroneIds);
+        matches = findSnMatches(drones as any[], sn, myDroneIds, logName);
       }
       if (matches.length === 1) return matches[0].id;
       if (matches.length > 1) return null; // ambiguous — let the user choose
