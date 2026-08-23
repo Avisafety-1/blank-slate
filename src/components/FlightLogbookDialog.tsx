@@ -1166,6 +1166,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         onSaved={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
       />
 
+      <FlightAnalysisDialog
+        open={analysisOpen}
+        onOpenChange={setAnalysisOpen}
+        track={analysisTrack}
+        flightDate={analysisDate}
+      />
+
       <EvaluationViewerDialog
         open={!!openEvaluationId}
         responseId={openEvaluationId}
