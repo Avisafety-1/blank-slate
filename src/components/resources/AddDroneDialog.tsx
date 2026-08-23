@@ -36,6 +36,7 @@ export interface DroneDefaultValues {
   serienummer?: string;
   internal_serial?: string;
   merknader?: string;
+  dji_aircraft_name?: string;
 }
 
 interface AddDroneDialogProps {
@@ -138,6 +139,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       if (defaultValues.modell) setModell(defaultValues.modell);
       if (defaultValues.merknader) setMerknader(defaultValues.merknader);
       if (defaultValues.internal_serial) setInternalSerial(defaultValues.internal_serial);
+      if (defaultValues.dji_aircraft_name) setDjiAircraftName(defaultValues.dji_aircraft_name);
     }
   }, [open, defaultValues]);
 
@@ -322,7 +324,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
+                  <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
                     {t('resourceDialogs.addDrone.droneNameInfo')}
                   </TooltipContent>
                 </Tooltip>

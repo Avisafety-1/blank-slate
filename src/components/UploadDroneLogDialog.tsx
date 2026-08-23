@@ -741,7 +741,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   })() : undefined;
 
   const droneDefaultValues: DroneDefaultValues | undefined = unmatchedDroneSN ? {
-    modell: result?.aircraftName || result?.droneType || '',
+    modell: result?.droneType || '',
+    dji_aircraft_name: result?.aircraftName || '',
     serienummer: unmatchedDroneSN,
     internal_serial: unmatchedDroneSN,
     merknader: (result as any)?.source === 'ardupilot' ? 'Importert fra ArduPilot-logg' : 'Importert fra DJI-logg',

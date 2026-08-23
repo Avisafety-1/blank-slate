@@ -1706,7 +1706,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             <Info className="h-3.5 w-3.5" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent className="max-w-xs text-xs">
+                        <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
                           {tt("labels.droneNameInfo")}
                         </TooltipContent>
                       </Tooltip>
