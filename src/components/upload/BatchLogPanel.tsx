@@ -13,8 +13,9 @@ import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
 import { findSnMatches, parseFlightDate } from "@/lib/droneLogMatching";
+import { droneOptionLabel } from "@/components/UploadDroneLogDialog";
 
-interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; }
+interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; dji_aircraft_name?: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
 interface EquipmentItem { id: string; navn: string; serienummer: string; internal_serial: string | null; type: string; }
 interface MissionOption { id: string; tittel: string; tidspunkt: string; lokasjon?: string | null; status?: string | null; }
@@ -557,8 +558,8 @@ export const BatchLogPanel = ({
                         searchPlaceholder="Søk drone…"
                         options={drones.map(d => ({
                           id: d.id,
-                          label: `${d.modell}${d.serienummer ? ` (${d.serienummer})` : ""}`,
-                          search: `${d.modell} ${d.serienummer || ""} ${d.internal_serial || ""}`,
+                          label: droneOptionLabel(d),
+                          search: `${d.modell} ${d.dji_aircraft_name || ""} ${d.serienummer || ""} ${d.internal_serial || ""}`,
                         }))}
                         onChange={(v) => updateRow(row.pendingLogId, { droneId: v })}
                       />
