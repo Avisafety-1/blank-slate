@@ -318,7 +318,13 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         .order("flight_date", { ascending: false });
 
       if (logs) {
-        setFlightLogs(logs);
+        const { data: tracked } = await (supabase as any)
+          .from("flight_logs")
+          .select("id")
+          .in("id", logIds)
+          .not("flight_track", "is", null);
+        const trackedIds = new Set((tracked || []).map((t: any) => t.id));
+        setFlightLogs((logs as any[]).map((l) => ({ ...l, has_track: trackedIds.has(l.id) })));
         let logged = 0;
         let manual = 0;
         for (const log of logs as FlightLog[]) {
