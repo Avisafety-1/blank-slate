@@ -1702,11 +1702,26 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   />
                 </div>
                 <div>
-                  <Label htmlFor="serienummer">{tt("labels.serial")}</Label>
+                  <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
+                    {tt("labels.droneName")}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground">
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-xs">
+                          {tt("labels.droneNameInfo")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </Label>
                   <Input
-                    id="serienummer"
-                    value={formData.serienummer}
-                    onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
+                    id="dji_aircraft_name"
+                    value={formData.dji_aircraft_name}
+                    onChange={(e) => setFormData({ ...formData, dji_aircraft_name: e.target.value })}
+                    placeholder={tt("form.internalSerialPlaceholder")}
                   />
                 </div>
               </div>
@@ -1721,26 +1736,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 />
               </div>
               <div>
-                <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
-                  {tt("labels.droneName")}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-muted-foreground hover:text-foreground">
-                          <Info className="h-3.5 w-3.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs text-xs">
-                        {tt("labels.droneNameInfo")}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </Label>
+                <Label htmlFor="serienummer">{tt("labels.serial")}</Label>
                 <Input
-                  id="dji_aircraft_name"
-                  value={formData.dji_aircraft_name}
-                  onChange={(e) => setFormData({ ...formData, dji_aircraft_name: e.target.value })}
-                  placeholder={tt("form.internalSerialPlaceholder")}
+                  id="serienummer"
+                  value={formData.serienummer}
+                  onChange={(e) => setFormData({ ...formData, serienummer: e.target.value })}
                 />
               </div>
               <div>
