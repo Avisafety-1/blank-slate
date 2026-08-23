@@ -101,6 +101,7 @@ export const DroneLogbookDialog = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
   const [analysisDate, setAnalysisDate] = useState<string | undefined>();
+  const [analysisLoadingId, setAnalysisLoadingId] = useState<string | null>(null);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
