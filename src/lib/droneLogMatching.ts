@@ -32,15 +32,39 @@ export const parsedSnIsMoreComplete = (
 };
 
 /**
+ * Compares the drone's stored name (as set in DJI Fly, e.g. "Rane") with the aircraft name
+ * found in the log (e.g. "DJI Mini 5 Pro Rane"). Case-insensitive, whole-word containment.
+ */
+export const djiNameMatches = (
+  storedName: string | null | undefined,
+  logName: string | null | undefined,
+): boolean => {
+  const s = (storedName || '').trim().toLowerCase();
+  const l = (logName || '').trim().toLowerCase();
+  if (!s || !l || s.length < 2) return false;
+  if (s === l) return true;
+  const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|\\W)${escaped}(\\W|$)`).test(l);
+};
+
+/**
  * Returns all drones/equipment whose SN matches (exact matches first).
- * `preferredIds` acts as a tiebreaker (e.g. drones the pilot is linked to via drone_personnel).
+ * `logAircraftName` (the name from the DJI log) is used as the strongest tiebreaker when
+ * several drones share a truncated SN prefix; `preferredIds` (e.g. drones the pilot is
+ * linked to) is the fallback tiebreaker.
  */
 export const findSnMatches = <
-  T extends { id?: string; serienummer?: string | null; internal_serial?: string | null },
+  T extends {
+    id?: string;
+    serienummer?: string | null;
+    internal_serial?: string | null;
+    dji_aircraft_name?: string | null;
+  },
 >(
   list: T[],
   sn: string,
   preferredIds?: string[],
+  logAircraftName?: string | null,
 ): T[] => {
   const matches = list.filter(
     x => snMatchesDjiSn(x.serienummer, sn) || snMatchesDjiSn(x.internal_serial, sn),
@@ -52,12 +76,18 @@ export const findSnMatches = <
       (x.internal_serial || '').trim().toLowerCase() === p,
   );
   const result = exact.length > 0 ? exact : matches;
+  if (result.length > 1 && logAircraftName) {
+    const byName = result.filter(x => djiNameMatches(x.dji_aircraft_name, logAircraftName));
+    if (byName.length === 1) return byName;
+    if (byName.length > 1) return byName;
+  }
   if (result.length > 1 && preferredIds && preferredIds.length > 0) {
     const preferred = result.filter(x => x.id && preferredIds.includes(x.id));
     if (preferred.length > 0) return preferred;
   }
   return result;
 };
+
 
 /** Parses DJI/ArduPilot start times, including the US-style formats `new Date()` mishandles. */
 export const parseFlightDate = (raw: string | null | undefined): Date | null => {
