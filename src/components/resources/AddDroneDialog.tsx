@@ -322,7 +322,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs">
+                  <TooltipContent side="top" align="start" avoidCollisions collisionPadding={16} className="max-w-[260px] text-xs break-words z-50">
                     {t('resourceDialogs.addDrone.droneNameInfo')}
                   </TooltipContent>
                 </Tooltip>
