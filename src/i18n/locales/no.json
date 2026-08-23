@@ -4522,7 +4522,9 @@
       "ikkeTillatelse": "Du har ikke tillatelse til å legge til {{vehicle}}",
       "kunneIkkeLeggeTil": "Kunne ikke legge til {{vehicle}}: {{message}}",
       "ukjentFeil": "Ukjent feil",
-      "lagtTil": "{{vehicle}} lagt til"
+      "lagtTil": "{{vehicle}} lagt til",
+      "droneName": "Navn",
+      "droneNameInfo": "Navnet dronen har i DJI Fly. Brukes i automatch-logikken for å skille droner som har likt (forkortet) serienummer i loggfilene."
     },
     "personCompetency": {
       "typeAndNameRequired": "Type og navn er påkrevd",
@@ -4950,7 +4952,9 @@
         "lastFlown": "Sist flydd",
         "status": "Status",
         "technicalResponsible": "Teknisk ansvarlig",
-        "notes": "Merknader"
+        "notes": "Merknader",
+        "droneName": "Navn",
+        "droneNameInfo": "Navnet dronen har i DJI Fly. Brukes i automatch-logikken for å skille droner som har likt (forkortet) serienummer i loggfilene."
       },
       "catalog": {
         "weightNoPayload": "Vekt uten payload:",

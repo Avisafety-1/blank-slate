@@ -2955,6 +2955,7 @@ export type Database = {
         Row: {
           aktiv: boolean
           company_id: string
+          dji_aircraft_name: string | null
           flyvetimer: number
           hours_at_last_inspection: number | null
           id: string
@@ -2992,6 +2993,7 @@ export type Database = {
         Insert: {
           aktiv?: boolean
           company_id: string
+          dji_aircraft_name?: string | null
           flyvetimer?: number
           hours_at_last_inspection?: number | null
           id?: string
@@ -3029,6 +3031,7 @@ export type Database = {
         Update: {
           aktiv?: boolean
           company_id?: string
+          dji_aircraft_name?: string | null
           flyvetimer?: number
           hours_at_last_inspection?: number | null
           id?: string

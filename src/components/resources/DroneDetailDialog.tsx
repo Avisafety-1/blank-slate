@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
-import { Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ArrowRightLeft } from "lucide-react";
+import { Info, Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ArrowRightLeft } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
@@ -46,6 +46,7 @@ interface Drone {
   modell: string;
   serienummer: string;
   internal_serial: string | null;
+  dji_aircraft_name?: string | null;
   registration_number: string | null;
   status: string;
   flyvetimer: number;
@@ -139,6 +140,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     modell: "",
     serienummer: "",
     internal_serial: "",
+    dji_aircraft_name: "",
     registration_number: "",
     status: "Grønn",
     flyvetimer: 0,
@@ -265,6 +267,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         modell: drone.modell,
         serienummer: drone.serienummer,
         internal_serial: drone.internal_serial || "",
+        dji_aircraft_name: (drone as any).dji_aircraft_name || "",
         registration_number: (drone as any).registration_number || "",
         status: drone.status,
         flyvetimer: drone.flyvetimer,
@@ -798,6 +801,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           modell: formData.modell,
           serienummer: formData.serienummer,
           internal_serial: formData.internal_serial || null,
+          dji_aircraft_name: formData.dji_aircraft_name || null,
           registration_number: formData.registration_number || null,
           status: formData.status,
           flyvetimer: formData.flyvetimer,
@@ -1014,6 +1018,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">{tt("labels.internalSerial")}</p>
                   <p className="text-sm sm:text-base">{drone.internal_serial}</p>
+                </div>
+              )}
+
+              {(drone as any).dji_aircraft_name && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{tt("labels.droneName")}</p>
+                  <p className="text-sm sm:text-base">{(drone as any).dji_aircraft_name}</p>
                 </div>
               )}
 
@@ -1706,6 +1717,29 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   id="internal_serial"
                   value={formData.internal_serial}
                   onChange={(e) => setFormData({ ...formData, internal_serial: e.target.value })}
+                  placeholder={tt("form.internalSerialPlaceholder")}
+                />
+              </div>
+              <div>
+                <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
+                  {tt("labels.droneName")}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="text-muted-foreground hover:text-foreground">
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-xs">
+                        {tt("labels.droneNameInfo")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+                <Input
+                  id="dji_aircraft_name"
+                  value={formData.dji_aircraft_name}
+                  onChange={(e) => setFormData({ ...formData, dji_aircraft_name: e.target.value })}
                   placeholder={tt("form.internalSerialPlaceholder")}
                 />
               </div>

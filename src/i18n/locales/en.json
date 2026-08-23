@@ -4520,7 +4520,9 @@
       "ikkeTillatelse": "You do not have permission to add {{vehicle}}",
       "kunneIkkeLeggeTil": "Could not add {{vehicle}}: {{message}}",
       "ukjentFeil": "Unknown error",
-      "lagtTil": "{{vehicle}} added"
+      "lagtTil": "{{vehicle}} added",
+      "droneName": "Name",
+      "droneNameInfo": "The name the drone has in DJI Fly. Used by the automatch logic to tell apart drones that share the same (truncated) serial number in log files."
     },
     "personCompetency": {
       "typeAndNameRequired": "Type and name are required",
@@ -4948,7 +4950,9 @@
         "lastFlown": "Last flown",
         "status": "Status",
         "technicalResponsible": "Technical responsible",
-        "notes": "Notes"
+        "notes": "Notes",
+        "droneName": "Name",
+        "droneNameInfo": "The name the drone has in DJI Fly. Used by the automatch logic to tell apart drones that share the same (truncated) serial number in log files."
       },
       "catalog": {
         "weightNoPayload": "Weight without payload:",

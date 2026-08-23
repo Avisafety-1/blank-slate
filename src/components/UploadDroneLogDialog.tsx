@@ -702,7 +702,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       return;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
-    const matches = findSnMatches(drones as any[], sn, myDroneIds);
+    const matches = findSnMatches(drones as any[], sn, myDroneIds, data.aircraftName || null);
     if (matches.length > 1) {
       // Several drones share the same (truncated) SN prefix — let the user choose.
       setAmbiguousDroneMatch(true);
@@ -750,7 +750,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const fetchDrones = async () => {
     const { data } = await supabase
       .from("drones")
-      .select("id, modell, serienummer, internal_serial")
+      .select("id, modell, serienummer, internal_serial, dji_aircraft_name")
       .eq("aktiv", true)
       .order("modell");
     if (data) setDrones(data);
@@ -985,7 +985,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds);
+          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds, data.aircraftName || null);
           // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
           const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
@@ -1106,7 +1106,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         let droneModel: string | undefined;
         const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
         if (sn) {
-          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds);
+          const dMatches = findSnMatches(localDrones as any[], sn, myDroneIds, data.aircraftName || null);
           // Ambiguous prefix match (several drones share the truncated SN) -> leave unmatched
           const match = dMatches.length === 1 ? dMatches[0] : null;
           if (match) { droneId = match.id; droneModel = match.modell; }
