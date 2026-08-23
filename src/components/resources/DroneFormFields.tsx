@@ -112,6 +112,7 @@ export const DroneFormFields = ({
 }: DroneFormFieldsProps) => {
   const { t } = useTranslation();
   const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
+  const isTouch = useIsTouchDevice();
 
   const selectedOps = values.operations_checklist_ids || [];
 
