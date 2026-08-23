@@ -824,7 +824,8 @@
       "expires": "Expires",
       "noCompetenciesRegistered": "No competencies registered",
       "personnelTitle": "Personnel",
-      "equipmentTitle": "Equipment"
+      "equipmentTitle": "Equipment",
+      "droneName": "Name"
     }
   },
   "logFlight": {

@@ -826,7 +826,8 @@
       "expires": "Utløper",
       "noCompetenciesRegistered": "Ingen kompetanser registrert",
       "personnelTitle": "Personell",
-      "equipmentTitle": "Utstyr"
+      "equipmentTitle": "Utstyr",
+      "droneName": "Navn"
     }
   },
   "logFlight": {
