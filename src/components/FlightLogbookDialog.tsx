@@ -44,6 +44,7 @@ interface FlightLog {
   movements: number;
   notes: string | null;
   entry_source?: 'logged' | 'manual' | null;
+  has_track?: boolean;
   drone: {
     modell: string;
     serienummer: string;
