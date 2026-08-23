@@ -81,6 +81,31 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const { isAdmin } = useRoleCheck();
   const queryClient = useQueryClient();
   const [editingFlightLogId, setEditingFlightLogId] = useState<string | null>(null);
+  const [analysisTrack, setAnalysisTrack] = useState<any>(null);
+  const [analysisDate, setAnalysisDate] = useState<string | undefined>();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [analysisLoadingId, setAnalysisLoadingId] = useState<string | null>(null);
+
+  const openAnalysis = async (log: FlightLog) => {
+    setAnalysisLoadingId(log.id);
+    try {
+      const { data } = await (supabase as any)
+        .from("flight_logs")
+        .select(FLIGHT_ANALYSIS_COLUMNS)
+        .eq("id", log.id)
+        .maybeSingle();
+      if (!data) return;
+      const track = await loadFlightAnalysisTrack(data);
+      if (!track) return;
+      setAnalysisTrack(track);
+      setAnalysisDate(log.flight_date);
+      setAnalysisOpen(true);
+    } catch {
+      toast.error(t('common.error'));
+    } finally {
+      setAnalysisLoadingId(null);
+    }
+  };
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [flightLogs, setFlightLogs] = useState<FlightLog[]>([]);
   const [personnelLogs, setPersonnelLogs] = useState<PersonnelLogEntry[]>([]);
