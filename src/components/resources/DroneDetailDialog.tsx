@@ -1782,8 +1782,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 }
               />
 
-              </div>
             </>
+
           )}
         </div>
 
