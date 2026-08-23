@@ -1169,8 +1169,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
       <FlightAnalysisDialog
         open={analysisOpen}
         onOpenChange={setAnalysisOpen}
-        track={analysisTrack}
+        flightTrack={analysisTrack}
         flightDate={analysisDate}
+        onReassigned={() => { fetchFlightLogs(); fetchPersonnelLogs(); fetchProfileData(); }}
       />
 
       <EvaluationViewerDialog
