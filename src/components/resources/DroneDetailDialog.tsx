@@ -1327,7 +1327,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     {linkedEquipment.map((link: any) => {
                       const eq = link.equipment;
                       if (!eq) return null;
-                      const eqStatus = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
+                      const eqDateStatus = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
+                      // Include the equipment's own registered status (e.g. deviation from a flight log),
+                      // so the badge matches what drives the drone's aggregated status.
+                      const eqStatus = worstStatus(eqDateStatus, (eq.status as any) || "Grønn");
                       const eqHint = getItemDateHint(eq.neste_vedlikehold, eq.varsel_dager);
                       return (
                         <div
