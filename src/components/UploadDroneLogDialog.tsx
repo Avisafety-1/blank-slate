@@ -29,7 +29,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate } from "@/lib/droneLogMatching";
+import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel } from "@/lib/droneLogMatching";
 
 // ── Types ──
 
@@ -2436,7 +2436,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     </SelectTrigger>
                     <SelectContent>
                       {drones.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.modell} ({d.serienummer})</SelectItem>
+                        <SelectItem key={d.id} value={d.id}>{droneOptionLabel(d)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -3115,7 +3115,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <SelectContent>
                     {drones.map(d => (
                       <SelectItem key={d.id} value={d.id}>
-                        {d.modell} {d.serienummer ? `(${d.serienummer})` : ''}
+                        {droneOptionLabel(d)}
                       </SelectItem>
                     ))}
                   </SelectContent>

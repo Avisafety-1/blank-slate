@@ -109,3 +109,10 @@ export const parseFlightDate = (raw: string | null | undefined): Date | null => 
   }
   return null;
 };
+
+/** Label for a drone in pickers: "Modell – Navn (SN)" — name only when set. */
+export const droneOptionLabel = (d: { modell?: string | null; serienummer?: string | null; dji_aircraft_name?: string | null }) => {
+  const name = (d.dji_aircraft_name || '').trim();
+  const sn = (d.serienummer || '').trim();
+  return `${d.modell || ''}${name ? ` – ${name}` : ''}${sn ? ` (${sn})` : ''}`;
+};
