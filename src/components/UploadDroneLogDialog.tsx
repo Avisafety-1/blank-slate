@@ -3115,7 +3115,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <SelectContent>
                     {drones.map(d => (
                       <SelectItem key={d.id} value={d.id}>
-                        {d.modell} {d.serienummer ? `(${d.serienummer})` : ''}
+                        {droneOptionLabel(d)}
                       </SelectItem>
                     ))}
                   </SelectContent>
