@@ -203,6 +203,7 @@ export const DroneLogbookDialog = ({
 
             flightDate: log.flight_date,
             flightLogId: log.id,
+            rawFlightLog: log,
           });
         });
       }
