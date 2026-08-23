@@ -3121,8 +3121,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </SelectTrigger>
                   <SelectContent>
                     {drones.map(d => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {droneOptionLabel(d)}
+                      <SelectItem key={d.id} value={d.id} textValue={droneOptionLabel(d)} className="items-start py-2 min-h-[2.5rem]">
+                        <DroneOptionContent
+                          modell={d.modell}
+                          dji_aircraft_name={(d as any).dji_aircraft_name}
+                          serienummer={d.serienummer}
+                        />
                       </SelectItem>
                     ))}
                   </SelectContent>
