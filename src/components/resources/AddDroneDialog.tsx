@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -57,6 +58,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [selectedOpsChecklistIds, setSelectedOpsChecklistIds] = useState<string[]>([]);
   const [selectedPostFlightChecklistId, setSelectedPostFlightChecklistId] = useState<string>("");
   const [droneCount, setDroneCount] = useState(0);
+  const [djiAircraftName, setDjiAircraftName] = useState("");
   const terminology = useTerminology();
   const { checklists } = useChecklists();
   const { maxDrones, currentPlan, seatCount } = usePlanGating();
@@ -125,6 +127,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setPayload("");
       setMerknader("");
       setInternalSerial("");
+      setDjiAircraftName("");
       setInspectionStartDate("");
       setInspectionIntervalDays("");
       setCalculatedNextInspection("");
@@ -206,6 +209,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         modell: modell || (formData.get("modell") as string),
         serienummer: (formData.get("serienummer") as string) || '',
         internal_serial: internalSerial || null,
+        dji_aircraft_name: djiAircraftName || null,
         registration_number: (formData.get("registration_number") as string) || null,
         status: (formData.get("status") as string) || "Grønn",
         flyvetimer: parseInt(formData.get("flyvetimer") as string) || 0,
@@ -305,6 +309,29 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
               id="internal_serial" 
               value={internalSerial}
               onChange={(e) => setInternalSerial(e.target.value)}
+              placeholder={t('resourceDialogs.addDrone.valgfritt')}
+            />
+          </div>
+          <div>
+            <Label htmlFor="dji_aircraft_name" className="flex items-center gap-1.5">
+              {t('resourceDialogs.addDrone.droneName')}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    {t('resourceDialogs.addDrone.droneNameInfo')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </Label>
+            <Input
+              id="dji_aircraft_name"
+              value={djiAircraftName}
+              onChange={(e) => setDjiAircraftName(e.target.value)}
               placeholder={t('resourceDialogs.addDrone.valgfritt')}
             />
           </div>
