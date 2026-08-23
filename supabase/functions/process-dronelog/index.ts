@@ -899,6 +899,7 @@ Deno.serve(async (req) => {
 
     // Look up per-company key
     let dronelogKey = globalKey;
+    let usingCompanyKey = false;
     try {
       const { data: profile } = await supabase
         .from("profiles")
