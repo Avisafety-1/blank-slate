@@ -170,9 +170,14 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
   const tabNowLabel = (() => {
     const iso = weatherData?.forecast_time;
     if (!validTarget || !iso) return t('safety.weatherPanel.tabNow');
-    return new Date(iso).toLocaleString('nb-NO', {
+    const date = new Date(iso);
+    const long = date.toLocaleString('nb-NO', {
       weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     });
+    const short = date.toLocaleString('nb-NO', {
+      day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    return { long, short };
   })();
 
   const tabForecastLabel = (() => {
@@ -180,10 +185,17 @@ export const DroneWeatherPanel = ({ latitude, longitude, compact = false, savedW
     if (!list.length) return t('safety.weatherPanel.tabForecast');
     const first = new Date(list[0].time);
     const last = new Date(list[list.length - 1].time);
-    const d = (x: Date) => x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
-    return first.toDateString() === last.toDateString()
-      ? `${t('safety.weatherPanel.forecastWord')} ${d(first)}`
-      : `${t('safety.weatherPanel.forecastWord')} ${d(first)}–${d(last)}`;
+    const dLong = (x: Date) => x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+    const dShort = (x: Date) => x.toLocaleDateString('nb-NO', { day: 'numeric', month: 'numeric' });
+    const sameDay = first.toDateString() === last.toDateString();
+    return {
+      long: sameDay
+        ? `${t('safety.weatherPanel.forecastWord')} ${dLong(first)}`
+        : `${t('safety.weatherPanel.forecastWord')} ${dLong(first)}–${dLong(last)}`,
+      short: sameDay
+        ? `${t('safety.weatherPanel.forecastWord')} ${dShort(first)}`
+        : `${t('safety.weatherPanel.forecastWord')} ${dShort(first)}–${dShort(last)}`,
+    };
   })();
 
 
