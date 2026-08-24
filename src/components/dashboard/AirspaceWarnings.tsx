@@ -82,7 +82,12 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
     }
   }, [cachedWarnings]);
 
+  const segmentsKey = (routeSegments || [])
+    .map((s) => `${s.id}:${s.label}:${s.coordinates.length}:${s.coordinates[0]?.lat ?? ''},${s.coordinates[0]?.lng ?? ''}`)
+    .join("|");
+
   useEffect(() => {
+
     // Skip RPC if cached warnings are provided
     if (cachedWarnings) return;
 
