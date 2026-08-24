@@ -140,6 +140,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // Ninox approval state
   const [missionIn5kmZone, setMissionIn5kmZone] = useState(false);
+  const [ninoxRouteLabel, setNinoxRouteLabel] = useState<string | null>(null);
+
   const [ninoxApproved, setNinoxApproved] = useState(false);
   const [ninoxChecking, setNinoxChecking] = useState(false);
   const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
