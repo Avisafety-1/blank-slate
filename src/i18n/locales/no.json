@@ -3482,6 +3482,12 @@
       "clickShort": "Klikk...",
       "removePilotShort": "Fjern pilot",
       "undoTitle": "Angre siste endring",
+      "newRoute": "Ny rute",
+      "newRouteTitle": "Start en ny, separat rute",
+      "newRouteNeedsPoints": "Du må ha minst 3 rutepunkter i den aktive ruten før du kan starte en ny rute (har {{count}}).",
+      "routeChip": "Rute {{n}}",
+      "deleteActiveRoute": "Slett valgt rute",
+
       "clearTitle": "Nullstill rute",
       "cancelTitle": "Avbryt",
       "saveTitle": "Lagre rute",

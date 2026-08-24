@@ -14,7 +14,7 @@ import { useAppHeartbeat } from "@/hooks/useAppHeartbeat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft, MousePointer2 } from "lucide-react";
+import { X, Save, Undo, Trash2, Route, CheckCircle2, AlertTriangle, XCircle, MapPin, ExternalLink, Upload, Send, ChevronDown, Users, ArrowLeft, MousePointer2, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -57,6 +57,8 @@ export default function KartPage() {
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
   const [routeUndoToken, setRouteUndoToken] = useState(0);
+  const [newRouteToken, setNewRouteToken] = useState(0);
+
 
   // 3D-modus (MapLibre). Ruteplanlegging støttes nå også i 3D — ingen
   // automatisk deaktivering.
@@ -536,6 +538,15 @@ export default function KartPage() {
     }
   };
 
+  const handleAddRoute = () => {
+    setNewRouteToken((value) => value + 1);
+  };
+
+  const handleNewRouteRejected = useCallback((points: number) => {
+    toast.warning(t('pages.map.newRouteNeedsPoints', { count: points }));
+  }, [t]);
+
+
   const handleTogglePilotPlacement = () => {
     if (isPlacingPilot) {
       setIsPlacingPilot(false);
@@ -762,6 +773,18 @@ export default function KartPage() {
                     <Undo className="h-4 w-4" />
                   </Button>
 
+                  {currentRoute.coordinates.length >= 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddRoute}
+                      className="h-8 px-2"
+                      title={t('pages.map.newRouteTitle')}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+
                   <Button
                     data-tour="map-route-clear"
                     variant="outline"
@@ -771,6 +794,7 @@ export default function KartPage() {
                     className="h-8 px-2"
                     title={t('pages.map.clearTitle')}
                   >
+
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   <Button
@@ -929,6 +953,21 @@ export default function KartPage() {
                 <Undo className="h-4 w-4" />
                 <span className="hidden sm:inline ml-1">{t('pages.map.undo')}</span>
               </Button>
+
+              {currentRoute.coordinates.length >= 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddRoute}
+                  className="h-8 px-2 sm:px-3"
+                  title={t('pages.map.newRouteTitle')}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">{t('pages.map.newRoute')}</span>
+                </Button>
+              )}
+
+
 
               <Button
                 data-tour="map-route-clear"
@@ -1212,6 +1251,9 @@ export default function KartPage() {
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
                   routeUndoToken={routeUndoToken}
+              newRouteToken={newRouteToken}
+              onNewRouteRejected={handleNewRouteRejected}
+
               routeInspectMode={routeInspectMode}
 
               onStartRoutePlanning={handleStartRoutePlanning}

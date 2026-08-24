@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import L from "leaflet";
@@ -20,10 +20,20 @@ import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
 
 // Re-export types for backward compatibility
 export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
-import type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
+import type { RoutePoint, RouteData, RouteSegment, SoraSettings } from "@/types/map";
+import {
+  makeSegment,
+  segmentsFromRouteData,
+  routeDataFromSegments,
+  segmentsSignature,
+  routeColor,
+  MIN_POINTS_FOR_NEW_ROUTE,
+} from "@/lib/routeSegments";
+
 
 // Extracted modules
 import { calculateDistance, calculateTotalDistance, calculatePolygonAreaKm2 } from "@/lib/mapGeometry";
+
 import {
   fetchNsmData,
   fetchRpasData,
@@ -179,8 +189,13 @@ interface OpenAIPMapProps {
   onViewChange?: (center: [number, number], zoom: number) => void;
   /** Incrementing trigger from parent toolbar to undo the latest route mutation. */
   routeUndoToken?: number;
+  /** Incrementing trigger from parent toolbar to start a new, separate route. */
+  newRouteToken?: number;
+  /** Called when a new route was requested but the active route has too few points. */
+  onNewRouteRejected?: (points: number) => void;
   /** If true while in routePlanning mode, map clicks do NOT add waypoints (lets user click geo-zones for info). */
   routeInspectMode?: boolean;
+
   /** Historical flight tracks to render as green polylines (e.g. flown routes from mission's flight_logs). */
   historicalFlightTracks?: Array<{
     flightLogId?: string;
@@ -215,7 +230,11 @@ export function OpenAIPMap({
   stackSlotAboveLayers,
   onViewChange,
   routeUndoToken,
+  newRouteToken,
+  onNewRouteRejected,
   routeInspectMode,
+
+
   historicalFlightTracks,
 }: OpenAIPMapProps) {
   const { t, i18n } = useTranslation();
@@ -288,15 +307,84 @@ export function OpenAIPMap({
   const nsmGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const rpasGeoJsonRef = useRef<L.GeoJSON<any> | null>(null);
   const aipGeoJsonLayersRef = useRef<L.GeoJSON[]>([]);
-  const routePointsRef = useRef<RoutePoint[]>(existingRoute?.coordinates || []);
-  const routeHistoryRef = useRef<RoutePoint[][]>([]);
+  // ---- Flere ruter per oppdrag -------------------------------------------
+  // `routeSegmentsRef` holder alle rutene. `routePointsRef` er en proxy mot
+  // koordinatene til den aktive ruten, slik at all eksisterende rute-logikk
+  // (push/splice/tilordning) fortsetter å virke uendret.
+  const routeSegmentsRef = useRef<RouteSegment[]>(
+    (() => {
+      const segs = segmentsFromRouteData(existingRoute);
+      return segs.length ? segs : [makeSegment([])];
+    })(),
+  );
+  const activeRouteIdxRef = useRef<number>(
+    (() => {
+      const segs = routeSegmentsRef.current;
+      const idx = segs.findIndex((s) => s.id === existingRoute?.activeRouteId);
+      return idx >= 0 ? idx : 0;
+    })(),
+  );
+  const clampActiveIdx = useCallback(() => {
+    const segs = routeSegmentsRef.current;
+    if (segs.length === 0) segs.push(makeSegment([]));
+    if (activeRouteIdxRef.current > segs.length - 1) activeRouteIdxRef.current = segs.length - 1;
+    if (activeRouteIdxRef.current < 0) activeRouteIdxRef.current = 0;
+    return activeRouteIdxRef.current;
+  }, []);
+  const routePointsRef = useMemo(
+    () => ({
+      get current(): RoutePoint[] {
+        const segs = routeSegmentsRef.current;
+        if (segs.length === 0) segs.push(makeSegment([]));
+        const idx = Math.min(Math.max(activeRouteIdxRef.current, 0), segs.length - 1);
+        return segs[idx].coordinates;
+      },
+      set current(value: RoutePoint[]) {
+        const segs = routeSegmentsRef.current;
+        if (segs.length === 0) segs.push(makeSegment([]));
+        const idx = Math.min(Math.max(activeRouteIdxRef.current, 0), segs.length - 1);
+        segs[idx] = { ...segs[idx], coordinates: value };
+      },
+    }),
+    [],
+  );
+  // Angre-historikk per rute-id
+  const routeHistoryMapRef = useRef<Record<string, RoutePoint[][]>>({});
+  const routeHistoryRef = useMemo(
+    () => ({
+      get current(): RoutePoint[][] {
+        const segs = routeSegmentsRef.current;
+        const id = segs[Math.min(Math.max(activeRouteIdxRef.current, 0), Math.max(segs.length - 1, 0))]?.id || "default";
+        if (!routeHistoryMapRef.current[id]) routeHistoryMapRef.current[id] = [];
+        return routeHistoryMapRef.current[id];
+      },
+      set current(value: RoutePoint[][]) {
+        const segs = routeSegmentsRef.current;
+        const id = segs[Math.min(Math.max(activeRouteIdxRef.current, 0), Math.max(segs.length - 1, 0))]?.id || "default";
+        routeHistoryMapRef.current[id] = value;
+      },
+    }),
+    [],
+  );
   const lastRouteUndoTokenRef = useRef(routeUndoToken ?? 0);
   const pushRouteHistory = useCallback(() => {
     const snap = routePointsRef.current.map((p) => ({ ...p }));
     routeHistoryRef.current.push(snap);
     if (routeHistoryRef.current.length > 50) routeHistoryRef.current.shift();
-  }, []);
+  }, [routePointsRef, routeHistoryRef]);
   const [routePointCount, setRoutePointCount] = useState(existingRoute?.coordinates?.length || 0);
+  // Rendrer rute-chips i kartet på nytt når antall ruter / aktiv rute endres
+  const [routeSegmentsVersion, setRouteSegmentsVersion] = useState(0);
+  const bumpRouteSegments = useCallback(() => setRouteSegmentsVersion((v) => v + 1), []);
+  const lastEmittedSignatureRef = useRef<string>("");
+  const emitRouteChange = useCallback(() => {
+    clampActiveIdx();
+    const data = routeDataFromSegments(routeSegmentsRef.current, activeRouteIdxRef.current);
+    lastEmittedSignatureRef.current = segmentsSignature(data.routes || [], data.activeRouteId);
+    const cb = onRouteChangeRef.current;
+    if (cb) cb(data);
+  }, [clampActiveIdx]);
+
   const pilotMarkerRef = useRef<L.Marker | null>(null);
   const pilotCircleRef = useRef<L.Circle | null>(null);
   const pilotLayerRef = useRef<L.LayerGroup | null>(null);
@@ -515,14 +603,47 @@ export function OpenAIPMap({
     if (!routeLayerRef.current || !leafletMapRef.current) return;
 
     routeLayerRef.current.clearLayers();
+    const segments = routeSegmentsRef.current;
+    const activeIdx = clampActiveIdx();
     const points = routePointsRef.current;
+    const activeColor = routeColor(activeIdx);
+    const multiRoute = segments.length > 1;
 
-    if (points.length === 0) {
+    if (!segments.some((s) => s.coordinates.length > 0)) {
       soraLayerRef.current?.clearLayers();
       adjacentAreaLayerRef.current?.clearLayers();
       populationDensityLayerRef.current?.clearLayers();
       return;
     }
+
+    // ---- Inaktive ruter: dempet linje + små, ikke-redigerbare punkter ----
+    segments.forEach((seg, si) => {
+      if (si === activeIdx || seg.coordinates.length === 0) return;
+      const color = routeColor(si);
+      if (seg.coordinates.length > 1) {
+        L.polyline(
+          seg.coordinates.map((p) => [p.lat, p.lng] as [number, number]),
+          { color, weight: 3, opacity: 0.35, dashArray: '10, 5', pane: 'routePane', interactive: false },
+        ).addTo(routeLayerRef.current!);
+      }
+      seg.coordinates.forEach((point, index) => {
+        L.marker([point.lat, point.lng], {
+          icon: L.divIcon({
+            className: 'route-marker',
+            html: `<div style="
+              width: 20px; height: 20px; background: ${color}; opacity: 0.55;
+              border: 2px solid white; border-radius: 50%; display:flex; align-items:center;
+              justify-content:center; color:white; font-weight:bold; font-size:10px;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            ">${index + 1}</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          }),
+          pane: 'routePane',
+          interactive: false,
+        }).addTo(routeLayerRef.current!);
+      });
+    });
 
     // Draw polyline (per-segment so we can insert points between two markers)
     if (points.length > 1) {
@@ -534,7 +655,7 @@ export function OpenAIPMap({
 
         // Visible segment
         L.polyline(seg, {
-          color: '#3b82f6',
+          color: activeColor,
           weight: 3,
           opacity: 0.8,
           dashArray: '10, 5',
@@ -545,7 +666,7 @@ export function OpenAIPMap({
         if (isPlanning) {
           // Invisible wider hit-area to make clicking the line forgiving
           const hit = L.polyline(seg, {
-            color: '#3b82f6',
+            color: activeColor,
             weight: 20,
             opacity: 0,
             pane: 'routePane',
@@ -562,23 +683,19 @@ export function OpenAIPMap({
             pushRouteHistory();
             routePointsRef.current.splice(insertIndex, 0, { lat, lng });
             updateRouteDisplay();
-            const cb = onRouteChangeRef.current;
-            if (cb) {
-              const coords = [...routePointsRef.current];
-              cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-            }
+            emitRouteChange();
           });
         }
       }
     }
 
 
-    // Add numbered markers
+    // Add numbered markers (hver rute nummereres fra 1)
     points.forEach((point, index) => {
       const isFirst = index === 0;
       const isLast = index === points.length - 1 && points.length > 1;
 
-      let bgColor = '#3b82f6';
+      let bgColor = activeColor;
       if (isFirst) bgColor = '#22c55e';
       else if (isLast) bgColor = '#ef4444';
 
@@ -613,11 +730,7 @@ export function OpenAIPMap({
           pushRouteHistory();
           routePointsRef.current[index] = { lat, lng };
           updateRouteDisplay();
-          const cb = onRouteChangeRef.current;
-          if (cb) {
-            const coords = [...routePointsRef.current];
-            cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-          }
+          emitRouteChange();
         });
 
         marker.on('contextmenu', (e: any) => {
@@ -625,15 +738,13 @@ export function OpenAIPMap({
           pushRouteHistory();
           routePointsRef.current.splice(index, 1);
           updateRouteDisplay();
-          const cb = onRouteChangeRef.current;
-          if (cb) {
-            const coords = [...routePointsRef.current];
-            cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-          }
+          emitRouteChange();
         });
       }
 
-      let popupContent = `<strong>${t('pages.map.routePointPopup.title', { n: index + 1 })}</strong>`;
+      let popupContent = multiRoute
+        ? `<strong>${t('pages.map.routeChip', { n: activeIdx + 1 })} · ${t('pages.map.routePointPopup.title', { n: index + 1 })}</strong>`
+        : `<strong>${t('pages.map.routePointPopup.title', { n: index + 1 })}</strong>`;
       if (index > 0) {
         const dist = calculateDistance(points[index - 1].lat, points[index - 1].lng, point.lat, point.lng);
         popupContent += `<br/>${t('pages.map.routePointPopup.distanceFromPrev', { d: dist.toFixed(2) })}`;
@@ -669,7 +780,7 @@ export function OpenAIPMap({
       }).addTo(routeLayerRef.current);
     }
 
-    // SORA operational volume zones
+    // SORA operational volume zones — tegnes for hver rute
     if (!soraLayerRef.current) {
       soraLayerRef.current = L.layerGroup();
       if (leafletMapRef.current) {
@@ -679,8 +790,12 @@ export function OpenAIPMap({
     soraLayerRef.current.clearLayers();
 
     const sora = soraSettingsRef.current;
-    if (sora?.enabled && points.length >= 1) {
-      renderSoraZones(points, sora, soraLayerRef.current);
+    if (sora?.enabled) {
+      segments.forEach((seg) => {
+        if (seg.coordinates.length >= 1) {
+          renderSoraZones(seg.coordinates, sora, soraLayerRef.current!);
+        }
+      });
     }
 
     // Adjacent area zone
@@ -696,6 +811,7 @@ export function OpenAIPMap({
     if (adjRadius && adjRadius > 0 && sora?.enabled && points.length >= 1) {
       renderAdjacentAreaZone(points, adjRadius, adjacentAreaLayerRef.current, sora);
     }
+
 
     // SSB 250 m population density cells for the active SORA/adjacent coverage.
     const map = leafletMapRef.current;
@@ -771,7 +887,7 @@ export function OpenAIPMap({
         }
       });
     }
-  }, [getPopulationDensityRenderer]);
+  }, [getPopulationDensityRenderer, t, clampActiveIdx, emitRouteChange, pushRouteHistory, routePointsRef]);
 
   // Sync soraSettings ref and redraw
   useEffect(() => {
@@ -804,39 +920,40 @@ export function OpenAIPMap({
     }
   }, [mode, updateRouteDisplay, setGeoJsonInteractivity, syncRoutePlanningInteractivity]);
 
-  // Sync with controlled route from parent
+  // Sync with controlled route from parent (støtter flere ruter)
   useEffect(() => {
     if (!controlledRoute) return;
-    const controlled = controlledRoute.coordinates;
-    const current = routePointsRef.current;
+    const incoming = segmentsFromRouteData(controlledRoute);
+    const incomingSegs = incoming.length ? incoming : [makeSegment([])];
+    const incomingActiveIdx = Math.max(
+      0,
+      incomingSegs.findIndex((s) => s.id === controlledRoute.activeRouteId),
+    );
+    const incomingSig = segmentsSignature(incomingSegs, incomingSegs[incomingActiveIdx]?.id);
+    const currentSig = segmentsSignature(routeSegmentsRef.current, routeSegmentsRef.current[clampActiveIdx()]?.id);
+    if (incomingSig === currentSig || incomingSig === lastEmittedSignatureRef.current) return;
+
+    const wasEmpty = routePointsRef.current.length === 0;
+    const prevFirst = routePointsRef.current[0];
+    routeHistoryMapRef.current = {};
+    routeSegmentsRef.current = incomingSegs;
+    activeRouteIdxRef.current = incomingActiveIdx;
+    const controlled = routePointsRef.current;
     const firstChanged =
-      controlled.length > 0 && current.length > 0 &&
-      (controlled[0].lat !== current[0].lat || controlled[0].lng !== current[0].lng);
-    const lengthDiffers = controlled.length !== current.length;
-    let contentDiffers = false;
-    if (!lengthDiffers) {
-      for (let i = 0; i < controlled.length; i++) {
-        if (controlled[i].lat !== current[i].lat || controlled[i].lng !== current[i].lng) {
-          contentDiffers = true;
-          break;
-        }
+      controlled.length > 0 && prevFirst != null &&
+      (controlled[0].lat !== prevFirst.lat || controlled[0].lng !== prevFirst.lng);
+    setRoutePointCount(controlled.length);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    if (controlled.length > 0 && leafletMapRef.current && (wasEmpty || firstChanged)) {
+      // When an explicit mission center is supplied, let the initialCenter effect
+      // keep the map centered on the mission instead of snapping to the first point.
+      if (!initialCenter) {
+        leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
       }
     }
-    if (lengthDiffers || contentDiffers || firstChanged) {
-      const wasEmpty = current.length === 0;
-      routeHistoryRef.current = [];
-      routePointsRef.current = [...controlled];
-      setRoutePointCount(routePointsRef.current.length);
-      updateRouteDisplay();
-      if (controlled.length > 0 && leafletMapRef.current && (wasEmpty || firstChanged)) {
-        // When an explicit mission center is supplied, let the initialCenter effect
-        // keep the map centered on the mission instead of snapping to the first point.
-        if (!initialCenter) {
-          leafletMapRef.current.setView([controlled[0].lat, controlled[0].lng], leafletMapRef.current.getZoom());
-        }
-      }
-    }
-  }, [controlledRoute, updateRouteDisplay]);
+  }, [controlledRoute, updateRouteDisplay, clampActiveIdx, bumpRouteSegments, routePointsRef, initialCenter]);
+
 
   // ==================== MAIN MAP INIT useEffect ====================
   useEffect(() => {
@@ -1245,12 +1362,9 @@ export function OpenAIPMap({
         routePointsRef.current.push({ lat, lng });
         setRoutePointCount(routePointsRef.current.length);
         updateRouteDisplay();
-        const cb = onRouteChangeRef.current;
-        if (cb) {
-          const coords = [...routePointsRef.current];
-          cb({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-        }
+        emitRouteChange();
       } else if (weatherEnabledRef.current) {
+
         showWeatherPopup(map, lat, lng);
       } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
         try {
@@ -2110,12 +2224,14 @@ export function OpenAIPMap({
   };
 
   const clearRoute = useCallback(() => {
-    if (routePointsRef.current.length > 0) pushRouteHistory();
-    routePointsRef.current = [];
+    routeHistoryMapRef.current = {};
+    routeSegmentsRef.current = [makeSegment([])];
+    activeRouteIdxRef.current = 0;
     setRoutePointCount(0);
+    bumpRouteSegments();
     updateRouteDisplay();
-    if (onRouteChange) onRouteChange({ coordinates: [], totalDistance: 0 });
-  }, [updateRouteDisplay, onRouteChange, pushRouteHistory]);
+    emitRouteChange();
+  }, [updateRouteDisplay, emitRouteChange, bumpRouteSegments]);
 
   const undoLastPoint = useCallback(() => {
     if (routeHistoryRef.current.length === 0) return;
@@ -2123,17 +2239,60 @@ export function OpenAIPMap({
     routePointsRef.current = prev;
     setRoutePointCount(prev.length);
     updateRouteDisplay();
-    if (onRouteChange) {
-      const coords = [...prev];
-      onRouteChange({ coordinates: coords, totalDistance: calculateTotalDistance(coords), areaKm2: calculatePolygonAreaKm2(coords) });
-    }
-  }, [updateRouteDisplay, onRouteChange]);
+    emitRouteChange();
+  }, [updateRouteDisplay, emitRouteChange, routeHistoryRef, routePointsRef]);
 
   useEffect(() => {
     if (routeUndoToken == null || routeUndoToken === lastRouteUndoTokenRef.current) return;
     lastRouteUndoTokenRef.current = routeUndoToken;
     undoLastPoint();
   }, [routeUndoToken, undoLastPoint]);
+
+  // Velg aktiv rute
+  const selectRoute = useCallback((idx: number) => {
+    activeRouteIdxRef.current = idx;
+    clampActiveIdx();
+    setRoutePointCount(routePointsRef.current.length);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    emitRouteChange();
+  }, [clampActiveIdx, updateRouteDisplay, emitRouteChange, bumpRouteSegments, routePointsRef]);
+
+  // Legg til ny rute (krever minst 3 punkter i den aktive ruten)
+  const addRoute = useCallback(() => {
+    if (routePointsRef.current.length < MIN_POINTS_FOR_NEW_ROUTE) {
+      onNewRouteRejected?.(routePointsRef.current.length);
+      return;
+    }
+    routeSegmentsRef.current = [...routeSegmentsRef.current, makeSegment([])];
+    activeRouteIdxRef.current = routeSegmentsRef.current.length - 1;
+    setRoutePointCount(0);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    emitRouteChange();
+  }, [updateRouteDisplay, emitRouteChange, bumpRouteSegments, onNewRouteRejected, routePointsRef]);
+
+  // Slett aktiv rute (kun når det finnes flere)
+  const deleteActiveRoute = useCallback(() => {
+    const segs = routeSegmentsRef.current;
+    if (segs.length <= 1) return;
+    const idx = clampActiveIdx();
+    delete routeHistoryMapRef.current[segs[idx].id];
+    routeSegmentsRef.current = segs.filter((_, i) => i !== idx);
+    activeRouteIdxRef.current = Math.max(0, idx - 1);
+    setRoutePointCount(routePointsRef.current.length);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    emitRouteChange();
+  }, [clampActiveIdx, updateRouteDisplay, emitRouteChange, bumpRouteSegments, routePointsRef]);
+
+  const lastNewRouteTokenRef = useRef(newRouteToken ?? 0);
+  useEffect(() => {
+    if (newRouteToken == null || newRouteToken === lastNewRouteTokenRef.current) return;
+    lastNewRouteTokenRef.current = newRouteToken;
+    addRoute();
+  }, [newRouteToken, addRoute]);
+
 
   return (
     <div className="relative w-full h-full overflow-hidden touch-manipulation select-none">
@@ -2195,6 +2354,40 @@ export function OpenAIPMap({
           <span className="text-muted-foreground">{t('pages.map.weatherToggle.clickToAddPoints')}</span>
         </div>
       )}
+
+      {mode === "routePlanning" && routeSegmentsRef.current.length > 1 && (
+        <div
+          key={routeSegmentsVersion}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex max-w-[92%] flex-wrap items-center justify-center gap-2 rounded-lg border border-border bg-background/95 px-2 py-2 shadow-lg backdrop-blur-sm"
+        >
+          {routeSegmentsRef.current.map((seg, idx) => {
+            const isActive = idx === activeRouteIdxRef.current;
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                onClick={() => selectRoute(idx)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  isActive ? "border-primary bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: routeColor(idx) }} />
+                {t('pages.map.routeChip', { n: idx + 1 })}
+                <span className="text-[10px] opacity-70">({seg.coordinates.length})</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={deleteActiveRoute}
+            className="rounded-full border border-destructive/40 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
+          >
+            {t('pages.map.deleteActiveRoute')}
+          </button>
+        </div>
+      )}
+
+
 
       {layers.find(l => l.id === "arealbruk")?.enabled && <ArealbrukLegend />}
       {layers.find(l => l.id === "befolkning")?.enabled ? (
