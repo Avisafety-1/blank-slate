@@ -1447,9 +1447,10 @@ serve(async (req) => {
 
       try {
         // Build bounding box from route coordinates or single point
-        const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
-          ? routeCoords
+        const allCoords: { lat: number; lng: number }[] = allRouteCoords.length > 0
+          ? allRouteCoords
           : [{ lat, lng }];
+
 
         // Get SORA ground risk buffer distance if available
         const soraData = mission.mission_sora?.[0];
