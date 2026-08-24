@@ -190,20 +190,24 @@ export function useFlightLogsList(active: boolean) {
 
       if (debouncedSearch) {
         const s = debouncedSearch.replace(/[,%()]/g, " ");
-        q = q.or(
-          [
-            `departure_location.ilike.%${s}%`,
-            `landing_location.ilike.%${s}%`,
-            `drone_model.ilike.%${s}%`,
-            `aircraft_serial.ilike.%${s}%`,
-            `notes.ilike.%${s}%`,
-          ].join(",")
-        );
+        const m = searchMatches.term === debouncedSearch ? searchMatches : null;
+        const clauses = [
+          `departure_location.ilike.%${s}%`,
+          `landing_location.ilike.%${s}%`,
+          `drone_model.ilike.%${s}%`,
+          `aircraft_serial.ilike.%${s}%`,
+          `notes.ilike.%${s}%`,
+        ];
+        if (m?.droneIds.length) clauses.push(`drone_id.in.(${m.droneIds.join(",")})`);
+        if (m?.userIds.length) clauses.push(`user_id.in.(${m.userIds.join(",")})`);
+        if (m?.missionIds.length) clauses.push(`mission_id.in.(${m.missionIds.join(",")})`);
+        if (m?.logIds.length) clauses.push(`id.in.(${m.logIds.join(",")})`);
+        q = q.or(clauses.join(","));
       }
 
       return q;
     },
-    [companyId, user?.id, mineLogIds, filters, debouncedSearch]
+    [companyId, user?.id, mineLogIds, filters, debouncedSearch, searchMatches]
   );
 
   // Cross-dependent filter options — only values that actually exist in the logs
