@@ -370,8 +370,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     }
   }, [currentIndex, positions, polylinePositions, mapReady, showSpeedTrail]);
 
-  if (!flightTrack || !positions.length) return null;
+  if (!flightTrack) return null;
 
+  /** Logs without telemetry (manual entries) still open — only track-based UI is hidden. */
+  const hasTrack = positions.length > 0;
   const hasSpeedData = positions.some((p: any) => p.speed !== undefined);
 
   return (
