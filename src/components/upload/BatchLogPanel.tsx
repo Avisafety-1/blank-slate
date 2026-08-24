@@ -70,6 +70,8 @@ interface Props {
   defaultPilotId: string;
   myDroneIds?: string[];
   droneIdsByProfile?: Record<string, string[]>;
+  /** drone_id -> linked profile_ids (used to auto-select pilot when exactly one is linked) */
+  personnelByDrone?: Record<string, string[]>;
   onDeselect: (id: string) => void;
   onClose: () => void;
   onSaved: () => void;
