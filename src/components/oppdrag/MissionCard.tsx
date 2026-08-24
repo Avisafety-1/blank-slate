@@ -573,6 +573,8 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               routePoints={airspaceRoutePoints}
+              routeSegments={airspaceSegments}
+
               showAll={companySettings.show_all_airspace_warnings}
               onAirspaceResult={(warnings) => {
                 const found = warnings.some(w => w.zone_type === '5KM' && w.is_inside);
