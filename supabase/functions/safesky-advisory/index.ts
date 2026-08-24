@@ -24,10 +24,30 @@ interface SoraSettings {
   groundRiskDistance: number;
 }
 
+interface RouteSegment {
+  id: string;
+  coordinates: RoutePoint[];
+  totalDistance?: number;
+}
+
 interface MissionRoute {
   coordinates: RoutePoint[];
   totalDistance?: number;
+  routes?: RouteSegment[];
+  activeRouteId?: string;
   soraSettings?: SoraSettings;
+}
+
+/** Velger riktig rute-segment fra et oppdrag. Faller tilbake til toppnivå-koordinatene. */
+function pickRoute(route: MissionRoute | null, routeId?: string | null): MissionRoute | null {
+  if (!route) return null;
+  if (routeId && Array.isArray(route.routes)) {
+    const seg = route.routes.find((r) => r?.id === routeId);
+    if (seg && Array.isArray(seg.coordinates)) {
+      return { ...route, coordinates: seg.coordinates, totalDistance: seg.totalDistance, routes: [seg], activeRouteId: seg.id };
+    }
+  }
+  return route;
 }
 
 interface GeoJSONPolygonFeature {
@@ -205,7 +225,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, missionId, lat, lon, lng, alt, speed, heading, altitudeDelta, verticalSpeed, pilotName } = body;
+    const { action, missionId, routeId, lat, lon, lng, alt, speed, heading, altitudeDelta, verticalSpeed, pilotName } = body;
 
     console.log(`SafeSky: user=${authedUser.id}, action=${action}, missionId=${missionId}, lat=${lat}, lng=${lng || lon}, pilotName=${pilotName}`);
 
@@ -397,7 +417,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      const route = mission.route as MissionRoute | null;
+      const route = pickRoute(mission.route as MissionRoute | null, routeId);
       
       if (!route || !route.coordinates || route.coordinates.length < 3) {
         return new Response(

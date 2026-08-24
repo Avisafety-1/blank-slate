@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     // === PART 1: Refresh Advisory flights (polygon-based from route) ===
     const { data: polygonFlights, error: polygonFlightsError } = await supabase
       .from('active_flights')
-      .select('id, mission_id, profile_id')
+      .select('id, mission_id, profile_id, route_data')
       .eq('publish_mode', 'advisory')
       .not('mission_id', 'is', null);
 
@@ -253,7 +253,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          const route = mission.route as MissionRoute | null;
+          // Bruk ruten som ble valgt ved oppstart (lagret på flyturen) når den finnes.
+          const storedRoute = (flight as { route_data?: unknown }).route_data as MissionRoute | null;
+          const route = (storedRoute && Array.isArray(storedRoute.coordinates) && storedRoute.coordinates.length >= 3)
+            ? storedRoute
+            : (mission.route as MissionRoute | null);
           if (!route || !route.coordinates || route.coordinates.length < 3) {
             console.warn(`Mission ${missionId} has no valid route for advisory`);
             advisoryResults.push({ flightId: flight.id, success: false, error: 'No valid route' });
