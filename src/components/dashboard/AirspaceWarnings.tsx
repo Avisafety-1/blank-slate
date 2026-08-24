@@ -299,7 +299,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
     // Debounce to avoid too many calls
     const timeoutId = setTimeout(checkAirspace, 500);
     return () => clearTimeout(timeoutId);
-  }, [latitude, longitude, routePoints]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, routePoints, segmentsKey]);
+
 
   if (!latitude || !longitude) {
     return null;
