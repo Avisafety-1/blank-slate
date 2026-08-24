@@ -478,6 +478,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     return () => { cancelled = true; };
   }, [batchSelectedIds]);
 
+  // drone_id -> linked profile_ids, used by BatchLogPanel to auto-select pilot
+  // when a drone has exactly one linked person.
+  const [personnelByDrone, setPersonnelByDrone] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    if (batchSelectedIds.size === 0 || drones.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("drone_personnel")
+        .select("drone_id, profile_id")
+        .in("drone_id", drones.map(d => d.id));
+      if (cancelled) return;
+      const map: Record<string, string[]> = {};
+      (data ?? []).forEach((r: any) => {
+        (map[r.drone_id] ||= []).push(r.profile_id);
+      });
+      setPersonnelByDrone(map);
+    })();
+    return () => { cancelled = true; };
+  }, [batchSelectedIds, drones]);
+
 
 
 
