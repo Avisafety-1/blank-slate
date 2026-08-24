@@ -18,6 +18,7 @@ import { AirspaceWarnings } from "./AirspaceWarnings";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
+import { RouteSegmentsInfo } from "@/components/oppdrag/RouteSegmentsInfo";
 import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionResourceSections } from "./MissionResourceSections";
@@ -452,6 +453,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     Utvid
                   </Button>
                 </div>
+                <RouteSegmentsInfo route={currentMission.route as any} className="mb-3" />
                 <div
                   className="h-[200px] relative overflow-hidden rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                   onClick={() => openMissionInMap(currentMission.id)}

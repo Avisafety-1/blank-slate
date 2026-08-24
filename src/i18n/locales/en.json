@@ -3311,6 +3311,8 @@
         "dronesHeader": "DRONES",
         "equipmentHeader": "EQUIPMENT",
         "documentsHeader": "DOCUMENTS",
+        "routeN": "Route {{n}}",
+        "routesTotal": "Total {{routes}} routes · {{points}} points · {{km}} km",
         "plannedRouteHeader": "PLANNED ROUTE",
         "descriptionHeader": "DESCRIPTION",
         "mapHeader": "MAP",
