@@ -270,26 +270,31 @@ export function useFlightLogsList(active: boolean) {
     let cancelled = false;
 
     (async () => {
-      const scan = (skip: "drone" | "pilot" | "source", column: string) =>
+      const scan = (skip: "drone" | "pilot" | "source" | "company", column: string) =>
         applyFilters((supabase as any).from("flight_logs").select(column), skip).limit(OPTIONS_SCAN_LIMIT);
 
-      const [droneRows, pilotRows, sourceRows] = await Promise.all([
+      const [droneRows, pilotRows, sourceRows, companyRows] = await Promise.all([
         scan("drone", "drone_id"),
         scan("pilot", "user_id"),
         scan("source", "source"),
+        allowedCompanyIds.length > 1 ? scan("company", "company_id") : Promise.resolve({ data: [] }),
       ]);
       if (cancelled) return;
 
       const droneIds = [...new Set((droneRows.data || []).map((r: any) => r.drone_id).filter(Boolean))] as string[];
       const pilotIds = [...new Set((pilotRows.data || []).map((r: any) => r.user_id).filter(Boolean))] as string[];
       const sources = [...new Set((sourceRows.data || []).map((r: any) => normalizeSource(r.source)))];
+      const companyIds = [...new Set((companyRows.data || []).map((r: any) => r.company_id).filter(Boolean))] as string[];
 
-      const [drones, profiles] = await Promise.all([
+      const [drones, profiles, companies] = await Promise.all([
         droneIds.length
           ? (supabase as any).from("drones").select("id, modell, serienummer, dji_aircraft_name").in("id", droneIds)
           : Promise.resolve({ data: [] }),
         pilotIds.length
           ? (supabase as any).from("profiles").select("id, full_name").in("id", pilotIds)
+          : Promise.resolve({ data: [] }),
+        companyIds.length
+          ? (supabase as any).from("companies").select("id, navn").in("id", companyIds)
           : Promise.resolve({ data: [] }),
       ]);
       if (cancelled) return;
@@ -311,12 +316,18 @@ export function useFlightLogsList(active: boolean) {
           .sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label))
       );
       setSourceOptions(sources as string[]);
+      setCompanyOptions(
+        (companies.data || [])
+          .map((c: any) => ({ id: c.id, label: c.navn as string }))
+          .sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label))
+      );
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [active, companyId, applyFilters, filters.onlyMine, mineLogIds, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, companyId, allowedKey, applyFilters, filters.onlyMine, mineLogIds, user?.id]);
 
   // Drop selections that are no longer reachable with the current combination
   useEffect(() => {
@@ -325,9 +336,13 @@ export function useFlightLogsList(active: boolean) {
       if (next.droneId !== "alle" && droneOptions.length && !droneOptions.some(o => o.id === next.droneId)) next.droneId = "alle";
       if (next.pilotId !== "alle" && pilotOptions.length && !pilotOptions.some(o => o.id === next.pilotId)) next.pilotId = "alle";
       if (next.source !== "alle" && sourceOptions.length && !sourceOptions.includes(next.source)) next.source = "alle";
-      return next.droneId === prev.droneId && next.pilotId === prev.pilotId && next.source === prev.source ? prev : next;
+      if (next.companyId !== "alle" && companyOptions.length && !companyOptions.some(o => o.id === next.companyId)) next.companyId = "alle";
+      return next.droneId === prev.droneId && next.pilotId === prev.pilotId && next.source === prev.source && next.companyId === prev.companyId
+        ? prev
+        : next;
     });
-  }, [droneOptions, pilotOptions, sourceOptions]);
+  }, [droneOptions, pilotOptions, sourceOptions, companyOptions]);
+
 
   const enrich = useCallback(async (rows: FlightLogListItem[]) => {
     const droneIds = [...new Set(rows.map(r => r.drone_id).filter(Boolean))] as string[];
