@@ -10,24 +10,8 @@ import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
 
 
-interface RoutePoint {
-  lat: number;
-  lng: number;
-}
+import type { RouteData } from "@/types/map";
 
-interface SoraSettings {
-  enabled: boolean;
-  flightAltitude: number;
-  contingencyDistance: number;
-  contingencyHeight: number;
-  groundRiskDistance: number;
-}
-
-interface RouteData {
-  coordinates: RoutePoint[];
-  totalDistance: number;
-  soraSettings?: SoraSettings;
-}
 
 interface FlightTrackPosition {
   lat: number;
