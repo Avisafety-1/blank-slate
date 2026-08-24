@@ -22,8 +22,9 @@ export const FlightLogsView = ({ active }: Props) => {
   const { t } = useTranslation();
   const {
     logs, loading, loadingMore, hasMore, filters, setFilters,
-    droneOptions, pilotOptions, sourceOptions, loadMore, refresh,
+    droneOptions, pilotOptions, sourceOptions, companyOptions, multiCompany, loadMore, refresh,
   } = useFlightLogsList(active);
+
 
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
@@ -76,7 +77,19 @@ export const FlightLogsView = ({ active }: Props) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${multiCompany ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+          {multiCompany && (
+            <Select value={filters.companyId} onValueChange={v => setFilters(p => ({ ...p, companyId: v }))}>
+              <SelectTrigger><SelectValue placeholder={t("flightLogs.allDepartments")} /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="alle">{t("flightLogs.allDepartments")}</SelectItem>
+                {companyOptions.map(o => (
+                  <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Select value={filters.droneId} onValueChange={v => setFilters(p => ({ ...p, droneId: v }))}>
             <SelectTrigger><SelectValue placeholder={t("flightLogs.allDrones")} /></SelectTrigger>
             <SelectContent className="max-h-72">

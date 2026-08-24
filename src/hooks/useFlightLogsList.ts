@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+
 
 export const FLIGHT_LOG_LIST_COLUMNS =
   "id, flight_date, flight_duration_minutes, departure_location, landing_location, " +
@@ -26,6 +28,7 @@ export interface FlightLogListItem {
   droneLabel?: string | null;
   pilotName?: string | null;
   missionName?: string | null;
+  companyName?: string | null;
 }
 
 export interface FlightLogFilters {
@@ -34,6 +37,7 @@ export interface FlightLogFilters {
   droneId: string; // "alle" | uuid
   pilotId: string; // "alle" | uuid
   source: string; // "alle" | "dronelog" | "ardupilot" | "manual"
+  companyId: string; // "alle" | uuid
   dateFrom: string; // yyyy-mm-dd | ""
   dateTo: string;
 }
@@ -44,9 +48,11 @@ export const DEFAULT_FLIGHT_LOG_FILTERS: FlightLogFilters = {
   droneId: "alle",
   pilotId: "alle",
   source: "alle",
+  companyId: "alle",
   dateFrom: "",
   dateTo: "",
 };
+
 
 const PAGE_SIZE = 30;
 /** Upper bound when scanning logs to derive which filter values actually exist. */
@@ -66,6 +72,7 @@ const normalizeSource = (source: string | null): string => {
 
 export function useFlightLogsList(active: boolean) {
   const { companyId, user } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const [filters, setFilters] = useState<FlightLogFilters>(DEFAULT_FLIGHT_LOG_FILTERS);
   const [logs, setLogs] = useState<FlightLogListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +81,38 @@ export function useFlightLogsList(active: boolean) {
   const [droneOptions, setDroneOptions] = useState<FilterOption[]>([]);
   const [pilotOptions, setPilotOptions] = useState<FilterOption[]>([]);
   const [sourceOptions, setSourceOptions] = useState<string[]>([]);
+  const [companyOptions, setCompanyOptions] = useState<FilterOption[]>([]);
   const [mineLogIds, setMineLogIds] = useState<string[] | null>(null);
+  // Companies the user may browse logs from: admins see their own department plus
+  // sub-departments (same rule the RLS policy uses), regular users only their own.
+  const [visibleCompanyIds, setVisibleCompanyIds] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!active || !companyId || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      if (!isAdmin) {
+        if (!cancelled) setVisibleCompanyIds([companyId]);
+        return;
+      }
+      const { data } = await (supabase.rpc as any)("get_user_visible_company_ids", { _user_id: user.id });
+      if (cancelled) return;
+      const ids = ((data || []) as any[])
+        .map(v => (typeof v === "string" ? v : v?.company_id ?? v?.id))
+        .filter(Boolean) as string[];
+      setVisibleCompanyIds(ids.length ? [...new Set([companyId, ...ids])] : [companyId]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, companyId, user?.id, isAdmin]);
+
+  const allowedCompanyIds = useMemo(
+    () => visibleCompanyIds ?? (companyId ? [companyId] : []),
+    [visibleCompanyIds, companyId]
+  );
+  const allowedKey = allowedCompanyIds.join(",");
+
 
   // Debounced search value
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -113,9 +151,10 @@ export function useFlightLogsList(active: boolean) {
         (supabase as any)
           .from("missions")
           .select("id")
-          .eq("company_id", companyId)
+          .in("company_id", allowedCompanyIds.length ? allowedCompanyIds : [companyId])
           .ilike("title", like)
           .limit(500),
+
       ]);
       if (cancelled) return;
 
@@ -168,8 +207,13 @@ export function useFlightLogsList(active: boolean) {
    * reflects everything still reachable with the other selections.
    */
   const applyFilters = useCallback(
-    (query: any, skip?: "drone" | "pilot" | "source") => {
-      let q = query.eq("company_id", companyId);
+    (query: any, skip?: "drone" | "pilot" | "source" | "company") => {
+      let q = query;
+      if (skip !== "company" && filters.companyId !== "alle") {
+        q = q.eq("company_id", filters.companyId);
+      } else if (allowedCompanyIds.length) {
+        q = q.in("company_id", allowedCompanyIds);
+      }
 
       if (filters.onlyMine && user?.id) {
         q = mineLogIds && mineLogIds.length
@@ -179,6 +223,7 @@ export function useFlightLogsList(active: boolean) {
 
       if (skip !== "drone" && filters.droneId !== "alle") q = q.eq("drone_id", filters.droneId);
       if (skip !== "pilot" && filters.pilotId !== "alle") q = q.eq("user_id", filters.pilotId);
+
       if (skip !== "source" && filters.source !== "alle") {
         // Stored values vary ("dronelogapi", "dji", ...), so the DJI bucket is
         // "everything that is not manual/ardupilot" — mirroring normalizeSource().
@@ -213,7 +258,9 @@ export function useFlightLogsList(active: boolean) {
 
       return q;
     },
-    [companyId, user?.id, mineLogIds, filters, debouncedSearch, searchMatches]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [companyId, allowedKey, user?.id, mineLogIds, filters, debouncedSearch, searchMatches]
+
   );
 
   // Cross-dependent filter options — only values that actually exist in the logs
@@ -223,26 +270,31 @@ export function useFlightLogsList(active: boolean) {
     let cancelled = false;
 
     (async () => {
-      const scan = (skip: "drone" | "pilot" | "source", column: string) =>
+      const scan = (skip: "drone" | "pilot" | "source" | "company", column: string) =>
         applyFilters((supabase as any).from("flight_logs").select(column), skip).limit(OPTIONS_SCAN_LIMIT);
 
-      const [droneRows, pilotRows, sourceRows] = await Promise.all([
+      const [droneRows, pilotRows, sourceRows, companyRows] = await Promise.all([
         scan("drone", "drone_id"),
         scan("pilot", "user_id"),
         scan("source", "source"),
+        allowedCompanyIds.length > 1 ? scan("company", "company_id") : Promise.resolve({ data: [] }),
       ]);
       if (cancelled) return;
 
       const droneIds = [...new Set((droneRows.data || []).map((r: any) => r.drone_id).filter(Boolean))] as string[];
       const pilotIds = [...new Set((pilotRows.data || []).map((r: any) => r.user_id).filter(Boolean))] as string[];
       const sources = [...new Set((sourceRows.data || []).map((r: any) => normalizeSource(r.source)))];
+      const companyIds = [...new Set((companyRows.data || []).map((r: any) => r.company_id).filter(Boolean))] as string[];
 
-      const [drones, profiles] = await Promise.all([
+      const [drones, profiles, companies] = await Promise.all([
         droneIds.length
           ? (supabase as any).from("drones").select("id, modell, serienummer, dji_aircraft_name").in("id", droneIds)
           : Promise.resolve({ data: [] }),
         pilotIds.length
           ? (supabase as any).from("profiles").select("id, full_name").in("id", pilotIds)
+          : Promise.resolve({ data: [] }),
+        companyIds.length
+          ? (supabase as any).from("companies").select("id, navn").in("id", companyIds)
           : Promise.resolve({ data: [] }),
       ]);
       if (cancelled) return;
@@ -264,12 +316,18 @@ export function useFlightLogsList(active: boolean) {
           .sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label))
       );
       setSourceOptions(sources as string[]);
+      setCompanyOptions(
+        (companies.data || [])
+          .map((c: any) => ({ id: c.id, label: c.navn as string }))
+          .sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label))
+      );
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [active, companyId, applyFilters, filters.onlyMine, mineLogIds, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, companyId, allowedKey, applyFilters, filters.onlyMine, mineLogIds, user?.id]);
 
   // Drop selections that are no longer reachable with the current combination
   useEffect(() => {
@@ -278,16 +336,21 @@ export function useFlightLogsList(active: boolean) {
       if (next.droneId !== "alle" && droneOptions.length && !droneOptions.some(o => o.id === next.droneId)) next.droneId = "alle";
       if (next.pilotId !== "alle" && pilotOptions.length && !pilotOptions.some(o => o.id === next.pilotId)) next.pilotId = "alle";
       if (next.source !== "alle" && sourceOptions.length && !sourceOptions.includes(next.source)) next.source = "alle";
-      return next.droneId === prev.droneId && next.pilotId === prev.pilotId && next.source === prev.source ? prev : next;
+      if (next.companyId !== "alle" && companyOptions.length && !companyOptions.some(o => o.id === next.companyId)) next.companyId = "alle";
+      return next.droneId === prev.droneId && next.pilotId === prev.pilotId && next.source === prev.source && next.companyId === prev.companyId
+        ? prev
+        : next;
     });
-  }, [droneOptions, pilotOptions, sourceOptions]);
+  }, [droneOptions, pilotOptions, sourceOptions, companyOptions]);
+
 
   const enrich = useCallback(async (rows: FlightLogListItem[]) => {
     const droneIds = [...new Set(rows.map(r => r.drone_id).filter(Boolean))] as string[];
     const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
     const missionIds = [...new Set(rows.map(r => r.mission_id).filter(Boolean))] as string[];
+    const rowCompanyIds = [...new Set(rows.map(r => r.company_id).filter(Boolean))] as string[];
 
-    const [drones, profiles, missions] = await Promise.all([
+    const [drones, profiles, missions, companies] = await Promise.all([
       droneIds.length
         ? (supabase as any).from("drones").select("id, modell, serienummer, dji_aircraft_name").in("id", droneIds)
         : Promise.resolve({ data: [] }),
@@ -296,6 +359,9 @@ export function useFlightLogsList(active: boolean) {
         : Promise.resolve({ data: [] }),
       missionIds.length
         ? (supabase as any).from("missions").select("id, title").in("id", missionIds)
+        : Promise.resolve({ data: [] }),
+      rowCompanyIds.length > 1
+        ? (supabase as any).from("companies").select("id, navn").in("id", rowCompanyIds)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -306,14 +372,17 @@ export function useFlightLogsList(active: boolean) {
     });
     const pilotMap = new Map<string, string>((profiles.data || []).map((p: any) => [p.id, p.full_name]));
     const missionMap = new Map<string, string>((missions.data || []).map((m: any) => [m.id, m.title]));
+    const companyMap = new Map<string, string>((companies.data || []).map((c: any) => [c.id, c.navn]));
 
     return rows.map((r): FlightLogListItem => ({
       ...r,
       droneLabel: r.drone_id ? droneMap.get(r.drone_id) || r.drone_model : r.drone_model,
       pilotName: r.user_id ? pilotMap.get(r.user_id) || null : null,
       missionName: r.mission_id ? missionMap.get(r.mission_id) || null : null,
+      companyName: companyMap.get(r.company_id) || null,
     }));
   }, []);
+
 
   const requestIdRef = useRef(0);
 
@@ -355,7 +424,7 @@ export function useFlightLogsList(active: boolean) {
     if (!active) return;
     fetchLogs(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, companyId, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
+  }, [active, companyId, allowedKey, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.companyId, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
 
   return {
     logs,
@@ -367,7 +436,10 @@ export function useFlightLogsList(active: boolean) {
     droneOptions,
     pilotOptions,
     sourceOptions,
+    companyOptions,
+    multiCompany: allowedCompanyIds.length > 1,
     loadMore: () => fetchLogs(logs.length, false),
     refresh: () => fetchLogs(0, true),
   };
 }
+
