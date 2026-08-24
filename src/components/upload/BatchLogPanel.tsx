@@ -133,6 +133,19 @@ export const BatchLogPanel = ({
     return log.matched_drone_id || null;
   };
 
+  /**
+   * Pilot priority: manual choice > drone with exactly ONE linked person > log owner > current user.
+   */
+  const resolvePilotId = (droneId: string | null, log: PendingLog): { pilotId: string; auto: string | null } => {
+    if (droneId) {
+      const linked = personnelByDrone[droneId] ?? [];
+      if (linked.length === 1 && personnel.some(p => p.id === linked[0])) {
+        return { pilotId: linked[0], auto: linked[0] };
+      }
+    }
+    return { pilotId: log.user_id || defaultPilotId || "", auto: null };
+  };
+
 
 
 
