@@ -1212,8 +1212,22 @@ serve(async (req) => {
     // 8. Fetch weather data if coordinates available and not skipped
     let weatherData = null;
     const routeCoords = (mission.route as any)?.coordinates;
+    // Oppdrag kan ha flere ruter. Risikovurderingen bruker worst case på tvers
+    // av alle rutene (luftrom, arealbruk og befolkningstetthet).
+    const routeSegmentsRaw: { label: string; coords: { lat: number; lng: number }[] }[] =
+      Array.isArray((mission.route as any)?.routes) && (mission.route as any).routes.length > 0
+        ? (mission.route as any).routes
+            .map((r: any, i: number) => ({
+              label: (r?.name && String(r.name).trim()) || `Rute ${i + 1}`,
+              coords: Array.isArray(r?.coordinates) ? r.coordinates : [],
+            }))
+            .filter((s: any) => s.coords.length > 0)
+        : (routeCoords && routeCoords.length > 0 ? [{ label: 'Rute 1', coords: routeCoords }] : []);
+    const multiRoute = routeSegmentsRaw.length > 1;
+    const allRouteCoords: { lat: number; lng: number }[] = routeSegmentsRaw.flatMap((s) => s.coords);
     const lat = mission.latitude ?? routeCoords?.[0]?.lat;
     const lng = mission.longitude ?? routeCoords?.[0]?.lng;
+
     
     const skipWeather = pilotInputs?.skipWeatherEvaluation === true;
 
