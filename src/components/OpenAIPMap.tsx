@@ -2289,6 +2289,30 @@ export function OpenAIPMap({
     emitRouteChange();
   }, [clampActiveIdx, updateRouteDisplay, emitRouteChange, bumpRouteSegments, routePointsRef]);
 
+  // Gi aktiv rute et egendefinert navn
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+
+  const openRenameActiveRoute = useCallback(() => {
+    const idx = clampActiveIdx();
+    setRenameValue(routeSegmentsRef.current[idx]?.name || "");
+    setRenameOpen(true);
+  }, [clampActiveIdx]);
+
+  const saveRenameActiveRoute = useCallback(() => {
+    const idx = clampActiveIdx();
+    const segs = [...routeSegmentsRef.current];
+    if (!segs[idx]) return;
+    const trimmed = renameValue.trim();
+    segs[idx] = { ...segs[idx], name: trimmed ? trimmed : undefined };
+    routeSegmentsRef.current = segs;
+    setRenameOpen(false);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    emitRouteChange();
+  }, [clampActiveIdx, renameValue, bumpRouteSegments, updateRouteDisplay, emitRouteChange]);
+
+
   const lastNewRouteTokenRef = useRef(newRouteToken ?? 0);
   useEffect(() => {
     if (newRouteToken == null || newRouteToken === lastNewRouteTokenRef.current) return;
