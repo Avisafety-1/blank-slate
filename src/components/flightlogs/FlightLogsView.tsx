@@ -22,8 +22,9 @@ export const FlightLogsView = ({ active }: Props) => {
   const { t } = useTranslation();
   const {
     logs, loading, loadingMore, hasMore, filters, setFilters,
-    droneOptions, pilotOptions, sourceOptions, loadMore, refresh,
+    droneOptions, pilotOptions, sourceOptions, companyOptions, multiCompany, loadMore, refresh,
   } = useFlightLogsList(active);
+
 
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
