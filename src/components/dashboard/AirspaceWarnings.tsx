@@ -27,6 +27,8 @@ interface AirspaceWarning {
   is_inside: boolean;
   level: "warning" | "caution" | "note";
   message: string;
+  /** Navn på rutene advarselen gjelder (kun ved flere ruter). */
+  route_labels?: string[];
 }
 
 interface RoutePoint {
@@ -34,16 +36,25 @@ interface RoutePoint {
   lng: number;
 }
 
+interface AirspaceRouteSegmentInput {
+  id: string;
+  label: string;
+  coordinates: RoutePoint[];
+}
+
 interface AirspaceWarningsProps {
   latitude: number | null;
   longitude: number | null;
   routePoints?: RoutePoint[];
+  /** Flere ruter: analysen kjøres per rute og slås sammen (worst case). */
+  routeSegments?: AirspaceRouteSegmentInput[];
   cachedWarnings?: AirspaceWarning[];
   onAirspaceResult?: (warnings: AirspaceWarning[]) => void;
   showAll?: boolean;
 }
 
-export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarnings, onAirspaceResult, showAll }: AirspaceWarningsProps) => {
+export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegments, cachedWarnings, onAirspaceResult, showAll }: AirspaceWarningsProps) => {
+
   const { t } = useTranslation();
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
