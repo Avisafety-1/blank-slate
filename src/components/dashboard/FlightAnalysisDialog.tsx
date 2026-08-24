@@ -147,7 +147,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
   // Initialize map with retry logic
   useEffect(() => {
-    if (!open) return;
+    if (!open || !positions.length) return;
 
     initAttemptRef.current = 0;
     const maxAttempts = 15;
@@ -370,8 +370,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
     }
   }, [currentIndex, positions, polylinePositions, mapReady, showSpeedTrail]);
 
-  if (!flightTrack || !positions.length) return null;
+  if (!flightTrack) return null;
 
+  /** Logs without telemetry (manual entries) still open — only track-based UI is hidden. */
+  const hasTrack = positions.length > 0;
   const hasSpeedData = positions.some((p: any) => p.speed !== undefined);
 
   return (
@@ -390,8 +392,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                 {new Date(flightDate).toLocaleDateString(i18n.language?.startsWith('en') ? 'en-GB' : 'nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
               </Badge>
             )}
-            <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
-            {!hasAdvancedData && (
+            {hasTrack && (
+              <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
+            )}
+            {hasTrack && !hasAdvancedData && (
               <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {t('dashboard.flightAnalysis.limitedTelemetry')}
@@ -410,8 +414,20 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           <FlightSummaryPanel summary={flightTrack.summary} events={events} onReassigned={onReassigned} />
         )}
 
+        {/* No telemetry: manual log or log without route points */}
+        {!hasTrack && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-foreground">{t('dashboard.flightAnalysis.noTrackTitle')}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">{t('dashboard.flightAnalysis.noTrackDescription')}</p>
+            </div>
+          </div>
+        )}
+
         {/* Map */}
 
+        {hasTrack && (
         <div className="relative">
           <div
             ref={mapContainerRef}
@@ -505,8 +521,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             </div>
           )}
         </div>
+        )}
 
         {/* Timeline + Charts */}
+        {hasTrack && (
         <div>
           <FlightAnalysisTimeline
             positions={positions}
@@ -517,6 +535,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             batterySummary={flightTrack?.batterySummary}
           />
         </div>
+        )}
         </div>
       </DialogContent>
     </Dialog>

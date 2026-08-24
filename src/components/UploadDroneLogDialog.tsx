@@ -1982,10 +1982,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         const step = Math.ceil(rawTrack.length / maxPts);
         flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
       }
+      // The imported file is authoritative: correct date, locations and entry source
+      // on the existing (often manually estimated) log instead of creating a duplicate.
+      const importedDate = result.startTime ? parseFlightDate(result.startTime) : null;
       await supabase.from('flight_logs').update({
         flight_track: { positions: flightTrack } as any,
         flight_duration_minutes: result.durationMinutes,
         drone_id: selectedDroneId || null,
+        entry_source: (result as any)?.source === 'ardupilot' ? 'ardupilot' : 'dronelogapi',
+        ...(importedDate ? { flight_date: importedDate.toISOString() } : {}),
+        ...(result.startPosition
+          ? { departure_location: `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` }
+          : {}),
+        ...(result.endPosition
+          ? { landing_location: `${result.endPosition.lat.toFixed(5)}, ${result.endPosition.lng.toFixed(5)}` }
+          : {}),
         ...buildExtendedFields(result),
       } as any).eq('id', matchedLog.id);
 
