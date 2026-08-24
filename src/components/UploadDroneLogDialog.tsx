@@ -2418,7 +2418,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="p-3 pt-0 space-y-3 border-t border-border">
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><User className="w-3 h-3" />Pilot</Label>
+                  <Label className="text-xs flex items-center gap-1 flex-wrap">
+                    <User className="w-3 h-3" />Pilot
+                    {pilotAutoMatchedFromDrone && (
+                      <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        {t('dronelog.pilotAutoMatchedFromDrone')}
+                      </span>
+                    )}
+                  </Label>
                   <Select value={pilotId} onValueChange={handlePilotChange}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Velg pilot" />
