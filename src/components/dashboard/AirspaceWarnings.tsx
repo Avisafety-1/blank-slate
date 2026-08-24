@@ -214,16 +214,16 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
         // except those in `airspace_unified_company_allowlist` — returns []
         // otherwise, so this does not affect existing behavior.
         let unifiedWarnings: AirspaceWarning[] = [];
-        if (routePoints && routePoints.length >= 2) {
+        for (const run of runs) {
+          const pts = run.points;
+          if (!pts || pts.length < 2) continue;
           try {
-            const countries: UnifiedCountry[] = getUnifiedCountriesForRoute(routePoints, 500);
+            const countries: UnifiedCountry[] = getUnifiedCountriesForRoute(pts, 500);
             const results = await Promise.all(
-              countries.map((c) =>
-                fetchUnifiedZonesForRoute(c, routePoints, 500),
-              ),
+              countries.map((c) => fetchUnifiedZonesForRoute(c, pts, 500)),
             );
             const zones: UnifiedAirspaceZone[] = results.flat();
-            unifiedWarnings = zones.map((z) => {
+            unifiedWarnings.push(...zones.map((z) => {
               const distMeters = Math.round(z.min_distance);
               const distStr =
                 distMeters < 1000
@@ -247,21 +247,41 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
                 is_inside: z.is_inside,
                 level: z.level,
                 message,
-              };
-            });
+                route_labels: run.label ? [run.label] : undefined,
+              } as AirspaceWarning;
+            }));
           } catch (err) {
             // Never let unified failures break the legacy warnings render.
             console.warn("[unified airspace] fetch failed (ignored):", err);
           }
         }
 
-        const combined = [...warningsArray, ...unifiedWarnings];
-        const sortedWarnings = combined.sort(
+        // Worst case across all routes: same zone from several routes is merged.
+        const merged = new Map<string, AirspaceWarning>();
+        for (const w of [...warningsArray, ...unifiedWarnings]) {
+          const key = `${w.zone_type}|${w.zone_name}`;
+          const existing = merged.get(key);
+          if (!existing) {
+            merged.set(key, { ...w, route_labels: w.route_labels ? [...w.route_labels] : undefined });
+            continue;
+          }
+          const labels = Array.from(new Set([...(existing.route_labels || []), ...(w.route_labels || [])]));
+          const worse = severityOrder[w.level] < severityOrder[existing.level];
+          const base = worse ? w : existing;
+          merged.set(key, {
+            ...base,
+            is_inside: existing.is_inside || w.is_inside,
+            distance_meters: Math.min(existing.distance_meters, w.distance_meters),
+            route_labels: labels.length > 0 ? labels : undefined,
+          });
+        }
 
+        const sortedWarnings = Array.from(merged.values()).sort(
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
         );
 
         setWarnings(sortedWarnings);
+
         onAirspaceResult?.(sortedWarnings);
       } catch (err: any) {
         clearTimeout(timeoutId2);
