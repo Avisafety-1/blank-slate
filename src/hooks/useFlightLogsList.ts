@@ -83,6 +83,67 @@ export function useFlightLogsList(active: boolean) {
     return () => clearTimeout(t);
   }, [filters.search]);
 
+  // Related records (people, drones, missions) matching the free-text search.
+  // Resolved separately since flight_logs only stores their ids.
+  const [searchMatches, setSearchMatches] = useState<{
+    term: string;
+    droneIds: string[];
+    userIds: string[];
+    missionIds: string[];
+    logIds: string[];
+  }>({ term: "", droneIds: [], userIds: [], missionIds: [], logIds: [] });
+
+  useEffect(() => {
+    if (!active || !companyId) return;
+    const term = debouncedSearch;
+    if (!term) {
+      setSearchMatches({ term: "", droneIds: [], userIds: [], missionIds: [], logIds: [] });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const like = `%${term.replace(/[,%()]/g, " ")}%`;
+      const [drones, profiles, missions] = await Promise.all([
+        (supabase as any)
+          .from("drones")
+          .select("id")
+          .or(`modell.ilike.${like},serienummer.ilike.${like},dji_aircraft_name.ilike.${like}`)
+          .limit(500),
+        (supabase as any).from("profiles").select("id").ilike("full_name", like).limit(500),
+        (supabase as any)
+          .from("missions")
+          .select("id")
+          .eq("company_id", companyId)
+          .ilike("title", like)
+          .limit(500),
+      ]);
+      if (cancelled) return;
+
+      const userIds = ((profiles.data || []) as any[]).map(p => p.id);
+      let logIds: string[] = [];
+      if (userIds.length) {
+        const { data } = await (supabase as any)
+          .from("flight_log_personnel")
+          .select("flight_log_id")
+          .in("profile_id", userIds)
+          .limit(3000);
+        if (cancelled) return;
+        logIds = [...new Set(((data || []) as any[]).map(r => r.flight_log_id))];
+      }
+
+      setSearchMatches({
+        term,
+        droneIds: ((drones.data || []) as any[]).map(d => d.id),
+        userIds,
+        missionIds: ((missions.data || []) as any[]).map(m => m.id),
+        logIds,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, companyId, debouncedSearch]);
+
   // Flight logs where the current user is listed as personnel (pilot)
   useEffect(() => {
     if (!active || !user?.id) return;
@@ -129,20 +190,24 @@ export function useFlightLogsList(active: boolean) {
 
       if (debouncedSearch) {
         const s = debouncedSearch.replace(/[,%()]/g, " ");
-        q = q.or(
-          [
-            `departure_location.ilike.%${s}%`,
-            `landing_location.ilike.%${s}%`,
-            `drone_model.ilike.%${s}%`,
-            `aircraft_serial.ilike.%${s}%`,
-            `notes.ilike.%${s}%`,
-          ].join(",")
-        );
+        const m = searchMatches.term === debouncedSearch ? searchMatches : null;
+        const clauses = [
+          `departure_location.ilike.%${s}%`,
+          `landing_location.ilike.%${s}%`,
+          `drone_model.ilike.%${s}%`,
+          `aircraft_serial.ilike.%${s}%`,
+          `notes.ilike.%${s}%`,
+        ];
+        if (m?.droneIds.length) clauses.push(`drone_id.in.(${m.droneIds.join(",")})`);
+        if (m?.userIds.length) clauses.push(`user_id.in.(${m.userIds.join(",")})`);
+        if (m?.missionIds.length) clauses.push(`mission_id.in.(${m.missionIds.join(",")})`);
+        if (m?.logIds.length) clauses.push(`id.in.(${m.logIds.join(",")})`);
+        q = q.or(clauses.join(","));
       }
 
       return q;
     },
-    [companyId, user?.id, mineLogIds, filters, debouncedSearch]
+    [companyId, user?.id, mineLogIds, filters, debouncedSearch, searchMatches]
   );
 
   // Cross-dependent filter options — only values that actually exist in the logs
@@ -284,7 +349,7 @@ export function useFlightLogsList(active: boolean) {
     if (!active) return;
     fetchLogs(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, companyId, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.dateFrom, filters.dateTo, debouncedSearch]);
+  }, [active, companyId, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
 
   return {
     logs,
