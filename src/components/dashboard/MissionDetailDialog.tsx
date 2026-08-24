@@ -276,6 +276,10 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           {(() => {
               const routeCoords = (currentMission.route as any)?.coordinates;
+              const airspaceSegments = getAirspaceRouteSegments(
+                currentMission.route as any,
+                (i) => t('pages.missions.card.routeN', { n: i + 1 }),
+              );
               const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
               const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
               const isCompleted = currentMission.status === "Fullført";
@@ -297,6 +301,8 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     latitude={effectiveLat} 
                     longitude={effectiveLng}
                     routePoints={routeCoords}
+                    routeSegments={airspaceSegments}
+
                     cachedWarnings={cachedAirspaceWarnings ?? undefined}
                     showAll={companySettings.show_all_airspace_warnings}
                     onAirspaceResult={(warnings) => {
