@@ -850,7 +850,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       if (publishMode === 'advisory' && missionId && !forcePublish) {
         const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { data, error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: false, includePhoneInRemarks, phoneNumber: phoneToSend || null },
+          body: { action: 'publish_advisory', missionId, routeId: selectedRouteId, forcePublish: false, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         // Handle error responses
@@ -898,7 +898,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         ? selectedDronetagId 
         : undefined;
       
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId);
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -918,7 +918,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       if (missionId) {
         const phoneToSend = includePhoneInRemarks ? (profilePhone || manualPhone).trim() : '';
         const { error } = await supabase.functions.invoke('safesky-advisory', {
-          body: { action: 'publish_advisory', missionId, forcePublish: true, includePhoneInRemarks, phoneNumber: phoneToSend || null },
+          body: { action: 'publish_advisory', missionId, routeId: selectedRouteId, forcePublish: true, includePhoneInRemarks, phoneNumber: phoneToSend || null },
         });
         
         if (error) {
@@ -937,7 +937,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         ? selectedDronetagId 
         : undefined;
       
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId);
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -1155,10 +1155,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   ? missions.find((m) => m.id === selectedMissionId)
                   : null;
                 const isNone = selectedMissionId === 'none';
-                const selectedHasRoute = selected?.route &&
-                  typeof selected.route === 'object' &&
-                  selected.route !== null &&
-                  'coordinates' in (selected.route as any);
+                const selectedHasRoute = selectedMissionSegments.length > 0;
+                const selectedRouteIndex = selectedRouteId
+                  ? selectedMissionSegments.findIndex(sg => sg.id === selectedRouteId)
+                  : -1;
+                const selectedRouteLabel = selectedMissionSegments.length > 1 && selectedRouteIndex >= 0
+                  ? t('pages.missions.card.routeN', { n: selectedRouteIndex + 1 })
+                  : null;
                 return (
                   <Popover open={missionPopoverOpen} onOpenChange={setMissionPopoverOpen}>
                     <PopoverTrigger asChild>
@@ -1177,7 +1180,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                             <>
                               {selectedHasRoute && <MapPin className="h-3 w-3 text-primary shrink-0 mt-1" />}
                               <span className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0 break-words">
-                                <span className="font-medium break-words">{selected.tittel}</span>
+                                <span className="font-medium break-words">
+                                  {selected.tittel}
+                                  {selectedRouteLabel ? ` – ${selectedRouteLabel}` : ''}
+                                </span>
                                 {selected.lokasjon && (
                                   <span className="text-xs text-muted-foreground break-words">- {selected.lokasjon}</span>
                                 )}
@@ -1205,39 +1211,69 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                               value="__none__ ingen no mission"
                               onSelect={() => {
                                 setSelectedMissionId('none');
+                                setSelectedRouteId(null);
                                 setMissionPopoverOpen(false);
                               }}
                             >
                               <Check className={cn("mr-2 h-4 w-4", isNone ? "opacity-100" : "opacity-0")} />
                               {t('flight.noMission')}
                             </CommandItem>
-                            {missions.map((mission) => {
-                              const missionHasRoute = mission.route &&
-                                typeof mission.route === 'object' &&
-                                mission.route !== null &&
-                                'coordinates' in (mission.route as any);
-                              return (
-                                <CommandItem
-                                  key={mission.id}
-                                  value={`${mission.tittel} ${mission.lokasjon ?? ''}`}
-                                  onSelect={() => {
-                                    setSelectedMissionId(mission.id);
-                                    setMissionPopoverOpen(false);
-                                  }}
-                                  className="items-start"
-                                >
-                                  <Check className={cn("mr-2 h-4 w-4 mt-1 shrink-0", selectedMissionId === mission.id ? "opacity-100" : "opacity-0")} />
-                                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                                    {missionHasRoute && <MapPin className="h-3 w-3 text-primary shrink-0 mt-1" />}
-                                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0 flex-1">
-                                      <span className="font-medium break-words">{mission.tittel}</span>
-                                      {mission.lokasjon && (
-                                        <span className="text-xs text-muted-foreground break-words">- {mission.lokasjon}</span>
+                            {missions.flatMap((mission) => {
+                              const segments = segmentsFromRouteData((mission.route as RouteData) ?? null)
+                                .filter(sg => sg.coordinates.length > 0);
+                              const multi = segments.length > 1;
+                              const entries = multi
+                                ? segments.map((sg, i) => ({ segment: sg, index: i }))
+                                : [{ segment: segments[0] ?? null, index: 0 }];
+
+                              return entries.map(({ segment, index }) => {
+                                const missionHasRoute = !!segment;
+                                const routeLabel = multi
+                                  ? t('pages.missions.card.routeN', { n: index + 1 })
+                                  : null;
+                                const isSelected = selectedMissionId === mission.id &&
+                                  (!multi || selectedRouteId === segment?.id);
+                                return (
+                                  <CommandItem
+                                    key={`${mission.id}-${segment?.id ?? 'noroute'}`}
+                                    value={`${mission.tittel} ${mission.lokasjon ?? ''} ${routeLabel ?? ''} rute route ${index + 1}`}
+                                    onSelect={() => {
+                                      setSelectedMissionId(mission.id);
+                                      setSelectedRouteId(segment?.id ?? null);
+                                      setMissionPopoverOpen(false);
+                                    }}
+                                    className="items-start"
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4 mt-1 shrink-0", isSelected ? "opacity-100" : "opacity-0")} />
+                                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                                      {missionHasRoute && (
+                                        multi ? (
+                                          <span
+                                            className="h-2.5 w-2.5 rounded-full shrink-0 mt-1.5 border border-background"
+                                            style={{ backgroundColor: routeColor(index) }}
+                                          />
+                                        ) : (
+                                          <MapPin className="h-3 w-3 text-primary shrink-0 mt-1" />
+                                        )
                                       )}
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0 flex-1">
+                                        <span className="font-medium break-words">
+                                          {mission.tittel}
+                                          {routeLabel ? ` – ${routeLabel}` : ''}
+                                        </span>
+                                        {mission.lokasjon && (
+                                          <span className="text-xs text-muted-foreground break-words">- {mission.lokasjon}</span>
+                                        )}
+                                        {segment && multi && (
+                                          <span className="text-xs text-muted-foreground break-words">
+                                            {segment.coordinates.length} {t('pages.missions.card.points')} · {(segment.totalDistance || 0).toFixed(2)} km
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                </CommandItem>
-                              );
+                                  </CommandItem>
+                                );
+                              });
                             })}
                           </CommandGroup>
                         </CommandList>
