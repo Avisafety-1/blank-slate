@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
+
 
 export const FLIGHT_LOG_LIST_COLUMNS =
   "id, flight_date, flight_duration_minutes, departure_location, landing_location, " +
@@ -26,6 +28,7 @@ export interface FlightLogListItem {
   droneLabel?: string | null;
   pilotName?: string | null;
   missionName?: string | null;
+  companyName?: string | null;
 }
 
 export interface FlightLogFilters {
@@ -34,6 +37,7 @@ export interface FlightLogFilters {
   droneId: string; // "alle" | uuid
   pilotId: string; // "alle" | uuid
   source: string; // "alle" | "dronelog" | "ardupilot" | "manual"
+  companyId: string; // "alle" | uuid
   dateFrom: string; // yyyy-mm-dd | ""
   dateTo: string;
 }
@@ -44,9 +48,11 @@ export const DEFAULT_FLIGHT_LOG_FILTERS: FlightLogFilters = {
   droneId: "alle",
   pilotId: "alle",
   source: "alle",
+  companyId: "alle",
   dateFrom: "",
   dateTo: "",
 };
+
 
 const PAGE_SIZE = 30;
 /** Upper bound when scanning logs to derive which filter values actually exist. */
