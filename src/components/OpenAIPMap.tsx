@@ -13,7 +13,10 @@ import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { EiendomsgrenserLegend } from "@/components/EiendomsgrenserLegend";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Pencil, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
