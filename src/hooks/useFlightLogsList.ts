@@ -207,8 +207,13 @@ export function useFlightLogsList(active: boolean) {
    * reflects everything still reachable with the other selections.
    */
   const applyFilters = useCallback(
-    (query: any, skip?: "drone" | "pilot" | "source") => {
-      let q = query.eq("company_id", companyId);
+    (query: any, skip?: "drone" | "pilot" | "source" | "company") => {
+      let q = query;
+      if (skip !== "company" && filters.companyId !== "alle") {
+        q = q.eq("company_id", filters.companyId);
+      } else if (allowedCompanyIds.length) {
+        q = q.in("company_id", allowedCompanyIds);
+      }
 
       if (filters.onlyMine && user?.id) {
         q = mineLogIds && mineLogIds.length
@@ -218,6 +223,7 @@ export function useFlightLogsList(active: boolean) {
 
       if (skip !== "drone" && filters.droneId !== "alle") q = q.eq("drone_id", filters.droneId);
       if (skip !== "pilot" && filters.pilotId !== "alle") q = q.eq("user_id", filters.pilotId);
+
       if (skip !== "source" && filters.source !== "alle") {
         // Stored values vary ("dronelogapi", "dji", ...), so the DJI bucket is
         // "everything that is not manual/ardupilot" — mirroring normalizeSource().
