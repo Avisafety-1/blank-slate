@@ -3480,6 +3480,12 @@
       "clickShort": "Click...",
       "removePilotShort": "Remove pilot",
       "undoTitle": "Undo last change",
+      "newRoute": "New route",
+      "newRouteTitle": "Start a new, separate route",
+      "newRouteNeedsPoints": "You need at least 3 waypoints in the active route before starting a new one (you have {{count}}).",
+      "routeChip": "Route {{n}}",
+      "deleteActiveRoute": "Delete selected route",
+
       "clearTitle": "Clear route",
       "cancelTitle": "Cancel",
       "saveTitle": "Save route",
