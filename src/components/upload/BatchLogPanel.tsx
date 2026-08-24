@@ -555,7 +555,14 @@ export const BatchLogPanel = ({
                 {!row.parsing && !row.parseError && (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-0.5">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Pilot</label>
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Pilot
+                        {row.autoMatchedPilotId && row.pilotId === row.autoMatchedPilotId && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
+                      </label>
                       <ComboPicker
                         value={row.pilotId}
                         placeholder="Velg pilot"
@@ -565,7 +572,7 @@ export const BatchLogPanel = ({
                           label: p.full_name || p.email || "Ukjent",
                           search: `${p.full_name || ""} ${p.email || ""}`,
                         }))}
-                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}
+                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v, pilotUserOverride: true, autoMatchedPilotId: null })}
                       />
                     </div>
                     <div className="space-y-0.5">
