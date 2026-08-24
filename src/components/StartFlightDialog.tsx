@@ -406,6 +406,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   useEffect(() => {
     if (!open) {
       setSelectedMissionId('');
+      setSelectedRouteId(null);
       setPublishMode('none');
       setUserPickedMode(false);
       setCompletedChecklistIds([]);
@@ -545,15 +546,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     
     setNinoxApproved(!!m.ninox_approved);
     
-    const lat = m.latitude ?? (m.route as any)?.coordinates?.[0]?.lat;
-    const lng = m.longitude ?? (m.route as any)?.coordinates?.[0]?.lng;
+    const segments = segmentsFromRouteData((m.route as RouteData) ?? null).filter(sg => sg.coordinates.length > 0);
+    const segment = (selectedRouteId ? segments.find(sg => sg.id === selectedRouteId) : null) ?? segments[0] ?? null;
+    const lat = m.latitude ?? segment?.coordinates?.[0]?.lat;
+    const lng = m.longitude ?? segment?.coordinates?.[0]?.lng;
     if (!lat || !lng) {
       setMissionIn5kmZone(false);
       return;
     }
     
     setNinoxChecking(true);
-    const routePoints = (m.route as any)?.coordinates || null;
+    const routePoints = segment?.coordinates ?? null;
     
     supabase.rpc("check_mission_airspace", {
       p_lat: lat,
@@ -568,7 +571,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setMissionIn5kmZone(has5km);
       setNinoxChecking(false);
     });
-  }, [selectedMissionId, missions]);
+  }, [selectedMissionId, selectedRouteId, missions]);
 
   // Fetch nearest air traffic when GPS position is available
   useEffect(() => {
