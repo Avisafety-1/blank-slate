@@ -574,6 +574,8 @@
       "dataPoints": "{{count}} data points",
       "events": "{{count}} events",
       "appWarnings": "APP_WARNING ({{count}} events)",
+      "noTrackTitle": "No route data in this log",
+      "noTrackDescription": "This flight was recorded without telemetry/route points (e.g. logged manually). Other details are shown below.",
       "limitedTelemetry": "Limited telemetry (imported before extended analysis)",
       "flightEvents": "Events during flight ({{count}})",
       "rthTriggered": "Return to Home (RTH) was triggered during this flight",

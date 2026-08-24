@@ -576,6 +576,8 @@
       "dataPoints": "{{count}} datapunkter",
       "events": "{{count}} hendelser",
       "appWarnings": "APP_WARNING ({{count}} hendelser)",
+      "noTrackTitle": "Ingen rutedata i denne loggen",
+      "noTrackDescription": "Flyturen er registrert uten telemetri/rutepunkter (f.eks. manuelt logget). Øvrige detaljer vises nedenfor.",
       "limitedTelemetry": "Begrenset telemetri (importert før utvidet analyse)",
       "flightEvents": "Hendelser under flyging ({{count}})",
       "rthTriggered": "Return to Home (RTH) ble utløst under denne flygingen",
