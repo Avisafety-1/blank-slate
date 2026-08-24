@@ -1209,6 +1209,10 @@ export const AddMissionDialog = ({
               latitude={formData.latitude} 
               longitude={formData.longitude}
               routePoints={routeData?.coordinates}
+              routeSegments={getAirspaceRouteSegments(
+                routeData as any,
+                (i) => t('pages.missions.card.routeN', { n: i + 1 }),
+              )}
               showAll={companySettings.show_all_airspace_warnings}
             />
             
