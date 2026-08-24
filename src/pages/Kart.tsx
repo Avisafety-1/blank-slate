@@ -1251,6 +1251,9 @@ export default function KartPage() {
               onViewChange={handleViewChange}
               controlledRoute={currentRoute}
                   routeUndoToken={routeUndoToken}
+              newRouteToken={newRouteToken}
+              onNewRouteRejected={handleNewRouteRejected}
+
               routeInspectMode={routeInspectMode}
 
               onStartRoutePlanning={handleStartRoutePlanning}
