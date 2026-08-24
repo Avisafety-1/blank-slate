@@ -3203,7 +3203,8 @@
     "savedLogin": "Lagret innlogging",
     "ardupilotReadySelect": "ArduPilot-logg klar – velg den under \"Ventende flylogger\" for å fullføre import.",
     "ardupilotQueued": "ArduPilot-logg ligger i kø og behandles i bakgrunnen. Den dukker opp under \"Ventende flylogger\" om kort tid.",
-    "linkedToDrone": "(Tilknyttet dronen)"
+    "linkedToDrone": "(Tilknyttet dronen)",
+    "pilotAutoMatchedFromDrone": "Auto-valgt fra dronetilknytning"
   },
   "twoFactor": {
     "title": "Tofaktorautentisering (2FA)",

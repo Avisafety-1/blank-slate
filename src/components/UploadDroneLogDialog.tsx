@@ -371,6 +371,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [pilotId, setPilotId] = useState("");
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [dronePersonnelIds, setDronePersonnelIds] = useState<string[]>([]);
+  // True when the user has manually picked a pilot — never auto-override after that
+  const [pilotTouched, setPilotTouched] = useState(false);
+  const [pilotAutoMatchedFromDrone, setPilotAutoMatchedFromDrone] = useState(false);
   const [myDroneIds, setMyDroneIds] = useState<string[]>([]);
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
@@ -414,11 +417,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   }, [user, personnel]);
 
-  // Personnel linked to the selected drone (shown highlighted in the pilot list)
+  // Personnel linked to the selected drone (shown highlighted in the pilot list).
+  // When the drone has exactly ONE linked person, that person is auto-selected as pilot
+  // — unless the user picked a pilot manually or the pilot came from a matched flight log.
   useEffect(() => {
     let cancelled = false;
     if (!selectedDroneId) {
       setDronePersonnelIds([]);
+      setPilotAutoMatchedFromDrone(false);
       return;
     }
     (async () => {
@@ -426,10 +432,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         .from("drone_personnel")
         .select("profile_id")
         .eq("drone_id", selectedDroneId);
-      if (!cancelled) setDronePersonnelIds((data ?? []).map((r: any) => r.profile_id));
+      if (cancelled) return;
+      const ids = (data ?? []).map((r: any) => r.profile_id as string);
+      setDronePersonnelIds(ids);
+      const canAutoSelect =
+        ids.length === 1 &&
+        !pilotTouched &&
+        oldPilotIds.length === 0 &&
+        personnel.some(p => p.id === ids[0]);
+      if (canAutoSelect && pilotId !== ids[0]) {
+        setPilotId(ids[0]);
+        setPilotAutoMatchedFromDrone(true);
+      } else if (!canAutoSelect) {
+        setPilotAutoMatchedFromDrone(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [selectedDroneId]);
+  }, [selectedDroneId, personnel, pilotTouched, oldPilotIds]);
 
   // drone_personnel links for the owners of batch-selected logs — used as SN tiebreaker in BatchLogPanel
   useEffect(() => {
@@ -458,6 +477,27 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     })();
     return () => { cancelled = true; };
   }, [batchSelectedIds]);
+
+  // drone_id -> linked profile_ids, used by BatchLogPanel to auto-select pilot
+  // when a drone has exactly one linked person.
+  const [personnelByDrone, setPersonnelByDrone] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    if (batchSelectedIds.size === 0 || drones.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("drone_personnel")
+        .select("drone_id, profile_id")
+        .in("drone_id", drones.map(d => d.id));
+      if (cancelled) return;
+      const map: Record<string, string[]> = {};
+      (data ?? []).forEach((r: any) => {
+        (map[r.drone_id] ||= []).push(r.profile_id);
+      });
+      setPersonnelByDrone(map);
+    })();
+    return () => { cancelled = true; };
+  }, [batchSelectedIds, drones]);
 
 
 
@@ -655,6 +695,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiHasMore(false);
     setSelectedDjiLogIds(new Set());
     setPilotId("");
+    setPilotTouched(false);
+    setPilotAutoMatchedFromDrone(false);
     setSelectedEquipment([]);
     setOldPilotIds([]);
     setOldEquipmentIds([]);
@@ -2332,6 +2374,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
+    setPilotTouched(true);
+    setPilotAutoMatchedFromDrone(false);
     setSelectedFlightLogChoice('');
     if (!selectedMissionId || selectedMissionId === '__new__') return;
     const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
@@ -2397,7 +2441,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               <div className="p-3 pt-0 space-y-3 border-t border-border">
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><User className="w-3 h-3" />Pilot</Label>
+                  <Label className="text-xs flex items-center gap-1 flex-wrap">
+                    <User className="w-3 h-3" />Pilot
+                    {pilotAutoMatchedFromDrone && (
+                      <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        {t('dronelog.pilotAutoMatchedFromDrone')}
+                      </span>
+                    )}
+                  </Label>
                   <Select value={pilotId} onValueChange={handlePilotChange}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder="Velg pilot" />
@@ -3546,6 +3597,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   defaultPilotId={pilotId || user.id}
                   myDroneIds={myDroneIds}
                   droneIdsByProfile={droneIdsByProfile}
+                  personnelByDrone={personnelByDrone}
                   onDeselect={(id) => setBatchSelectedIds(prev => {
                     const next = new Set(prev);
                     next.delete(id);

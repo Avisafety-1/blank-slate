@@ -50,6 +50,8 @@ interface RowState {
   missionUserOverride: boolean;
   autoMatchedMissionId: string | null;
   autoMatchedDroneId: string | null;
+  autoMatchedPilotId: string | null;
+  pilotUserOverride: boolean;
   operationType: OpType;
   missions: MissionOption[];
   missionsLoaded: boolean;
@@ -68,6 +70,8 @@ interface Props {
   defaultPilotId: string;
   myDroneIds?: string[];
   droneIdsByProfile?: Record<string, string[]>;
+  /** drone_id -> linked profile_ids (used to auto-select pilot when exactly one is linked) */
+  personnelByDrone?: Record<string, string[]>;
   onDeselect: (id: string) => void;
   onClose: () => void;
   onSaved: () => void;
@@ -84,7 +88,7 @@ const downsample = <T,>(arr: T[], max: number): T[] => {
 export const BatchLogPanel = ({
   pendingLogs, drones, personnel, equipmentList,
   companyId, userId, defaultPilotId,
-  myDroneIds = [], droneIdsByProfile = {},
+  myDroneIds = [], droneIdsByProfile = {}, personnelByDrone = {},
   onDeselect, onClose, onSaved,
 }: Props) => {
   const [rows, setRows] = useState<RowState[]>([]);
@@ -129,6 +133,19 @@ export const BatchLogPanel = ({
     return log.matched_drone_id || null;
   };
 
+  /**
+   * Pilot priority: manual choice > drone with exactly ONE linked person > log owner > current user.
+   */
+  const resolvePilotId = (droneId: string | null, log: PendingLog): { pilotId: string; auto: string | null } => {
+    if (droneId) {
+      const linked = personnelByDrone[droneId] ?? [];
+      if (linked.length === 1 && personnel.some(p => p.id === linked[0])) {
+        return { pilotId: linked[0], auto: linked[0] };
+      }
+    }
+    return { pilotId: log.user_id || defaultPilotId || "", auto: null };
+  };
+
 
 
 
@@ -142,13 +159,16 @@ export const BatchLogPanel = ({
         const eq: string[] = [];
         if (log.matched_battery_id) eq.push(log.matched_battery_id);
         const autoDroneId = resolveDroneId(log);
+        const pilot = resolvePilotId(autoDroneId, log);
         return {
           pendingLogId: log.id,
           log,
           parsed: log.parsed_result || null,
           parsing: !log.parsed_result,
           parseError: null,
-          pilotId: log.user_id || defaultPilotId || "",
+          pilotId: pilot.pilotId,
+          pilotUserOverride: false,
+          autoMatchedPilotId: pilot.auto,
           droneId: autoDroneId || "",
           equipmentIds: eq,
           missionId: "",
@@ -165,15 +185,21 @@ export const BatchLogPanel = ({
   }, [pendingLogs, defaultPilotId]);
 
 
-  // drone_personnel links may arrive after rows were initialized — retry the SN match then
+  // drone_personnel links may arrive after rows were initialized — retry SN + pilot match then
   useEffect(() => {
     setRows(prev => prev.map(r => {
-      if (r.droneId) return r;
-      const resolved = resolveDroneId(r.parsed ? { ...r.log, parsed_result: r.parsed } : r.log);
-      return resolved ? { ...r, droneId: resolved, autoMatchedDroneId: resolved } : r;
+      const droneId = r.droneId || resolveDroneId(r.parsed ? { ...r.log, parsed_result: r.parsed } : r.log);
+      if (!droneId) return r;
+      const next = r.droneId
+        ? r
+        : { ...r, droneId, autoMatchedDroneId: droneId };
+      if (next.pilotUserOverride) return next;
+      const pilot = resolvePilotId(droneId, next.log);
+      if (!pilot.auto || pilot.pilotId === next.pilotId) return next;
+      return { ...next, pilotId: pilot.pilotId, autoMatchedPilotId: pilot.auto };
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [droneIdsByProfile, myDroneIds, drones]);
+  }, [droneIdsByProfile, myDroneIds, drones, personnelByDrone, personnel]);
 
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
@@ -529,7 +555,14 @@ export const BatchLogPanel = ({
                 {!row.parsing && !row.parseError && (
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-0.5">
-                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Pilot</label>
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        Pilot
+                        {row.autoMatchedPilotId && row.pilotId === row.autoMatchedPilotId && (
+                          <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
+                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                          </span>
+                        )}
+                      </label>
                       <ComboPicker
                         value={row.pilotId}
                         placeholder="Velg pilot"
@@ -539,7 +572,7 @@ export const BatchLogPanel = ({
                           label: p.full_name || p.email || "Ukjent",
                           search: `${p.full_name || ""} ${p.email || ""}`,
                         }))}
-                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v })}
+                        onChange={(v) => updateRow(row.pendingLogId, { pilotId: v, pilotUserOverride: true, autoMatchedPilotId: null })}
                       />
                     </div>
                     <div className="space-y-0.5">
@@ -560,7 +593,13 @@ export const BatchLogPanel = ({
                           label: droneOptionLabel(d),
                           search: `${d.modell} ${d.dji_aircraft_name || ""} ${d.serienummer || ""} ${d.internal_serial || ""}`,
                         }))}
-                        onChange={(v) => updateRow(row.pendingLogId, { droneId: v })}
+                        onChange={(v) => {
+                          const pilot = row.pilotUserOverride ? null : resolvePilotId(v, row.log);
+                          updateRow(row.pendingLogId, {
+                            droneId: v,
+                            ...(pilot?.auto ? { pilotId: pilot.pilotId, autoMatchedPilotId: pilot.auto } : {}),
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-0.5 col-span-2">
