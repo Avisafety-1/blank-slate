@@ -18,6 +18,8 @@ import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
 import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
+import { FlightLogsView } from "@/components/flightlogs/FlightLogsView";
+
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
@@ -131,6 +133,10 @@ const Oppdrag = () => {
   // Deep-link handling: ?id=<mission-uuid> → open the mission card dialog directly
   //                     ?evaluation=<response-uuid> → open the evaluation form directly
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"missions" | "logs">(
+    searchParams.get("tab") === "logs" ? "logs" : "missions"
+  );
+
   const handledDeepLinkRef = useRef<string | null>(null);
   const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
@@ -453,11 +459,37 @@ const Oppdrag = () => {
       <div className="relative z-10 w-full">
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{t('pages.missions.title')}</h1>
+            <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab("missions")}
+                className={`inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm self-start ${
+                  activeTab === "missions"
+                    ? "bg-primary/20 border-primary/40"
+                    : "bg-background/40 border-border/50 hover:bg-background/60"
+                }`}
+              >
+                <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{t('pages.missions.title')}</h1>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("logs")}
+                className={`inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm self-start ${
+                  activeTab === "logs"
+                    ? "bg-primary/20 border-primary/40"
+                    : "bg-background/40 border-border/50 hover:bg-background/60"
+                }`}
+              >
+                <h2 className="text-2xl sm:text-4xl font-bold text-foreground">{t('flightLogs.title')}</h2>
+              </button>
             </div>
 
+            {activeTab === "logs" ? (
+              <FlightLogsView active={activeTab === "logs"} />
+            ) : (
+            <>
             <OppdragFilterBar
+
               filterTab={data.filterTab}
               onFilterTabChange={data.setFilterTab}
               searchQuery={searchQuery}
@@ -555,6 +587,9 @@ const Oppdrag = () => {
 
               </div>
             )}
+            </>
+            )}
+
           </div>
         </main>
 

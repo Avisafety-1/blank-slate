@@ -8399,5 +8399,21 @@
     "checklistExecute": "Utfør sjekkliste",
     "ninoxApproved": "Ninox godkjent",
     "ninoxNotApproved": "Ninox ikke godkjent"
+  },
+  "flightLogs": {
+    "title": "Loggfiler",
+    "searchPlaceholder": "Søk i loggfiler (sted, drone, serienummer, notat)...",
+    "onlyMine": "Kun mine",
+    "allDrones": "Alle droner",
+    "allPilots": "Alle piloter",
+    "allSources": "Alle kilder",
+    "sourceManual": "Manuell",
+    "dateFrom": "Fra dato",
+    "dateTo": "Til dato",
+    "resetFilters": "Nullstill filtre",
+    "empty": "Ingen loggfiler funnet",
+    "loadMore": "Last flere",
+    "unknownDrone": "Ukjent drone",
+    "loadError": "Kunne ikke laste flyanalysen"
   }
 }

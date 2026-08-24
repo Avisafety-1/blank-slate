@@ -8397,5 +8397,21 @@
     "checklistExecute": "Run checklist",
     "ninoxApproved": "Ninox approved",
     "ninoxNotApproved": "Ninox not approved"
+  },
+  "flightLogs": {
+    "title": "Flight logs",
+    "searchPlaceholder": "Search flight logs (location, drone, serial, notes)...",
+    "onlyMine": "Only mine",
+    "allDrones": "All drones",
+    "allPilots": "All pilots",
+    "allSources": "All sources",
+    "sourceManual": "Manual",
+    "dateFrom": "From date",
+    "dateTo": "To date",
+    "resetFilters": "Reset filters",
+    "empty": "No flight logs found",
+    "loadMore": "Load more",
+    "unknownDrone": "Unknown drone",
+    "loadError": "Could not load the flight analysis"
   }
 }
