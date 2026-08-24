@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { segmentsFromRouteData } from "@/lib/routeSegments";
+
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
