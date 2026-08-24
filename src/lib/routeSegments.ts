@@ -20,9 +20,10 @@ export function newRouteId(): string {
   }
 }
 
-export function makeSegment(coordinates: RoutePoint[] = [], id?: string): RouteSegment {
+export function makeSegment(coordinates: RoutePoint[] = [], id?: string, name?: string): RouteSegment {
   return {
     id: id || newRouteId(),
+    name: name?.trim() ? name.trim() : undefined,
     coordinates: coordinates.map((p) => ({ ...p })),
     totalDistance: calculateTotalDistance(coordinates),
     areaKm2: coordinates.length >= 3 ? calculatePolygonAreaKm2(coordinates) : undefined,
@@ -33,7 +34,7 @@ export function makeSegment(coordinates: RoutePoint[] = [], id?: string): RouteS
 export function segmentsFromRouteData(route?: RouteData | null): RouteSegment[] {
   if (!route) return [];
   if (Array.isArray(route.routes) && route.routes.length > 0) {
-    return route.routes.map((s) => makeSegment(s.coordinates || [], s.id));
+    return route.routes.map((s) => makeSegment(s.coordinates || [], s.id, s.name));
   }
   if (route.coordinates?.length) return [makeSegment(route.coordinates)];
   return [];
@@ -41,7 +42,7 @@ export function segmentsFromRouteData(route?: RouteData | null): RouteSegment[] 
 
 /** Bygger RouteData der toppnivå-feltene speiler den aktive ruten. */
 export function routeDataFromSegments(segments: RouteSegment[], activeIndex: number): RouteData {
-  const fresh = segments.map((s) => makeSegment(s.coordinates, s.id));
+  const fresh = segments.map((s) => makeSegment(s.coordinates, s.id, s.name));
   const active = fresh[Math.min(Math.max(activeIndex, 0), Math.max(fresh.length - 1, 0))];
   return {
     coordinates: active ? [...active.coordinates] : [],
@@ -52,13 +53,15 @@ export function routeDataFromSegments(segments: RouteSegment[], activeIndex: num
   };
 }
 
+
 /** Enkel signatur for å oppdage endringer mellom to sett av ruter. */
 export function segmentsSignature(segments: RouteSegment[], activeId?: string): string {
   return (
     (activeId || "") +
     "|" +
     segments
-      .map((s) => `${s.id}:${s.coordinates.map((p) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`).join(";")}`)
+      .map((s) => `${s.id}:${s.name || ""}:${s.coordinates.map((p) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`).join(";")}`)
       .join("||")
+
   );
 }

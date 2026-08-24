@@ -1163,7 +1163,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   ? selectedMissionSegments.findIndex(sg => sg.id === selectedRouteId)
                   : -1;
                 const selectedRouteLabel = selectedMissionSegments.length > 1 && selectedRouteIndex >= 0
-                  ? t('pages.missions.card.routeN', { n: selectedRouteIndex + 1 })
+                  ? (selectedMissionSegments[selectedRouteIndex]?.name || t('pages.missions.card.routeN', { n: selectedRouteIndex + 1 }))
                   : null;
                 return (
                   <Popover open={missionPopoverOpen} onOpenChange={setMissionPopoverOpen}>
@@ -1232,7 +1232,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                               return entries.map(({ segment, index }) => {
                                 const missionHasRoute = !!segment;
                                 const routeLabel = multi
-                                  ? t('pages.missions.card.routeN', { n: index + 1 })
+                                  ? (segment?.name || t('pages.missions.card.routeN', { n: index + 1 }))
                                   : null;
                                 const isSelected = selectedMissionId === mission.id &&
                                   (!multi || selectedRouteId === segment?.id);

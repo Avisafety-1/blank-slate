@@ -13,7 +13,10 @@ import { BefolkningLegend } from "@/components/BefolkningLegend";
 import { TettstederLegend } from "@/components/TettstederLegend";
 import { EiendomsgrenserLegend } from "@/components/EiendomsgrenserLegend";
 import { Button } from "@/components/ui/button";
-import { CloudSun, Route, Satellite, Mountain, Map as MapIcon } from "lucide-react";
+import { CloudSun, Route, Satellite, Mountain, Map as MapIcon, Pencil, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
 import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
@@ -2286,6 +2289,30 @@ export function OpenAIPMap({
     emitRouteChange();
   }, [clampActiveIdx, updateRouteDisplay, emitRouteChange, bumpRouteSegments, routePointsRef]);
 
+  // Gi aktiv rute et egendefinert navn
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+
+  const openRenameActiveRoute = useCallback(() => {
+    const idx = clampActiveIdx();
+    setRenameValue(routeSegmentsRef.current[idx]?.name || "");
+    setRenameOpen(true);
+  }, [clampActiveIdx]);
+
+  const saveRenameActiveRoute = useCallback(() => {
+    const idx = clampActiveIdx();
+    const segs = [...routeSegmentsRef.current];
+    if (!segs[idx]) return;
+    const trimmed = renameValue.trim();
+    segs[idx] = { ...segs[idx], name: trimmed ? trimmed : undefined };
+    routeSegmentsRef.current = segs;
+    setRenameOpen(false);
+    bumpRouteSegments();
+    updateRouteDisplay();
+    emitRouteChange();
+  }, [clampActiveIdx, renameValue, bumpRouteSegments, updateRouteDisplay, emitRouteChange]);
+
+
   const lastNewRouteTokenRef = useRef(newRouteToken ?? 0);
   useEffect(() => {
     if (newRouteToken == null || newRouteToken === lastNewRouteTokenRef.current) return;
@@ -2358,34 +2385,70 @@ export function OpenAIPMap({
       {mode === "routePlanning" && routeSegmentsRef.current.length > 1 && (
         <div
           key={routeSegmentsVersion}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex max-w-[92%] flex-wrap items-center justify-center gap-2 rounded-lg border border-border bg-background/95 px-2 py-2 shadow-lg backdrop-blur-sm"
+          className="absolute bottom-2 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:max-w-[92%] z-[1000] flex items-center gap-1.5 rounded-lg border border-border bg-background/95 px-2 py-1.5 shadow-lg backdrop-blur-sm"
         >
-          {routeSegmentsRef.current.map((seg, idx) => {
-            const isActive = idx === activeRouteIdxRef.current;
-            return (
-              <button
-                key={seg.id}
-                type="button"
-                onClick={() => selectRoute(idx)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  isActive ? "border-primary bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: routeColor(idx) }} />
-                {t('pages.map.routeChip', { n: idx + 1 })}
-                <span className="text-[10px] opacity-70">({seg.coordinates.length})</span>
-              </button>
-            );
-          })}
+          <div className="flex flex-1 min-w-0 items-center gap-1.5 overflow-x-auto">
+            {routeSegmentsRef.current.map((seg, idx) => {
+              const isActive = idx === activeRouteIdxRef.current;
+              return (
+                <button
+                  key={seg.id}
+                  type="button"
+                  onClick={() => selectRoute(idx)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                    isActive ? "border-primary bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: routeColor(idx) }} />
+                  <span className="max-w-[9rem] truncate">
+                    {seg.name || t('pages.map.routeChip', { n: idx + 1 })}
+                  </span>
+                  <span className="text-[10px] opacity-70">({seg.coordinates.length})</span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={openRenameActiveRoute}
+            title={t('pages.map.renameRoute')}
+            aria-label={t('pages.map.renameRoute')}
+            className="shrink-0 rounded-full border border-border p-1.5 text-muted-foreground hover:bg-accent"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
           <button
             type="button"
             onClick={deleteActiveRoute}
-            className="rounded-full border border-destructive/40 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/10"
+            title={t('pages.map.deleteActiveRoute')}
+            aria-label={t('pages.map.deleteActiveRoute')}
+            className="shrink-0 rounded-full border border-destructive/40 p-1.5 text-destructive hover:bg-destructive/10"
           >
-            {t('pages.map.deleteActiveRoute')}
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
+
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="sm:max-w-sm z-[2000]">
+          <DialogHeader>
+            <DialogTitle>{t('pages.map.renameRoute')}</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            maxLength={60}
+            placeholder={t('pages.map.routeNamePlaceholder')}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveRenameActiveRoute(); } }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={saveRenameActiveRoute}>{t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
 
 

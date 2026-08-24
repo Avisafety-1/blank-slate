@@ -3489,7 +3489,6 @@
       "newRouteNeedsPoints": "Du må ha minst 3 rutepunkter i den aktive ruten før du kan starte en ny rute (har {{count}}).",
       "routeChip": "Rute {{n}}",
       "deleteActiveRoute": "Slett valgt rute",
-
       "clearTitle": "Nullstill rute",
       "cancelTitle": "Avbryt",
       "saveTitle": "Lagre rute",
@@ -3742,7 +3741,9 @@
         "toTopo": "Bytt til topografisk kart",
         "toStandard": "Bytt til standard kart"
       },
-      "yourPosition": "Din posisjon"
+      "yourPosition": "Din posisjon",
+      "renameRoute": "Gi ruten navn",
+      "routeNamePlaceholder": "F.eks. Nordre linje"
     },
     "stats": {
       "back": "Tilbake",

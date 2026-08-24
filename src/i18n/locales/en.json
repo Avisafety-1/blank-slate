@@ -3487,7 +3487,6 @@
       "newRouteNeedsPoints": "You need at least 3 waypoints in the active route before starting a new one (you have {{count}}).",
       "routeChip": "Route {{n}}",
       "deleteActiveRoute": "Delete selected route",
-
       "clearTitle": "Clear route",
       "cancelTitle": "Cancel",
       "saveTitle": "Save route",
@@ -3740,7 +3739,9 @@
         "toTopo": "Switch to topographic map",
         "toStandard": "Switch to standard map"
       },
-      "yourPosition": "Your position"
+      "yourPosition": "Your position",
+      "renameRoute": "Rename route",
+      "routeNamePlaceholder": "E.g. Northern line"
     },
     "stats": {
       "back": "Back",

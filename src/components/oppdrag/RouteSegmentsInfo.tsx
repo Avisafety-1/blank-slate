@@ -49,7 +49,7 @@ export const RouteSegmentsInfo = ({ route, showHeader = true, className }: Route
                   className="h-2.5 w-2.5 rounded-full shrink-0 border border-background"
                   style={{ backgroundColor: routeColor(index) }}
                 />
-                <span className="font-medium">{t('pages.missions.card.routeN', { n: index + 1 })}</span>
+                <span className="font-medium">{segment.name || t('pages.missions.card.routeN', { n: index + 1 })}</span>
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <MapPin className="h-3.5 w-3.5 text-primary" />
