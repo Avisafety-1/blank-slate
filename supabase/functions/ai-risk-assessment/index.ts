@@ -1384,9 +1384,10 @@ serve(async (req) => {
     // Se .lovable/plan.md for begrunnelse og guardrails.
     const NORWAY_BBOX = { minLat: 57.5, maxLat: 71.5, minLng: 4.0, maxLng: 31.5 };
     const centroidInNorway = (() => {
-      const pts = (routeCoords && routeCoords.length > 0)
-        ? routeCoords
+      const pts = (allRouteCoords.length > 0)
+        ? allRouteCoords
         : (lat && lng ? [{ lat, lng }] : []);
+
       if (pts.length === 0) return true; // Ingen koordinater -> ikke aktiver ny gren
       const cLat = pts.reduce((s, c) => s + c.lat, 0) / pts.length;
       const cLng = pts.reduce((s, c) => s + c.lng, 0) / pts.length;
