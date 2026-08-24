@@ -122,41 +122,57 @@ export const MissionMapPreview = ({ latitude, longitude, route, flightTracks, no
 
     const allPoints: [number, number][] = [[latitude, longitude]];
 
-    // SORA zones
+    const segments = segmentsFromRouteData(route ?? null).filter(s => s.coordinates.length > 0);
+    const multiRoute = segments.length > 1;
+
+    // SORA zones — én per rute
     const soraLayer = L.layerGroup().addTo(map);
     if (route?.soraSettings) {
-      const validCoords = (route.coordinates ?? []).filter(
-        p => p != null && typeof p.lat === 'number' && isFinite(p.lat) && typeof p.lng === 'number' && isFinite(p.lng)
-      );
-      if (validCoords.length >= 1) {
-        renderSoraZones(validCoords, { flightGeographyDistance: 0, ...route.soraSettings }, soraLayer);
-      }
-    }
-
-    // Planned route
-    if (route?.coordinates && route.coordinates.length > 0) {
-      const routeLayer = L.layerGroup().addTo(map);
-      if (route.coordinates.length > 1) {
-        const latLngs = route.coordinates.map(p => [p.lat, p.lng] as [number, number]);
-        L.polyline(latLngs, { color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '10, 5' }).addTo(routeLayer);
-        latLngs.forEach(ll => allPoints.push(ll));
-      }
-      route.coordinates.forEach((point, index) => {
-        const isFirst = index === 0;
-        const isLast = index === route.coordinates.length - 1 && route.coordinates.length > 1;
-        let bgColor = '#3b82f6';
-        if (isFirst) bgColor = '#22c55e';
-        else if (isLast) bgColor = '#ef4444';
-        L.marker([point.lat, point.lng], {
-          icon: L.divIcon({
-            className: '',
-            html: `<div style="width:24px;height:24px;background:${bgColor};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${index + 1}</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          }),
-        }).addTo(routeLayer);
+      segments.forEach((segment) => {
+        const validCoords = segment.coordinates.filter(
+          p => p != null && typeof p.lat === 'number' && isFinite(p.lat) && typeof p.lng === 'number' && isFinite(p.lng)
+        );
+        if (validCoords.length >= 1) {
+          renderSoraZones(validCoords, { flightGeographyDistance: 0, ...route.soraSettings! }, soraLayer);
+        }
       });
     }
+
+    // Planned routes
+    if (segments.length > 0) {
+      const routeLayer = L.layerGroup().addTo(map);
+      segments.forEach((segment, routeIndex) => {
+        const color = routeColor(routeIndex);
+        const coords = segment.coordinates;
+        if (coords.length > 1) {
+          const latLngs = coords.map(p => [p.lat, p.lng] as [number, number]);
+          L.polyline(latLngs, { color, weight: 3, opacity: 0.8, dashArray: '10, 5' }).addTo(routeLayer);
+        }
+        coords.forEach((point, index) => {
+          allPoints.push([point.lat, point.lng]);
+          const isFirst = index === 0;
+          const isLast = index === coords.length - 1 && coords.length > 1;
+          let bgColor = color;
+          if (isFirst) bgColor = '#22c55e';
+          else if (isLast) bgColor = '#ef4444';
+          const marker = L.marker([point.lat, point.lng], {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="width:24px;height:24px;background:${bgColor};border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${index + 1}</div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            }),
+          }).addTo(routeLayer);
+          if (multiRoute) {
+            marker.bindTooltip(
+              `${t('pages.missions.card.routeN', { n: routeIndex + 1 })} · ${index + 1}`,
+              { direction: 'top' }
+            );
+          }
+        });
+      });
+    }
+
 
     // Flight tracks
     if (flightTracks && flightTracks.length > 0) {
