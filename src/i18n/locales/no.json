@@ -3313,6 +3313,8 @@
         "dronesHeader": "DRONER",
         "equipmentHeader": "UTSTYR",
         "documentsHeader": "DOKUMENTER",
+        "routeN": "Rute {{n}}",
+        "routesTotal": "Totalt {{routes}} ruter · {{points}} punkter · {{km}} km",
         "plannedRouteHeader": "PLANLAGT RUTE",
         "descriptionHeader": "BESKRIVELSE",
         "mapHeader": "KART",
