@@ -392,8 +392,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
                 {new Date(flightDate).toLocaleDateString(i18n.language?.startsWith('en') ? 'en-GB' : 'nb-NO', { day: '2-digit', month: 'short', year: 'numeric' })}
               </Badge>
             )}
-            <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
-            {!hasAdvancedData && (
+            {hasTrack && (
+              <Badge variant="outline" className="text-xs">{t('dashboard.flightAnalysis.dataPoints', { count: positions.length })}</Badge>
+            )}
+            {hasTrack && !hasAdvancedData && (
               <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {t('dashboard.flightAnalysis.limitedTelemetry')}
