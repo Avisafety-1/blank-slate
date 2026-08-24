@@ -349,7 +349,7 @@ export function useFlightLogsList(active: boolean) {
     if (!active) return;
     fetchLogs(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, companyId, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.dateFrom, filters.dateTo, debouncedSearch]);
+  }, [active, companyId, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
 
   return {
     logs,
