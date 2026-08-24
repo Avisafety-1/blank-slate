@@ -6,6 +6,8 @@ import { fetchTerrainElevations } from "@/lib/terrainElevation";
 import { renderSoraZones } from "@/lib/soraGeometry";
 import { getAipZones } from "@/lib/aipZoneCache";
 import { sanitizeArcgisGeoJson } from "@/lib/mapDataFetchers";
+import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
+
 
 
 interface RoutePoint {
