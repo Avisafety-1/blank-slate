@@ -185,15 +185,21 @@ export const BatchLogPanel = ({
   }, [pendingLogs, defaultPilotId]);
 
 
-  // drone_personnel links may arrive after rows were initialized — retry the SN match then
+  // drone_personnel links may arrive after rows were initialized — retry SN + pilot match then
   useEffect(() => {
     setRows(prev => prev.map(r => {
-      if (r.droneId) return r;
-      const resolved = resolveDroneId(r.parsed ? { ...r.log, parsed_result: r.parsed } : r.log);
-      return resolved ? { ...r, droneId: resolved, autoMatchedDroneId: resolved } : r;
+      const droneId = r.droneId || resolveDroneId(r.parsed ? { ...r.log, parsed_result: r.parsed } : r.log);
+      if (!droneId) return r;
+      const next = r.droneId
+        ? r
+        : { ...r, droneId, autoMatchedDroneId: droneId };
+      if (next.pilotUserOverride) return next;
+      const pilot = resolvePilotId(droneId, next.log);
+      if (!pilot.auto || pilot.pilotId === next.pilotId) return next;
+      return { ...next, pilotId: pilot.pilotId, autoMatchedPilotId: pilot.auto };
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [droneIdsByProfile, myDroneIds, drones]);
+  }, [droneIdsByProfile, myDroneIds, drones, personnelByDrone, personnel]);
 
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
