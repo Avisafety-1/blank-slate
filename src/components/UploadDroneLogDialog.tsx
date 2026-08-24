@@ -3597,6 +3597,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   defaultPilotId={pilotId || user.id}
                   myDroneIds={myDroneIds}
                   droneIdsByProfile={droneIdsByProfile}
+                  personnelByDrone={personnelByDrone}
                   onDeselect={(id) => setBatchSelectedIds(prev => {
                     const next = new Set(prev);
                     next.delete(id);
