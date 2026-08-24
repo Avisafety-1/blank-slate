@@ -145,9 +145,14 @@ export const MissionCard = ({
     ? (mission.route as any).coordinates
     : [];
   const hasRouteCoords = routeCoords.length > 0;
+  const airspaceSegments = useMemo(
+    () => getAirspaceRouteSegments(mission.route as any, (i) => t('pages.missions.card.routeN', { n: i + 1 })),
+    [mission.route, t],
+  );
   const effectiveLat = typeof mission.latitude === 'number' ? mission.latitude : (routeCoords[0]?.lat ?? null);
   const effectiveLng = typeof mission.longitude === 'number' ? mission.longitude : (routeCoords[0]?.lng ?? null);
   const airspaceRoutePoints = hasRouteCoords ? routeCoords : undefined;
+
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
