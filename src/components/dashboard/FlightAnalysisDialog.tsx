@@ -414,8 +414,20 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
           <FlightSummaryPanel summary={flightTrack.summary} events={events} onReassigned={onReassigned} />
         )}
 
+        {/* No telemetry: manual log or log without route points */}
+        {!hasTrack && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+            <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-foreground">{t('dashboard.flightAnalysis.noTrackTitle')}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">{t('dashboard.flightAnalysis.noTrackDescription')}</p>
+            </div>
+          </div>
+        )}
+
         {/* Map */}
 
+        {hasTrack && (
         <div className="relative">
           <div
             ref={mapContainerRef}
