@@ -2057,7 +2057,11 @@ serve(async (req) => {
             ? (asEn ? `Mission is INSIDE zone ${type} "${name}".` : `Oppdraget er INNENFOR sone ${type} «${name}».`)
             : (asEn ? `Mission is OUTSIDE zone ${type} "${name}". Nearest distance to the zone boundary is ${dist} m.` : `Oppdraget er UTENFOR sone ${type} «${name}». Nærmeste avstand til sonegrensen er ${dist} m.`);
         }
-        return { type, name, distance: dist, distance_kind, distance_label, inside, severity: w.severity ?? null, description };
+        const routeLabels = Array.isArray(w.route_labels) && w.route_labels.length > 0 ? w.route_labels : null;
+        const routeSuffix = routeLabels
+          ? (asEn ? ` Applies to route(s): ${routeLabels.join(', ')}.` : ` Gjelder rute(r): ${routeLabels.join(', ')}.`)
+          : '';
+        return { type, name, distance: dist, distance_kind, distance_label, inside, severity: w.severity ?? null, route_labels: routeLabels, description: description + routeSuffix };
       });
       const inside5km = mappedWarnings.filter(w => w.type === '5KM' && w.inside);
       const insideCtr = mappedWarnings.filter(w => (w.type === 'CTR' || w.type === 'TIZ') && w.inside);
