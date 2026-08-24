@@ -1,5 +1,7 @@
 import { loadFlightAnalysisTrack, buildFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
+
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
