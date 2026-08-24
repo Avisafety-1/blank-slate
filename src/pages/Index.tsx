@@ -196,10 +196,11 @@ const Index = () => {
     checklistIds?: string[],
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
-    dronetagDeviceId?: string
+    dronetagDeviceId?: string,
+    routeId?: string | null
   ) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName, dronetagDeviceId);
+    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName, dronetagDeviceId, routeId);
     if (success) {
       const modeMessages = {
         none: t('flight.flightStarted'),
