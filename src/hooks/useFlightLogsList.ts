@@ -348,8 +348,9 @@ export function useFlightLogsList(active: boolean) {
     const droneIds = [...new Set(rows.map(r => r.drone_id).filter(Boolean))] as string[];
     const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
     const missionIds = [...new Set(rows.map(r => r.mission_id).filter(Boolean))] as string[];
+    const rowCompanyIds = [...new Set(rows.map(r => r.company_id).filter(Boolean))] as string[];
 
-    const [drones, profiles, missions] = await Promise.all([
+    const [drones, profiles, missions, companies] = await Promise.all([
       droneIds.length
         ? (supabase as any).from("drones").select("id, modell, serienummer, dji_aircraft_name").in("id", droneIds)
         : Promise.resolve({ data: [] }),
@@ -358,6 +359,9 @@ export function useFlightLogsList(active: boolean) {
         : Promise.resolve({ data: [] }),
       missionIds.length
         ? (supabase as any).from("missions").select("id, title").in("id", missionIds)
+        : Promise.resolve({ data: [] }),
+      rowCompanyIds.length > 1
+        ? (supabase as any).from("companies").select("id, navn").in("id", rowCompanyIds)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -368,14 +372,17 @@ export function useFlightLogsList(active: boolean) {
     });
     const pilotMap = new Map<string, string>((profiles.data || []).map((p: any) => [p.id, p.full_name]));
     const missionMap = new Map<string, string>((missions.data || []).map((m: any) => [m.id, m.title]));
+    const companyMap = new Map<string, string>((companies.data || []).map((c: any) => [c.id, c.navn]));
 
     return rows.map((r): FlightLogListItem => ({
       ...r,
       droneLabel: r.drone_id ? droneMap.get(r.drone_id) || r.drone_model : r.drone_model,
       pilotName: r.user_id ? pilotMap.get(r.user_id) || null : null,
       missionName: r.mission_id ? missionMap.get(r.mission_id) || null : null,
+      companyName: companyMap.get(r.company_id) || null,
     }));
   }, []);
+
 
   const requestIdRef = useRef(0);
 
