@@ -60,7 +60,8 @@ export function segmentsSignature(segments: RouteSegment[], activeId?: string): 
     (activeId || "") +
     "|" +
     segments
-      .map((s) => `${s.id}:${s.coordinates.map((p) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`).join(";")}`)
+      .map((s) => `${s.id}:${s.name || ""}:${s.coordinates.map((p) => `${p.lat.toFixed(7)},${p.lng.toFixed(7)}`).join(";")}`)
       .join("||")
+
   );
 }
