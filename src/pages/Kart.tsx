@@ -538,6 +538,15 @@ export default function KartPage() {
     }
   };
 
+  const handleAddRoute = () => {
+    setNewRouteToken((value) => value + 1);
+  };
+
+  const handleNewRouteRejected = useCallback((points: number) => {
+    toast.warning(t('pages.map.newRouteNeedsPoints', { count: points }));
+  }, [t]);
+
+
   const handleTogglePilotPlacement = () => {
     if (isPlacingPilot) {
       setIsPlacingPilot(false);
