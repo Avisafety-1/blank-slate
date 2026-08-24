@@ -276,7 +276,8 @@ export const useFlightTimer = () => {
     completedChecklistIds: string[] = [],
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
-    dronetagDeviceId?: string
+    dronetagDeviceId?: string,
+    routeId?: string | null
   ) => {
     if (!user || !companyId) return false;
 
@@ -294,7 +295,19 @@ export const useFlightTimer = () => {
         .single();
       
       if (mission?.route) {
-        routeData = mission.route;
+        const full = mission.route as any;
+        const segments = Array.isArray(full?.routes) ? full.routes : [];
+        const chosen = routeId ? segments.find((sg: any) => sg?.id === routeId) : null;
+        routeData = chosen
+          ? {
+              ...full,
+              coordinates: chosen.coordinates ?? [],
+              totalDistance: chosen.totalDistance ?? 0,
+              areaKm2: chosen.areaKm2,
+              routes: [chosen],
+              activeRouteId: chosen.id,
+            }
+          : full;
       }
       // Advisory was already published by StartFlightDialog with size validation
     } else if (publishMode === 'live_uav' || publishMode === 'none') {
