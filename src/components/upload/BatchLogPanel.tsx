@@ -159,13 +159,16 @@ export const BatchLogPanel = ({
         const eq: string[] = [];
         if (log.matched_battery_id) eq.push(log.matched_battery_id);
         const autoDroneId = resolveDroneId(log);
+        const pilot = resolvePilotId(autoDroneId, log);
         return {
           pendingLogId: log.id,
           log,
           parsed: log.parsed_result || null,
           parsing: !log.parsed_result,
           parseError: null,
-          pilotId: log.user_id || defaultPilotId || "",
+          pilotId: pilot.pilotId,
+          pilotUserOverride: false,
+          autoMatchedPilotId: pilot.auto,
           droneId: autoDroneId || "",
           equipmentIds: eq,
           missionId: "",
