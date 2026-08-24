@@ -1406,20 +1406,22 @@ serve(async (req) => {
         if (allow) {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
-          const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
-            'check_mission_airspace_unified',
-            {
-              p_lat: lat,
-              p_lng: lng,
-              p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
-            },
-          );
-          if (unifiedErr) {
-            console.error('Unified airspace RPC error:', unifiedErr);
-          } else if (unifiedWarnings && unifiedWarnings.length > 0) {
-            airspaceWarnings = [...airspaceWarnings, ...unifiedWarnings];
-            console.log(`Unified airspace warnings added: ${unifiedWarnings.length}`);
+          for (const run of airspaceRuns) {
+            const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
+              'check_mission_airspace_unified',
+              {
+                p_lat: lat,
+                p_lng: lng,
+                p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+              },
+            );
+            if (unifiedErr) {
+              console.error('Unified airspace RPC error:', unifiedErr);
+            } else {
+              mergeWarnings(unifiedWarnings || [], run.label);
+            }
           }
+
         }
       } catch (e) {
         console.error('Unified airspace check error (non-blocking):', e);
