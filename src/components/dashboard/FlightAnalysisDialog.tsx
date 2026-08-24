@@ -521,8 +521,10 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             </div>
           )}
         </div>
+        )}
 
         {/* Timeline + Charts */}
+        {hasTrack && (
         <div>
           <FlightAnalysisTimeline
             positions={positions}
@@ -533,6 +535,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
             batterySummary={flightTrack?.batterySummary}
           />
         </div>
+        )}
         </div>
       </DialogContent>
     </Dialog>
