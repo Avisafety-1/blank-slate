@@ -1600,7 +1600,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 <ShieldCheck className="h-4 w-4 text-red-500 mt-0.5" />
                 <div className="flex-1 space-y-2">
                   <p className="font-medium text-red-700 dark:text-red-300">
-                    Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.
+                    {ninoxRouteLabel
+                      ? `Valgt rute (${ninoxRouteLabel}) er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.`
+                      : 'Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.'}
+
                   </p>
                   <Button
                     size="sm"
