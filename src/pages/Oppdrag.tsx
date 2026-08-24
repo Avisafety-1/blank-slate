@@ -581,6 +581,9 @@ const Oppdrag = () => {
 
               </div>
             )}
+            </>
+            )}
+
           </div>
         </main>
 
