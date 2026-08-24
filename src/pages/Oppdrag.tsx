@@ -459,28 +459,28 @@ const Oppdrag = () => {
       <div className="relative z-10 w-full">
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
           <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-            <div className="mb-2 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="mb-2 flex flex-row items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setActiveTab("missions")}
-                className={`inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm self-start ${
+                className={`inline-flex items-center rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2 transition-colors backdrop-blur-sm ${
                   activeTab === "missions"
                     ? "bg-primary/20 border-primary/40"
                     : "bg-background/40 border-border/50 hover:bg-background/60"
                 }`}
               >
-                <h1 className="text-2xl sm:text-4xl font-bold text-foreground">{t('pages.missions.title')}</h1>
+                <h1 className="text-lg sm:text-2xl lg:text-4xl font-bold text-foreground">{t('pages.missions.title')}</h1>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("logs")}
-                className={`inline-flex items-center rounded-xl border px-4 py-2 transition-colors backdrop-blur-sm self-start ${
+                className={`inline-flex items-center rounded-xl border px-3 py-1.5 sm:px-4 sm:py-2 transition-colors backdrop-blur-sm ${
                   activeTab === "logs"
                     ? "bg-primary/20 border-primary/40"
                     : "bg-background/40 border-border/50 hover:bg-background/60"
                 }`}
               >
-                <h2 className="text-2xl sm:text-4xl font-bold text-foreground">{t('flightLogs.title')}</h2>
+                <h2 className="text-lg sm:text-2xl lg:text-4xl font-bold text-foreground">{t('flightLogs.title')}</h2>
               </button>
             </div>
 
