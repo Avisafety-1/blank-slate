@@ -364,7 +364,22 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
           {isCaution && t('dashboard.airspaceWarnings.caution')}
           {isNote && t('dashboard.airspaceWarnings.information')}
         </AlertTitle>
-        <AlertDescription className="text-sm mt-1 text-foreground">{warning.message}</AlertDescription>
+        <AlertDescription className="text-sm mt-1 text-foreground">
+          {warning.message}
+          {warning.route_labels && warning.route_labels.length > 0 && (
+            <span className="mt-1.5 flex flex-wrap gap-1">
+              {warning.route_labels.map((label) => (
+                <span
+                  key={label}
+                  className="rounded-full border border-foreground/20 bg-background/40 px-2 py-0.5 text-[11px] font-medium"
+                >
+                  {label}
+                </span>
+              ))}
+            </span>
+          )}
+        </AlertDescription>
+
       </Alert>
     );
   };
