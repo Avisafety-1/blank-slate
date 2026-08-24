@@ -88,7 +88,7 @@ const downsample = <T,>(arr: T[], max: number): T[] => {
 export const BatchLogPanel = ({
   pendingLogs, drones, personnel, equipmentList,
   companyId, userId, defaultPilotId,
-  myDroneIds = [], droneIdsByProfile = {},
+  myDroneIds = [], droneIdsByProfile = {}, personnelByDrone = {},
   onDeselect, onClose, onSaved,
 }: Props) => {
   const [rows, setRows] = useState<RowState[]>([]);
