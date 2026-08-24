@@ -180,9 +180,15 @@ export function useFlightLogsList(active: boolean) {
       if (skip !== "drone" && filters.droneId !== "alle") q = q.eq("drone_id", filters.droneId);
       if (skip !== "pilot" && filters.pilotId !== "alle") q = q.eq("user_id", filters.pilotId);
       if (skip !== "source" && filters.source !== "alle") {
-        q = filters.source === "manual"
-          ? q.or("source.is.null,source.eq.manual")
-          : q.eq("source", filters.source);
+        // Stored values vary ("dronelogapi", "dji", ...), so the DJI bucket is
+        // "everything that is not manual/ardupilot" — mirroring normalizeSource().
+        if (filters.source === "manual") {
+          q = q.or("source.is.null,source.eq.manual");
+        } else if (filters.source === "ardupilot") {
+          q = q.eq("source", "ardupilot");
+        } else {
+          q = q.not("source", "is", null).not("source", "in", '("manual","ardupilot")');
+        }
       }
 
       if (filters.dateFrom) q = q.gte("flight_date", filters.dateFrom);
