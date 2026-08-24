@@ -547,7 +547,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     setNinoxApproved(!!m.ninox_approved);
     
     const segments = segmentsFromRouteData((m.route as RouteData) ?? null).filter(sg => sg.coordinates.length > 0);
-    const segment = (selectedRouteId ? segments.find(sg => sg.id === selectedRouteId) : null) ?? segments[0] ?? null;
+    const segmentIndex = selectedRouteId ? segments.findIndex(sg => sg.id === selectedRouteId) : -1;
+    const segment = (segmentIndex >= 0 ? segments[segmentIndex] : null) ?? segments[0] ?? null;
+    setNinoxRouteLabel(
+      segments.length > 1 && segment
+        ? (segment.name || `Rute ${(segmentIndex >= 0 ? segmentIndex : 0) + 1}`)
+        : null,
+    );
+
     const lat = m.latitude ?? segment?.coordinates?.[0]?.lat;
     const lng = m.longitude ?? segment?.coordinates?.[0]?.lng;
     if (!lat || !lng) {
