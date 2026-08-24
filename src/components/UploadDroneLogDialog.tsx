@@ -674,6 +674,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiHasMore(false);
     setSelectedDjiLogIds(new Set());
     setPilotId("");
+    setPilotTouched(false);
+    setPilotAutoMatchedFromDrone(false);
     setSelectedEquipment([]);
     setOldPilotIds([]);
     setOldEquipmentIds([]);
