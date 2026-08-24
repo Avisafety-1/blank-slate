@@ -131,6 +131,10 @@ const Oppdrag = () => {
   // Deep-link handling: ?id=<mission-uuid> → open the mission card dialog directly
   //                     ?evaluation=<response-uuid> → open the evaluation form directly
   const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"missions" | "logs">(
+    searchParams.get("tab") === "logs" ? "logs" : "missions"
+  );
+
   const handledDeepLinkRef = useRef<string | null>(null);
   const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
