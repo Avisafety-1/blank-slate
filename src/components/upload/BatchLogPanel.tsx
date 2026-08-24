@@ -593,7 +593,13 @@ export const BatchLogPanel = ({
                           label: droneOptionLabel(d),
                           search: `${d.modell} ${d.dji_aircraft_name || ""} ${d.serienummer || ""} ${d.internal_serial || ""}`,
                         }))}
-                        onChange={(v) => updateRow(row.pendingLogId, { droneId: v })}
+                        onChange={(v) => {
+                          const pilot = row.pilotUserOverride ? null : resolvePilotId(v, row.log);
+                          updateRow(row.pendingLogId, {
+                            droneId: v,
+                            ...(pilot?.auto ? { pilotId: pilot.pilotId, autoMatchedPilotId: pilot.auto } : {}),
+                          });
+                        }}
                       />
                     </div>
                     <div className="space-y-0.5 col-span-2">
