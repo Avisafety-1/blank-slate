@@ -204,8 +204,10 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
             is_inside: r.route_inside,
             level,
             message,
+            route_labels: routeLabel ? [routeLabel] : undefined,
           };
         });
+
         const severityOrder = { warning: 0, caution: 1, note: 2 };
 
         // Additive unified fetch (DK/SE/DE/FI). Fail-closed for all users
