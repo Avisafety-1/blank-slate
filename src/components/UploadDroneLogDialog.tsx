@@ -417,11 +417,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   }, [user, personnel]);
 
-  // Personnel linked to the selected drone (shown highlighted in the pilot list)
+  // Personnel linked to the selected drone (shown highlighted in the pilot list).
+  // When the drone has exactly ONE linked person, that person is auto-selected as pilot
+  // — unless the user picked a pilot manually or the pilot came from a matched flight log.
   useEffect(() => {
     let cancelled = false;
     if (!selectedDroneId) {
       setDronePersonnelIds([]);
+      setPilotAutoMatchedFromDrone(false);
       return;
     }
     (async () => {
@@ -429,10 +432,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         .from("drone_personnel")
         .select("profile_id")
         .eq("drone_id", selectedDroneId);
-      if (!cancelled) setDronePersonnelIds((data ?? []).map((r: any) => r.profile_id));
+      if (cancelled) return;
+      const ids = (data ?? []).map((r: any) => r.profile_id as string);
+      setDronePersonnelIds(ids);
+      const canAutoSelect =
+        ids.length === 1 &&
+        !pilotTouched &&
+        oldPilotIds.length === 0 &&
+        personnel.some(p => p.id === ids[0]);
+      if (canAutoSelect && pilotId !== ids[0]) {
+        setPilotId(ids[0]);
+        setPilotAutoMatchedFromDrone(true);
+      } else if (!canAutoSelect) {
+        setPilotAutoMatchedFromDrone(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [selectedDroneId]);
+  }, [selectedDroneId, personnel, pilotTouched, oldPilotIds]);
 
   // drone_personnel links for the owners of batch-selected logs — used as SN tiebreaker in BatchLogPanel
   useEffect(() => {
