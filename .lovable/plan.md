@@ -1,34 +1,35 @@
-# Luftromsadvarsler og risikovurdering for oppdrag med flere ruter
+# Loggfiler-fane på /oppdrag
 
-## Slik fungerer det i dag (verifisert i koden)
+Ny fane «Loggfiler» ved siden av «Oppdrag», med samme knappe-/bakgrunnsstil som fanene på /hendelser. Fanen viser alle flylogger i selskapet som et rutenett av små kort. Klikk på et kort åpner den eksisterende flylogganalysen.
 
-- Når du tegner flere ruter lagres alle i `route.routes[]`, men toppnivåfeltene (`route.coordinates`, `totalDistance`, `areaKm2`) speiler **kun den aktive ruten**.
-- Oppdragskortet (`MissionCard`) leser bare `route.coordinates`. Luftromsanalysen (`AirspaceWarnings` → `check_mission_airspace`) kjøres derfor **kun for den aktive ruten**. Ninox-badgen settes av samme kall (`zone_type === '5KM' && is_inside`), altså også bare aktiv rute.
-- «Start flytur» gjør det riktig allerede: den henter valgt rutesegment (`selectedRouteId`) og kjører 5 km-sjekken kun på den ruten. Ninox-blokkering gjelder derfor den valgte ruten.
-- AI-risikovurdering (`ai-risk-assessment`) leser også bare `mission.route.coordinates` for vær, luftrom, befolkningstetthet og SORA-fotavtrykk — de andre rutene inngår ikke.
-- Oppdragsrapport-PDF (`oppdragPdfExport`) samme begrensning: kun aktiv rute.
+## Hva bygges
 
-Kort sagt: i dag er advarsler og risiko «rute-1/aktiv rute», ikke worst case.
+**Faneknapper (topp av /oppdrag)**
+- To knapper: «Oppdrag» (aktiv som i dag) og «Loggfiler», med samme glass-/border-stil som Hendelser/Avvik.
+- Fanevalg speiles i URL (`?tab=logs`) så man kan dele/lenke direkte.
 
-## Foreslått oppførsel
+**Filtrering og søk**
+- Toggle «Kun mine» (der jeg er pilot) — påslått som standard.
+- Fritekstsøk (dronenavn/modell, serienummer, oppdragsnavn, sted, dato).
+- Nedtrekk: drone, pilot, kilde (DJI / ArduPilot / manuell), samt datoperiode.
+- Filtrene kjøres serverside mot databasen med paginering («Last flere») så store selskaper ikke laster alt.
 
-1. **Oppdragskort = worst case over alle ruter.**
-   Kjør luftromssjekken per rutesegment og slå sammen resultatet: unik liste på sone-ID, høyeste alvorlighetsgrad vinner, og `is_inside` er sann hvis minst én rute er inne. Hver advarsel merkes med hvilke ruter den gjelder («Rute 1», «Anleggsvei» osv.).
-2. **Ninox-badge på kortet** vises hvis **minst én** rute er inne i en 5 km-sone (uendret badge-utseende, men teksten/tooltip nevner hvilke ruter).
-3. **Start flytur (uendret prinsipp, allerede riktig).** Ninox-advarselen og blokkeringen gjelder kun den valgte ruten. Vi legger til at teksten sier hvilken rute det gjelder, slik at det er tydelig at valg av annen rute kan fjerne kravet.
-   `ninox_approved` lagres i dag per oppdrag — dvs. bekreftelse på én rute «låser opp» også andre ruter. Se valg under.
-4. **Risikovurdering = worst case.** AI-risikovurderingen kjøres på alle rutesegmenter samlet: befolkningstetthet, luftrom og SORA-fotavtrykk beregnes over alle rutene, og verste verdi driver score. Rapportteksten sier hvilken rute som driver verste funn.
-5. **PDF-rapport** får samme aggregerte luftromsliste med rutenavn.
-
-## Åpent valg: Ninox-godkjenning per rute
-
-- Alternativ A (enkelt): behold `ninox_approved` per oppdrag — én bekreftelse dekker hele oppdraget.
-- Alternativ B (presist): lagre godkjente rute-ID-er (f.eks. `ninox_approved_routes jsonb`), slik at hver rute i 5 km-sone må bekreftes separat. Kortet viser badgen som godkjent først når alle 5 km-ruter er bekreftet.
+**Kortene**
+- Rutenett: 1 kolonne på mobil, 2 på liten tablet, 3–4 på tablet/liten PC, 5 på store skjermer.
+- Hvert kort viser: lite kartutsnitt av flysporet (statisk preview), dato/klokkeslett, drone (navn hvis satt, ellers modell + SN), pilot, varighet, distanse, maks høyde, og badge for kilde (DJI/ArduPilot/manuell) samt tilknyttet oppdrag hvis det finnes.
+- Kort uten flyspor viser et nøytralt plassholderfelt i stedet for kart.
+- Klikk på kort åpner `FlightAnalysisDialog` med full analyse (samme som «Analyser» andre steder).
 
 ## Teknisk
 
-- Ny hjelper `src/lib/missionAirspaceAggregate.ts`: kjører `check_mission_airspace` per segment fra `segmentsFromRouteData`, dedupliserer på `z_id`, tar høyeste severity og samler `routeIds`/`routeLabels`.
-- `AirspaceWarnings` får støtte for flere rutesett (`routeSegments`) i tillegg til dagens `routePoints`, og viser rute-chips på hver advarsel.
-- `MissionCard` sender alle segmenter, og `has5kmZone` blir «noen rute inne».
-- `ai-risk-assessment`: bygg rutepunkter fra `route.routes[]` (fallback til `route.coordinates`), kjør befolknings-/luftromsanalysen per segment og velg verste; prompt oppdateres til å nevne rutenavn.
-- Krever migrasjon kun hvis alternativ B velges for Ninox.
+- Ny side-komponent `src/components/flightlogs/FlightLogsView.tsx` (lastes kun når fanen er aktiv), rendres fra `src/pages/Oppdrag.tsx` på samme måte som `DeviationsView` rendres i `Hendelser.tsx`.
+- Data: `flight_logs` scopet på selskap via eksisterende RLS, kolonnesett fra `FLIGHT_ANALYSIS_COLUMNS` + felt for kortene. «Kun mine» filtreres på `user_id` og på pilot-koblingen i `flight_log_personnel`.
+- Hook `src/hooks/useFlightLogsList.ts` for spørring, filtre, søk og paginering.
+- Kortkomponent `src/components/flightlogs/FlightLogCard.tsx`; kartminiatyr med Leaflet (ikke-interaktiv, kun sporlinje + fitBounds), lat-lastet ved scroll for ytelse.
+- Klikk kaller eksisterende `loadFlightAnalysisTrack(log)` og åpner `FlightAnalysisDialog` — ingen endringer i analysekoden.
+- Alle nye strenger legges i `no.json` og `en.json`.
+
+## Utenfor omfang
+
+- Redigering/sletting av logger fra denne visningen (finnes allerede i analysedialogen).
+- Endringer i selve flylogganalysen.
