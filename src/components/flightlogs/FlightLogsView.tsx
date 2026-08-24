@@ -22,7 +22,7 @@ export const FlightLogsView = ({ active }: Props) => {
   const { t } = useTranslation();
   const {
     logs, loading, loadingMore, hasMore, filters, setFilters,
-    droneOptions, pilotOptions, loadMore, refresh,
+    droneOptions, pilotOptions, sourceOptions, loadMore, refresh,
   } = useFlightLogsList(active);
 
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -101,9 +101,11 @@ export const FlightLogsView = ({ active }: Props) => {
             <SelectTrigger><SelectValue placeholder={t("flightLogs.allSources")} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="alle">{t("flightLogs.allSources")}</SelectItem>
-              <SelectItem value="dronelog">DJI</SelectItem>
-              <SelectItem value="ardupilot">ArduPilot</SelectItem>
-              <SelectItem value="manual">{t("flightLogs.sourceManual")}</SelectItem>
+              {sourceOptions.includes("dronelog") && <SelectItem value="dronelog">DJI</SelectItem>}
+              {sourceOptions.includes("ardupilot") && <SelectItem value="ardupilot">ArduPilot</SelectItem>}
+              {sourceOptions.includes("manual") && (
+                <SelectItem value="manual">{t("flightLogs.sourceManual")}</SelectItem>
+              )}
             </SelectContent>
           </Select>
 
