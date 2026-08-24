@@ -2351,6 +2351,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
+    setPilotTouched(true);
+    setPilotAutoMatchedFromDrone(false);
     setSelectedFlightLogChoice('');
     if (!selectedMissionId || selectedMissionId === '__new__') return;
     const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
