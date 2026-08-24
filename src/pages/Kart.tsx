@@ -773,6 +773,18 @@ export default function KartPage() {
                     <Undo className="h-4 w-4" />
                   </Button>
 
+                  {currentRoute.coordinates.length >= 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddRoute}
+                      className="h-8 px-2"
+                      title={t('pages.map.newRouteTitle')}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+
                   <Button
                     data-tour="map-route-clear"
                     variant="outline"
@@ -782,6 +794,7 @@ export default function KartPage() {
                     className="h-8 px-2"
                     title={t('pages.map.clearTitle')}
                   >
+
                     <Trash2 className="h-4 w-4" />
                   </Button>
                   <Button
