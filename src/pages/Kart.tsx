@@ -57,6 +57,8 @@ export default function KartPage() {
   const [routePlanningState, setRoutePlanningState] = useState<RoutePlanningState | null>(null);
   const [currentRoute, setCurrentRoute] = useState<RouteData>({ coordinates: [], totalDistance: 0 });
   const [routeUndoToken, setRouteUndoToken] = useState(0);
+  const [newRouteToken, setNewRouteToken] = useState(0);
+
 
   // 3D-modus (MapLibre). Ruteplanlegging støttes nå også i 3D — ingen
   // automatisk deaktivering.
