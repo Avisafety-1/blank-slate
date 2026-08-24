@@ -1562,7 +1562,9 @@ serve(async (req) => {
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
-    if (routeCoords && routeCoords.length >= 2 && !unifiedAirspaceActive) {
+    // Ved flere ruter brukes worst case (høyeste tetthet).
+    const popSegments = routeSegmentsRaw.filter((s) => s.coords.length >= 2);
+    if (popSegments.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1570,7 +1572,16 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
-        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
+
+        let computed: any = null;
+        let computedLabel: string | null = null;
+        for (const seg of popSegments) {
+          const res = await computeSsb250PopulationDensity(seg.coords, footprintBufferM, resolveLang(language));
+          if (res && (!computed || res.maxDensity > computed.maxDensity)) {
+            computed = res;
+            computedLabel = multiRoute ? seg.label : null;
+          }
+        }
 
         if (computed) {
           const maxDensity = computed.maxDensity;
@@ -1586,9 +1597,11 @@ serve(async (req) => {
             grcImpact = 'moderate';
           }
 
-          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+          const routeNote = computedLabel ? ` Dimensjonerende rute i oppdraget: ${computedLabel}.` : '';
+          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.${routeNote}`;
           populationData = { ...computed, grcImpact, grcIncrement, summary };
           console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
+
         } else {
           console.log('SSB 250m population: no overlapping populated cells found inside operational footprint');
           populationData = {
