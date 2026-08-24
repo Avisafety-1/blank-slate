@@ -3,16 +3,31 @@ export interface RoutePoint {
   lng: number;
 }
 
-export interface RouteData {
+/** En enkeltstående rute i et oppdrag. Et oppdrag kan ha flere separate ruter. */
+export interface RouteSegment {
+  id: string;
+  name?: string;
   coordinates: RoutePoint[];
   totalDistance: number;
   areaKm2?: number;
+}
+
+export interface RouteData {
+  /** Speiler koordinatene til den aktive ruten (bakoverkompatibelt felt). */
+  coordinates: RoutePoint[];
+  totalDistance: number;
+  areaKm2?: number;
+  /** Alle ruter i oppdraget. Mangler på eldre lagrede ruter (= én rute). */
+  routes?: RouteSegment[];
+  /** Id-en til ruten som er valgt/aktiv. */
+  activeRouteId?: string;
   pilotPosition?: RoutePoint;
   maxDistanceFromPilot?: number;
   pointsOutsideVLOS?: number;
   soraSettings?: SoraSettings;
   adjacentAreaDocumentation?: AdjacentAreaDocumentation;
 }
+
 
 export interface AdjacentAreaDocumentation {
   enabled: boolean;
