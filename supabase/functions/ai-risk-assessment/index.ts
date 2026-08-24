@@ -1622,7 +1622,7 @@ serve(async (req) => {
     }
 
     // 9c-eu. Eurostat 1 km population density for missions outside Norway (allowlisted companies).
-    if (routeCoords && routeCoords.length >= 2 && unifiedAirspaceActive) {
+    if (popSegments.length > 0 && unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1630,7 +1630,16 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
-        const computed = await computeEurostatPopulationDensity(routeCoords, footprintBufferM, resolveLang(language), supabase);
+
+        let computed: any = null;
+        let computedLabel: string | null = null;
+        for (const seg of popSegments) {
+          const res = await computeEurostatPopulationDensity(seg.coords, footprintBufferM, resolveLang(language), supabase);
+          if (res && (!computed || res.maxDensity > computed.maxDensity)) {
+            computed = res;
+            computedLabel = multiRoute ? seg.label : null;
+          }
+        }
 
         if (computed) {
           const maxDensity = computed.maxDensity;
@@ -1641,9 +1650,11 @@ serve(async (req) => {
           else if (maxDensity >= 100) { grcImpact = 'moderate'; }
 
           const en = resolveLang(language) === 'en';
-          const summary = en
+          const routeNote = computedLabel ? (en ? ` Dimensioning route: ${computedLabel}.` : ` Dimensjonerende rute i oppdraget: ${computedLabel}.`) : '';
+          const summary = (en
             ? `Eurostat 1 km: ${computed.calculation}. Average density inside footprint is ${computed.avgDensity.toFixed(1)} people/km² across ${computed.cellCount} overlapping cells. Dimensioning cell is ${computed.driver}.`
-            : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+            : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`) + routeNote;
+
           populationData = { ...computed, grcImpact, grcIncrement, summary };
           console.log(`Eurostat population: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}`);
         } else {
