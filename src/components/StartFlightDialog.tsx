@@ -140,6 +140,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // Ninox approval state
   const [missionIn5kmZone, setMissionIn5kmZone] = useState(false);
+  const [ninoxRouteLabel, setNinoxRouteLabel] = useState<string | null>(null);
+
   const [ninoxApproved, setNinoxApproved] = useState(false);
   const [ninoxChecking, setNinoxChecking] = useState(false);
   const [showNinoxConfirm, setShowNinoxConfirm] = useState(false);
@@ -547,7 +549,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     setNinoxApproved(!!m.ninox_approved);
     
     const segments = segmentsFromRouteData((m.route as RouteData) ?? null).filter(sg => sg.coordinates.length > 0);
-    const segment = (selectedRouteId ? segments.find(sg => sg.id === selectedRouteId) : null) ?? segments[0] ?? null;
+    const segmentIndex = selectedRouteId ? segments.findIndex(sg => sg.id === selectedRouteId) : -1;
+    const segment = (segmentIndex >= 0 ? segments[segmentIndex] : null) ?? segments[0] ?? null;
+    setNinoxRouteLabel(
+      segments.length > 1 && segment
+        ? (segment.name || `Rute ${(segmentIndex >= 0 ? segmentIndex : 0) + 1}`)
+        : null,
+    );
+
     const lat = m.latitude ?? segment?.coordinates?.[0]?.lat;
     const lng = m.longitude ?? segment?.coordinates?.[0]?.lng;
     if (!lat || !lng) {
@@ -1591,7 +1600,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 <ShieldCheck className="h-4 w-4 text-red-500 mt-0.5" />
                 <div className="flex-1 space-y-2">
                   <p className="font-medium text-red-700 dark:text-red-300">
-                    Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.
+                    {ninoxRouteLabel
+                      ? `Valgt rute (${ninoxRouteLabel}) er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.`
+                      : 'Oppdraget er i en 5 km RPAS-sone. Ninox-godkjenning er påkrevd.'}
+
                   </p>
                   <Button
                     size="sm"

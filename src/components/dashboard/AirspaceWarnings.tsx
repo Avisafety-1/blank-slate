@@ -27,6 +27,8 @@ interface AirspaceWarning {
   is_inside: boolean;
   level: "warning" | "caution" | "note";
   message: string;
+  /** Navn på rutene advarselen gjelder (kun ved flere ruter). */
+  route_labels?: string[];
 }
 
 interface RoutePoint {
@@ -34,16 +36,25 @@ interface RoutePoint {
   lng: number;
 }
 
+interface AirspaceRouteSegmentInput {
+  id: string;
+  label: string;
+  coordinates: RoutePoint[];
+}
+
 interface AirspaceWarningsProps {
   latitude: number | null;
   longitude: number | null;
   routePoints?: RoutePoint[];
+  /** Flere ruter: analysen kjøres per rute og slås sammen (worst case). */
+  routeSegments?: AirspaceRouteSegmentInput[];
   cachedWarnings?: AirspaceWarning[];
   onAirspaceResult?: (warnings: AirspaceWarning[]) => void;
   showAll?: boolean;
 }
 
-export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarnings, onAirspaceResult, showAll }: AirspaceWarningsProps) => {
+export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegments, cachedWarnings, onAirspaceResult, showAll }: AirspaceWarningsProps) => {
+
   const { t } = useTranslation();
   const [warnings, setWarnings] = useState<AirspaceWarning[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,7 +82,12 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     }
   }, [cachedWarnings]);
 
+  const segmentsKey = (routeSegments || [])
+    .map((s) => `${s.id}:${s.label}:${s.coordinates.length}:${s.coordinates[0]?.lat ?? ''},${s.coordinates[0]?.lng ?? ''}`)
+    .join("|");
+
   useEffect(() => {
+
     // Skip RPC if cached warnings are provided
     if (cachedWarnings) return;
 
@@ -86,26 +102,42 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
       const controller = new AbortController();
       const timeoutId2 = setTimeout(() => controller.abort(), 8000);
       try {
-        const { data, error } = await supabase.rpc("check_mission_airspace", {
-          p_lat: latitude,
-          p_lng: longitude,
-          p_route: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
-        }, { signal: controller.signal } as any);
+        const multiSegments = routeSegments && routeSegments.length > 0 ? routeSegments : null;
+        const runs: { label: string | null; points: RoutePoint[] | null }[] = multiSegments
+          ? multiSegments.map((s) => ({
+              label: multiSegments.length > 1 ? s.label : null,
+              points: s.coordinates.length > 0 ? s.coordinates : null,
+            }))
+          : [{ label: null, points: routePoints && routePoints.length > 0 ? routePoints : null }];
+
+        const rawWithLabel: { r: AirspaceWarningRaw; label: string | null }[] = [];
+        for (const run of runs) {
+          const { data, error } = await supabase.rpc("check_mission_airspace", {
+            p_lat: latitude,
+            p_lng: longitude,
+            p_route: run.points ? JSON.parse(JSON.stringify(run.points)) : null,
+          }, { signal: controller.signal } as any);
+
+          if (error) {
+            if (error.message?.includes('AbortError') || controller.signal.aborted) {
+              clearTimeout(timeoutId2);
+              setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+              return;
+            }
+            console.error("Error checking airspace:", error);
+            continue;
+          }
+
+          for (const r of ((data as unknown as AirspaceWarningRaw[]) || [])) {
+            rawWithLabel.push({ r, label: run.label });
+          }
+        }
 
         clearTimeout(timeoutId2);
 
-        if (error) {
-          if (error.message?.includes('AbortError') || controller.signal.aborted) {
-            setError("Luftromssjekk tok for lang tid. Prøv igjen.");
-            return;
-          }
-          console.error("Error checking airspace:", error);
-          return;
-        }
-
         // Map raw RPC response to expected format
-        const rawArray = (data as unknown as AirspaceWarningRaw[]) || [];
-        const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
+        const warningsArray: AirspaceWarning[] = rawWithLabel.map(({ r, label: routeLabel }) => {
+
           // Severity hierarchy: inside a zone is more severe, nearby is one step less
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
           const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
@@ -177,24 +209,26 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
             is_inside: r.route_inside,
             level,
             message,
+            route_labels: routeLabel ? [routeLabel] : undefined,
           };
         });
+
         const severityOrder = { warning: 0, caution: 1, note: 2 };
 
         // Additive unified fetch (DK/SE/DE/FI). Fail-closed for all users
         // except those in `airspace_unified_company_allowlist` — returns []
         // otherwise, so this does not affect existing behavior.
         let unifiedWarnings: AirspaceWarning[] = [];
-        if (routePoints && routePoints.length >= 2) {
+        for (const run of runs) {
+          const pts = run.points;
+          if (!pts || pts.length < 2) continue;
           try {
-            const countries: UnifiedCountry[] = getUnifiedCountriesForRoute(routePoints, 500);
+            const countries: UnifiedCountry[] = getUnifiedCountriesForRoute(pts, 500);
             const results = await Promise.all(
-              countries.map((c) =>
-                fetchUnifiedZonesForRoute(c, routePoints, 500),
-              ),
+              countries.map((c) => fetchUnifiedZonesForRoute(c, pts, 500)),
             );
             const zones: UnifiedAirspaceZone[] = results.flat();
-            unifiedWarnings = zones.map((z) => {
+            unifiedWarnings.push(...zones.map((z) => {
               const distMeters = Math.round(z.min_distance);
               const distStr =
                 distMeters < 1000
@@ -218,21 +252,41 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
                 is_inside: z.is_inside,
                 level: z.level,
                 message,
-              };
-            });
+                route_labels: run.label ? [run.label] : undefined,
+              } as AirspaceWarning;
+            }));
           } catch (err) {
             // Never let unified failures break the legacy warnings render.
             console.warn("[unified airspace] fetch failed (ignored):", err);
           }
         }
 
-        const combined = [...warningsArray, ...unifiedWarnings];
-        const sortedWarnings = combined.sort(
+        // Worst case across all routes: same zone from several routes is merged.
+        const merged = new Map<string, AirspaceWarning>();
+        for (const w of [...warningsArray, ...unifiedWarnings]) {
+          const key = `${w.zone_type}|${w.zone_name}`;
+          const existing = merged.get(key);
+          if (!existing) {
+            merged.set(key, { ...w, route_labels: w.route_labels ? [...w.route_labels] : undefined });
+            continue;
+          }
+          const labels = Array.from(new Set([...(existing.route_labels || []), ...(w.route_labels || [])]));
+          const worse = severityOrder[w.level] < severityOrder[existing.level];
+          const base = worse ? w : existing;
+          merged.set(key, {
+            ...base,
+            is_inside: existing.is_inside || w.is_inside,
+            distance_meters: Math.min(existing.distance_meters, w.distance_meters),
+            route_labels: labels.length > 0 ? labels : undefined,
+          });
+        }
 
+        const sortedWarnings = Array.from(merged.values()).sort(
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
         );
 
         setWarnings(sortedWarnings);
+
         onAirspaceResult?.(sortedWarnings);
       } catch (err: any) {
         clearTimeout(timeoutId2);
@@ -250,7 +304,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
     // Debounce to avoid too many calls
     const timeoutId = setTimeout(checkAirspace, 500);
     return () => clearTimeout(timeoutId);
-  }, [latitude, longitude, routePoints]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, routePoints, segmentsKey]);
+
 
   if (!latitude || !longitude) {
     return null;
@@ -308,7 +364,22 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, cachedWarni
           {isCaution && t('dashboard.airspaceWarnings.caution')}
           {isNote && t('dashboard.airspaceWarnings.information')}
         </AlertTitle>
-        <AlertDescription className="text-sm mt-1 text-foreground">{warning.message}</AlertDescription>
+        <AlertDescription className="text-sm mt-1 text-foreground">
+          {warning.message}
+          {warning.route_labels && warning.route_labels.length > 0 && (
+            <span className="mt-1.5 flex flex-wrap gap-1">
+              {warning.route_labels.map((label) => (
+                <span
+                  key={label}
+                  className="rounded-full border border-foreground/20 bg-background/40 px-2 py-0.5 text-[11px] font-medium"
+                >
+                  {label}
+                </span>
+              ))}
+            </span>
+          )}
+        </AlertDescription>
+
       </Alert>
     );
   };

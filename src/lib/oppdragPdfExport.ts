@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { segmentsFromRouteData } from "@/lib/routeSegments";
+
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
@@ -119,18 +121,42 @@ export const exportToPDF = async (
     const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
     
     if (effectiveLat && effectiveLng) {
-      const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
-        p_lat: effectiveLat,
-        p_lng: effectiveLng,
-        p_route: routeCoords,
-      });
-      if (airspaceData) {
-        const severityOrder: Record<string, number> = { warning: 0, caution: 1, note: 2 };
-        airspaceWarnings = (airspaceData as any[]).sort(
-          (a, b) => (severityOrder[a.level] || 3) - (severityOrder[b.level] || 3)
-        );
+      // Worst case across all routes on the mission.
+      const segments = segmentsFromRouteData((mission.route as any) ?? null)
+        .filter((s) => s.coordinates.length > 0);
+      const runs: { label: string | null; points: any }[] = segments.length > 0
+        ? segments.map((s, i) => ({
+            label: segments.length > 1 ? (s.name || `Rute ${i + 1}`) : null,
+            points: JSON.parse(JSON.stringify(s.coordinates)),
+          }))
+        : [{ label: null, points: routeCoords }];
+
+      const merged = new Map<string, any>();
+      for (const run of runs) {
+        const { data: airspaceData } = await supabase.rpc("check_mission_airspace", {
+          p_lat: effectiveLat,
+          p_lng: effectiveLng,
+          p_route: run.points,
+        });
+        for (const row of ((airspaceData as any[]) || [])) {
+          const key = `${row.z_type}|${row.z_name}`;
+          const existing = merged.get(key);
+          if (!existing) {
+            merged.set(key, { ...row, route_labels: run.label ? [run.label] : [] });
+            continue;
+          }
+          existing.route_inside = existing.route_inside || row.route_inside;
+          existing.min_distance = Math.min(existing.min_distance, row.min_distance);
+          if (run.label && !existing.route_labels.includes(run.label)) existing.route_labels.push(run.label);
+        }
       }
+
+      const severityOrder: Record<string, number> = { warning: 0, caution: 1, note: 2 };
+      airspaceWarnings = Array.from(merged.values()).sort(
+        (a, b) => (severityOrder[a.level] || 3) - (severityOrder[b.level] || 3)
+      );
     }
+
     
     // Header
     let headerY = 16;

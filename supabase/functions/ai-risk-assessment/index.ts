@@ -1212,8 +1212,22 @@ serve(async (req) => {
     // 8. Fetch weather data if coordinates available and not skipped
     let weatherData = null;
     const routeCoords = (mission.route as any)?.coordinates;
+    // Oppdrag kan ha flere ruter. Risikovurderingen bruker worst case på tvers
+    // av alle rutene (luftrom, arealbruk og befolkningstetthet).
+    const routeSegmentsRaw: { label: string; coords: { lat: number; lng: number }[] }[] =
+      Array.isArray((mission.route as any)?.routes) && (mission.route as any).routes.length > 0
+        ? (mission.route as any).routes
+            .map((r: any, i: number) => ({
+              label: (r?.name && String(r.name).trim()) || `Rute ${i + 1}`,
+              coords: Array.isArray(r?.coordinates) ? r.coordinates : [],
+            }))
+            .filter((s: any) => s.coords.length > 0)
+        : (routeCoords && routeCoords.length > 0 ? [{ label: 'Rute 1', coords: routeCoords }] : []);
+    const multiRoute = routeSegmentsRaw.length > 1;
+    const allRouteCoords: { lat: number; lng: number }[] = routeSegmentsRaw.flatMap((s) => s.coords);
     const lat = mission.latitude ?? routeCoords?.[0]?.lat;
     const lng = mission.longitude ?? routeCoords?.[0]?.lng;
+
     
     const skipWeather = pilotInputs?.skipWeatherEvaluation === true;
 
@@ -1318,26 +1332,51 @@ serve(async (req) => {
       console.error('Solar activity fetch error (non-blocking):', e);
     }
 
-    // 9. Fetch airspace warnings
+    // 9. Fetch airspace warnings (worst case across all routes)
     let airspaceWarnings: any[] = [];
-    if (lat && lng) {
-      try {
-        console.log(`Checking airspace for coordinates: lat=${lat}, lon=${lng}`);
-        const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
-          p_lat: lat,
-          p_lng: lng,
-          p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
-        });
-        if (airspaceError) {
-          console.error('Airspace check RPC error:', airspaceError);
-        } else {
-          airspaceWarnings = warnings || [];
-          console.log(`Airspace warnings found: ${airspaceWarnings.length}`, JSON.stringify(airspaceWarnings));
+    const airspaceRuns: { label: string | null; coords: { lat: number; lng: number }[] | null }[] =
+      routeSegmentsRaw.length > 0
+        ? routeSegmentsRaw.map((s) => ({ label: multiRoute ? s.label : null, coords: s.coords }))
+        : [{ label: null, coords: null }];
+
+    const mergeWarnings = (rows: any[], label: string | null) => {
+      for (const row of rows || []) {
+        const key = `${row.z_type}|${row.z_name}`;
+        const existing = airspaceWarnings.find((w) => `${w.z_type}|${w.z_name}` === key);
+        if (!existing) {
+          airspaceWarnings.push({ ...row, route_labels: label ? [label] : [] });
+          continue;
         }
-      } catch (e) {
-        console.error('Airspace check error:', e);
+        existing.route_inside = existing.route_inside || row.route_inside;
+        if (typeof row.min_distance === 'number') {
+          existing.min_distance = Math.min(existing.min_distance ?? row.min_distance, row.min_distance);
+        }
+        if (label && Array.isArray(existing.route_labels) && !existing.route_labels.includes(label)) {
+          existing.route_labels.push(label);
+        }
       }
+    };
+
+    if (lat && lng) {
+      for (const run of airspaceRuns) {
+        try {
+          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
+            p_lat: lat,
+            p_lng: lng,
+            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+          });
+          if (airspaceError) {
+            console.error('Airspace check RPC error:', airspaceError);
+          } else {
+            mergeWarnings(warnings || [], run.label);
+          }
+        } catch (e) {
+          console.error('Airspace check error:', e);
+        }
+      }
+      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
     }
+
 
     // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
     // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
@@ -1345,9 +1384,10 @@ serve(async (req) => {
     // Se .lovable/plan.md for begrunnelse og guardrails.
     const NORWAY_BBOX = { minLat: 57.5, maxLat: 71.5, minLng: 4.0, maxLng: 31.5 };
     const centroidInNorway = (() => {
-      const pts = (routeCoords && routeCoords.length > 0)
-        ? routeCoords
+      const pts = (allRouteCoords.length > 0)
+        ? allRouteCoords
         : (lat && lng ? [{ lat, lng }] : []);
+
       if (pts.length === 0) return true; // Ingen koordinater -> ikke aktiver ny gren
       const cLat = pts.reduce((s, c) => s + c.lat, 0) / pts.length;
       const cLng = pts.reduce((s, c) => s + c.lng, 0) / pts.length;
@@ -1366,20 +1406,22 @@ serve(async (req) => {
         if (allow) {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
-          const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
-            'check_mission_airspace_unified',
-            {
-              p_lat: lat,
-              p_lng: lng,
-              p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
-            },
-          );
-          if (unifiedErr) {
-            console.error('Unified airspace RPC error:', unifiedErr);
-          } else if (unifiedWarnings && unifiedWarnings.length > 0) {
-            airspaceWarnings = [...airspaceWarnings, ...unifiedWarnings];
-            console.log(`Unified airspace warnings added: ${unifiedWarnings.length}`);
+          for (const run of airspaceRuns) {
+            const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
+              'check_mission_airspace_unified',
+              {
+                p_lat: lat,
+                p_lng: lng,
+                p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+              },
+            );
+            if (unifiedErr) {
+              console.error('Unified airspace RPC error:', unifiedErr);
+            } else {
+              mergeWarnings(unifiedWarnings || [], run.label);
+            }
           }
+
         }
       } catch (e) {
         console.error('Unified airspace check error (non-blocking):', e);
@@ -1405,9 +1447,10 @@ serve(async (req) => {
 
       try {
         // Build bounding box from route coordinates or single point
-        const allCoords: { lat: number; lng: number }[] = routeCoords && routeCoords.length > 0
-          ? routeCoords
+        const allCoords: { lat: number; lng: number }[] = allRouteCoords.length > 0
+          ? allRouteCoords
           : [{ lat, lng }];
+
 
         // Get SORA ground risk buffer distance if available
         const soraData = mission.mission_sora?.[0];
@@ -1519,7 +1562,9 @@ serve(async (req) => {
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
-    if (routeCoords && routeCoords.length >= 2 && !unifiedAirspaceActive) {
+    // Ved flere ruter brukes worst case (høyeste tetthet).
+    const popSegments = routeSegmentsRaw.filter((s) => s.coords.length >= 2);
+    if (popSegments.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1527,7 +1572,16 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
-        const computed = await computeSsb250PopulationDensity(routeCoords, footprintBufferM, resolveLang(language));
+
+        let computed: any = null;
+        let computedLabel: string | null = null;
+        for (const seg of popSegments) {
+          const res = await computeSsb250PopulationDensity(seg.coords, footprintBufferM, resolveLang(language));
+          if (res && (!computed || res.maxDensity > computed.maxDensity)) {
+            computed = res;
+            computedLabel = multiRoute ? seg.label : null;
+          }
+        }
 
         if (computed) {
           const maxDensity = computed.maxDensity;
@@ -1543,9 +1597,11 @@ serve(async (req) => {
             grcImpact = 'moderate';
           }
 
-          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+          const routeNote = computedLabel ? ` Dimensjonerende rute i oppdraget: ${computedLabel}.` : '';
+          const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.${routeNote}`;
           populationData = { ...computed, grcImpact, grcIncrement, summary };
           console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
+
         } else {
           console.log('SSB 250m population: no overlapping populated cells found inside operational footprint');
           populationData = {
@@ -1566,7 +1622,7 @@ serve(async (req) => {
     }
 
     // 9c-eu. Eurostat 1 km population density for missions outside Norway (allowlisted companies).
-    if (routeCoords && routeCoords.length >= 2 && unifiedAirspaceActive) {
+    if (popSegments.length > 0 && unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1574,7 +1630,16 @@ serve(async (req) => {
         const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
         const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
         const footprintBufferM = resolveFootprintBufferM(fg, contingency, grb);
-        const computed = await computeEurostatPopulationDensity(routeCoords, footprintBufferM, resolveLang(language), supabase);
+
+        let computed: any = null;
+        let computedLabel: string | null = null;
+        for (const seg of popSegments) {
+          const res = await computeEurostatPopulationDensity(seg.coords, footprintBufferM, resolveLang(language), supabase);
+          if (res && (!computed || res.maxDensity > computed.maxDensity)) {
+            computed = res;
+            computedLabel = multiRoute ? seg.label : null;
+          }
+        }
 
         if (computed) {
           const maxDensity = computed.maxDensity;
@@ -1585,9 +1650,11 @@ serve(async (req) => {
           else if (maxDensity >= 100) { grcImpact = 'moderate'; }
 
           const en = resolveLang(language) === 'en';
-          const summary = en
+          const routeNote = computedLabel ? (en ? ` Dimensioning route: ${computedLabel}.` : ` Dimensjonerende rute i oppdraget: ${computedLabel}.`) : '';
+          const summary = (en
             ? `Eurostat 1 km: ${computed.calculation}. Average density inside footprint is ${computed.avgDensity.toFixed(1)} people/km² across ${computed.cellCount} overlapping cells. Dimensioning cell is ${computed.driver}.`
-            : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`;
+            : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`) + routeNote;
+
           populationData = { ...computed, grcImpact, grcIncrement, summary };
           console.log(`Eurostat population: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}`);
         } else {

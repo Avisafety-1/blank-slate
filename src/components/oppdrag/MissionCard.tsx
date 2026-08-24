@@ -1,5 +1,7 @@
 import { loadFlightAnalysisTrack, buildFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
+
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
@@ -145,9 +147,14 @@ export const MissionCard = ({
     ? (mission.route as any).coordinates
     : [];
   const hasRouteCoords = routeCoords.length > 0;
+  const airspaceSegments = useMemo(
+    () => getAirspaceRouteSegments(mission.route as any, (i) => t('pages.missions.card.routeN', { n: i + 1 })),
+    [mission.route, t],
+  );
   const effectiveLat = typeof mission.latitude === 'number' ? mission.latitude : (routeCoords[0]?.lat ?? null);
   const effectiveLng = typeof mission.longitude === 'number' ? mission.longitude : (routeCoords[0]?.lng ?? null);
   const airspaceRoutePoints = hasRouteCoords ? routeCoords : undefined;
+
 
   const handleNinoxConfirm = async () => {
     const { error } = await supabase
@@ -566,6 +573,8 @@ export const MissionCard = ({
               latitude={effectiveLat}
               longitude={effectiveLng}
               routePoints={airspaceRoutePoints}
+              routeSegments={airspaceSegments}
+
               showAll={companySettings.show_all_airspace_warnings}
               onAirspaceResult={(warnings) => {
                 const found = warnings.some(w => w.zone_type === '5KM' && w.is_inside);
