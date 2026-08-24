@@ -29,6 +29,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
+import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -1209,6 +1210,10 @@ export const AddMissionDialog = ({
               latitude={formData.latitude} 
               longitude={formData.longitude}
               routePoints={routeData?.coordinates}
+              routeSegments={getAirspaceRouteSegments(
+                routeData as any,
+                (i) => t('pages.missions.card.routeN', { n: i + 1 }),
+              )}
               showAll={companySettings.show_all_airspace_warnings}
             />
             
