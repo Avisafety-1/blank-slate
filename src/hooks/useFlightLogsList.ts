@@ -131,10 +131,10 @@ export function useFlightLogsList(active: boolean) {
       const base = d.modell || d.serienummer || "Drone";
       droneMap.set(d.id, d.dji_aircraft_name ? `${d.dji_aircraft_name} · ${base}` : base);
     });
-    const pilotMap = new Map((profiles.data || []).map((p: any) => [p.id, p.full_name]));
-    const missionMap = new Map((missions.data || []).map((m: any) => [m.id, m.title]));
+    const pilotMap = new Map<string, string>((profiles.data || []).map((p: any) => [p.id, p.full_name]));
+    const missionMap = new Map<string, string>((missions.data || []).map((m: any) => [m.id, m.title]));
 
-    return rows.map(r => ({
+    return rows.map((r): FlightLogListItem => ({
       ...r,
       droneLabel: r.drone_id ? droneMap.get(r.drone_id) || r.drone_model : r.drone_model,
       pilotName: r.user_id ? pilotMap.get(r.user_id) || null : null,
