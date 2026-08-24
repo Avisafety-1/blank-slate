@@ -1332,26 +1332,51 @@ serve(async (req) => {
       console.error('Solar activity fetch error (non-blocking):', e);
     }
 
-    // 9. Fetch airspace warnings
+    // 9. Fetch airspace warnings (worst case across all routes)
     let airspaceWarnings: any[] = [];
-    if (lat && lng) {
-      try {
-        console.log(`Checking airspace for coordinates: lat=${lat}, lon=${lng}`);
-        const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
-          p_lat: lat,
-          p_lng: lng,
-          p_route: routeCoords ? JSON.parse(JSON.stringify(routeCoords)) : null,
-        });
-        if (airspaceError) {
-          console.error('Airspace check RPC error:', airspaceError);
-        } else {
-          airspaceWarnings = warnings || [];
-          console.log(`Airspace warnings found: ${airspaceWarnings.length}`, JSON.stringify(airspaceWarnings));
+    const airspaceRuns: { label: string | null; coords: { lat: number; lng: number }[] | null }[] =
+      routeSegmentsRaw.length > 0
+        ? routeSegmentsRaw.map((s) => ({ label: multiRoute ? s.label : null, coords: s.coords }))
+        : [{ label: null, coords: null }];
+
+    const mergeWarnings = (rows: any[], label: string | null) => {
+      for (const row of rows || []) {
+        const key = `${row.z_type}|${row.z_name}`;
+        const existing = airspaceWarnings.find((w) => `${w.z_type}|${w.z_name}` === key);
+        if (!existing) {
+          airspaceWarnings.push({ ...row, route_labels: label ? [label] : [] });
+          continue;
         }
-      } catch (e) {
-        console.error('Airspace check error:', e);
+        existing.route_inside = existing.route_inside || row.route_inside;
+        if (typeof row.min_distance === 'number') {
+          existing.min_distance = Math.min(existing.min_distance ?? row.min_distance, row.min_distance);
+        }
+        if (label && Array.isArray(existing.route_labels) && !existing.route_labels.includes(label)) {
+          existing.route_labels.push(label);
+        }
       }
+    };
+
+    if (lat && lng) {
+      for (const run of airspaceRuns) {
+        try {
+          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
+            p_lat: lat,
+            p_lng: lng,
+            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+          });
+          if (airspaceError) {
+            console.error('Airspace check RPC error:', airspaceError);
+          } else {
+            mergeWarnings(warnings || [], run.label);
+          }
+        } catch (e) {
+          console.error('Airspace check error:', e);
+        }
+      }
+      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
     }
+
 
     // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
     // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
