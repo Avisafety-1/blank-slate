@@ -97,26 +97,42 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
       const controller = new AbortController();
       const timeoutId2 = setTimeout(() => controller.abort(), 8000);
       try {
-        const { data, error } = await supabase.rpc("check_mission_airspace", {
-          p_lat: latitude,
-          p_lng: longitude,
-          p_route: routePoints && routePoints.length > 0 ? JSON.parse(JSON.stringify(routePoints)) : null,
-        }, { signal: controller.signal } as any);
+        const multiSegments = routeSegments && routeSegments.length > 0 ? routeSegments : null;
+        const runs: { label: string | null; points: RoutePoint[] | null }[] = multiSegments
+          ? multiSegments.map((s) => ({
+              label: multiSegments.length > 1 ? s.label : null,
+              points: s.coordinates.length > 0 ? s.coordinates : null,
+            }))
+          : [{ label: null, points: routePoints && routePoints.length > 0 ? routePoints : null }];
+
+        const rawWithLabel: { r: AirspaceWarningRaw; label: string | null }[] = [];
+        for (const run of runs) {
+          const { data, error } = await supabase.rpc("check_mission_airspace", {
+            p_lat: latitude,
+            p_lng: longitude,
+            p_route: run.points ? JSON.parse(JSON.stringify(run.points)) : null,
+          }, { signal: controller.signal } as any);
+
+          if (error) {
+            if (error.message?.includes('AbortError') || controller.signal.aborted) {
+              clearTimeout(timeoutId2);
+              setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+              return;
+            }
+            console.error("Error checking airspace:", error);
+            continue;
+          }
+
+          for (const r of ((data as unknown as AirspaceWarningRaw[]) || [])) {
+            rawWithLabel.push({ r, label: run.label });
+          }
+        }
 
         clearTimeout(timeoutId2);
 
-        if (error) {
-          if (error.message?.includes('AbortError') || controller.signal.aborted) {
-            setError("Luftromssjekk tok for lang tid. Prøv igjen.");
-            return;
-          }
-          console.error("Error checking airspace:", error);
-          return;
-        }
-
         // Map raw RPC response to expected format
-        const rawArray = (data as unknown as AirspaceWarningRaw[]) || [];
-        const warningsArray: AirspaceWarning[] = rawArray.map((r) => {
+        const warningsArray: AirspaceWarning[] = rawWithLabel.map(({ r, label: routeLabel }) => {
+
           // Severity hierarchy: inside a zone is more severe, nearby is one step less
           const baseSeverity = r.severity; // WARNING, CAUTION, or INFO from DB
           const isCtrOrTiz = r.z_type === 'CTR' || r.z_type === 'TIZ';
