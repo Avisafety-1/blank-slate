@@ -15,6 +15,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { AddMissionDialog } from "./AddMissionDialog";
 import { AirspaceWarnings } from "./AirspaceWarnings";
+import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
+
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
