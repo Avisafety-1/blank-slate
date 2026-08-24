@@ -147,7 +147,7 @@ export const FlightAnalysisDialog = ({ open, onOpenChange, flightTrack, flightDa
 
   // Initialize map with retry logic
   useEffect(() => {
-    if (!open) return;
+    if (!open || !positions.length) return;
 
     initAttemptRef.current = 0;
     const maxAttempts = 15;
