@@ -44,6 +44,8 @@ import { useTranslation } from 'react-i18next';
 import { useChecklists } from '@/hooks/useChecklists';
 import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecutionDialog';
 import { toast } from 'sonner';
+import { segmentsFromRouteData, routeColor } from '@/lib/routeSegments';
+import type { RouteData } from '@/types/map';
 
 type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -73,7 +75,8 @@ interface StartFlightDialogProps {
     completedChecklistIds?: string[],
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
-    dronetagDeviceId?: string
+    dronetagDeviceId?: string,
+    routeId?: string | null
   ) => void;
 }
 
@@ -84,6 +87,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const { checklists } = useChecklists();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [missionPopoverOpen, setMissionPopoverOpen] = useState(false);
   const [publishMode, setPublishMode] = useState<PublishMode>('advisory');
   const [callsignPreview, setCallsignPreview] = useState<string | null>(null);
@@ -742,13 +746,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const selectedMission = selectedMissionId && selectedMissionId !== 'none' 
     ? missions.find(m => m.id === selectedMissionId) 
     : null;
-  const routeCoordsCount = selectedMission?.route &&
-    typeof selectedMission.route === 'object' &&
-    selectedMission.route !== null &&
-    'coordinates' in selectedMission.route &&
-    Array.isArray((selectedMission.route as { coordinates: unknown[] }).coordinates)
-      ? (selectedMission.route as { coordinates: unknown[] }).coordinates.length
-      : 0;
+  const selectedMissionSegments = segmentsFromRouteData((selectedMission?.route as RouteData) ?? null)
+    .filter(s => s.coordinates.length > 0);
+  const selectedSegment = selectedRouteId
+    ? selectedMissionSegments.find(s => s.id === selectedRouteId) ?? selectedMissionSegments[0]
+    : selectedMissionSegments[0];
+  const routeCoordsCount = selectedSegment?.coordinates.length ?? 0;
   const hasRoute = routeCoordsCount > 0;
   // SafeSky krever minst 3 rutepunkter for å publisere et advisory
   const hasAdvisoryRoute = routeCoordsCount >= 3;
