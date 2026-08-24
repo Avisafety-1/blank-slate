@@ -72,6 +72,7 @@ const normalizeSource = (source: string | null): string => {
 
 export function useFlightLogsList(active: boolean) {
   const { companyId, user } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const [filters, setFilters] = useState<FlightLogFilters>(DEFAULT_FLIGHT_LOG_FILTERS);
   const [logs, setLogs] = useState<FlightLogListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +81,38 @@ export function useFlightLogsList(active: boolean) {
   const [droneOptions, setDroneOptions] = useState<FilterOption[]>([]);
   const [pilotOptions, setPilotOptions] = useState<FilterOption[]>([]);
   const [sourceOptions, setSourceOptions] = useState<string[]>([]);
+  const [companyOptions, setCompanyOptions] = useState<FilterOption[]>([]);
   const [mineLogIds, setMineLogIds] = useState<string[] | null>(null);
+  // Companies the user may browse logs from: admins see their own department plus
+  // sub-departments (same rule the RLS policy uses), regular users only their own.
+  const [visibleCompanyIds, setVisibleCompanyIds] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (!active || !companyId || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      if (!isAdmin) {
+        if (!cancelled) setVisibleCompanyIds([companyId]);
+        return;
+      }
+      const { data } = await (supabase.rpc as any)("get_user_visible_company_ids", { _user_id: user.id });
+      if (cancelled) return;
+      const ids = ((data || []) as any[])
+        .map(v => (typeof v === "string" ? v : v?.company_id ?? v?.id))
+        .filter(Boolean) as string[];
+      setVisibleCompanyIds(ids.length ? [...new Set([companyId, ...ids])] : [companyId]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, companyId, user?.id, isAdmin]);
+
+  const allowedCompanyIds = useMemo(
+    () => visibleCompanyIds ?? (companyId ? [companyId] : []),
+    [visibleCompanyIds, companyId]
+  );
+  const allowedKey = allowedCompanyIds.join(",");
+
 
   // Debounced search value
   const [debouncedSearch, setDebouncedSearch] = useState("");
