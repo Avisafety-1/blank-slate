@@ -91,11 +91,16 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
     } catch {
       map.setView(latLngs[0], 13);
     }
-    setTimeout(() => map.invalidateSize(), 60);
+    const timer = window.setTimeout(() => {
+      if (mapRef.current === map && (map as any)._container?.isConnected) {
+        try { map.invalidateSize(); } catch { /* map torn down */ }
+      }
+    }, 60);
 
     return () => {
-      map.remove();
+      window.clearTimeout(timer);
       mapRef.current = null;
+      try { map.remove(); } catch { /* already detached */ }
     };
   }, [positions]);
 
