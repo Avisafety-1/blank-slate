@@ -262,6 +262,9 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
         }
 
         // Worst case across all routes: same zone from several routes is merged.
+        // Rutemerkelappene skal kun vise rutene som faktisk utløser den viste
+        // tilstanden — er én rute inne i sonen, listes bare den (ikke rutene
+        // som bare er i nærheten).
         const merged = new Map<string, AirspaceWarning>();
         for (const w of [...warningsArray, ...unifiedWarnings]) {
           const key = `${w.zone_type}|${w.zone_name}`;
@@ -270,16 +273,29 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
             merged.set(key, { ...w, route_labels: w.route_labels ? [...w.route_labels] : undefined });
             continue;
           }
-          const labels = Array.from(new Set([...(existing.route_labels || []), ...(w.route_labels || [])]));
+          const isInside = existing.is_inside || w.is_inside;
+          let labels: string[];
+          if (existing.is_inside === w.is_inside) {
+            labels = Array.from(new Set([...(existing.route_labels || []), ...(w.route_labels || [])]));
+          } else if (w.is_inside) {
+            labels = [...(w.route_labels || [])];
+          } else {
+            labels = [...(existing.route_labels || [])];
+          }
           const worse = severityOrder[w.level] < severityOrder[existing.level];
           const base = worse ? w : existing;
           merged.set(key, {
             ...base,
-            is_inside: existing.is_inside || w.is_inside,
-            distance_meters: Math.min(existing.distance_meters, w.distance_meters),
+            is_inside: isInside,
+            distance_meters: isInside
+              ? (w.is_inside && existing.is_inside
+                  ? Math.min(existing.distance_meters, w.distance_meters)
+                  : (w.is_inside ? w.distance_meters : existing.distance_meters))
+              : Math.min(existing.distance_meters, w.distance_meters),
             route_labels: labels.length > 0 ? labels : undefined,
           });
         }
+
 
         const sortedWarnings = Array.from(merged.values()).sort(
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
