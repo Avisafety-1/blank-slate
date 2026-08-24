@@ -151,9 +151,10 @@ export function useFlightLogsList(active: boolean) {
         (supabase as any)
           .from("missions")
           .select("id")
-          .eq("company_id", companyId)
+          .in("company_id", allowedCompanyIds.length ? allowedCompanyIds : [companyId])
           .ilike("title", like)
           .limit(500),
+
       ]);
       if (cancelled) return;
 
