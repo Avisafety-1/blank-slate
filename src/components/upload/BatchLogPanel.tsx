@@ -50,6 +50,8 @@ interface RowState {
   missionUserOverride: boolean;
   autoMatchedMissionId: string | null;
   autoMatchedDroneId: string | null;
+  autoMatchedPilotId: string | null;
+  pilotUserOverride: boolean;
   operationType: OpType;
   missions: MissionOption[];
   missionsLoaded: boolean;
