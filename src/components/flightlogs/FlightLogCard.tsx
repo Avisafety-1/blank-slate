@@ -184,11 +184,19 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
             {log.departure_location}
           </p>
         )}
-        {log.missionName && (
-          <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 max-w-full truncate">
-            {log.missionName}
-          </Badge>
-        )}
+        <div className="flex flex-wrap gap-1">
+          {log.companyName && (
+            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 max-w-full truncate">
+              {log.companyName}
+            </Badge>
+          )}
+          {log.missionName && (
+            <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 max-w-full truncate">
+              {log.missionName}
+            </Badge>
+          )}
+        </div>
+
       </div>
     </button>
   );
