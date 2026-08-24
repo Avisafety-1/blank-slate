@@ -954,6 +954,21 @@ export default function KartPage() {
                 <span className="hidden sm:inline ml-1">{t('pages.map.undo')}</span>
               </Button>
 
+              {currentRoute.coordinates.length >= 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddRoute}
+                  className="h-8 px-2 sm:px-3"
+                  title={t('pages.map.newRouteTitle')}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">{t('pages.map.newRoute')}</span>
+                </Button>
+              )}
+
+
+
               <Button
                 data-tour="map-route-clear"
                 variant="outline"
