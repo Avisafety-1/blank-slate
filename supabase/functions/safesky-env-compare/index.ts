@@ -81,28 +81,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ---- Auth: Avisafe superadmin only -------------------------------------
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData } = await supabase.auth.getUser(token);
-    const user = userData?.user;
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // ---- Auth: Avisafe superadmin, or the internal cron secret --------------
+    const cronSecret = Deno.env.get("CRON_SHARED_SECRET");
+    const providedSecret = req.headers.get("x-cron-secret");
+    const secretOk = !!cronSecret && providedSecret === cronSecret;
+
+    if (!secretOk) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const token = authHeader.replace("Bearer ", "");
+      const { data: userData } = await supabase.auth.getUser(token);
+      const user = userData?.user;
+      if (!user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: isAvisafe } = await supabase.rpc("is_avisafe_superadmin", { _user_id: user.id });
+      if (!isAvisafe) {
+        return new Response(JSON.stringify({ error: "Forbidden: superadmin only" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
-    const { data: isAvisafe } = await supabase.rpc("is_avisafe_superadmin", { _user_id: user.id });
-    if (!isAvisafe) {
-      return new Response(JSON.stringify({ error: "Forbidden: superadmin only" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+
 
     // ---- Input --------------------------------------------------------------
     let body: Record<string, unknown> = {};
