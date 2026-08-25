@@ -4,7 +4,9 @@ Ingen migrasjon, ingen backfill, ingen endring på eksisterende logger. Vi stram
 
 ## Svar på spørsmålene dine
 
-**Flere personer på oppdraget:** i selve dialogen velges bare én pilot, men koden skriver i dag *også* alle personer som er koblet til drona på dronekortet (`drone_personnel`) inn i `flight_log_personnel` — automatisk, uten at du velger det. Alle disse får full flytid i loggbok og KPI. 72 eksisterende logger har mer enn én person koblet. Så jo, det er et reelt problem, men det oppstår i koden, ikke i valget ditt.
+**Hvor lagres personene på oppdraget:** i `mission_personnel` (med rolle) — ikke i `flight_log_personnel`. De påvirker ikke flytid.
+
+**Er feilen bare at `LogFlightTimeDialog` skriver flere personer?** Ja, det er hovedfeilen, men kilden er dronekortet, ikke oppdraget: `fetchDroneLinks` henter alle profiler i `drone_personnel` for valgt drone, og alle disse skrives til `flight_log_personnel` i tillegg til valgt pilot. Alle får da full flytid i loggbok og KPI. 72 eksisterende logger har mer enn én person koblet.
 
 **"Dobbelt bokføring i klienten":** `profiles.flyvetimer` skrives av to steder samtidig. Klienten (`EditFlightLogDialog`, `BatchLogPanel`, `UploadDroneLogDialog`) gjør `flyvetimer = flyvetimer ± minutter/60`, mens databasetriggeren `trg_flp_recompute_pilot` samtidig regner ut hele summen på nytt fra `flight_log_personnel`. To skrivere mot samme felt = kappløp og tall som spretter.
 
