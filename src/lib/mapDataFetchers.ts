@@ -1978,6 +1978,8 @@ export async function fetchUnifiedAirspaceZones(params: BoundsFetchParams & {
       p_zone_types: null,
       p_country_codes: countryCodes,
       p_layer_ids: [layerId],
+      // Zoom-avhengig geometriforenkling (kun tegning – ikke analyse)
+      p_zoom: Math.round(zoom),
     });
     if (error || !Array.isArray(data)) {
       if (error) console.error(`[unified:${layerId}] fetch error:`, error);
