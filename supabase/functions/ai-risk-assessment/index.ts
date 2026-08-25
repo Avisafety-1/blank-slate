@@ -1113,7 +1113,7 @@ serve(async (req) => {
     // GDPR: Only fetch non-personal data needed for risk assessment (no names, email, phone)
     const { data: missionPersonnel, error: missionPersonnelError } = await supabase
       .from('mission_personnel')
-      .select('profile_id, profiles(id, flyvetimer, tittel)')
+      .select('profile_id, profiles(id, tittel)')
       .eq('mission_id', missionId);
 
     if (missionPersonnelError) {
@@ -2205,9 +2205,8 @@ serve(async (req) => {
       assignedPilots: assignedPilots.map((p: any, index: number) => {
         const stats = pilotFlightStats.find((s: any) => s.pilotId === p.id);
         const loggedHours = stats ? stats.totalMinutes / 60 : 0;
-        // Prefer summed flight_logs (authoritative). Fall back to stored profile value
-        // only if the user has no logs at all (e.g. legacy imported totals).
-        const totalFlightHours = loggedHours > 0 ? loggedHours : (p.flyvetimer || 0);
+        // Flytimer avledes utelukkende av flyloggene (profiles.flyvetimer brukes ikke lenger).
+        const totalFlightHours = loggedHours;
         return {
           identifier: `Pilot ${index + 1}`,
           role: p.tittel || 'Pilot',

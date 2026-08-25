@@ -310,21 +310,17 @@ export const BatchLogPanel = ({
     };
   };
 
-  const adjustHours = async (table: "profiles" | "drones" | "equipment", id: string, minutes: number) => {
-    if (!minutes || !id) return;
-    const { data: row } = await supabase.from(table).select("flyvetimer").eq("id", id).single();
-    if (row) {
-      await supabase.from(table).update({
-        flyvetimer: Math.max(0, ((row as any).flyvetimer || 0) + minutes / 60.0),
-      }).eq("id", id);
-    }
-  };
 
   const saveRow = async (row: RowState): Promise<boolean> => {
     if (!row.parsed) {
       updateRow(row.pendingLogId, { status: "error", errorMessage: "Loggdata mangler" });
       return false;
     }
+    if (!row.pilotId) {
+      updateRow(row.pendingLogId, { status: "error", errorMessage: "Velg pilot for flyturen" });
+      return false;
+    }
+
     const parsed = row.parsed;
     const durationMinutes = parsed.durationMinutes || Math.round((parsed.durationSeconds || 0) / 60);
     const positions = parsed.positions || [];
@@ -429,13 +425,13 @@ export const BatchLogPanel = ({
       if (logErr) throw logErr;
       const flightLogId = (logData as any).id as string;
 
-      // Pilot junction + hours
+      // Pilot junction (flytimer avledes av flyloggen)
       if (row.pilotId) {
         await supabase.from("flight_log_personnel").insert({
           flight_log_id: flightLogId, profile_id: row.pilotId,
         });
-        await adjustHours("profiles", row.pilotId, durationMinutes);
       }
+
 
       // Equipment junctions (drone hours handled by DB trigger)
       for (const eqId of row.equipmentIds) {

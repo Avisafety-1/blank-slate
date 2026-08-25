@@ -1817,7 +1817,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     const oldDuration = oldDurationMinutes;
 
     // ── Helper to adjust flight hours on a resource ──
-    const adjustHours = async (table: 'profiles' | 'drones' | 'equipment', id: string, minutesDelta: number) => {
+    const adjustHours = async (table: 'drones' | 'equipment', id: string, minutesDelta: number) => {
       if (minutesDelta === 0) return;
       const { data: row } = await supabase.from(table).select('flyvetimer').eq('id', id).single();
       if (row) {
@@ -1827,31 +1827,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
     };
 
-    // ── PILOT ──
+    // ── PILOT ── (flytimer avledes av flyloggen, ingen profiles.flyvetimer-justering)
     if (isUpdate) {
       const oldPilot = oldPilotIds[0] || null;
       const newPilot = pilotId || null;
       const pilotChanged = oldPilot !== newPilot;
 
       if (pilotChanged) {
-        // Remove old pilot from junction & subtract old duration
         if (oldPilot) {
           await supabase.from('flight_log_personnel').delete().eq('flight_log_id', flightLogId).eq('profile_id', oldPilot);
-          await adjustHours('profiles', oldPilot, -oldDuration);
         }
-        // Add new pilot to junction & add full new duration
         if (newPilot) {
           await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: newPilot });
-          await adjustHours('profiles', newPilot, newDuration);
         }
-      } else if (newPilot && diffMinutes !== 0) {
-        // Same pilot, just adjust by diff
-        await adjustHours('profiles', newPilot, diffMinutes);
       }
     } else if (pilotId) {
       await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: pilotId });
-      await adjustHours('profiles', pilotId, newDuration);
     }
+
 
     // ── DRONE ──
     if (isUpdate) {
@@ -1973,6 +1966,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handleUpdateExisting = async () => {
     if (!result || !matchedLog || !companyId || !user) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
@@ -2028,6 +2022,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handleCreateNew = async () => {
     if (!result || !companyId || !user) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       // SHA-256 dedup is now handled early in findMatchingFlightLog
@@ -2110,6 +2105,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Link to existing mission (no new mission created) ──
   const handleLinkToMission = async () => {
     if (!result || !companyId || !user || !selectedMissionId) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
