@@ -225,8 +225,8 @@ Deno.serve(async (req) => {
     const rad = Math.min(Number(body.rad ?? DEFAULT_RAD) || DEFAULT_RAD, DEFAULT_RAD);
 
     // ---- A few single lightweight GETs, no DB writes -------------------------
-    const prodKey = Deno.env.get("SAFESKY_PROD_API_KEY");
-    const sandboxKey = Deno.env.get("SAFESKY_API_KEY");
+    const prodKey = prodKeyEnv;
+    const sandboxKey = sandboxKeyEnv;
     const [sandbox, production, productionUav, productionSandboxKey] = await Promise.all([
       probe(SANDBOX_HOST, "SAFESKY_API_KEY", sandboxKey, lat, lon, rad),
       probe(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKey, lat, lon, rad),
