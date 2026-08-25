@@ -873,6 +873,7 @@
     "droneTagWarning": "Check that the DroneTag device is sending data to SafeSky during the flight.",
     "toastFlightTimePositive": "Flight time must be greater than 0",
     "toastPilotRequired": "Select a pilot for the flight",
+    "pilotHoursDerivedHint": "Flight hours are calculated automatically from the flight logs.",
     "toastLoggedButNoStatus": "Flight time logged, but could not update mission status",
     "toastLoggedAndCompleted": "Flight time logged and mission marked as completed!",
     "toastLogged": "Flight time logged!",
