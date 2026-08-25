@@ -707,21 +707,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           });
         }
 
-        // Queue flight_log_personnel entries for linked personnel
-        for (const profileId of linkedPersonnel) {
-          addToQueue({
-            table: 'flight_log_personnel',
-            operation: 'insert',
-            data: {
-              flight_log_id: offlineFlightLogId,
-              profile_id: profileId,
-            },
-            description: `Personell til flylogg (offline)`,
-          });
-        }
-
-        // Add pilot to personnel if not already linked
-        if (formData.pilotId && !linkedPersonnel.includes(formData.pilotId)) {
+        // Kun valgt pilot krediteres flytid
+        if (formData.pilotId) {
           addToQueue({
             table: 'flight_log_personnel',
             operation: 'insert',
@@ -732,6 +719,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             description: `Pilot til flylogg (offline)`,
           });
         }
+
 
         toast.success("Flylogg lagret lokalt – synkroniseres når nett er tilbake");
         
