@@ -429,13 +429,13 @@ export const BatchLogPanel = ({
       if (logErr) throw logErr;
       const flightLogId = (logData as any).id as string;
 
-      // Pilot junction + hours
+      // Pilot junction (flytimer avledes av flyloggen)
       if (row.pilotId) {
         await supabase.from("flight_log_personnel").insert({
           flight_log_id: flightLogId, profile_id: row.pilotId,
         });
-        await adjustHours("profiles", row.pilotId, durationMinutes);
       }
+
 
       // Equipment junctions (drone hours handled by DB trigger)
       for (const eqId of row.equipmentIds) {
