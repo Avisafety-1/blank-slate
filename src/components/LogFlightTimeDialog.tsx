@@ -646,6 +646,12 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
       toast.error(`Velg en ${terminology.vehicleLower}`);
       return;
     }
+
+    if (!formData.pilotId) {
+      toast.error(t("logFlight.toastPilotRequired"));
+      return;
+    }
+
     
     if (!formData.departureLocation || !formData.landingLocation) {
       toast.error("Fyll ut avgangsted og landingssted");
