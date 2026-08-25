@@ -160,13 +160,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
 
   const fetchProfileData = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("flyvetimer")
-      .eq("id", personId)
-      .single();
-    setProfileFlyvetimer(Number(data?.flyvetimer) || 0);
-    
     const { data: signatureData } = await (supabase as any)
       .from("profiles")
       .select("signature_url")
