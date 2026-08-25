@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2, Plane } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface EditFlightLogDialogProps {
   open: boolean;
