@@ -155,7 +155,78 @@ async function probe(
   }
 }
 
+interface UavProbe extends EnvResult {
+  label?: string;
+  viewport?: string;
+  trialStatus?: string | null;
+  trialDaysRemaining?: string | null;
+  quotaStatus?: string | null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function probeUavViewport(
+  host: string,
+  keyLabel: string,
+  apiKey: string | undefined,
+  viewport: string,
+  orgId: string | undefined,
+): Promise<UavProbe> {
+  if (!apiKey) {
+    return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: "no key configured" };
+  }
+  const url = `https://${host}/v1/uav?viewport=${viewport}`;
+  try {
+    const authHeaders = await generateAuthHeaders(apiKey, "GET", url);
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+      "x-api-key": apiKey,
+      ...authHeaders,
+    };
+    if (orgId) {
+      headers["X-SS-Org-Id"] = orgId;
+      headers["X-SS-Org-Label"] = "Avisafe";
+    }
+    const res = await safeFetch(url, { method: "GET", headers }, ALLOWED_HOSTS);
+    const meta = {
+      trialStatus: res.headers.get("x-ss-trial-status"),
+      trialDaysRemaining: res.headers.get("x-ss-trial-days-remaining"),
+      quotaStatus: res.headers.get("x-quota-status"),
+    };
+    const text = await res.text();
+    if (!res.ok) {
+      return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: text.slice(0, 300), ...meta };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: "non-JSON response", ...meta };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      host,
+      key: keyLabel,
+      viewport,
+      status: res.status,
+      count: arr.length,
+      callsigns: arr.map((b) => String(b?.callsign ?? b?.id ?? "?")).slice(0, 30),
+      bbox: bboxOf(arr),
+      ...meta,
+    };
+  } catch (e) {
+    return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: String(e).slice(0, 300) };
+  }
+}
+
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
