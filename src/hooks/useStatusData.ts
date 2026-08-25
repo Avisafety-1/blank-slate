@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { getPilotFlightsForPeople, type PilotFlight } from "@/lib/pilotFlightLogs";
 
 interface StatusCounts {
   Grønn: number;
