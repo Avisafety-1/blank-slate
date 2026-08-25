@@ -8187,68 +8187,37 @@ export type Database = {
             }
             Returns: string
           }
-      airspace_zones_in_bbox:
-        | {
-            Args: {
-              p_country_codes?: string[]
-              p_layer_ids?: string[]
-              p_max_lat: number
-              p_max_lng: number
-              p_min_lat: number
-              p_min_lng: number
-              p_zone_types?: string[]
-            }
-            Returns: {
-              altitude_reference: string
-              authority_rank: number
-              country_code: string
-              dedupe_key: string
-              display_class: string
-              geometry_geojson: Json
-              id: string
-              layer_id: string
-              lower_limit_m: number
-              name: string
-              properties: Json
-              restriction_type: string
-              short_name: string
-              source: string
-              theme: string
-              upper_limit_m: number
-              zone_type: string
-            }[]
-          }
-        | {
-            Args: {
-              p_country_codes?: string[]
-              p_layer_ids?: string[]
-              p_max_lat: number
-              p_max_lng: number
-              p_min_lat: number
-              p_min_lng: number
-              p_zone_types?: string[]
-              p_zoom?: number
-            }
-            Returns: {
-              altitude_reference: string
-              authority_rank: number
-              country_code: string
-              dedupe_key: string
-              display_class: string
-              geometry_geojson: Json
-              id: string
-              layer_id: string
-              lower_limit_m: number
-              name: string
-              properties: Json
-              restriction_type: string
-              short_name: string
-              source: string
-              theme: string
-              upper_limit_m: number
-              zone_type: string
-            }[]
-          }
+      airspace_zones_in_bbox: {
+        Args: {
+          p_country_codes?: string[]
+          p_layer_ids?: string[]
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+          p_zone_types?: string[]
+          p_zoom?: number
+        }
+        Returns: {
+          altitude_reference: string
+          authority_rank: number
+          country_code: string
+          dedupe_key: string
+          display_class: string
+          geometry_geojson: Json
+          id: string
+          layer_id: string
+          lower_limit_m: number
+          name: string
+          properties: Json
+          restriction_type: string
+          short_name: string
+          source: string
+          theme: string
+          upper_limit_m: number
+          zone_type: string
+        }[]
+      }
       airspace_zones_intersecting_route: {
         Args: {
           p_buffer_m: number
