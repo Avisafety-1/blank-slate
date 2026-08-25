@@ -12,7 +12,8 @@ const corsHeaders = {
 
 const SANDBOX_HOST = "sandbox-public-api.safesky.app";
 const PROD_HOST = "public-api.safesky.app";
-const ALLOWED_HOSTS = [SANDBOX_HOST, PROD_HOST];
+const UAV_HOST = "uav-api.safesky.app";
+const ALLOWED_HOSTS = [SANDBOX_HOST, PROD_HOST, UAV_HOST];
 
 // Default: the area from the SafeSky Live screenshot (Trondheimsfjorden / ENVA)
 const DEFAULT_LAT = 63.55;
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     const onlyInProduction = production.callsigns.filter((c) => !sandboxSet.has(c));
 
     return new Response(
-      JSON.stringify({ query: { lat, lon, rad }, sandbox, production, onlyInProduction }, null, 2),
+      JSON.stringify({ query: { lat, lon, rad }, sandbox, production, productionUav, productionSandboxKey, onlyInProduction }, null, 2),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
