@@ -117,8 +117,9 @@ export function PersonnelFlightKpi({ personId }: Props) {
         .slice(0, 10);
 
       try {
-        // Same source of truth as the logbook: flights linked to the pilot
-        // via flight_log_personnel, plus flights the person owns directly.
+        // Source of truth: flights linked to the pilot via flight_log_personnel.
+        // Flights the person owns (user_id) only count when they have NO pilot
+        // links at all — otherwise the owner is just the importer.
         const { data: personnelRows, error: flpErr } = await (supabase as any)
           .from("flight_log_personnel")
           .select("flight_log_id")
@@ -127,30 +128,40 @@ export function PersonnelFlightKpi({ personId }: Props) {
 
         const logIds = (personnelRows || []).map((r: any) => r.flight_log_id).filter(Boolean);
 
-        const queries: Promise<any>[] = [
+        const [ownedRes, linkedRes] = await Promise.all([
           (supabase as any)
             .from("flight_logs")
             .select("id, flight_date, flight_duration_minutes")
             .eq("user_id", personId)
             .gte("flight_date", cutoff),
-        ];
-        if (logIds.length > 0) {
-          queries.push(
-            (supabase as any)
-              .from("flight_logs")
-              .select("id, flight_date, flight_duration_minutes")
-              .in("id", logIds)
-              .gte("flight_date", cutoff),
-          );
+          logIds.length > 0
+            ? (supabase as any)
+                .from("flight_logs")
+                .select("id, flight_date, flight_duration_minutes")
+                .in("id", logIds)
+                .gte("flight_date", cutoff)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if (cancelled) return;
+        if (ownedRes.error) throw ownedRes.error;
+        if (linkedRes.error) throw linkedRes.error;
+
+        const ownedIds = (ownedRes.data || []).map((r: any) => r.id);
+        let ownedWithPilots = new Set<string>();
+        if (ownedIds.length > 0) {
+          const { data: pilotRows, error: pilotErr } = await (supabase as any)
+            .from("flight_log_personnel")
+            .select("flight_log_id")
+            .in("flight_log_id", ownedIds);
+          if (pilotErr) throw pilotErr;
+          if (cancelled) return;
+          ownedWithPilots = new Set((pilotRows || []).map((r: any) => r.flight_log_id));
         }
 
-        const results = await Promise.all(queries);
-        if (cancelled) return;
-
         const byId = new Map<string, FlightLog>();
-        for (const res of results) {
-          if (res.error) throw res.error;
-          for (const row of res.data || []) byId.set(row.id, row as FlightLog);
+        for (const row of linkedRes.data || []) byId.set(row.id, row as FlightLog);
+        for (const row of ownedRes.data || []) {
+          if (!ownedWithPilots.has(row.id)) byId.set(row.id, row as FlightLog);
         }
         setLogs(Array.from(byId.values()));
       } catch (error) {
