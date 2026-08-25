@@ -3,7 +3,7 @@
 // Heavy download/parse work happens in dji-sync-worker.
 //
 // Body:
-//   {}                 → cron / full sweep (max 20 users, oldest last_sync_at first)
+//   {}                 → cron / full sweep (max 50 users, oldest last_sync_at first)
 //   { userId: "..." }  → enqueue for one specific user
 //
 // Auth: cron secret OR JWT (caller must own userId).
@@ -24,8 +24,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const MAX_USERS_PER_RUN = 20;
-const USER_CONCURRENCY = 4;
+// Current usage is 30 enabled accounts. Keep headroom so every enabled account
+// is considered nightly, while limiting concurrent DroneLog logins to reduce 429s.
+const MAX_USERS_PER_RUN = 50;
+const USER_CONCURRENCY = 2;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
