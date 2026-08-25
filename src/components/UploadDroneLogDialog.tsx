@@ -1966,6 +1966,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handleUpdateExisting = async () => {
     if (!result || !matchedLog || !companyId || !user) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
@@ -2021,6 +2022,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const handleCreateNew = async () => {
     if (!result || !companyId || !user) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       // SHA-256 dedup is now handled early in findMatchingFlightLog
@@ -2103,6 +2105,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Link to existing mission (no new mission created) ──
   const handleLinkToMission = async () => {
     if (!result || !companyId || !user || !selectedMissionId) return;
+    if (!pilotId) { toast.error(t('dronelog.pilotRequired', 'Velg pilot for flyturen')); return; }
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
