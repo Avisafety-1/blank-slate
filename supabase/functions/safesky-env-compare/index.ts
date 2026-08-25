@@ -204,16 +204,18 @@ Deno.serve(async (req) => {
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
       const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
-      const [sandboxB, prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey] = await Promise.all([
+      const [sandboxB, prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey, prodPubBeaconsKeyHmac, sandboxProdKey] = await Promise.all([
         probeBeacons(SANDBOX_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
         probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
         probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
         probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
         probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
         probeBeacons(PROD_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_BEACONS_API_KEY+hmac", beaconsKey, viewport, true),
+        probeBeacons(SANDBOX_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
       ]);
       const sbSet = new Set(sandboxB.callsigns);
-      const best = [prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey].find((r) => r.count != null);
+      const best = [prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey, prodPubBeaconsKeyHmac].find((r) => r.count != null);
       return new Response(
         JSON.stringify({
           query: { endpoint: "beacons", viewport },
@@ -223,10 +225,13 @@ Deno.serve(async (req) => {
           productionPublicHmac: prodPubHmac,
           productionUavHmac: prodUavHmac,
           productionPublicBeaconsKey: prodPubBeaconsKey,
+          productionPublicBeaconsKeyHmac: prodPubBeaconsKeyHmac,
+          sandboxWithProdKey: sandboxProdKey,
           onlyInProduction: (best?.callsigns ?? []).filter((c) => !sbSet.has(c)),
         }, null, 2),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+
     }
 
     const lat = Number(body.lat ?? DEFAULT_LAT).toFixed(4);
