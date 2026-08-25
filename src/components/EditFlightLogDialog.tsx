@@ -106,7 +106,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
     return () => { cancelled = true; };
   }, [open, flightLogId, companyId, onOpenChange]);
 
-  const adjustHours = async (table: 'profiles' | 'equipment', id: string, deltaMinutes: number) => {
+  const adjustHours = async (table: 'equipment', id: string, deltaMinutes: number) => {
     if (!id || deltaMinutes === 0) return;
     const column = 'flyvetimer';
     const { data: row } = await (supabase as any)
@@ -124,6 +124,10 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
 
   const handleSave = async () => {
     if (!log) return;
+    if (!pilotId) {
+      toast.error(t("logFlight.toastPilotRequired"));
+      return;
+    }
     setSaving(true);
     try {
       const oldDuration = log.flight_duration_minutes || 0;
@@ -142,7 +146,7 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
         .eq("id", log.id);
       if (updErr) throw updErr;
 
-      // 2. Pilot reassignment / hours adjustment
+      // 2. Pilot reassignment — timer avledes av flyloggen, ingen justering av profiles.flyvetimer
       const pilotChanged = originalPilotId !== pilotId;
       const durationChanged = oldDuration !== newDuration;
 
@@ -153,18 +157,12 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
             .delete()
             .eq("flight_log_id", log.id)
             .eq("profile_id", originalPilotId);
-          await adjustHours('profiles', originalPilotId, -oldDuration);
         }
-        if (pilotId) {
-          await (supabase as any)
-            .from("flight_log_personnel")
-            .insert({ flight_log_id: log.id, profile_id: pilotId });
-          await adjustHours('profiles', pilotId, newDuration);
-        }
-      } else if (durationChanged && pilotId) {
-        // Same pilot, duration changed: adjust by delta
-        await adjustHours('profiles', pilotId, newDuration - oldDuration);
+        await (supabase as any)
+          .from("flight_log_personnel")
+          .insert({ flight_log_id: log.id, profile_id: pilotId });
       }
+
 
       // 3. Adjust equipment hours by delta if duration changed
       if (durationChanged) {
