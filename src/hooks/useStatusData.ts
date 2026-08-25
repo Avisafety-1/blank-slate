@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { getPilotFlightsForPeople, type PilotFlight } from "@/lib/pilotFlightLogs";
 
 interface StatusCounts {
   Grønn: number;
@@ -195,6 +196,8 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
   );
 
   // Fetch flight logs covering the widest window across all active rules.
+  // Bruker felles pilotregel (se src/lib/pilotFlightLogs.ts): koblede flyturer
+  // + egne flyturer uten personellkobling.
   const flightLogs: Record<string, { date: number; minutes: number }[]> = {};
   if (activeRules.length > 0 && data.length > 0) {
     const maxDays = Math.max(...activeRules.map((r) => r.days));
@@ -202,19 +205,15 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
       .toISOString()
       .slice(0, 10);
     const personIds = data.map((p: any) => p.id);
-    const { data: logs } = await supabase
-      .from("flight_logs")
-      .select("user_id, flight_date, flight_duration_minutes")
-      .in("user_id", personIds)
-      .gte("flight_date", cutoff);
-    for (const row of logs || []) {
-      if (!row.user_id) continue;
-      (flightLogs[row.user_id] ||= []).push({
-        date: new Date(row.flight_date).getTime(),
-        minutes: row.flight_duration_minutes || 0,
-      });
+    const byPerson = await getPilotFlightsForPeople(personIds, cutoff);
+    for (const [personId, flights] of Object.entries(byPerson) as [string, PilotFlight[]][]) {
+      flightLogs[personId] = flights.map((f) => ({
+        date: new Date(f.flight_date).getTime(),
+        minutes: f.flight_duration_minutes || 0,
+      }));
     }
   }
+
 
   const now = Date.now();
 

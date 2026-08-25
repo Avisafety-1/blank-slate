@@ -150,14 +150,50 @@ serve(async (req) => {
       if (rules.rule2) ruleList.push({ idx: 2, rule: rules.rule2 });
       if (ruleList.length === 0) continue;
 
-      // Fetch flight logs for max needed window
+      // Fetch flight logs for max needed window.
+      // Felles pilotregel (se src/lib/pilotFlightLogs.ts): flyturer der piloten er
+      // koblet via flight_log_personnel, PLUSS egne flyturer (user_id) som ikke har
+      // noen personellkobling i det hele tatt. Flyturer man eier, men der andre er
+      // registrert som pilot, teller ikke.
       const maxDays = Math.max(...ruleList.map(r => r.rule.days));
       const cutoff = new Date(Date.now() - maxDays * 86400000).toISOString().slice(0, 10);
-      const { data: logs } = await supabase
+
+      const { data: linkRows } = await supabase
+        .from('flight_log_personnel')
+        .select('flight_log_id')
+        .eq('profile_id', pilot.id);
+      const linkedIds = Array.from(new Set((linkRows || []).map((r: any) => r.flight_log_id).filter(Boolean)));
+
+      const { data: ownedLogs } = await supabase
         .from('flight_logs')
-        .select('flight_date, flight_duration_minutes')
+        .select('id, flight_date, flight_duration_minutes')
         .eq('user_id', pilot.id)
         .gte('flight_date', cutoff);
+
+      const ownedIds = (ownedLogs || []).map((l: any) => l.id);
+      const ownedWithAnyPilot = new Set<string>();
+      if (ownedIds.length > 0) {
+        const { data: pilotRows } = await supabase
+          .from('flight_log_personnel')
+          .select('flight_log_id')
+          .in('flight_log_id', ownedIds);
+        for (const r of pilotRows || []) ownedWithAnyPilot.add(r.flight_log_id);
+      }
+
+      const logMap = new Map<string, any>();
+      for (const l of ownedLogs || []) {
+        if (!ownedWithAnyPilot.has(l.id)) logMap.set(l.id, l);
+      }
+      const missingLinked = linkedIds.filter((id: any) => !logMap.has(id));
+      if (missingLinked.length > 0) {
+        const { data: linkedLogs } = await supabase
+          .from('flight_logs')
+          .select('id, flight_date, flight_duration_minutes')
+          .in('id', missingLinked)
+          .gte('flight_date', cutoff);
+        for (const l of linkedLogs || []) logMap.set(l.id, l);
+      }
+      const logs = Array.from(logMap.values());
 
       for (const { idx, rule } of ruleList) {
         const ruleCutoff = Date.now() - rule.days * 86400000;

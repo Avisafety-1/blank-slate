@@ -1169,8 +1169,9 @@ serve(async (req) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    // Hent flyturer via flight_log_personnel-junctionen (én sannhetskilde for pilot-tilskrivning).
-    // user_id på flight_logs er den som lastet opp loggen, ikke nødvendigvis piloten.
+    // Felles pilotregel (se src/lib/pilotFlightLogs.ts): flyturer der piloten er koblet
+    // via flight_log_personnel, PLUSS egne flyturer (user_id) uten noen personellkobling.
+    // Flyturer man kun eier/importerte, men der andre er registrert som pilot, teller ikke.
     let allFlightLogs: any[] = [];
     const logToPilotIds = new Map<string, string[]>();
     if (pilotIds.length > 0) {
@@ -1179,22 +1180,53 @@ serve(async (req) => {
         .select('flight_log_id, profile_id')
         .in('profile_id', pilotIds);
 
-      const flightLogIds = Array.from(new Set((flpRows || []).map((r: any) => r.flight_log_id)));
+      const flightLogIds = new Set<string>((flpRows || []).map((r: any) => r.flight_log_id));
       for (const row of flpRows || []) {
         const arr = logToPilotIds.get(row.flight_log_id) || [];
         arr.push(row.profile_id);
         logToPilotIds.set(row.flight_log_id, arr);
       }
 
-      if (flightLogIds.length > 0) {
-        const { data: flightLogs } = await supabase
-          .from('flight_logs')
-          .select('*')
-          .in('id', flightLogIds)
-          .order('flight_date', { ascending: false });
-        allFlightLogs = flightLogs || [];
+      // Egne flyturer uten personellkobling
+      const { data: ownedLogs } = await supabase
+        .from('flight_logs')
+        .select('id, user_id')
+        .in('user_id', pilotIds);
+      const ownedIds = (ownedLogs || []).map((l: any) => l.id);
+      const ownedWithAnyPilot = new Set<string>();
+      if (ownedIds.length > 0) {
+        for (let i = 0; i < ownedIds.length; i += 500) {
+          const { data: pilotRows } = await supabase
+            .from('flight_log_personnel')
+            .select('flight_log_id')
+            .in('flight_log_id', ownedIds.slice(i, i + 500));
+          for (const r of pilotRows || []) ownedWithAnyPilot.add(r.flight_log_id);
+        }
+      }
+      for (const l of ownedLogs || []) {
+        if (!ownedWithAnyPilot.has(l.id)) {
+          flightLogIds.add(l.id);
+          const arr = logToPilotIds.get(l.id) || [];
+          if (!arr.includes(l.user_id)) arr.push(l.user_id);
+          logToPilotIds.set(l.id, arr);
+        }
+      }
+
+      const allIds = Array.from(flightLogIds);
+      if (allIds.length > 0) {
+        for (let i = 0; i < allIds.length; i += 500) {
+          const { data: flightLogs } = await supabase
+            .from('flight_logs')
+            .select('*')
+            .in('id', allIds.slice(i, i + 500))
+            .order('flight_date', { ascending: false });
+          allFlightLogs = allFlightLogs.concat(flightLogs || []);
+        }
+        allFlightLogs.sort((a: any, b: any) =>
+          new Date(b.flight_date).getTime() - new Date(a.flight_date).getTime());
       }
     }
+
 
     // Build flight stats per pilot
     const pilotFlightStats = pilotIds.map((pilotId: string) => {
