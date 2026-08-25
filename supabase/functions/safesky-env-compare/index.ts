@@ -176,11 +176,12 @@ async function probeUavViewport(
   apiKey: string | undefined,
   viewport: string,
   orgId: string | undefined,
+  opts: { extraQuery?: string; dumpHeaders?: boolean } = {},
 ): Promise<UavProbe> {
   if (!apiKey) {
     return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: "no key configured" };
   }
-  const url = `https://${host}/v1/uav?viewport=${viewport}`;
+  const url = `https://${host}/v1/uav?viewport=${viewport}${opts.extraQuery ? `&${opts.extraQuery}` : ""}`;
   try {
     const authHeaders = await generateAuthHeaders(apiKey, "GET", url);
     const headers: Record<string, string> = {
@@ -194,11 +195,16 @@ async function probeUavViewport(
       headers["X-SS-Org-Label"] = "Avisafe";
     }
     const res = await safeFetch(url, { method: "GET", headers }, ALLOWED_HOSTS);
-    const meta = {
+    const meta: Partial<UavProbe> = {
       trialStatus: res.headers.get("x-ss-trial-status"),
       trialDaysRemaining: res.headers.get("x-ss-trial-days-remaining"),
       quotaStatus: res.headers.get("x-quota-status"),
     };
+    if (opts.dumpHeaders) {
+      const all: Record<string, string> = {};
+      res.headers.forEach((v, k) => { all[k] = v; });
+      meta.responseHeaders = all;
+    }
     const text = await res.text();
     if (!res.ok) {
       return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: text.slice(0, 300), ...meta };
@@ -210,13 +216,17 @@ async function probeUavViewport(
       return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: "non-JSON response", ...meta };
     }
     const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    const ids = arr.map((b) => String(b?.callsign ?? b?.id ?? "?"));
     return {
       host,
       key: keyLabel,
       viewport,
       status: res.status,
       count: arr.length,
-      callsigns: arr.map((b) => String(b?.callsign ?? b?.id ?? "?")).slice(0, 30),
+      callsigns: ids.slice(0, 15),
+      allIds: ids,
+      bodyIsArray: Array.isArray(data),
+      bodyKeys: Array.isArray(data) ? undefined : Object.keys(data as Record<string, unknown>).slice(0, 20),
       bbox: bboxOf(arr),
       ...meta,
     };
@@ -224,6 +234,7 @@ async function probeUavViewport(
     return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: String(e).slice(0, 300) };
   }
 }
+
 
 Deno.serve(async (req) => {
 
