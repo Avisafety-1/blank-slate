@@ -114,7 +114,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [loggedMinutes, setLoggedMinutes] = useState(0);
   const [manualMinutes2, setManualMinutes2] = useState(0);
-  const [profileFlyvetimer, setProfileFlyvetimer] = useState(0);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [showAddHours, setShowAddHours] = useState(false);
   const [showAddEntry, setShowAddEntry] = useState(false);
