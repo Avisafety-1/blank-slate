@@ -115,25 +115,58 @@ export function PersonnelFlightKpi({ personId }: Props) {
       const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000)
         .toISOString()
         .slice(0, 10);
-      const { data, error } = await (supabase as any)
-        .from("flight_logs")
-        .select("flight_date, flight_duration_minutes")
-        .eq("user_id", personId)
-        .gte("flight_date", cutoff);
-      if (cancelled) return;
-      if (error) {
+
+      try {
+        // Same source of truth as the logbook: flights linked to the pilot
+        // via flight_log_personnel, plus flights the person owns directly.
+        const { data: personnelRows, error: flpErr } = await (supabase as any)
+          .from("flight_log_personnel")
+          .select("flight_log_id")
+          .eq("profile_id", personId);
+        if (flpErr) throw flpErr;
+
+        const logIds = (personnelRows || []).map((r: any) => r.flight_log_id).filter(Boolean);
+
+        const queries: Promise<any>[] = [
+          (supabase as any)
+            .from("flight_logs")
+            .select("id, flight_date, flight_duration_minutes")
+            .eq("user_id", personId)
+            .gte("flight_date", cutoff),
+        ];
+        if (logIds.length > 0) {
+          queries.push(
+            (supabase as any)
+              .from("flight_logs")
+              .select("id, flight_date, flight_duration_minutes")
+              .in("id", logIds)
+              .gte("flight_date", cutoff),
+          );
+        }
+
+        const results = await Promise.all(queries);
+        if (cancelled) return;
+
+        const byId = new Map<string, FlightLog>();
+        for (const res of results) {
+          if (res.error) throw res.error;
+          for (const row of res.data || []) byId.set(row.id, row as FlightLog);
+        }
+        setLogs(Array.from(byId.values()));
+      } catch (error) {
+        if (cancelled) return;
         console.error("Failed to fetch flight logs for KPI", error);
         setLogs([]);
-      } else {
-        setLogs((data as FlightLog[]) || []);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     };
     fetchLogs();
     return () => {
       cancelled = true;
     };
   }, [personId, maxDays]);
+
 
   const stats = useMemo(() => {
     return periods.map((days) => {
