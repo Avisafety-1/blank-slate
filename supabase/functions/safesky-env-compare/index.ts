@@ -61,13 +61,14 @@ async function probeBeacons(
   keyLabel: string,
   apiKey: string | undefined,
   viewport: string,
+  useHmac = false,
 ): Promise<EnvResult> {
   if (!apiKey) {
     return { host, key: keyLabel, status: null, count: null, callsigns: [], error: "no key configured" };
   }
   const url = `https://${host}/v1/beacons?viewport=${viewport}&return_grounded_traffic=true`;
   try {
-    const authHeaders = await generateAuthHeaders(apiKey, "GET", url);
+    const authHeaders = useHmac ? await generateAuthHeaders(apiKey, "GET", url) : {};
     const res = await safeFetch(
       url,
       {
