@@ -196,6 +196,30 @@ Deno.serve(async (req) => {
       body = await req.json();
     } catch { /* empty body allowed */ }
 
+    const prodKeyEnv = Deno.env.get("SAFESKY_PROD_API_KEY");
+    const sandboxKeyEnv = Deno.env.get("SAFESKY_API_KEY");
+
+    // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
+    if (body.endpoint === "beacons") {
+      const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
+      const [sandboxB, prodUavB, prodPubB] = await Promise.all([
+        probeBeacons(SANDBOX_HOST, "SAFESKY_API_KEY", sandboxKeyEnv, viewport),
+        probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
+      ]);
+      const sbSet = new Set(sandboxB.callsigns);
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "beacons", viewport },
+          sandbox: sandboxB,
+          productionUav: prodUavB,
+          productionPublic: prodPubB,
+          onlyInProductionUav: prodUavB.callsigns.filter((c) => !sbSet.has(c)),
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const lat = Number(body.lat ?? DEFAULT_LAT).toFixed(4);
     const lon = Number(body.lon ?? DEFAULT_LON).toFixed(4);
     const rad = Math.min(Number(body.rad ?? DEFAULT_RAD) || DEFAULT_RAD, DEFAULT_RAD);
