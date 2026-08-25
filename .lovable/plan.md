@@ -1,62 +1,81 @@
-# Diagnose: `airspace_zones_in_bbox` som kilde til slow queries
+# Anbefalt fiks: zoom-avhengig geometriforenkling i `airspace_zones_in_bbox`
 
-Kun funn og målinger. Ingen endringer gjort i database eller frontend.
+## 1. Anbefaling (én fiks)
 
-## 1. Kallsteder
+Legg til en `p_zoom`-parameter i `airspace_zones_in_bbox` og kjør
+`ST_SimplifyPreserveTopology(geom, tolerance)` + koordinatavrunding i
+`ST_AsGeoJSON(geom, decimals)`, der toleransen bestemmes av zoom.
 
-### A. Kartlag i `src/components/OpenAIPMap.tsx` (via `fetchUnifiedAirspaceZones` i `src/lib/mapDataFetchers.ts:1960`)
+**Hvorfor denne, ikke de andre:**
 
-- **Bbox**: rått kartutsnitt `map.getBounds()` (south/west/north/east), deretter utvidet 50 % med `padBBox(bounds)` (`src/lib/viewportLayerCache.ts`). Ingen klipping mot land/regioner.
-- **Øvre grense på areal**: ingen. Eneste bremsen er min-zoom per lag:
-  `airspace/rpas/restriksjonsomrader/fareomrader` = zoom 7, `verneomrader` = 8, `sikringsobjekter` = 9, `flyplasser` = 5. Under min-zoom nullstilles cachen (som også tvinger nytt kall når man zoomer inn igjen).
-- **Frekvens**: på hver `moveend`, debounced 300 ms (`debouncedFetchVern`), pluss ved init og ved `layeradd`. Viktig: dette er **ett RPC-kall per lag** — inntil **7 parallelle kall per kartbevegelse**, hvert med `p_country_codes = ['DK','SE','DE','FI','PL']`.
-- Gating: kun selskaper i `airspace_unified_company_allowlist` (`isUnifiedAirspaceEnabled()`).
+| Alternativ | Effekt | Kompleksitet/risiko |
+|---|---|---|
+| **Zoom-avhengig simplify** | **95–96 % mindre payload i verste case** | Én SQL-funksjon + én parameter i to kallsteder |
+| Arealgrense / mindre padding | Kutter kanskje 30–50 %, men skjuler soner i utkanten av skjermen og gir flere kall ved panorering | Middels — endrer hva brukeren ser |
+| Slå 7 kall til ett | Færre round-trips, men **samme totale datamengde og CPU** i databasen. Bryter per-lag min-zoom og per-lag cache | Høy — omskriving av cache- og rendermodellen |
+| `LIMIT` i rutenærhets-SQL | Riktig, men rammer bare ett kallsted som utløses langt sjeldnere enn pan/zoom | Lav effekt |
 
-### B. Rutenærhet i `src/lib/unifiedRouteProximityLayers.ts:208`
+De 308 slow queries kommer fra kartlagskallene som fyres ved hver pan/zoom.
+Der er flaskehalsen `ST_AsGeoJSON` på polygoner med opptil 228 000 punkter —
+altså ren serialiseringskostnad. Simplify angriper nettopp denne kostnaden, og
+gjør de andre tiltakene mindre presserende.
 
-- **Bbox**: bounding box rundt de tegnede rutepunktene + 500 m padding.
-- **Grense**: ingen arealgrense; `p_layer_ids: null` ⇒ **alle lag i ett kall**, `p_zone_types: null`. 6 s klient-timeout, og resultatet kuttes til 2500 rader *etter* at alt er hentet.
-- **Frekvens**: debounced ved ruteendring i `OpenAIPMap.tsx:1977`, med AbortController. Aborten stopper kun klienten — spørringen kjører ferdig i databasen.
+**Målt effekt** (verneomrader, faktiske spørringer mot databasen nå):
 
-## 2. Caching
-
-- Kun klient-side, in-memory (`viewportLayerCache.ts`). Kallet hoppes over bare når **både** zoom er uendret **og** nytt viewport ligger helt inne i forrige padded bbox. Zoom-endring ⇒ alltid nytt kall, også for identisk område. Cachen forsvinner ved remount/reload.
-- Ingen server-side caching, ingen `staleTime`/React Query, ingen materialisert visning. Rutenærhets-kallet (B) har **ingen** cache i det hele tatt.
-
-## 3. Målinger
-
-**Databasefunksjonen har ingen `LIMIT` og ingen paginering.** Den henter alle treff, dedupliserer med `DISTINCT ON`, og returnerer `ST_AsGeoJSON(geom)` i **full oppløsning** — ingen `ST_Simplify`, ingen zoom-avhengig generalisering, ingen koordinatavrunding.
-
-Datamengde i `airspace_zones` (aktive):
-
-| land/lag | rader | snitt punkter | maks punkter | geom |
-|---|---:|---:|---:|---:|
-| DE verneomrader | 13 829 | 671 | 54 788 | 142 MB |
-| PL verneomrader | 3 872 | 1 300 | 118 475 | 77 MB |
-| SE verneomrader | 10 432 | 266 | 228 492 | 43 MB |
-| DE sikringsobjekter | 31 001 | 75 | 4 637 | 37 MB |
-
-Faktisk respons fra funksjonen (målt nå):
-
-| kall | rader | GeoJSON |
+| Utsnitt | Full oppløsning | Med simplify |
 |---|---:|---:|
-| `verneomrader`, ~zoom 9 (Hamburg-området, 2°×1°) | 487 | **7,6 MB** |
-| `verneomrader`, zoom ~7–8 (8–16 Ø, 50–56 N) | 8 824 | **143 MB** |
-| `sikringsobjekter`, zoom 9 (Berlin) | 584 | 1,0 MB |
-| `airspace`, zoom 7 (DK) | 6 | 6 kB |
+| Zoom ~7–8 (8–16 Ø, 50–56 N), 8 833 soner | **133 MB** | tol 0,002 → **5,7 MB** · tol 0,01 → **2,7 MB** |
+| Zoom ~9 (Hamburg 2°×1°), 487 soner | **7,0 MB** | tol 0,0005 → **868 kB** |
+| Zoom ~10 | 7,0 MB | tol 0,0002 → 1,2 MB |
+| Zoom ~12 | 7,0 MB | tol 0,00005 → 2,3 MB |
 
-Typisk innzoomet bruk er dermed noen hundre rader og flere MB JSON; verste case ved min-zoom (7–8) er titalls MB til over 100 MB i ett svar. `ST_AsGeoJSON` på 100k-punkts polygoner er CPU-tungt, og dedupe-CTE-en materialiserer geometrien før serialisering.
+Forventet responstid følger payloaden nesten lineært (serialisering + nettverk
+dominerer): typiske kall bør falle fra hundrevis av ms til titalls ms, og
+verste-case-kallet fra flere sekunder til under ett.
 
-Indekser finnes (`airspace_zones_geom_gix` GiST + `country_code, layer_id, active`), så flaskehalsen er ikke indeksoppslaget, men **antall rader × geometristørrelse × serialisering**, multiplisert med opptil 7 kall per kartbevegelse.
+## 2. Implementasjonsplan
 
-## 4. Hovedårsaker (oppsummert)
+**Database (migrasjon):**
 
-1. Ingen `LIMIT` og ingen zoom-avhengig `ST_Simplify` — full oppløsning alltid.
-2. Ingen arealgrense på bbox; +50 % padding gjør utsnittet 2,25× større enn skjermen.
-3. Opptil 7 separate RPC-kall per pan/zoom, alle med 5 land.
-4. Zoom-endring invaliderer cachen selv når området er uendret.
-5. Rutenærhets-kallet henter alle lag uten cache; klient-abort stopper ikke databasen.
+- `CREATE OR REPLACE FUNCTION public.airspace_zones_in_bbox(...)` med ny valgfri
+  parameter `p_zoom integer DEFAULT NULL` lagt til **sist** i signaturen, slik at
+  eksisterende kall fortsetter å virke uendret (ingen simplify når `p_zoom` er NULL).
+- Toleranse-tabell i grader, avledet av zoom (ca. ½ piksel):
 
-## Neste steg
+  | zoom | tolerance | desimaler |
+  |---|---|---|
+  | ≤ 7 | 0,005 | 4 |
+  | 8–9 | 0,001 | 5 |
+  | 10–11 | 0,0003 | 5 |
+  | 12–13 | 0,0001 | 6 |
+  | ≥ 14 | 0 (ingen simplify) | 7 |
 
-Ingen fiks er implementert. Når du har valgt retning, kan aktuelle tiltak diskuteres (f.eks. `ST_Simplify`/`ST_QuantizeCoordinates` per zoom, hard `LIMIT` + arealtak, ett samlet kall for flere lag, og server-side eller React Query-cache).
+- Kun `ST_AsGeoJSON`-uttrykket endres; filter, dedupe og GiST-bruk står urørt.
+  Simplify skjer **etter** dedupe, på færrest mulig rader.
+- Behold `ST_SimplifyPreserveTopology` (ikke `ST_Simplify`) så polygoner ikke
+  kollapser eller får selvkryss.
+
+**Frontend:**
+
+- `src/lib/mapDataFetchers.ts` → `fetchUnifiedAirspaceZones`: send `p_zoom: zoom`
+  (verdien finnes allerede i `params.zoom`).
+- `src/lib/unifiedRouteProximityLayers.ts` → send `p_zoom: 13` (rutenærhet vises
+  alltid nær innzoomet, men trenger ikke full oppløsning).
+- `src/integrations/supabase/types.ts` regenereres automatisk etter migrasjonen.
+
+Ingen endringer i cache-logikk, lagoppsett eller UI i denne omgang.
+
+## 3. Risiko og testing før produksjon
+
+- **Visuell kvalitet**: sjekk verneområder og sikringsobjekter i DE/PL/SE på zoom
+  7, 9, 11 og 14 — kanter skal ikke synlig «kutte hjørner» på det zoomnivået de vises.
+- **Små polygoner**: `ST_SimplifyPreserveTopology` bevarer gyldighet, men
+  små soner (sikringsobjekter, ~75 punkter) kan bli firkantede ved lav toleranse;
+  vurder å hoppe over simplify når `ST_NPoints(geom) < 50`.
+- **Sikkerhetskritisk bruk**: forenklet geometri må **kun** brukes til tegning.
+  `airspace_zones_intersecting_route` (som driver luftromsadvarsler og
+  Ninox-vurdering) skal ikke røres — avstandsberegning fortsetter på full geometri.
+- **Bakoverkompatibilitet**: verifiser at kall uten `p_zoom` gir identisk resultat
+  som i dag (PostgREST matcher på parameternavn, så standardverdien må virke).
+- **Etterkontroll**: kjør Query Performance på nytt etter 24 timer og sammenlign
+  antall slow queries og gjennomsnittlig responstid for RPC-en.
