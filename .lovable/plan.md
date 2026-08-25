@@ -1,33 +1,39 @@
-# Hent SafeSky-trafikk fra produksjon, ikke sandbox
+# Test SafeSky produksjon uten å røre dagens trafikkbilde
 
 ## Hva vi vet
 
 Innhenting av trafikk (det som tegnes i kartet) går mot SafeSky sitt **sandbox**-miljø:
 
 - `supabase/functions/safesky-beacons-fetch/index.ts` henter fra `sandbox-public-api.safesky.app/v1/beacons` (host er også låst i SSRF-allowlisten).
-- `supabase/functions/safesky-beacons/index.ts` henter fra `sandbox-public-api.safesky.app/v1/uav`.
+- `supabase/functions/safesky-beacons/index.ts` og `safesky-cron-refresh` henter fra `sandbox-public-api.safesky.app/v1/uav` (bekreftet i edge-loggene nå).
 
 Publisering av våre egne advisories går derimot mot **produksjon**:
 
-- `supabase/functions/safesky-advisory/index.ts` bruker `uav-api.safesky.app/v1/advisory` med `SAFESKY_PROD_API_KEY` når den finnes (den er konfigurert i prosjektet).
+- `safesky-advisory` / `safesky-cron-refresh` bruker `uav-api.safesky.app/v1/advisory` med `SAFESKY_PROD_API_KEY` (loggen sier «Using PRODUCTION key for advisory refresh»).
 
-Det forklarer det du ser: våre advisories havner i live SafeSky (og synes i droneflykart), mens vi leser trafikk fra sandbox — og en advisory fra droneflykart i live-miljøet finnes rett og slett ikke i sandbox-svaret. Det er altså miljøforskjell, ikke en nøkkelbegrensning i seg selv. (Ubekreftet inntil vi har kjørt et faktisk kall mot produksjons-endepunktet — det er første steg.)
+Det forklarer det du ser: våre advisories havner i live SafeSky (og synes i droneflykart), mens vi leser trafikk fra sandbox — droneflykart sin advisory ligger i live-miljøet og finnes ikke i sandbox-svaret. Ubekreftet inntil vi faktisk har kalt produksjons-endepunktet; det er hele testen under.
 
-## Slik gjør vi det
+## Slik tester vi — helt uten å påvirke Avisafe
 
-1. Verifiser mot SafeSky produksjon: kall beacons/UAV-endepunktet med produksjonsnøkkelen og sjekk at trafikken fra det aktuelle området (inkl. droneflykart-advisoryen) kommer med. Sammenlign svaret med sandbox for samme viewport.
-2. Bytt innhentingen til produksjon når verifiseringen er grønn:
-   - `safesky-beacons-fetch`: produksjonshost + `SAFESKY_PROD_API_KEY`, med fallback til sandbox hvis produksjonsnøkkel mangler. Legg produksjonshosten i `safeFetch`-allowlisten.
-   - `safesky-beacons`: samme bytte for `/v1/uav`.
-3. Gjør miljøvalget til én felles konstant/hjelper slik at lesing og publisering ikke kan sprike igjen.
-4. Test på nytt: kjør funksjonen, se at beacons lagres, og sjekk at trafikken dukker opp i kartet.
+Ingenting av dagens flyt endres. Trafikkbildet fortsetter å hentes fra sandbox nøyaktig som i dag, og advisory-publiseringen røres ikke.
 
-Hvis produksjonskallet feiler (401/403), er det nøkkelen/abonnementet hos SafeSky som må utvides — da rapporterer vi det tilbake med feilmeldingen i stedet for å bytte miljø.
+1. Ny, isolert testfunksjon `safesky-env-compare` som kun kjøres manuelt (av oss/superadmin). Den:
+   - henter samme viewport/punkt fra både sandbox og produksjon,
+   - returnerer antall beacons, callsigns og eventuell HTTP-feil per miljø,
+   - skriver **ingenting** til databasen og påvirker ikke kartet.
+2. Vi kjører den mot området i skjermbildet (Trondheimsfjorden/ENVA) og ser om callsign `DFKZQRYHHQG` / `HWX188002` dukker opp i produksjonssvaret men ikke i sandbox.
+3. Du får resultatet i chatten. Først når det er bekreftet — og du sier ifra — lager vi en egen plan for å bytte selve innhentingen til produksjon.
+4. Hvis produksjonskallet svarer 401/403, er det nøkkelen/abonnementet hos SafeSky som må utvides. Da rapporterer vi feilmeldingen tilbake, og ingenting i appen er endret.
+
+Når testen er ferdig kan funksjonen slettes igjen med ett grep, siden ingen annen kode kaller den.
 
 ## Teknisk
 
-- Ny delt fil `supabase/functions/_shared/safesky-env.ts` med host- og nøkkelvalg (`SAFESKY_PROD_API_KEY` → produksjon, ellers `SAFESKY_API_KEY` → sandbox).
-- `safesky-beacons-fetch/index.ts`: `SAFESKY_HOST`, `SAFESKY_BEACONS_URL` og allowlist-arrayet leses fra hjelperen; nøkkelrekkefølgen blir prod → `SAFESKY_BEACONS_API_KEY` → `SAFESKY_API_KEY`.
-- `safesky-beacons/index.ts`: samme host/nøkkelvalg for `/v1/uav`.
-- `safesky-advisory/index.ts`: bruker hjelperen for `SAFESKY_UAV_URL` slik at live-posisjoner og lesing er i samme miljø.
-- Ingen databaseendringer, ingen frontend-endringer.
+- Ny fil `supabase/functions/safesky-env-compare/index.ts`:
+  - Krever JWT + superadmin-sjekk (service role client) slik at den ikke er åpen.
+  - Body: `{ lat, lon, rad }` eller `{ viewport }`; default = området i skjermbildet.
+  - Kaller `GET /v1/uav` (og `/v1/beacons`) mot både `sandbox-public-api.safesky.app` (`SAFESKY_API_KEY`) og produksjonshosten (`SAFESKY_PROD_API_KEY`), signert med eksisterende `_shared/safesky-hmac.ts`.
+  - `safeFetch`-allowlisten i denne funksjonen får begge hostene; `_shared/http.ts` endres ikke.
+  - Returnerer `{ sandbox: { status, count, callsigns }, production: { status, count, callsigns }, onlyInProduction: [...] }`.
+- Ingen endringer i `safesky-beacons-fetch`, `safesky-beacons`, `safesky-advisory`, `safesky-cron-refresh`, database eller frontend.
+
