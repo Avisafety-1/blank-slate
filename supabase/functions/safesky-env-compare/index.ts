@@ -161,7 +161,12 @@ interface UavProbe extends EnvResult {
   trialStatus?: string | null;
   trialDaysRemaining?: string | null;
   quotaStatus?: string | null;
+  responseHeaders?: Record<string, string>;
+  allIds?: string[];
+  bodyIsArray?: boolean;
+  bodyKeys?: string[];
 }
+
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
