@@ -848,18 +848,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
           });
       }
 
-      // 3. Create flight_log_personnel entries for linked personnel
-      for (const profileId of linkedPersonnel) {
-        await (supabase as any)
-          .from("flight_log_personnel")
-          .insert({
-            flight_log_id: flightLog.id,
-            profile_id: profileId,
-          });
-      }
-
-      // 4. Add pilot to flight log personnel if selected and not already linked
-      if (formData.pilotId && !linkedPersonnel.includes(formData.pilotId)) {
+      // 3. Kun valgt pilot krediteres flytid (drone-koblet personell brukes bare som forslag)
+      if (formData.pilotId) {
         await (supabase as any)
           .from("flight_log_personnel")
           .insert({
@@ -867,6 +857,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             profile_id: formData.pilotId,
           });
       }
+
 
       // 5. Update mission status to "Fullført" if checkbox is checked and mission exists
       if (missionIdToUse && formData.markMissionCompleted && formData.missionId) {
