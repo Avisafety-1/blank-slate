@@ -325,6 +325,11 @@ export const BatchLogPanel = ({
       updateRow(row.pendingLogId, { status: "error", errorMessage: "Loggdata mangler" });
       return false;
     }
+    if (!row.pilotId) {
+      updateRow(row.pendingLogId, { status: "error", errorMessage: "Velg pilot for flyturen" });
+      return false;
+    }
+
     const parsed = row.parsed;
     const durationMinutes = parsed.durationMinutes || Math.round((parsed.durationSeconds || 0) / 60);
     const positions = parsed.positions || [];
