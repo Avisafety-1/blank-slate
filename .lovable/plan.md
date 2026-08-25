@@ -12,6 +12,13 @@ Ingen migrasjon, ingen backfill, ingen endring på eksisterende logger. Vi stram
 
 **Hva brukes `profiles.flyvetimer` til:** nesten ingenting — og du har rett, vi bør slutte å bruke det. Loggboka henter feltet uten å vise det; eneste reelle bruk er `ai-risk-assessment` som fallback. Ingen UI redigerer feltet direkte i dag; det endres bare indirekte av `adjustHours`-kall og DB-triggeren. Flytimer for personer skal være en ren avledning av flyloggene.
 
+**Hvor havner timene ved batch-logging av DJI/ArduPilot?** Batch-import lager én rad i `flight_logs` (med `duration_minutes`) per fil, og én rad i `flight_log_personnel` for valgt pilot. Det er den koblingen som gir flytid — nøyaktig samme mekanisme som manuell logging. Ingenting går tapt når vi slutter å bruke `profiles.flyvetimer`, fordi loggbok, KPI, currency, PDF og AI-risiko allerede summerer fra `flight_logs` via `src/lib/pilotFlightLogs.ts`.
+
+**Hva kan gå galt når vi dropper `profiles.flyvetimer`?** Tre ting, og alle dekkes av planen:
+1. Batch-rad uten valgt pilot ville gitt 0 timer på alle → derfor gjøres pilot obligatorisk ved import (punkt 3).
+2. Startsaldo for piloter med timer fløyet før Avisafe finnes bare i `profiles.flyvetimer`. Etter endringen vises kun timer som faktisk ligger i systemet. Si fra hvis du heller vil beholde feltet som et rent "startsaldo"-tillegg — det er en liten ekstra endring, ikke en databaseendring.
+3. `ai-risk-assessment` mister fallbacken og rapporterer 0 timer for piloter helt uten logger (i dag kunne den vise et trigget triggertall). Det er mer korrekt, men gir lavere erfaringstall for nye piloter.
+
 ## Endringer
 
 1. **Kun valgt pilot krediteres.** `LogFlightTimeDialog` slutter å skrive drone-koblet personell til `flight_log_personnel`; kun piloten fra nedtrekket skrives. Drone-koblingen brukes fortsatt til å foreslå pilot automatisk. Gjelder både online-lagring og offline-køen.
