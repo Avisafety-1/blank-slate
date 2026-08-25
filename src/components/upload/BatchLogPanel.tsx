@@ -310,15 +310,6 @@ export const BatchLogPanel = ({
     };
   };
 
-  const adjustHours = async (table: "profiles" | "drones" | "equipment", id: string, minutes: number) => {
-    if (!minutes || !id) return;
-    const { data: row } = await supabase.from(table).select("flyvetimer").eq("id", id).single();
-    if (row) {
-      await supabase.from(table).update({
-        flyvetimer: Math.max(0, ((row as any).flyvetimer || 0) + minutes / 60.0),
-      }).eq("id", id);
-    }
-  };
 
   const saveRow = async (row: RowState): Promise<boolean> => {
     if (!row.parsed) {

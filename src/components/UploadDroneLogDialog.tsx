@@ -1817,7 +1817,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     const oldDuration = oldDurationMinutes;
 
     // ── Helper to adjust flight hours on a resource ──
-    const adjustHours = async (table: 'profiles' | 'drones' | 'equipment', id: string, minutesDelta: number) => {
+    const adjustHours = async (table: 'drones' | 'equipment', id: string, minutesDelta: number) => {
       if (minutesDelta === 0) return;
       const { data: row } = await supabase.from(table).select('flyvetimer').eq('id', id).single();
       if (row) {
