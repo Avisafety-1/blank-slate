@@ -81,10 +81,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ---- Auth: Avisafe superadmin, or the internal cron secret --------------
-    const cronSecret = Deno.env.get("CRON_SHARED_SECRET");
-    const providedSecret = req.headers.get("x-cron-secret");
-    const secretOk = !!cronSecret && providedSecret === cronSecret;
+    // ---- Auth: Avisafe superadmin, or the internal diagnostic token ---------
+    const diagToken = Deno.env.get("SAFESKY_COMPARE_TOKEN");
+    const providedSecret = req.headers.get("x-diag-token");
+    const secretOk = !!diagToken && providedSecret === diagToken;
 
     if (!secretOk) {
       const authHeader = req.headers.get("Authorization") ?? "";
