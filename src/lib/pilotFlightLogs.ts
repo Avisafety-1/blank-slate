@@ -94,8 +94,8 @@ export async function getPilotFlightsForPeople(
   }
 
   // 4. Hent detaljer for de koblede loggene
-  const linkedIds = Array.from(
-    new Set((linkRows || []).map((r: any) => r.flight_log_id).filter(Boolean)),
+  const linkedIds: string[] = Array.from(
+    new Set<string>((linkRows || []).map((r: any) => String(r.flight_log_id)).filter(Boolean)),
   );
   const logById = new Map<string, PilotFlight>();
   for (const l of ownedLogs || []) {
