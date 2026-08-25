@@ -18,6 +18,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { loadFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
+import { getPilotFlightLogIds } from "@/lib/pilotFlightLogs";
 import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
 
 import { format } from "date-fns";
