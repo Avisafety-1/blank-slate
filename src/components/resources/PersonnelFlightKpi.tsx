@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { cn } from "@/lib/utils";
+import { getPilotFlightLogIds } from "@/lib/pilotFlightLogs";
 
 interface Props {
   personId: string;
