@@ -874,6 +874,7 @@
     "noDroneTagPositions": "Ingen DroneTag-posisjoner funnet.",
     "droneTagWarning": "Sjekk at DroneTag-enheten sender data til SafeSky under flytur.",
     "toastFlightTimePositive": "Flytid må være større enn 0",
+    "toastPilotRequired": "Velg pilot for flyturen",
     "toastLoggedButNoStatus": "Flytid logget, men kunne ikke oppdatere oppdragsstatus",
     "toastLoggedAndCompleted": "Flytid logget og oppdrag markert som fullført!",
     "toastLogged": "Flytid logget!",
