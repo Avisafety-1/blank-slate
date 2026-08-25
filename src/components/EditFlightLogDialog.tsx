@@ -210,13 +210,12 @@ export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }
                 onValueChange={setPilotId}
                 placeholder="Velg pilot..."
                 searchPlaceholder="Søk pilot..."
-                allowNone
-                noneLabel="(Ingen pilot)"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Endring justerer flytimer på pilotens profil.
+                {t("logFlight.pilotHoursDerivedHint")}
               </p>
             </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div>
