@@ -20,13 +20,91 @@ const DEFAULT_LAT = 63.55;
 const DEFAULT_LON = 10.55;
 const DEFAULT_RAD = 20000; // metres — SafeSky max
 
+const DEFAULT_VIEWPORT = "47.0,5.0,72.0,32.0";
+
 interface EnvResult {
   host: string;
   key: string;
   status: number | null;
   count: number | null;
   callsigns: string[];
+  sources?: Record<string, number>;
+  types?: Record<string, number>;
+  bbox?: { minLat: number; minLon: number; maxLat: number; maxLon: number } | null;
   error?: string;
+}
+
+function tally(arr: Record<string, unknown>[], field: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const b of arr) {
+    const k = String(b?.[field] ?? "unknown");
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+function bboxOf(arr: Record<string, unknown>[]) {
+  const pts = arr
+    .map((b) => [Number(b?.latitude), Number(b?.longitude)])
+    .filter(([a, o]) => Number.isFinite(a) && Number.isFinite(o));
+  if (!pts.length) return null;
+  return {
+    minLat: Math.min(...pts.map((p) => p[0])),
+    minLon: Math.min(...pts.map((p) => p[1])),
+    maxLat: Math.max(...pts.map((p) => p[0])),
+    maxLon: Math.max(...pts.map((p) => p[1])),
+  };
+}
+
+async function probeBeacons(
+  host: string,
+  keyLabel: string,
+  apiKey: string | undefined,
+  viewport: string,
+): Promise<EnvResult> {
+  if (!apiKey) {
+    return { host, key: keyLabel, status: null, count: null, callsigns: [], error: "no key configured" };
+  }
+  const url = `https://${host}/v1/beacons?viewport=${viewport}&return_grounded_traffic=true`;
+  try {
+    const authHeaders = await generateAuthHeaders(apiKey, "GET", url);
+    const res = await safeFetch(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+          "x-api-key": apiKey,
+          ...authHeaders,
+        },
+      },
+      ALLOWED_HOSTS,
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      return { host, key: keyLabel, status: res.status, count: null, callsigns: [], error: text.slice(0, 300) };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { host, key: keyLabel, status: res.status, count: null, callsigns: [], error: "non-JSON response" };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      host,
+      key: keyLabel,
+      status: res.status,
+      count: arr.length,
+      callsigns: arr.map((b) => String(b?.callsign ?? b?.id ?? "?")).slice(0, 30),
+      sources: tally(arr, "source"),
+      types: tally(arr, "beacon_type"),
+      bbox: bboxOf(arr),
+    };
+  } catch (e) {
+    return { host, key: keyLabel, status: null, count: null, callsigns: [], error: String(e).slice(0, 300) };
+  }
 }
 
 async function probe(
