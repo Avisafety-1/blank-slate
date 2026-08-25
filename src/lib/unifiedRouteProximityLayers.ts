@@ -217,6 +217,9 @@ export async function updateUnifiedRouteProximityLayers(
               p_zone_types: null,
               p_country_codes: countries,
               p_layer_ids: null,
+              // Lett forenkling – kun tegning. Avstands-/konfliktberegning
+              // skjer i airspace_zones_intersecting_route på full geometri.
+              p_zoom: 13,
             }),
           ),
           RPC_TIMEOUT_MS,
