@@ -288,7 +288,67 @@ Deno.serve(async (req) => {
     const sandboxKeyEnv = Deno.env.get("SAFESKY_API_KEY");
 
     // ---- UAV viewport mode: /v1/uav?viewport=... with X-SS-Org-Id ------------
+    // ---- Cap test: is 300 a page-size limit or the real traffic count? -------
+    if (body.endpoint === "uav-cap") {
+      const full = DEFAULT_VIEWPORT; // 47.0,5.0,72.0,32.0
+      const out: UavProbe[] = [];
+
+      // 1) Full viewport, dump every response header (pagination hints?)
+      out.push({ ...(await probeUavViewport(UAV_HOST, "prod", prodKeyEnv, full, undefined, { dumpHeaders: true })), label: "full" });
+      await sleep(400);
+
+      // 2) Same viewport with common paging/limit params
+      for (const q of ["limit=1000", "page_size=1000", "per_page=1000", "page=2", "offset=300"]) {
+        out.push({ ...(await probeUavViewport(UAV_HOST, "prod", prodKeyEnv, full, undefined, { extraQuery: q })), label: `param:${q}` });
+        await sleep(400);
+      }
+
+      // 3) Split the full viewport into 4 quadrants and sum unique ids.
+      //    Sum > 300 proves 300 is a per-response cap, not the real count.
+      const [lat1, lon1, lat2, lon2] = full.split(",").map(Number);
+      const midLat = (lat1 + lat2) / 2;
+      const midLon = (lon1 + lon2) / 2;
+      const quads = [
+        [lat1, lon1, midLat, midLon],
+        [lat1, midLon, midLat, lon2],
+        [midLat, lon1, lat2, midLon],
+        [midLat, midLon, lat2, lon2],
+      ];
+      const unique = new Set<string>();
+      const quadResults: UavProbe[] = [];
+      for (let i = 0; i < quads.length; i++) {
+        const vp = quads[i].map((n) => n.toFixed(4)).join(",");
+        const r = { ...(await probeUavViewport(UAV_HOST, "prod", prodKeyEnv, vp, undefined)), label: `quadrant-${i + 1}` };
+        (r.allIds ?? []).forEach((id) => unique.add(id));
+        delete r.allIds;
+        quadResults.push(r);
+        await sleep(400);
+      }
+
+      const fullIds = new Set(out[0].allIds ?? []);
+      out.forEach((r) => delete r.allIds);
+
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "uav-cap", viewport: full },
+          probes: out,
+          quadrants: quadResults,
+          summary: {
+            fullViewportCount: out[0].count,
+            quadrantSumUnique: unique.size,
+            quadrantCounts: quadResults.map((q) => q.count),
+            missedByFullViewport: [...unique].filter((id) => !fullIds.has(id)).length,
+            verdict: (unique.size > (out[0].count ?? 0))
+              ? "300 er et responstak — oppdeling/paginering trengs"
+              : "300 ser ut til å være reell trafikkmengde, ikke et tak",
+          },
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (body.endpoint === "uav-viewport") {
+
       const orgId = await sha256Hex("avisafe-org:d5204389-1e73-493a-85e2-7981b39460ee");
       const steps: { label: string; viewport: string }[] = Array.isArray(body.viewports)
         ? (body.viewports as string[]).map((v, i) => ({ label: `custom-${i + 1}`, viewport: String(v) }))
