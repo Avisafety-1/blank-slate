@@ -1827,31 +1827,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
     };
 
-    // ── PILOT ──
+    // ── PILOT ── (flytimer avledes av flyloggen, ingen profiles.flyvetimer-justering)
     if (isUpdate) {
       const oldPilot = oldPilotIds[0] || null;
       const newPilot = pilotId || null;
       const pilotChanged = oldPilot !== newPilot;
 
       if (pilotChanged) {
-        // Remove old pilot from junction & subtract old duration
         if (oldPilot) {
           await supabase.from('flight_log_personnel').delete().eq('flight_log_id', flightLogId).eq('profile_id', oldPilot);
-          await adjustHours('profiles', oldPilot, -oldDuration);
         }
-        // Add new pilot to junction & add full new duration
         if (newPilot) {
           await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: newPilot });
-          await adjustHours('profiles', newPilot, newDuration);
         }
-      } else if (newPilot && diffMinutes !== 0) {
-        // Same pilot, just adjust by diff
-        await adjustHours('profiles', newPilot, diffMinutes);
       }
     } else if (pilotId) {
       await supabase.from('flight_log_personnel').insert({ flight_log_id: flightLogId, profile_id: pilotId });
-      await adjustHours('profiles', pilotId, newDuration);
     }
+
 
     // ── DRONE ──
     if (isUpdate) {
