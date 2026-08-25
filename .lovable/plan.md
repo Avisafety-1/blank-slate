@@ -1,39 +1,27 @@
-# Test SafeSky produksjon uten å røre dagens trafikkbilde
+# Verifiser /beacons mot produksjon (samme dekning som i dag)
 
-## Hva vi vet
+## Hva vi vet så langt
 
-Innhenting av trafikk (det som tegnes i kartet) går mot SafeSky sitt **sandbox**-miljø:
+- Dagens trafikkbilde kommer fra `sandbox-public-api.safesky.app/v1/beacons` med viewport `47.0,5.0,72.0,32.0` (Norge, Norden, Tyskland, Polen) — `safesky-beacons-fetch`.
+- Forrige test viste at `uav-api.safesky.app/v1/uav` med `SAFESKY_PROD_API_KEY` svarer 200 og har mer trafikk enn sandbox, mens `public-api.safesky.app` svarer 500 «Access is denied».
+- Vi har **ikke** testet `/v1/beacons` mot produksjonshosten ennå, og vet derfor ikke om produksjon dekker hele viewporten vi bruker i dag. Det er nettopp det denne testen skal svare på.
 
-- `supabase/functions/safesky-beacons-fetch/index.ts` henter fra `sandbox-public-api.safesky.app/v1/beacons` (host er også låst i SSRF-allowlisten).
-- `supabase/functions/safesky-beacons/index.ts` og `safesky-cron-refresh` henter fra `sandbox-public-api.safesky.app/v1/uav` (bekreftet i edge-loggene nå).
+## Slik tester vi (fortsatt uten å påvirke Avisafe)
 
-Publisering av våre egne advisories går derimot mot **produksjon**:
+Utvider den eksisterende, isolerte diagnosefunksjonen `safesky-env-compare`. Ingen databaseskriving, ingen endring i kartet, ingen ekstra last på dagens innhenting.
 
-- `safesky-advisory` / `safesky-cron-refresh` bruker `uav-api.safesky.app/v1/advisory` med `SAFESKY_PROD_API_KEY` (loggen sier «Using PRODUCTION key for advisory refresh»).
+1. Legger til modus `endpoint: "beacons"` som kaller `GET /v1/beacons?viewport=…&return_grounded_traffic=true` mot både sandbox og `uav-api.safesky.app`.
+2. Kjører først med **nøyaktig samme viewport som i dag** (`47.0,5.0,72.0,32.0`) og sammenligner antall beacons, kildefordeling og hvilke callsign som finnes bare i produksjon.
+3. Kjører deretter et par mindre delviewporter (Norge, Sverige/Finland, Tyskland/Polen) for å se om produksjon eventuelt begrenser dekning geografisk eller kutter svaret på antall.
+4. Du får en tabell i chatten: status, antall og dekning per miljø og område. Først når det er bekreftet at produksjon dekker minst like mye som sandbox, lager vi en egen plan for å bytte selve innhentingen.
 
-Det forklarer det du ser: våre advisories havner i live SafeSky (og synes i droneflykart), mens vi leser trafikk fra sandbox — droneflykart sin advisory ligger i live-miljøet og finnes ikke i sandbox-svaret. Ubekreftet inntil vi faktisk har kalt produksjons-endepunktet; det er hele testen under.
-
-## Slik tester vi — helt uten å påvirke Avisafe
-
-Ingenting av dagens flyt endres. Trafikkbildet fortsetter å hentes fra sandbox nøyaktig som i dag, og advisory-publiseringen røres ikke.
-
-1. Ny, isolert testfunksjon `safesky-env-compare` som kun kjøres manuelt (av oss/superadmin). Den:
-   - henter samme viewport/punkt fra både sandbox og produksjon,
-   - returnerer antall beacons, callsigns og eventuell HTTP-feil per miljø,
-   - skriver **ingenting** til databasen og påvirker ikke kartet.
-2. Vi kjører den mot området i skjermbildet (Trondheimsfjorden/ENVA) og ser om callsign `DFKZQRYHHQG` / `HWX188002` dukker opp i produksjonssvaret men ikke i sandbox.
-3. Du får resultatet i chatten. Først når det er bekreftet — og du sier ifra — lager vi en egen plan for å bytte selve innhentingen til produksjon.
-4. Hvis produksjonskallet svarer 401/403, er det nøkkelen/abonnementet hos SafeSky som må utvides. Da rapporterer vi feilmeldingen tilbake, og ingenting i appen er endret.
-
-Når testen er ferdig kan funksjonen slettes igjen med ett grep, siden ingen annen kode kaller den.
+Hvis produksjon svarer 401/403/500 på `/beacons`, er det abonnementet hos SafeSky som må utvides — og ingenting i appen er endret.
 
 ## Teknisk
 
-- Ny fil `supabase/functions/safesky-env-compare/index.ts`:
-  - Krever JWT + superadmin-sjekk (service role client) slik at den ikke er åpen.
-  - Body: `{ lat, lon, rad }` eller `{ viewport }`; default = området i skjermbildet.
-  - Kaller `GET /v1/uav` (og `/v1/beacons`) mot både `sandbox-public-api.safesky.app` (`SAFESKY_API_KEY`) og produksjonshosten (`SAFESKY_PROD_API_KEY`), signert med eksisterende `_shared/safesky-hmac.ts`.
-  - `safeFetch`-allowlisten i denne funksjonen får begge hostene; `_shared/http.ts` endres ikke.
-  - Returnerer `{ sandbox: { status, count, callsigns }, production: { status, count, callsigns }, onlyInProduction: [...] }`.
+- Kun `supabase/functions/safesky-env-compare/index.ts` endres:
+  - Body: `{ endpoint?: "uav" | "beacons", viewport?: string }`, default beacons-viewport = dagens `47.0,5.0,72.0,32.0`.
+  - Bruker eksisterende `_shared/safesky-hmac.ts` + `x-api-key`, og `safeFetch` med allowlist `sandbox-public-api.safesky.app`, `uav-api.safesky.app`, `public-api.safesky.app`.
+  - Returnerer per miljø: `status`, `count`, fordeling på `source`/`beacon_type`, bounding box for mottatte posisjoner, og `onlyInProduction`-callsign (begrenset liste).
+  - Fortsatt superadmin- eller `x-diag-token`-beskyttet, fortsatt uten DB-kall.
 - Ingen endringer i `safesky-beacons-fetch`, `safesky-beacons`, `safesky-advisory`, `safesky-cron-refresh`, database eller frontend.
-
