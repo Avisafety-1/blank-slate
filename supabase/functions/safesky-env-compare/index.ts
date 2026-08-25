@@ -203,19 +203,27 @@ Deno.serve(async (req) => {
     // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
-      const [sandboxB, prodUavB, prodPubB] = await Promise.all([
-        probeBeacons(SANDBOX_HOST, "SAFESKY_API_KEY", sandboxKeyEnv, viewport),
+      const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
+      const [sandboxB, prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey] = await Promise.all([
+        probeBeacons(SANDBOX_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
         probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
         probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
+        probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
+        probeBeacons(PROD_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
       ]);
       const sbSet = new Set(sandboxB.callsigns);
+      const best = [prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey].find((r) => r.count != null);
       return new Response(
         JSON.stringify({
           query: { endpoint: "beacons", viewport },
           sandbox: sandboxB,
           productionUav: prodUavB,
           productionPublic: prodPubB,
-          onlyInProductionUav: prodUavB.callsigns.filter((c) => !sbSet.has(c)),
+          productionPublicHmac: prodPubHmac,
+          productionUavHmac: prodUavHmac,
+          productionPublicBeaconsKey: prodPubBeaconsKey,
+          onlyInProduction: (best?.callsigns ?? []).filter((c) => !sbSet.has(c)),
         }, null, 2),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
