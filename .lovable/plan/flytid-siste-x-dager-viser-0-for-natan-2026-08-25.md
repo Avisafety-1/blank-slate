@@ -16,9 +16,7 @@ Gjør KPI-kortet til å bruke samme sannhetskilde som loggboken:
 - Hent flytur-ID-ene fra `flight_log_personnel` for personen, og hent så `flight_date` + `flight_duration_minutes` fra `flight_logs` for disse ID-ene (med dato-cutoff som i dag).
 - Ta også med flyturer der `flight_logs.user_id = personId` men det ikke finnes noen personell-rad, slik at eldre/manuelle logger uten pilotkobling ikke forsvinner. Dedupliser på flytur-ID.
 - Ingen endring i beregning, perioder, currency-regler eller visning.
-
-## Teknisk
-
+- Teknisk
 - `src/components/resources/PersonnelFlightKpi.tsx`: bygg om `fetchLogs` til to spørringer (personell-kobling + fallback på `user_id`), slå sammen og dedupliser på `id` før `setLogs`.
 - Ingen databaseendringer, ingen nye i18n-nøkler.
 
