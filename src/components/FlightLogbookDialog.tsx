@@ -18,6 +18,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { EditFlightLogDialog } from "@/components/EditFlightLogDialog";
 import { FlightAnalysisDialog } from "@/components/dashboard/FlightAnalysisDialog";
 import { loadFlightAnalysisTrack, FLIGHT_ANALYSIS_COLUMNS } from "@/lib/flightAnalysisTrack";
+import { getPilotFlightLogIds } from "@/lib/pilotFlightLogs";
 import EvaluationViewerDialog from "@/components/evaluation/EvaluationViewerDialog";
 
 import { format } from "date-fns";
@@ -304,12 +305,9 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
   const fetchFlightLogs = async () => {
     setLoading(true);
     try {
-      const { data: personnelLogs } = await (supabase as any)
-        .from("flight_log_personnel")
-        .select("flight_log_id")
-        .eq("profile_id", personId);
+      const logIds = await getPilotFlightLogIds(personId);
 
-      if (!personnelLogs || personnelLogs.length === 0) {
+      if (logIds.length === 0) {
         setFlightLogs([]);
         setTotalMinutes(0);
         setLoggedMinutes(0);
@@ -317,8 +315,6 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
         setLoading(false);
         return;
       }
-
-      const logIds = personnelLogs.map((p: any) => p.flight_log_id);
 
       const { data: logs } = await (supabase as any)
         .from("flight_logs")
