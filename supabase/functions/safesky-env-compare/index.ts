@@ -200,7 +200,49 @@ Deno.serve(async (req) => {
     const prodKeyEnv = Deno.env.get("SAFESKY_PROD_API_KEY");
     const sandboxKeyEnv = Deno.env.get("SAFESKY_API_KEY");
 
+    // ---- UAV viewport mode: /v1/uav?viewport=... with X-SS-Org-Id ------------
+    if (body.endpoint === "uav-viewport") {
+      const orgId = await sha256Hex("avisafe-org:d5204389-1e73-493a-85e2-7981b39460ee");
+      const steps: { label: string; viewport: string }[] = Array.isArray(body.viewports)
+        ? (body.viewports as string[]).map((v, i) => ({ label: `custom-${i + 1}`, viewport: String(v) }))
+        : [
+          { label: "trondheim", viewport: "63.45,10.30,63.65,10.80" },
+          { label: "sor-norge", viewport: "58.0,5.0,64.0,13.0" },
+          { label: "norge", viewport: "57.0,4.0,72.0,32.0" },
+          { label: "full-viewport", viewport: DEFAULT_VIEWPORT },
+        ];
+
+      const results: UavProbe[] = [];
+      for (const step of steps) {
+        results.push({
+          ...(await probeUavViewport(UAV_HOST, "SAFESKY_PROD_API_KEY+orgId", prodKeyEnv, step.viewport, orgId)),
+          label: step.label,
+        });
+        await sleep(400);
+      }
+      // Control call: same viewport, no X-SS-Org-Id (expect generic 404)
+      const noOrg = {
+        ...(await probeUavViewport(UAV_HOST, "SAFESKY_PROD_API_KEY (no org id)", prodKeyEnv, steps[0].viewport, undefined)),
+        label: "control-no-org-id",
+      };
+      await sleep(400);
+      const publicHost = {
+        ...(await probeUavViewport(PROD_HOST, "SAFESKY_PROD_API_KEY+orgId", prodKeyEnv, steps[0].viewport, orgId)),
+        label: "control-public-host",
+      };
+
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "uav-viewport", orgIdPrefix: orgId.slice(0, 12) + "…" },
+          steps: results,
+          controls: [noOrg, publicHost],
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
+
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
       const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
