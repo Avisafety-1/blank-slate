@@ -206,7 +206,7 @@ const fetchPersonnel = async (companyId: string, userId: string) => {
       .slice(0, 10);
     const personIds = data.map((p: any) => p.id);
     const byPerson = await getPilotFlightsForPeople(personIds, cutoff);
-    for (const [personId, flights] of Object.entries(byPerson)) {
+    for (const [personId, flights] of Object.entries(byPerson) as [string, PilotFlight[]][]) {
       flightLogs[personId] = flights.map((f) => ({
         date: new Date(f.flight_date).getTime(),
         minutes: f.flight_duration_minutes || 0,
