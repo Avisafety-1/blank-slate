@@ -17,11 +17,15 @@ Ingen migrasjon, ingen backfill, ingen endring på eksisterende logger. Vi stram
 1. **Kun valgt pilot krediteres.** `LogFlightTimeDialog` slutter å skrive drone-koblet personell til `flight_log_personnel`; kun piloten fra nedtrekket skrives. Drone-koblingen brukes fortsatt til å foreslå pilot automatisk. Gjelder både online-lagring og offline-køen.
 2. **Offline-køen skriver pilotraden sammen med flyloggen** (samme rekkefølge/avhengighet), så en delvis synk ikke etterlater en flylogg uten pilot.
 3. **Pilot blir obligatorisk** ved lagring i `LogFlightTimeDialog`, DJI/ArduPilot-import (`UploadDroneLogDialog`, `BatchLogPanel`) og i `EditFlightLogDialog` (fjerner "(Ingen pilot)"). Da får ingen nye logger manglende kobling.
-4. **`profiles.flyvetimer` pensjoneres som kilde for pilottimer.** Ingen kode skal lenger lese eller skrive feltet for personer:
-   - Fjern alle `adjustHours('profiles', …)`-kall (drone og utstyr beholdes uendret).
-   - Fjern hentingen i `FlightLogbookDialog`.
-   - `ai-risk-assessment` slutter å bruke feltet som fallback og bruker kun summen fra flyloggene (0 timer hvis ingen logger).
-   - Selve kolonnen og DB-triggeren `trg_flp_recompute_pilot` røres ikke (ingen migrasjon nå) — de blir bare ubrukte. Kan fjernes i en senere opprydding hvis du vil.
+4. **`profiles.flyvetimer` pensjoneres som kilde for pilottimer.** Ja — `BatchLogPanel` skriver til feltet (`adjustHours("profiles", row.pilotId, …)` etter import). Fullstendig liste over det som skriver pilottimer i dag:
+   - `src/components/upload/BatchLogPanel.tsx` (linje 437)
+   - `src/components/UploadDroneLogDialog.tsx` (linje 1840, 1845, 1849, 1853)
+   - `src/components/EditFlightLogDialog.tsx` (linje 156, 162, 166)
+   - DB-triggeren `trg_flp_recompute_pilot` (recompute ved hver personellkobling)
+
+   `src/lib/flightLogDeletion.ts` rører kun droner/utstyr — ingen pilotjustering ved sletting i dag.
+
+   Alle `adjustHours('profiles', …)`-kallene over fjernes (drone og utstyr beholdes uendret), hentingen i `FlightLogbookDialog` fjernes, og `ai-risk-assessment` slutter å bruke feltet som fallback (bruker kun summen fra flyloggene). Kolonnen og triggeren røres ikke nå — de blir bare ubrukte, og kan ryddes bort senere.
 5. **Timer endres kun via flyloggen.** Endret varighet, byttet pilot eller slettet flylogg gir automatisk riktig sum, fordi alle visninger regner ut summen fra `flight_logs` + `flight_log_personnel` ved lesing (`src/lib/pilotFlightLogs.ts`). Ingen manuell justering av timer noe sted.
 6. **Ingen opprydding** av gamle logger uten kobling — dagens fallback (eier = pilot når ingen kobling finnes) blir stående og dekker dem.
 
