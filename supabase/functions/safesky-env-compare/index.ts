@@ -20,13 +20,92 @@ const DEFAULT_LAT = 63.55;
 const DEFAULT_LON = 10.55;
 const DEFAULT_RAD = 20000; // metres — SafeSky max
 
+const DEFAULT_VIEWPORT = "47.0,5.0,72.0,32.0";
+
 interface EnvResult {
   host: string;
   key: string;
   status: number | null;
   count: number | null;
   callsigns: string[];
+  sources?: Record<string, number>;
+  types?: Record<string, number>;
+  bbox?: { minLat: number; minLon: number; maxLat: number; maxLon: number } | null;
   error?: string;
+}
+
+function tally(arr: Record<string, unknown>[], field: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const b of arr) {
+    const k = String(b?.[field] ?? "unknown");
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+function bboxOf(arr: Record<string, unknown>[]) {
+  const pts = arr
+    .map((b) => [Number(b?.latitude), Number(b?.longitude)])
+    .filter(([a, o]) => Number.isFinite(a) && Number.isFinite(o));
+  if (!pts.length) return null;
+  return {
+    minLat: Math.min(...pts.map((p) => p[0])),
+    minLon: Math.min(...pts.map((p) => p[1])),
+    maxLat: Math.max(...pts.map((p) => p[0])),
+    maxLon: Math.max(...pts.map((p) => p[1])),
+  };
+}
+
+async function probeBeacons(
+  host: string,
+  keyLabel: string,
+  apiKey: string | undefined,
+  viewport: string,
+  useHmac = false,
+): Promise<EnvResult> {
+  if (!apiKey) {
+    return { host, key: keyLabel, status: null, count: null, callsigns: [], error: "no key configured" };
+  }
+  const url = `https://${host}/v1/beacons?viewport=${viewport}&return_grounded_traffic=true`;
+  try {
+    const authHeaders = useHmac ? await generateAuthHeaders(apiKey, "GET", url) : {};
+    const res = await safeFetch(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+          "x-api-key": apiKey,
+          ...authHeaders,
+        },
+      },
+      ALLOWED_HOSTS,
+    );
+    const text = await res.text();
+    if (!res.ok) {
+      return { host, key: keyLabel, status: res.status, count: null, callsigns: [], error: text.slice(0, 300) };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { host, key: keyLabel, status: res.status, count: null, callsigns: [], error: "non-JSON response" };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      host,
+      key: keyLabel,
+      status: res.status,
+      count: arr.length,
+      callsigns: arr.map((b) => String(b?.callsign ?? b?.id ?? "?")).slice(0, 30),
+      sources: tally(arr, "source"),
+      types: tally(arr, "beacon_type"),
+      bbox: bboxOf(arr),
+    };
+  } catch (e) {
+    return { host, key: keyLabel, status: null, count: null, callsigns: [], error: String(e).slice(0, 300) };
+  }
 }
 
 async function probe(
@@ -118,13 +197,45 @@ Deno.serve(async (req) => {
       body = await req.json();
     } catch { /* empty body allowed */ }
 
+    const prodKeyEnv = Deno.env.get("SAFESKY_PROD_API_KEY");
+    const sandboxKeyEnv = Deno.env.get("SAFESKY_API_KEY");
+
+    // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
+    if (body.endpoint === "beacons") {
+      const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
+      const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
+      const [sandboxB, prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey] = await Promise.all([
+        probeBeacons(SANDBOX_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
+        probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKeyEnv, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
+        probeBeacons(UAV_HOST, "SAFESKY_PROD_API_KEY+hmac", prodKeyEnv, viewport, true),
+        probeBeacons(PROD_HOST, "SAFESKY_BEACONS_API_KEY", beaconsKey, viewport),
+      ]);
+      const sbSet = new Set(sandboxB.callsigns);
+      const best = [prodUavB, prodPubB, prodPubHmac, prodUavHmac, prodPubBeaconsKey].find((r) => r.count != null);
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "beacons", viewport },
+          sandbox: sandboxB,
+          productionUav: prodUavB,
+          productionPublic: prodPubB,
+          productionPublicHmac: prodPubHmac,
+          productionUavHmac: prodUavHmac,
+          productionPublicBeaconsKey: prodPubBeaconsKey,
+          onlyInProduction: (best?.callsigns ?? []).filter((c) => !sbSet.has(c)),
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const lat = Number(body.lat ?? DEFAULT_LAT).toFixed(4);
     const lon = Number(body.lon ?? DEFAULT_LON).toFixed(4);
     const rad = Math.min(Number(body.rad ?? DEFAULT_RAD) || DEFAULT_RAD, DEFAULT_RAD);
 
     // ---- A few single lightweight GETs, no DB writes -------------------------
-    const prodKey = Deno.env.get("SAFESKY_PROD_API_KEY");
-    const sandboxKey = Deno.env.get("SAFESKY_API_KEY");
+    const prodKey = prodKeyEnv;
+    const sandboxKey = sandboxKeyEnv;
     const [sandbox, production, productionUav, productionSandboxKey] = await Promise.all([
       probe(SANDBOX_HOST, "SAFESKY_API_KEY", sandboxKey, lat, lon, rad),
       probe(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKey, lat, lon, rad),
