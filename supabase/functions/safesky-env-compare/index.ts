@@ -155,7 +155,78 @@ async function probe(
   }
 }
 
+interface UavProbe extends EnvResult {
+  label?: string;
+  viewport?: string;
+  trialStatus?: string | null;
+  trialDaysRemaining?: string | null;
+  quotaStatus?: string | null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function probeUavViewport(
+  host: string,
+  keyLabel: string,
+  apiKey: string | undefined,
+  viewport: string,
+  orgId: string | undefined,
+): Promise<UavProbe> {
+  if (!apiKey) {
+    return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: "no key configured" };
+  }
+  const url = `https://${host}/v1/uav?viewport=${viewport}`;
+  try {
+    const authHeaders = await generateAuthHeaders(apiKey, "GET", url);
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+      "x-api-key": apiKey,
+      ...authHeaders,
+    };
+    if (orgId) {
+      headers["X-SS-Org-Id"] = orgId;
+      headers["X-SS-Org-Label"] = "Avisafe";
+    }
+    const res = await safeFetch(url, { method: "GET", headers }, ALLOWED_HOSTS);
+    const meta = {
+      trialStatus: res.headers.get("x-ss-trial-status"),
+      trialDaysRemaining: res.headers.get("x-ss-trial-days-remaining"),
+      quotaStatus: res.headers.get("x-quota-status"),
+    };
+    const text = await res.text();
+    if (!res.ok) {
+      return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: text.slice(0, 300), ...meta };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { host, key: keyLabel, viewport, status: res.status, count: null, callsigns: [], error: "non-JSON response", ...meta };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      host,
+      key: keyLabel,
+      viewport,
+      status: res.status,
+      count: arr.length,
+      callsigns: arr.map((b) => String(b?.callsign ?? b?.id ?? "?")).slice(0, 30),
+      bbox: bboxOf(arr),
+      ...meta,
+    };
+  } catch (e) {
+    return { host, key: keyLabel, viewport, status: null, count: null, callsigns: [], error: String(e).slice(0, 300) };
+  }
+}
+
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -200,7 +271,49 @@ Deno.serve(async (req) => {
     const prodKeyEnv = Deno.env.get("SAFESKY_PROD_API_KEY");
     const sandboxKeyEnv = Deno.env.get("SAFESKY_API_KEY");
 
+    // ---- UAV viewport mode: /v1/uav?viewport=... with X-SS-Org-Id ------------
+    if (body.endpoint === "uav-viewport") {
+      const orgId = await sha256Hex("avisafe-org:d5204389-1e73-493a-85e2-7981b39460ee");
+      const steps: { label: string; viewport: string }[] = Array.isArray(body.viewports)
+        ? (body.viewports as string[]).map((v, i) => ({ label: `custom-${i + 1}`, viewport: String(v) }))
+        : [
+          { label: "trondheim", viewport: "63.45,10.30,63.65,10.80" },
+          { label: "sor-norge", viewport: "58.0,5.0,64.0,13.0" },
+          { label: "norge", viewport: "57.0,4.0,72.0,32.0" },
+          { label: "full-viewport", viewport: DEFAULT_VIEWPORT },
+        ];
+
+      const results: UavProbe[] = [];
+      for (const step of steps) {
+        results.push({
+          ...(await probeUavViewport(UAV_HOST, "SAFESKY_PROD_API_KEY+orgId", prodKeyEnv, step.viewport, orgId)),
+          label: step.label,
+        });
+        await sleep(400);
+      }
+      // Control call: same viewport, no X-SS-Org-Id (expect generic 404)
+      const noOrg = {
+        ...(await probeUavViewport(UAV_HOST, "SAFESKY_PROD_API_KEY (no org id)", prodKeyEnv, steps[0].viewport, undefined)),
+        label: "control-no-org-id",
+      };
+      await sleep(400);
+      const publicHost = {
+        ...(await probeUavViewport(PROD_HOST, "SAFESKY_PROD_API_KEY+orgId", prodKeyEnv, steps[0].viewport, orgId)),
+        label: "control-public-host",
+      };
+
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "uav-viewport", orgIdPrefix: orgId.slice(0, 12) + "…" },
+          steps: results,
+          controls: [noOrg, publicHost],
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
+
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
       const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
