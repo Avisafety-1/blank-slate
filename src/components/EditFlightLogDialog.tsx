@@ -31,6 +31,7 @@ interface FlightLogRow {
 }
 
 export const EditFlightLogDialog = ({ open, onOpenChange, flightLogId, onSaved }: EditFlightLogDialogProps) => {
+  const { t } = useTranslation();
   const { companyId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
