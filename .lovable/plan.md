@@ -1,44 +1,27 @@
-# DJI auto-synk — Elverum Videregående Skole
+# Flytid siste X dager viser 0 for Natan
 
-## Status i dag (hentet fra databasen nå)
+## Årsak (verifisert i databasen)
 
-Selskapet `Elverum Videregående Skole` har tre brukere med DJI-innlogging lagret:
+KPI-kortet «Flytid – siste 30/90/180 dager» og loggboken bruker to forskjellige koblinger mellom flytur og pilot:
 
-| Bruker | E-post | Auto-synk | Siste synk |
-|---|---|---|---|
-| Dronepilot ELVIS | selv.dronefag@innlandetfylke.no | **På** | 22.08.2026 19:48 |
-| Sverre Rasmussen | sveras@innlandetfylke.no | **På** | 16.08.2026 21:00 |
-| Martin Sunnevåg Madsbu | matmad@innlandetfylke.no | Av | 13.08.2026 07:09 |
+- **Loggboken** (`FlightLogbookDialog`) henter flyturene via `flight_log_personnel` (piloten som er tilknyttet flyturen). Natan har flere slike flyturer 20.08.2026, totalt 33 min.
+- **KPI-kortet** (`PersonnelFlightKpi`) spør `flight_logs` med `user_id = personId`.
 
-Køen (`dji_sync_jobs`) har 170 jobber for disse brukerne, alle med status `done`.
-Nyeste jobb ble lagt inn 22.08.2026 19:26 — altså ingenting nytt er hentet inn
-siden 22. august, og ingenting står fast i kø.
+I Elverum-loggene er `flight_logs.user_id` for alle turene satt til **Dronepilot ELVIS** (brukeren som importerte DJI-loggene), mens den faktiske piloten kun ligger i `flight_log_personnel`. Derfor gir KPI-spørringen 0 treff for Natan, selv om loggboken viser 33 min.
 
-## Foreslått handling: tvungen synk nå
+## Endring
 
-Kjør en manuell enqueue + worker-runde for de tre brukerne, uten kodeendringer:
+Gjør KPI-kortet til å bruke samme sannhetskilde som loggboken:
 
-1. Kall `dji-sync-enqueue` med `{ userId }` for hver av de tre brukerne
-   (inkludert Martin, selv om auto-synk er av — manuell kjøring bruker
-   lagrede credentials og påvirkes ikke av `auto_sync_enabled`).
-2. Kall `dji-sync-worker` til køen er tom, eller la den planlagte
-   worker-kjøringen ta jobbene.
-3. Rapporter tilbake per bruker: hvor mange nye logger som ble lagt i kø,
-   hvor mange som ble ferdigstilt, og eventuelle feil (typisk 401 fra
-   DroneLog hvis passordet er endret).
+- Hent flytur-ID-ene fra `flight_log_personnel` for personen, og hent så `flight_date` + `flight_duration_minutes` fra `flight_logs` for disse ID-ene (med dato-cutoff som i dag).
+- Ta også med flyturer der `flight_logs.user_id = personId` men det ikke finnes noen personell-rad, slik at eldre/manuelle logger uten pilotkobling ikke forsvinner. Dedupliser på flytur-ID.
+- Ingen endring i beregning, perioder, currency-regler eller visning.
 
-Ingen databaseendringer, ingen kodeendringer — kun kall mot eksisterende
-edge-funksjoner.
+## Teknisk
 
-## Risiko
+- `src/components/resources/PersonnelFlightKpi.tsx`: bygg om `fetchLogs` til to spørringer (personell-kobling + fallback på `user_id`), slå sammen og dedupliser på `id` før `setLogs`.
+- Ingen databaseendringer, ingen nye i18n-nøkler.
 
-- Hvis DJI-passordet til en bruker er utdatert, feiler enqueue for den
-  brukeren med innloggingsfeil. Det er isolert per bruker og påvirker ikke
-  de andre.
-- Nye logger kan gi nye flylogg-oppføringer som må matches mot droner/oppdrag,
-  på vanlig måte via loggfil-flyten.
+## Merk
 
-## Valgfritt tillegg (si fra hvis dette ønskes)
-
-Skru på `auto_sync_enabled` for Martin Sunnevåg Madsbu, slik at alle tre
-brukerne synkes automatisk framover.
+Dette retter visningen. At `flight_logs.user_id` peker på importbrukeren og ikke piloten er en egen sak — den kan tas senere hvis dere vil at «eier» av loggen skal være piloten.
