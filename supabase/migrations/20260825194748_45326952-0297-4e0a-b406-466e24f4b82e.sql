@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.airspace_zones_in_bbox(double precision, double precision, double precision, double precision, text[], text[], text[]);
