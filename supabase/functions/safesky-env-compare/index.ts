@@ -121,11 +121,16 @@ Deno.serve(async (req) => {
     const lon = Number(body.lon ?? DEFAULT_LON).toFixed(4);
     const rad = Math.min(Number(body.rad ?? DEFAULT_RAD) || DEFAULT_RAD, DEFAULT_RAD);
 
-    // ---- Two single lightweight GETs, no DB writes ---------------------------
-    const [sandbox, production] = await Promise.all([
-      probe(SANDBOX_HOST, "SAFESKY_API_KEY", Deno.env.get("SAFESKY_API_KEY"), lat, lon, rad),
-      probe(PROD_HOST, "SAFESKY_PROD_API_KEY", Deno.env.get("SAFESKY_PROD_API_KEY"), lat, lon, rad),
+    // ---- A few single lightweight GETs, no DB writes -------------------------
+    const prodKey = Deno.env.get("SAFESKY_PROD_API_KEY");
+    const sandboxKey = Deno.env.get("SAFESKY_API_KEY");
+    const [sandbox, production, productionUav, productionSandboxKey] = await Promise.all([
+      probe(SANDBOX_HOST, "SAFESKY_API_KEY", sandboxKey, lat, lon, rad),
+      probe(PROD_HOST, "SAFESKY_PROD_API_KEY", prodKey, lat, lon, rad),
+      probe(UAV_HOST, "SAFESKY_PROD_API_KEY", prodKey, lat, lon, rad),
+      probe(PROD_HOST, "SAFESKY_API_KEY", sandboxKey, lat, lon, rad),
     ]);
+
 
     const sandboxSet = new Set(sandbox.callsigns);
     const onlyInProduction = production.callsigns.filter((c) => !sandboxSet.has(c));
