@@ -111,55 +111,49 @@ async function enqueueForUser(
   if (!company || !company.dji_flightlog_enabled) {
     return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "dji not enabled" };
   }
-  const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
-  if (!dronelogKey) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no dronelog key" };
 
-  // Login
+  // Personal key -> company key -> global key. Provision a personal key lazily
+  // so users stop sharing one rate-limit pool.
+  const resolved = await resolveDronelogKey(serviceClient, {
+    userId: cred.user_id,
+    companyId: company.id,
+    provision: true,
+  });
+  if (!resolved) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no dronelog key" };
+  const dronelogKey = resolved.key;
+
+  // Skip users whose key is already rate-limited — don't burn the pool further.
+  if (await isKeyCoolingDown(serviceClient, resolved.fingerprint)) {
+    return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "key cooling down (429)" };
+  }
+
+  // List logs — reuses the cached account id and only logs in when needed.
+  let logs: any[] = [];
   let accountId = cred.dji_account_id;
   try {
     const password = await decryptPassword(cred.dji_password_encrypted);
-    const t = withTimeout(TIMEOUTS.login);
-    let loginRes: Response;
-    try {
-      loginRes = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ email: cred.dji_email, password }),
-        signal: t.signal,
-      });
-    } finally { t.clear(); }
-    if (!loginRes.ok) {
-      const errBody = await loginRes.text().catch(() => "");
-      return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: `login ${loginRes.status}: ${errBody.slice(0, 120)}` };
+    const listed = await listLogsWithCachedAccount(serviceClient, {
+      key: dronelogKey,
+      userId: cred.user_id,
+      email: cred.dji_email,
+      password,
+      cachedAccountId: cred.dji_account_id,
+      query: "limit=200",
+    });
+    accountId = listed.accountId;
+    if (!listed.ok) {
+      if (listed.status === 429) {
+        await setKeyCooldown(serviceClient, resolved.fingerprint, listed.retryAfter ?? 300);
+      }
+      return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: listed.error || `list ${listed.status}` };
     }
-    const loginData = await loginRes.json();
-    accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || accountId;
-  } catch (e) {
-    return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: `login exception: ${(e as Error).message}` };
-  }
-  if (!accountId) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no accountId" };
-
-  // List logs (cap at 200)
-  let logs: any[] = [];
-  try {
-    const t = withTimeout(TIMEOUTS.list);
-    let listRes: Response;
-    try {
-      listRes = await fetch(`${DRONELOG_BASE}/logs/${accountId}?limit=200`, {
-        headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
-        signal: t.signal,
-      });
-    } finally { t.clear(); }
-    if (!listRes.ok) {
-      const txt = await listRes.text().catch(() => "");
-      return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: `list ${listRes.status}: ${txt.slice(0, 120)}` };
-    }
-    const listData = await listRes.json();
-    logs = listData.result?.logs || listData.result || [];
+    logs = listed.logs;
   } catch (e) {
     return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: `list exception: ${(e as Error).message}` };
   }
+  if (!accountId) return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: "no accountId" };
   if (!Array.isArray(logs)) logs = [];
+
 
   const syncFromDate = company.dji_sync_from_date ? new Date(company.dji_sync_from_date) : null;
   let jobs_added = 0;
