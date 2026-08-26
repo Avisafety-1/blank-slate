@@ -28,6 +28,7 @@ import { ResourceConflictWarning, ResourceConflictIndicator } from "@/components
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { DroneOptionContent } from "@/components/resources/DroneOptionLabel";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
@@ -1021,10 +1022,12 @@ export const AddMissionDialog = ({
             .map(id => profiles.find(p => p.id === id)?.full_name)
             .filter(Boolean) as string[];
           
-          const droneModels = selectedDrones
+              const droneModels = selectedDrones
             .map(id => {
               const drone = drones.find(d => d.id === id);
-              return drone ? `${drone.modell} (SN: ${drone.serienummer})` : null;
+              if (!drone) return null;
+              const name = drone.dji_aircraft_name ? ` – ${drone.dji_aircraft_name}` : '';
+              return `${drone.modell}${name} (SN: ${drone.serienummer})`;
             })
             .filter(Boolean) as string[];
           
@@ -1755,7 +1758,7 @@ export const AddMissionDialog = ({
                       {drones.map((drone) => (
                         <CommandItem
                           key={drone.id}
-                          value={`${drone.modell} ${drone.registration_number || ''}`}
+                          value={`${drone.modell} ${drone.dji_aircraft_name || ''} ${drone.serienummer || ''} ${drone.registration_number || ''}`}
                           onSelect={() => toggleDrone(drone.id)}
                         >
                           <Check
@@ -1764,7 +1767,11 @@ export const AddMissionDialog = ({
                               selectedDrones.includes(drone.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {drone.modell}{drone.registration_number ? ` (${drone.registration_number})` : ''}
+                          <DroneOptionContent
+                            modell={drone.modell}
+                            dji_aircraft_name={drone.dji_aircraft_name}
+                            serienummer={drone.serienummer}
+                          />
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -1783,7 +1790,15 @@ export const AddMissionDialog = ({
                   return (
                     <div key={id}>
                       <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
-                        <span>{drone?.modell}{drone?.registration_number ? ` (${drone.registration_number})` : ''}</span>
+                        <span>
+                          {drone ? (
+                            <DroneOptionContent
+                              modell={drone.modell}
+                              dji_aircraft_name={drone.dji_aircraft_name}
+                              serienummer={drone.serienummer}
+                            />
+                          ) : null}
+                        </span>
                         <ResourceConflictIndicator conflicts={conflicts} />
                         <button
                           type="button"
