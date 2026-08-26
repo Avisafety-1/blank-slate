@@ -349,6 +349,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiPassword, setDjiPassword] = useState("");
   const [showDjiPassword, setShowDjiPassword] = useState(false);
   const [djiAccountId, setDjiAccountId] = useState("");
+  const [djiSessionKeySource, setDjiSessionKeySource] = useState<'user' | 'company' | 'global' | null>(null);
   const [djiLogs, setDjiLogs] = useState<DjiLog[]>([]);
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
@@ -599,8 +600,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId;
       if (!accountId) throw new Error("Auto-innlogging feilet");
       setDjiAccountId(accountId);
+      const sessionSource = data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global'
+        ? data.sessionKeySource
+        : null;
+      setDjiSessionKeySource(sessionSource);
       setDjiEmail(data.email || savedDjiEmail);
-      await fetchDjiLogs(accountId);
+      await fetchDjiLogs(accountId, undefined, sessionSource);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI auto-login error:', error);
@@ -662,6 +667,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       console.error('Failed to delete credentials:', e);
     }
     setDjiAccountId("");
+    setDjiSessionKeySource(null);
     setDjiLogs([]);
     setDjiHasMore(false);
     setHasSavedCredentials(false);
@@ -691,6 +697,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiEmail("");
     setDjiPassword("");
     setDjiAccountId("");
+    setDjiSessionKeySource(null);
     setDjiLogs([]);
     setDjiHasMore(false);
     setSelectedDjiLogIds(new Set());
@@ -1131,6 +1138,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           accountId: djiAccountId,
           logId: selectedLogs[i].id,
           downloadUrl: selectedLogs[i].url || undefined,
+          sessionKeySource: djiSessionKeySource,
         });
 
         // 2. SHA-256 dedup check
@@ -1290,6 +1298,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
+      const sessionSource = data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global'
+        ? data.sessionKeySource
+        : null;
+      setDjiSessionKeySource(sessionSource);
 
       if (saveCredentials) {
         setHasSavedCredentials(true);
@@ -1299,7 +1311,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       setDjiPassword("");
-      await fetchDjiLogs(accountId);
+      await fetchDjiLogs(accountId, undefined, sessionSource);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
@@ -1318,12 +1330,20 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
 
-  const fetchDjiLogs = async (accountId: string, createdAfterId?: number) => {
+  const fetchDjiLogs = async (
+    accountId: string,
+    createdAfterId?: number,
+    sessionSource: 'user' | 'company' | 'global' | null = djiSessionKeySource,
+  ) => {
     setIsDjiLoading(true);
     try {
       const payload: any = { accountId, limit: 20 };
+      if (sessionSource) payload.sessionKeySource = sessionSource;
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
+      if (data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global') {
+        setDjiSessionKeySource(data.sessionKeySource);
+      }
       const r = data.result || data;
       const rawLogs = Array.isArray(r) ? r : (r.logs || []);
       const mapped: DjiLog[] = rawLogs.map((l: any) => ({
@@ -1374,7 +1394,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setProcessingLogId(log.id);
     setIsProcessing(true);
     try {
-      const data: DroneLogResult = await callDronelogAction("dji-process-log", { accountId: djiAccountId, logId: log.id, downloadUrl: log.url || undefined });
+      const data: DroneLogResult = await callDronelogAction("dji-process-log", {
+        accountId: djiAccountId,
+        logId: log.id,
+        downloadUrl: log.url || undefined,
+        sessionKeySource: djiSessionKeySource,
+      });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
       if (!selectedDroneId) {

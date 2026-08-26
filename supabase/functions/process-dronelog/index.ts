@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
 import {
   resolveDronelogKey,
+  resolveDronelogKeyForSource,
   decryptSecret,
   encryptSecret,
   djiLogin,
@@ -944,7 +945,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "DroneLog API key not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const keyFingerprint = dronelogKey.substring(0, 6) + "…";
+    let keyFingerprint = dronelogKey.substring(0, 6) + "…";
     console.log(`[process-dronelog] key=${keyFingerprint} source=${keySource}`);
 
 
@@ -954,6 +955,28 @@ Deno.serve(async (req) => {
     if (contentType.includes("application/json")) {
       const body = await req.json();
       const { action } = body;
+
+      // Continue a browser import session with the same server-side key source
+      // that successfully authenticated DJI. The browser never receives a key.
+      if ((action === "dji-list-logs" || action === "dji-process-log") && body.sessionKeySource !== undefined) {
+        const requestedSource = body.sessionKeySource;
+        if (requestedSource !== "user" && requestedSource !== "company" && requestedSource !== "global") {
+          return new Response(JSON.stringify({ error: "Invalid DroneLog key source" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const requestedKey = await resolveDronelogKeyForSource(serviceClient, {
+          userId: authUser.id,
+          companyId: profileCompanyId,
+          source: requestedSource,
+        });
+        if (!requestedKey) {
+          return new Response(JSON.stringify({ error: "DroneLog key source unavailable" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        resolvedKey = requestedKey;
+        dronelogKey = requestedKey.key;
+        keySource = requestedKey.source;
+        keyFingerprint = requestedKey.fingerprint;
+      }
 
       if (action === "dji-login") {
         const { email, password, saveCredentials, autoSyncEnabled } = body;
@@ -1067,7 +1090,7 @@ Deno.serve(async (req) => {
           }
           console.log(`[process-dronelog] DJI login credentials saved personalKey=${pendingPersonalKey ? "new" : "reused"}`);
         }
-        return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...data, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       if (action === "dji-list-logs") {
@@ -1117,7 +1140,7 @@ Deno.serve(async (req) => {
           }
           return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...data, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
 
@@ -1310,6 +1333,7 @@ Deno.serve(async (req) => {
             accountId: cred.dji_account_id,
             cached: true,
             email: cred.dji_email,
+            sessionKeySource: keySource,
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
@@ -1351,7 +1375,7 @@ Deno.serve(async (req) => {
           await serviceClient.from("dji_credentials").update({ dji_account_id: accountId }).eq("user_id", authUser.id);
         }
 
-        return new Response(JSON.stringify({ ...data, email: cred.dji_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...data, email: cred.dji_email, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
 
