@@ -1093,7 +1093,7 @@ Deno.serve(async (req) => {
           });
           let upRes = await doUpload(dronelogKey!);
           // Ugyldig/utløpt selskapsnøkkel → fall tilbake til Avisafe sin globale nøkkel
-          if (upRes.status === 401 && usingCompanyKey && globalKey && globalKey !== dronelogKey) {
+          if (upRes.status === 401 && keySource !== "global" && globalKey && globalKey !== dronelogKey) {
             console.warn("[process-dronelog] company key rejected (401), retrying with global key");
             upRes = await doUpload(globalKey);
           }
@@ -1335,7 +1335,7 @@ Deno.serve(async (req) => {
 
     let dronelogResponse = await postUpload(dronelogKey!);
     // Ugyldig/utløpt selskapsnøkkel → fall tilbake til Avisafe sin globale nøkkel
-    if (dronelogResponse.status === 401 && usingCompanyKey && globalKey && globalKey !== dronelogKey) {
+    if (dronelogResponse.status === 401 && keySource !== "global" && globalKey && globalKey !== dronelogKey) {
       console.warn("[process-dronelog] company key rejected (401), retrying with global key");
       dronelogResponse = await postUpload(globalKey);
     }
