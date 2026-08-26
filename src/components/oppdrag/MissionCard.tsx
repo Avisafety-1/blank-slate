@@ -447,12 +447,15 @@ export const MissionCard = ({
                 );
                 return (
                   <li key={d.drone_id} className="space-y-0.5">
-                    <span className="text-sm text-foreground flex items-center gap-1">
-                      {d.drones?.modell} (SN: {d.drones?.serienummer})
+                    <span className="text-sm text-foreground flex items-start gap-1">
+                      <span className="min-w-0 break-words">
+                        {[d.drones?.modell, (d.drones?.dji_aircraft_name || "").trim()].filter(Boolean).join(" · ")}
+                        {d.drones?.serienummer ? ` (SN: ${d.drones.serienummer})` : ""}
+                      </span>
                       {conflicts.length > 0 && (
                         conflicts.some((c: ResourceConflict) => c.conflictType === 'overlap') 
-                          ? <AlertTriangle className="h-3 w-3 text-amber-500" />
-                          : <Info className="h-3 w-3 text-blue-500" />
+                          ? <AlertTriangle className="h-3 w-3 text-amber-500 mt-1 shrink-0" />
+                          : <Info className="h-3 w-3 text-blue-500 mt-1 shrink-0" />
                       )}
                     </span>
                     <ResourceConflictWarning conflicts={conflicts} compact />
