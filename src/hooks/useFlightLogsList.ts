@@ -183,23 +183,47 @@ export function useFlightLogsList(active: boolean) {
     };
   }, [active, companyId, debouncedSearch]);
 
-  // Flight logs where the current user is listed as personnel (pilot)
+  // Flight logs where the current user is the pilot (personnel link, or owner
+  // of a log that has no personnel link at all) — same rule as the logbook/KPI.
   useEffect(() => {
     if (!active || !user?.id) return;
     let cancelled = false;
     (async () => {
-      const { data } = await (supabase as any)
-        .from("flight_log_personnel")
-        .select("flight_log_id")
-        .eq("profile_id", user.id)
-        .limit(5000);
-      if (cancelled) return;
-      setMineLogIds([...new Set((data || []).map((r: any) => r.flight_log_id))] as string[]);
+      try {
+        const ids = await getPilotFlightLogIds(user.id);
+        if (!cancelled) setMineLogIds(ids);
+      } catch {
+        if (!cancelled) setMineLogIds([]);
+      }
     })();
     return () => {
       cancelled = true;
     };
   }, [active, user?.id]);
+
+  // Log ids for the pilot selected in the filter (same rule as above)
+  const [pilotLogIds, setPilotLogIds] = useState<{ pilotId: string; ids: string[] } | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    if (filters.pilotId === "alle") {
+      setPilotLogIds(null);
+      return;
+    }
+    let cancelled = false;
+    const pilotId = filters.pilotId;
+    (async () => {
+      try {
+        const ids = await getPilotFlightLogIds(pilotId);
+        if (!cancelled) setPilotLogIds({ pilotId, ids });
+      } catch {
+        if (!cancelled) setPilotLogIds({ pilotId, ids: [] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, filters.pilotId]);
+
 
   /**
    * Applies the active filters to a flight_logs query.
