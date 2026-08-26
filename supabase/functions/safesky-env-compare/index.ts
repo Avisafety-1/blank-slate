@@ -454,6 +454,29 @@ Deno.serve(async (req) => {
 
     // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
 
+    // ---- Beacons URL-variant test (trailing slash / plain query) ------------
+    if (body.endpoint === "beacons-variants") {
+      const tanguyViewport = "43.1035,-2.0821,47.9943,15.3216";
+      const ourViewport = String(body.viewport ?? DEFAULT_VIEWPORT);
+      const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
+      const variants = [
+        { label: "prod-key + slash + plain (Tanguy viewport)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: tanguyViewport, trailingSlash: true, plain: true },
+        { label: "prod-key + slash + plain (Nord-Europa)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: ourViewport, trailingSlash: true, plain: true },
+        { label: "prod-key + no slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: tanguyViewport, trailingSlash: false, plain: true },
+        { label: "beacons-key + slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: tanguyViewport, trailingSlash: true, plain: true },
+        { label: "sandkasse-key + slash + plain (kontroll)", host: SANDBOX_HOST, keyLabel: "SAFESKY_API_KEY", apiKey: sandboxKeyEnv, viewport: tanguyViewport, trailingSlash: true, plain: true },
+      ];
+      const out: Record<string, unknown>[] = [];
+      for (const v of variants) {
+        out.push(await probeBeaconsVariant(v));
+        await sleep(500);
+      }
+      return new Response(
+        JSON.stringify({ query: { endpoint: "beacons-variants" }, results: out }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
       const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
