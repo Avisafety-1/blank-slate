@@ -81,6 +81,7 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
       boxZoom: false,
       keyboard: false,
       touchZoom: false,
+      tap: false,
     });
     mapRef.current = map;
 
