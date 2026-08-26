@@ -21,6 +21,7 @@ export interface ResolvedKey {
   key: string;
   source: KeySource;
   fingerprint: string;
+  provisioningError?: string;
 }
 
 // ── Encryption (same AES-GCM scheme used for the DJI password) ──
@@ -98,6 +99,8 @@ export async function resolveDronelogKey(
   }
 
   let companyKey: string | null = null;
+  let companyName = "Avisafe";
+  let provisioningError: string | undefined;
   if (companyId) {
     const { data: company } = await serviceClient
       .from("companies")
@@ -105,28 +108,39 @@ export async function resolveDronelogKey(
       .eq("id", companyId)
       .maybeSingle();
     companyKey = company?.dronelog_api_key || null;
-
-    // Lazy per-user provisioning — only when we have a master key to mint with.
-    if (opts.provision && opts.userId && credRow && !credRow.dronelog_api_key_encrypted && globalKey) {
-      const minted = await provisionUserKey(serviceClient, {
-        userId: opts.userId,
-        masterKey: globalKey,
-        name: `${company?.navn ?? "Avisafe"} – ${credRow.dji_email ?? opts.userId}`,
-      });
-      if (minted) return { key: minted, source: "user", fingerprint: fp(minted) };
-    }
+    companyName = company?.navn ?? companyName;
   }
 
-  if (companyKey) return { key: companyKey, source: "company", fingerprint: fp(companyKey) };
-  if (globalKey) return { key: globalKey, source: "global", fingerprint: fp(globalKey) };
+  // Provision independently of company lookup. The global key is the master
+  // credential used only to mint a personal key, never preferred for normal calls.
+  if (opts.provision && opts.userId && credRow && !credRow.dronelog_api_key_encrypted && globalKey) {
+    const provisioned = await provisionUserKey(serviceClient, {
+      userId: opts.userId,
+      masterKey: globalKey,
+      name: `${companyName} – ${credRow.dji_email ?? opts.userId}`,
+    });
+    if (provisioned.key) {
+      return { key: provisioned.key, source: "user", fingerprint: fp(provisioned.key) };
+    }
+    provisioningError = provisioned.error;
+  }
+
+  if (companyKey) return { key: companyKey, source: "company", fingerprint: fp(companyKey), provisioningError };
+  if (globalKey) return { key: globalKey, source: "global", fingerprint: fp(globalKey), provisioningError };
   return null;
 }
 
-/** Create a personal DroneLog key for a user and store it encrypted. Returns null on failure. */
+export interface ProvisionUserKeyResult {
+  key: string | null;
+  status: number | null;
+  error?: string;
+}
+
+/** Create and persist a personal DroneLog key. Never logs response bodies or key material. */
 export async function provisionUserKey(
   serviceClient: any,
   opts: { userId: string; masterKey: string; name: string },
-): Promise<string | null> {
+): Promise<ProvisionUserKeyResult> {
   try {
     const res = await fetch(`${DRONELOG_BASE}/keys`, {
       method: "POST",
@@ -139,26 +153,44 @@ export async function provisionUserKey(
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      console.warn(`[dronelog-auth] provision key failed (${res.status})`, JSON.stringify(data)?.slice(0, 200));
-      return null;
+      const error = res.status === 401 || res.status === 403
+        ? "master_key_invalid"
+        : `provision_http_${res.status}`;
+      console.warn(`[dronelog-auth] provision failed status=${res.status} reason=${error}`);
+      return { key: null, status: res.status, error };
     }
-    const newKey = data?.result?.key || data?.key || data?.result?.api_key || data?.api_key;
+    const newKey = data?.result?.key
+      || data?.key
+      || data?.result?.api_key
+      || data?.api_key
+      || data?.result?.apiKey
+      || data?.apiKey
+      || data?.data?.key
+      || data?.data?.api_key
+      || data?.data?.apiKey;
     if (!newKey || typeof newKey !== "string") {
-      console.warn("[dronelog-auth] provision key: no key in response");
-      return null;
+      console.warn("[dronelog-auth] provision failed status=200 reason=missing_key_field");
+      return { key: null, status: res.status, error: "missing_key_field" };
     }
-    await serviceClient
+    const encrypted = await encryptSecret(newKey);
+    const { data: saved, error: saveError } = await serviceClient
       .from("dji_credentials")
       .update({
-        dronelog_api_key_encrypted: await encryptSecret(newKey),
+        dronelog_api_key_encrypted: encrypted,
         dronelog_key_created_at: new Date().toISOString(),
       })
-      .eq("user_id", opts.userId);
-    console.log(`[dronelog-auth] provisioned personal DroneLog key ${fp(newKey)} for user ${opts.userId}`);
-    return newKey;
+      .eq("user_id", opts.userId)
+      .select("dronelog_key_created_at")
+      .maybeSingle();
+    if (saveError || !saved?.dronelog_key_created_at) {
+      console.warn(`[dronelog-auth] provision failed status=200 reason=persist_failed`);
+      return { key: null, status: res.status, error: "persist_failed" };
+    }
+    console.log("[dronelog-auth] provisioned personal DroneLog key successfully");
+    return { key: newKey, status: res.status };
   } catch (e) {
     console.warn("[dronelog-auth] provision key exception:", (e as Error).message);
-    return null;
+    return { key: null, status: null, error: "provision_exception" };
   }
 }
 
@@ -169,6 +201,24 @@ export async function clearUserKey(serviceClient: any, userId: string): Promise<
     .update({ dronelog_api_key_encrypted: null })
     .eq("user_id", userId)
     .then(() => {}, () => {});
+}
+
+/** Resolve the next safe key after DroneLog rejected the current key itself. */
+export async function recoverInvalidDronelogKey(
+  serviceClient: any,
+  opts: { userId: string; companyId?: string | null; failedSource: KeySource },
+): Promise<ResolvedKey | null> {
+  if (opts.failedSource === "global") return null;
+  if (opts.failedSource === "user") {
+    await clearUserKey(serviceClient, opts.userId);
+    return resolveDronelogKey(serviceClient, {
+      userId: opts.userId,
+      companyId: opts.companyId,
+      provision: true,
+    });
+  }
+  const globalKey = Deno.env.get("DRONELOG_AVISAFE_KEY") || null;
+  return globalKey ? { key: globalKey, source: "global", fingerprint: fp(globalKey) } : null;
 }
 
 // ── Rate-limit cooldown (per key fingerprint, stored in app_config) ──
