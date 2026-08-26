@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import EvaluationResponseDialog from "@/components/evaluation/EvaluationResponseDialog";
+import { parseEvaluationStructure } from "@/hooks/useEvaluationTemplates";
 import type {
   EvaluationResponseRow,
   EvaluationTemplateLite,
@@ -77,7 +78,7 @@ export const EvaluationViewerDialog = ({ responseId, open, onOpenChange, onSaved
               id: (tpl as any).id,
               title: (tpl as any).title,
               description: (tpl as any).description,
-              structure: Array.isArray((tpl as any).structure) ? (tpl as any).structure : [],
+              structure: parseEvaluationStructure((tpl as any).structure).structure,
             }
           : null
       );
