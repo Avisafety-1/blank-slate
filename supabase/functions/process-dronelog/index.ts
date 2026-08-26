@@ -3,6 +3,7 @@ import JSZip from "npm:jszip@3.10.1";
 import {
   resolveDronelogKey,
   decryptSecret,
+  djiLogin,
   djiLoginWithKeyRecovery,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
