@@ -33,6 +33,8 @@ interface EvaluationFormPreviewProps {
   visibilitySlot?: React.ReactNode;
   /** Optional element rendered inside the overall-assessment card (e.g. AI button) */
   overallAiSlot?: React.ReactNode;
+  /** Optional student signature block rendered below the overall assessment */
+  signatureSlot?: React.ReactNode;
 
 
   scores?: Record<string, number>;
