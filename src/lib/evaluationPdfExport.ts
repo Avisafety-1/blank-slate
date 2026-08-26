@@ -8,8 +8,7 @@ import {
   sanitizeFilenameForPdf,
   setFontStyle,
 } from "@/lib/pdfUtils";
-import { getCurrentLanguage } from "@/lib/i18nHelpers";
-import i18n from "@/i18n";
+import { getCurrentLanguage, getFixedT } from "@/lib/i18nHelpers";
 import type { EvaluationCategory } from "@/hooks/useEvaluationTemplates";
 
 export interface EvaluationPdfInput {
@@ -40,7 +39,7 @@ const MARGIN = 14;
  */
 export const exportEvaluationToPdf = async (input: EvaluationPdfInput): Promise<void> => {
   const language = getCurrentLanguage();
-  const t = i18n.getFixedT(language);
+  const t = getFixedT(language);
   const doc = await createPdfDocument();
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - MARGIN * 2;
