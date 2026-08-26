@@ -488,49 +488,48 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "No DJI credentials found for this user" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get company's DroneLog API key
-    const { data: company } = await serviceClient
-      .from("companies")
-      .select("dronelog_api_key")
-      .eq("id", pendingLog.company_id)
-      .maybeSingle();
-
-    const dronelogKey = company?.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
+    // Resolve DroneLog API key: personal key -> company key -> global key
+    const resolvedKey = await resolveDronelogKey(serviceClient, {
+      userId: pendingLog.user_id,
+      companyId: pendingLog.company_id,
+      provision: true,
+    });
+    const dronelogKey = resolvedKey?.key;
     if (!dronelogKey) {
       return new Response(JSON.stringify({ error: "No DroneLog API key configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Login to DJI (with one retry on 429 rate-limit)
-    const password = await decryptPassword(cred.dji_password_encrypted);
-    const doLogin = () => fetch(`${DRONELOG_BASE}/accounts/dji`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ email: cred.dji_email, password }),
-    });
-    let loginRes = await doLogin();
-    if (loginRes.status === 429) {
-      console.log("[dji-process-single] DJI login rate-limited, waiting 35s and retrying once");
-      await new Promise((r) => setTimeout(r, 35000));
-      loginRes = await doLogin();
-    }
+    // Reuse the cached DJI account id when we have one — a login is only
+    // needed the first time, which keeps us well under the rate limit.
+    let accountId: string | null = cred.dji_account_id || null;
 
-    if (!loginRes.ok) {
-      const errText = await loginRes.text();
-      if (loginRes.status === 429) {
-        await persistError("rate_limit", `DJI login rate-limited (429): ${errText.slice(0, 200)}`);
-        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+    if (!accountId) {
+      if (await isKeyCoolingDown(serviceClient, resolvedKey!.fingerprint)) {
+        await persistError("rate_limit", "DroneLog key is cooling down after 429");
+        return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om noen minutter.");
       }
-      await persistError("login_failed", `DJI login failed (${loginRes.status}): ${errText.slice(0, 200)}`);
-      return errorResponse("login_failed", `Innlogging mot DJI feilet (${loginRes.status}). Sjekk DJI-passordet i din profil.`);
+      const password = await decryptPassword(cred.dji_password_encrypted);
+      const login = await djiLogin(dronelogKey, cred.dji_email, password);
+      if (!login.ok) {
+        if (login.status === 429) {
+          await setKeyCooldown(serviceClient, resolvedKey!.fingerprint, login.retryAfter ?? 300);
+          await persistError("rate_limit", `DJI login rate-limited (429)`);
+          return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om 1-2 minutter.");
+        }
+        await persistError("login_failed", `DJI login failed (${login.status})`);
+        return errorResponse("login_failed", `Innlogging mot DJI feilet (${login.status}). Sjekk DJI-passordet i din profil.`);
+      }
+      accountId = login.accountId;
+      if (accountId) {
+        await serviceClient.from("dji_credentials").update({ dji_account_id: accountId }).eq("user_id", pendingLog.user_id);
+      }
     }
-
-    const loginData = await loginRes.json();
-    const accountId = loginData.result?.djiAccountId || loginData.result?.id || loginData.result?.accountId || cred.dji_account_id;
 
     if (!accountId) {
       await persistError("no_account_id", "Could not determine DJI account ID");
       return errorResponse("no_account_id", "Fant ikke DJI-konto-ID.");
     }
+
 
     // Process the log via URL (DroneLog henter filen selv fra DJI Cloud)
     const logId = pendingLog.dji_log_id;
