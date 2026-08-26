@@ -38,7 +38,7 @@ export interface EvaluationTemplateLite {
  * and loads any existing evaluation response for that mission.
  */
 export function useMissionEvaluation(missionId?: string | null, oppdragstype?: string | null) {
-  const { companyId } = useAuth();
+  const { companyId, isAdmin } = useAuth();
   const { types, loading: typesLoading } = useCompanyMissionTypes();
 
   const [template, setTemplate] = useState<EvaluationTemplateLite | null>(null);
@@ -89,13 +89,16 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
     setExistsStatus(state?.response_exists ? state?.response_status ?? "draft" : null);
     setCanView(state?.response_exists ? !!state?.can_view : true);
 
+    const parsedTpl = tpl ? parseEvaluationStructure((tpl as any).structure) : null;
+    // Frontend-guard: admin-only templates are not exposed to non-admins
+    const blocked = !!parsedTpl?.adminOnly && !isAdmin;
     setTemplate(
-      tpl
+      tpl && !blocked
         ? {
             id: (tpl as any).id,
             title: (tpl as any).title,
             description: (tpl as any).description,
-            structure: parseEvaluationStructure((tpl as any).structure).structure,
+            structure: parsedTpl!.structure,
           }
         : null
     );
@@ -109,7 +112,7 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
         : null
     );
     setLoading(false);
-  }, [templateId, missionId]);
+  }, [templateId, missionId, isAdmin]);
 
   useEffect(() => {
     load();
