@@ -1756,7 +1756,7 @@ export const AddMissionDialog = ({
                       {drones.map((drone) => (
                         <CommandItem
                           key={drone.id}
-                          value={`${drone.modell} ${drone.registration_number || ''}`}
+                          value={`${drone.modell} ${drone.dji_aircraft_name || ''} ${drone.serienummer || ''} ${drone.registration_number || ''}`}
                           onSelect={() => toggleDrone(drone.id)}
                         >
                           <Check
@@ -1765,7 +1765,11 @@ export const AddMissionDialog = ({
                               selectedDrones.includes(drone.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {drone.modell}{drone.registration_number ? ` (${drone.registration_number})` : ''}
+                          <DroneOptionContent
+                            modell={drone.modell}
+                            dji_aircraft_name={drone.dji_aircraft_name}
+                            serienummer={drone.serienummer}
+                          />
                         </CommandItem>
                       ))}
                     </CommandGroup>
