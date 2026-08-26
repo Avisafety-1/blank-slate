@@ -304,18 +304,40 @@ export function useFlightLogsList(active: boolean) {
       const scan = (skip: "drone" | "pilot" | "source" | "company", column: string) =>
         applyFilters((supabase as any).from("flight_logs").select(column), skip).limit(OPTIONS_SCAN_LIMIT);
 
-      const [droneRows, pilotRows, sourceRows, companyRows] = await Promise.all([
+      const [droneRows, pilotScan, sourceRows, companyRows] = await Promise.all([
         scan("drone", "drone_id"),
-        scan("pilot", "user_id"),
+        scan("pilot", "id, user_id"),
         scan("source", "source"),
         allowedCompanyIds.length > 1 ? scan("company", "company_id") : Promise.resolve({ data: [] }),
       ]);
       if (cancelled) return;
 
       const droneIds = [...new Set((droneRows.data || []).map((r: any) => r.drone_id).filter(Boolean))] as string[];
-      const pilotIds = [...new Set((pilotRows.data || []).map((r: any) => r.user_id).filter(Boolean))] as string[];
+
+      // Pilot = the person linked in flight_log_personnel; the owner (user_id)
+      // only counts when the log has no personnel link at all.
+      const scanRows = (pilotScan.data || []) as any[];
+      const logIds = scanRows.map(r => r.id);
+      const pilotIdSet = new Set<string>();
+      const logsWithPilot = new Set<string>();
+      for (let i = 0; i < logIds.length; i += 500) {
+        const { data: links } = await (supabase as any)
+          .from("flight_log_personnel")
+          .select("flight_log_id, profile_id")
+          .in("flight_log_id", logIds.slice(i, i + 500));
+        if (cancelled) return;
+        for (const l of links || []) {
+          logsWithPilot.add(l.flight_log_id);
+          if (l.profile_id) pilotIdSet.add(l.profile_id);
+        }
+      }
+      for (const r of scanRows) {
+        if (r.user_id && !logsWithPilot.has(r.id)) pilotIdSet.add(r.user_id);
+      }
+      const pilotIds = [...pilotIdSet];
       const sources = [...new Set((sourceRows.data || []).map((r: any) => normalizeSource(r.source)))];
       const companyIds = [...new Set((companyRows.data || []).map((r: any) => r.company_id).filter(Boolean))] as string[];
+
 
       const [drones, profiles, companies] = await Promise.all([
         droneIds.length
