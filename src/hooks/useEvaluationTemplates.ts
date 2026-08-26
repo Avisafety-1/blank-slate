@@ -67,7 +67,7 @@ export const serializeEvaluationStructure = (
 };
 
 export const useEvaluationTemplates = () => {
-  const { user, companyId, isSuperAdmin } = useAuth();
+  const { user, companyId, isSuperAdmin, isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
