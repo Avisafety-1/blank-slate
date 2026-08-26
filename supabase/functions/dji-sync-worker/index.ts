@@ -13,6 +13,8 @@ import {
   uploadAndParse,
   matchDroneAndBattery,
 } from "../_shared/dji-parser.ts";
+import { resolveDronelogKey } from "../_shared/dronelog-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
