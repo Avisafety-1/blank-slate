@@ -108,6 +108,70 @@ async function probeBeacons(
   }
 }
 
+// Variant probe: tests exact URL shapes (trailing slash / plain query) and
+// surfaces redirects instead of following them.
+async function probeBeaconsVariant(opts: {
+  host: string;
+  keyLabel: string;
+  apiKey: string | undefined;
+  viewport: string;
+  trailingSlash: boolean;
+  plain: boolean;
+  label: string;
+}): Promise<Record<string, unknown>> {
+  const { host, keyLabel, apiKey, viewport, trailingSlash, plain, label } = opts;
+  const path = trailingSlash ? "/v1/beacons/" : "/v1/beacons";
+  const query = plain
+    ? `viewport=${viewport}`
+    : `viewport=${viewport}&return_grounded_traffic=true`;
+  const url = `https://${host}${path}?${query}`;
+  if (!apiKey) {
+    return { label, url, key: keyLabel, status: null, error: "no key configured" };
+  }
+  try {
+    const res = await safeFetch(
+      url,
+      {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+          "x-api-key": apiKey,
+        },
+      },
+      ALLOWED_HOSTS,
+    );
+    const location = res.headers.get("location");
+    const text = await res.text();
+    if (!res.ok) {
+      return { label, url, key: keyLabel, status: res.status, location, error: text.slice(0, 300) };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { label, url, key: keyLabel, status: res.status, location, error: "non-JSON response" };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      label,
+      url,
+      key: keyLabel,
+      status: res.status,
+      location,
+      count: arr.length,
+      bodyIsArray: Array.isArray(data),
+      sources: tally(arr, "source"),
+      types: tally(arr, "beacon_type"),
+      bbox: bboxOf(arr),
+      sample: arr.slice(0, 5).map((b) => String(b?.callsign ?? b?.id ?? "?")),
+    };
+  } catch (e) {
+    return { label, url, key: keyLabel, status: null, error: String(e).slice(0, 300) };
+  }
+}
+
 async function probe(
   host: string,
   keyLabel: string,
