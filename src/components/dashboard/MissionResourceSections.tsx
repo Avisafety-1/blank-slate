@@ -11,7 +11,7 @@ interface PersonnelItem {
 
 interface DroneItem {
   drone_id: string;
-  drones: { id: string; modell: string; serienummer: string } | null;
+  drones: { id: string; modell: string; serienummer: string; dji_aircraft_name?: string | null } | null;
 }
 
 interface EquipmentItem {
@@ -56,7 +56,7 @@ export const MissionResourceSections = ({ mission, open }: MissionResourceSectio
             .eq("mission_id", mission.id),
           supabase
             .from("mission_drones")
-            .select("drone_id, drones(id, modell, serienummer)")
+            .select("drone_id, drones(id, modell, serienummer, dji_aircraft_name)")
             .eq("mission_id", mission.id),
           supabase
             .from("mission_equipment")
@@ -123,7 +123,11 @@ export const MissionResourceSections = ({ mission, open }: MissionResourceSectio
             <ul className="text-base space-y-0.5">
               {drones.map((d) => (
                 <li key={d.drone_id}>
-                  <div>{d.drones?.modell || "Ukjent"}</div>
+                  <div className="break-words">
+                    {[d.drones?.modell, (d.drones?.dji_aircraft_name || "").trim()]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </div>
                   {d.drones?.serienummer && (
                     <div className="text-sm text-muted-foreground break-all">
                       {d.drones.serienummer}
