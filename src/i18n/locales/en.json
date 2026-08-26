@@ -4207,6 +4207,12 @@
       "missingUserCompany": "Missing user or company information",
       "exported": "Logbook exported to documents",
       "exportFailed": "Could not export logbook"
+    },
+    "tabs": {
+      "flights": "Flights",
+      "entries": "Log entries",
+      "entriesShort": "Log",
+      "evaluationsShort": "Eval."
     }
   },
   "fh2Dialog": {
@@ -8284,13 +8290,14 @@
       "availableAfterSave": "The student can sign once the form is saved as completed."
     },
     "export": {
-      "title": "Export to PDF",
-      "description": "Choose who the evaluation should be visible to before downloading the PDF.",
+      "title": "Save as PDF",
+      "description": "Choose who the evaluation should be visible to. The PDF is stored in Documents.",
       "studentAlways": "{{name}} (student) always has access",
       "adminsOnly": "Visible to administrators",
-      "action": "Export PDF",
+      "action": "Save PDF to Documents",
       "success": "PDF exported",
-      "error": "Could not export PDF"
+      "error": "Could not export PDF",
+      "savedToDocuments": "The form was saved under Documents (Assessment form)"
     },
     "pdf": {
       "student": "Student",

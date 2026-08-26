@@ -4209,6 +4209,12 @@
       "missingUserCompany": "Mangler bruker- eller bedriftsinformasjon",
       "exported": "Loggbok eksportert til dokumenter",
       "exportFailed": "Kunne ikke eksportere loggbok"
+    },
+    "tabs": {
+      "flights": "Flyturer",
+      "entries": "Logginnlegg",
+      "entriesShort": "Logg",
+      "evaluationsShort": "Eval."
     }
   },
   "fh2Dialog": {
@@ -8286,13 +8292,14 @@
       "availableAfterSave": "Eleven kan signere når skjemaet er lagret som fullført."
     },
     "export": {
-      "title": "Eksporter til PDF",
-      "description": "Velg hvem evalueringen skal være synlig for før du laster ned PDF-en.",
+      "title": "Lagre som PDF",
+      "description": "Velg hvem evalueringen skal være synlig for. PDF-en lagres i Dokumenter.",
       "studentAlways": "{{name}} (elev) har alltid tilgang",
       "adminsOnly": "Synlig for administratorer",
-      "action": "Eksporter PDF",
+      "action": "Lagre PDF i Dokumenter",
       "success": "PDF eksportert",
-      "error": "Kunne ikke eksportere PDF"
+      "error": "Kunne ikke eksportere PDF",
+      "savedToDocuments": "Skjemaet er lagret under Dokumenter (Vurderingsskjema)"
     },
     "pdf": {
       "student": "Elev",
