@@ -897,9 +897,11 @@ Deno.serve(async (req) => {
 
     const globalKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
 
-    // Look up per-company key
+    // Resolve key: personal user key -> company key -> global key.
+    // A personal key is provisioned lazily so users no longer share one
+    // rate-limit pool with everyone else on the same company/global key.
     let dronelogKey = globalKey;
-    let usingCompanyKey = false;
+    let keySource = "global";
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -907,22 +909,18 @@ Deno.serve(async (req) => {
         .eq("id", authUser.id)
         .single();
 
-      if (profile?.company_id) {
-        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const { data: company } = await serviceClient
-          .from("companies")
-          .select("dronelog_api_key")
-          .eq("id", profile.company_id)
-          .single();
-
-        if (company?.dronelog_api_key) {
-          dronelogKey = company.dronelog_api_key;
-          usingCompanyKey = true;
-          console.log("Using per-company DroneLog key for company:", profile.company_id);
-        }
+      const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const resolved = await resolveDronelogKey(serviceClient, {
+        userId: authUser.id,
+        companyId: profile?.company_id ?? null,
+        provision: true,
+      });
+      if (resolved) {
+        dronelogKey = resolved.key;
+        keySource = resolved.source;
       }
     } catch (err) {
-      console.log("Could not look up company key, using global:", err);
+      console.log("Could not resolve DroneLog key, using global:", err);
     }
 
     if (!dronelogKey) {
@@ -930,7 +928,8 @@ Deno.serve(async (req) => {
     }
 
     const keyFingerprint = dronelogKey.substring(0, 6) + "…";
-    console.log(`[process-dronelog] key=${keyFingerprint}`);
+    console.log(`[process-dronelog] key=${keyFingerprint} source=${keySource}`);
+
 
     const contentType = req.headers.get("content-type") || "";
 
