@@ -8186,7 +8186,10 @@
       "subcategoryPlaceholder": "Subcategory, e.g. Precision flying",
       "subcategoryDescriptionPlaceholder": "Explanatory text – what is assessed here?",
       "addSubcategory": "Add subcategory",
-      "addCategory": "Add main category"
+      "addCategory": "Add main category",
+      "adminOnly": "Admin only",
+      "adminOnlyHint": "Hide this form from users without an administrator role",
+      "adminOnlyBadge": "Admin only"
     },
     "dialog": {
       "createTitle": "New evaluation form",
@@ -8210,7 +8213,8 @@
     "errors": {
       "titleRequired": "The form needs a title",
       "categoryRequired": "Add at least one main category with a subcategory",
-      "saveFailed": "Could not save the form"
+      "saveFailed": "Could not save the form",
+      "noAccess": "You do not have access to this document"
     },
     "mission": {
       "perform": "Perform evaluation",
@@ -8278,6 +8282,29 @@
       "signedBy": "Signed by {{name}} · {{date}}",
       "waitingFor": "Waiting for a signature from {{name}}.",
       "availableAfterSave": "The student can sign once the form is saved as completed."
+    },
+    "export": {
+      "title": "Export to PDF",
+      "description": "Choose who the evaluation should be visible to before downloading the PDF.",
+      "studentAlways": "{{name}} (student) always has access",
+      "adminsOnly": "Visible to administrators",
+      "action": "Export PDF",
+      "success": "PDF exported",
+      "error": "Could not export PDF"
+    },
+    "pdf": {
+      "student": "Student",
+      "instructor": "Instructor",
+      "mission": "Mission",
+      "date": "Date",
+      "notScored": "Not scored",
+      "summary": "Summary",
+      "overallAverage": "Overall average",
+      "signature": "Signature",
+      "signedBy": "Signed by",
+      "signedAt": "Signed",
+      "notSigned": "Not signed",
+      "visibility": "Visible to"
     }
   },
   "uploadLog": {
