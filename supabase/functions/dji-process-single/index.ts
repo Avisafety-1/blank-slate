@@ -501,7 +501,7 @@ Deno.serve(async (req) => {
       companyId: pendingLog.company_id,
       provision: true,
     });
-    const dronelogKey = resolvedKey?.key;
+    let dronelogKey = resolvedKey?.key;
     if (!dronelogKey) {
       return new Response(JSON.stringify({ error: "No DroneLog API key configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -523,6 +523,7 @@ Deno.serve(async (req) => {
         email: cred.dji_email,
         password,
       });
+      dronelogKey = recovered.resolved.key;
       const login = recovered.login;
       if (!login.ok) {
         if (login.status === 429) {
