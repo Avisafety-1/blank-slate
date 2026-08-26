@@ -13,6 +13,8 @@ import {
   uploadAndParse,
   matchDroneAndBattery,
 } from "../_shared/dji-parser.ts";
+import { resolveDronelogKey } from "../_shared/dronelog-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,12 +48,17 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
   const step_durations: Record<string, number> = {};
 
   try {
-    // Resolve dronelog key for company
+    // Resolve dronelog key for this user (personal -> company -> global)
     const { data: company } = await serviceClient
       .from("companies").select("id, dronelog_api_key").eq("id", job.company_id).maybeSingle();
     if (!company) throw new Error("company not found");
-    const dronelogKey = company.dronelog_api_key || Deno.env.get("DRONELOG_AVISAFE_KEY");
+    const resolvedKey = await resolveDronelogKey(serviceClient, {
+      userId: job.user_id,
+      companyId: job.company_id,
+    });
+    const dronelogKey = resolvedKey?.key;
     if (!dronelogKey) throw new Error("no dronelog key");
+
 
     const accountId = job.payload?.dronelog_account_id;
     const fileUrl = job.download_url

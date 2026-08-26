@@ -1,5 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
+import {
+  resolveDronelogKey,
+  decryptSecret,
+  djiLogin,
+  setKeyCooldown,
+} from "../_shared/dronelog-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -897,9 +904,11 @@ Deno.serve(async (req) => {
 
     const globalKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
 
-    // Look up per-company key
+    // Resolve key: personal user key -> company key -> global key.
+    // A personal key is provisioned lazily so users no longer share one
+    // rate-limit pool with everyone else on the same company/global key.
     let dronelogKey = globalKey;
-    let usingCompanyKey = false;
+    let keySource = "global";
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -907,22 +916,18 @@ Deno.serve(async (req) => {
         .eq("id", authUser.id)
         .single();
 
-      if (profile?.company_id) {
-        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const { data: company } = await serviceClient
-          .from("companies")
-          .select("dronelog_api_key")
-          .eq("id", profile.company_id)
-          .single();
-
-        if (company?.dronelog_api_key) {
-          dronelogKey = company.dronelog_api_key;
-          usingCompanyKey = true;
-          console.log("Using per-company DroneLog key for company:", profile.company_id);
-        }
+      const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const resolved = await resolveDronelogKey(serviceClient, {
+        userId: authUser.id,
+        companyId: profile?.company_id ?? null,
+        provision: true,
+      });
+      if (resolved) {
+        dronelogKey = resolved.key;
+        keySource = resolved.source;
       }
     } catch (err) {
-      console.log("Could not look up company key, using global:", err);
+      console.log("Could not resolve DroneLog key, using global:", err);
     }
 
     if (!dronelogKey) {
@@ -930,7 +935,8 @@ Deno.serve(async (req) => {
     }
 
     const keyFingerprint = dronelogKey.substring(0, 6) + "…";
-    console.log(`[process-dronelog] key=${keyFingerprint}`);
+    console.log(`[process-dronelog] key=${keyFingerprint} source=${keySource}`);
+
 
     const contentType = req.headers.get("content-type") || "";
 
@@ -981,10 +987,38 @@ Deno.serve(async (req) => {
         }
         let qs = `limit=${limit}`;
         if (createdAfterId) qs += `&createdAfterId=${createdAfterId}`;
-        const res = await fetch(`${DRONELOG_BASE}/logs/${accountId}?${qs}`, {
+        const listOnce = (id: string) => fetch(`${DRONELOG_BASE}/logs/${id}?${qs}`, {
           headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
         });
-        const data = await res.json();
+
+        let res = await listOnce(accountId);
+
+        // The cached DJI account id can go stale. Re-login once (only then) and retry.
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+          const { data: cred } = await serviceClient
+            .from("dji_credentials")
+            .select("dji_email, dji_password_encrypted")
+            .eq("user_id", authUser.id)
+            .maybeSingle();
+          if (cred?.dji_password_encrypted) {
+            try {
+              const password = await decryptSecret(cred.dji_password_encrypted);
+              const login = await djiLogin(dronelogKey, cred.dji_email, password);
+              if (login.ok && login.accountId) {
+                await serviceClient.from("dji_credentials").update({ dji_account_id: login.accountId }).eq("user_id", authUser.id);
+                console.log("[process-dronelog] dji-list-logs refreshed stale accountId");
+                res = await listOnce(login.accountId);
+              } else if (login.status === 429) {
+                await setKeyCooldown(serviceClient, keyFingerprint, login.retryAfter ?? 300);
+              }
+            } catch (e) {
+              console.warn("[process-dronelog] re-login after stale account failed:", (e as Error).message);
+            }
+          }
+        }
+
+        const data = await res.json().catch(() => ({}));
         console.log(`[process-dronelog] dji-list-logs key=${keyFingerprint} upstream=${res.status}`);
         if (!res.ok) {
           if (res.status === 429) {
@@ -995,6 +1029,7 @@ Deno.serve(async (req) => {
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
 
       if (action === "dji-process-log") {
         const { accountId, logId, downloadUrl } = body;
@@ -1065,7 +1100,7 @@ Deno.serve(async (req) => {
           });
           let upRes = await doUpload(dronelogKey!);
           // Ugyldig/utløpt selskapsnøkkel → fall tilbake til Avisafe sin globale nøkkel
-          if (upRes.status === 401 && usingCompanyKey && globalKey && globalKey !== dronelogKey) {
+          if (upRes.status === 401 && keySource !== "global" && globalKey && globalKey !== dronelogKey) {
             console.warn("[process-dronelog] company key rejected (401), retrying with global key");
             upRes = await doUpload(globalKey);
           }
@@ -1163,14 +1198,18 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "No saved credentials" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        // Decrypt password
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const raw = Uint8Array.from(atob(cred.dji_password_encrypted), c => c.charCodeAt(0));
-        const iv = raw.slice(0, 12);
-        const ciphertext = raw.slice(12);
-        const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(serviceKey.slice(0, 32)), "AES-GCM", false, ["decrypt"]);
-        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, keyMaterial, ciphertext);
-        const password = new TextDecoder().decode(decrypted);
+        // Cached account → no login at all. DJI/DroneLog rate limits are shared
+        // between users, so we only spend a login when we have to.
+        if (cred.dji_account_id) {
+          return new Response(JSON.stringify({
+            result: { djiAccountId: cred.dji_account_id },
+            accountId: cred.dji_account_id,
+            cached: true,
+            email: cred.dji_email,
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const password = await decryptSecret(cred.dji_password_encrypted);
 
         // Login to DJI via DroneLog API
         const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
@@ -1184,6 +1223,9 @@ Deno.serve(async (req) => {
           const classified = classifyDjiLoginError(res.status, upstreamMsg);
           const retryAfter = res.headers.get("Retry-After") || null;
           console.error(`[process-dronelog] dji-auto-login upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          if (classified.reason === "rate_limited") {
+            await setKeyCooldown(serviceClient, keyFingerprint, retryAfter ? parseInt(retryAfter, 10) || 300 : 300);
+          }
           // Only delete saved credentials when DJI explicitly rejects the password.
           // Do NOT delete on rate-limit or transient upstream errors.
           if (classified.reason === "invalid_credentials" || classified.reason === "account_locked") {
@@ -1207,6 +1249,7 @@ Deno.serve(async (req) => {
 
         return new Response(JSON.stringify({ ...data, email: cred.dji_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
 
       if (action === "dji-delete-credentials") {
         const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -1299,7 +1342,7 @@ Deno.serve(async (req) => {
 
     let dronelogResponse = await postUpload(dronelogKey!);
     // Ugyldig/utløpt selskapsnøkkel → fall tilbake til Avisafe sin globale nøkkel
-    if (dronelogResponse.status === 401 && usingCompanyKey && globalKey && globalKey !== dronelogKey) {
+    if (dronelogResponse.status === 401 && keySource !== "global" && globalKey && globalKey !== dronelogKey) {
       console.warn("[process-dronelog] company key rejected (401), retrying with global key");
       dronelogResponse = await postUpload(globalKey);
     }

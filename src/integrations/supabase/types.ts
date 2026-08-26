@@ -2012,6 +2012,8 @@ export type Database = {
           dji_account_id: string | null
           dji_email: string
           dji_password_encrypted: string
+          dronelog_api_key_encrypted: string | null
+          dronelog_key_created_at: string | null
           id: string
           last_sync_at: string | null
           updated_at: string | null
@@ -2024,6 +2026,8 @@ export type Database = {
           dji_account_id?: string | null
           dji_email: string
           dji_password_encrypted: string
+          dronelog_api_key_encrypted?: string | null
+          dronelog_key_created_at?: string | null
           id?: string
           last_sync_at?: string | null
           updated_at?: string | null
@@ -2036,6 +2040,8 @@ export type Database = {
           dji_account_id?: string | null
           dji_email?: string
           dji_password_encrypted?: string
+          dronelog_api_key_encrypted?: string | null
+          dronelog_key_created_at?: string | null
           id?: string
           last_sync_at?: string | null
           updated_at?: string | null
