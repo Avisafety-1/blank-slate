@@ -161,6 +161,9 @@ interface UploadDroneLogDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Antall DJI-logger som hentes i én batch (samme som nattsynken).
+const DJI_LOG_PAGE_SIZE = 200;
+
 // ── Helper: call edge function with JSON ──
 
 async function callDronelogAction(action: string, payload: Record<string, unknown>) {
@@ -1337,7 +1340,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   ) => {
     setIsDjiLoading(true);
     try {
-      const payload: any = { accountId, limit: 20 };
+      const payload: any = { accountId, limit: DJI_LOG_PAGE_SIZE };
       if (sessionSource) payload.sessionKeySource = sessionSource;
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
@@ -1357,12 +1360,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         maxHeight: l.maxHeight || 0,
         url: l.downloadUrl || l.url || '',
       })).sort((a: any, b: any) => b._timestamp - a._timestamp);
+      const dedupe = (logs: DjiLog[]) => {
+        const seen = new Set<string>();
+        return logs.filter(l => (seen.has(l.id) ? false : (seen.add(l.id), true)));
+      };
       if (createdAfterId) {
-        setDjiLogs(prev => [...prev, ...mapped]);
+        setDjiLogs(prev => dedupe([...prev, ...mapped]));
       } else {
-        setDjiLogs(mapped);
+        setDjiLogs(dedupe(mapped));
       }
-      setDjiHasMore(rawLogs.length >= 20);
+      setDjiHasMore(rawLogs.length >= DJI_LOG_PAGE_SIZE);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
       if (isApiLimitError(error)) {
@@ -4015,14 +4022,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
-            {/* Load more */}
+            {/* Refresh (full batch hentes allerede i én request) */}
             {djiHasMore && (
               <div className="flex justify-center pt-2">
-                <Button variant="outline" size="sm" disabled={isDjiLoading} onClick={() => {
-                  const lastLog = djiLogs[djiLogs.length - 1];
-                  if (lastLog) fetchDjiLogs(djiAccountId, Number(lastLog.id));
-                }}>
-                  {t('common.loadMore', 'Last inn flere')}
+                <Button variant="outline" size="sm" disabled={isDjiLoading} onClick={() => fetchDjiLogs(djiAccountId)}>
+                  {t('common.refresh', 'Oppdater')}
                 </Button>
               </div>
             )}
