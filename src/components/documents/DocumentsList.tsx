@@ -210,7 +210,14 @@ const DocumentsList = ({
                           {t('documents.list.sharedBadge')}
                         </Badge>
                       )}
+                      {(doc as any).evaluation_template?.admin_only && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap w-fit gap-0.5 border-amber-500/40 text-amber-600">
+                          <Lock className="h-2.5 w-2.5" />
+                          {t('evaluation.builder.adminOnlyBadge')}
+                        </Badge>
+                      )}
                     </div>
+
                     <span className="truncate">{doc.tittel}</span>
                   </div>
 
