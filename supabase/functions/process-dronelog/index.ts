@@ -989,6 +989,11 @@ Deno.serve(async (req) => {
           .select("dronelog_api_key_encrypted")
           .eq("user_id", authUser.id)
           .maybeSingle();
+        const { data: existingStandaloneKey } = await serviceClient
+          .from("user_dronelog_keys")
+          .select("user_id")
+          .eq("user_id", authUser.id)
+          .maybeSingle();
 
         let pendingPersonalKey: string | null = null;
         let initialKey = resolvedKey ?? { key: dronelogKey, source: keySource as "user" | "company" | "global", fingerprint: keyFingerprint };
@@ -996,7 +1001,7 @@ Deno.serve(async (req) => {
         // A brand-new user has no credentials row yet, so the regular resolver
         // cannot persist a personal key. Mint it before the first DJI call and
         // persist it together with valid credentials only after login succeeds.
-        if (saveCredentials === true && !existingCredential?.dronelog_api_key_encrypted) {
+        if (!existingStandaloneKey && !existingCredential?.dronelog_api_key_encrypted) {
           const masterKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
           if (!masterKey) {
             return new Response(JSON.stringify({ error: "DroneLog API key not configured", reason: "api_key_invalid" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1008,7 +1013,7 @@ Deno.serve(async (req) => {
             userId: authUser.id,
             masterKey,
             name: `${company?.navn ?? "Avisafe"} – ${email.trim()}`,
-            persist: false,
+            persist: true,
           });
           if (!provisioned.key) {
             console.error(`[process-dronelog] pre-login personal key provisioning failed reason=${provisioned.error ?? "unknown"}`);
@@ -1077,10 +1082,6 @@ Deno.serve(async (req) => {
             company_id: profileCompanyId,
             updated_at: new Date().toISOString(),
           };
-          if (pendingPersonalKey) {
-            credentialPayload.dronelog_api_key_encrypted = await encryptSecret(pendingPersonalKey);
-            credentialPayload.dronelog_key_created_at = new Date().toISOString();
-          }
           const { error: saveError } = await serviceClient
             .from("dji_credentials")
             .upsert(credentialPayload, { onConflict: "user_id" });

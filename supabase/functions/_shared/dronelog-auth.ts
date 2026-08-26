@@ -80,6 +80,20 @@ export async function resolveDronelogKey(
   let credRow: { dronelog_api_key_encrypted: string | null; dji_email: string | null; company_id: string | null } | null = null;
 
   if (opts.userId) {
+    const { data: standaloneKey } = await serviceClient
+      .from("user_dronelog_keys")
+      .select("api_key_encrypted")
+      .eq("user_id", opts.userId)
+      .maybeSingle();
+    if (standaloneKey?.api_key_encrypted) {
+      try {
+        const key = await decryptSecret(standaloneKey.api_key_encrypted);
+        if (key) return { key, source: "user", fingerprint: fp(key) };
+      } catch (e) {
+        console.warn("[dronelog-auth] could not decrypt standalone user key:", (e as Error).message);
+      }
+    }
+
     const { data } = await serviceClient
       .from("dji_credentials")
       .select("dronelog_api_key_encrypted, dji_email, company_id")
@@ -113,11 +127,11 @@ export async function resolveDronelogKey(
 
   // Provision independently of company lookup. The global key is the master
   // credential used only to mint a personal key, never preferred for normal calls.
-  if (opts.provision && opts.userId && credRow && !credRow.dronelog_api_key_encrypted && globalKey) {
+  if (opts.provision && opts.userId && !credRow?.dronelog_api_key_encrypted && globalKey) {
     const provisioned = await provisionUserKey(serviceClient, {
       userId: opts.userId,
       masterKey: globalKey,
-      name: `${companyName} – ${credRow.dji_email ?? opts.userId}`,
+      name: `${companyName} – ${credRow?.dji_email ?? opts.userId}`,
     });
     if (provisioned.key) {
       return { key: provisioned.key, source: "user", fingerprint: fp(provisioned.key) };
@@ -141,6 +155,19 @@ export async function resolveDronelogKeyForSource(
   }
 
   if (opts.source === "user") {
+    const { data: standaloneKey } = await serviceClient
+      .from("user_dronelog_keys")
+      .select("api_key_encrypted")
+      .eq("user_id", opts.userId)
+      .maybeSingle();
+    if (standaloneKey?.api_key_encrypted) {
+      try {
+        const key = await decryptSecret(standaloneKey.api_key_encrypted);
+        if (key) return { key, source: "user", fingerprint: fp(key) };
+      } catch (error) {
+        console.warn("[dronelog-auth] could not decrypt requested standalone user key:", (error as Error).message);
+      }
+    }
     const { data } = await serviceClient
       .from("dji_credentials")
       .select("dronelog_api_key_encrypted")
@@ -214,15 +241,11 @@ export async function provisionUserKey(
     }
     const encrypted = await encryptSecret(newKey);
     const { data: saved, error: saveError } = await serviceClient
-      .from("dji_credentials")
-      .update({
-        dronelog_api_key_encrypted: encrypted,
-        dronelog_key_created_at: new Date().toISOString(),
-      })
-      .eq("user_id", opts.userId)
-      .select("dronelog_key_created_at")
+      .from("user_dronelog_keys")
+      .upsert({ user_id: opts.userId, api_key_encrypted: encrypted }, { onConflict: "user_id" })
+      .select("user_id")
       .maybeSingle();
-    if (saveError || !saved?.dronelog_key_created_at) {
+    if (saveError || !saved?.user_id) {
       console.warn(`[dronelog-auth] provision failed status=200 reason=persist_failed`);
       return { key: null, status: res.status, error: "persist_failed" };
     }
@@ -236,11 +259,10 @@ export async function provisionUserKey(
 
 /** Drop a personal key that the API rejected, so it gets re-provisioned next time. */
 export async function clearUserKey(serviceClient: any, userId: string): Promise<void> {
-  await serviceClient
-    .from("dji_credentials")
-    .update({ dronelog_api_key_encrypted: null })
-    .eq("user_id", userId)
-    .then(() => {}, () => {});
+  await Promise.all([
+    serviceClient.from("user_dronelog_keys").delete().eq("user_id", userId).then(() => {}, () => {}),
+    serviceClient.from("dji_credentials").update({ dronelog_api_key_encrypted: null }).eq("user_id", userId).then(() => {}, () => {}),
+  ]);
 }
 
 /** Resolve the next safe key after DroneLog rejected the current key itself. */
