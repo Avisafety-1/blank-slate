@@ -55,6 +55,7 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
     const resolvedKey = await resolveDronelogKey(serviceClient, {
       userId: job.user_id,
       companyId: job.company_id,
+      provision: true,
     });
     const dronelogKey = resolvedKey?.key;
     if (!dronelogKey) throw new Error("no dronelog key");

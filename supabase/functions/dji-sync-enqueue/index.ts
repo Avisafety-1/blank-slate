@@ -16,7 +16,7 @@ import {
 } from "../_shared/dji-parser.ts";
 import {
   resolveDronelogKey,
-  listLogsWithCachedAccount,
+  listLogsWithKeyRecovery,
   isKeyCoolingDown,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
@@ -136,18 +136,20 @@ async function enqueueForUser(
   let accountId = cred.dji_account_id;
   try {
     const password = await decryptPassword(cred.dji_password_encrypted);
-    const listed = await listLogsWithCachedAccount(serviceClient, {
-      key: dronelogKey,
+    const recovered = await listLogsWithKeyRecovery(serviceClient, {
+      resolved,
       userId: cred.user_id,
+      companyId: company.id,
       email: cred.dji_email,
       password,
       cachedAccountId: cred.dji_account_id,
       query: "limit=200",
     });
+    const listed = recovered.listed;
     accountId = listed.accountId;
     if (!listed.ok) {
       if (listed.status === 429) {
-        await setKeyCooldown(serviceClient, resolved.fingerprint, listed.retryAfter ?? 300);
+        await setKeyCooldown(serviceClient, recovered.resolved.fingerprint, listed.retryAfter ?? 300);
       }
       return { user_id: cred.user_id, jobs_added: 0, skipped: 0, error: listed.error || `list ${listed.status}` };
     }

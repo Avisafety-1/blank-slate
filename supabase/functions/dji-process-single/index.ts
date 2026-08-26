@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import JSZip from "npm:jszip@3.10.1";
 import {
   resolveDronelogKey,
-  djiLogin,
+  djiLoginWithKeyRecovery,
   isKeyCoolingDown,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
@@ -501,7 +501,7 @@ Deno.serve(async (req) => {
       companyId: pendingLog.company_id,
       provision: true,
     });
-    const dronelogKey = resolvedKey?.key;
+    let dronelogKey = resolvedKey?.key;
     if (!dronelogKey) {
       return new Response(JSON.stringify({ error: "No DroneLog API key configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -516,7 +516,15 @@ Deno.serve(async (req) => {
         return errorResponse("rate_limit", "DJI begrenser forespørsler. Prøv igjen om noen minutter.");
       }
       const password = await decryptPassword(cred.dji_password_encrypted);
-      const login = await djiLogin(dronelogKey, cred.dji_email, password);
+      const recovered = await djiLoginWithKeyRecovery(serviceClient, {
+        resolved: resolvedKey,
+        userId: pendingLog.user_id,
+        companyId: pendingLog.company_id,
+        email: cred.dji_email,
+        password,
+      });
+      dronelogKey = recovered.resolved.key;
+      const login = recovered.login;
       if (!login.ok) {
         if (login.status === 429) {
           await setKeyCooldown(serviceClient, resolvedKey!.fingerprint, login.retryAfter ?? 300);

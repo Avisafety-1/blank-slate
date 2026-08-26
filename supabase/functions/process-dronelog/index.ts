@@ -4,6 +4,7 @@ import {
   resolveDronelogKey,
   decryptSecret,
   djiLogin,
+  djiLoginWithKeyRecovery,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
 
@@ -909,12 +910,15 @@ Deno.serve(async (req) => {
     // rate-limit pool with everyone else on the same company/global key.
     let dronelogKey = globalKey;
     let keySource = "global";
+    let resolvedKey: Awaited<ReturnType<typeof resolveDronelogKey>> = null;
+    let profileCompanyId: string | null = null;
     try {
       const { data: profile } = await supabase
         .from("profiles")
         .select("company_id")
         .eq("id", authUser.id)
         .single();
+      profileCompanyId = profile?.company_id ?? null;
 
       const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const resolved = await resolveDronelogKey(serviceClient, {
@@ -923,8 +927,12 @@ Deno.serve(async (req) => {
         provision: true,
       });
       if (resolved) {
+        resolvedKey = resolved;
         dronelogKey = resolved.key;
         keySource = resolved.source;
+        if (resolved.provisioningError) {
+          console.warn(`[process-dronelog] personal key provisioning failed reason=${resolved.provisioningError}; fallback=${resolved.source}`);
+        }
       }
     } catch (err) {
       console.log("Could not resolve DroneLog key, using global:", err);
@@ -950,22 +958,30 @@ Deno.serve(async (req) => {
         if (!email || !password) {
           return new Response(JSON.stringify({ error: "Email and password required", reason: "missing_input" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${dronelogKey}`, "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ email, password }),
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const initialKey = resolvedKey ?? { key: dronelogKey, source: keySource as "user" | "company" | "global", fingerprint: keyFingerprint };
+        const recovered = await djiLoginWithKeyRecovery(serviceClient, {
+          resolved: initialKey,
+          userId: authUser.id,
+          companyId: profileCompanyId,
+          email,
+          password,
         });
-        const data = await res.json().catch(() => ({ message: "Invalid response from DroneLog" }));
-        if (!res.ok) {
+        resolvedKey = recovered.resolved;
+        dronelogKey = recovered.resolved.key;
+        keySource = recovered.resolved.source;
+        const login = recovered.login;
+        const data = login.body ?? { message: "Invalid response from DroneLog" };
+        if (!login.ok) {
           const upstreamMsg = String(data?.message || "").slice(0, 200);
-          const classified = classifyDjiLoginError(res.status, upstreamMsg);
-          const retryAfter = res.headers.get("Retry-After") || null;
-          console.error(`[process-dronelog] dji-login key=${keyFingerprint} upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          const classified = classifyDjiLoginError(login.status, upstreamMsg);
+          const retryAfter = login.retryAfter ? String(login.retryAfter) : null;
+          console.error(`[process-dronelog] dji-login source=${keySource} upstream=${login.status} reason=${classified.reason}`);
           const payload: Record<string, unknown> = {
             error: classified.error,
             reason: classified.reason,
             details: data,
-            upstreamStatus: res.status,
+            upstreamStatus: login.status,
           };
           if (classified.reason === "rate_limited") {
             payload.retryAfter = retryAfter;
@@ -973,7 +989,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify(payload), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           if (classified.reason === "api_key_invalid") {
-            return new Response(JSON.stringify(payload), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify(payload), { status: login.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           return new Response(JSON.stringify(payload), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
@@ -1182,6 +1198,20 @@ Deno.serve(async (req) => {
         if (upsertErr) {
           console.error("[process-dronelog] dji-save-credentials error:", upsertErr);
           return new Response(JSON.stringify({ error: "Failed to save credentials" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // The first interactive login happens before a credentials row exists,
+        // so provision the personal DroneLog key immediately after persistence.
+        // A provisioning failure must not discard otherwise valid DJI credentials.
+        const personalKey = await resolveDronelogKey(serviceClient, {
+          userId: authUser.id,
+          companyId: profileForPin?.company_id || profileCompanyId,
+          provision: true,
+        });
+        if (personalKey?.provisioningError) {
+          console.warn(`[process-dronelog] post-save personal key provisioning failed reason=${personalKey.provisioningError}`);
+        } else if (personalKey?.source === "user") {
+          console.log("[process-dronelog] post-save personal key ready");
         }
         return new Response(JSON.stringify({ saved: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
