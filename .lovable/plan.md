@@ -42,8 +42,8 @@ På mobil roteres signaturflaten 90° slik at man tegner sidelengs, men det er i
 ## Teknisk
 
 - `src/components/FlightLogbookDialog.tsx`: responsive tabb-labels.
-- `src/lib/evaluationPdfExport.ts`: returnerer `Blob` + filnavn, valgfri nedlasting.
-- `src/components/evaluation/EvaluationExportDialog.tsx`: nytt «lagre i dokumenter»-valg, opplasting til storage + `documents`-insert.
-- `src/components/documents/DocumentUploadDialog.tsx` og `DocumentsFilterBar.tsx`: ny kategori `evalueringsskjema`.
+- `src/lib/evaluationPdfExport.ts`: returnerer `Blob` + filnavn i stedet for nedlasting.
+- `src/components/evaluation/EvaluationExportDialog.tsx`: opplasting til `documents`-storage + `documents`-insert med kategori `vurderingsskjema`.
+
 - `src/components/SignatureDrawerDialog.tsx`: orienteringsoverlegg, baseline og «snu 180°»-tilstand som brukes i både rendering og `getCoordinates`.
 - `src/i18n/locales/no.json` og `en.json`: nye nøkler.
