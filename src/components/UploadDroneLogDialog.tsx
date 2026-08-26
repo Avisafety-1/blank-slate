@@ -1357,12 +1357,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         maxHeight: l.maxHeight || 0,
         url: l.downloadUrl || l.url || '',
       })).sort((a: any, b: any) => b._timestamp - a._timestamp);
+      const dedupe = (logs: DjiLog[]) => {
+        const seen = new Set<string>();
+        return logs.filter(l => (seen.has(l.id) ? false : (seen.add(l.id), true)));
+      };
       if (createdAfterId) {
-        setDjiLogs(prev => [...prev, ...mapped]);
+        setDjiLogs(prev => dedupe([...prev, ...mapped]));
       } else {
-        setDjiLogs(mapped);
+        setDjiLogs(dedupe(mapped));
       }
-      setDjiHasMore(rawLogs.length >= 20);
+      setDjiHasMore(rawLogs.length >= DJI_LOG_PAGE_SIZE);
     } catch (error: any) {
       console.error('DJI list logs error:', error);
       if (isApiLimitError(error)) {
