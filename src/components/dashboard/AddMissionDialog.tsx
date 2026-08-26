@@ -1022,10 +1022,12 @@ export const AddMissionDialog = ({
             .map(id => profiles.find(p => p.id === id)?.full_name)
             .filter(Boolean) as string[];
           
-          const droneModels = selectedDrones
+              const droneModels = selectedDrones
             .map(id => {
               const drone = drones.find(d => d.id === id);
-              return drone ? `${drone.modell} (SN: ${drone.serienummer})` : null;
+              if (!drone) return null;
+              const name = drone.dji_aircraft_name ? ` – ${drone.dji_aircraft_name}` : '';
+              return `${drone.modell}${name} (SN: ${drone.serienummer})`;
             })
             .filter(Boolean) as string[];
           
