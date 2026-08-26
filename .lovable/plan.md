@@ -1,48 +1,47 @@
-# DJI-innlogging: felles rate-limit-pott
+# DJI-innlogging: egen API-nøkkel per bruker + caching
 
-## Svar på spørsmålet
+## Bakgrunn (bekreftet)
 
-Ja — «for mange innloggingsforsøk» deles i praksis mellom brukere. Innloggingen skjer aldri direkte mot DJI fra brukerens enhet; alle innlogginger går gjennom DroneLog-endepunktet `/accounts/dji` fra våre edge functions, med én API-nøkkel per selskap (eller Avisafes fellesnøkkel).
+- All DJI-innlogging går via DroneLog `/accounts/dji` fra edge functions, med `companies.dronelog_api_key` eller fellesnøkkelen `DRONELOG_AVISAFE_KEY`.
+- 75 selskaper, 61 med nøkkel — men bare 34 unike nøkler. Mange deler nøkkel, og 14 selskaper bruker fellesnøkkelen.
+- Hver operasjon logger inn på nytt (behandling av 5 logger = 5 innlogginger), selv om `dji_credentials.dji_account_id` allerede er lagret.
+- `manage-dronelog-key` viser at vi kan opprette nye nøkler mot `POST /keys` med masternøkkelen — så per-bruker-nøkler er teknisk mulig i dag.
 
-Det som er bekreftet i koden og databasen:
+Derfor: bruker A bruker opp forsøk for bruker B.
 
-- Fire kodeveier logger inn mot DroneLog: manuell opplasting/list (`process-dronelog`), enkeltbehandling av logg (`dji-process-single`), nattlig kø-bygging (`dji-sync-enqueue`) og `dji-sync-worker`.
-- Alle bruker `companies.dronelog_api_key`, med fallback til den globale `DRONELOG_AVISAFE_KEY`.
-- 75 selskaper i basen, 61 har nøkkel lagret — men bare 34 unike nøkler. Mange selskaper deler altså samme nøkkel, og 14 selskaper faller tilbake på fellesnøkkelen.
-- Alle kall går ut fra Supabase sine edge-IP-er, så hvis DroneLog struper per IP (Laravel «Too Many Attempts» gjør typisk det), deles potten på tvers av alle selskaper uansett nøkkel. Dette siste er en hypotese vi ikke kan bekrefte uten svar fra DroneLog / `Retry-After`-headere.
-- Hver eneste operasjon gjør en ny innlogging. Behandling av 5 logger = 5 innlogginger, selv om `dji_credentials.dji_account_id` allerede er lagret fra forrige gang.
-- Nattlig `dji-sync-enqueue` logger inn på nytt for hver bruker i sveipet (nå opptil 50 brukere), noe som kan tømme potten rett før/etter at en bruker prøver manuelt.
+## Løsning i to deler
 
-Så: bruker A bruker faktisk opp forsøk for bruker B — først innenfor samme selskapsnøkkel, sannsynligvis også på tvers av selskaper.
+### Del 1 — Cache innloggingen (størst effekt, minst risiko)
 
-## Foreslått fiks
+- Ny delt hjelper `resolveDjiAccount()` i `supabase/functions/_shared/dji-parser.ts`:
+  - Har brukeren `dji_credentials.dji_account_id`? Hopp over `/accounts/dji` og gå rett på `/logs/{accountId}`.
+  - Kun hvis account-id mangler, eller list-kallet svarer 401/403, gjøres en ny innlogging (og ny account-id lagres).
+  - Ved 429: respekter `Retry-After`, ikke blind 35-sekunders retry.
+- Tas i bruk i `dji-process-single`, `dji-sync-enqueue`, `dji-sync-worker` og `process-dronelog`.
+- Nattlig sveip stopper videre innlogginger på samme nøkkel etter første 429 i stedet for å brenne opp potten for manuelle brukere.
 
-Målet er å redusere antall innlogginger drastisk, ikke å øke grensen.
+### Del 2 — Egen DroneLog-nøkkel per bruker
 
-1. **Gjenbruk `dji_account_id` i stedet for å logge inn på nytt.**
-   Når `dji_credentials.dji_account_id` allerede finnes, hopp over `/accounts/dji` og gå rett på `/logs/{accountId}`. Logg kun inn hvis account-id mangler eller list-kallet svarer 401/403.
-   Gjelder `dji-process-single`, `dji-sync-enqueue`, `dji-sync-worker` og `process-dronelog` (action `dji-list-logs`, `process-log`).
+- Ny kolonne på `dji_credentials`: `dronelog_api_key_encrypted` (kryptert med samme AES-GCM-mønster som DJI-passordet).
+- Første gang en bruker gjør en DJI-operasjon etter dette (lazy provisioning): opprett en nøkkel via `POST /keys` med masternøkkelen, navn `"{Selskap} – {e-post}"`, krypter og lagre den på brukeren.
+- Nøkkelvalg blir: brukerens egen nøkkel → selskapets nøkkel → fellesnøkkel. Ingen big-bang; eksisterende brukere flyttes over etter hvert som de bruker DJI.
+- Ved 401 på brukerens nøkkel: fall tilbake til selskaps-/fellesnøkkel og marker nøkkelen for ny provisionering.
 
-2. **Felles innloggings-hjelper med backoff.**
-   Én delt funksjon i `supabase/functions/_shared/dji-parser.ts` som:
-   - forsøker uten innlogging når account-id finnes,
-   - respekterer `Retry-After` ved 429,
-   - returnerer en tydelig `rate_limited`-årsak videre.
+## Viktige forbehold
 
-3. **Kort «cooldown» per nøkkel.**
-   Ved 429 lagres et tidsstempel (i minnet per instans + `app_config`-rad per nøkkel-fingeravtrykk) slik at nattlig sveip hopper over resten av brukerne på samme nøkkel i stedet for å brenne opp potten for manuelle brukere.
-
-4. **Bedre feilmelding i UI.**
-   Skille mellom «DJI/DroneLog struper oss akkurat nå (felles grense)» og «feil passord», slik at brukeren ikke tror det er hens egne forsøk som er brukt opp.
+- Hvis DroneLog struper per IP (Laravel «Too Many Attempts» gjør typisk det), hjelper ikke egne nøkler alene — alle kallene våre kommer fra samme Supabase-egress. Derfor gjøres Del 1 uansett, og vi måler effekten av Del 2 etterpå. Vi kan også spørre DroneLog direkte om grensen er per nøkkel eller per IP.
+- Kvote/forbruk rapporteres per nøkkel. `dronelog-usage` (superadmin) må summere brukernøkler for et selskap, ellers ser tallene lavere ut enn de er.
+- Hvis DroneLogs abonnement har et tak på antall nøkler, må vi vite det før vi ruller ut per bruker.
 
 ## Teknisk
 
-- Filer: `supabase/functions/_shared/dji-parser.ts` (ny `resolveDjiAccount()`), `dji-process-single/index.ts`, `dji-sync-enqueue/index.ts`, `dji-sync-worker/index.ts`, `process-dronelog/index.ts`, samt feiltekster i `UploadDroneLogDialog.tsx` og `PendingDjiLogsSection.tsx` (i18n i både no.json og en.json).
-- Ingen databaseendring nødvendig hvis cooldown legges i eksisterende `app_config`-tabell.
-- Ingen endring i hvordan logger parses eller lagres.
+- Migrasjon: én ny tekstkolonne på `dji_credentials` (ingen endring av eksisterende data).
+- Filer: `_shared/dji-parser.ts` (ny `resolveDjiAccount()` + `resolveDronelogKey()`), `dji-process-single/index.ts`, `dji-sync-enqueue/index.ts`, `dji-sync-worker/index.ts`, `process-dronelog/index.ts`, `manage-dronelog-key/index.ts` (gjenbruk av nøkkeloppretting), `dronelog-usage/index.ts` (aggregering).
+- UI: tydeligere feiltekst i `UploadDroneLogDialog.tsx` og `PendingDjiLogsSection.tsx` som skiller «felles grense nådd» fra «feil passord» (i18n i både no.json og en.json).
 
 ## Verifisering
 
-- Behandle 3 logger etter hverandre for samme bruker: kun én (eller null) innlogging i loggene.
-- Kjør `dji-sync-enqueue` manuelt: antall `/accounts/dji`-kall skal falle kraftig sammenlignet med i dag.
-- Bekreft at Elverum-brukerne kan behandle logger rett etter hverandre uten 429.
+- Behandle 3 logger etter hverandre: maks én innlogging i edge-loggene.
+- Kjøre `dji-sync-enqueue` manuelt: kraftig fall i antall `/accounts/dji`-kall.
+- Elverum-brukerne (ELVIS, Sverre, Martin) skal kunne behandle logger rett etter hverandre uten 429.
+- Bekrefte at en nyprovisjonert brukernøkkel faktisk lister logger, og at fallback fungerer hvis den avvises.
