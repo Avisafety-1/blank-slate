@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
-import type { EvaluationCategory } from "@/hooks/useEvaluationTemplates";
+import { parseEvaluationStructure, type EvaluationCategory } from "@/hooks/useEvaluationTemplates";
 
 export interface EvaluationResponseRow {
   id: string;
@@ -95,7 +95,7 @@ export function useMissionEvaluation(missionId?: string | null, oppdragstype?: s
             id: (tpl as any).id,
             title: (tpl as any).title,
             description: (tpl as any).description,
-            structure: Array.isArray((tpl as any).structure) ? (tpl as any).structure : [],
+            structure: parseEvaluationStructure((tpl as any).structure).structure,
           }
         : null
     );

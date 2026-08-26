@@ -8188,7 +8188,10 @@
       "subcategoryPlaceholder": "Underkategori, f.eks. Presisjonsflyging",
       "subcategoryDescriptionPlaceholder": "Forklarende tekst – hva vurderes her?",
       "addSubcategory": "Legg til underkategori",
-      "addCategory": "Legg til hovedkategori"
+      "addCategory": "Legg til hovedkategori",
+      "adminOnly": "Kun synlig for admin",
+      "adminOnlyHint": "Skjul skjemaet for brukere uten administratorrolle",
+      "adminOnlyBadge": "Kun admin"
     },
     "dialog": {
       "createTitle": "Nytt evalueringsskjema",
@@ -8212,7 +8215,8 @@
     "errors": {
       "titleRequired": "Skjemaet må ha en tittel",
       "categoryRequired": "Legg til minst én hovedkategori med underkategori",
-      "saveFailed": "Kunne ikke lagre skjemaet"
+      "saveFailed": "Kunne ikke lagre skjemaet",
+      "noAccess": "Du har ikke tilgang til dette dokumentet"
     },
     "mission": {
       "perform": "Utfør evaluering",
@@ -8280,6 +8284,29 @@
       "signedBy": "Signert av {{name}} · {{date}}",
       "waitingFor": "Venter på signatur fra {{name}}.",
       "availableAfterSave": "Eleven kan signere når skjemaet er lagret som fullført."
+    },
+    "export": {
+      "title": "Eksporter til PDF",
+      "description": "Velg hvem evalueringen skal være synlig for før du laster ned PDF-en.",
+      "studentAlways": "{{name}} (elev) har alltid tilgang",
+      "adminsOnly": "Synlig for administratorer",
+      "action": "Eksporter PDF",
+      "success": "PDF eksportert",
+      "error": "Kunne ikke eksportere PDF"
+    },
+    "pdf": {
+      "student": "Elev",
+      "instructor": "Instruktør",
+      "mission": "Oppdrag",
+      "date": "Dato",
+      "notScored": "Ikke vurdert",
+      "summary": "Oppsummering",
+      "overallAverage": "Totalsnitt",
+      "signature": "Signatur",
+      "signedBy": "Signert av",
+      "signedAt": "Signert",
+      "notSigned": "Ikke signert",
+      "visibility": "Synlig for"
     }
   },
   "uploadLog": {

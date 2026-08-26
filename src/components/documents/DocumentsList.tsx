@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File, Building2, Eye, Pencil, Share2 } from "lucide-react";
+import { ExternalLink, Download, AlertTriangle, Clock, FileText, FileImage, FileSpreadsheet, File, Building2, Eye, Pencil, Share2, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -210,7 +210,14 @@ const DocumentsList = ({
                           {t('documents.list.sharedBadge')}
                         </Badge>
                       )}
+                      {(doc as any).evaluation_template?.admin_only && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 whitespace-nowrap w-fit gap-0.5 border-amber-500/40 text-amber-600">
+                          <Lock className="h-2.5 w-2.5" />
+                          {t('evaluation.builder.adminOnlyBadge')}
+                        </Badge>
+                      )}
                     </div>
+
                     <span className="truncate">{doc.tittel}</span>
                   </div>
 

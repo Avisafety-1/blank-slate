@@ -22,6 +22,7 @@ export interface EvaluationTemplate {
   description: string | null;
   structure: EvaluationCategory[];
   global_visibility: boolean;
+  admin_only: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -33,7 +34,37 @@ export interface EvaluationTemplateInput {
   description: string;
   structure: EvaluationCategory[];
   global_visibility: boolean;
+  admin_only?: boolean;
 }
+
+/** Sentinel entry used to persist template metadata inside `structure` (jsonb). */
+const META_ID = "__meta__";
+
+/**
+ * Splits the raw jsonb structure into real categories and template metadata.
+ */
+export const parseEvaluationStructure = (
+  raw: unknown
+): { structure: EvaluationCategory[]; adminOnly: boolean } => {
+  const list = Array.isArray(raw) ? (raw as any[]) : [];
+  const meta = list.find((item) => item?.id === META_ID);
+  return {
+    structure: list.filter((item) => item?.id !== META_ID) as EvaluationCategory[],
+    adminOnly: !!meta?.meta?.admin_only,
+  };
+};
+
+/**
+ * Serialises categories + metadata back into the jsonb structure column.
+ */
+export const serializeEvaluationStructure = (
+  structure: EvaluationCategory[],
+  adminOnly: boolean
+): any[] => {
+  const clean = structure.filter((c) => (c as any)?.id !== META_ID);
+  if (!adminOnly) return clean;
+  return [...clean, { id: META_ID, name: "", description: "", subcategories: [], meta: { admin_only: true } }];
+};
 
 export const useEvaluationTemplates = () => {
   const { user, companyId, isSuperAdmin } = useAuth();
@@ -48,13 +79,18 @@ export const useEvaluationTemplates = () => {
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((row: any) => ({
-        ...row,
-        structure: Array.isArray(row.structure) ? row.structure : [],
-      })) as EvaluationTemplate[];
+      return (data ?? []).map((row: any) => {
+        const parsed = parseEvaluationStructure(row.structure);
+        return {
+          ...row,
+          structure: parsed.structure,
+          admin_only: parsed.adminOnly,
+        };
+      }) as EvaluationTemplate[];
     },
     enabled: !!companyId,
   });
+
 
   const saveTemplate = useMutation({
     mutationFn: async (input: EvaluationTemplateInput) => {
@@ -63,7 +99,7 @@ export const useEvaluationTemplates = () => {
       const payload = {
         title: input.title.trim(),
         description: input.description.trim() || null,
-        structure: input.structure as any,
+        structure: serializeEvaluationStructure(input.structure, !!input.admin_only) as any,
         global_visibility: isSuperAdmin ? input.global_visibility : false,
       };
 
