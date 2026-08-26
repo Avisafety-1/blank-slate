@@ -243,12 +243,16 @@ export function useFlightLogsList(active: boolean) {
 
       if (filters.onlyMine && user?.id) {
         q = mineLogIds && mineLogIds.length
-          ? q.or(`user_id.eq.${user.id},id.in.(${mineLogIds.join(",")})`)
-          : q.eq("user_id", user.id);
+          ? q.in("id", mineLogIds)
+          : q.eq("id", "00000000-0000-0000-0000-000000000000");
       }
 
       if (skip !== "drone" && filters.droneId !== "alle") q = q.eq("drone_id", filters.droneId);
-      if (skip !== "pilot" && filters.pilotId !== "alle") q = q.eq("user_id", filters.pilotId);
+      if (skip !== "pilot" && filters.pilotId !== "alle") {
+        const ids = pilotLogIds?.pilotId === filters.pilotId ? pilotLogIds.ids : [];
+        q = ids.length ? q.in("id", ids) : q.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+
 
       if (skip !== "source" && filters.source !== "alle") {
         // Stored values vary ("dronelogapi", "dji", ...), so the DJI bucket is
