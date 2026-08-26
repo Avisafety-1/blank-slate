@@ -467,6 +467,11 @@ Deno.serve(async (req) => {
         { label: "prod-key + no slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: tanguyViewport, trailingSlash: false, plain: true },
         { label: "beacons-key + slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: tanguyViewport, trailingSlash: true, plain: true },
         { label: "sandkasse-key + slash + plain (kontroll)", host: SANDBOX_HOST, keyLabel: "SAFESKY_API_KEY", apiKey: sandboxKeyEnv, viewport: tanguyViewport, trailingSlash: true, plain: true },
+        { label: "sandkasse-key + slash + plain, Nord-Europa (kontroll)", host: SANDBOX_HOST, keyLabel: "SAFESKY_API_KEY", apiKey: sandboxKeyEnv, viewport: ourViewport, trailingSlash: true, plain: true },
+        { label: "sandkasse-key + uten slash, Nord-Europa (dagens flow)", host: SANDBOX_HOST, keyLabel: "SAFESKY_API_KEY", apiKey: sandboxKeyEnv, viewport: ourViewport, trailingSlash: false, plain: true },
+        { label: "beacons-key + uten slash, Nord-Europa (dagens flow)", host: SANDBOX_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: ourViewport, trailingSlash: false, plain: true },
+        { label: "beacons-key + slash, sandkasse (kontroll)", host: SANDBOX_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: ourViewport, trailingSlash: true, plain: true },
+        { label: "beacons-key + prod-host uten slash, Nord-Europa", host: PROD_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: ourViewport, trailingSlash: false, plain: true },
       ];
       const out: Record<string, unknown>[] = [];
       for (const v of variants) {
