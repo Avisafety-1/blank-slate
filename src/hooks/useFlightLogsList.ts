@@ -399,9 +399,25 @@ export function useFlightLogsList(active: boolean) {
 
   const enrich = useCallback(async (rows: FlightLogListItem[]) => {
     const droneIds = [...new Set(rows.map(r => r.drone_id).filter(Boolean))] as string[];
-    const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))] as string[];
     const missionIds = [...new Set(rows.map(r => r.mission_id).filter(Boolean))] as string[];
     const rowCompanyIds = [...new Set(rows.map(r => r.company_id).filter(Boolean))] as string[];
+
+    // Pilot per log: the linked person, otherwise the owner of the log
+    const { data: links } = rows.length
+      ? await (supabase as any)
+          .from("flight_log_personnel")
+          .select("flight_log_id, profile_id")
+          .in("flight_log_id", rows.map(r => r.id))
+      : { data: [] };
+    const pilotByLog = new Map<string, string>();
+    for (const l of (links || []) as any[]) {
+      if (l.profile_id && !pilotByLog.has(l.flight_log_id)) pilotByLog.set(l.flight_log_id, l.profile_id);
+    }
+    const userIds = [
+      ...new Set([
+        ...rows.map(r => pilotByLog.get(r.id) || r.user_id).filter(Boolean),
+      ]),
+    ] as string[];
 
     const [drones, profiles, missions, companies] = await Promise.all([
       droneIds.length
@@ -427,14 +443,18 @@ export function useFlightLogsList(active: boolean) {
     const missionMap = new Map<string, string>((missions.data || []).map((m: any) => [m.id, m.title]));
     const companyMap = new Map<string, string>((companies.data || []).map((c: any) => [c.id, c.navn]));
 
-    return rows.map((r): FlightLogListItem => ({
-      ...r,
-      droneLabel: r.drone_id ? droneMap.get(r.drone_id) || r.drone_model : r.drone_model,
-      pilotName: r.user_id ? pilotMap.get(r.user_id) || null : null,
-      missionName: r.mission_id ? missionMap.get(r.mission_id) || null : null,
-      companyName: companyMap.get(r.company_id) || null,
-    }));
+    return rows.map((r): FlightLogListItem => {
+      const pilotId = pilotByLog.get(r.id) || r.user_id;
+      return {
+        ...r,
+        droneLabel: r.drone_id ? droneMap.get(r.drone_id) || r.drone_model : r.drone_model,
+        pilotName: pilotId ? pilotMap.get(pilotId) || null : null,
+        missionName: r.mission_id ? missionMap.get(r.mission_id) || null : null,
+        companyName: companyMap.get(r.company_id) || null,
+      };
+    });
   }, []);
+
 
 
   const requestIdRef = useRef(0);
