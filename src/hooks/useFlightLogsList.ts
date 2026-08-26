@@ -289,9 +289,10 @@ export function useFlightLogsList(active: boolean) {
       return q;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [companyId, allowedKey, user?.id, mineLogIds, filters, debouncedSearch, searchMatches]
+    [companyId, allowedKey, user?.id, mineLogIds, pilotLogIds, filters, debouncedSearch, searchMatches]
 
   );
+
 
   // Cross-dependent filter options — only values that actually exist in the logs
   useEffect(() => {
