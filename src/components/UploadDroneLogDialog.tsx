@@ -1337,7 +1337,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   ) => {
     setIsDjiLoading(true);
     try {
-      const payload: any = { accountId, limit: 20 };
+      const payload: any = { accountId, limit: DJI_LOG_PAGE_SIZE };
       if (sessionSource) payload.sessionKeySource = sessionSource;
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
