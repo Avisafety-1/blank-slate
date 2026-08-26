@@ -170,13 +170,15 @@ export const EvaluationExportDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileDown className="h-5 w-5 text-primary" />
-            {t("evaluation.export.title")}
+      <DialogContent className="max-w-[92vw] sm:max-w-md p-4 sm:p-6">
+        <DialogHeader className="text-left sm:text-left">
+          <DialogTitle className="flex items-start gap-2 text-base sm:text-lg">
+            <FileDown className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <span className="break-words">{t("evaluation.export.title")}</span>
           </DialogTitle>
-          <DialogDescription>{t("evaluation.export.description")}</DialogDescription>
+          <DialogDescription className="break-words">
+            {t("evaluation.export.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
