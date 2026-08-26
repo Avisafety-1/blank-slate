@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
+import { getPilotFlightLogIds } from "@/lib/pilotFlightLogs";
+
 
 
 export const FLIGHT_LOG_LIST_COLUMNS =
