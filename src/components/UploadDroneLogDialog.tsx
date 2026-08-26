@@ -600,11 +600,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId;
       if (!accountId) throw new Error("Auto-innlogging feilet");
       setDjiAccountId(accountId);
-      if (data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global') {
-        setDjiSessionKeySource(data.sessionKeySource);
-      }
+      const sessionSource = data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global'
+        ? data.sessionKeySource
+        : null;
+      setDjiSessionKeySource(sessionSource);
       setDjiEmail(data.email || savedDjiEmail);
-      await fetchDjiLogs(accountId);
+      await fetchDjiLogs(accountId, undefined, sessionSource);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI auto-login error:', error);
@@ -1297,9 +1298,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const accountId = data.result?.djiAccountId || data.result?.id || data.result?.accountId || data.accountId || (typeof data.result === "string" ? data.result : null);
       if (!accountId) throw new Error("Ingen konto-ID mottatt. API-svar: " + JSON.stringify(data).substring(0, 200));
       setDjiAccountId(accountId);
-      if (data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global') {
-        setDjiSessionKeySource(data.sessionKeySource);
-      }
+      const sessionSource = data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global'
+        ? data.sessionKeySource
+        : null;
+      setDjiSessionKeySource(sessionSource);
 
       if (saveCredentials) {
         setHasSavedCredentials(true);
@@ -1309,7 +1311,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       }
 
       setDjiPassword("");
-      await fetchDjiLogs(accountId);
+      await fetchDjiLogs(accountId, undefined, sessionSource);
       setStep('dji-logs');
     } catch (error: any) {
       console.error('DJI login error:', error);
@@ -1328,11 +1330,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
 
-  const fetchDjiLogs = async (accountId: string, createdAfterId?: number) => {
+  const fetchDjiLogs = async (
+    accountId: string,
+    createdAfterId?: number,
+    sessionSource: 'user' | 'company' | 'global' | null = djiSessionKeySource,
+  ) => {
     setIsDjiLoading(true);
     try {
       const payload: any = { accountId, limit: 20 };
-      if (djiSessionKeySource) payload.sessionKeySource = djiSessionKeySource;
+      if (sessionSource) payload.sessionKeySource = sessionSource;
       if (createdAfterId) payload.createdAfterId = createdAfterId;
       const data = await callDronelogAction("dji-list-logs", payload);
       if (data.sessionKeySource === 'user' || data.sessionKeySource === 'company' || data.sessionKeySource === 'global') {

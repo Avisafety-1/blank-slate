@@ -1333,6 +1333,7 @@ Deno.serve(async (req) => {
             accountId: cred.dji_account_id,
             cached: true,
             email: cred.dji_email,
+            sessionKeySource: keySource,
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
@@ -1374,7 +1375,7 @@ Deno.serve(async (req) => {
           await serviceClient.from("dji_credentials").update({ dji_account_id: accountId }).eq("user_id", authUser.id);
         }
 
-        return new Response(JSON.stringify({ ...data, email: cred.dji_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...data, email: cred.dji_email, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
 
