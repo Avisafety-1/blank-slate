@@ -1788,7 +1788,15 @@ export const AddMissionDialog = ({
                   return (
                     <div key={id}>
                       <div className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-sm w-fit">
-                        <span>{drone?.modell}{drone?.registration_number ? ` (${drone.registration_number})` : ''}</span>
+                        <span>
+                          {drone ? (
+                            <DroneOptionContent
+                              modell={drone.modell}
+                              dji_aircraft_name={drone.dji_aircraft_name}
+                              serienummer={drone.serienummer}
+                            />
+                          ) : null}
+                        </span>
                         <ResourceConflictIndicator conflicts={conflicts} />
                         <button
                           type="button"
