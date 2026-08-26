@@ -67,7 +67,7 @@ export const serializeEvaluationStructure = (
 };
 
 export const useEvaluationTemplates = () => {
-  const { user, companyId, isSuperAdmin } = useAuth();
+  const { user, companyId, isSuperAdmin, isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -135,8 +135,11 @@ export const useEvaluationTemplates = () => {
     },
   });
 
+  // Admin-only templates are hidden entirely from users without an admin role
+  const visibleTemplates = (query.data ?? []).filter((tpl) => !tpl.admin_only || isAdmin);
+
   return {
-    templates: query.data ?? [],
+    templates: visibleTemplates,
     isLoading: query.isLoading,
     refetch: query.refetch,
     saveTemplate,
