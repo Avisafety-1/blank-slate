@@ -492,14 +492,15 @@ export function useFlightLogsList(active: boolean) {
       setLoading(false);
       setLoadingMore(false);
     },
-    [companyId, user?.id, filters.onlyMine, mineLogIds, applyFilters, enrich]
+    [companyId, user?.id, filters.onlyMine, filters.pilotId, mineLogIds, pilotLogIds, applyFilters, enrich]
   );
 
   useEffect(() => {
     if (!active) return;
     fetchLogs(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, companyId, allowedKey, mineLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.companyId, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
+  }, [active, companyId, allowedKey, mineLogIds, pilotLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.companyId, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
+
 
   return {
     logs,
