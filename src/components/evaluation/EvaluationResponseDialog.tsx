@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Save, ClipboardCheck, ShieldCheck, ChevronDown } from "lucide-react";
+import { Loader2, Save, ClipboardCheck, ShieldCheck, ChevronDown, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
 import EvaluationAiSummaryButton from "@/components/evaluation/EvaluationAiSummaryButton";
 import EvaluationSignatureSection from "@/components/evaluation/EvaluationSignatureSection";
+import EvaluationExportDialog from "@/components/evaluation/EvaluationExportDialog";
 
 import { sendEvaluationNotification } from "@/lib/evaluationNotification";
 
@@ -81,6 +82,7 @@ export const EvaluationResponseDialog = ({
   const [companyPeople, setCompanyPeople] = useState<PersonOption[]>([]);
   const [viewerSearch, setViewerSearch] = useState("");
   const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const locked = response?.status === "completed";
 
@@ -522,6 +524,16 @@ export const EvaluationResponseDialog = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             {t("common.cancel")}
           </Button>
+          {response?.id && (
+            <Button
+              variant="secondary"
+              onClick={() => setExportOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <FileDown className="h-4 w-4 mr-1" />
+              {t("evaluation.export.action")}
+            </Button>
+          )}
           {!locked && (
             <>
               <Button
@@ -541,6 +553,20 @@ export const EvaluationResponseDialog = ({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {response?.id && (
+        <EvaluationExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          template={template}
+          response={response}
+          mission={mission}
+          studentName={studentName}
+          instructorName={instructorName}
+          companyPeople={companyPeople}
+          onSaved={onSaved}
+        />
+      )}
     </Dialog>
   );
 };
