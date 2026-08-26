@@ -897,16 +897,23 @@ export const FlightLogbookDialog = ({ open, onOpenChange, personId, personName }
 
           <Tabs defaultValue="flyturer" className={cn("mt-2", showAddEntry && "hidden sm:block")}>
             <TabsList className="w-full">
-              <TabsTrigger value="flyturer" className="flex-1">Flyturer</TabsTrigger>
-              <TabsTrigger value="innlegg" className="flex-1">
-                Logginnlegg {personnelLogs.length > 0 && `(${personnelLogs.length})`}
+              <TabsTrigger value="flyturer" className="flex-1 min-w-0 truncate text-xs sm:text-sm px-1.5 sm:px-3">
+                {t("logbook.tabs.flights")}
+              </TabsTrigger>
+              <TabsTrigger value="innlegg" className="flex-1 min-w-0 truncate text-xs sm:text-sm px-1.5 sm:px-3">
+                <span className="sm:hidden">{t("logbook.tabs.entriesShort")}</span>
+                <span className="hidden sm:inline">{t("logbook.tabs.entries")}</span>
+                {personnelLogs.length > 0 && <>&nbsp;({personnelLogs.length})</>}
               </TabsTrigger>
               {evaluations.length > 0 && (
-                <TabsTrigger value="evalueringer" className="flex-1">
-                  {t("evaluation.logbook.tab")} ({evaluations.length})
+                <TabsTrigger value="evalueringer" className="flex-1 min-w-0 truncate text-xs sm:text-sm px-1.5 sm:px-3">
+                  <span className="sm:hidden">{t("logbook.tabs.evaluationsShort")}</span>
+                  <span className="hidden sm:inline">{t("evaluation.logbook.tab")}</span>
+                  &nbsp;({evaluations.length})
                 </TabsTrigger>
               )}
             </TabsList>
+
 
             {evaluations.length > 0 && (
               <TabsContent value="evalueringer" className="mt-2">
