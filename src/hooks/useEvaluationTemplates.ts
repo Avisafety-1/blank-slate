@@ -99,7 +99,7 @@ export const useEvaluationTemplates = () => {
       const payload = {
         title: input.title.trim(),
         description: input.description.trim() || null,
-        structure: input.structure as any,
+        structure: serializeEvaluationStructure(input.structure, !!input.admin_only) as any,
         global_visibility: isSuperAdmin ? input.global_visibility : false,
       };
 
