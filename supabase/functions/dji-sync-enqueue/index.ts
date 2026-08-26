@@ -11,12 +11,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.0";
 import { hasValidCronSecret } from "../_shared/cron.ts";
 import {
-  DRONELOG_BASE,
-  TIMEOUTS,
-  withTimeout,
   decryptPassword,
   normalizeDateToISO,
 } from "../_shared/dji-parser.ts";
+import {
+  resolveDronelogKey,
+  listLogsWithCachedAccount,
+  isKeyCoolingDown,
+  setKeyCooldown,
+} from "../_shared/dronelog-auth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
