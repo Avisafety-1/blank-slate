@@ -217,6 +217,12 @@ export async function recoverInvalidDronelogKey(
       provision: true,
     });
   }
+  const reprovisioned = await resolveDronelogKey(serviceClient, {
+    userId: opts.userId,
+    companyId: opts.companyId,
+    provision: true,
+  });
+  if (reprovisioned && reprovisioned.source !== "company") return reprovisioned;
   const globalKey = Deno.env.get("DRONELOG_AVISAFE_KEY") || null;
   return globalKey ? { key: globalKey, source: "global", fingerprint: fp(globalKey) } : null;
 }
