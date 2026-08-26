@@ -200,6 +200,6 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
         </div>
 
       </div>
-    </button>
+    </div>
   );
 };
