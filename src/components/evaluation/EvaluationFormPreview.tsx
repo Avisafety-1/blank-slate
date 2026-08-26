@@ -289,6 +289,8 @@ export const EvaluationFormPreview = ({
         />
 
       </Card>
+
+      {signatureSlot}
     </div>
   );
 };
