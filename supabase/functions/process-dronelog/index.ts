@@ -1002,13 +1002,15 @@ Deno.serve(async (req) => {
             fingerprint: pendingPersonalKey.substring(0, 6) + "…",
           };
         }
-        const recovered = await djiLoginWithKeyRecovery(serviceClient, {
-          resolved: initialKey,
-          userId: authUser.id,
-          companyId: profileCompanyId,
-          email,
-          password,
-        });
+        const recovered = pendingPersonalKey
+          ? { login: await djiLogin(pendingPersonalKey, email, password), resolved: initialKey }
+          : await djiLoginWithKeyRecovery(serviceClient, {
+              resolved: initialKey,
+              userId: authUser.id,
+              companyId: profileCompanyId,
+              email,
+              password,
+            });
         resolvedKey = recovered.resolved;
         dronelogKey = recovered.resolved.key;
         keySource = recovered.resolved.source;
