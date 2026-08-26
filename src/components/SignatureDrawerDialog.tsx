@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { X, Undo2, Trash2, Save } from "lucide-react";
+import { X, Undo2, Trash2, Save, RotateCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,6 +25,8 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  // Which way the drawing area is turned on mobile (false = top of signature to the right)
+  const [flipped, setFlipped] = useState(false);
 
   const saveToHistory = useCallback(() => {
     const canvas = canvasRef.current;
@@ -90,6 +92,13 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
 
     if (isMobile) {
+      if (flipped) {
+        // Rotated +90deg (clockwise): canvas (0,0) sits at screen (rect.right, rect.top).
+        return {
+          x: clientY - rect.top,
+          y: rect.right - clientX,
+        };
+      }
       // Canvas is visually rotated -90deg (CSS = counter-clockwise).
       // After CCW rotation: canvas (0,0) sits at screen (rect.left, rect.bottom).
       //   canvas_x grows upward on screen  → canvas_x = rect.bottom - clientY
@@ -232,7 +241,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
 
       {isMobile && (
         <div className="px-4 pt-1 pb-1 text-center text-xs text-muted-foreground flex-shrink-0">
-          Tegn signaturen din sidelengs
+          Tegn signaturen din sidelengs – «TOPP»-merket viser hvilken vei som blir opp
         </div>
       )}
 
@@ -249,7 +258,7 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
               height: canvasSize.h,
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, -50%) rotate(-90deg)",
+              transform: `translate(-50%, -50%) rotate(${flipped ? 90 : -90}deg)`,
               transformOrigin: "center center",
             }}
           >
@@ -265,6 +274,14 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
               onTouchMove={draw}
               onTouchEnd={stopDrawing}
             />
+            {/* Orientation guides – overlay only, never part of the saved image */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute top-1 left-0 right-0 flex items-center justify-center gap-1 text-[10px] font-semibold tracking-widest text-muted-foreground/70">
+                <span>↑ TOPP / TOP ↑</span>
+              </div>
+              <div className="absolute left-6 right-6 bottom-8 border-b border-dashed border-muted-foreground/40" />
+              <span className="absolute left-6 bottom-8 -translate-y-1 text-muted-foreground/60 text-sm">×</span>
+            </div>
           </div>
         ) : (
           <canvas
@@ -298,6 +315,12 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
             <Undo2 className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Angre</span>
           </Button>
+          {isMobile && (
+            <Button variant="outline" size="sm" onClick={() => setFlipped((v) => !v)}>
+              <RotateCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Snu 180°</span>
+            </Button>
+          )}
         </div>
         <Button onClick={handleSave} disabled={isSaving} size="sm">
           <Save className="h-4 w-4 mr-2" />
