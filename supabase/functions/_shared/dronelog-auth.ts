@@ -139,7 +139,7 @@ export interface ProvisionUserKeyResult {
 /** Create and persist a personal DroneLog key. Never logs response bodies or key material. */
 export async function provisionUserKey(
   serviceClient: any,
-  opts: { userId: string; masterKey: string; name: string },
+  opts: { userId: string; masterKey: string; name: string; persist?: boolean },
 ): Promise<ProvisionUserKeyResult> {
   try {
     const res = await fetch(`${DRONELOG_BASE}/keys`, {
@@ -171,6 +171,10 @@ export async function provisionUserKey(
     if (!newKey || typeof newKey !== "string") {
       console.warn("[dronelog-auth] provision failed status=200 reason=missing_key_field");
       return { key: null, status: res.status, error: "missing_key_field" };
+    }
+    if (opts.persist === false) {
+      console.log("[dronelog-auth] provisioned personal DroneLog key for pending login");
+      return { key: newKey, status: res.status };
     }
     const encrypted = await encryptSecret(newKey);
     const { data: saved, error: saveError } = await serviceClient

@@ -3,8 +3,10 @@ import JSZip from "npm:jszip@3.10.1";
 import {
   resolveDronelogKey,
   decryptSecret,
+  encryptSecret,
   djiLogin,
   djiLoginWithKeyRecovery,
+  provisionUserKey,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
 
@@ -954,12 +956,52 @@ Deno.serve(async (req) => {
       const { action } = body;
 
       if (action === "dji-login") {
-        const { email, password } = body;
-        if (!email || !password) {
+        const { email, password, saveCredentials, autoSyncEnabled } = body;
+        if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) {
           return new Response(JSON.stringify({ error: "Email and password required", reason: "missing_input" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-        const initialKey = resolvedKey ?? { key: dronelogKey, source: keySource as "user" | "company" | "global", fingerprint: keyFingerprint };
+        const { data: existingCredential } = await serviceClient
+          .from("dji_credentials")
+          .select("dronelog_api_key_encrypted")
+          .eq("user_id", authUser.id)
+          .maybeSingle();
+
+        let pendingPersonalKey: string | null = null;
+        let initialKey = resolvedKey ?? { key: dronelogKey, source: keySource as "user" | "company" | "global", fingerprint: keyFingerprint };
+
+        // A brand-new user has no credentials row yet, so the regular resolver
+        // cannot persist a personal key. Mint it before the first DJI call and
+        // persist it together with valid credentials only after login succeeds.
+        if (saveCredentials === true && !existingCredential?.dronelog_api_key_encrypted) {
+          const masterKey = Deno.env.get("DRONELOG_AVISAFE_KEY");
+          if (!masterKey) {
+            return new Response(JSON.stringify({ error: "DroneLog API key not configured", reason: "api_key_invalid" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          const { data: company } = profileCompanyId
+            ? await serviceClient.from("companies").select("navn").eq("id", profileCompanyId).maybeSingle()
+            : { data: null };
+          const provisioned = await provisionUserKey(serviceClient, {
+            userId: authUser.id,
+            masterKey,
+            name: `${company?.navn ?? "Avisafe"} – ${email.trim()}`,
+            persist: false,
+          });
+          if (!provisioned.key) {
+            console.error(`[process-dronelog] pre-login personal key provisioning failed reason=${provisioned.error ?? "unknown"}`);
+            return new Response(JSON.stringify({
+              error: "Could not create personal DroneLog API key",
+              reason: "api_key_invalid",
+              upstreamStatus: provisioned.status,
+            }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          pendingPersonalKey = provisioned.key;
+          initialKey = {
+            key: pendingPersonalKey,
+            source: "user",
+            fingerprint: pendingPersonalKey.substring(0, 6) + "…",
+          };
+        }
         const recovered = await djiLoginWithKeyRecovery(serviceClient, {
           resolved: initialKey,
           userId: authUser.id,
@@ -992,6 +1034,36 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify(payload), { status: login.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           return new Response(JSON.stringify(payload), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (saveCredentials === true) {
+          const accountId = login.accountId
+            || data?.result?.djiAccountId
+            || data?.result?.id
+            || data?.result?.accountId
+            || data?.accountId
+            || null;
+          const credentialPayload: Record<string, unknown> = {
+            user_id: authUser.id,
+            dji_email: email.trim(),
+            dji_password_encrypted: await encryptSecret(password),
+            dji_account_id: accountId,
+            auto_sync_enabled: autoSyncEnabled === true,
+            company_id: profileCompanyId,
+            updated_at: new Date().toISOString(),
+          };
+          if (pendingPersonalKey) {
+            credentialPayload.dronelog_api_key_encrypted = await encryptSecret(pendingPersonalKey);
+            credentialPayload.dronelog_key_created_at = new Date().toISOString();
+          }
+          const { error: saveError } = await serviceClient
+            .from("dji_credentials")
+            .upsert(credentialPayload, { onConflict: "user_id" });
+          if (saveError) {
+            console.error(`[process-dronelog] atomic DJI credential save failed code=${saveError.code ?? "unknown"}`);
+            return new Response(JSON.stringify({ error: "DJI login succeeded, but credentials could not be saved", reason: "save_failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          console.log(`[process-dronelog] DJI login credentials saved personalKey=${pendingPersonalKey ? "new" : "reused"}`);
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
