@@ -20,6 +20,9 @@ export interface EvaluationResponseRow {
   evaluated_at?: string | null;
   share_with_admins?: boolean | null;
   extra_viewer_ids?: string[] | null;
+  student_signature_url?: string | null;
+  student_signed_at?: string | null;
+  student_signature_name?: string | null;
 }
 
 
