@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { exportEvaluationToPdf } from "@/lib/evaluationPdfExport";
 import type { EvaluationTemplateLite, EvaluationResponseRow } from "@/hooks/useMissionEvaluation";
 
@@ -52,6 +53,7 @@ export const EvaluationExportDialog = ({
   onSaved,
 }: Props) => {
   const { t, i18n } = useTranslation();
+  const { companyId, user } = useAuth();
   const [shareWithAdmins, setShareWithAdmins] = useState(true);
   const [extraViewerIds, setExtraViewerIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -108,7 +110,7 @@ export const EvaluationExportDialog = ({
         .eq("id", response.id);
       if (error) throw error;
 
-      await exportEvaluationToPdf({
+      const { blob, fileName } = await exportEvaluationToPdf({
         title: template.title,
         description: template.description,
         categories: template.structure,
@@ -128,7 +130,34 @@ export const EvaluationExportDialog = ({
         visibilitySummary,
       });
 
-      toast.success(t("evaluation.export.success"));
+      // Store the PDF in /dokumenter instead of downloading it
+      const filePath = `${companyId}/${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, blob, { contentType: "application/pdf" });
+      if (uploadError) throw uploadError;
+
+      const docTitle = [template.title, studentName, formatDate(response.evaluated_at)]
+        .filter(Boolean)
+        .join(" – ");
+
+      const { error: insertError } = await supabase.from("documents").insert({
+        tittel: docTitle,
+        beskrivelse: visibilitySummary.length
+          ? `${t("evaluation.pdf.visibility")}: ${visibilitySummary.join(", ")}`
+          : null,
+        kategori: "vurderingsskjema",
+        fil_url: filePath,
+        fil_navn: fileName,
+        fil_storrelse: blob.size,
+        company_id: companyId,
+        user_id: user?.id ?? null,
+        global_visibility: false,
+        visible_to_children: false,
+      } as any);
+      if (insertError) throw insertError;
+
+      toast.success(t("evaluation.export.savedToDocuments"));
       onSaved?.();
       onOpenChange(false);
     } catch (err: any) {

@@ -35,9 +35,12 @@ export interface EvaluationPdfInput {
 const MARGIN = 14;
 
 /**
- * Generates and downloads a PDF for a completed evaluation form.
+ * Generates a PDF for a completed evaluation form and returns it as a file.
+ * The caller decides what to do with it (store in Documents, download, ...).
  */
-export const exportEvaluationToPdf = async (input: EvaluationPdfInput): Promise<void> => {
+export const exportEvaluationToPdf = async (
+  input: EvaluationPdfInput
+): Promise<{ blob: Blob; fileName: string }> => {
   const language = getCurrentLanguage();
   const t = getFixedT(language);
   const doc = await createPdfDocument();
@@ -195,7 +198,8 @@ export const exportEvaluationToPdf = async (input: EvaluationPdfInput): Promise<
     doc.setTextColor(0);
   }
 
-  doc.save(`${sanitizeFilenameForPdf(input.title || "evaluation")}.pdf`);
+  const fileName = `${sanitizeFilenameForPdf(input.title || "evaluation")}.pdf`;
+  return { blob: doc.output("blob") as Blob, fileName };
 };
 
 export default exportEvaluationToPdf;
