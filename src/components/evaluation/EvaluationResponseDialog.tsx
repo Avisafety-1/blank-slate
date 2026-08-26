@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
 import EvaluationAiSummaryButton from "@/components/evaluation/EvaluationAiSummaryButton";
+import EvaluationSignatureSection from "@/components/evaluation/EvaluationSignatureSection";
 
 import { sendEvaluationNotification } from "@/lib/evaluationNotification";
 
@@ -468,6 +469,18 @@ export const EvaluationResponseDialog = ({
                 t("evaluation.mission.selectStudent")
               )}
               visibilitySlot={visibilityBox}
+              signatureSlot={
+                <EvaluationSignatureSection
+                  responseId={response?.id ?? null}
+                  status={response?.status ?? null}
+                  studentId={studentId || response?.student_id || null}
+                  studentName={studentName}
+                  signatureUrl={response?.student_signature_url ?? null}
+                  signedAt={response?.student_signed_at ?? null}
+                  signatureName={response?.student_signature_name ?? null}
+                  onSigned={() => onSaved?.()}
+                />
+              }
               evaluatedAtSlot={
 
                 <Input

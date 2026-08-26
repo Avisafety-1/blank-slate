@@ -3720,6 +3720,9 @@ export type Database = {
           status: string
           student_id: string | null
           student_name: string | null
+          student_signature_name: string | null
+          student_signature_url: string | null
+          student_signed_at: string | null
           template_id: string
           updated_at: string
         }
@@ -3744,6 +3747,9 @@ export type Database = {
           status?: string
           student_id?: string | null
           student_name?: string | null
+          student_signature_name?: string | null
+          student_signature_url?: string | null
+          student_signed_at?: string | null
           template_id: string
           updated_at?: string
         }
@@ -3768,6 +3774,9 @@ export type Database = {
           status?: string
           student_id?: string | null
           student_name?: string | null
+          student_signature_name?: string | null
+          student_signature_url?: string | null
+          student_signed_at?: string | null
           template_id?: string
           updated_at?: string
         }
@@ -9144,6 +9153,15 @@ export type Database = {
           email: string
           full_name: string
           id: string
+        }[]
+      }
+      sign_evaluation_response: {
+        Args: { p_response_id: string; p_signature_url: string }
+        Returns: {
+          id: string
+          student_signature_name: string
+          student_signature_url: string
+          student_signed_at: string
         }[]
       }
       st_3dclosestpoint: {

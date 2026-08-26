@@ -34,8 +34,8 @@ export async function sendEvaluationNotification({
         recipient_ids: [studentId],
         subject: i18n.t("evaluation.notification.subject", { mission: title }),
         body: `${i18n.t("evaluation.notification.body", { mission: title })}\n\n${i18n.t(
-          "evaluation.notification.logbookHint"
-        )}`,
+          "evaluation.notification.signatureRequired"
+        )}\n\n${i18n.t("evaluation.notification.logbookHint")}`,
         deep_link: evaluationDeepLink(responseId),
         severity: "info",
       },

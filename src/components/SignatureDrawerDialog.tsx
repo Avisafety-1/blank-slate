@@ -11,9 +11,11 @@ interface SignatureDrawerDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: (url: string) => void;
+  /** When false, the drawn signature is not written to the user's profile */
+  persistToProfile?: boolean;
 }
 
-export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawerDialogProps) {
+export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile = true }: SignatureDrawerDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -185,13 +187,15 @@ export function SignatureDrawerDialog({ open, onClose, onSave }: SignatureDrawer
         .from("signatures")
         .getPublicUrl(fileName);
 
-      const { error: updateError } = await (supabase as any)
-        .from("profiles")
-        .update({ signature_url: urlData.publicUrl })
-        .eq("id", user.id);
+      if (persistToProfile) {
+        const { error: updateError } = await (supabase as any)
+          .from("profiles")
+          .update({ signature_url: urlData.publicUrl })
+          .eq("id", user.id);
 
-      if (updateError) {
-        throw updateError;
+        if (updateError) {
+          throw updateError;
+        }
       }
 
       toast.success("Signatur lagret");
