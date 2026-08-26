@@ -125,7 +125,7 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
     >
       <div className="relative h-28 bg-muted/40">
         {positions && positions.length >= 2 ? (
-          <div ref={mapElRef} className="absolute inset-0" />
+          <div ref={mapElRef} className="absolute inset-0 pointer-events-none" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             {!trackLoaded && visible ? (
