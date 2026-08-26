@@ -8251,7 +8251,8 @@
       "subject": "Ny evaluering: {{mission}}",
       "body": "Du har fått en ny evaluering på oppdrag «{{mission}}».",
       "logbookHint": "Skjemaet kan også finnes i din loggbok.",
-      "unknownMission": "Oppdrag"
+      "unknownMission": "Oppdrag",
+      "signatureRequired": "Skjemaet krever din signatur. Åpne skjemaet for å signere."
     },
     "ai": {
       "button": "Vurder med AI",
@@ -8267,7 +8268,19 @@
       "replace": "Erstatt",
       "append": "Legg til under"
     },
-    "formLabel": "Evaluering"
+    "formLabel": "Evaluering",
+    "signature": {
+      "title": "Elevens signatur",
+      "signed": "Signert",
+      "pending": "Venter på signatur",
+      "sign": "Signer skjemaet",
+      "saving": "Lagrer …",
+      "saved": "Signatur lagret",
+      "saveError": "Kunne ikke lagre signaturen",
+      "signedBy": "Signert av {{name}} · {{date}}",
+      "waitingFor": "Venter på signatur fra {{name}}.",
+      "availableAfterSave": "Eleven kan signere når skjemaet er lagret som fullført."
+    }
   },
   "uploadLog": {
     "sn": {

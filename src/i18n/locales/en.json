@@ -8249,7 +8249,8 @@
       "subject": "New evaluation: {{mission}}",
       "body": "You have received a new evaluation for mission “{{mission}}”.",
       "logbookHint": "The form can also be found in your logbook.",
-      "unknownMission": "Mission"
+      "unknownMission": "Mission",
+      "signatureRequired": "The form requires your signature. Open the form to sign it."
     },
     "ai": {
       "button": "Assess with AI",
@@ -8265,7 +8266,19 @@
       "replace": "Replace",
       "append": "Append below"
     },
-    "formLabel": "Evaluation"
+    "formLabel": "Evaluation",
+    "signature": {
+      "title": "Student signature",
+      "signed": "Signed",
+      "pending": "Awaiting signature",
+      "sign": "Sign the form",
+      "saving": "Saving …",
+      "saved": "Signature saved",
+      "saveError": "Could not save the signature",
+      "signedBy": "Signed by {{name}} · {{date}}",
+      "waitingFor": "Waiting for a signature from {{name}}.",
+      "availableAfterSave": "The student can sign once the form is saved as completed."
+    }
   },
   "uploadLog": {
     "sn": {
