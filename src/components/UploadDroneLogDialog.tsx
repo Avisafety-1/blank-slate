@@ -161,6 +161,9 @@ interface UploadDroneLogDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Antall DJI-logger som hentes i én batch (samme som nattsynken).
+const DJI_LOG_PAGE_SIZE = 200;
+
 // ── Helper: call edge function with JSON ──
 
 async function callDronelogAction(action: string, payload: Record<string, unknown>) {
