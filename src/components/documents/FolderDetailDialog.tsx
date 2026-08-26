@@ -106,6 +106,11 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     if (!templateId) return;
     const tpl = evaluationTemplates.find((x) => x.id === templateId);
     if (!tpl) return;
+    // Frontend-guard: admin-only evaluation templates cannot be opened by non-admins
+    if (tpl.admin_only && !isAdmin) {
+      toast.error(t("evaluation.errors.noAccess"));
+      return;
+    }
     setSelectedTemplate(tpl);
     setTemplateDialogOpen(true);
   };
