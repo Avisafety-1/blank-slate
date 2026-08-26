@@ -170,29 +170,31 @@ export const EvaluationExportDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileDown className="h-5 w-5 text-primary" />
-            {t("evaluation.export.title")}
+      <DialogContent className="max-w-[92vw] sm:max-w-md p-4 sm:p-6">
+        <DialogHeader className="text-left sm:text-left">
+          <DialogTitle className="flex items-start gap-2 text-base sm:text-lg">
+            <FileDown className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <span className="break-words">{t("evaluation.export.title")}</span>
           </DialogTitle>
-          <DialogDescription>{t("evaluation.export.description")}</DialogDescription>
+          <DialogDescription className="break-words">
+            {t("evaluation.export.description")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3 text-sm">
-            <GraduationCap className="h-4 w-4 text-primary shrink-0" />
-            <span className="min-w-0 truncate">
+          <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-sm">
+            <GraduationCap className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <span className="min-w-0 break-words">
               {t("evaluation.export.studentAlways", {
                 name: studentName || t("evaluation.visibility.student"),
               })}
             </span>
           </div>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="eval-export-admins" className="text-sm">
+          <div className="flex items-center justify-between rounded-md border p-3 gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <Label htmlFor="eval-export-admins" className="text-sm break-words">
                 {t("evaluation.export.adminsOnly")}
               </Label>
             </div>
@@ -200,6 +202,7 @@ export const EvaluationExportDialog = ({
               id="eval-export-admins"
               checked={shareWithAdmins}
               onCheckedChange={setShareWithAdmins}
+              className="shrink-0"
             />
           </div>
 
