@@ -130,6 +130,42 @@ export async function resolveDronelogKey(
   return null;
 }
 
+/** Resolve one explicitly requested source without accepting key material from the client. */
+export async function resolveDronelogKeyForSource(
+  serviceClient: any,
+  opts: { userId: string; companyId?: string | null; source: KeySource },
+): Promise<ResolvedKey | null> {
+  if (opts.source === "global") {
+    const key = Deno.env.get("DRONELOG_AVISAFE_KEY") || null;
+    return key ? { key, source: "global", fingerprint: fp(key) } : null;
+  }
+
+  if (opts.source === "user") {
+    const { data } = await serviceClient
+      .from("dji_credentials")
+      .select("dronelog_api_key_encrypted")
+      .eq("user_id", opts.userId)
+      .maybeSingle();
+    if (!data?.dronelog_api_key_encrypted) return null;
+    try {
+      const key = await decryptSecret(data.dronelog_api_key_encrypted);
+      return key ? { key, source: "user", fingerprint: fp(key) } : null;
+    } catch (error) {
+      console.warn("[dronelog-auth] could not decrypt requested user key:", (error as Error).message);
+      return null;
+    }
+  }
+
+  if (!opts.companyId) return null;
+  const { data } = await serviceClient
+    .from("companies")
+    .select("dronelog_api_key")
+    .eq("id", opts.companyId)
+    .maybeSingle();
+  const key = data?.dronelog_api_key || null;
+  return key ? { key, source: "company", fingerprint: fp(key) } : null;
+}
+
 export interface ProvisionUserKeyResult {
   key: string | null;
   status: number | null;
