@@ -105,9 +105,9 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const handleTemplateClick = (templateId: string | null) => {
     if (!templateId) return;
     const tpl = evaluationTemplates.find((x) => x.id === templateId);
-    if (!tpl) return;
-    // Frontend-guard: admin-only evaluation templates cannot be opened by non-admins
-    if (tpl.admin_only && !isAdmin) {
+    // Frontend-guard: admin-only templates are filtered out for non-admins,
+    // so a missing template here means the user lacks access.
+    if (!tpl || (tpl.admin_only && !isAdmin)) {
       toast.error(t("evaluation.errors.noAccess"));
       return;
     }
