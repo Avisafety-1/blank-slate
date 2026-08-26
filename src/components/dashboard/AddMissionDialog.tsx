@@ -28,6 +28,7 @@ import { ResourceConflictWarning, ResourceConflictIndicator } from "@/components
 import { Tables } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { DroneOptionContent } from "@/components/resources/DroneOptionLabel";
 import { AirspaceWarnings } from "@/components/dashboard/AirspaceWarnings";
 import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
