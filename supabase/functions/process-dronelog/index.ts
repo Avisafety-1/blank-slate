@@ -1163,14 +1163,18 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: "No saved credentials" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        // Decrypt password
-        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const raw = Uint8Array.from(atob(cred.dji_password_encrypted), c => c.charCodeAt(0));
-        const iv = raw.slice(0, 12);
-        const ciphertext = raw.slice(12);
-        const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(serviceKey.slice(0, 32)), "AES-GCM", false, ["decrypt"]);
-        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, keyMaterial, ciphertext);
-        const password = new TextDecoder().decode(decrypted);
+        // Cached account → no login at all. DJI/DroneLog rate limits are shared
+        // between users, so we only spend a login when we have to.
+        if (cred.dji_account_id) {
+          return new Response(JSON.stringify({
+            result: { djiAccountId: cred.dji_account_id },
+            accountId: cred.dji_account_id,
+            cached: true,
+            email: cred.dji_email,
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const password = await decryptSecret(cred.dji_password_encrypted);
 
         // Login to DJI via DroneLog API
         const res = await fetch(`${DRONELOG_BASE}/accounts/dji`, {
@@ -1184,6 +1188,9 @@ Deno.serve(async (req) => {
           const classified = classifyDjiLoginError(res.status, upstreamMsg);
           const retryAfter = res.headers.get("Retry-After") || null;
           console.error(`[process-dronelog] dji-auto-login upstream=${res.status} reason=${classified.reason} msg="${upstreamMsg}"`);
+          if (classified.reason === "rate_limited") {
+            await setKeyCooldown(serviceClient, keyFingerprint, retryAfter ? parseInt(retryAfter, 10) || 300 : 300);
+          }
           // Only delete saved credentials when DJI explicitly rejects the password.
           // Do NOT delete on rate-limit or transient upstream errors.
           if (classified.reason === "invalid_credentials" || classified.reason === "account_locked") {
@@ -1207,6 +1214,7 @@ Deno.serve(async (req) => {
 
         return new Response(JSON.stringify({ ...data, email: cred.dji_email }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
 
       if (action === "dji-delete-credentials") {
         const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
