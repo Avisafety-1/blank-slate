@@ -115,15 +115,17 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
   const distanceKm = log.total_distance_m != null ? (log.total_distance_m / 1000).toFixed(2) : null;
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       ref={containerRef as any}
       onClick={() => onOpen(log)}
-      className="group text-left rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm overflow-hidden hover:border-primary/60 hover:bg-card transition-colors flex flex-col"
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(log); } }}
+      className="group text-left rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm overflow-hidden hover:border-primary/60 hover:bg-card transition-colors flex flex-col cursor-pointer touch-pan-y"
     >
       <div className="relative h-28 bg-muted/40">
         {positions && positions.length >= 2 ? (
-          <div ref={mapElRef} className="absolute inset-0" />
+          <div ref={mapElRef} className="absolute inset-0 pointer-events-none" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             {!trackLoaded && visible ? (
@@ -198,6 +200,6 @@ export const FlightLogCard = ({ log, onOpen, opening }: Props) => {
         </div>
 
       </div>
-    </button>
+    </div>
   );
 };
