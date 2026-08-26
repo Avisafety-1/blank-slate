@@ -981,10 +981,38 @@ Deno.serve(async (req) => {
         }
         let qs = `limit=${limit}`;
         if (createdAfterId) qs += `&createdAfterId=${createdAfterId}`;
-        const res = await fetch(`${DRONELOG_BASE}/logs/${accountId}?${qs}`, {
+        const listOnce = (id: string) => fetch(`${DRONELOG_BASE}/logs/${id}?${qs}`, {
           headers: { Authorization: `Bearer ${dronelogKey}`, Accept: "application/json" },
         });
-        const data = await res.json();
+
+        let res = await listOnce(accountId);
+
+        // The cached DJI account id can go stale. Re-login once (only then) and retry.
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+          const { data: cred } = await serviceClient
+            .from("dji_credentials")
+            .select("dji_email, dji_password_encrypted")
+            .eq("user_id", authUser.id)
+            .maybeSingle();
+          if (cred?.dji_password_encrypted) {
+            try {
+              const password = await decryptSecret(cred.dji_password_encrypted);
+              const login = await djiLogin(dronelogKey, cred.dji_email, password);
+              if (login.ok && login.accountId) {
+                await serviceClient.from("dji_credentials").update({ dji_account_id: login.accountId }).eq("user_id", authUser.id);
+                console.log("[process-dronelog] dji-list-logs refreshed stale accountId");
+                res = await listOnce(login.accountId);
+              } else if (login.status === 429) {
+                await setKeyCooldown(serviceClient, keyFingerprint, login.retryAfter ?? 300);
+              }
+            } catch (e) {
+              console.warn("[process-dronelog] re-login after stale account failed:", (e as Error).message);
+            }
+          }
+        }
+
+        const data = await res.json().catch(() => ({}));
         console.log(`[process-dronelog] dji-list-logs key=${keyFingerprint} upstream=${res.status}`);
         if (!res.ok) {
           if (res.status === 429) {
@@ -995,6 +1023,7 @@ Deno.serve(async (req) => {
         }
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
 
       if (action === "dji-process-log") {
         const { accountId, logId, downloadUrl } = body;
