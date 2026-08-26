@@ -298,6 +298,33 @@ export async function djiLogin(
   };
 }
 
+export async function djiLoginWithKeyRecovery(
+  serviceClient: any,
+  args: {
+    resolved: ResolvedKey;
+    userId: string;
+    companyId?: string | null;
+    email: string;
+    password: string;
+  },
+): Promise<{ login: LoginResult; resolved: ResolvedKey }> {
+  let resolved = args.resolved;
+  let login = await djiLogin(resolved.key, args.email, args.password);
+  if (login.status === 401 && resolved.source !== "global") {
+    console.warn(`[dronelog-auth] rejected key source=${resolved.source}; recovering once`);
+    const replacement = await recoverInvalidDronelogKey(serviceClient, {
+      userId: args.userId,
+      companyId: args.companyId,
+      failedSource: resolved.source,
+    });
+    if (replacement && (replacement.source !== resolved.source || replacement.key !== resolved.key)) {
+      resolved = replacement;
+      login = await djiLogin(resolved.key, args.email, args.password);
+    }
+  }
+  return { login, resolved };
+}
+
 export interface ListLogsResult {
   ok: boolean;
   status: number;
@@ -409,4 +436,33 @@ export async function listLogsWithCachedAccount(
     retryAfter: null,
     body: data2,
   };
+}
+
+export async function listLogsWithKeyRecovery(
+  serviceClient: any,
+  args: {
+    resolved: ResolvedKey;
+    userId: string;
+    companyId?: string | null;
+    email: string;
+    password: string;
+    cachedAccountId: string | null;
+    query?: string;
+  },
+): Promise<{ listed: ListLogsResult; resolved: ResolvedKey }> {
+  let resolved = args.resolved;
+  let listed = await listLogsWithCachedAccount(serviceClient, { ...args, key: resolved.key });
+  if (listed.status === 401 && resolved.source !== "global") {
+    console.warn(`[dronelog-auth] rejected key source=${resolved.source}; recovering once`);
+    const replacement = await recoverInvalidDronelogKey(serviceClient, {
+      userId: args.userId,
+      companyId: args.companyId,
+      failedSource: resolved.source,
+    });
+    if (replacement && (replacement.source !== resolved.source || replacement.key !== resolved.key)) {
+      resolved = replacement;
+      listed = await listLogsWithCachedAccount(serviceClient, { ...args, key: resolved.key });
+    }
+  }
+  return { listed, resolved };
 }
