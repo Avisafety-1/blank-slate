@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, ChevronUp, ChevronDown, Globe, Layers } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Globe, Layers, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import EvaluationFormPreview from "@/components/evaluation/EvaluationFormPreview";
@@ -36,12 +36,13 @@ const emptyCategory = (): EvaluationCategory => ({
 
 export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }: EvaluationFormDialogProps) => {
   const { t } = useTranslation();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
   const { saveTemplate } = useEvaluationTemplates();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [globalVisibility, setGlobalVisibility] = useState(false);
+  const [adminOnly, setAdminOnly] = useState(false);
   const [categories, setCategories] = useState<EvaluationCategory[]>([emptyCategory()]);
 
   useEffect(() => {
@@ -50,11 +51,13 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
       setTitle(template.title);
       setDescription(template.description ?? "");
       setGlobalVisibility(template.global_visibility);
+      setAdminOnly(!!template.admin_only);
       setCategories(template.structure.length ? template.structure : [emptyCategory()]);
     } else {
       setTitle("");
       setDescription("");
       setGlobalVisibility(false);
+      setAdminOnly(false);
       setCategories([emptyCategory()]);
     }
   }, [open, template]);
@@ -125,6 +128,7 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
         description,
         structure: cleaned,
         global_visibility: globalVisibility,
+        admin_only: adminOnly,
       });
       toast.success(template ? t("evaluation.toasts.updated") : t("evaluation.toasts.created"));
       onSuccess?.();
@@ -161,6 +165,19 @@ export const EvaluationFormDialog = ({ open, onOpenChange, template, onSuccess }
             <span className="text-sm">{t("evaluation.builder.globalVisibility")}</span>
           </div>
           <Switch checked={globalVisibility} onCheckedChange={setGlobalVisibility} />
+        </div>
+      )}
+
+      {(isAdmin || isSuperAdmin) && (
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm">{t("evaluation.builder.adminOnly")}</p>
+              <p className="text-xs text-muted-foreground">{t("evaluation.builder.adminOnlyHint")}</p>
+            </div>
+          </div>
+          <Switch checked={adminOnly} onCheckedChange={setAdminOnly} />
         </div>
       )}
 
