@@ -198,9 +198,19 @@ const Documents = () => {
     }
   });
 
+  /** Frontend-guard: admin-only evaluation templates are hidden from non-admins. */
+  const canOpenTemplate = (tpl: EvaluationTemplate | undefined | null) => {
+    if (tpl?.admin_only && !isAdmin) {
+      toast.error(t('evaluation.errors.noAccess'));
+      return false;
+    }
+    return true;
+  };
+
   const handleOpenDocument = (document: Document) => {
     const tpl = (document as any).evaluation_template as EvaluationTemplate | undefined;
     if (tpl) {
+      if (!canOpenTemplate(tpl)) return;
       setViewingTemplate(tpl);
       return;
     }
@@ -292,8 +302,16 @@ const Documents = () => {
               onDocumentClick={handleOpenDocument}
               getDocumentStatus={getDocumentStatus}
               canEditEvaluation={isAdmin}
-              onViewEvaluation={(doc) => setViewingTemplate((doc as any).evaluation_template)}
-              onEditEvaluation={(doc) => setEditingTemplate((doc as any).evaluation_template)}
+              onViewEvaluation={(doc) => {
+                const tpl = (doc as any).evaluation_template as EvaluationTemplate | undefined;
+                if (!canOpenTemplate(tpl)) return;
+                setViewingTemplate(tpl ?? null);
+              }}
+              onEditEvaluation={(doc) => {
+                const tpl = (doc as any).evaluation_template as EvaluationTemplate | undefined;
+                if (!canOpenTemplate(tpl)) return;
+                setEditingTemplate(tpl ?? null);
+              }}
             />
 
 
