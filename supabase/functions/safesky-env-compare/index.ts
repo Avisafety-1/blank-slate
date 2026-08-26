@@ -108,6 +108,70 @@ async function probeBeacons(
   }
 }
 
+// Variant probe: tests exact URL shapes (trailing slash / plain query) and
+// surfaces redirects instead of following them.
+async function probeBeaconsVariant(opts: {
+  host: string;
+  keyLabel: string;
+  apiKey: string | undefined;
+  viewport: string;
+  trailingSlash: boolean;
+  plain: boolean;
+  label: string;
+}): Promise<Record<string, unknown>> {
+  const { host, keyLabel, apiKey, viewport, trailingSlash, plain, label } = opts;
+  const path = trailingSlash ? "/v1/beacons/" : "/v1/beacons";
+  const query = plain
+    ? `viewport=${viewport}`
+    : `viewport=${viewport}&return_grounded_traffic=true`;
+  const url = `https://${host}${path}?${query}`;
+  if (!apiKey) {
+    return { label, url, key: keyLabel, status: null, error: "no key configured" };
+  }
+  try {
+    const res = await safeFetch(
+      url,
+      {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Avisafe/1.0 (kontakt@avisafe.no)",
+          "x-api-key": apiKey,
+        },
+      },
+      ALLOWED_HOSTS,
+    );
+    const location = res.headers.get("location");
+    const text = await res.text();
+    if (!res.ok) {
+      return { label, url, key: keyLabel, status: res.status, location, error: text.slice(0, 300) };
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { label, url, key: keyLabel, status: res.status, location, error: "non-JSON response" };
+    }
+    const arr = (Array.isArray(data) ? data : []) as Record<string, unknown>[];
+    return {
+      label,
+      url,
+      key: keyLabel,
+      status: res.status,
+      location,
+      count: arr.length,
+      bodyIsArray: Array.isArray(data),
+      sources: tally(arr, "source"),
+      types: tally(arr, "beacon_type"),
+      bbox: bboxOf(arr),
+      sample: arr.slice(0, 5).map((b) => String(b?.callsign ?? b?.id ?? "?")),
+    };
+  } catch (e) {
+    return { label, url, key: keyLabel, status: null, error: String(e).slice(0, 300) };
+  }
+}
+
 async function probe(
   host: string,
   keyLabel: string,
@@ -250,8 +314,10 @@ Deno.serve(async (req) => {
   try {
     // ---- Auth: Avisafe superadmin, or the internal diagnostic token ---------
     const diagToken = Deno.env.get("SAFESKY_COMPARE_TOKEN");
+    const cronToken = Deno.env.get("CRON_SHARED_SECRET");
     const providedSecret = req.headers.get("x-diag-token");
-    const secretOk = !!diagToken && providedSecret === diagToken;
+    const secretOk = !!providedSecret &&
+      ((!!diagToken && providedSecret === diagToken) || (!!cronToken && providedSecret === cronToken));
 
     if (!secretOk) {
       const authHeader = req.headers.get("Authorization") ?? "";
@@ -389,6 +455,29 @@ Deno.serve(async (req) => {
     }
 
     // ---- Beacons mode: same endpoint/viewport as today's traffic fetch -------
+
+    // ---- Beacons URL-variant test (trailing slash / plain query) ------------
+    if (body.endpoint === "beacons-variants") {
+      const tanguyViewport = "43.1035,-2.0821,47.9943,15.3216";
+      const ourViewport = String(body.viewport ?? DEFAULT_VIEWPORT);
+      const beaconsKey = Deno.env.get("SAFESKY_BEACONS_API_KEY") || sandboxKeyEnv;
+      const variants = [
+        { label: "prod-key + slash + plain (Tanguy viewport)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: tanguyViewport, trailingSlash: true, plain: true },
+        { label: "prod-key + slash + plain (Nord-Europa)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: ourViewport, trailingSlash: true, plain: true },
+        { label: "prod-key + no slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_PROD_API_KEY", apiKey: prodKeyEnv, viewport: tanguyViewport, trailingSlash: false, plain: true },
+        { label: "beacons-key + slash + plain (kontroll)", host: PROD_HOST, keyLabel: "SAFESKY_BEACONS_API_KEY", apiKey: beaconsKey, viewport: tanguyViewport, trailingSlash: true, plain: true },
+        { label: "sandkasse-key + slash + plain (kontroll)", host: SANDBOX_HOST, keyLabel: "SAFESKY_API_KEY", apiKey: sandboxKeyEnv, viewport: tanguyViewport, trailingSlash: true, plain: true },
+      ];
+      const out: Record<string, unknown>[] = [];
+      for (const v of variants) {
+        out.push(await probeBeaconsVariant(v));
+        await sleep(500);
+      }
+      return new Response(
+        JSON.stringify({ query: { endpoint: "beacons-variants" }, results: out }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (body.endpoint === "beacons") {
       const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
