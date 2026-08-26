@@ -1199,6 +1199,20 @@ Deno.serve(async (req) => {
           console.error("[process-dronelog] dji-save-credentials error:", upsertErr);
           return new Response(JSON.stringify({ error: "Failed to save credentials" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
+
+        // The first interactive login happens before a credentials row exists,
+        // so provision the personal DroneLog key immediately after persistence.
+        // A provisioning failure must not discard otherwise valid DJI credentials.
+        const personalKey = await resolveDronelogKey(serviceClient, {
+          userId: authUser.id,
+          companyId: profileForPin?.company_id || profileCompanyId,
+          provision: true,
+        });
+        if (personalKey?.provisioningError) {
+          console.warn(`[process-dronelog] post-save personal key provisioning failed reason=${personalKey.provisioningError}`);
+        } else if (personalKey?.source === "user") {
+          console.log("[process-dronelog] post-save personal key ready");
+        }
         return new Response(JSON.stringify({ saved: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
