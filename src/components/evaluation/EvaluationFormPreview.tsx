@@ -58,6 +58,7 @@ export const EvaluationFormPreview = ({
   evaluatedAtSlot,
   visibilitySlot,
   overallAiSlot,
+  signatureSlot,
 
 
 
