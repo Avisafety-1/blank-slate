@@ -4022,14 +4022,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             )}
 
-            {/* Load more */}
+            {/* Refresh (full batch hentes allerede i én request) */}
             {djiHasMore && (
               <div className="flex justify-center pt-2">
-                <Button variant="outline" size="sm" disabled={isDjiLoading} onClick={() => {
-                  const lastLog = djiLogs[djiLogs.length - 1];
-                  if (lastLog) fetchDjiLogs(djiAccountId, Number(lastLog.id));
-                }}>
-                  {t('common.loadMore', 'Last inn flere')}
+                <Button variant="outline" size="sm" disabled={isDjiLoading} onClick={() => fetchDjiLogs(djiAccountId)}>
+                  {t('common.refresh', 'Oppdater')}
                 </Button>
               </div>
             )}
