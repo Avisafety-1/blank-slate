@@ -167,12 +167,14 @@ serve(async (req) => {
       : `Ditt oppdrag <strong>${missionName}</strong> starter om <strong>${minutesUntil} minutter</strong> (${startFormatted}). Husk å starte det i AviSafe.`}</p>
   </div>
 </body></html>`;
-            await sendEmail({
+            const result = await sendEmail({
               from: senderAddress,
               to: email,
               subject: sanitizeSubject(isEn ? `Mission starts in ${minutesUntil} minutes` : `Oppdrag starter om ${minutesUntil} minutter`),
               html,
             });
+            emailOk = true;
+            console.log(`[email] ${key}: sent to ${email} from ${senderAddress} (resend id: ${(result as any)?.id ?? 'unknown'})`);
           }
         } catch (err) {
           console.error(`Email failed for ${userId}:`, err);
