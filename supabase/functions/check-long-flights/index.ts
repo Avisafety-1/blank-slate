@@ -123,8 +123,9 @@ serve(async (req) => {
           console.error(`Push failed for ${flight.profile_id}:`, pushErr);
         }
 
-        // 2. Send email via Resend
+        // 2. Send email via Resend (hvis brukeren ønsker e-post)
         try {
+          if (!wantsEmail) throw new SkipChannel();
           const emailConfig = await getEmailConfig(flight.company_id);
           const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
