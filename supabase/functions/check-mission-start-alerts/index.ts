@@ -79,17 +79,25 @@ serve(async (req) => {
 
     const userIds = [...new Set(pairs.map((p) => p.profile_id as string))];
 
-    const [{ data: prefs }, { data: profiles }, { data: alreadySent }] = await Promise.all([
+    const [
+      { data: prefs, error: prefsError },
+      { data: profiles, error: profilesError },
+      { data: alreadySent, error: sendsError },
+    ] = await Promise.all([
       supabase
         .from('notification_preferences')
         .select('user_id, mission_start_alert_minutes, mission_start_alert_email, mission_start_alert_sms')
         .in('user_id', userIds),
-      supabase.from('profiles').select('id, navn, telefon, preferred_language').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, email, telefon, preferred_language').in('id', userIds),
       supabase
         .from('mission_start_alert_sends')
         .select('mission_id, user_id')
         .in('mission_id', missionIds),
     ]);
+
+    if (prefsError) console.error('prefs query failed:', prefsError);
+    if (profilesError) console.error('profiles query failed:', profilesError);
+    if (sendsError) console.error('sends query failed:', sendsError);
 
     const prefByUser = new Map((prefs ?? []).map((p) => [p.user_id, p]));
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
