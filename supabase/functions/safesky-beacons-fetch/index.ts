@@ -147,8 +147,10 @@ Deno.serve(async (req) => {
 
     // (log line replaced by reason-based log above)
 
-    // Use simple x-api-key header against sandbox (same as mil.avisafe.no)
+    // Simple x-api-key header. Prefer the dedicated production beacons key.
+    const prodKey = Deno.env.get('SAFESKY_BEACONS_PROD_API_KEY')?.trim();
     const safeskyApiKey =
+      prodKey ||
       Deno.env.get('SAFESKY_BEACONS_API_KEY') ||
       Deno.env.get('safesky_api_key') ||
       Deno.env.get('SAFESKY_API_KEY');
@@ -160,16 +162,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Calling SafeSky sandbox API:', SAFESKY_BEACONS_URL);
+    console.log(
+      `Calling SafeSky beacons API (${prodKey ? 'PRODUCTION key' : 'fallback key'}):`,
+      SAFESKY_BEACONS_URL,
+    );
 
-    const response = await safeFetch(SAFESKY_BEACONS_URL, {
+    const doFetch = (url: string) => safeFetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)',
         'x-api-key': safeskyApiKey,
       },
-    }, ['sandbox-public-api.safesky.app']);
+    }, [SAFESKY_HOST]);
+
+    let response = await doFetch(SAFESKY_BEACONS_URL);
+
+    // Some environments reject the optional return_grounded_traffic param — retry without it.
+    if (response.status === 400 || response.status === 422) {
+      const fallbackUrl = `https://${SAFESKY_HOST}${SAFESKY_PATH}?viewport=${SAFESKY_VIEWPORT}`;
+      console.warn(`SafeSky returned ${response.status}; retrying without return_grounded_traffic`);
+      await response.text();
+      response = await doFetch(fallbackUrl);
+    }
 
 
     if (!response.ok) {
