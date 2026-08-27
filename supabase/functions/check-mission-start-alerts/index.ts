@@ -146,7 +146,8 @@ serve(async (req) => {
       if (wantsEmail) {
         try {
           const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-          const email = authUser?.user?.email;
+          const email = authUser?.user?.email ?? profile?.email;
+          if (!email) console.warn(`[email] ${key}: no email address found`);
           if (email) {
             const emailConfig = await getEmailConfig(mission.company_id ?? undefined);
             const senderAddress = formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail);
