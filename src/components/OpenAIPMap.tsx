@@ -1346,9 +1346,9 @@ export function OpenAIPMap({
 
     // Common fetch params
     const geoJsonParams = {
-      mode,
+      mode: interactiveModeRef.current,
       setGeoJsonInteractivity,
-      modeRef,
+      modeRef: interactiveModeRef,
     };
 
     // Map click handler
@@ -1447,11 +1447,11 @@ export function OpenAIPMap({
     safeSkyManager.start();
     // Honor company "Standard kartlag" override for SafeSky (special side-effect layer).
     if (companyDefaults.safesky === false) safeSkyManager.stop();
-    fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-    fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-    fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+    fetchNsmData({ ...geoJsonParams, mode: interactiveModeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+    fetchRpasData({ ...geoJsonParams, mode: interactiveModeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+    fetchAllAipZones({ ...geoJsonParams, mode: interactiveModeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
     // fetchObstacles wires up below via fetchObstaclesViewport (viewport-scoped RPC)
-    fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
+    fetchAirportsData({ layer: airportsLayer, mode: interactiveModeRef.current });
     fetchDroneTelemetry({ droneLayer, modeRef });
     fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
     fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
@@ -1460,7 +1460,7 @@ export function OpenAIPMap({
     // Fresh map instance → drop any NOTAM cache from a previous mount so the
     // new (empty) layer group actually gets features rendered into it.
     resetCache('notam');
-    fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode });
+    fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
 
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
@@ -1477,8 +1477,8 @@ export function OpenAIPMap({
         maxLng: b.getEast(),
       };
       // Diff-render inside fetchers — no pre-clear (eliminates flicker)
-      fetchNaturvernZones({ layer: naturvernLayer, mode, bounds });
-      fetchVernRestrictionZones({ layer: naturvernLayer, mode, bounds });
+      fetchNaturvernZones({ layer: naturvernLayer, mode: interactiveModeRef.current, bounds });
+      fetchVernRestrictionZones({ layer: naturvernLayer, mode: interactiveModeRef.current, bounds });
     };
 
     // Viewport-based aviation obstacles fetch (uses GIST index via RPC)
@@ -1491,7 +1491,7 @@ export function OpenAIPMap({
       const b = map.getBounds();
       fetchObstacles({
         layer: obstaclesLayer,
-        mode: modeRef.current,
+        mode: interactiveModeRef.current,
         bounds: {
           minLat: b.getSouth(),
           minLng: b.getWest(),
@@ -1524,7 +1524,7 @@ export function OpenAIPMap({
       caaLayerMap.forEach(([layerId, lg]) => {
         if (map.hasLayer(lg)) {
           // Diff-render inside fetcher — no pre-clear (eliminates flicker)
-          fetchCaaDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
+          fetchCaaDroneZones({ layer: lg, mode: interactiveModeRef.current, bounds, layerIds: [layerId] });
         }
       });
     };
@@ -1547,14 +1547,14 @@ export function OpenAIPMap({
       } else {
         dkDroneLayerMap.forEach(([layerId, lg]) => {
           if (map.hasLayer(lg)) {
-            fetchDkDroneZones({ layer: lg, mode: modeRef.current, bounds, layerIds: [layerId] });
+            fetchDkDroneZones({ layer: lg, mode: interactiveModeRef.current, bounds, layerIds: [layerId] });
           }
         });
       }
       // Naturområder — bare 140 totalt, last fra zoom >= 6
       if (map.hasLayer(dkNatureLayer)) {
         if (z >= 6) {
-          fetchDkNatureAreas({ layer: dkNatureLayer, mode: modeRef.current, bounds, includeInactive: true });
+          fetchDkNatureAreas({ layer: dkNatureLayer, mode: interactiveModeRef.current, bounds, includeInactive: true });
         } else {
           resetCache('dkNature', dkNatureLayer);
         }
@@ -1595,7 +1595,7 @@ export function OpenAIPMap({
         if (!map.hasLayer(lg)) return;
         fetchUnifiedAirspaceZones({
           layer: lg,
-          mode: modeRef.current,
+          mode: interactiveModeRef.current,
           bounds,
           layerId,
           countryCodes: UNIFIED_COUNTRIES,
@@ -1613,7 +1613,7 @@ export function OpenAIPMap({
         fetchDkLayers();
         fetchUnifiedLayers();
         fetchObstaclesViewport();
-        fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: modeRef.current });
+        fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
       }, 300);
     };
 
@@ -1766,11 +1766,11 @@ export function OpenAIPMap({
         safeSkyManager.start();
         
         // 4. Re-fetch ALL data layers (including RLS-protected ones)
-        fetchNsmData({ ...geoJsonParams, mode: modeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
-        fetchRpasData({ ...geoJsonParams, mode: modeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
-        fetchAllAipZones({ ...geoJsonParams, mode: modeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+        fetchNsmData({ ...geoJsonParams, mode: interactiveModeRef.current, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+        fetchRpasData({ ...geoJsonParams, mode: interactiveModeRef.current, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+        fetchAllAipZones({ ...geoJsonParams, mode: interactiveModeRef.current, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
         fetchObstaclesViewport();
-        fetchAirportsData({ layer: airportsLayer, mode: modeRef.current });
+        fetchAirportsData({ layer: airportsLayer, mode: interactiveModeRef.current });
         fetchAndDisplayMissions({ missionsLayer, completedMissionsLayer, modeRef, onMissionClickRef });
         fetchAndDisplayPlannedMissionPublications({ layer: plannedPublishedLayer, modeRef, windowHours: plannedWindowHoursRef.current });
         fetchDroneTelemetry({ droneLayer, modeRef });
