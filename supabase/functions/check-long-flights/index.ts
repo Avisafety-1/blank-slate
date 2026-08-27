@@ -129,6 +129,7 @@ serve(async (req) => {
             console.log(`Email disabled for ${flight.profile_id}`);
           } else {
           const emailConfig = await getEmailConfig(flight.company_id);
+          const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
           const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
