@@ -79,17 +79,25 @@ serve(async (req) => {
 
     const userIds = [...new Set(pairs.map((p) => p.profile_id as string))];
 
-    const [{ data: prefs }, { data: profiles }, { data: alreadySent }] = await Promise.all([
+    const [
+      { data: prefs, error: prefsError },
+      { data: profiles, error: profilesError },
+      { data: alreadySent, error: sendsError },
+    ] = await Promise.all([
       supabase
         .from('notification_preferences')
         .select('user_id, mission_start_alert_minutes, mission_start_alert_email, mission_start_alert_sms')
         .in('user_id', userIds),
-      supabase.from('profiles').select('id, navn, telefon, preferred_language').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, email, telefon, preferred_language').in('id', userIds),
       supabase
         .from('mission_start_alert_sends')
         .select('mission_id, user_id')
         .in('mission_id', missionIds),
     ]);
+
+    if (prefsError) console.error('prefs query failed:', prefsError);
+    if (profilesError) console.error('profiles query failed:', profilesError);
+    if (sendsError) console.error('sends query failed:', sendsError);
 
     const prefByUser = new Map((prefs ?? []).map((p) => [p.user_id, p]));
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
@@ -103,16 +111,25 @@ serve(async (req) => {
       const mission = missionById.get(pair.mission_id);
       if (!mission) continue;
       const key = `${mission.id}:${userId}`;
-      if (sentKeys.has(key)) continue;
+      if (sentKeys.has(key)) {
+        console.log(`[skip] ${key}: already sent`);
+        continue;
+      }
 
       const pref = prefByUser.get(userId);
       const wantsEmail = pref?.mission_start_alert_email === true;
       const wantsSms = pref?.mission_start_alert_sms === true;
-      if (!wantsEmail && !wantsSms) continue;
+      if (!wantsEmail && !wantsSms) {
+        console.log(`[skip] ${key}: no channels enabled`);
+        continue;
+      }
 
       const leadMinutes = Number(pref?.mission_start_alert_minutes ?? 30) || 30;
       const minutesUntil = Math.round((new Date(mission.tidspunkt).getTime() - now) / 60000);
       if (minutesUntil > leadMinutes) continue;
+
+      let emailOk = false;
+      let smsOk = false;
 
       const profile = profileById.get(userId);
       const isEn = String(profile?.preferred_language ?? '').toLowerCase().startsWith('en');
@@ -129,7 +146,8 @@ serve(async (req) => {
       if (wantsEmail) {
         try {
           const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-          const email = authUser?.user?.email;
+          const email = authUser?.user?.email ?? profile?.email;
+          if (!email) console.warn(`[email] ${key}: no email address found`);
           if (email) {
             const emailConfig = await getEmailConfig(mission.company_id ?? undefined);
             const senderAddress = formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail);
@@ -143,18 +161,20 @@ serve(async (req) => {
     <h1 style="margin: 0; font-size: 20px;">${isEn ? 'Mission starting soon' : 'Oppdrag starter snart'}</h1>
   </div>
   <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
-    <p>${isEn ? 'Hi' : 'Hei'} ${profile?.navn ?? ''},</p>
+    <p>${isEn ? 'Hi' : 'Hei'} ${profile?.full_name ?? ''},</p>
     <p>${isEn
       ? `Your mission <strong>${missionName}</strong> starts in <strong>${minutesUntil} minutes</strong> (${startFormatted}). Remember to start it in AviSafe.`
       : `Ditt oppdrag <strong>${missionName}</strong> starter om <strong>${minutesUntil} minutter</strong> (${startFormatted}). Husk å starte det i AviSafe.`}</p>
   </div>
 </body></html>`;
-            await sendEmail({
+            const result = await sendEmail({
               from: senderAddress,
               to: email,
               subject: sanitizeSubject(isEn ? `Mission starts in ${minutesUntil} minutes` : `Oppdrag starter om ${minutesUntil} minutter`),
               html,
             });
+            emailOk = true;
+            console.log(`[email] ${key}: sent to ${email} from ${senderAddress} (resend id: ${(result as any)?.id ?? 'unknown'})`);
           }
         } catch (err) {
           console.error(`Email failed for ${userId}:`, err);
@@ -167,7 +187,11 @@ serve(async (req) => {
           const msisdn = normalizeMsisdn(profile?.telefon);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
-          if (msisdn && LOVABLE_API_KEY && GATEWAYAPI_API_KEY) {
+          if (!msisdn) {
+            console.warn(`[sms] ${key}: missing/invalid phone number`);
+          } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
+            console.warn(`[sms] ${key}: gatewayapi not configured`);
+          } else {
             const res = await fetch('https://connector-gateway.lovable.dev/gatewayapi/mobile/single', {
               method: 'POST',
               headers: {
@@ -184,11 +208,19 @@ serve(async (req) => {
             });
             if (!res.ok) {
               console.error(`SMS failed [${res.status}]: ${await res.text()}`);
+            } else {
+              smsOk = true;
+              console.log(`[sms] ${key}: sent to ${msisdn}`);
             }
           }
         } catch (err) {
           console.error(`SMS failed for ${userId}:`, err);
         }
+      }
+
+      if (!emailOk && !smsOk) {
+        console.error(`[alert] ${key}: no channel succeeded — will retry next run`);
+        continue;
       }
 
       const { error: logError } = await supabase
