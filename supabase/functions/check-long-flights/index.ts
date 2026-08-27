@@ -148,13 +148,14 @@ serve(async (req) => {
     <p>Du har en pågående flytur som ble startet <strong>${startFormatted}</strong> og har nå vart i over <strong>${durationHours} timer</strong>.</p>
     <p><strong>Har du glemt å avslutte den?</strong></p>
     <p>Logg inn i AviSafe for å avslutte flyturen hvis den er fullført.</p>
-    <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">Denne e-posten ble sendt automatisk fordi en aktiv flytur har pågått i over 3 timer.</p>
+    <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">Denne e-posten ble sendt automatisk fordi en aktiv flytur har pågått i over ${thresholdHours} timer.</p>
   </div>
 </body>
 </html>`;
 
           await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject('Påminnelse: Du har en aktiv flytur'), html: htmlContent });
           console.log(`Email sent to ${user.email}`);
+          }
         } catch (emailErr) {
           console.error(`Email failed for ${flight.profile_id}:`, emailErr);
         }
