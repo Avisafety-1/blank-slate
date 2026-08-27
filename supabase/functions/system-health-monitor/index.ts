@@ -13,6 +13,59 @@ const PROJECT_REF = "pmucsvrypogtttrajqxq";
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
+// Kjente function_id → navn (fallback hvis Management API ikke er tilgjengelig)
+const KNOWN_FUNCTION_NAMES: Record<string, string> = {
+  "21cf6ee8-707c-4061-b454-b61cc1deb3f5": "process-dronelog",
+  "4ef18be0-ecfd-461d-871a-c0a9945f73da": "ardupilot-sync-worker",
+  "11d58051-9345-4022-af04-7d5aa3b93391": "publish-scheduled",
+  "ffeb64f6-f483-4da9-a243-76c62273bcd9": "safesky-beacons-fetch",
+  "94cfd612-55c8-477a-9052-c09567bf1103": "safesky-cron-refresh",
+};
+
+// Funksjoner som normalt er trege (ekstern parsing). Egen, høyere terskel
+// slik at vanlig DJI-/ArduPilot-loggparsing ikke gir varsel hver gang.
+const PER_FUNCTION_P95_MS: Record<string, number> = {
+  "process-dronelog": 25000,
+  "ardupilot-sync-worker": 25000,
+  "dji-sync-worker": 25000,
+  "process-ardupilot": 25000,
+  "dji-parse-proxy": 25000,
+};
+
+let functionNameCache: Record<string, string> | null = null;
+
+async function getFunctionNames(): Promise<Record<string, string>> {
+  if (functionNameCache) return functionNameCache;
+  const names: Record<string, string> = { ...KNOWN_FUNCTION_NAMES };
+  if (SUPABASE_ACCESS_TOKEN) {
+    try {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/functions`, {
+        headers: { Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}` },
+      });
+      if (res.ok) {
+        const list = await res.json();
+        for (const f of Array.isArray(list) ? list : []) {
+          if (f?.id && f?.slug) names[String(f.id)] = String(f.slug);
+        }
+      }
+    } catch (e) {
+      console.error("Kunne ikke hente funksjonsnavn", e);
+    }
+  }
+  functionNameCache = names;
+  return names;
+}
+
+function fnLabel(names: Record<string, string>, id: unknown): string {
+  const key = String(id ?? "");
+  return names[key] ?? key;
+}
+
+function fnLogUrl(id: unknown): string {
+  return `https://supabase.com/dashboard/project/${PROJECT_REF}/functions/${String(id ?? "")}/logs`;
+}
+
+
 // Use Supabase Logflare-style analytics endpoint via management API
 async function runAnalytics(sql: string): Promise<any[]> {
   // Public anon key approach not available — use management API if token provided.
