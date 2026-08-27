@@ -264,6 +264,20 @@ export const ProfileDialog = () => {
     setMissionReminderHoursDraft(String(notificationPrefs.mission_reminder_hours));
   }, [notificationPrefs?.mission_reminder_hours]);
 
+  useEffect(() => {
+    const v = (notificationPrefs as any)?.long_flight_alert_hours;
+    if (v === undefined || v === null) return;
+    setLongFlightHoursDraft(String(v));
+  }, [(notificationPrefs as any)?.long_flight_alert_hours]);
+
+  useEffect(() => {
+    const v = (notificationPrefs as any)?.mission_start_alert_minutes;
+    if (v === undefined || v === null) return;
+    setMissionStartMinutesDraft(String(v));
+  }, [(notificationPrefs as any)?.mission_start_alert_minutes]);
+
+
+
   const fetchUserData = async () => {
     if (!user) return;
 
