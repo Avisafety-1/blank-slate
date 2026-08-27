@@ -517,6 +517,26 @@ Deno.serve(async (req) => {
 
     }
 
+    // ---- New beacons prod key: isolated test against public-api /v1/beacons --
+    if (body.endpoint === "beacons-prod-key") {
+      const viewport = String(body.viewport ?? DEFAULT_VIEWPORT);
+      const newKey = Deno.env.get("SAFESKY_BEACONS_PROD_API_KEY");
+      const [apiKeyRes, hmacRes, sandboxControl] = await Promise.all([
+        probeBeacons(PROD_HOST, "SAFESKY_BEACONS_PROD_API_KEY", newKey, viewport),
+        probeBeacons(PROD_HOST, "SAFESKY_BEACONS_PROD_API_KEY+hmac", newKey, viewport, true),
+        probeBeacons(SANDBOX_HOST, "SAFESKY_BEACONS_PROD_API_KEY (kontroll, sandkasse)", newKey, viewport),
+      ]);
+      return new Response(
+        JSON.stringify({
+          query: { endpoint: "beacons-prod-key", viewport },
+          prodWithApiKey: apiKeyRes,
+          prodWithHmac: hmacRes,
+          sandboxControl,
+        }, null, 2),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const lat = Number(body.lat ?? DEFAULT_LAT).toFixed(4);
     const lon = Number(body.lon ?? DEFAULT_LON).toFixed(4);
     const rad = Math.min(Number(body.rad ?? DEFAULT_RAD) || DEFAULT_RAD, DEFAULT_RAD);
