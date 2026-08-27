@@ -5966,6 +5966,35 @@ export type Database = {
           },
         ]
       }
+      mission_start_alert_sends: {
+        Row: {
+          id: string
+          mission_id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          mission_id: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          mission_id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_start_alert_sends_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           anonymous_publish: boolean | null
@@ -6518,7 +6547,13 @@ export type Database = {
           email_new_user_pending: boolean
           id: string
           inspection_reminder_days: number
+          long_flight_alert_hours: number
+          long_flight_email: boolean
+          long_flight_sms: boolean
           mission_reminder_hours: number | null
+          mission_start_alert_email: boolean
+          mission_start_alert_minutes: number
+          mission_start_alert_sms: boolean
           push_competency_expiry: boolean | null
           push_currency_expired: boolean
           push_currency_warning: boolean
@@ -6547,7 +6582,13 @@ export type Database = {
           email_new_user_pending?: boolean
           id?: string
           inspection_reminder_days?: number
+          long_flight_alert_hours?: number
+          long_flight_email?: boolean
+          long_flight_sms?: boolean
           mission_reminder_hours?: number | null
+          mission_start_alert_email?: boolean
+          mission_start_alert_minutes?: number
+          mission_start_alert_sms?: boolean
           push_competency_expiry?: boolean | null
           push_currency_expired?: boolean
           push_currency_warning?: boolean
@@ -6576,7 +6617,13 @@ export type Database = {
           email_new_user_pending?: boolean
           id?: string
           inspection_reminder_days?: number
+          long_flight_alert_hours?: number
+          long_flight_email?: boolean
+          long_flight_sms?: boolean
           mission_reminder_hours?: number | null
+          mission_start_alert_email?: boolean
+          mission_start_alert_minutes?: number
+          mission_start_alert_sms?: boolean
           push_competency_expiry?: boolean | null
           push_currency_expired?: boolean
           push_currency_warning?: boolean
