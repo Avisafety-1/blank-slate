@@ -157,6 +157,8 @@ export const ProfileDialog = () => {
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
+  const [longFlightHoursDraft, setLongFlightHoursDraft] = useState<string>("3");
+  const [missionStartMinutesDraft, setMissionStartMinutesDraft] = useState<string>("30");
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -261,6 +263,20 @@ export const ProfileDialog = () => {
     if (notificationPrefs?.mission_reminder_hours === undefined || notificationPrefs?.mission_reminder_hours === null) return;
     setMissionReminderHoursDraft(String(notificationPrefs.mission_reminder_hours));
   }, [notificationPrefs?.mission_reminder_hours]);
+
+  useEffect(() => {
+    const v = (notificationPrefs as any)?.long_flight_alert_hours;
+    if (v === undefined || v === null) return;
+    setLongFlightHoursDraft(String(v));
+  }, [(notificationPrefs as any)?.long_flight_alert_hours]);
+
+  useEffect(() => {
+    const v = (notificationPrefs as any)?.mission_start_alert_minutes;
+    if (v === undefined || v === null) return;
+    setMissionStartMinutesDraft(String(v));
+  }, [(notificationPrefs as any)?.mission_start_alert_minutes]);
+
+
 
   const fetchUserData = async () => {
     if (!user) return;
@@ -2223,7 +2239,92 @@ export const ProfileDialog = () => {
                             )}
                           </div>
                         )}
+
+                        {/* Aktiv flytur */}
+                        <Separator />
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold">{t('profile.longFlightAlerts')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('profile.longFlightAlertsDesc')}</p>
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm">{t('profile.viaEmail')}</label>
+                            <Switch
+                              checked={(notificationPrefs as any)?.long_flight_email ?? true}
+                              onCheckedChange={(checked) => updateNotificationPref('long_flight_email' as any, checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm">{t('profile.viaSms')}</label>
+                            <Switch
+                              checked={(notificationPrefs as any)?.long_flight_sms ?? true}
+                              onCheckedChange={(checked) => updateNotificationPref('long_flight_sms' as any, checked)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                              {t('profile.alertAfterHours')}:
+                            </Label>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={longFlightHoursDraft}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '' || /^\d+$/.test(raw)) setLongFlightHoursDraft(raw);
+                              }}
+                              onBlur={() => {
+                                const parsed = Math.max(1, Math.min(12, parseInt(longFlightHoursDraft || '3', 10) || 3));
+                                setLongFlightHoursDraft(String(parsed));
+                                updateNotificationPref('long_flight_alert_hours' as any, parsed);
+                              }}
+                              className="w-20 h-8"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Før oppdrag starter */}
+                        <Separator />
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-semibold">{t('profile.missionStartAlerts')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('profile.missionStartAlertsDesc')}</p>
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm">{t('profile.viaEmail')}</label>
+                            <Switch
+                              checked={(notificationPrefs as any)?.mission_start_alert_email ?? false}
+                              onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_email' as any, checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm">{t('profile.viaSms')}</label>
+                            <Switch
+                              checked={(notificationPrefs as any)?.mission_start_alert_sms ?? false}
+                              onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_sms' as any, checked)}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
+                              {t('profile.alertBeforeMinutes')}:
+                            </Label>
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={missionStartMinutesDraft}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '' || /^\d+$/.test(raw)) setMissionStartMinutesDraft(raw);
+                              }}
+                              onBlur={() => {
+                                const parsed = Math.max(5, Math.min(1440, parseInt(missionStartMinutesDraft || '30', 10) || 30));
+                                setMissionStartMinutesDraft(String(parsed));
+                                updateNotificationPref('mission_start_alert_minutes' as any, parsed);
+                              }}
+                              className="w-24 h-8"
+                            />
+                          </div>
+                        </div>
                       </div>
+
                     </div>
                   </CardContent>
                 </Card>
