@@ -333,10 +333,11 @@ Deno.serve(async (req) => {
 
     // Rate-limit-varsel
     if (total429 >= (cfg.rate_limit_per_10m ?? 20)) {
-      const list = rl429.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      const list = rl429.map((r: any) =>
+        `<li><a href="${fnLogUrl(r.function_id)}">${fnLabel(functionNames, r.function_id)}</a>: ${r.n}</li>`).join("");
       triggered.push({
         type: "rate_limits",
-        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min`,
+        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min (${rl429.map((r: any) => fnLabel(functionNames, r.function_id)).slice(0, 3).join(", ")})`,
         html: `<p>Totalt ${total429} 429-svar (terskel ${cfg.rate_limit_per_10m}).</p><ul>${list}</ul>`,
       });
     }
