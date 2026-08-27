@@ -1444,7 +1444,14 @@
       "addonUnit": "NOK/mnd"
     },
     "feedbackButton": "Gi tilbakemelding",
-    "statusChangelog": "Status og endringslogg"
+    "statusChangelog": "Status og endringslogg",
+    "notificationSections": {
+      "operations": "Oppdragsvarsler",
+      "operationsDesc": "Varsler knyttet til flyginger og oppdrag du er tildelt.",
+      "email": "E-postvarsler",
+      "emailDesc": "Velg hvilke hendelser du vil få e-post om.",
+      "pushDesc": "Varsler direkte på enheten din."
+    }
   },
   "status": {
     "green": "Grønn",
