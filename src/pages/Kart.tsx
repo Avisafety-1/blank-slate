@@ -408,6 +408,7 @@ export default function KartPage() {
     const route = mission.route as RouteData | null;
     setEditingMissionId(mission.id);
     setIsRoutePlanning(true);
+    setRouteInspectMode(true); // default to pointer/inspect tool when opening an existing route
     setRoutePlanningState(null);
     setMissionDialogOpen(false);
     
