@@ -199,8 +199,19 @@ Deno.serve(async (req) => {
       order by p95_ms desc
       limit 10
     `;
-    const slowFns = cfg.latency_p95_alert_enabled ? await runAnalytics(latencySql) : [];
-    findings.slow_functions_10m = slowFns;
+    const functionNames = await getFunctionNames();
+    const slowFnsRaw = cfg.latency_p95_alert_enabled ? await runAnalytics(latencySql) : [];
+    // Filtrer bort funksjoner som har egen, høyere terskel (kjent treg parsing)
+    const slowFns = slowFnsRaw.filter((r: any) => {
+      const name = fnLabel(functionNames, r.function_id);
+      const limit = PER_FUNCTION_P95_MS[name];
+      return limit === undefined || Number(r.p95_ms) >= limit;
+    });
+    findings.slow_functions_10m = slowFns.map((r: any) => ({
+      ...r,
+      function_name: fnLabel(functionNames, r.function_id),
+    }));
+
 
     // 5) Rate-limit triggers (HTTP 429) siste 10 min
     const rl429Sql = `
