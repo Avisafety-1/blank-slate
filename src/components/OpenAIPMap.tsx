@@ -1617,6 +1617,32 @@ export function OpenAIPMap({
       }, 300);
     };
 
+    // Tegn lagene på nytt når musepeker-/inspeksjonsmodus veksles i
+    // ruteplanleggeren, slik at popups blir bundet (de hoppes over når
+    // lagene bygges i tegnemodus).
+    (map as any)._refetchInteractiveZones = () => {
+      resetCache('notam', notamLayer);
+      resetCache('naturvern', naturvernLayer);
+      resetCache('vernRestriction', naturvernLayer);
+      resetCache('obstacles', obstaclesLayer);
+      caaLayerMap.forEach(([layerId, lg]) => resetCache(`caa:${layerId}`, lg));
+      dkDroneLayerMap.forEach(([layerId, lg]) => resetCache(`dk:${layerId}`, lg));
+      resetCache('dkNature', dkNatureLayer);
+      unifiedLayerMap.forEach(([layerId, lg]) => resetCache(`unified:${layerId}:${UNIFIED_COUNTRIES_KEY}`, lg));
+
+      fetchNsmData({ ...geoJsonParams, mode: interactiveModeRef.current, modeRef: interactiveModeRef, layer: nsmLayer, geoJsonRef: nsmGeoJsonRef });
+      fetchRpasData({ ...geoJsonParams, mode: interactiveModeRef.current, modeRef: interactiveModeRef, layer: rpasLayer, geoJsonRef: rpasGeoJsonRef });
+      fetchAllAipZones({ ...geoJsonParams, mode: interactiveModeRef.current, modeRef: interactiveModeRef, layer: aipLayer, aipLayer, rmzTmzAtzLayer, aipGeoJsonLayersRef });
+      fetchAirportsData({ layer: airportsLayer, mode: interactiveModeRef.current });
+      fetchVerneomraader();
+      fetchCaaLayers();
+      fetchDkLayers();
+      fetchUnifiedLayers();
+      fetchObstaclesViewport();
+      fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
+    };
+
+
     // Initial fetch + listen for map moves
     fetchVerneomraader();
     fetchCaaLayers();
