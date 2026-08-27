@@ -417,6 +417,11 @@ export function OpenAIPMap({
   const baseLayerRef = useRef<L.Layer | null>(null);
   const isPlacingPilotRef = useRef(isPlacingPilot);
   const routeInspectModeRef = useRef(routeInspectMode);
+  // "Effektiv" modus for datalag: i ruteplanlegger med musepeker aktiv skal
+  // lagene oppføre seg som i visningsmodus (popups + klikk).
+  const interactiveModeRef = useRef<string>(
+    mode === "routePlanning" && !routeInspectMode ? "routePlanning" : "view",
+  );
 
   const onPilotPositionChangeRef = useRef(onPilotPositionChange);
   const weatherEnabledRef = useRef(false);
