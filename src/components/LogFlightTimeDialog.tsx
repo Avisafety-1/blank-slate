@@ -573,12 +573,14 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
     }
   };
 
-  const toggleEquipment = (equipmentId: string) => {
-    setSelectedEquipment(prev => 
-      prev.includes(equipmentId)
-        ? prev.filter(id => id !== equipmentId)
-        : [...prev, equipmentId]
-    );
+  const setEquipmentSelected = (equipmentId: string, checked: boolean) => {
+    setSelectedEquipment(prev => {
+      if (checked) {
+        return prev.includes(equipmentId) ? prev : [...prev, equipmentId];
+      }
+
+      return prev.filter(id => id !== equipmentId);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1241,23 +1243,20 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                     <p className="text-sm text-muted-foreground p-2">{t("logFlight.noEquipmentAvailable")}</p>
                   ) : (
                     equipmentList.map((equipment) => (
-                      <div
+                      <label
                         key={equipment.id}
                         className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
-                        onClick={() => toggleEquipment(equipment.id)}
                       >
                         <Checkbox
-                          id={`equipment-${equipment.id}`}
                           checked={selectedEquipment.includes(equipment.id)}
-                          onCheckedChange={() => toggleEquipment(equipment.id)}
+                          onCheckedChange={(checked) =>
+                            setEquipmentSelected(equipment.id, checked === true)
+                          }
                         />
-                        <label
-                          htmlFor={`equipment-${equipment.id}`}
-                          className="text-sm cursor-pointer flex-1"
-                        >
+                        <span className="text-sm cursor-pointer flex-1">
                           {equipment.navn} (SN: {equipment.serienummer})
-                        </label>
-                      </div>
+                        </span>
+                      </label>
                     ))
                   )}
                 </div>
