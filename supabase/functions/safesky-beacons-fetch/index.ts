@@ -11,7 +11,7 @@ const corsHeaders = {
 // SW = (47.0°N, 5.0°E), NE = (72.0°N, 32.0°E). Dekker hele Tyskland (sørgrense
 // ~47.3°N, vestgrense ~5.9°E), hele Polen (østgrense ~24°E) og hele Finland (nord ~70°N).
 const SAFESKY_VIEWPORT = "47.0,5.0,72.0,32.0";
-const SAFESKY_HOST = "sandbox-public-api.safesky.app";
+const SAFESKY_HOST = "public-api.safesky.app";
 const SAFESKY_PATH = "/v1/beacons";
 // Include grounded traffic (default is false, which filters out GROUNDED beacons)
 const SAFESKY_QUERY = `viewport=${SAFESKY_VIEWPORT}&return_grounded_traffic=true`;
