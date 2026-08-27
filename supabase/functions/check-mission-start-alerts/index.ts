@@ -111,16 +111,25 @@ serve(async (req) => {
       const mission = missionById.get(pair.mission_id);
       if (!mission) continue;
       const key = `${mission.id}:${userId}`;
-      if (sentKeys.has(key)) continue;
+      if (sentKeys.has(key)) {
+        console.log(`[skip] ${key}: already sent`);
+        continue;
+      }
 
       const pref = prefByUser.get(userId);
       const wantsEmail = pref?.mission_start_alert_email === true;
       const wantsSms = pref?.mission_start_alert_sms === true;
-      if (!wantsEmail && !wantsSms) continue;
+      if (!wantsEmail && !wantsSms) {
+        console.log(`[skip] ${key}: no channels enabled`);
+        continue;
+      }
 
       const leadMinutes = Number(pref?.mission_start_alert_minutes ?? 30) || 30;
       const minutesUntil = Math.round((new Date(mission.tidspunkt).getTime() - now) / 60000);
       if (minutesUntil > leadMinutes) continue;
+
+      let emailOk = false;
+      let smsOk = false;
 
       const profile = profileById.get(userId);
       const isEn = String(profile?.preferred_language ?? '').toLowerCase().startsWith('en');
