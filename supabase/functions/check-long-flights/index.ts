@@ -125,9 +125,10 @@ serve(async (req) => {
 
         // 2. Send email via Resend (hvis brukeren ønsker e-post)
         try {
-          if (!wantsEmail) throw new SkipChannel();
+          if (!wantsEmail) {
+            console.log(`Email disabled for ${flight.profile_id}`);
+          } else {
           const emailConfig = await getEmailConfig(flight.company_id);
-          const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
 
           const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
