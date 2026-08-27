@@ -173,7 +173,9 @@ serve(async (req) => {
           const msisdn = normalizeMsisdn(rawPhone);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
-          if (!msisdn) {
+          if (!wantsSms) {
+            console.log(`SMS disabled for ${flight.profile_id}`);
+          } else if (!msisdn) {
             console.log(`No valid phone for ${flight.profile_id}, skipping SMS`);
           } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
             console.warn('GatewayAPI env vars missing, skipping SMS');
