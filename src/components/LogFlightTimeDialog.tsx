@@ -1218,35 +1218,30 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
               <Package className="w-3 h-3" />
               {t("logFlight.equipment")}
             </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className="w-full justify-between font-normal mt-1"
-                >
-                  {selectedEquipment.length === 0 
-                    ? t("logFlight.selectEquipment")
-                    : t("logFlight.equipmentSelectedCount", { count: selectedEquipment.length })}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                portalled={false}
-                className="w-[--radix-popover-trigger-width] max-h-[min(60dvh,24rem)] overflow-hidden border border-border bg-popover p-0"
-                align="start"
-              >
-                <div 
-                  className="overscroll-contain max-h-[min(60dvh,24rem)] overflow-y-scroll p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
+            <Button
+              type="button"
+              variant="outline"
+              aria-expanded={equipmentListOpen}
+              className="w-full justify-between font-normal mt-1"
+              onClick={() => setEquipmentListOpen((prev) => !prev)}
+            >
+              {selectedEquipment.length === 0
+                ? t("logFlight.selectEquipment")
+                : t("logFlight.equipmentSelectedCount", { count: selectedEquipment.length })}
+              <ChevronDown className={`ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform ${equipmentListOpen ? "rotate-180" : ""}`} />
+            </Button>
+            {equipmentListOpen && (
+              <div className="mt-1 rounded-md border border-border bg-popover overflow-hidden">
+                <div
+                  className="overscroll-contain max-h-[min(50dvh,20rem)] overflow-y-auto p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
                   style={{ WebkitOverflowScrolling: 'touch' }}
-                  onWheel={(event) => event.stopPropagation()}
                 >
                   {equipmentList.length === 0 ? (
                     <p className="text-sm text-muted-foreground p-2">{t("logFlight.noEquipmentAvailable")}</p>
                   ) : (
                     equipmentList.map((equipment) => (
-                      <div 
-                        key={equipment.id} 
+                      <div
+                        key={equipment.id}
                         className="flex items-center gap-2 p-2 hover:bg-muted rounded cursor-pointer"
                         onClick={() => toggleEquipment(equipment.id)}
                       >
@@ -1255,7 +1250,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                           checked={selectedEquipment.includes(equipment.id)}
                           onCheckedChange={() => toggleEquipment(equipment.id)}
                         />
-                        <label 
+                        <label
                           htmlFor={`equipment-${equipment.id}`}
                           className="text-sm cursor-pointer flex-1"
                         >
@@ -1265,8 +1260,8 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                     ))
                   )}
                 </div>
-              </PopoverContent>
-            </Popover>
+              </div>
+            )}
           </div>
 
           {/* Flight date */}
