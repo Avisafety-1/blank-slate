@@ -1442,7 +1442,14 @@
       "addonUnit": "NOK/mo"
     },
     "feedbackButton": "Give feedback",
-    "statusChangelog": "Status & changelog"
+    "statusChangelog": "Status & changelog",
+    "notificationSections": {
+      "operations": "Mission alerts",
+      "operationsDesc": "Alerts related to flights and missions you are assigned to.",
+      "email": "Email notifications",
+      "emailDesc": "Choose which events you want emails about.",
+      "pushDesc": "Alerts sent directly to your device."
+    }
   },
   "status": {
     "green": "Green",
