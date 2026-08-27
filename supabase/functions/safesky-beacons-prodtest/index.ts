@@ -1,4 +1,4 @@
-import { safeFetch } from "../_shared/http.ts";
+import { safeFetch, fingerprintToken } from "../_shared/http.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     probe(`https://public-api.safesky.app/v1/beacons?${qs}`, apiKey),
   ]);
 
-  return new Response(JSON.stringify({ viewport, results: [withSlash, withoutSlash] }, null, 2), {
+  return new Response(JSON.stringify({ viewport, key: { fingerprint: fingerprintToken(apiKey), length: apiKey.length }, results: [withSlash, withoutSlash] }, null, 2), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
