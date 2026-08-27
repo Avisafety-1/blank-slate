@@ -13,6 +13,59 @@ const PROJECT_REF = "pmucsvrypogtttrajqxq";
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
+// Kjente function_id → navn (fallback hvis Management API ikke er tilgjengelig)
+const KNOWN_FUNCTION_NAMES: Record<string, string> = {
+  "21cf6ee8-707c-4061-b454-b61cc1deb3f5": "process-dronelog",
+  "4ef18be0-ecfd-461d-871a-c0a9945f73da": "ardupilot-sync-worker",
+  "11d58051-9345-4022-af04-7d5aa3b93391": "publish-scheduled",
+  "ffeb64f6-f483-4da9-a243-76c62273bcd9": "safesky-beacons-fetch",
+  "94cfd612-55c8-477a-9052-c09567bf1103": "safesky-cron-refresh",
+};
+
+// Funksjoner som normalt er trege (ekstern parsing). Egen, høyere terskel
+// slik at vanlig DJI-/ArduPilot-loggparsing ikke gir varsel hver gang.
+const PER_FUNCTION_P95_MS: Record<string, number> = {
+  "process-dronelog": 25000,
+  "ardupilot-sync-worker": 25000,
+  "dji-sync-worker": 25000,
+  "process-ardupilot": 25000,
+  "dji-parse-proxy": 25000,
+};
+
+let functionNameCache: Record<string, string> | null = null;
+
+async function getFunctionNames(): Promise<Record<string, string>> {
+  if (functionNameCache) return functionNameCache;
+  const names: Record<string, string> = { ...KNOWN_FUNCTION_NAMES };
+  if (SUPABASE_ACCESS_TOKEN) {
+    try {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/functions`, {
+        headers: { Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}` },
+      });
+      if (res.ok) {
+        const list = await res.json();
+        for (const f of Array.isArray(list) ? list : []) {
+          if (f?.id && f?.slug) names[String(f.id)] = String(f.slug);
+        }
+      }
+    } catch (e) {
+      console.error("Kunne ikke hente funksjonsnavn", e);
+    }
+  }
+  functionNameCache = names;
+  return names;
+}
+
+function fnLabel(names: Record<string, string>, id: unknown): string {
+  const key = String(id ?? "");
+  return names[key] ?? key;
+}
+
+function fnLogUrl(id: unknown): string {
+  return `https://supabase.com/dashboard/project/${PROJECT_REF}/functions/${String(id ?? "")}/logs`;
+}
+
+
 // Use Supabase Logflare-style analytics endpoint via management API
 async function runAnalytics(sql: string): Promise<any[]> {
   // Public anon key approach not available — use management API if token provided.
@@ -146,8 +199,19 @@ Deno.serve(async (req) => {
       order by p95_ms desc
       limit 10
     `;
-    const slowFns = cfg.latency_p95_alert_enabled ? await runAnalytics(latencySql) : [];
-    findings.slow_functions_10m = slowFns;
+    const functionNames = await getFunctionNames();
+    const slowFnsRaw = cfg.latency_p95_alert_enabled ? await runAnalytics(latencySql) : [];
+    // Filtrer bort funksjoner som har egen, høyere terskel (kjent treg parsing)
+    const slowFns = slowFnsRaw.filter((r: any) => {
+      const name = fnLabel(functionNames, r.function_id);
+      const limit = PER_FUNCTION_P95_MS[name];
+      return limit === undefined || Number(r.p95_ms) >= limit;
+    });
+    findings.slow_functions_10m = slowFns.map((r: any) => ({
+      ...r,
+      function_name: fnLabel(functionNames, r.function_id),
+    }));
+
 
     // 5) Rate-limit triggers (HTTP 429) siste 10 min
     const rl429Sql = `
@@ -229,10 +293,13 @@ Deno.serve(async (req) => {
       });
     }
     if (total5xx >= cfg.edge_5xx_per_10m) {
-      const list = edge5xx.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      const names5xx = edge5xx.map((r: any) => fnLabel(functionNames, r.function_id));
+      const list = edge5xx.map((r: any) =>
+        `<li><a href="${fnLogUrl(r.function_id)}">${fnLabel(functionNames, r.function_id)}</a>: ${r.n} feil</li>`).join("");
+
       triggered.push({
         type: "edge_5xx",
-        subject: `Edge functions feiler: ${total5xx} 5xx siste 10 min`,
+        subject: `Edge functions feiler: ${total5xx} 5xx siste 10 min (${names5xx.slice(0, 3).join(", ")})`,
         html: `<p>Totalt ${total5xx} 5xx-svar (terskel ${cfg.edge_5xx_per_10m}).</p><ul>${list}</ul>`,
       });
     }
@@ -246,20 +313,31 @@ Deno.serve(async (req) => {
 
     // Latency-varsel
     if (slowFns.length > 0) {
-      const list = slowFns.map((r: any) => `<li>${r.function_id}: p95 = ${Math.round(Number(r.p95_ms))} ms (n=${r.n})</li>`).join("");
+      const list = slowFns.map((r: any) => {
+        const name = fnLabel(functionNames, r.function_id);
+        const limit = PER_FUNCTION_P95_MS[name] ?? Number(cfg.edge_p95_ms ?? 10000);
+        return `<li><a href="${fnLogUrl(r.function_id)}">${name}</a>: p95 = ${(Number(r.p95_ms) / 1000).toFixed(1)} s over ${r.n} kall (terskel ${(limit / 1000).toFixed(0)} s)</li>`;
+      }).join("");
+      const first = slowFns[0] as any;
+      const firstName = fnLabel(functionNames, first.function_id);
+      const summary = slowFns.length === 1
+        ? `${firstName} p95 ${(Number(first.p95_ms) / 1000).toFixed(1)} s (${first.n} kall)`
+        : `${slowFns.length} funksjoner: ${slowFns.map((r: any) => fnLabel(functionNames, r.function_id)).slice(0, 3).join(", ")}`;
       triggered.push({
         type: "high_latency",
-        subject: `Høy latency: ${slowFns.length} edge-funksjon(er) over ${cfg.edge_p95_ms} ms p95`,
-        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul>`,
+        subject: `Høy latency: ${summary}`,
+        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul><p style="color:#666">Dette måler svartid, ikke databaselast. Sjekk loggene via lenkene over.</p>`,
       });
     }
 
+
     // Rate-limit-varsel
     if (total429 >= (cfg.rate_limit_per_10m ?? 20)) {
-      const list = rl429.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      const list = rl429.map((r: any) =>
+        `<li><a href="${fnLogUrl(r.function_id)}">${fnLabel(functionNames, r.function_id)}</a>: ${r.n}</li>`).join("");
       triggered.push({
         type: "rate_limits",
-        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min`,
+        subject: `Rate-limits trigget: ${total429} HTTP 429 siste 10 min (${rl429.map((r: any) => fnLabel(functionNames, r.function_id)).slice(0, 3).join(", ")})`,
         html: `<p>Totalt ${total429} 429-svar (terskel ${cfg.rate_limit_per_10m}).</p><ul>${list}</ul>`,
       });
     }
