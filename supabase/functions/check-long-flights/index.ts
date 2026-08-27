@@ -32,12 +32,16 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    // Hent alle uvarslede aktive flyginger som har vart minst 1 time — den
+    // faktiske terskelen er brukerstyrt (notification_preferences).
+    const MIN_HOURS = 1;
+    const DEFAULT_HOURS = 3;
+    const earliest = new Date(Date.now() - MIN_HOURS * 60 * 60 * 1000).toISOString();
 
-    const { data: longFlights, error: flightsError } = await supabase
+    const { data: candidateFlights, error: flightsError } = await supabase
       .from('active_flights')
       .select('id, profile_id, company_id, start_time, pilot_name, drone_id')
-      .lt('start_time', threeHoursAgo)
+      .lt('start_time', earliest)
       .is('long_flight_notified_at', null);
 
     if (flightsError) {
@@ -45,7 +49,31 @@ serve(async (req) => {
       throw flightsError;
     }
 
-    if (!longFlights || longFlights.length === 0) {
+    // Brukerpreferanser (terskel + kanaler)
+    const prefsByUser = new Map<string, { hours: number; email: boolean; sms: boolean }>();
+    const userIds = [...new Set((candidateFlights ?? []).map((f) => f.profile_id).filter(Boolean))];
+    if (userIds.length > 0) {
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('user_id, long_flight_alert_hours, long_flight_email, long_flight_sms')
+        .in('user_id', userIds);
+      for (const p of prefs ?? []) {
+        prefsByUser.set(p.user_id, {
+          hours: Number(p.long_flight_alert_hours ?? DEFAULT_HOURS) || DEFAULT_HOURS,
+          email: p.long_flight_email !== false,
+          sms: p.long_flight_sms !== false,
+        });
+      }
+    }
+
+    const longFlights = (candidateFlights ?? []).filter((f) => {
+      const pref = prefsByUser.get(f.profile_id);
+      const thresholdHours = pref?.hours ?? DEFAULT_HOURS;
+      const elapsedHours = (Date.now() - new Date(f.start_time).getTime()) / (1000 * 60 * 60);
+      return elapsedHours >= thresholdHours;
+    });
+
+    if (longFlights.length === 0) {
       console.log('No long-running flights found');
       return new Response(
         JSON.stringify({ success: true, notified: 0 }),
@@ -53,11 +81,16 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${longFlights.length} flight(s) running over 3 hours`);
+    console.log(`Found ${longFlights.length} flight(s) past the pilot's alert threshold`);
 
     let notifiedCount = 0;
 
     for (const flight of longFlights) {
+      const pref = prefsByUser.get(flight.profile_id);
+      const wantsEmail = pref?.email !== false;
+      const wantsSms = pref?.sms !== false;
+      const thresholdHours = pref?.hours ?? DEFAULT_HOURS;
+
       try {
         const { data: { user } } = await supabase.auth.admin.getUserById(flight.profile_id);
         if (!user?.email) {
@@ -90,8 +123,11 @@ serve(async (req) => {
           console.error(`Push failed for ${flight.profile_id}:`, pushErr);
         }
 
-        // 2. Send email via Resend
+        // 2. Send email via Resend (hvis brukeren ønsker e-post)
         try {
+          if (!wantsEmail) {
+            console.log(`Email disabled for ${flight.profile_id}`);
+          } else {
           const emailConfig = await getEmailConfig(flight.company_id);
           const fromName = emailConfig.fromName || 'AviSafe';
           const senderAddress = formatSenderAddress(fromName, emailConfig.fromEmail);
@@ -112,13 +148,14 @@ serve(async (req) => {
     <p>Du har en pågående flytur som ble startet <strong>${startFormatted}</strong> og har nå vart i over <strong>${durationHours} timer</strong>.</p>
     <p><strong>Har du glemt å avslutte den?</strong></p>
     <p>Logg inn i AviSafe for å avslutte flyturen hvis den er fullført.</p>
-    <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">Denne e-posten ble sendt automatisk fordi en aktiv flytur har pågått i over 3 timer.</p>
+    <p style="margin-top: 20px; font-size: 12px; color: #6b7280;">Denne e-posten ble sendt automatisk fordi en aktiv flytur har pågått i over ${thresholdHours} timer.</p>
   </div>
 </body>
 </html>`;
 
           await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject('Påminnelse: Du har en aktiv flytur'), html: htmlContent });
           console.log(`Email sent to ${user.email}`);
+          }
         } catch (emailErr) {
           console.error(`Email failed for ${flight.profile_id}:`, emailErr);
         }
@@ -136,7 +173,9 @@ serve(async (req) => {
           const msisdn = normalizeMsisdn(rawPhone);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
-          if (!msisdn) {
+          if (!wantsSms) {
+            console.log(`SMS disabled for ${flight.profile_id}`);
+          } else if (!msisdn) {
             console.log(`No valid phone for ${flight.profile_id}, skipping SMS`);
           } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
             console.warn('GatewayAPI env vars missing, skipping SMS');
