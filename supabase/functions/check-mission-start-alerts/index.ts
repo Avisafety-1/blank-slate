@@ -160,7 +160,7 @@ serve(async (req) => {
     <h1 style="margin: 0; font-size: 20px;">${isEn ? 'Mission starting soon' : 'Oppdrag starter snart'}</h1>
   </div>
   <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
-    <p>${isEn ? 'Hi' : 'Hei'} ${profile?.navn ?? ''},</p>
+    <p>${isEn ? 'Hi' : 'Hei'} ${profile?.full_name ?? ''},</p>
     <p>${isEn
       ? `Your mission <strong>${missionName}</strong> starts in <strong>${minutesUntil} minutes</strong> (${startFormatted}). Remember to start it in AviSafe.`
       : `Ditt oppdrag <strong>${missionName}</strong> starter om <strong>${minutesUntil} minutter</strong> (${startFormatted}). Husk å starte det i AviSafe.`}</p>
