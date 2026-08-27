@@ -593,6 +593,12 @@ export function OpenAIPMap({
   useEffect(() => {
     routeInspectModeRef.current = routeInspectMode;
     syncRoutePlanningInteractivity(modeRef.current, routeInspectMode);
+    // Popups bindes kun når lagene bygges i "interaktiv" modus — hent dem på
+    // nytt når musepekermodus veksles slik at alle geosoner blir klikkbare.
+    const refetch = (leafletMapRef.current as any)?._refetchInteractiveZones;
+    if (modeRef.current === "routePlanning" && typeof refetch === "function") {
+      refetch();
+    }
   }, [routeInspectMode, syncRoutePlanningInteractivity]);
 
   useEffect(() => { onPilotPositionChangeRef.current = onPilotPositionChange; }, [onPilotPositionChange]);
