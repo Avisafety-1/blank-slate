@@ -293,7 +293,10 @@ Deno.serve(async (req) => {
       });
     }
     if (total5xx >= cfg.edge_5xx_per_10m) {
-      const list = edge5xx.map((r: any) => `<li>${r.function_id}: ${r.n}</li>`).join("");
+      const names5xx = edge5xx.map((r: any) => fnLabel(functionNames, r.function_id));
+      const list = edge5xx.map((r: any) =>
+        `<li><a href="${fnLogUrl(r.function_id)}">${fnLabel(functionNames, r.function_id)}</a>: ${r.n} feil</li>`).join("");
+
       triggered.push({
         type: "edge_5xx",
         subject: `Edge functions feiler: ${total5xx} 5xx siste 10 min`,
