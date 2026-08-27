@@ -1876,13 +1876,131 @@ export const ProfileDialog = () => {
 
               {/* Notifications Tab */}
               <TabsContent value="notifications" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('profile.notifications')}</CardTitle>
+
+                {/* ── Oppdragsvarsler (flytur + oppdragsstart) ───────────── */}
+                <Card className="overflow-hidden border-primary/25">
+                  <CardHeader className="bg-primary/5 border-b border-primary/15 p-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Plane className="h-4 w-4 text-primary shrink-0" />
+                      {t('profile.notificationSections.operations')}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.notificationSections.operationsDesc')}
+                    </p>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
+                  <CardContent className="p-4 space-y-4">
+                    {/* Aktiv flytur */}
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Timer className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                        <div className="space-y-0.5">
+                          <h4 className="text-sm font-semibold leading-tight">{t('profile.longFlightAlerts')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('profile.longFlightAlertsDesc')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="text-sm">{t('profile.viaEmail')}</label>
+                        <Switch
+                          checked={(notificationPrefs as any)?.long_flight_email ?? true}
+                          onCheckedChange={(checked) => updateNotificationPref('long_flight_email' as any, checked)}
+                        />
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="text-sm">{t('profile.viaSms')}</label>
+                        <Switch
+                          checked={(notificationPrefs as any)?.long_flight_sms ?? true}
+                          onCheckedChange={(checked) => updateNotificationPref('long_flight_sms' as any, checked)}
+                        />
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between gap-3">
+                        <Label className="text-sm text-muted-foreground">
+                          {t('profile.alertAfterHours')}
+                        </Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={longFlightHoursDraft}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '' || /^\d+$/.test(raw)) setLongFlightHoursDraft(raw);
+                          }}
+                          onBlur={() => {
+                            const parsed = Math.max(1, Math.min(12, parseInt(longFlightHoursDraft || '3', 10) || 3));
+                            setLongFlightHoursDraft(String(parsed));
+                            updateNotificationPref('long_flight_alert_hours' as any, parsed);
+                          }}
+                          className="w-20 h-9 text-center shrink-0"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Før oppdrag starter */}
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4 space-y-3">
+                      <div className="flex items-start gap-2">
+                        <Calendar className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                        <div className="space-y-0.5">
+                          <h4 className="text-sm font-semibold leading-tight">{t('profile.missionStartAlerts')}</h4>
+                          <p className="text-xs text-muted-foreground">{t('profile.missionStartAlertsDesc')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="text-sm">{t('profile.viaEmail')}</label>
+                        <Switch
+                          checked={(notificationPrefs as any)?.mission_start_alert_email ?? false}
+                          onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_email' as any, checked)}
+                        />
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between gap-4">
+                        <label className="text-sm">{t('profile.viaSms')}</label>
+                        <Switch
+                          checked={(notificationPrefs as any)?.mission_start_alert_sms ?? false}
+                          onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_sms' as any, checked)}
+                        />
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between gap-3">
+                        <Label className="text-sm text-muted-foreground">
+                          {t('profile.alertBeforeMinutes')}
+                        </Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={missionStartMinutesDraft}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '' || /^\d+$/.test(raw)) setMissionStartMinutesDraft(raw);
+                          }}
+                          onBlur={() => {
+                            const parsed = Math.max(5, Math.min(1440, parseInt(missionStartMinutesDraft || '30', 10) || 30));
+                            setMissionStartMinutesDraft(String(parsed));
+                            updateNotificationPref('mission_start_alert_minutes' as any, parsed);
+                          }}
+                          className="w-24 h-9 text-center shrink-0"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── E-postvarsler ──────────────────────────────────────── */}
+                <Card className="overflow-hidden">
+                  <CardHeader className="bg-muted/40 border-b border-border p-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Mail className="h-4 w-4 text-primary shrink-0" />
+                      {t('profile.notificationSections.email')}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.notificationSections.emailDesc')}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="divide-y divide-border">
+                      <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
                             {t('profile.notificationOptions.newIncidents')}
@@ -1898,10 +2016,8 @@ export const ProfileDialog = () => {
                           }
                         />
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between">
+
+                      <div className="flex items-center justify-between gap-4 py-3">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
                             {t('profile.notificationOptions.newMissions')}
@@ -1917,10 +2033,8 @@ export const ProfileDialog = () => {
                           }
                         />
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between">
+
+                      <div className="flex items-center justify-between gap-4 py-3">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
                             {t('profile.notificationOptions.documentExpiry')}
@@ -1936,10 +2050,8 @@ export const ProfileDialog = () => {
                           }
                         />
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between">
+
+                      <div className="flex items-center justify-between gap-4 py-3">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
                             {t('profile.notificationOptions.newUserPending')}
@@ -1959,30 +2071,25 @@ export const ProfileDialog = () => {
 
                       {/* Mission approval notification - only shown for approvers */}
                       {canApproveMissions && (
-                        <>
-                          <Separator />
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5 flex-1">
-                              <label className="text-sm font-medium">
-                                {t('profile.notificationOptions.missionApproval')}
-                              </label>
-                              <p className="text-xs text-muted-foreground">
-                                {t('profile.notificationOptions.missionApprovalDesc')}
-                              </p>
-                            </div>
-                            <Switch
-                              checked={(notificationPrefs as any)?.email_mission_approval ?? false}
-                              onCheckedChange={(checked) => 
-                                updateNotificationPref('email_mission_approval' as any, checked)
-                              }
-                            />
+                        <div className="flex items-center justify-between gap-4 py-3">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">
+                              {t('profile.notificationOptions.missionApproval')}
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              {t('profile.notificationOptions.missionApprovalDesc')}
+                            </p>
                           </div>
-                        </>
+                          <Switch
+                            checked={(notificationPrefs as any)?.email_mission_approval ?? false}
+                            onCheckedChange={(checked) => 
+                              updateNotificationPref('email_mission_approval' as any, checked)
+                            }
+                          />
+                        </div>
                       )}
-                      
-                      <Separator />
-                      
-                      <div className="flex items-center justify-between">
+
+                      <div className="flex items-center justify-between gap-4 py-3">
                         <div className="space-y-0.5 flex-1">
                           <label className="text-sm font-medium">
                             {t('profile.notificationOptions.followupAssigned')}
@@ -1998,337 +2105,242 @@ export const ProfileDialog = () => {
                           }
                         />
                       </div>
-                      
-                      <Separator />
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-0.5 flex-1">
-                            <label className="text-sm font-medium">
-                              {t('profile.notificationOptions.inspectionReminder')}
-                            </label>
-                            <p className="text-xs text-muted-foreground">
-                              {t('profile.notificationOptions.inspectionReminderDesc')}
-                            </p>
-                          </div>
-                          <Switch
-                            checked={notificationPrefs?.email_inspection_reminder ?? false}
-                            onCheckedChange={(checked) => 
-                              updateNotificationPref('email_inspection_reminder', checked)
-                            }
-                          />
+
+                      <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                        <div className="space-y-0.5 flex-1">
+                          <label className="text-sm font-medium">
+                            {t('profile.notificationOptions.inspectionReminder')}
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            {t('profile.notificationOptions.inspectionReminderDesc')}
+                          </p>
                         </div>
+                        <Switch
+                          checked={notificationPrefs?.email_inspection_reminder ?? false}
+                          onCheckedChange={(checked) => 
+                            updateNotificationPref('email_inspection_reminder', checked)
+                          }
+                        />
                       </div>
-
-                      {canConfigureChildNotifications && (
-                        <>
-                          <Separator className="my-6" />
-                          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
-                            <div className="space-y-1">
-                              <h4 className="font-medium">{t('profile.notificationOptions.childCompanies')}</h4>
-                              <p className="text-xs text-muted-foreground">
-                                {t('profile.notificationOptions.childCompaniesDesc')}
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">{t('profile.notificationOptions.childIncidents')}</label>
-                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childIncidentsDesc')}</p>
-                              </div>
-                              <Switch
-                                checked={notificationPrefs?.email_child_incidents ?? true}
-                                onCheckedChange={(checked) => updateNotificationPref('email_child_incidents', checked)}
-                              />
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMissions')}</label>
-                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMissionsDesc')}</p>
-                              </div>
-                              <Switch
-                                checked={notificationPrefs?.email_child_missions ?? true}
-                                onCheckedChange={(checked) => updateNotificationPref('email_child_missions', checked)}
-                              />
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">{t('profile.notificationOptions.childNewUsers')}</label>
-                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childNewUsersDesc')}</p>
-                              </div>
-                              <Switch
-                                checked={notificationPrefs?.email_child_new_user_pending ?? true}
-                                onCheckedChange={(checked) => updateNotificationPref('email_child_new_user_pending', checked)}
-                              />
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">{t('profile.notificationOptions.childDocumentExpiry')}</label>
-                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childDocumentExpiryDesc')}</p>
-                              </div>
-                              <Switch
-                                checked={notificationPrefs?.email_child_document_expiry ?? true}
-                                onCheckedChange={(checked) => updateNotificationPref('email_child_document_expiry', checked)}
-                              />
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">{t('profile.notificationOptions.childMaintenance')}</label>
-                                <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMaintenanceDesc')}</p>
-                              </div>
-                              <Switch
-                                checked={notificationPrefs?.email_child_maintenance_reminder ?? true}
-                                onCheckedChange={(checked) => updateNotificationPref('email_child_maintenance_reminder', checked)}
-                              />
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      
-                      {/* Push Notifications Section */}
-                      <Separator className="my-6" />
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="h-5 w-5" />
-                          <h4 className="font-medium">{t('profile.pushNotifications')}</h4>
-                        </div>
-                        
-                        {!pushSupported ? (
-                          <p className="text-sm text-muted-foreground">{t('profile.pushNotSupported')}</p>
-                        ) : pushPermission === 'denied' ? (
-                          <p className="text-sm text-destructive">{t('profile.pushDenied')}</p>
-                        ) : (
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-0.5 flex-1">
-                                <label className="text-sm font-medium">
-                                  {t('profile.enablePush')}
-                                </label>
-                                <p className="text-xs text-muted-foreground">
-                                  {t('profile.enablePushDesc')}
-                                </p>
-                              </div>
-                              <Switch
-                                checked={pushSubscribed}
-                                onCheckedChange={(checked) => checked ? subscribePush() : unsubscribePush()}
-                                disabled={pushLoading}
-                              />
-                            </div>
-                            
-                            {pushSubscribed && (
-                              <>
-                                <Separator />
-                                
-                                <div className="flex items-center justify-between">
-                                  <div className="space-y-0.5 flex-1">
-                                    <label className="text-sm font-medium">
-                                      {t('profile.pushDocumentExpiry')}
-                                    </label>
-                                    <p className="text-xs text-muted-foreground">
-                                      {t('profile.pushDocumentExpiryDesc')}
-                                    </p>
-                                  </div>
-                                  <Switch
-                                    checked={notificationPrefs?.push_document_expiry ?? true}
-                                    onCheckedChange={(checked) => updateNotificationPref('push_document_expiry', checked)}
-                                  />
-                                </div>
-                                
-                                <Separator />
-                                
-                                <div className="flex items-center justify-between">
-                                  <div className="space-y-0.5 flex-1">
-                                    <label className="text-sm font-medium">
-                                      {t('profile.pushMaintenanceReminder')}
-                                    </label>
-                                    <p className="text-xs text-muted-foreground">
-                                      {t('profile.pushMaintenanceReminderDesc')}
-                                    </p>
-                                  </div>
-                                  <Switch
-                                    checked={notificationPrefs?.push_maintenance_reminder ?? true}
-                                    onCheckedChange={(checked) => updateNotificationPref('push_maintenance_reminder', checked)}
-                                  />
-                                </div>
-                                
-                                <Separator />
-                                
-                                <div className="flex items-center justify-between">
-                                  <div className="space-y-0.5 flex-1">
-                                    <label className="text-sm font-medium">
-                                      {t('profile.pushCompetencyExpiry')}
-                                    </label>
-                                    <p className="text-xs text-muted-foreground">
-                                      {t('profile.pushCompetencyExpiryDesc')}
-                                    </p>
-                                  </div>
-                                  <Switch
-                                    checked={notificationPrefs?.push_competency_expiry ?? true}
-                                    onCheckedChange={(checked) => updateNotificationPref('push_competency_expiry', checked)}
-                                  />
-                                </div>
-                                
-                                <Separator />
-                                
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5 flex-1">
-                                      <label className="text-sm font-medium">
-                                        {t('profile.pushMissionReminder')}
-                                      </label>
-                                      <p className="text-xs text-muted-foreground">
-                                        {t('profile.pushMissionReminderDesc')}
-                                      </p>
-                                    </div>
-                                    <Switch
-                                      checked={notificationPrefs?.push_mission_reminder ?? true}
-                                      onCheckedChange={(checked) => updateNotificationPref('push_mission_reminder', checked)}
-                                    />
-                                  </div>
-                                  {notificationPrefs?.push_mission_reminder && (
-                                    <div className="flex items-center gap-2 pl-4">
-                                      <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                                        {t('profile.hoursBeforeMission')}:
-                                      </Label>
-                                      <Input
-                                        type="text"
-                                        inputMode="numeric"
-                                        pattern="[0-9]*"
-                                        value={missionReminderHoursDraft}
-                                        onChange={(e) => {
-                                          const raw = e.target.value;
-                                          if (raw === '' || /^\d+$/.test(raw)) {
-                                            setMissionReminderHoursDraft(raw);
-                                          }
-                                        }}
-                                        onBlur={() => {
-                                          const parsed = Math.max(1, Math.min(72, parseInt(missionReminderHoursDraft || '24', 10) || 24));
-                                          setMissionReminderHoursDraft(String(parsed));
-                                          updateNotificationPref('mission_reminder_hours', parsed);
-                                        }}
-                                        className="w-20 h-8"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <Separator />
-                                
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={sendTestNotification}
-                                  disabled={pushLoading}
-                                >
-                                  {t('profile.testPushNotification')}
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Aktiv flytur */}
-                        <Separator />
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold">{t('profile.longFlightAlerts')}</h4>
-                          <p className="text-xs text-muted-foreground">{t('profile.longFlightAlertsDesc')}</p>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">{t('profile.viaEmail')}</label>
-                            <Switch
-                              checked={(notificationPrefs as any)?.long_flight_email ?? true}
-                              onCheckedChange={(checked) => updateNotificationPref('long_flight_email' as any, checked)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">{t('profile.viaSms')}</label>
-                            <Switch
-                              checked={(notificationPrefs as any)?.long_flight_sms ?? true}
-                              onCheckedChange={(checked) => updateNotificationPref('long_flight_sms' as any, checked)}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                              {t('profile.alertAfterHours')}:
-                            </Label>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={longFlightHoursDraft}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '' || /^\d+$/.test(raw)) setLongFlightHoursDraft(raw);
-                              }}
-                              onBlur={() => {
-                                const parsed = Math.max(1, Math.min(12, parseInt(longFlightHoursDraft || '3', 10) || 3));
-                                setLongFlightHoursDraft(String(parsed));
-                                updateNotificationPref('long_flight_alert_hours' as any, parsed);
-                              }}
-                              className="w-20 h-8"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Før oppdrag starter */}
-                        <Separator />
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-semibold">{t('profile.missionStartAlerts')}</h4>
-                          <p className="text-xs text-muted-foreground">{t('profile.missionStartAlertsDesc')}</p>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">{t('profile.viaEmail')}</label>
-                            <Switch
-                              checked={(notificationPrefs as any)?.mission_start_alert_email ?? false}
-                              onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_email' as any, checked)}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm">{t('profile.viaSms')}</label>
-                            <Switch
-                              checked={(notificationPrefs as any)?.mission_start_alert_sms ?? false}
-                              onCheckedChange={(checked) => updateNotificationPref('mission_start_alert_sms' as any, checked)}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Label className="text-sm text-muted-foreground whitespace-nowrap">
-                              {t('profile.alertBeforeMinutes')}:
-                            </Label>
-                            <Input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={missionStartMinutesDraft}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                if (raw === '' || /^\d+$/.test(raw)) setMissionStartMinutesDraft(raw);
-                              }}
-                              onBlur={() => {
-                                const parsed = Math.max(5, Math.min(1440, parseInt(missionStartMinutesDraft || '30', 10) || 30));
-                                setMissionStartMinutesDraft(String(parsed));
-                                updateNotificationPref('mission_start_alert_minutes' as any, parsed);
-                              }}
-                              className="w-24 h-8"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* ── Varslinger fra avdelinger ──────────────────────────── */}
+                {canConfigureChildNotifications && (
+                  <Card className="overflow-hidden">
+                    <CardHeader className="bg-muted/40 border-b border-border p-4">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Building2 className="h-4 w-4 text-primary shrink-0" />
+                        {t('profile.notificationOptions.childCompanies')}
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">
+                        {t('profile.notificationOptions.childCompaniesDesc')}
+                      </p>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      <div className="divide-y divide-border">
+                        <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">{t('profile.notificationOptions.childIncidents')}</label>
+                            <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childIncidentsDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_child_incidents ?? true}
+                            onCheckedChange={(checked) => updateNotificationPref('email_child_incidents', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 py-3">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">{t('profile.notificationOptions.childMissions')}</label>
+                            <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMissionsDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_child_missions ?? true}
+                            onCheckedChange={(checked) => updateNotificationPref('email_child_missions', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 py-3">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">{t('profile.notificationOptions.childNewUsers')}</label>
+                            <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childNewUsersDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_child_new_user_pending ?? true}
+                            onCheckedChange={(checked) => updateNotificationPref('email_child_new_user_pending', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 py-3">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">{t('profile.notificationOptions.childDocumentExpiry')}</label>
+                            <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childDocumentExpiryDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_child_document_expiry ?? true}
+                            onCheckedChange={(checked) => updateNotificationPref('email_child_document_expiry', checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">{t('profile.notificationOptions.childMaintenance')}</label>
+                            <p className="text-xs text-muted-foreground">{t('profile.notificationOptions.childMaintenanceDesc')}</p>
+                          </div>
+                          <Switch
+                            checked={notificationPrefs?.email_child_maintenance_reminder ?? true}
+                            onCheckedChange={(checked) => updateNotificationPref('email_child_maintenance_reminder', checked)}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ── Push-varsler ───────────────────────────────────────── */}
+                <Card className="overflow-hidden">
+                  <CardHeader className="bg-muted/40 border-b border-border p-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Smartphone className="h-4 w-4 text-primary shrink-0" />
+                      {t('profile.pushNotifications')}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {t('profile.notificationSections.pushDesc')}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    {!pushSupported ? (
+                      <p className="text-sm text-muted-foreground">{t('profile.pushNotSupported')}</p>
+                    ) : pushPermission === 'denied' ? (
+                      <p className="text-sm text-destructive">{t('profile.pushDenied')}</p>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-3">
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium">
+                              {t('profile.enablePush')}
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              {t('profile.enablePushDesc')}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={pushSubscribed}
+                            onCheckedChange={(checked) => checked ? subscribePush() : unsubscribePush()}
+                            disabled={pushLoading}
+                          />
+                        </div>
+
+                        {pushSubscribed && (
+                          <>
+                            <div className="divide-y divide-border">
+                              <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                                <div className="space-y-0.5 flex-1">
+                                  <label className="text-sm font-medium">
+                                    {t('profile.pushDocumentExpiry')}
+                                  </label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {t('profile.pushDocumentExpiryDesc')}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={notificationPrefs?.push_document_expiry ?? true}
+                                  onCheckedChange={(checked) => updateNotificationPref('push_document_expiry', checked)}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between gap-4 py-3">
+                                <div className="space-y-0.5 flex-1">
+                                  <label className="text-sm font-medium">
+                                    {t('profile.pushMaintenanceReminder')}
+                                  </label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {t('profile.pushMaintenanceReminderDesc')}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={notificationPrefs?.push_maintenance_reminder ?? true}
+                                  onCheckedChange={(checked) => updateNotificationPref('push_maintenance_reminder', checked)}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between gap-4 py-3">
+                                <div className="space-y-0.5 flex-1">
+                                  <label className="text-sm font-medium">
+                                    {t('profile.pushCompetencyExpiry')}
+                                  </label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {t('profile.pushCompetencyExpiryDesc')}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={notificationPrefs?.push_competency_expiry ?? true}
+                                  onCheckedChange={(checked) => updateNotificationPref('push_competency_expiry', checked)}
+                                />
+                              </div>
+
+                              <div className="space-y-3 py-3 last:pb-0">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="space-y-0.5 flex-1">
+                                    <label className="text-sm font-medium">
+                                      {t('profile.pushMissionReminder')}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground">
+                                      {t('profile.pushMissionReminderDesc')}
+                                    </p>
+                                  </div>
+                                  <Switch
+                                    checked={notificationPrefs?.push_mission_reminder ?? true}
+                                    onCheckedChange={(checked) => updateNotificationPref('push_mission_reminder', checked)}
+                                  />
+                                </div>
+                                {notificationPrefs?.push_mission_reminder && (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <Label className="text-sm text-muted-foreground">
+                                      {t('profile.hoursBeforeMission')}
+                                    </Label>
+                                    <Input
+                                      type="text"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      value={missionReminderHoursDraft}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        if (raw === '' || /^\d+$/.test(raw)) {
+                                          setMissionReminderHoursDraft(raw);
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const parsed = Math.max(1, Math.min(72, parseInt(missionReminderHoursDraft || '24', 10) || 24));
+                                        setMissionReminderHoursDraft(String(parsed));
+                                        updateNotificationPref('mission_reminder_hours', parsed);
+                                      }}
+                                      className="w-20 h-9 text-center shrink-0"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full sm:w-auto"
+                              onClick={sendTestNotification}
+                              disabled={pushLoading}
+                            >
+                              {t('profile.testPushNotification')}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
+
 
               {/* Oppfølging Tab */}
               <TabsContent value="incidents" className="space-y-4 mt-4 min-h-[400px] sm:min-h-0 overflow-hidden min-w-0">
