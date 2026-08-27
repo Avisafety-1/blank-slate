@@ -313,13 +313,23 @@ Deno.serve(async (req) => {
 
     // Latency-varsel
     if (slowFns.length > 0) {
-      const list = slowFns.map((r: any) => `<li>${r.function_id}: p95 = ${Math.round(Number(r.p95_ms))} ms (n=${r.n})</li>`).join("");
+      const list = slowFns.map((r: any) => {
+        const name = fnLabel(functionNames, r.function_id);
+        const limit = PER_FUNCTION_P95_MS[name] ?? Number(cfg.edge_p95_ms ?? 10000);
+        return `<li><a href="${fnLogUrl(r.function_id)}">${name}</a>: p95 = ${(Number(r.p95_ms) / 1000).toFixed(1)} s over ${r.n} kall (terskel ${(limit / 1000).toFixed(0)} s)</li>`;
+      }).join("");
+      const first = slowFns[0] as any;
+      const firstName = fnLabel(functionNames, first.function_id);
+      const summary = slowFns.length === 1
+        ? `${firstName} p95 ${(Number(first.p95_ms) / 1000).toFixed(1)} s (${first.n} kall)`
+        : `${slowFns.length} funksjoner: ${slowFns.map((r: any) => fnLabel(functionNames, r.function_id)).slice(0, 3).join(", ")}`;
       triggered.push({
         type: "high_latency",
-        subject: `Høy latency: ${slowFns.length} edge-funksjon(er) over ${cfg.edge_p95_ms} ms p95`,
-        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul>`,
+        subject: `Høy latency: ${summary}`,
+        html: `<p>Følgende edge-funksjoner har p95 over terskel siste 10 min:</p><ul>${list}</ul><p style="color:#666">Dette måler svartid, ikke databaselast. Sjekk loggene via lenkene over.</p>`,
       });
     }
+
 
     // Rate-limit-varsel
     if (total429 >= (cfg.rate_limit_per_10m ?? 20)) {
