@@ -17,7 +17,7 @@ I Profil → Varslingsinnstillinger kommer to nye seksjoner:
 **Før oppdrag starter**
 - Av/på for e-post og for SMS
 - Felt: "Varsle før start" (minutter, 5–1440, standard 30)
-- Varselet bruker oppdragets starttidspunkt, sendes én gang per oppdrag per bruker, og kun til personell som er tildelt oppdraget.
+- Varselet bruker oppdragets starttidspunkt, sendes én gang per oppdrag per bruker, og går kun til personene som er tildelt oppdraget — ikke til den som opprettet oppdraget, med mindre vedkommende også står som tildelt personell.
 
 Eksisterende push-påminnelse for oppdrag (timer før) beholdes uendret.
 
