@@ -299,7 +299,7 @@ Deno.serve(async (req) => {
 
       triggered.push({
         type: "edge_5xx",
-        subject: `Edge functions feiler: ${total5xx} 5xx siste 10 min`,
+        subject: `Edge functions feiler: ${total5xx} 5xx siste 10 min (${names5xx.slice(0, 3).join(", ")})`,
         html: `<p>Totalt ${total5xx} 5xx-svar (terskel ${cfg.edge_5xx_per_10m}).</p><ul>${list}</ul>`,
       });
     }
