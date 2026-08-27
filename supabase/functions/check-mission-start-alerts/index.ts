@@ -187,7 +187,11 @@ serve(async (req) => {
           const msisdn = normalizeMsisdn(profile?.telefon);
           const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
           const GATEWAYAPI_API_KEY = Deno.env.get('GATEWAYAPI_API_KEY');
-          if (msisdn && LOVABLE_API_KEY && GATEWAYAPI_API_KEY) {
+          if (!msisdn) {
+            console.warn(`[sms] ${key}: missing/invalid phone number`);
+          } else if (!LOVABLE_API_KEY || !GATEWAYAPI_API_KEY) {
+            console.warn(`[sms] ${key}: gatewayapi not configured`);
+          } else {
             const res = await fetch('https://connector-gateway.lovable.dev/gatewayapi/mobile/single', {
               method: 'POST',
               headers: {
@@ -204,11 +208,19 @@ serve(async (req) => {
             });
             if (!res.ok) {
               console.error(`SMS failed [${res.status}]: ${await res.text()}`);
+            } else {
+              smsOk = true;
+              console.log(`[sms] ${key}: sent to ${msisdn}`);
             }
           }
         } catch (err) {
           console.error(`SMS failed for ${userId}:`, err);
         }
+      }
+
+      if (!emailOk && !smsOk) {
+        console.error(`[alert] ${key}: no channel succeeded — will retry next run`);
+        continue;
       }
 
       const { error: logError } = await supabase
