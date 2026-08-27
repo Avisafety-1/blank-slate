@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const apiKey = Deno.env.get("SAFESKY_BEACONS_PROD_API_KEY");
+  const apiKey = Deno.env.get("SAFESKY_BEACONS_PROD_API_KEY")?.trim();
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "SAFESKY_BEACONS_PROD_API_KEY not configured" }), {
       status: 500,
