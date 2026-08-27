@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     if (typeof body?.viewport === "string" && body.viewport.length < 100) viewport = body.viewport;
   } catch { /* empty body allowed */ }
 
-  const qs = `viewport=${encodeURIComponent(viewport)}`;
+  const qs = `viewport=${viewport}`;
   const [withSlash, withoutSlash] = await Promise.all([
     probe(`https://public-api.safesky.app/v1/beacons/?${qs}`, apiKey),
     probe(`https://public-api.safesky.app/v1/beacons?${qs}`, apiKey),
