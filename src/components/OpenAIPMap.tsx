@@ -520,7 +520,7 @@ export function OpenAIPMap({
     if (!map) return;
 
     const overlaysInteractive = currentMode !== "routePlanning" || !!inspectMode;
-    const pointerEvents = overlaysInteractive ? "auto" : "none";
+    interactiveModeRef.current = overlaysInteractive ? "view" : "routePlanning";
     const container = map.getContainer();
     if (currentMode === "routePlanning" && !inspectMode) {
       container.classList.add("route-planning-active");
