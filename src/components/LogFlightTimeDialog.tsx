@@ -183,6 +183,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+  const [equipmentListOpen, setEquipmentListOpen] = useState(false);
   const [linkedPersonnel, setLinkedPersonnel] = useState<string[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   
