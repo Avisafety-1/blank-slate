@@ -1231,10 +1231,15 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border border-border max-h-[min(70vh,24rem)] overflow-hidden" align="start">
+              <PopoverContent
+                portalled={false}
+                className="w-[--radix-popover-trigger-width] max-h-[min(60dvh,24rem)] overflow-hidden border border-border bg-popover p-0"
+                align="start"
+              >
                 <div 
-                  className="max-h-[min(70vh,24rem)] overflow-y-auto p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
+                  className="overscroll-contain max-h-[min(60dvh,24rem)] overflow-y-scroll p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
                   style={{ WebkitOverflowScrolling: 'touch' }}
+                  onWheel={(event) => event.stopPropagation()}
                 >
                   {equipmentList.length === 0 ? (
                     <p className="text-sm text-muted-foreground p-2">{t("logFlight.noEquipmentAvailable")}</p>
