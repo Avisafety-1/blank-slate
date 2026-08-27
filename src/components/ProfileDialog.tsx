@@ -157,6 +157,8 @@ export const ProfileDialog = () => {
   const isAdmin = authIsAdmin;
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
   const [missionReminderHoursDraft, setMissionReminderHoursDraft] = useState<string>("24");
+  const [longFlightHoursDraft, setLongFlightHoursDraft] = useState<string>("3");
+  const [missionStartMinutesDraft, setMissionStartMinutesDraft] = useState<string>("30");
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
