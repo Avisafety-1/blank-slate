@@ -40,6 +40,7 @@ Eksisterende push-påminnelse for oppdrag (timer før) beholdes uendret.
 **Ny funksjon `check-mission-start-alerts`**
 - Cron hvert 5. minutt (`pg_cron` + `pg_net`, cron-secret-header som øvrige jobber).
 - Henter oppdrag med status `Planlagt`/`Tildelt` og `tidspunkt` innenfor neste 24 t, med `mission_personnel`.
+- Mottakerliste = `mission_personnel.profile_id` for oppdraget. `missions.user_id` (oppretteren) brukes ikke som mottaker.
 - For hver tildelt bruker: send hvis `tidspunkt - now <= mission_start_alert_minutes` og ingen rad i `mission_start_alert_sends`.
 - Sender e-post via `_shared/resend-email.ts` + `getEmailConfig(company_id)` og SMS via `_shared/sms.ts` (`sendGatewaySms`), i norsk/engelsk etter `profiles.preferred_language`.
 - Logger sending i `mission_start_alert_sends`.
