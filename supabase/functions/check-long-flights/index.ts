@@ -32,12 +32,16 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    // Hent alle uvarslede aktive flyginger som har vart minst 1 time — den
+    // faktiske terskelen er brukerstyrt (notification_preferences).
+    const MIN_HOURS = 1;
+    const DEFAULT_HOURS = 3;
+    const earliest = new Date(Date.now() - MIN_HOURS * 60 * 60 * 1000).toISOString();
 
-    const { data: longFlights, error: flightsError } = await supabase
+    const { data: candidateFlights, error: flightsError } = await supabase
       .from('active_flights')
       .select('id, profile_id, company_id, start_time, pilot_name, drone_id')
-      .lt('start_time', threeHoursAgo)
+      .lt('start_time', earliest)
       .is('long_flight_notified_at', null);
 
     if (flightsError) {
@@ -45,7 +49,31 @@ serve(async (req) => {
       throw flightsError;
     }
 
-    if (!longFlights || longFlights.length === 0) {
+    // Brukerpreferanser (terskel + kanaler)
+    const prefsByUser = new Map<string, { hours: number; email: boolean; sms: boolean }>();
+    const userIds = [...new Set((candidateFlights ?? []).map((f) => f.profile_id).filter(Boolean))];
+    if (userIds.length > 0) {
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('user_id, long_flight_alert_hours, long_flight_email, long_flight_sms')
+        .in('user_id', userIds);
+      for (const p of prefs ?? []) {
+        prefsByUser.set(p.user_id, {
+          hours: Number(p.long_flight_alert_hours ?? DEFAULT_HOURS) || DEFAULT_HOURS,
+          email: p.long_flight_email !== false,
+          sms: p.long_flight_sms !== false,
+        });
+      }
+    }
+
+    const longFlights = (candidateFlights ?? []).filter((f) => {
+      const pref = prefsByUser.get(f.profile_id);
+      const thresholdHours = pref?.hours ?? DEFAULT_HOURS;
+      const elapsedHours = (Date.now() - new Date(f.start_time).getTime()) / (1000 * 60 * 60);
+      return elapsedHours >= thresholdHours;
+    });
+
+    if (longFlights.length === 0) {
       console.log('No long-running flights found');
       return new Response(
         JSON.stringify({ success: true, notified: 0 }),
@@ -53,11 +81,16 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Found ${longFlights.length} flight(s) running over 3 hours`);
+    console.log(`Found ${longFlights.length} flight(s) past the pilot's alert threshold`);
 
     let notifiedCount = 0;
 
     for (const flight of longFlights) {
+      const pref = prefsByUser.get(flight.profile_id);
+      const wantsEmail = pref?.email !== false;
+      const wantsSms = pref?.sms !== false;
+      const thresholdHours = pref?.hours ?? DEFAULT_HOURS;
+
       try {
         const { data: { user } } = await supabase.auth.admin.getUserById(flight.profile_id);
         if (!user?.email) {
