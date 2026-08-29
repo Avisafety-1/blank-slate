@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, Info } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, Sparkles, Info, ChevronDown } from "lucide-react";
 import {
   fetchBatteryTypes,
   resolveBatteryConfig,
@@ -177,33 +178,38 @@ export const BatteryHealthSettingsDialog = ({
           </div>
         ) : (
           <ScrollArea className="flex-1 min-h-0 sm:pr-3">
-            <div className="space-y-4 sm:space-y-5">
+            <div className="space-y-4 sm:space-y-5 px-2 sm:px-0">
               {/* How it is calculated */}
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                <p className="text-sm font-medium flex items-center gap-1.5">
-                  <Info className="w-4 h-4 shrink-0" />
-                  {t("resourceDialogs.batteryHealthSettings.howTitle")}
-                </p>
-                <p className="text-xs text-muted-foreground whitespace-pre-line">
-                  {t("resourceDialogs.batteryHealthSettings.howBody")}
-                </p>
-                <div className="text-[11px] bg-background rounded p-2 space-y-0.5 font-mono overflow-x-auto">
-                  <p>kapasitetshelse = kapasitet / design × 100</p>
-                  <p>sykluslevetid = (1 − sykluser / maks) × 100</p>
-                  <p>helse = min(kapasitetshelse, sykluslevetid)</p>
-                </div>
-                <p className="text-xs break-words">
-                  {t("resourceDialogs.batteryHealthSettings.currentData", {
-                    capacity: latest?.capacityMah ?? "—",
-                    cycles: latest?.cycles ?? "—",
-                  })}
-                </p>
-                <p className="text-xs font-medium">
-                  {preview.value != null
-                    ? t("resourceDialogs.batteryHealthSettings.previewValue", { value: preview.value })
-                    : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
-                </p>
-              </div>
+              <Collapsible className="rounded-lg border bg-muted/30">
+                <CollapsibleTrigger className="flex w-full items-center justify-between p-3 text-sm font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <Info className="w-4 h-4 shrink-0" />
+                    {t("resourceDialogs.batteryHealthSettings.howTitle")}
+                  </span>
+                  <ChevronDown className="w-4 h-4 shrink-0 transition-transform data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 pb-3 space-y-2">
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">
+                    {t("resourceDialogs.batteryHealthSettings.howBody")}
+                  </p>
+                  <div className="text-[11px] bg-background rounded p-2 space-y-0.5 font-mono overflow-x-auto">
+                    <p>kapasitetshelse = kapasitet / design × 100</p>
+                    <p>sykluslevetid = (1 − sykluser / maks) × 100</p>
+                    <p>helse = min(kapasitetshelse, sykluslevetid)</p>
+                  </div>
+                  <p className="text-xs break-words">
+                    {t("resourceDialogs.batteryHealthSettings.currentData", {
+                      capacity: latest?.capacityMah ?? "—",
+                      cycles: latest?.cycles ?? "—",
+                    })}
+                  </p>
+                  <p className="text-xs font-medium">
+                    {preview.value != null
+                      ? t("resourceDialogs.batteryHealthSettings.previewValue", { value: preview.value })
+                      : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Battery type */}
               <div className="space-y-2">
