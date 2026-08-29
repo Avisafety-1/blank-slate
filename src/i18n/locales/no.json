@@ -5254,7 +5254,9 @@
       "typeSaveError": "Kunne ikke lagre batteritypen",
       "typeDeleted": "Batteritype slettet",
       "typeDeleteError": "Kunne ikke slette batteritypen",
-      "typeNameRequired": "Navn er påkrevd"
+      "typeNameRequired": "Navn er påkrevd",
+      "useTypeValues": "Bruk typens verdier",
+      "overrideActive": "Egendefinerte verdier for dette batteriet overstyrer verdiene fra batteritypen."
     }
   },
   "documents": {

@@ -160,6 +160,24 @@ export const BatteryHealthSettingsDialog = ({
     [latest, previewConfig],
   );
 
+  const emptyForm = {
+    designCapacity: "",
+    maxCycles: "",
+    healthWarn: "",
+    healthCritical: "",
+    devWarn: "",
+    devCritical: "",
+  };
+
+  const hasOverrides = Object.values(form).some((v) => v.trim() !== "");
+  const clearOverrides = () => setForm({ ...emptyForm });
+
+  /** Picking a new type clears per-battery overrides so the type actually applies. */
+  const handleTypeChange = (v: string) => {
+    setTypeId(v);
+    clearOverrides();
+  };
+
   const openCreateType = () => {
     setTypeForm({ ...emptyTypeForm });
     setTypeEditorMode("create");
@@ -217,6 +235,7 @@ export const BatteryHealthSettingsDialog = ({
         return [...rest, saved].sort((a, b) => a.name.localeCompare(b.name));
       });
       setTypeId(saved.id);
+      clearOverrides();
       setTypeEditorMode("closed");
       toast.success(t("resourceDialogs.batteryHealthSettings.typeSaved"));
     } catch (e) {
@@ -262,7 +281,8 @@ export const BatteryHealthSettingsDialog = ({
         const { error } = await (supabase as any)
           .from("equipment")
           .update(payload)
-          .eq("battery_type_id", groupTypeId);
+          .eq("battery_type_id", groupTypeId)
+          .eq("company_id", companyId as string);
         if (error) throw error;
       }
 
@@ -345,7 +365,7 @@ export const BatteryHealthSettingsDialog = ({
                   </Badge>
                 )}
                 <div className="flex gap-2">
-                  <Select value={typeId} onValueChange={setTypeId}>
+                  <Select value={typeId} onValueChange={handleTypeChange}>
                     <SelectTrigger className="h-10 flex-1 min-w-0">
                       <SelectValue />
                     </SelectTrigger>
@@ -582,10 +602,28 @@ export const BatteryHealthSettingsDialog = ({
 
               {/* Parameters */}
               <div className="space-y-2">
-                <Label>{t("resourceDialogs.batteryHealthSettings.paramsLabel")}</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>{t("resourceDialogs.batteryHealthSettings.paramsLabel")}</Label>
+                  {hasOverrides && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={clearOverrides}
+                    >
+                      {t("resourceDialogs.batteryHealthSettings.useTypeValues")}
+                    </Button>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {t("resourceDialogs.batteryHealthSettings.paramsHint")}
                 </p>
+                {hasOverrides && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {t("resourceDialogs.batteryHealthSettings.overrideActive")}
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">
