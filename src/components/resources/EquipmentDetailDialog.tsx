@@ -90,6 +90,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   );
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ackComment, setAckComment] = useState("");
   const [showLogbook, setShowLogbook] = useState(false);
   const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
   const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
