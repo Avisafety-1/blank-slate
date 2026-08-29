@@ -39,6 +39,7 @@ import {
   AlertTriangle,
   Pencil,
   Loader2,
+  Settings2,
 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { format } from "date-fns";
