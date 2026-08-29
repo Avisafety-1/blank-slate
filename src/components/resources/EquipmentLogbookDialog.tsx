@@ -1,6 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +118,7 @@ export const EquipmentLogbookDialog = ({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [batterySettingsOpen, setBatterySettingsOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; logId: string | null }>({ open: false, logId: null });
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -699,7 +710,7 @@ export const EquipmentLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
-                                  onClick={() => handleDeleteEntry(log.id)}
+                                  onClick={() => setDeleteConfirm({ open: true, logId: log.id })}
                                 >
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
@@ -994,6 +1005,34 @@ export const EquipmentLogbookDialog = ({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, logId: open ? deleteConfirm.logId : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('resourceDialogs.equipmentLogbook.deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirm({ open: false, logId: null })}>
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (deleteConfirm.logId) {
+                  await handleDeleteEntry(deleteConfirm.logId);
+                  setDeleteConfirm({ open: false, logId: null });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

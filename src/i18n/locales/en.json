@@ -4920,6 +4920,12 @@
         "exportSuccess": "Logbook exported to documents",
         "exportError": "Could not export: {{message}}"
       },
+      "deleteConfirm": {
+        "title": "Delete entry?",
+        "description": "Are you sure you want to delete this logbook entry? This action cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      },
       "battery": {
         "empty": "No battery history found",
         "emptyHint": "Import flight logs with this battery to see trends",
