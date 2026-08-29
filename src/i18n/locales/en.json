@@ -5237,7 +5237,22 @@
       "scopeSingle": "This battery only",
       "scopeGroup": "All batteries of this type",
       "saved": "Battery health settings saved",
-      "saveError": "Could not save the settings"
+      "saveError": "Could not save the settings",
+      "groupCompany": "Custom battery types",
+      "groupCatalog": "Catalog (global)",
+      "newType": "New battery type",
+      "editType": "Edit battery type",
+      "typeScopeHint": "The type is saved for your company and its departments only.",
+      "typeName": "Name",
+      "typeManufacturer": "Manufacturer",
+      "typeDroneModels": "Drone models (comma separated)",
+      "typeCellCount": "Cell count (S)",
+      "saveType": "Save battery type",
+      "typeSaved": "Battery type saved",
+      "typeSaveError": "Could not save the battery type",
+      "typeDeleted": "Battery type deleted",
+      "typeDeleteError": "Could not delete the battery type",
+      "typeNameRequired": "Name is required"
     }
   },
   "documents": {
