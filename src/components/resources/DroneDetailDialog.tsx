@@ -1107,8 +1107,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   </div>
                   {/* Status explanation — concrete drivers */}
                   {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
-                  {/* Show acknowledge button only when DB warning is actually driving the status */}
-                  {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] > STATUS_PRIORITY[maintenanceAggregated] && (
+                  {/* Acknowledge whenever a log-driven warning exists on the resource itself */}
+                  {dbStatus !== "Grønn" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
@@ -1128,22 +1128,20 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                         <AlertDialogFooter>
                           <AlertDialogCancel>{tt("acknowledge.cancel")}</AlertDialogCancel>
                           <AlertDialogAction onClick={async () => {
-                            if (!user || !companyId) return;
-                            const { error } = await supabase.from('drones').update({ status: 'Grønn' }).eq('id', drone.id);
+                            if (!user) return;
+                            const suffix = latestWarning ? tt("acknowledge.logDescriptionSuffix", { title: latestWarning.title }) : "";
+                            const { error } = await (supabase as any).rpc('acknowledge_resource_warning', {
+                              _resource_type: 'drone',
+                              _resource_id: drone.id,
+                              _note: tt("acknowledge.logDescription", { from: drone.status, suffix }),
+                            });
                             if (error) {
-                              toast.error(tt("acknowledge.toastFailure", { message: error.message }));
+                              const msg = /not_authorized/.test(error.message)
+                                ? tt("acknowledge.errorNotAuthorized")
+                                : error.message;
+                              toast.error(tt("acknowledge.toastFailure", { message: msg }));
                               return;
                             }
-                            const suffix = latestWarning ? tt("acknowledge.logDescriptionSuffix", { title: latestWarning.title }) : "";
-                            await supabase.from('drone_log_entries').insert({
-                              drone_id: drone.id,
-                              company_id: companyId,
-                              user_id: user.id,
-                              entry_date: new Date().toISOString().split('T')[0],
-                              entry_type: 'Kvittering',
-                              title: tt("acknowledge.logTitle"),
-                              description: tt("acknowledge.logDescription", { from: drone.status, suffix }),
-                            });
                             queryClient.invalidateQueries({ queryKey: ['drones'] });
                             onDroneUpdated();
                             toast.success(tt("acknowledge.toastSuccess"));
@@ -1154,12 +1152,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       </AlertDialogContent>
                     </AlertDialog>
                   )}
-                  {/* If DB warning exists but maintenance is already worse or equal */}
-                  {dbStatus !== "Grønn" && STATUS_PRIORITY[dbStatus] <= STATUS_PRIORITY[maintenanceAggregated] && (
+                  {/* Maintenance warnings are not cleared by acknowledging */}
+                  {dbStatus !== "Grønn" && maintenanceAggregated !== "Grønn" && (
                     <p className="text-xs text-muted-foreground mt-1.5 italic">
-                      {tt("acknowledge.afterMaintenanceHint")}
+                      {tt("acknowledge.maintenanceStillActive")}
                     </p>
                   )}
+
                 </div>
               </div>
 

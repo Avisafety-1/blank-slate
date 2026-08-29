@@ -4685,7 +4685,8 @@
         "clearWarningWithDetail": "Warning: «{{title}}» ({{date}}). Do you want to clear it and set the status back to Green?",
         "clearWarningDefault": "Are you sure you want to clear the warning and set the status back to Green?",
         "clearWarningConfirm": "Clear",
-        "afterMaintenanceNote": "Warning from log can be cleared after maintenance is performed"
+        "afterMaintenanceNote": "Warning from log can be cleared after maintenance is performed",
+        "maintenanceStillActive": "Maintenance warnings are not cleared by acknowledging — they must be closed by inspection or maintenance."
       },
       "battery": {
         "sectionTitle": "Battery status",
@@ -4754,7 +4755,8 @@
         "clearWarningError": "Could not clear warning: {{message}}",
         "clearWarningSuccess": "Warning cleared — status set to Green",
         "clearWarningLogDescription": "Status changed from {{from}} to Green",
-        "clearWarningLogDescriptionWithTitle": "Status changed from {{from}} to Green ({{title}})"
+        "clearWarningLogDescriptionWithTitle": "Status changed from {{from}} to Green ({{title}})",
+        "clearWarningNotAuthorized": "You do not have permission to acknowledge warnings on this resource."
       }
     },
     "droneLogbook": {
@@ -5028,7 +5030,9 @@
         "logDescription": "Status changed from {{from}} to Green{{suffix}}",
         "logDescriptionSuffix": " ({{title}})",
         "toastSuccess": "Warning acknowledged — status set to Green",
-        "toastFailure": "Could not acknowledge: {{message}}"
+        "toastFailure": "Could not acknowledge: {{message}}",
+        "maintenanceStillActive": "Maintenance warnings are not cleared by acknowledging — they must be closed by inspection or maintenance.",
+        "errorNotAuthorized": "You do not have permission to acknowledge warnings on this resource."
       },
       "inspection": {
         "sectionTitle": "Inspection",
