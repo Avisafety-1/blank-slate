@@ -96,6 +96,65 @@ interface UserRole {
 type UnlockedModuleAccess = Record<string, TrainingModuleKey[]>;
 
 // Superadmin er bevisst utelatt — kan ikke tildeles via UI
+/**
+ * Bumper app_version og sender ett broadcast til alle tilkoblede brukere.
+ * Broadcast må sendes på en SUBSCRIBED kanal – ellers leveres den aldri.
+ * Ved forceImmediate markeres versjonen i app_config slik at også brukere
+ * som logger inn senere tvinges til reload uten banner.
+ */
+async function broadcastAppUpdate(forceImmediate: boolean): Promise<string> {
+  // 1. Bump version first so offline users pick it up on reconnect
+  const { data: current } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'app_version')
+    .single();
+  const nextVersion = String(Number(current?.value || '0') + 1);
+  const { error: bumpError } = await supabase
+    .from('app_config')
+    .update({ value: nextVersion, updated_at: new Date().toISOString() })
+    .eq('key', 'app_version');
+  if (bumpError) throw bumpError;
+
+  if (forceImmediate) {
+    // Mark this version as forced: anyone with an older local version reloads silently
+    const { error: flagError } = await supabase
+      .from('app_config')
+      .upsert(
+        { key: 'app_version_force_immediate', value: nextVersion, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    if (flagError) throw flagError;
+  }
+
+  // 2. Send exactly one broadcast on a subscribed channel
+  const channel = supabase.channel('global-force-reload');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Realtime-tilkobling tok for lang tid')), 5000);
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          clearTimeout(timeout);
+          resolve();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          clearTimeout(timeout);
+          reject(new Error(`Realtime-tilkobling feilet (${status})`));
+        }
+      });
+    });
+    const result = await channel.send({
+      type: 'broadcast',
+      event: 'reload',
+      payload: { forceImmediate, version: nextVersion, timestamp: Date.now() },
+    });
+    if (result !== 'ok') throw new Error(`Broadcast feilet (${result})`);
+  } finally {
+    supabase.removeChannel(channel);
+  }
+
+  return nextVersion;
+}
+
 const availableRoles = [
   { value: "administrator", labelKey: "roles.administrator" },
   { value: "bruker", labelKey: "roles.bruker" },
@@ -921,33 +980,8 @@ const Admin = () => {
                         onClick={async () => {
                           if (!confirm('Dette vil vise en oppdateringsbanner for alle tilkoblede brukere. Fortsett?')) return;
                           try {
-                            const channel = supabase.channel('global-force-reload');
-                            await channel.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: false, timestamp: Date.now() },
-                            });
-                            // Bump the version in app_config for offline users
-                            const { data: current } = await supabase
-                              .from('app_config')
-                              .select('value')
-                              .eq('key', 'app_version')
-                              .single();
-                            const nextVersion = String(Number(current?.value || '0') + 1);
-                            await supabase
-                              .from('app_config')
-                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
-                              .eq('key', 'app_version');
-                            // Re-send broadcast with the version so clients can persist it
-                            const ch2 = supabase.channel('global-force-reload');
-                            await ch2.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: false, version: nextVersion, timestamp: Date.now() },
-                            });
-                            supabase.removeChannel(ch2);
+                            const nextVersion = await broadcastAppUpdate(false);
                             toast.success(`Oppdateringssignal sendt til alle brukere (v${nextVersion})`);
-                            supabase.removeChannel(channel);
                           } catch (err) {
                             console.error('Force reload error:', err);
                             toast.error('Kunne ikke sende oppdateringssignal');
@@ -960,34 +994,10 @@ const Admin = () => {
                       <Button
                         variant="destructive"
                         onClick={async () => {
-                          if (!confirm('ADVARSEL: Dette tvinger en umiddelbar reload for ALLE tilkoblede brukere. Ulagret arbeid kan gå tapt. Fortsett?')) return;
+                          if (!confirm('ADVARSEL: Dette tvinger en umiddelbar reload for ALLE brukere – også de som logger inn senere. Ulagret arbeid kan gå tapt. Fortsett?')) return;
                           try {
-                            const channel = supabase.channel('global-force-reload');
-                            await channel.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: true, timestamp: Date.now() },
-                            });
-                            const { data: current } = await supabase
-                              .from('app_config')
-                              .select('value')
-                              .eq('key', 'app_version')
-                              .single();
-                            const nextVersion = String(Number(current?.value || '0') + 1);
-                            await supabase
-                              .from('app_config')
-                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
-                              .eq('key', 'app_version');
-                            // Re-send with version included
-                            const ch2 = supabase.channel('global-force-reload');
-                            await ch2.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: true, version: nextVersion, timestamp: Date.now() },
-                            });
-                            supabase.removeChannel(ch2);
+                            await broadcastAppUpdate(true);
                             toast.success('Tvungen oppdatering sendt!');
-                            supabase.removeChannel(channel);
                           } catch (err) {
                             console.error('Force immediate reload error:', err);
                             toast.error('Kunne ikke sende tvunget oppdatering');

@@ -142,24 +142,40 @@ export function useForceReload() {
       try {
         const { data, error } = await supabase
           .from('app_config')
-          .select('value')
-          .eq('key', 'app_version')
-          .single();
+          .select('key, value')
+          .in('key', ['app_version', 'app_version_force_immediate']);
 
         if (error) {
           console.warn('[ForceReload] Could not check app version:', error);
           return;
         }
 
+        const appVersion = data?.find(r => r.key === 'app_version')?.value;
+        const forcedVersion = data?.find(r => r.key === 'app_version_force_immediate')?.value;
         const localVer = getLocalVersion();
-        if (data && localVer && data.value !== localVer) {
-          console.log(`[ForceReload] Version mismatch: local=${localVer}, remote=${data.value}`);
-          pendingVersion = data.value;
+
+        // Forced update: local version is older than the force-flagged version.
+        // Reload immediately without banner. performReload persists the new
+        // version BEFORE reloading, so this happens at most once per user.
+        if (
+          forcedVersion && localVer &&
+          Number(localVer) < Number(forcedVersion) &&
+          appVersion
+        ) {
+          console.log(`[ForceReload] Forced update: local=${localVer}, forced=${forcedVersion}`);
+          pendingVersion = appVersion;
+          performReload();
+          return;
+        }
+
+        if (appVersion && localVer && appVersion !== localVer) {
+          console.log(`[ForceReload] Version mismatch: local=${localVer}, remote=${appVersion}`);
+          pendingVersion = appVersion;
           globalState = { showBanner: true, forceImmediate: false };
           notify();
-        } else if (data && !localVer) {
+        } else if (appVersion && !localVer) {
           // First visit — seed localStorage with current DB version
-          setLocalVersion(data.value);
+          setLocalVersion(appVersion);
         }
       } catch (e) {
         console.warn('[ForceReload] Version check failed:', e);
