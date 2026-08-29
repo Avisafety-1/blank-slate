@@ -8411,6 +8411,15 @@
       "cameraSN": "Kamera SN",
       "gimbalSN": "Gimbal SN",
       "batterySN": "Batteri SN"
+    },
+    "battery2": {
+      "unknown": "Ukjent batteri 2: {{sn}}",
+      "unknownHelp": "Loggen inneholder et andre batteri som ikke ble funnet i ressursene. Opprett nytt eller knytt til eksisterende.",
+      "create": "Opprett batteri 2",
+      "link": "Knytt til eksisterende",
+      "skip": "Hopp over",
+      "selectExisting": "Velg eksisterende batteri",
+      "selectPlaceholder": "Velg batteri..."
     }
   },
   "statusReasons": {
