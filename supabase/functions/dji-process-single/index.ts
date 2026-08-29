@@ -16,6 +16,20 @@ const corsHeaders = {
 
 const DRONELOG_BASE = "https://dronelogapi.com/api/v1";
 
+/**
+ * Picks the most complete battery serial. `SERIAL.battery` is the newer field and
+ * often carries the full 20-char SN, while `DETAILS.batterySerial`/`batterySN` is
+ * the older, sometimes truncated 16-char variant. Never downgrade to a shorter SN.
+ */
+function pickBatterySn(serialField: string, detailsField: string): string {
+  const a = (serialField || "").trim();
+  const b = (detailsField || "").trim();
+  if (!a) return b;
+  if (!b) return a;
+  if (a.length >= b.length) return a;
+  return b;
+}
+
 const FIELDS = [
   "OSD.latitude","OSD.longitude","OSD.altitude [m]","OSD.height [m]",
   "OSD.flyTime [ms]","OSD.hSpeed [m/s]","OSD.gpsNum","OSD.flycState",
@@ -129,7 +143,8 @@ function parseCsvMinimal(csvText: string) {
   };
 
   const aircraftSN = get("DETAILS.aircraftSN") || get("DETAILS.aircraftSerial");
-  const batterySN = get("DETAILS.batterySN") || get("DETAILS.batterySerial");
+  const batterySN = pickBatterySn(get("SERIAL.battery"), get("DETAILS.batterySN") || get("DETAILS.batterySerial"));
+  const battery2SN = get("SERIAL.battery2").trim() || null;
   const sha256Hash = get("DETAILS.sha256Hash");
   const totalTimeSec = getNum("DETAILS.totalTime [s]");
   const durationMinutes = totalTimeSec ? Math.round(totalTimeSec / 60) : Math.round((lines.length - 1) / 600);
@@ -240,6 +255,7 @@ function parseCsvMinimal(csvText: string) {
   return {
     aircraftSN,
     batterySN,
+    battery2SN,
     sha256Hash,
     // Hardware identifiers (informational only — no matching logic uses these yet)
     fcSN: get("DETAILS.fcSN") || null,
