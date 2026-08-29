@@ -4922,6 +4922,12 @@
         "exportSuccess": "Loggbok eksportert til dokumenter",
         "exportError": "Kunne ikke eksportere: {{message}}"
       },
+      "deleteConfirm": {
+        "title": "Slett oppføring?",
+        "description": "Er du sikker på at du vil slette denne oppføringen fra loggboken? Handlingen kan ikke angres.",
+        "cancel": "Avbryt",
+        "confirm": "Slett"
+      },
       "battery": {
         "empty": "Ingen batterihistorikk funnet",
         "emptyHint": "Importer flylogger med dette batteriet for å se trender",
