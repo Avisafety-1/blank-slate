@@ -2200,6 +2200,17 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
   const { layer, mode, bounds, band } = params;
   const cache = getCache(`nkom:${band}`);
   if (bboxCovered(cache.cachedBounds, bounds)) return;
+
+  // Ikke hent på nytt mens en popup i dette laget er åpen. En refetch ville
+  // fjernet/erstattet ruter via diffRender, og Leaflet lukker popupen når
+  // laget den er koblet til forsvinner. Dataene er statiske (Nkom 2023), så
+  // det er trygt å vente til neste moveend etter at popupen er lukket.
+  let popupOpen = false;
+  layer.eachLayer((l: any) => {
+    if (l?.isPopupOpen?.()) popupOpen = true;
+  });
+  if (popupOpen) return;
+
   const padded = padBBox(bounds);
 
   // Mercator-bbox
