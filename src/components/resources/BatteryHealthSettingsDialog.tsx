@@ -54,6 +54,7 @@ const emptyTypeForm = {
   designCapacity: "",
   cellCount: "",
   maxCycles: "",
+  packCount: "",
   healthWarn: "80",
   healthCritical: "60",
   devWarn: "0.05",
@@ -81,6 +82,7 @@ export const BatteryHealthSettingsDialog = ({
   const [form, setForm] = useState({
     designCapacity: "",
     maxCycles: "",
+    packCount: "",
     healthWarn: "",
     healthCritical: "",
     devWarn: "",
@@ -102,7 +104,7 @@ export const BatteryHealthSettingsDialog = ({
         (supabase as any)
           .from("equipment")
           .select(
-            "battery_type_id, battery_type_locked, battery_design_capacity_mah, battery_max_cycles, battery_health_warn_pct, battery_health_critical_pct, battery_cell_deviation_warn_v, battery_cell_deviation_critical_v",
+            "battery_type_id, battery_type_locked, battery_design_capacity_mah, battery_max_cycles, battery_health_warn_pct, battery_health_critical_pct, battery_cell_deviation_warn_v, battery_cell_deviation_critical_v, battery_pack_count",
           )
           .eq("id", equipmentId)
           .maybeSingle(),
@@ -116,6 +118,7 @@ export const BatteryHealthSettingsDialog = ({
       setForm({
         designCapacity: o.battery_design_capacity_mah?.toString() ?? "",
         maxCycles: o.battery_max_cycles?.toString() ?? "",
+        packCount: o.battery_pack_count?.toString() ?? "",
         healthWarn: o.battery_health_warn_pct?.toString() ?? "",
         healthCritical: o.battery_health_critical_pct?.toString() ?? "",
         devWarn: o.battery_cell_deviation_warn_v?.toString() ?? "",
@@ -144,6 +147,7 @@ export const BatteryHealthSettingsDialog = ({
     return resolveBatteryConfig(selectedType, {
       battery_design_capacity_mah: num(form.designCapacity),
       battery_max_cycles: num(form.maxCycles),
+      battery_pack_count: num(form.packCount),
       battery_health_warn_pct: num(form.healthWarn),
       battery_health_critical_pct: num(form.healthCritical),
       battery_cell_deviation_warn_v: num(form.devWarn),
@@ -163,6 +167,7 @@ export const BatteryHealthSettingsDialog = ({
   const emptyForm = {
     designCapacity: "",
     maxCycles: "",
+    packCount: "",
     healthWarn: "",
     healthCritical: "",
     devWarn: "",
@@ -192,6 +197,7 @@ export const BatteryHealthSettingsDialog = ({
       designCapacity: selectedType.design_capacity_mah?.toString() ?? "",
       cellCount: selectedType.cell_count?.toString() ?? "",
       maxCycles: selectedType.max_cycles?.toString() ?? "",
+      packCount: selectedType.pack_count?.toString() ?? "",
       healthWarn: selectedType.health_warn_pct?.toString() ?? "80",
       healthCritical: selectedType.health_critical_pct?.toString() ?? "60",
       devWarn: selectedType.cell_deviation_warn_v?.toString() ?? "0.05",
@@ -219,6 +225,7 @@ export const BatteryHealthSettingsDialog = ({
         design_capacity_mah: num(typeForm.designCapacity),
         cell_count: num(typeForm.cellCount),
         max_cycles: num(typeForm.maxCycles),
+        pack_count: num(typeForm.packCount),
         health_warn_pct: num(typeForm.healthWarn) ?? 80,
         health_critical_pct: num(typeForm.healthCritical) ?? 60,
         cell_deviation_warn_v: num(typeForm.devWarn) ?? 0.05,
@@ -270,6 +277,7 @@ export const BatteryHealthSettingsDialog = ({
       const payload: Record<string, unknown> = {
         battery_design_capacity_mah: num(form.designCapacity),
         battery_max_cycles: num(form.maxCycles),
+        battery_pack_count: num(form.packCount),
         battery_health_warn_pct: num(form.healthWarn),
         battery_health_critical_pct: num(form.healthCritical),
         battery_cell_deviation_warn_v: num(form.devWarn),
