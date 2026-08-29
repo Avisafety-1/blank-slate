@@ -3224,7 +3224,21 @@
     "ardupilotReadySelect": "ArduPilot-logg klar – velg den under \"Ventende flylogger\" for å fullføre import.",
     "ardupilotQueued": "ArduPilot-logg ligger i kø og behandles i bakgrunnen. Den dukker opp under \"Ventende flylogger\" om kort tid.",
     "linkedToDrone": "(Tilknyttet dronen)",
-    "pilotAutoMatchedFromDrone": "Auto-valgt fra dronetilknytning"
+    "pilotAutoMatchedFromDrone": "Auto-valgt fra dronetilknytning",
+    "warningTitles": {
+      "lowBattery": "Lavt batterinivå under flytur",
+      "cellDeviation": "Celleavvik registrert på batteri",
+      "lowBatteryHealth": "Lav batterihelse registrert",
+      "highBatteryTemp": "Høy batteritemperatur registrert",
+      "highAltitude": "Høy flyhøyde registrert",
+      "rth": "Return-to-home / failsafe-landing aktivert",
+      "highVibration": "Høy vibrasjon registrert",
+      "imuClipping": "IMU clipping registrert",
+      "failsafe": "Failsafe utløst under flyging",
+      "highWind": "Sterk vind registrert",
+      "signalLoss": "Signaltap registrert",
+      "generic": "Advarsel fra flylogg"
+    }
   },
   "twoFactor": {
     "title": "Tofaktorautentisering (2FA)",
