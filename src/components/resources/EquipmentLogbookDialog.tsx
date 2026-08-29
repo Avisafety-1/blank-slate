@@ -48,19 +48,12 @@ import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { BatteryHealthSettingsDialog } from "@/components/resources/BatteryHealthSettingsDialog";
 import {
-  fetchBatteryTypes,
-  autoMatchBatteryType,
-  persistAutoMatch,
-  resolveBatteryConfig,
   computeBatteryHealth,
   batteryHealthLevel,
   cellDeviationLevel,
   levelColorClass,
-  DEFAULT_BATTERY_CONFIG,
-  type BatteryHealthConfig,
-  type BatteryEquipmentOverrides,
-  type BatteryMatch,
 } from "@/lib/batteryHealth";
+import { useBatteryHealth, type BatteryTrendEntry } from "@/hooks/useBatteryHealth";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -70,17 +63,6 @@ interface EquipmentLogbookDialogProps {
   flyvetimer: number;
   equipmentType?: string;
   equipmentSerienummer?: string;
-}
-
-interface BatteryTrendEntry {
-  date: Date;
-  cycles: number | null;
-  health: number | null;
-  tempMin: number | null;
-  tempMax: number | null;
-  voltageMin: number | null;
-  capacityMah: number | null;
-  cellDeviation: number | null;
 }
 
 interface LogEntry {
@@ -125,9 +107,6 @@ export const EquipmentLogbookDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [batteryTrend, setBatteryTrend] = useState<BatteryTrendEntry[]>([]);
-  const [batteryConfig, setBatteryConfig] = useState<BatteryHealthConfig>(DEFAULT_BATTERY_CONFIG);
-  const [batterySuggestion, setBatterySuggestion] = useState<BatteryMatch | null>(null);
   const [batterySettingsOpen, setBatterySettingsOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
@@ -138,11 +117,18 @@ export const EquipmentLogbookDialog = ({
 
   const isBattery = isBatteryType(equipmentType);
 
+  // Shared battery-health logic — same source as the equipment detail card.
+  const {
+    trend: batteryTrend,
+    config: batteryConfig,
+    suggestion: batterySuggestion,
+    reload: reloadBatteryHealth,
+  } = useBatteryHealth(equipmentId, equipmentSerienummer, companyId, open && isBattery);
+
   useEffect(() => {
     if (open && equipmentId) {
       fetchAllLogs();
       fetchSignature();
-      if (isBattery && equipmentSerienummer) fetchBatteryTrend();
     }
   }, [open, equipmentId]);
 
@@ -156,86 +142,7 @@ export const EquipmentLogbookDialog = ({
     setSignatureUrl(data?.signature_url || null);
   };
 
-  const fetchBatteryTrend = async () => {
-    if (!equipmentSerienummer || !companyId) return;
-    try {
-      const { data } = await (supabase
-        .from('flight_logs')
-        .select('flight_date, drone_id, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
-        .eq('company_id', companyId) as any)
-        .eq('battery_sn', equipmentSerienummer)
-        .not('battery_cycles', 'is', null)
-        .order('flight_date', { ascending: true })
-        .limit(100);
 
-      if (data) {
-        const rows = data as any[];
-        setBatteryTrend(
-          rows.map((r: any) => ({
-            date: new Date(r.flight_date),
-            cycles: r.battery_cycles,
-            health: r.battery_health_pct,
-            tempMin: r.battery_temp_min_c,
-            tempMax: r.battery_temp_max_c,
-            voltageMin: r.battery_voltage_min_v,
-            capacityMah: r.battery_full_capacity_mah,
-            cellDeviation: r.battery_cell_deviation_max_v,
-          }))
-        );
-
-        // Resolve the drone model the battery last flew with — the log already
-        // tells us which aircraft it was used on, so we can auto-pick the type.
-        const lastWithDrone = [...rows].reverse().find((r) => r.drone_id);
-        let droneModel: string | null = null;
-        if (lastWithDrone?.drone_id) {
-          const { data: drone } = await (supabase as any)
-            .from('drones')
-            .select('modell')
-            .eq('id', lastWithDrone.drone_id)
-            .maybeSingle();
-          droneModel = drone?.modell ?? null;
-        }
-        const last = rows[rows.length - 1];
-        await loadBatteryConfig(droneModel, {
-          capacityMah: last?.battery_full_capacity_mah ?? null,
-          packVoltageV: last?.battery_voltage_min_v ?? null,
-        });
-      }
-    } catch (e) {
-      console.error('Error fetching battery trend:', e);
-    }
-  };
-
-  const loadBatteryConfig = async (
-    droneModel: string | null,
-    signals: { capacityMah: number | null; packVoltageV: number | null },
-  ) => {
-    try {
-      const [types, { data: eq }] = await Promise.all([
-        fetchBatteryTypes(),
-        (supabase as any)
-          .from('equipment')
-          .select('battery_type_id, battery_type_locked, battery_design_capacity_mah, battery_max_cycles, battery_health_warn_pct, battery_health_critical_pct, battery_cell_deviation_warn_v, battery_cell_deviation_critical_v')
-          .eq('id', equipmentId)
-          .maybeSingle(),
-      ]);
-
-      const overrides = (eq || {}) as BatteryEquipmentOverrides;
-      let type = types.find((tp) => tp.id === overrides.battery_type_id) || null;
-
-      const match = autoMatchBatteryType(types, { droneModel, ...signals });
-      setBatterySuggestion(match);
-
-      if (!type && match && !overrides.battery_type_locked) {
-        type = match.type;
-        persistAutoMatch(equipmentId, match.type.id);
-      }
-
-      setBatteryConfig(resolveBatteryConfig(type, overrides));
-    } catch (e) {
-      console.error('Error loading battery config:', e);
-    }
-  };
 
 
   const fetchAllLogs = async () => {
@@ -1070,7 +977,7 @@ export const EquipmentLogbookDialog = ({
           }}
           suggestion={batterySuggestion}
           onSaved={() => {
-            if (equipmentSerienummer) fetchBatteryTrend();
+            reloadBatteryHealth();
           }}
         />
       )}
