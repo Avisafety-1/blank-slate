@@ -107,9 +107,6 @@ export const EquipmentLogbookDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [batteryTrend, setBatteryTrend] = useState<BatteryTrendEntry[]>([]);
-  const [batteryConfig, setBatteryConfig] = useState<BatteryHealthConfig>(DEFAULT_BATTERY_CONFIG);
-  const [batterySuggestion, setBatterySuggestion] = useState<BatteryMatch | null>(null);
   const [batterySettingsOpen, setBatterySettingsOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
