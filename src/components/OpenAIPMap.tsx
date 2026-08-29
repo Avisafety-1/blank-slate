@@ -1246,6 +1246,8 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "luftfartshindre", name: t('pages.map.layers.aviationObstacles'), layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: gInf });
     layerConfigs.push({ id: "kraftledninger", name: t('pages.map.layers.powerLines'), layer: kraftledningerLayer, enabled: false, icon: "zap", group: gInf });
     layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
+    layerConfigs.push({ id: "mobildekning_4g", name: t('pages.map.layers.mobileCoverage4g'), layer: mobildekning4gLayer, enabled: false, icon: "radio", group: gInf });
+    layerConfigs.push({ id: "mobildekning_5g", name: t('pages.map.layers.mobileCoverage5g'), layer: mobildekning5gLayer, enabled: false, icon: "radio", group: gInf });
     if (tensioLuftnettLayer) {
       layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
     }
