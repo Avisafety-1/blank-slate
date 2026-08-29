@@ -411,7 +411,7 @@ export const EquipmentLogbookDialog = ({
       }
 
       toast.success(editingEntryId ? t('resourceDialogs.equipmentLogbook.toasts.entryUpdated') : t('resourceDialogs.equipmentLogbook.toasts.entryAdded'));
-      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
+      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" });
       clearImage();
       setShowAddEntry(false);
       setEditingEntryId(null);
@@ -432,6 +432,7 @@ export const EquipmentLogbookDialog = ({
       title: log.rawEntry.title,
       description: log.rawEntry.description || "",
       entry_date: log.rawEntry.entry_date.split('T')[0],
+      new_status: "",
     });
     clearImage();
     setShowAddEntry(true);
