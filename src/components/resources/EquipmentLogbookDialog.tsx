@@ -977,7 +977,7 @@ export const EquipmentLogbookDialog = ({
           }}
           suggestion={batterySuggestion}
           onSaved={() => {
-            if (equipmentSerienummer) fetchBatteryTrend();
+            reloadBatteryHealth();
           }}
         />
       )}
