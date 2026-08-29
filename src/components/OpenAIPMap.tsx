@@ -1693,7 +1693,9 @@ export function OpenAIPMap({
     fetchDkLayers();
     fetchUnifiedLayers();
     fetchObstaclesViewport();
+    fetchNkomLayers();
     map.on('moveend', debouncedFetchVern);
+
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
       const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
