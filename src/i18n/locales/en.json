@@ -4854,6 +4854,17 @@
         "signatureLabel": "Signature:",
         "documentTitle": "Logbook - {{model}} - {{date}}",
         "fileName": "logbook"
+      },
+      "statusChange": {
+        "label": "Change resource status",
+        "noChange": "No change",
+        "green": "Green",
+        "yellow": "Yellow",
+        "red": "Red",
+        "hint": "The status change is saved together with the logbook entry. Acknowledging warnings is limited to admins, superadmins or the technical responsible.",
+        "logNote": "Status changed from {{from}} to {{to}}",
+        "error": "Could not change status: {{message}}",
+        "notAuthorized": "You do not have access to this resource"
       }
     },
     "equipmentLogbook": {
@@ -4968,6 +4979,17 @@
         "signatureLabel": "Signature:",
         "documentTitle": "Logbook - {{name}} - {{date}}",
         "fileName": "logbook-equipment"
+      },
+      "statusChange": {
+        "label": "Change resource status",
+        "noChange": "No change",
+        "green": "Green",
+        "yellow": "Yellow",
+        "red": "Red",
+        "hint": "The status change is saved together with the logbook entry. Acknowledging warnings is limited to admins, superadmins or the technical responsible.",
+        "logNote": "Status changed from {{from}} to {{to}}",
+        "error": "Could not change status: {{message}}",
+        "notAuthorized": "You do not have access to this resource"
       }
     },
     "droneDetail": {
