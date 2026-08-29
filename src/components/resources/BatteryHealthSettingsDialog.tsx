@@ -437,6 +437,12 @@ export const BatteryHealthSettingsDialog = ({
                     })}
                   </p>
                 )}
+                {selectedType && !selectedType.company_id && typeEditorMode === "closed" && (
+                  <p className="text-xs text-muted-foreground break-words">
+                    {t("resourceDialogs.batteryHealthSettings.catalogReadOnly")}
+                  </p>
+                )}
+
 
                 {/* Inline create/edit type form */}
                 {typeEditorMode !== "closed" && (
