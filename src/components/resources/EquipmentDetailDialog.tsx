@@ -32,6 +32,7 @@ import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { useBatteryHealth } from "@/hooks/useBatteryHealth";
 import { batteryHealthLevel, cycleLevel, levelColorClass } from "@/lib/batteryHealth";
+import { pickLatestRelevantWarning } from "@/lib/resourceWarnings";
 
 interface Equipment {
   id: string;

@@ -40,6 +40,7 @@ import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { useQueryClient } from "@tanstack/react-query";
+import { pickLatestRelevantWarning } from "@/lib/resourceWarnings";
 
 interface Drone {
   id: string;
