@@ -868,15 +868,21 @@ export const EquipmentLogbookDialog = ({
                   ) : (() => {
                     const latest = batteryTrend[batteryTrend.length - 1];
                     const first = batteryTrend[0];
-                    const latestHealth = latest?.health ?? 100;
                     const latestTempMax = latest?.tempMax;
                     const latestVoltageMin = latest?.voltageMin;
                     const latestCapacity = latest?.capacityMah;
                     const latestCellDev = latest?.cellDeviation;
-                    const cellDevColor = latestCellDev == null ? '' : latestCellDev > 0.1 ? 'text-destructive' : latestCellDev > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const cellDevColor = levelColorClass(cellDeviationLevel(latestCellDev, batteryConfig));
                     const firstCapacity = first?.capacityMah;
 
-                    const healthColor = latestHealth < 60 ? 'text-destructive' : latestHealth < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const computeHealth = (e?: BatteryTrendEntry) =>
+                      computeBatteryHealth(
+                        { capacityMah: e?.capacityMah ?? null, cycles: e?.cycles ?? null, djiHealthPct: e?.health ?? null },
+                        batteryConfig,
+                      ).value;
+                    const latestHealthValue = computeHealth(latest);
+                    const firstHealthValue = computeHealth(first);
+                    const healthColor = levelColorClass(batteryHealthLevel(latestHealthValue, batteryConfig));
                     const tempColor = latestTempMax == null ? '' : latestTempMax > 50 ? 'text-destructive' : latestTempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
                     const voltageColor = latestVoltageMin == null ? '' : latestVoltageMin < 3.0 ? 'text-destructive' : latestVoltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
 
@@ -886,20 +892,38 @@ export const EquipmentLogbookDialog = ({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.cycles')}</p>
-                            <p className="text-lg font-bold">{latest?.cycles ?? '—'}</p>
+                            <p className="text-lg font-bold">
+                              {latest?.cycles ?? '—'}
+                              {batteryConfig.maxCycles ? <span className="text-xs font-normal text-muted-foreground"> / {batteryConfig.maxCycles}</span> : null}
+                            </p>
                             <p className="text-[10px] text-muted-foreground">
                               {first?.cycles ?? '?'} → {latest?.cycles ?? '?'}
                             </p>
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
+                            <div className="flex items-start justify-between gap-1">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 -mt-1 -mr-1 shrink-0"
+                                onClick={() => setBatterySettingsOpen(true)}
+                                aria-label={t('resourceDialogs.batteryHealthSettings.title')}
+                                title={t('resourceDialogs.batteryHealthSettings.title')}
+                              >
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                             <p className={`text-lg font-bold ${healthColor}`}>
-                              {latest?.health ?? '—'}%
+                              {latestHealthValue != null ? `${latestHealthValue}%` : '—'}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {first?.health ?? '?'}% → {latest?.health ?? '?'}%
+                              {latestHealthValue == null
+                                ? t('resourceDialogs.equipmentLogbook.battery.healthUnknown')
+                                : `${firstHealthValue ?? '?'}% → ${latestHealthValue}%${batteryConfig.typeName ? ` · ${batteryConfig.typeName}` : ''}`}
                             </p>
                           </div>
+
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.maxTemp')}</p>
                             <p className={`text-lg font-bold ${tempColor}`}>
