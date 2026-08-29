@@ -7265,6 +7265,8 @@
         "luftfartshindre": "Aviation obstacles",
         "kraftledninger": "Power lines",
         "eiendomsgrenser": "Property boundaries",
+        "mobildekning_4g": "Mobile coverage 4G",
+        "mobildekning_5g": "Mobile coverage 5G",
         "tensio_luftnett": "Tensio power grid",
         "flyplasser": "Airports",
         "drones": "Drones",
