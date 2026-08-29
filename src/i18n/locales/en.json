@@ -5256,7 +5256,14 @@
       "typeNameRequired": "Name is required",
       "useTypeValues": "Use values from type",
       "overrideActive": "Custom values for this battery override the values from the battery type.",
-      "catalogReadOnly": "Catalog battery types cannot be edited. Values below apply only to this battery (or group), not to the catalog type. Create a custom battery type (+) to store your own values."
+      "catalogReadOnly": "Catalog battery types cannot be edited. Values below apply only to this battery (or group), not to the catalog type. Create a custom battery type (+) to store your own values.",
+      "packCount": "Batteries in the pack",
+      "packAuto": "Automatic (detected from the log)",
+      "packSingle": "1 battery",
+      "packDual": "2 batteries (dual pack)",
+      "packHelp": "Some drones (M300/M350/M400, FlyCart) fly two batteries and the log reports the combined capacity. The capacity is then divided by the number of batteries before health is calculated.",
+      "packDetected": "The log appears to report the combined capacity of {{count}} batteries – capacity is divided by {{count}} before health is calculated.",
+      "packConfigured": "Capacity is divided by {{count}} batteries (set manually)."
     }
   },
   "documents": {

@@ -368,6 +368,7 @@ export interface BatteryTypeInput {
   health_critical_pct: number;
   cell_deviation_warn_v: number;
   cell_deviation_critical_v: number;
+  pack_count?: number | null;
 }
 
 /** Creates a company-scoped battery type (visible to the company + its departments). */
