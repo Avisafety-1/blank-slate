@@ -61,6 +61,7 @@ import {
   computeBatteryHealth,
   batteryHealthLevel,
   cellDeviationLevel,
+  cycleLevel,
   levelColorClass,
 } from "@/lib/batteryHealth";
 import { useBatteryHealth, type BatteryTrendEntry } from "@/hooks/useBatteryHealth";
