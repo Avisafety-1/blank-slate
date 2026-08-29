@@ -80,6 +80,13 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("equipment", initialEquipment?.id, companyId || undefined, open);
   const [equipment, setEquipment] = useState<Equipment | null>(initialEquipment);
+  // Same battery-health source as the logbook, so both surfaces agree.
+  const batteryHealth = useBatteryHealth(
+    equipment?.id,
+    equipment?.serienummer || equipment?.internal_serial,
+    equipment?.company_id ?? companyId,
+    open && !!equipment && isBatteryType(equipment.type),
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
