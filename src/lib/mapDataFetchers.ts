@@ -2279,6 +2279,7 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
           interactive: mode !== 'routePlanning',
           renderer,
           pane: 'overlayPane',
+        } as any as L.GeoJSONOptions,
           style,
           onEachFeature:
             mode !== 'routePlanning'
