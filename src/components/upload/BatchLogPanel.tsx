@@ -307,6 +307,13 @@ export const BatchLogPanel = ({
       battery_full_capacity_mah: parsed.batteryFullCapacity || null,
       battery_cell_deviation_max_v: parsed.batteryCellDeviationMax || null,
       dronelog_warnings: (parsed.warnings && parsed.warnings.length) ? parsed.warnings : null,
+      // Battery 2 (dual-battery aircraft)
+      battery2_sn: parsed.battery2SN || null,
+      battery2_cycles: parsed.battery2Cycles ?? null,
+      battery2_full_capacity_mah: parsed.battery2FullCapacity ?? null,
+      battery2_voltage_min_v: parsed.battery2MinVoltage ?? null,
+      battery2_temp_max_c: parsed.battery2TempMax ?? null,
+      battery2_cell_deviation_max_v: parsed.battery2CellDeviationMax ?? null,
     };
   };
 
