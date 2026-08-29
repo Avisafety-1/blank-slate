@@ -931,7 +931,7 @@ export const EquipmentLogbookDialog = ({
                                 <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
                                 </span>
-                                <span className={entry.cellDeviation != null ? (entry.cellDeviation > 0.1 ? 'text-destructive' : entry.cellDeviation > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                <span className={levelColorClass(cellDeviationLevel(entry.cellDeviation, batteryConfig))}>
                                   {entry.cellDeviation != null ? `${entry.cellDeviation.toFixed(3)}V` : '—'}
                                 </span>
                                 <span>{entry.capacityMah != null ? `${entry.capacityMah} mAh` : '—'}</span>
