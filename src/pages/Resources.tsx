@@ -22,6 +22,7 @@ import { AddCompetencyDialog } from "@/components/resources/AddCompetencyDialog"
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { EquipmentBatteryIndicators } from "@/components/resources/EquipmentBatteryIndicators";
 import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -768,7 +769,14 @@ const Resources = () => {
                         varsel_oppdrag: item.varsel_oppdrag,
                       }), (item.status as Status) || "Grønn")} />
                     </div>
-                    <div className="text-sm space-y-1">
+                    <EquipmentBatteryIndicators
+                      equipmentId={item.id}
+                      type={item.type}
+                      serienummer={item.serienummer}
+                      internalSerial={item.internal_serial}
+                      companyId={item.company_id ?? companyId}
+                    />
+                    <div className="text-sm space-y-1 mt-2">
                       <p>SN: {item.serienummer}</p>
                       {item.neste_vedlikehold && (
                         <p>{t('flight.nextMaintenance')}: {format(new Date(item.neste_vedlikehold), "dd.MM.yyyy")}</p>
