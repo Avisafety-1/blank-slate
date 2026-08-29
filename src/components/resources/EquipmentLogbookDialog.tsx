@@ -125,7 +125,9 @@ export const EquipmentLogbookDialog = ({
     title: "",
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
+    new_status: "",
   });
+
 
   const isBattery = isBatteryType(equipmentType);
 
