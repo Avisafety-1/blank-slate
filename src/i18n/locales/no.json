@@ -4856,6 +4856,17 @@
         "signatureLabel": "Signatur:",
         "documentTitle": "Loggbok - {{model}} - {{date}}",
         "fileName": "loggbok"
+      },
+      "statusChange": {
+        "label": "Endre status på ressursen",
+        "noChange": "Ingen endring",
+        "green": "Grønn",
+        "yellow": "Gul",
+        "red": "Rød",
+        "hint": "Statusendringen lagres sammen med loggbok-oppføringen. Kvittering av advarsler kan kun gjøres av admin, superadmin eller teknisk ansvarlig.",
+        "logNote": "Status endret fra {{from}} til {{to}}",
+        "error": "Kunne ikke endre status: {{message}}",
+        "notAuthorized": "Du har ikke tilgang til denne ressursen"
       }
     },
     "equipmentLogbook": {
@@ -4970,6 +4981,17 @@
         "signatureLabel": "Signatur:",
         "documentTitle": "Loggbok - {{name}} - {{date}}",
         "fileName": "loggbok-utstyr"
+      },
+      "statusChange": {
+        "label": "Endre status på ressursen",
+        "noChange": "Ingen endring",
+        "green": "Grønn",
+        "yellow": "Gul",
+        "red": "Rød",
+        "hint": "Statusendringen lagres sammen med loggbok-oppføringen. Kvittering av advarsler kan kun gjøres av admin, superadmin eller teknisk ansvarlig.",
+        "logNote": "Status endret fra {{from}} til {{to}}",
+        "error": "Kunne ikke endre status: {{message}}",
+        "notAuthorized": "Du har ikke tilgang til denne ressursen"
       }
     },
     "droneDetail": {

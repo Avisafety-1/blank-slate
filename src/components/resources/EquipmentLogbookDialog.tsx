@@ -125,7 +125,9 @@ export const EquipmentLogbookDialog = ({
     title: "",
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
+    new_status: "",
   });
+
 
   const isBattery = isBatteryType(equipmentType);
 
@@ -336,6 +338,31 @@ export const EquipmentLogbookDialog = ({
     setIsSaving(true);
     try {
       let entryId = editingEntryId;
+
+      // Optional status change on the equipment itself
+      let statusNote = "";
+      if (newEntry.new_status) {
+        const { data: oldStatus, error: statusError } = await (supabase as any).rpc('set_resource_status', {
+          _resource_type: 'equipment',
+          _resource_id: equipmentId,
+          _status: newEntry.new_status,
+        });
+        if (statusError) {
+          const msg = /not_authorized/.test(statusError.message)
+            ? t('resourceDialogs.equipmentLogbook.statusChange.notAuthorized')
+            : statusError.message;
+          toast.error(t('resourceDialogs.equipmentLogbook.statusChange.error', { message: msg }));
+          setIsSaving(false);
+          return;
+        }
+        statusNote = t('resourceDialogs.equipmentLogbook.statusChange.logNote', {
+          from: oldStatus || '-',
+          to: newEntry.new_status,
+        });
+      }
+
+      const description = [newEntry.description.trim(), statusNote].filter(Boolean).join("\n") || null;
+
       if (editingEntryId) {
         const { error } = await (supabase as any)
           .from("equipment_log_entries")
@@ -343,7 +370,7 @@ export const EquipmentLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .eq("id", editingEntryId);
         if (error) throw error;
@@ -357,13 +384,14 @@ export const EquipmentLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .select("id")
           .single();
         if (error) throw error;
         entryId = inserted?.id;
       }
+
 
       if (imageFile && entryId) {
         const ext = imageFile.name.split('.').pop();
@@ -383,7 +411,7 @@ export const EquipmentLogbookDialog = ({
       }
 
       toast.success(editingEntryId ? t('resourceDialogs.equipmentLogbook.toasts.entryUpdated') : t('resourceDialogs.equipmentLogbook.toasts.entryAdded'));
-      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
+      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" });
       clearImage();
       setShowAddEntry(false);
       setEditingEntryId(null);
@@ -404,6 +432,7 @@ export const EquipmentLogbookDialog = ({
       title: log.rawEntry.title,
       description: log.rawEntry.description || "",
       entry_date: log.rawEntry.entry_date.split('T')[0],
+      new_status: "",
     });
     clearImage();
     setShowAddEntry(true);
@@ -625,6 +654,25 @@ export const EquipmentLogbookDialog = ({
                       rows={2}
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.statusChange.label')}</Label>
+                    <Select
+                      value={newEntry.new_status || "none"}
+                      onValueChange={(v) => setNewEntry(prev => ({ ...prev, new_status: v === "none" ? "" : v }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('resourceDialogs.equipmentLogbook.statusChange.noChange')}</SelectItem>
+                        <SelectItem value="Grønn">{t('resourceDialogs.equipmentLogbook.statusChange.green')}</SelectItem>
+                        <SelectItem value="Gul">{t('resourceDialogs.equipmentLogbook.statusChange.yellow')}</SelectItem>
+                        <SelectItem value="Rød">{t('resourceDialogs.equipmentLogbook.statusChange.red')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">{t('resourceDialogs.equipmentLogbook.statusChange.hint')}</p>
+                  </div>
+
                   {/* Image upload */}
                   <div>
                     <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.image')}</Label>

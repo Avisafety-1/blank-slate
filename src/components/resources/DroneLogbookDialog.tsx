@@ -108,7 +108,9 @@ export const DroneLogbookDialog = ({
     title: "",
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
+    new_status: "",
   });
+
 
   useEffect(() => {
     if (open && droneId) {
@@ -356,6 +358,30 @@ export const DroneLogbookDialog = ({
     try {
       let entryId = editingEntryId;
 
+      // Optional status change on the drone itself
+      let statusNote = "";
+      if (newEntry.new_status) {
+        const { data: oldStatus, error: statusError } = await (supabase as any).rpc('set_resource_status', {
+          _resource_type: 'drone',
+          _resource_id: droneId,
+          _status: newEntry.new_status,
+        });
+        if (statusError) {
+          const msg = /not_authorized/.test(statusError.message)
+            ? t('resourceDialogs.droneLogbook.statusChange.notAuthorized')
+            : statusError.message;
+          toast.error(t('resourceDialogs.droneLogbook.statusChange.error', { message: msg }));
+          setIsSaving(false);
+          return;
+        }
+        statusNote = t('resourceDialogs.droneLogbook.statusChange.logNote', {
+          from: oldStatus || '-',
+          to: newEntry.new_status,
+        });
+      }
+
+      const description = [newEntry.description.trim(), statusNote].filter(Boolean).join("\n") || null;
+
       if (editingEntryId) {
         const { error } = await (supabase as any)
           .from("drone_log_entries")
@@ -363,7 +389,7 @@ export const DroneLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .eq("id", editingEntryId);
         if (error) throw error;
@@ -377,7 +403,7 @@ export const DroneLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .select("id")
           .single();
@@ -404,7 +430,8 @@ export const DroneLogbookDialog = ({
       }
 
       toast.success(editingEntryId ? t('resourceDialogs.droneLogbook.toasts.entryUpdated') : t('resourceDialogs.droneLogbook.toasts.entryAdded'));
-      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
+      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" });
+
       clearImage();
       setShowAddEntry(false);
       setEditingEntryId(null);
@@ -425,7 +452,9 @@ export const DroneLogbookDialog = ({
       title: log.rawEntry.title,
       description: log.rawEntry.description || "",
       entry_date: log.rawEntry.entry_date.split('T')[0],
+      new_status: "",
     });
+
     clearImage();
     setShowAddEntry(true);
   };
@@ -630,6 +659,25 @@ export const DroneLogbookDialog = ({
                   rows={2}
                 />
               </div>
+              <div>
+                <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.statusChange.label')}</Label>
+                <Select
+                  value={newEntry.new_status || "none"}
+                  onValueChange={(v) => setNewEntry(prev => ({ ...prev, new_status: v === "none" ? "" : v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('resourceDialogs.droneLogbook.statusChange.noChange')}</SelectItem>
+                    <SelectItem value="Grønn">{t('resourceDialogs.droneLogbook.statusChange.green')}</SelectItem>
+                    <SelectItem value="Gul">{t('resourceDialogs.droneLogbook.statusChange.yellow')}</SelectItem>
+                    <SelectItem value="Rød">{t('resourceDialogs.droneLogbook.statusChange.red')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">{t('resourceDialogs.droneLogbook.statusChange.hint')}</p>
+              </div>
+
               {/* Image upload */}
               <div>
                 <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.image')}</Label>
@@ -670,7 +718,7 @@ export const DroneLogbookDialog = ({
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
                   {isSaving ? t('resourceDialogs.droneLogbook.saving') : (editingEntryId ? t('resourceDialogs.droneLogbook.update') : t('resourceDialogs.droneLogbook.save'))}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
               </div>
             </div>
           )}

@@ -9338,6 +9338,10 @@ export type Database = {
           id: string
         }[]
       }
+      set_resource_status: {
+        Args: { _resource_id: string; _resource_type: string; _status: string }
+        Returns: string
+      }
       sign_evaluation_response: {
         Args: { p_response_id: string; p_signature_url: string }
         Returns: {
