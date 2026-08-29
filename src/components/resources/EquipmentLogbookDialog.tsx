@@ -61,6 +61,7 @@ import {
   computeBatteryHealth,
   batteryHealthLevel,
   cellDeviationLevel,
+  cycleLevel,
   levelColorClass,
 } from "@/lib/batteryHealth";
 import { useBatteryHealth, type BatteryTrendEntry } from "@/hooks/useBatteryHealth";
@@ -811,7 +812,7 @@ export const EquipmentLogbookDialog = ({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.cycles')}</p>
-                            <p className="text-lg font-bold">
+                            <p className={`text-lg font-bold ${levelColorClass(cycleLevel(latest?.cycles, batteryConfig))}`}>
                               {latest?.cycles ?? '—'}
                               {batteryConfig.maxCycles ? <span className="text-xs font-normal text-muted-foreground"> / {batteryConfig.maxCycles}</span> : null}
                             </p>
@@ -917,7 +918,7 @@ export const EquipmentLogbookDialog = ({
                               {/* Desktop layout */}
                               <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
-                                <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
+                                <span className={levelColorClass(cycleLevel(entry.cycles, batteryConfig))}>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
                                 <span className={rowHealth != null ? rowHealthColor : ''}>
                                   {rowHealth != null ? `${rowHealth}%` : '—'}
                                 </span>
@@ -930,7 +931,7 @@ export const EquipmentLogbookDialog = ({
                                 <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
                                 </span>
-                                <span className={entry.cellDeviation != null ? (entry.cellDeviation > 0.1 ? 'text-destructive' : entry.cellDeviation > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                <span className={levelColorClass(cellDeviationLevel(entry.cellDeviation, batteryConfig))}>
                                   {entry.cellDeviation != null ? `${entry.cellDeviation.toFixed(3)}V` : '—'}
                                 </span>
                                 <span>{entry.capacityMah != null ? `${entry.capacityMah} mAh` : '—'}</span>

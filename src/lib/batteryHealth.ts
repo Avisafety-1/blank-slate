@@ -104,9 +104,12 @@ export interface BatteryHealthResult {
 }
 
 /**
- * Health = min(capacity health, cycle life left).
- * Falls back to whichever part we have data for, and only uses the DJI
- * reported value when nothing else is available and it is above zero.
+ * Health = remaining capacity vs. design capacity. Cycle life is tracked
+ * separately (see `cycleLevel`) because a used-up cycle budget does not mean
+ * the pack has lost the same share of its usable energy: a battery at
+ * 100 of 200 cycles is halfway through its rated life, not half dead.
+ * Falls back to cycle life only when no capacity data exists, and to the DJI
+ * reported value when nothing else is available.
  */
 export function computeBatteryHealth(
   input: BatteryHealthInput,
@@ -131,20 +134,14 @@ export function computeBatteryHealth(
     missing.push("maxCycles");
   }
 
-  if (capacityHealth != null && cycleHealth != null) {
+  if (capacityHealth != null) {
     return {
-      value: Math.round(Math.min(capacityHealth, cycleHealth)),
-      source: "capacity+cycles",
+      value: Math.round(capacityHealth),
+      source: "capacity",
       capacityHealth,
       cycleHealth,
       missing,
     };
-  }
-  if (capacityHealth != null) {
-    return { value: Math.round(capacityHealth), source: "capacity", capacityHealth, cycleHealth, missing };
-  }
-  if (cycleHealth != null) {
-    return { value: Math.round(cycleHealth), source: "cycles", capacityHealth, cycleHealth, missing };
   }
   if (input.djiHealthPct != null && input.djiHealthPct > 0) {
     return {
@@ -154,6 +151,9 @@ export function computeBatteryHealth(
       cycleHealth,
       missing,
     };
+  }
+  if (cycleHealth != null) {
+    return { value: Math.round(cycleHealth), source: "cycles", capacityHealth, cycleHealth, missing };
   }
   if (input.capacityMah == null && input.cycles == null) missing.push("logData");
   return { value: null, source: "none", capacityHealth, cycleHealth, missing };
@@ -171,6 +171,19 @@ export function batteryHealthLevel(
   return "ok";
 }
 
+/** Warn from 90 % of the rated cycle budget, critical only when it is used up. */
+export const CYCLE_WARN_RATIO = 0.9;
+
+export function cycleLevel(
+  cycles: number | null | undefined,
+  config: BatteryHealthConfig,
+): BatteryStatusLevel {
+  if (cycles == null || !config.maxCycles) return "unknown";
+  if (cycles >= config.maxCycles) return "critical";
+  if (cycles >= config.maxCycles * CYCLE_WARN_RATIO) return "warn";
+  return "ok";
+}
+
 export function cellDeviationLevel(
   value: number | null | undefined,
   config: BatteryHealthConfig,
@@ -179,6 +192,32 @@ export function cellDeviationLevel(
   if (value > config.cellDeviationCriticalV) return "critical";
   if (value > config.cellDeviationWarnV) return "warn";
   return "ok";
+}
+
+const LEVEL_RANK: Record<BatteryStatusLevel, number> = {
+  unknown: 0,
+  ok: 1,
+  warn: 2,
+  critical: 3,
+};
+
+export function worstBatteryLevel(...levels: BatteryStatusLevel[]): BatteryStatusLevel {
+  return levels.reduce((worst, l) => (LEVEL_RANK[l] > LEVEL_RANK[worst] ? l : worst), "unknown");
+}
+
+/**
+ * Overall battery status: capacity health, cycle budget and cell deviation
+ * each contribute, and the worst one wins.
+ */
+export function batteryOverallLevel(
+  input: { healthValue: number | null; cycles?: number | null; cellDeviation?: number | null },
+  config: BatteryHealthConfig,
+): BatteryStatusLevel {
+  return worstBatteryLevel(
+    batteryHealthLevel(input.healthValue, config),
+    cycleLevel(input.cycles, config),
+    cellDeviationLevel(input.cellDeviation, config),
+  );
 }
 
 export function levelColorClass(level: BatteryStatusLevel): string {
