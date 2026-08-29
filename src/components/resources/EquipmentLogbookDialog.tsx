@@ -39,12 +39,28 @@ import {
   AlertTriangle,
   Pencil,
   Loader2,
+  Settings2,
 } from "lucide-react";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { BatteryHealthSettingsDialog } from "@/components/resources/BatteryHealthSettingsDialog";
+import {
+  fetchBatteryTypes,
+  autoMatchBatteryType,
+  persistAutoMatch,
+  resolveBatteryConfig,
+  computeBatteryHealth,
+  batteryHealthLevel,
+  cellDeviationLevel,
+  levelColorClass,
+  DEFAULT_BATTERY_CONFIG,
+  type BatteryHealthConfig,
+  type BatteryEquipmentOverrides,
+  type BatteryMatch,
+} from "@/lib/batteryHealth";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -110,6 +126,9 @@ export const EquipmentLogbookDialog = ({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [batteryTrend, setBatteryTrend] = useState<BatteryTrendEntry[]>([]);
+  const [batteryConfig, setBatteryConfig] = useState<BatteryHealthConfig>(DEFAULT_BATTERY_CONFIG);
+  const [batterySuggestion, setBatterySuggestion] = useState<BatteryMatch | null>(null);
+  const [batterySettingsOpen, setBatterySettingsOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
@@ -142,7 +161,7 @@ export const EquipmentLogbookDialog = ({
     try {
       const { data } = await (supabase
         .from('flight_logs')
-        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
+        .select('flight_date, drone_id, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
         .eq('company_id', companyId) as any)
         .eq('battery_sn', equipmentSerienummer)
         .not('battery_cycles', 'is', null)
@@ -150,8 +169,9 @@ export const EquipmentLogbookDialog = ({
         .limit(100);
 
       if (data) {
+        const rows = data as any[];
         setBatteryTrend(
-          data.map((r: any) => ({
+          rows.map((r: any) => ({
             date: new Date(r.flight_date),
             cycles: r.battery_cycles,
             health: r.battery_health_pct,
@@ -162,11 +182,61 @@ export const EquipmentLogbookDialog = ({
             cellDeviation: r.battery_cell_deviation_max_v,
           }))
         );
+
+        // Resolve the drone model the battery last flew with — the log already
+        // tells us which aircraft it was used on, so we can auto-pick the type.
+        const lastWithDrone = [...rows].reverse().find((r) => r.drone_id);
+        let droneModel: string | null = null;
+        if (lastWithDrone?.drone_id) {
+          const { data: drone } = await (supabase as any)
+            .from('drones')
+            .select('modell')
+            .eq('id', lastWithDrone.drone_id)
+            .maybeSingle();
+          droneModel = drone?.modell ?? null;
+        }
+        const last = rows[rows.length - 1];
+        await loadBatteryConfig(droneModel, {
+          capacityMah: last?.battery_full_capacity_mah ?? null,
+          packVoltageV: last?.battery_voltage_min_v ?? null,
+        });
       }
     } catch (e) {
       console.error('Error fetching battery trend:', e);
     }
   };
+
+  const loadBatteryConfig = async (
+    droneModel: string | null,
+    signals: { capacityMah: number | null; packVoltageV: number | null },
+  ) => {
+    try {
+      const [types, { data: eq }] = await Promise.all([
+        fetchBatteryTypes(),
+        (supabase as any)
+          .from('equipment')
+          .select('battery_type_id, battery_type_locked, battery_design_capacity_mah, battery_max_cycles, battery_health_warn_pct, battery_health_critical_pct, battery_cell_deviation_warn_v, battery_cell_deviation_critical_v')
+          .eq('id', equipmentId)
+          .maybeSingle(),
+      ]);
+
+      const overrides = (eq || {}) as BatteryEquipmentOverrides;
+      let type = types.find((tp) => tp.id === overrides.battery_type_id) || null;
+
+      const match = autoMatchBatteryType(types, { droneModel, ...signals });
+      setBatterySuggestion(match);
+
+      if (!type && match && !overrides.battery_type_locked) {
+        type = match.type;
+        persistAutoMatch(equipmentId, match.type.id);
+      }
+
+      setBatteryConfig(resolveBatteryConfig(type, overrides));
+    } catch (e) {
+      console.error('Error loading battery config:', e);
+    }
+  };
+
 
   const fetchAllLogs = async () => {
     setIsLoading(true);
@@ -799,15 +869,21 @@ export const EquipmentLogbookDialog = ({
                   ) : (() => {
                     const latest = batteryTrend[batteryTrend.length - 1];
                     const first = batteryTrend[0];
-                    const latestHealth = latest?.health ?? 100;
                     const latestTempMax = latest?.tempMax;
                     const latestVoltageMin = latest?.voltageMin;
                     const latestCapacity = latest?.capacityMah;
                     const latestCellDev = latest?.cellDeviation;
-                    const cellDevColor = latestCellDev == null ? '' : latestCellDev > 0.1 ? 'text-destructive' : latestCellDev > 0.05 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const cellDevColor = levelColorClass(cellDeviationLevel(latestCellDev, batteryConfig));
                     const firstCapacity = first?.capacityMah;
 
-                    const healthColor = latestHealth < 60 ? 'text-destructive' : latestHealth < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const computeHealth = (e?: BatteryTrendEntry) =>
+                      computeBatteryHealth(
+                        { capacityMah: e?.capacityMah ?? null, cycles: e?.cycles ?? null, djiHealthPct: e?.health ?? null },
+                        batteryConfig,
+                      ).value;
+                    const latestHealthValue = computeHealth(latest);
+                    const firstHealthValue = computeHealth(first);
+                    const healthColor = levelColorClass(batteryHealthLevel(latestHealthValue, batteryConfig));
                     const tempColor = latestTempMax == null ? '' : latestTempMax > 50 ? 'text-destructive' : latestTempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
                     const voltageColor = latestVoltageMin == null ? '' : latestVoltageMin < 3.0 ? 'text-destructive' : latestVoltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
 
@@ -817,20 +893,38 @@ export const EquipmentLogbookDialog = ({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.cycles')}</p>
-                            <p className="text-lg font-bold">{latest?.cycles ?? '—'}</p>
+                            <p className="text-lg font-bold">
+                              {latest?.cycles ?? '—'}
+                              {batteryConfig.maxCycles ? <span className="text-xs font-normal text-muted-foreground"> / {batteryConfig.maxCycles}</span> : null}
+                            </p>
                             <p className="text-[10px] text-muted-foreground">
                               {first?.cycles ?? '?'} → {latest?.cycles ?? '?'}
                             </p>
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
+                            <div className="flex items-start justify-between gap-1">
+                              <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 -mt-1 -mr-1 shrink-0"
+                                onClick={() => setBatterySettingsOpen(true)}
+                                aria-label={t('resourceDialogs.batteryHealthSettings.title')}
+                                title={t('resourceDialogs.batteryHealthSettings.title')}
+                              >
+                                <Settings2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                             <p className={`text-lg font-bold ${healthColor}`}>
-                              {latest?.health ?? '—'}%
+                              {latestHealthValue != null ? `${latestHealthValue}%` : '—'}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              {first?.health ?? '?'}% → {latest?.health ?? '?'}%
+                              {latestHealthValue == null
+                                ? t('resourceDialogs.equipmentLogbook.battery.healthUnknown')
+                                : `${firstHealthValue ?? '?'}% → ${latestHealthValue}%${batteryConfig.typeName ? ` · ${batteryConfig.typeName}` : ''}`}
                             </p>
                           </div>
+
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.maxTemp')}</p>
                             <p className={`text-lg font-bold ${tempColor}`}>
@@ -897,15 +991,19 @@ export const EquipmentLogbookDialog = ({
                             <span>{t('resourceDialogs.equipmentLogbook.battery.colCapacity')}</span>
                           </div>
 
-                          {batteryTrend.slice().reverse().map((entry, idx) => (
+                          {batteryTrend.slice().reverse().map((entry, idx) => {
+                            const rowHealth = computeHealth(entry);
+                            const rowHealthColor = levelColorClass(batteryHealthLevel(rowHealth, batteryConfig));
+                            return (
                             <div key={idx} className="border rounded-md px-3 py-2 text-sm">
                               {/* Desktop layout */}
                               <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
                                 <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
-                                <span className={entry.health != null ? (entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
-                                  {entry.health != null ? `${entry.health}%` : '—'}
+                                <span className={rowHealth != null ? rowHealthColor : ''}>
+                                  {rowHealth != null ? `${rowHealth}%` : '—'}
                                 </span>
+
                                 <span className={entry.tempMax != null ? (entry.tempMax > 50 ? 'text-destructive' : entry.tempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.tempMin != null || entry.tempMax != null
                                     ? `${entry.tempMin ?? '?'}–${entry.tempMax ?? '?'}°C`
@@ -925,9 +1023,9 @@ export const EquipmentLogbookDialog = ({
                                   <span className="text-muted-foreground text-xs">{format(entry.date, 'dd.MM.yyyy')}</span>
                                   <div className="flex gap-3 text-xs">
                                     {entry.cycles != null && <span>🔄 {entry.cycles}</span>}
-                                    {entry.health != null && (
-                                      <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
-                                        ❤️ {entry.health}%
+                                    {rowHealth != null && (
+                                      <span className={rowHealthColor}>
+                                        ❤️ {rowHealth}%
                                       </span>
                                     )}
                                   </div>
@@ -937,7 +1035,7 @@ export const EquipmentLogbookDialog = ({
                                     {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
                                     {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
                                     {entry.cellDeviation != null && (
-                                      <span className={entry.cellDeviation > 0.1 ? 'text-destructive' : ''}>
+                                      <span className={levelColorClass(cellDeviationLevel(entry.cellDeviation, batteryConfig))}>
                                         📊 {entry.cellDeviation.toFixed(3)}V
                                       </span>
                                     )}
@@ -946,7 +1044,9 @@ export const EquipmentLogbookDialog = ({
                                 )}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
+
                         </div>
                       </div>
                     );
@@ -957,6 +1057,23 @@ export const EquipmentLogbookDialog = ({
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {isBattery && batterySettingsOpen && (
+        <BatteryHealthSettingsDialog
+          open={batterySettingsOpen}
+          onOpenChange={setBatterySettingsOpen}
+          equipmentId={equipmentId}
+          equipmentNavn={equipmentNavn}
+          latest={{
+            capacityMah: batteryTrend[batteryTrend.length - 1]?.capacityMah ?? null,
+            cycles: batteryTrend[batteryTrend.length - 1]?.cycles ?? null,
+          }}
+          suggestion={batterySuggestion}
+          onSaved={() => {
+            if (equipmentSerienummer) fetchBatteryTrend();
+          }}
+        />
+      )}
 
       {/* Lightbox */}
       {lightboxUrl && (

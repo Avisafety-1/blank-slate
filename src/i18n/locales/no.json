@@ -4942,7 +4942,8 @@
         "colTemp": "Temp",
         "colVoltage": "Spenning",
         "colCellDev": "Celleavvik",
-        "colCapacity": "Kapasitet"
+        "colCapacity": "Kapasitet",
+        "healthUnknown": "Helse ukjent — velg batteritype"
       },
       "pdf": {
         "title": "Loggbok - {{name}}",
@@ -5206,6 +5207,31 @@
         "notesChecklist": "Utført via sjekkliste fra dronekort",
         "notesCard": "Utført fra dronekort"
       }
+    },
+    "batteryHealthSettings": {
+      "title": "Batterihelse-innstillinger",
+      "howTitle": "Slik regnes helsen ut",
+      "howBody": "Helsen beregnes ut fra flyloggene, ikke DJI sitt helsefelt (som ofte er tomt). Vi sammenligner målt full kapasitet mot batteritypens designkapasitet, og antall sykluser mot maks anbefalte sykluser. Den laveste av de to blir vist. Har vi bare ett av tallene, brukes det alene.",
+      "currentData": "Siste måling: {{capacity}} mAh, {{cycles}} sykluser.",
+      "previewValue": "Beregnet helse med disse innstillingene: {{value}} %.",
+      "previewUnknown": "Kan ikke beregnes ennå — velg en batteritype med designkapasitet eller maks sykluser.",
+      "typeLabel": "Batteritype",
+      "suggested": "Foreslått automatisk: {{name}}",
+      "noType": "Ingen batteritype valgt",
+      "typeInfo": "Designkapasitet: {{capacity}} mAh · Maks sykluser: {{cycles}} · Droner: {{models}}",
+      "paramsLabel": "Parametre",
+      "paramsHint": "Står feltet tomt, brukes verdien fra batteritypen.",
+      "designCapacity": "Designkapasitet (mAh)",
+      "maxCycles": "Maks sykluser",
+      "healthWarn": "Gul terskel helse (%)",
+      "healthCritical": "Rød terskel helse (%)",
+      "devWarn": "Gul terskel celleavvik (V)",
+      "devCritical": "Rød terskel celleavvik (V)",
+      "scopeLabel": "Gjelder for",
+      "scopeSingle": "Kun dette batteriet",
+      "scopeGroup": "Alle batterier av denne typen",
+      "saved": "Batterihelse-innstillinger lagret",
+      "saveError": "Kunne ikke lagre innstillingene"
     }
   },
   "documents": {
