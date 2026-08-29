@@ -6,15 +6,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Sparkles, Info, ChevronDown } from "lucide-react";
+import { Loader2, Sparkles, Info, ChevronDown, Plus, Pencil, Trash2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRoleCheck } from "@/hooks/useRoleCheck";
 import {
   fetchBatteryTypes,
   resolveBatteryConfig,
   computeBatteryHealth,
+  createBatteryType,
+  updateBatteryType,
+  deleteBatteryType,
   type BatteryType,
   type BatteryMatch,
   type BatteryEquipmentOverrides,
@@ -34,6 +47,19 @@ interface Props {
 
 const NONE = "__none__";
 
+const emptyTypeForm = {
+  name: "",
+  manufacturer: "",
+  droneModels: "",
+  designCapacity: "",
+  cellCount: "",
+  maxCycles: "",
+  healthWarn: "80",
+  healthCritical: "60",
+  devWarn: "0.05",
+  devCritical: "0.1",
+};
+
 export const BatteryHealthSettingsDialog = ({
   open,
   onOpenChange,
@@ -44,6 +70,8 @@ export const BatteryHealthSettingsDialog = ({
   onSaved,
 }: Props) => {
   const { t } = useTranslation();
+  const { companyId } = useAuth();
+  const { isAdmin } = useRoleCheck();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [types, setTypes] = useState<BatteryType[]>([]);
@@ -58,6 +86,11 @@ export const BatteryHealthSettingsDialog = ({
     devWarn: "",
     devCritical: "",
   });
+
+  // Inline create/edit form for company-owned battery types
+  const [typeEditorMode, setTypeEditorMode] = useState<"closed" | "create" | "edit">("closed");
+  const [typeForm, setTypeForm] = useState({ ...emptyTypeForm });
+  const [typeSaving, setTypeSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -78,7 +111,8 @@ export const BatteryHealthSettingsDialog = ({
       setTypes(list);
       const o = (data || {}) as BatteryEquipmentOverrides;
       setOverrides(o);
-      setTypeId(o.battery_type_id || suggestion?.type.id || NONE);
+      // A locked row means the user picked explicitly — respect "no type".
+      setTypeId(o.battery_type_id || (o.battery_type_locked ? NONE : suggestion?.type.id || NONE));
       setForm({
         designCapacity: o.battery_design_capacity_mah?.toString() ?? "",
         maxCycles: o.battery_max_cycles?.toString() ?? "",
@@ -87,6 +121,7 @@ export const BatteryHealthSettingsDialog = ({
         devWarn: o.battery_cell_deviation_warn_v?.toString() ?? "",
         devCritical: o.battery_cell_deviation_critical_v?.toString() ?? "",
       });
+      setTypeEditorMode("closed");
       setLoading(false);
     };
     load();
@@ -99,6 +134,10 @@ export const BatteryHealthSettingsDialog = ({
     () => types.find((x) => x.id === typeId) || null,
     [types, typeId],
   );
+
+  const globalTypes = useMemo(() => types.filter((x) => !x.company_id), [types]);
+  const companyTypes = useMemo(() => types.filter((x) => !!x.company_id), [types]);
+  const canEditSelected = !!selectedType?.company_id && isAdmin;
 
   const previewConfig = useMemo(() => {
     const num = (v: string) => (v.trim() === "" ? null : Number(v));
@@ -120,6 +159,90 @@ export const BatteryHealthSettingsDialog = ({
       ),
     [latest, previewConfig],
   );
+
+  const openCreateType = () => {
+    setTypeForm({ ...emptyTypeForm });
+    setTypeEditorMode("create");
+  };
+
+  const openEditType = () => {
+    if (!selectedType) return;
+    setTypeForm({
+      name: selectedType.name ?? "",
+      manufacturer: selectedType.manufacturer ?? "",
+      droneModels: (selectedType.drone_models || []).join(", "),
+      designCapacity: selectedType.design_capacity_mah?.toString() ?? "",
+      cellCount: selectedType.cell_count?.toString() ?? "",
+      maxCycles: selectedType.max_cycles?.toString() ?? "",
+      healthWarn: selectedType.health_warn_pct?.toString() ?? "80",
+      healthCritical: selectedType.health_critical_pct?.toString() ?? "60",
+      devWarn: selectedType.cell_deviation_warn_v?.toString() ?? "0.05",
+      devCritical: selectedType.cell_deviation_critical_v?.toString() ?? "0.1",
+    });
+    setTypeEditorMode("edit");
+  };
+
+  const handleSaveType = async () => {
+    if (!typeForm.name.trim()) {
+      toast.error(t("resourceDialogs.batteryHealthSettings.typeNameRequired"));
+      return;
+    }
+    if (typeEditorMode === "create" && !companyId) return;
+    setTypeSaving(true);
+    try {
+      const num = (v: string) => (v.trim() === "" ? null : Number(v));
+      const payload = {
+        name: typeForm.name.trim(),
+        manufacturer: typeForm.manufacturer.trim() || null,
+        drone_models: typeForm.droneModels
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        design_capacity_mah: num(typeForm.designCapacity),
+        cell_count: num(typeForm.cellCount),
+        max_cycles: num(typeForm.maxCycles),
+        health_warn_pct: num(typeForm.healthWarn) ?? 80,
+        health_critical_pct: num(typeForm.healthCritical) ?? 60,
+        cell_deviation_warn_v: num(typeForm.devWarn) ?? 0.05,
+        cell_deviation_critical_v: num(typeForm.devCritical) ?? 0.1,
+      };
+
+      const saved =
+        typeEditorMode === "create"
+          ? await createBatteryType(companyId as string, payload)
+          : await updateBatteryType(selectedType!.id, payload);
+
+      setTypes((prev) => {
+        const rest = prev.filter((x) => x.id !== saved.id);
+        return [...rest, saved].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setTypeId(saved.id);
+      setTypeEditorMode("closed");
+      toast.success(t("resourceDialogs.batteryHealthSettings.typeSaved"));
+    } catch (e) {
+      console.error(e);
+      toast.error(t("resourceDialogs.batteryHealthSettings.typeSaveError"));
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
+  const handleDeleteType = async () => {
+    if (!selectedType?.company_id) return;
+    setTypeSaving(true);
+    try {
+      await deleteBatteryType(selectedType.id);
+      setTypes((prev) => prev.filter((x) => x.id !== selectedType.id));
+      setTypeId(NONE);
+      setTypeEditorMode("closed");
+      toast.success(t("resourceDialogs.batteryHealthSettings.typeDeleted"));
+    } catch (e) {
+      console.error(e);
+      toast.error(t("resourceDialogs.batteryHealthSettings.typeDeleteError"));
+    } finally {
+      setTypeSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -148,7 +271,9 @@ export const BatteryHealthSettingsDialog = ({
         .update({
           ...payload,
           battery_type_id: typeId === NONE ? null : typeId,
-          battery_type_locked: typeId !== NONE,
+          // Always lock: an explicit "no type" must not be overwritten by
+          // the automatic drone-model matching on the next load.
+          battery_type_locked: true,
         })
         .eq("id", equipmentId);
       if (error) throw error;
@@ -203,11 +328,6 @@ export const BatteryHealthSettingsDialog = ({
                       cycles: latest?.cycles ?? "—",
                     })}
                   </p>
-                  <p className="text-xs font-medium">
-                    {preview.value != null
-                      ? t("resourceDialogs.batteryHealthSettings.previewValue", { value: preview.value })
-                      : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
-                  </p>
                 </CollapsibleContent>
               </Collapsible>
 
@@ -224,23 +344,71 @@ export const BatteryHealthSettingsDialog = ({
                     </span>
                   </Badge>
                 )}
-                <Select value={typeId} onValueChange={setTypeId}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>
-                      {t("resourceDialogs.batteryHealthSettings.noType")}
-                    </SelectItem>
-                    {types.map((bt) => (
-                      <SelectItem key={bt.id} value={bt.id}>
-                        {bt.name}
-                        {bt.design_capacity_mah ? ` · ${bt.design_capacity_mah} mAh` : ""}
+                <div className="flex gap-2">
+                  <Select value={typeId} onValueChange={setTypeId}>
+                    <SelectTrigger className="h-10 flex-1 min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>
+                        {t("resourceDialogs.batteryHealthSettings.noType")}
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedType && (
+                      {companyTypes.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>
+                            {t("resourceDialogs.batteryHealthSettings.groupCompany")}
+                          </SelectLabel>
+                          {companyTypes.map((bt) => (
+                            <SelectItem key={bt.id} value={bt.id}>
+                              {bt.name}
+                              {bt.design_capacity_mah ? ` · ${bt.design_capacity_mah} mAh` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {globalTypes.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>
+                            {t("resourceDialogs.batteryHealthSettings.groupCatalog")}
+                          </SelectLabel>
+                          {globalTypes.map((bt) => (
+                            <SelectItem key={bt.id} value={bt.id}>
+                              {bt.name}
+                              {bt.design_capacity_mah ? ` · ${bt.design_capacity_mah} mAh` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {isAdmin && (
+                    <>
+                      {canEditSelected && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-10 w-10 shrink-0"
+                          onClick={openEditType}
+                          title={t("resourceDialogs.batteryHealthSettings.editType")}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        onClick={openCreateType}
+                        title={t("resourceDialogs.batteryHealthSettings.newType")}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                {selectedType && typeEditorMode === "closed" && (
                   <p className="text-xs text-muted-foreground break-words">
                     {t("resourceDialogs.batteryHealthSettings.typeInfo", {
                       capacity: selectedType.design_capacity_mah ?? "—",
@@ -248,6 +416,167 @@ export const BatteryHealthSettingsDialog = ({
                       models: (selectedType.drone_models || []).join(", ") || "—",
                     })}
                   </p>
+                )}
+
+                {/* Inline create/edit type form */}
+                {typeEditorMode !== "closed" && (
+                  <div className="rounded-lg border p-3 space-y-3 bg-muted/20">
+                    <p className="text-sm font-medium">
+                      {typeEditorMode === "create"
+                        ? t("resourceDialogs.batteryHealthSettings.newType")
+                        : t("resourceDialogs.batteryHealthSettings.editType")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("resourceDialogs.batteryHealthSettings.typeScopeHint")}
+                    </p>
+                    <div className="space-y-1">
+                      <Label className="text-xs">
+                        {t("resourceDialogs.batteryHealthSettings.typeName")}
+                      </Label>
+                      <Input
+                        value={typeForm.name}
+                        onChange={(e) => setTypeForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.typeManufacturer")}
+                        </Label>
+                        <Input
+                          value={typeForm.manufacturer}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, manufacturer: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.typeDroneModels")}
+                        </Label>
+                        <Input
+                          placeholder="Mavic 3T, M30T"
+                          value={typeForm.droneModels}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, droneModels: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.designCapacity")}
+                        </Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={typeForm.designCapacity}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, designCapacity: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.typeCellCount")}
+                        </Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={typeForm.cellCount}
+                          onChange={(e) => setTypeForm((f) => ({ ...f, cellCount: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.maxCycles")}
+                        </Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={typeForm.maxCycles}
+                          onChange={(e) => setTypeForm((f) => ({ ...f, maxCycles: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.healthWarn")}
+                        </Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={typeForm.healthWarn}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, healthWarn: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.healthCritical")}
+                        </Label>
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          value={typeForm.healthCritical}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, healthCritical: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.devWarn")}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          inputMode="decimal"
+                          value={typeForm.devWarn}
+                          onChange={(e) => setTypeForm((f) => ({ ...f, devWarn: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.devCritical")}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.001"
+                          inputMode="decimal"
+                          value={typeForm.devCritical}
+                          onChange={(e) =>
+                            setTypeForm((f) => ({ ...f, devCritical: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                      {typeEditorMode === "edit" && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="text-destructive sm:mr-auto"
+                          onClick={handleDeleteType}
+                          disabled={typeSaving}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          {t("actions.delete")}
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTypeEditorMode("closed")}
+                        disabled={typeSaving}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button type="button" onClick={handleSaveType} disabled={typeSaving}>
+                        {typeSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {t("resourceDialogs.batteryHealthSettings.saveType")}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -332,6 +661,15 @@ export const BatteryHealthSettingsDialog = ({
                       onChange={(e) => setForm((f) => ({ ...f, devCritical: e.target.value }))}
                     />
                   </div>
+                </div>
+                <div className="rounded-md border bg-muted/30 p-2.5">
+                  <p className="text-xs font-medium break-words">
+                    {preview.value != null
+                      ? t("resourceDialogs.batteryHealthSettings.previewValue", {
+                          value: preview.value,
+                        })
+                      : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
+                  </p>
                 </div>
               </div>
 

@@ -5239,7 +5239,22 @@
       "scopeSingle": "Kun dette batteriet",
       "scopeGroup": "Alle batterier av denne typen",
       "saved": "Batterihelse-innstillinger lagret",
-      "saveError": "Kunne ikke lagre innstillingene"
+      "saveError": "Kunne ikke lagre innstillingene",
+      "groupCompany": "Egne batterityper",
+      "groupCatalog": "Katalog (globale)",
+      "newType": "Ny batteritype",
+      "editType": "Rediger batteritype",
+      "typeScopeHint": "Typen lagres kun for ditt selskap og dets avdelinger.",
+      "typeName": "Navn",
+      "typeManufacturer": "Produsent",
+      "typeDroneModels": "Dronemodeller (kommaseparert)",
+      "typeCellCount": "Celletall (S)",
+      "saveType": "Lagre batteritype",
+      "typeSaved": "Batteritype lagret",
+      "typeSaveError": "Kunne ikke lagre batteritypen",
+      "typeDeleted": "Batteritype slettet",
+      "typeDeleteError": "Kunne ikke slette batteritypen",
+      "typeNameRequired": "Navn er påkrevd"
     }
   },
   "documents": {

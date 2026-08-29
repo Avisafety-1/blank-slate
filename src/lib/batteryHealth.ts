@@ -286,6 +286,54 @@ export function autoMatchBatteryType(
   return null;
 }
 
+export interface BatteryTypeInput {
+  name: string;
+  manufacturer: string | null;
+  drone_models: string[];
+  design_capacity_mah: number | null;
+  cell_count: number | null;
+  max_cycles: number | null;
+  health_warn_pct: number;
+  health_critical_pct: number;
+  cell_deviation_warn_v: number;
+  cell_deviation_critical_v: number;
+}
+
+/** Creates a company-scoped battery type (visible to the company + its departments). */
+export async function createBatteryType(
+  companyId: string,
+  input: BatteryTypeInput,
+): Promise<BatteryType> {
+  const { data, error } = await (supabase as any)
+    .from("battery_types")
+    .insert({ ...input, company_id: companyId })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as BatteryType;
+}
+
+/** Updates a company-owned battery type. */
+export async function updateBatteryType(
+  id: string,
+  input: BatteryTypeInput,
+): Promise<BatteryType> {
+  const { data, error } = await (supabase as any)
+    .from("battery_types")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as BatteryType;
+}
+
+/** Deletes a company-owned battery type. */
+export async function deleteBatteryType(id: string): Promise<void> {
+  const { error } = await (supabase as any).from("battery_types").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /** Saves an automatically detected type, never overwriting a manual choice. */
 export async function persistAutoMatch(equipmentId: string, typeId: string): Promise<void> {
   const { error } = await (supabase as any)
