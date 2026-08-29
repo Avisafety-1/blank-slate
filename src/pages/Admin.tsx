@@ -994,34 +994,10 @@ const Admin = () => {
                       <Button
                         variant="destructive"
                         onClick={async () => {
-                          if (!confirm('ADVARSEL: Dette tvinger en umiddelbar reload for ALLE tilkoblede brukere. Ulagret arbeid kan gå tapt. Fortsett?')) return;
+                          if (!confirm('ADVARSEL: Dette tvinger en umiddelbar reload for ALLE brukere – også de som logger inn senere. Ulagret arbeid kan gå tapt. Fortsett?')) return;
                           try {
-                            const channel = supabase.channel('global-force-reload');
-                            await channel.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: true, timestamp: Date.now() },
-                            });
-                            const { data: current } = await supabase
-                              .from('app_config')
-                              .select('value')
-                              .eq('key', 'app_version')
-                              .single();
-                            const nextVersion = String(Number(current?.value || '0') + 1);
-                            await supabase
-                              .from('app_config')
-                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
-                              .eq('key', 'app_version');
-                            // Re-send with version included
-                            const ch2 = supabase.channel('global-force-reload');
-                            await ch2.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: true, version: nextVersion, timestamp: Date.now() },
-                            });
-                            supabase.removeChannel(ch2);
+                            await broadcastAppUpdate(true);
                             toast.success('Tvungen oppdatering sendt!');
-                            supabase.removeChannel(channel);
                           } catch (err) {
                             console.error('Force immediate reload error:', err);
                             toast.error('Kunne ikke sende tvunget oppdatering');
