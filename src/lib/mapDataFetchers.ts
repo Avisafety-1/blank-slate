@@ -2155,3 +2155,126 @@ export async function fetchOsmPowerLinesInBounds(params: {
     console.error("[osm-power] fetch failed:", err);
   }
 }
+
+// ============================================================
+// Nkom mobildekning (4G/5G arealdekning, 2023)
+// WMS-en fra Nkom tegner alle ruter i samme grå farge, så vi henter
+// rutene som GeoJSON via GetFeatureInfo og fargelegger dem selv etter
+// hvor stor andel av ruten som har dekning/hastighet.
+// Egenskaper per rute: d0 = % uten dekning, d2/d30/d100 = % med minst
+// 2/30/100 Mbit. val = vektet score 0–400.
+// ============================================================
+const NKOM_WMS = 'https://api.nkom.no/geoserverAPI/wms';
+const NKOM_LAYERS: Record<'4g' | '5g', string> = {
+  '4g': 'Dekningskart:2023 - 4G arealdekning mobil',
+  '5g': 'Dekningskart:2023 - 5G arealdekning mobil',
+};
+
+function nkomCoverageColor(p: { val?: number; d0?: number }): { color: string; label: string } {
+  const val = Number(p.val ?? 0);
+  const d0 = Number(p.d0 ?? 0);
+  if (d0 >= 50) return { color: '#dc2626', label: 'Svært dårlig – over halve ruten uten dekning' };
+  if (val >= 350) return { color: '#16a34a', label: 'Svært god – hele ruten har 100+ Mbit' };
+  if (val >= 250) return { color: '#84cc16', label: 'God – mesteparten har 30–100+ Mbit' };
+  if (val >= 150) return { color: '#eab308', label: 'Middels – i hovedsak lav hastighet' };
+  if (val >= 50) return { color: '#f97316', label: 'Svak – kun grunnleggende dekning i deler av ruten' };
+  return { color: '#dc2626', label: 'Dårlig – lite eller ingen dekning' };
+}
+
+/** EPSG:3857 → EPSG:4326 (Leaflet trenger lat/lng) */
+function mercToLngLat(x: number, y: number): [number, number] {
+  const lng = (x / 20037508.342789244) * 180;
+  let lat = (y / 20037508.342789244) * 180;
+  lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+  return [lng, lat];
+}
+
+function reprojectGeometry(geom: any): any {
+  if (!geom) return geom;
+  const walk = (c: any): any =>
+    typeof c[0] === 'number' ? mercToLngLat(c[0], c[1]) : c.map(walk);
+  return { ...geom, coordinates: walk(geom.coordinates) };
+}
+
+export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g' | '5g' }) {
+  const { layer, mode, bounds, band } = params;
+  const cache = getCache(`nkom:${band}`);
+  if (bboxCovered(cache.cachedBounds, bounds)) return;
+  const padded = padBBox(bounds);
+
+  // Mercator-bbox
+  const toMerc = (lat: number, lng: number): [number, number] => {
+    const x = (lng / 180) * 20037508.342789244;
+    const y =
+      (Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 180 / 2)) / Math.PI) *
+      20037508.342789244;
+    return [x, y];
+  };
+  const [minx, miny] = toMerc(padded.minLat, padded.minLng);
+  const [maxx, maxy] = toMerc(padded.maxLat, padded.maxLng);
+  const span = Math.max(maxx - minx, maxy - miny);
+  // Nkom rendrer kun mellom skala 1:10 000 og 1:2 500 000 → hold
+  // oppløsningen innenfor ~3,5–700 m/px ved å velge bildestørrelse.
+  const res = Math.min(600, Math.max(5, span / 256));
+  const size = Math.max(64, Math.min(1024, Math.round(span / res)));
+
+  const layerName = NKOM_LAYERS[band];
+  const url =
+    `${NKOM_WMS}?service=WMS&version=1.3.0&request=GetFeatureInfo` +
+    `&layers=${encodeURIComponent(layerName)}&query_layers=${encodeURIComponent(layerName)}` +
+    `&styles=&format=image/png&info_format=application/json` +
+    `&width=${size}&height=${size}&i=${Math.round(size / 2)}&j=${Math.round(size / 2)}` +
+    `&crs=EPSG:3857&bbox=${minx},${miny},${maxx},${maxy}` +
+    `&feature_count=4000&buffer=${Math.ceil(size / 2)}`;
+
+  try {
+    const res2 = await fetch(url);
+    if (!res2.ok) return;
+    const json = await res2.json();
+    const features: any[] = Array.isArray(json?.features) ? json.features : [];
+
+    diffRender(
+      layer,
+      cache,
+      features.filter((f) => f?.geometry),
+      (f) => hashString(`nkom|${band}|${f.id ?? ''}|${f.properties?.val ?? ''}`),
+      (f) => {
+        const p = f.properties || {};
+        const { color, label } = nkomCoverageColor(p);
+        const geometry = reprojectGeometry(f.geometry);
+        const style = {
+          color,
+          weight: 0.5,
+          opacity: 0.6,
+          fillColor: color,
+          fillOpacity: 0.35,
+        };
+        return L.geoJSON({ type: 'Feature' as const, geometry, properties: p } as any, {
+          interactive: mode !== 'routePlanning',
+          pane: 'overlayPane',
+          style,
+          onEachFeature:
+            mode !== 'routePlanning'
+              ? (_f, lyr) => {
+                  const pct = (v: any) => `${Math.round(Number(v ?? 0))} %`;
+                  const html =
+                    `<strong>📶 Mobildekning ${band.toUpperCase()} (Nkom 2023)</strong><br/>` +
+                    `<div style="margin:4px 0 6px;color:${color};font-weight:600">${label}</div>` +
+                    `<div>Uten dekning: <strong>${pct(p.d0)}</strong> av ruten</div>` +
+                    `<div>Minst 2 Mbit: <strong>${pct(p.d2)}</strong></div>` +
+                    `<div>Minst 30 Mbit: <strong>${pct(p.d30)}</strong></div>` +
+                    `<div>Minst 100 Mbit: <strong>${pct(p.d100)}</strong></div>` +
+                    `<div style="margin-top:6px;font-size:11px;color:#666">` +
+                    `Arealdekning utendørs ved bakken (2 m), ikke sanntid og ikke per operatør. ` +
+                    `Områder uten ruter har ingen registrert dekning.</div>`;
+                  lyr.bindPopup(html);
+                  attachHoverPromotion(lyr, { paneName: 'overlayPane', baseStyle: style });
+                }
+              : undefined,
+        });
+      }
+    );
+  } catch (e) {
+    console.error('Feil ved henting av Nkom mobildekning:', e);
+  }
+}
