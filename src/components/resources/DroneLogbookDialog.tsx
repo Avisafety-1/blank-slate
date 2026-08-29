@@ -358,6 +358,30 @@ export const DroneLogbookDialog = ({
     try {
       let entryId = editingEntryId;
 
+      // Optional status change on the drone itself
+      let statusNote = "";
+      if (newEntry.new_status) {
+        const { data: oldStatus, error: statusError } = await (supabase as any).rpc('set_resource_status', {
+          _resource_type: 'drone',
+          _resource_id: droneId,
+          _status: newEntry.new_status,
+        });
+        if (statusError) {
+          const msg = /not_authorized/.test(statusError.message)
+            ? t('resourceDialogs.droneLogbook.statusChange.notAuthorized')
+            : statusError.message;
+          toast.error(t('resourceDialogs.droneLogbook.statusChange.error', { message: msg }));
+          setIsSaving(false);
+          return;
+        }
+        statusNote = t('resourceDialogs.droneLogbook.statusChange.logNote', {
+          from: oldStatus || '-',
+          to: newEntry.new_status,
+        });
+      }
+
+      const description = [newEntry.description.trim(), statusNote].filter(Boolean).join("\n") || null;
+
       if (editingEntryId) {
         const { error } = await (supabase as any)
           .from("drone_log_entries")
@@ -365,7 +389,7 @@ export const DroneLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .eq("id", editingEntryId);
         if (error) throw error;
@@ -379,7 +403,7 @@ export const DroneLogbookDialog = ({
             entry_date: newEntry.entry_date,
             entry_type: newEntry.entry_type,
             title: newEntry.title.trim(),
-            description: newEntry.description.trim() || null,
+            description,
           })
           .select("id")
           .single();
@@ -406,7 +430,8 @@ export const DroneLogbookDialog = ({
       }
 
       toast.success(editingEntryId ? t('resourceDialogs.droneLogbook.toasts.entryUpdated') : t('resourceDialogs.droneLogbook.toasts.entryAdded'));
-      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] });
+      setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" });
+
       clearImage();
       setShowAddEntry(false);
       setEditingEntryId(null);
