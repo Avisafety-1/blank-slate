@@ -5256,7 +5256,8 @@
       "typeDeleteError": "Kunne ikke slette batteritypen",
       "typeNameRequired": "Navn er påkrevd",
       "useTypeValues": "Bruk typens verdier",
-      "overrideActive": "Egendefinerte verdier for dette batteriet overstyrer verdiene fra batteritypen."
+      "overrideActive": "Egendefinerte verdier for dette batteriet overstyrer verdiene fra batteritypen.",
+      "catalogReadOnly": "Katalogbatterier kan ikke endres. Verdiene du skriver under gjelder kun dette batteriet (eller gruppen), ikke katalogtypen. Lag en egendefinert batteritype (+) hvis du vil lagre egne verdier."
     }
   },
   "documents": {
