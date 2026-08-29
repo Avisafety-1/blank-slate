@@ -2279,7 +2279,6 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
           interactive: mode !== 'routePlanning',
           renderer,
           pane: 'overlayPane',
-        } as any as L.GeoJSONOptions,
           style,
           onEachFeature:
             mode !== 'routePlanning'
@@ -2299,7 +2298,7 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
                   attachHoverPromotion(lyr, { paneName: 'overlayPane', baseStyle: style });
                 }
               : undefined,
-        });
+        } as any);
       }
     );
   } catch (e) {
