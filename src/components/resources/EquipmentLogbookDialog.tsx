@@ -654,6 +654,25 @@ export const EquipmentLogbookDialog = ({
                       rows={2}
                     />
                   </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.statusChange.label')}</Label>
+                    <Select
+                      value={newEntry.new_status || "none"}
+                      onValueChange={(v) => setNewEntry(prev => ({ ...prev, new_status: v === "none" ? "" : v }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('resourceDialogs.equipmentLogbook.statusChange.noChange')}</SelectItem>
+                        <SelectItem value="Grønn">{t('resourceDialogs.equipmentLogbook.statusChange.green')}</SelectItem>
+                        <SelectItem value="Gul">{t('resourceDialogs.equipmentLogbook.statusChange.yellow')}</SelectItem>
+                        <SelectItem value="Rød">{t('resourceDialogs.equipmentLogbook.statusChange.red')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">{t('resourceDialogs.equipmentLogbook.statusChange.hint')}</p>
+                  </div>
+
                   {/* Image upload */}
                   <div>
                     <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.image')}</Label>
