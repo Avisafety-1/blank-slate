@@ -1031,7 +1031,7 @@ export const EquipmentLogbookDialog = ({
                                   </div>
                                 </div>
                                 {(entry.tempMax != null || entry.voltageMin != null || entry.capacityMah != null || entry.cellDeviation != null) && (
-                                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
                                     {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
                                     {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
                                     {entry.cellDeviation != null && (

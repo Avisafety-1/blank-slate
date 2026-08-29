@@ -165,10 +165,10 @@ export const BatteryHealthSettingsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90dvh] flex flex-col">
+      <DialogContent className="w-full h-[100dvh] max-w-none rounded-none sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-lg flex flex-col p-4 sm:p-6 gap-3">
         <DialogHeader>
           <DialogTitle>{t("resourceDialogs.batteryHealthSettings.title")}</DialogTitle>
-          <DialogDescription>{equipmentNavn}</DialogDescription>
+          <DialogDescription className="break-words">{equipmentNavn}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -176,29 +176,29 @@ export const BatteryHealthSettingsDialog = ({
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 min-h-0 pr-3">
-            <div className="space-y-5">
+          <ScrollArea className="flex-1 min-h-0 sm:pr-3">
+            <div className="space-y-4 sm:space-y-5">
               {/* How it is calculated */}
               <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                 <p className="text-sm font-medium flex items-center gap-1.5">
-                  <Info className="w-4 h-4" />
+                  <Info className="w-4 h-4 shrink-0" />
                   {t("resourceDialogs.batteryHealthSettings.howTitle")}
                 </p>
                 <p className="text-xs text-muted-foreground whitespace-pre-line">
                   {t("resourceDialogs.batteryHealthSettings.howBody")}
                 </p>
-                <pre className="text-[11px] bg-background rounded p-2 overflow-x-auto">
-{`kapasitetshelse = kapasitet / designkapasitet × 100
-sykluslevetid   = (1 − sykluser / maks sykluser) × 100
-helse           = min(kapasitetshelse, sykluslevetid)`}
-                </pre>
-                <p className="text-xs">
+                <div className="text-[11px] bg-background rounded p-2 space-y-0.5 font-mono overflow-x-auto">
+                  <p>kapasitetshelse = kapasitet / design × 100</p>
+                  <p>sykluslevetid = (1 − sykluser / maks) × 100</p>
+                  <p>helse = min(kapasitetshelse, sykluslevetid)</p>
+                </div>
+                <p className="text-xs break-words">
                   {t("resourceDialogs.batteryHealthSettings.currentData", {
                     capacity: latest?.capacityMah ?? "—",
                     cycles: latest?.cycles ?? "—",
                   })}
                 </p>
-                <p className="text-xs">
+                <p className="text-xs font-medium">
                   {preview.value != null
                     ? t("resourceDialogs.batteryHealthSettings.previewValue", { value: preview.value })
                     : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
@@ -209,15 +209,17 @@ helse           = min(kapasitetshelse, sykluslevetid)`}
               <div className="space-y-2">
                 <Label>{t("resourceDialogs.batteryHealthSettings.typeLabel")}</Label>
                 {suggestion && (
-                  <Badge variant="secondary" className="gap-1 font-normal">
-                    <Sparkles className="w-3 h-3" />
-                    {t("resourceDialogs.batteryHealthSettings.suggested", {
-                      name: suggestion.type.name,
-                    })}
+                  <Badge variant="secondary" className="gap-1 font-normal max-w-full whitespace-normal text-left">
+                    <Sparkles className="w-3 h-3 shrink-0" />
+                    <span className="break-words">
+                      {t("resourceDialogs.batteryHealthSettings.suggested", {
+                        name: suggestion.type.name,
+                      })}
+                    </span>
                   </Badge>
                 )}
                 <Select value={typeId} onValueChange={setTypeId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -233,7 +235,7 @@ helse           = min(kapasitetshelse, sykluslevetid)`}
                   </SelectContent>
                 </Select>
                 {selectedType && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-words">
                     {t("resourceDialogs.batteryHealthSettings.typeInfo", {
                       capacity: selectedType.design_capacity_mah ?? "—",
                       cycles: selectedType.max_cycles ?? "—",
@@ -249,7 +251,7 @@ helse           = min(kapasitetshelse, sykluslevetid)`}
                 <p className="text-xs text-muted-foreground">
                   {t("resourceDialogs.batteryHealthSettings.paramsHint")}
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">
                       {t("resourceDialogs.batteryHealthSettings.designCapacity")}
@@ -331,7 +333,7 @@ helse           = min(kapasitetshelse, sykluslevetid)`}
               <div className="space-y-2">
                 <Label>{t("resourceDialogs.batteryHealthSettings.scopeLabel")}</Label>
                 <Select value={scope} onValueChange={(v) => setScope(v as "single" | "group")}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -348,11 +350,16 @@ helse           = min(kapasitetshelse, sykluslevetid)`}
           </ScrollArea>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 border-t">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-3 border-t">
+          <Button
+            variant="ghost"
+            className="w-full sm:w-auto"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleSave} disabled={saving || loading}>
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={saving || loading}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {t("common.save")}
           </Button>
