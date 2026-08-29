@@ -991,15 +991,19 @@ export const EquipmentLogbookDialog = ({
                             <span>{t('resourceDialogs.equipmentLogbook.battery.colCapacity')}</span>
                           </div>
 
-                          {batteryTrend.slice().reverse().map((entry, idx) => (
+                          {batteryTrend.slice().reverse().map((entry, idx) => {
+                            const rowHealth = computeHealth(entry);
+                            const rowHealthColor = levelColorClass(batteryHealthLevel(rowHealth, batteryConfig));
+                            return (
                             <div key={idx} className="border rounded-md px-3 py-2 text-sm">
                               {/* Desktop layout */}
                               <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
                                 <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
-                                <span className={entry.health != null ? (entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
-                                  {entry.health != null ? `${entry.health}%` : '—'}
+                                <span className={rowHealth != null ? rowHealthColor : ''}>
+                                  {rowHealth != null ? `${rowHealth}%` : '—'}
                                 </span>
+
                                 <span className={entry.tempMax != null ? (entry.tempMax > 50 ? 'text-destructive' : entry.tempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
                                   {entry.tempMin != null || entry.tempMax != null
                                     ? `${entry.tempMin ?? '?'}–${entry.tempMax ?? '?'}°C`
