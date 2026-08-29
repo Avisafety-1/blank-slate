@@ -1005,6 +1005,34 @@ export const EquipmentLogbookDialog = ({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => setDeleteConfirm({ open, logId: open ? deleteConfirm.logId : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('resourceDialogs.equipmentLogbook.deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirm({ open: false, logId: null })}>
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (deleteConfirm.logId) {
+                  await handleDeleteEntry(deleteConfirm.logId);
+                  setDeleteConfirm({ open: false, logId: null });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('resourceDialogs.equipmentLogbook.deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
