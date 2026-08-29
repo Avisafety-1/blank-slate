@@ -49,6 +49,7 @@ import {
   fetchActiveAdvisories,
   fetchPilotPositions,
   fetchNaturvernZones,
+  fetchNkomCoverage,
   fetchVernRestrictionZones,
   fetchCaaDroneZones,
   fetchDkDroneZones,
@@ -1175,37 +1176,12 @@ export function OpenAIPMap({
       } as any
     );
 
-    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør)
-    const NKOM_WMS_URL = "https://api.nkom.no/geoserverAPI/wms?";
-    const NKOM_ATTRIB = '© <a href="https://nkom.no/dekningskart/" target="_blank" rel="noopener">Nkom</a> – Dekningskart (arealdekning)';
-    // Nkom-tjenesten rendrer kun mellom skala 1:10 000 og 1:2 500 000 (ca. zoom 8–15).
-    // Utenfor dette returnerer WMS-en tomme bilder, derfor låser vi native zoom-nivåene.
-    const NKOM_MIN_ZOOM = 8;
-    const NKOM_MAX_NATIVE_ZOOM = 15;
-    const mobildekning4gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
-      layers: "Dekningskart:2023 - 4G arealdekning mobil",
-      styles: "",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.55,
-      version: "1.3.0",
-      attribution: NKOM_ATTRIB,
-      minZoom: NKOM_MIN_ZOOM,
-      maxZoom: 20,
-      maxNativeZoom: NKOM_MAX_NATIVE_ZOOM,
-    } as any);
-    const mobildekning5gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
-      layers: "Dekningskart:2023 - 5G arealdekning mobil",
-      styles: "",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.55,
-      version: "1.3.0",
-      attribution: NKOM_ATTRIB,
-      minZoom: NKOM_MIN_ZOOM,
-      maxZoom: 20,
-      maxNativeZoom: NKOM_MAX_NATIVE_ZOOM,
-    } as any);
+    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør).
+    // Rutene hentes som GeoJSON og fargelegges etter dekningsgrad, siden
+    // Nkom sin egen WMS tegner alt i samme grå farge.
+    const mobildekning4gLayer = L.layerGroup();
+    const mobildekning5gLayer = L.layerGroup();
+
 
 
 
@@ -1543,6 +1519,29 @@ export function OpenAIPMap({
       });
     };
 
+    // Nkom mobildekning: viewport-basert henting av fargelagte ruter
+    const nkomLayerMap: Array<['4g' | '5g', L.LayerGroup]> = [
+      ['4g', mobildekning4gLayer],
+      ['5g', mobildekning5gLayer],
+    ];
+    const fetchNkomLayers = () => {
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      nkomLayerMap.forEach(([band, lg]) => {
+        if (!map.hasLayer(lg)) return;
+        if (map.getZoom() < 9) {
+          resetCache(`nkom:${band}`, lg);
+          return;
+        }
+        fetchNkomCoverage({ layer: lg, mode: interactiveModeRef.current, bounds, band });
+      });
+    };
+
+
+
 
     // CAA dronesoner: refetch on moveend per aktivert lag
     const caaLayerMap: Array<[string, L.LayerGroup]> = [
@@ -1655,6 +1654,7 @@ export function OpenAIPMap({
         fetchDkLayers();
         fetchUnifiedLayers();
         fetchObstaclesViewport();
+        fetchNkomLayers();
         fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
       }, 300);
     };
@@ -1667,6 +1667,7 @@ export function OpenAIPMap({
       resetCache('naturvern', naturvernLayer);
       resetCache('vernRestriction', naturvernLayer);
       resetCache('obstacles', obstaclesLayer);
+      nkomLayerMap.forEach(([band, lg]) => resetCache(`nkom:${band}`, lg));
       caaLayerMap.forEach(([layerId, lg]) => resetCache(`caa:${layerId}`, lg));
       dkDroneLayerMap.forEach(([layerId, lg]) => resetCache(`dk:${layerId}`, lg));
       resetCache('dkNature', dkNatureLayer);
@@ -1681,6 +1682,7 @@ export function OpenAIPMap({
       fetchDkLayers();
       fetchUnifiedLayers();
       fetchObstaclesViewport();
+      fetchNkomLayers();
       fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
     };
 
@@ -1691,7 +1693,9 @@ export function OpenAIPMap({
     fetchDkLayers();
     fetchUnifiedLayers();
     fetchObstaclesViewport();
+    fetchNkomLayers();
     map.on('moveend', debouncedFetchVern);
+
     // Refetch CAA/DK layers when user toggles them on (layeradd fires on .addTo(map))
     map.on('layeradd', (e: any) => {
       const caaMatch = caaLayerMap.find(([, lg]) => lg === e.layer);
@@ -1701,6 +1705,7 @@ export function OpenAIPMap({
       const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
       if (unifiedMatch) fetchUnifiedLayers();
       if (e.layer === obstaclesLayer) fetchObstaclesViewport();
+      if (nkomLayerMap.some(([, lg]) => lg === e.layer)) fetchNkomLayers();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
@@ -1712,6 +1717,8 @@ export function OpenAIPMap({
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
       if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
+      const nkomMatch = nkomLayerMap.find(([, lg]) => lg === e.layer);
+      if (nkomMatch) resetCache(`nkom:${nkomMatch[0]}`, nkomMatch[1]);
       if (e.layer === notamLayer) resetCache('notam', notamLayer);
 
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
