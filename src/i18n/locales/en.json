@@ -5215,6 +5215,7 @@
       }
     },
     "batteryHealthSettings": {
+      "openButton": "Battery settings",
       "title": "Battery health settings",
       "howTitle": "How health is calculated",
       "howBody": "Health is calculated from the flight logs, not DJI's health field (which is usually empty). We compare measured full capacity against the battery type's design capacity, and the cycle count against the maximum recommended cycles. The lower of the two is shown. If only one value is available, that one is used.",

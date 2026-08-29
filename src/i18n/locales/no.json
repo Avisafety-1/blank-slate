@@ -5217,6 +5217,7 @@
       }
     },
     "batteryHealthSettings": {
+      "openButton": "Innstillinger for batteri",
       "title": "Batterihelse-innstillinger",
       "howTitle": "Slik regnes helsen ut",
       "howBody": "Helsen beregnes ut fra flyloggene, ikke DJI sitt helsefelt (som ofte er tomt). Vi sammenligner målt full kapasitet mot batteritypens designkapasitet, og antall sykluser mot maks anbefalte sykluser. Den laveste av de to blir vist. Har vi bare ett av tallene, brukes det alene.",
