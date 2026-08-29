@@ -659,6 +659,25 @@ export const DroneLogbookDialog = ({
                   rows={2}
                 />
               </div>
+              <div>
+                <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.statusChange.label')}</Label>
+                <Select
+                  value={newEntry.new_status || "none"}
+                  onValueChange={(v) => setNewEntry(prev => ({ ...prev, new_status: v === "none" ? "" : v }))}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('resourceDialogs.droneLogbook.statusChange.noChange')}</SelectItem>
+                    <SelectItem value="Grønn">{t('resourceDialogs.droneLogbook.statusChange.green')}</SelectItem>
+                    <SelectItem value="Gul">{t('resourceDialogs.droneLogbook.statusChange.yellow')}</SelectItem>
+                    <SelectItem value="Rød">{t('resourceDialogs.droneLogbook.statusChange.red')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">{t('resourceDialogs.droneLogbook.statusChange.hint')}</p>
+              </div>
+
               {/* Image upload */}
               <div>
                 <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.image')}</Label>
@@ -699,7 +718,7 @@ export const DroneLogbookDialog = ({
                 <Button size="sm" onClick={handleAddEntry} disabled={isSaving}>
                   {isSaving ? t('resourceDialogs.droneLogbook.saving') : (editingEntryId ? t('resourceDialogs.droneLogbook.update') : t('resourceDialogs.droneLogbook.save'))}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0] }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
+                <Button size="sm" variant="outline" onClick={() => { setShowAddEntry(false); setEditingEntryId(null); clearImage(); setNewEntry({ entry_type: "merknad", title: "", description: "", entry_date: new Date().toISOString().split('T')[0], new_status: "" }); }}>{t('resourceDialogs.droneLogbook.cancel')}</Button>
               </div>
             </div>
           )}
