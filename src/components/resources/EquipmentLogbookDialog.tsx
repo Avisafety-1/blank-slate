@@ -563,7 +563,7 @@ export const EquipmentLogbookDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-2xl h-[90dvh] max-h-[90dvh] flex flex-col overflow-hidden">
           <span data-tour="equipment-logbook-add" className="hidden" /><DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Book className="w-5 h-5 text-primary shrink-0" />
@@ -596,18 +596,18 @@ export const EquipmentLogbookDialog = ({
           </DialogHeader>
 
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
-            <TabsList className="flex w-full overflow-x-auto no-scrollbar mb-2">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.all')}</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.flights')}</TabsTrigger>
-              <TabsTrigger value="drones" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.drones')}</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.manual')}</TabsTrigger>
-              {isBattery && <TabsTrigger value="battery" className="flex-1 min-w-[50px] text-xs sm:text-sm"><span className="sm:hidden">{t('resourceDialogs.equipmentLogbook.tabs.batteryShort')}</span><span className="hidden sm:inline">{t('resourceDialogs.equipmentLogbook.tabs.battery')}</span></TabsTrigger>}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <TabsList className={cn("grid w-full mb-2", isBattery ? "grid-cols-5" : "grid-cols-4", showAddEntry && "hidden")}>
+              <TabsTrigger value="all" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.all')}</TabsTrigger>
+              <TabsTrigger value="flights" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.flights')}</TabsTrigger>
+              <TabsTrigger value="drones" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.drones')}</TabsTrigger>
+              <TabsTrigger value="manual" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.tabs.manual')}</TabsTrigger>
+              {isBattery && <TabsTrigger value="battery" className="min-w-0 px-1 text-xs sm:text-sm"><span className="sm:hidden">{t('resourceDialogs.equipmentLogbook.tabs.batteryShort')}</span><span className="hidden sm:inline">{t('resourceDialogs.equipmentLogbook.tabs.battery')}</span></TabsTrigger>}
             </TabsList>
 
 
             {showAddEntry && (
-              <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 mb-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs sm:text-sm">{t('resourceDialogs.equipmentLogbook.type')}</Label>
@@ -719,9 +719,9 @@ export const EquipmentLogbookDialog = ({
 
             )}
 
-            {activeTab !== 'battery' && (
-            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-0 overflow-y-auto">
-              <div className="overflow-y-auto flex-1 min-h-0 pr-2 sm:pr-4">
+            {!showAddEntry && activeTab !== 'battery' && (
+            <TabsContent value={activeTab} className="flex flex-1 min-h-0 mt-0 overflow-hidden">
+              <div className="overflow-y-auto overscroll-contain touch-pan-y flex-1 min-h-0 pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     {t('resourceDialogs.equipmentLogbook.loading')}
@@ -821,9 +821,9 @@ export const EquipmentLogbookDialog = ({
             </TabsContent>
             )}
 
-            {isBattery && (
+            {!showAddEntry && isBattery && (
               <TabsContent value="battery" className="flex-1 min-h-0 mt-2">
-                <ScrollArea className="h-full pr-2 sm:pr-4">
+                <ScrollArea className="h-full w-full pr-2 sm:pr-4 touch-pan-y">
                   {batteryTrend.length === 0 ? (
                     <div className="flex items-center justify-center py-8 text-muted-foreground">
                       <div className="text-center space-y-2">

@@ -577,7 +577,7 @@ export const DroneLogbookDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-2xl h-[90dvh] max-h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Book className="w-5 h-5 text-primary" />
@@ -613,7 +613,7 @@ export const DroneLogbookDialog = ({
           </div>
 
           {showAddEntry && (
-            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.type')}</Label>
@@ -723,17 +723,17 @@ export const DroneLogbookDialog = ({
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden sm:flex")}>
-            <TabsList className="flex w-full overflow-x-auto no-scrollbar">
-              <TabsTrigger value="all" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.all')}</TabsTrigger>
-              <TabsTrigger value="flights" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.flights')}</TabsTrigger>
-              <TabsTrigger value="inspections" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.inspections')}</TabsTrigger>
-              <TabsTrigger value="equipment" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.equipment')}</TabsTrigger>
-              <TabsTrigger value="manual" className="flex-1 min-w-[50px] text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.manual')}</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className={cn("flex-1 flex flex-col min-h-0", showAddEntry && "hidden")}>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="all" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.all')}</TabsTrigger>
+              <TabsTrigger value="flights" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.flights')}</TabsTrigger>
+              <TabsTrigger value="inspections" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.inspections')}</TabsTrigger>
+              <TabsTrigger value="equipment" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.equipment')}</TabsTrigger>
+              <TabsTrigger value="manual" className="min-w-0 px-1 text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.tabs.manual')}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-full pr-2 sm:pr-4">
+            <TabsContent value={activeTab} className="flex flex-1 min-h-0 mt-2 overflow-hidden">
+              <ScrollArea className="h-full w-full pr-2 sm:pr-4 touch-pan-y">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     {t('resourceDialogs.droneLogbook.loading')}
