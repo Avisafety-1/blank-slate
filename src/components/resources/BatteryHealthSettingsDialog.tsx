@@ -582,10 +582,28 @@ export const BatteryHealthSettingsDialog = ({
 
               {/* Parameters */}
               <div className="space-y-2">
-                <Label>{t("resourceDialogs.batteryHealthSettings.paramsLabel")}</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>{t("resourceDialogs.batteryHealthSettings.paramsLabel")}</Label>
+                  {hasOverrides && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={clearOverrides}
+                    >
+                      {t("resourceDialogs.batteryHealthSettings.useTypeValues")}
+                    </Button>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {t("resourceDialogs.batteryHealthSettings.paramsHint")}
                 </p>
+                {hasOverrides && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {t("resourceDialogs.batteryHealthSettings.overrideActive")}
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">
