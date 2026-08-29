@@ -1058,6 +1058,23 @@ export const EquipmentLogbookDialog = ({
         </DialogContent>
       </Dialog>
 
+      {isBattery && batterySettingsOpen && (
+        <BatteryHealthSettingsDialog
+          open={batterySettingsOpen}
+          onOpenChange={setBatterySettingsOpen}
+          equipmentId={equipmentId}
+          equipmentNavn={equipmentNavn}
+          latest={{
+            capacityMah: batteryTrend[batteryTrend.length - 1]?.capacityMah ?? null,
+            cycles: batteryTrend[batteryTrend.length - 1]?.cycles ?? null,
+          }}
+          suggestion={batterySuggestion}
+          onSaved={() => {
+            if (equipmentSerienummer) fetchBatteryTrend();
+          }}
+        />
+      )}
+
       {/* Lightbox */}
       {lightboxUrl && (
         <Dialog open={!!lightboxUrl} onOpenChange={() => setLightboxUrl(null)}>
