@@ -160,6 +160,24 @@ export const BatteryHealthSettingsDialog = ({
     [latest, previewConfig],
   );
 
+  const emptyForm = {
+    designCapacity: "",
+    maxCycles: "",
+    healthWarn: "",
+    healthCritical: "",
+    devWarn: "",
+    devCritical: "",
+  };
+
+  const hasOverrides = Object.values(form).some((v) => v.trim() !== "");
+  const clearOverrides = () => setForm({ ...emptyForm });
+
+  /** Picking a new type clears per-battery overrides so the type actually applies. */
+  const handleTypeChange = (v: string) => {
+    setTypeId(v);
+    clearOverrides();
+  };
+
   const openCreateType = () => {
     setTypeForm({ ...emptyTypeForm });
     setTypeEditorMode("create");
