@@ -613,7 +613,7 @@ export const DroneLogbookDialog = ({
           </div>
 
           {showAddEntry && (
-            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 max-h-[60vh] overflow-y-auto">
+            <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30 flex-1 min-h-0 overflow-y-auto overscroll-contain">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs sm:text-sm">{t('resourceDialogs.droneLogbook.type')}</Label>
@@ -733,7 +733,7 @@ export const DroneLogbookDialog = ({
             </TabsList>
 
             <TabsContent value={activeTab} className="flex-1 min-h-0 mt-2">
-              <ScrollArea className="h-[calc(60vh-200px)] sm:h-[400px] min-h-[200px] max-h-[400px] pr-2 sm:pr-4">
+              <ScrollArea className="h-full pr-2 sm:pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     {t('resourceDialogs.droneLogbook.loading')}
