@@ -118,6 +118,7 @@ export const EquipmentLogbookDialog = ({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [batterySettingsOpen, setBatterySettingsOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; logId: string | null }>({ open: false, logId: null });
   const [newEntry, setNewEntry] = useState({
     entry_type: "merknad",
     title: "",
