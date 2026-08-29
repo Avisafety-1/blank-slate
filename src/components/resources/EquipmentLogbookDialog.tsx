@@ -811,7 +811,7 @@ export const EquipmentLogbookDialog = ({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.cycles')}</p>
-                            <p className="text-lg font-bold">
+                            <p className={`text-lg font-bold ${levelColorClass(cycleLevel(latest?.cycles, batteryConfig))}`}>
                               {latest?.cycles ?? '—'}
                               {batteryConfig.maxCycles ? <span className="text-xs font-normal text-muted-foreground"> / {batteryConfig.maxCycles}</span> : null}
                             </p>
