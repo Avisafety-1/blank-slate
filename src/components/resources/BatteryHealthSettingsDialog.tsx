@@ -534,6 +534,32 @@ export const BatteryHealthSettingsDialog = ({
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">
+                          {t("resourceDialogs.batteryHealthSettings.packCount")}
+                        </Label>
+                        <Select
+                          value={typeForm.packCount === "" ? "auto" : typeForm.packCount}
+                          onValueChange={(v) =>
+                            setTypeForm((f) => ({ ...f, packCount: v === "auto" ? "" : v }))
+                          }
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto">
+                              {t("resourceDialogs.batteryHealthSettings.packAuto")}
+                            </SelectItem>
+                            <SelectItem value="1">
+                              {t("resourceDialogs.batteryHealthSettings.packSingle")}
+                            </SelectItem>
+                            <SelectItem value="2">
+                              {t("resourceDialogs.batteryHealthSettings.packDual")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">
                           {t("resourceDialogs.batteryHealthSettings.healthWarn")}
                         </Label>
                         <Input
@@ -663,6 +689,35 @@ export const BatteryHealthSettingsDialog = ({
                       value={form.maxCycles}
                       onChange={(e) => setForm((f) => ({ ...f, maxCycles: e.target.value }))}
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">
+                      {t("resourceDialogs.batteryHealthSettings.packCount")}
+                    </Label>
+                    <Select
+                      value={form.packCount === "" ? "auto" : form.packCount}
+                      onValueChange={(v) =>
+                        setForm((f) => ({ ...f, packCount: v === "auto" ? "" : v }))
+                      }
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">
+                          {t("resourceDialogs.batteryHealthSettings.packAuto")}
+                        </SelectItem>
+                        <SelectItem value="1">
+                          {t("resourceDialogs.batteryHealthSettings.packSingle")}
+                        </SelectItem>
+                        <SelectItem value="2">
+                          {t("resourceDialogs.batteryHealthSettings.packDual")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t("resourceDialogs.batteryHealthSettings.packHelp")}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">
