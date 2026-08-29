@@ -809,8 +809,8 @@ export const EquipmentLogbookDialog = ({
                     return (
                       <div className="space-y-4">
                         <Button
-                          variant="outline"
-                          className="w-full justify-start gap-2 h-11"
+                          variant="secondary"
+                          className="w-full justify-start gap-2 h-11 dark:bg-muted/80 dark:hover:bg-muted"
                           onClick={() => setBatterySettingsOpen(true)}
                         >
                           <Settings2 className="w-4 h-4" />

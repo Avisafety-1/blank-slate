@@ -338,10 +338,10 @@ export const BatteryHealthSettingsDialog = ({
                     {t("resourceDialogs.batteryHealthSettings.howBody")}
                   </p>
                   <div className="text-[11px] bg-background rounded p-2 space-y-0.5 font-mono overflow-x-auto">
-                    <p>helse = kapasitet / design × 100</p>
-                    <p>sykluslevetid = (1 − sykluser / maks) × 100</p>
-                    <p>gul: sykluser ≥ 90 % av maks · rød: sykluser ≥ maks</p>
+                    <p>helse = kapasitet / designkapasitet × 100</p>
+                    <p>sykluser: grønn {'<'} 90 % av maks · gul 90–100 % · rød ≥ maks</p>
                     <p>celleavvik: gul {'>'} varsel · rød {'>'} kritisk</p>
+                    <p>samlet status = verste av helse / sykluser / celleavvik</p>
                   </div>
                   <p className="text-xs break-words">
                     {t("resourceDialogs.batteryHealthSettings.currentData", {
