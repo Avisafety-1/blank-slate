@@ -6,7 +6,7 @@ import { droneAnimatedIcon } from "@/lib/mapIcons";
 import droneStaticIcon from "@/assets/drone-static.png";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import airportIcon from "@/assets/airport-icon.png";
-import { getCache, bboxCovered, isCacheValid, padBBox, boundsToBBox, diffRender, hashString, resetCache } from "@/lib/viewportLayerCache";
+import { getCache, bboxCovered, isCacheValid, padBBox, boundsToBBox, diffRender, hashString, resetCache, hasOpenPopup } from "@/lib/viewportLayerCache";
 import { attachHoverPromotion } from "@/lib/mapHoverPromotion";
 import { buildNatureZonePopupHtml, enrichNatureArea, getStatusPresentation, getVerneformRule, MILJODIR_DRONE_RULES_URL } from "@/lib/natureProtectionRules";
 import { buildUnifiedZonePopupHtml } from "@/lib/unifiedZonePopup";
@@ -2216,11 +2216,7 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
   // fjernet/erstattet ruter via diffRender, og Leaflet lukker popupen når
   // laget den er koblet til forsvinner. Dataene er statiske (Nkom 2023), så
   // det er trygt å vente til neste moveend etter at popupen er lukket.
-  let popupOpen = false;
-  layer.eachLayer((l: any) => {
-    if (l?.isPopupOpen?.()) popupOpen = true;
-  });
-  if (popupOpen) return;
+  if (hasOpenPopup(layer)) return;
 
   const padded = padBBox(bounds);
 
