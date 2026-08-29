@@ -132,9 +132,11 @@ export function diffRender<T>(
       /* skip bad item */
     }
   }
-  // Remove vanished features
+  // Remove vanished features — men behold laget hvis en popup er åpen på det
+  // (eller på et underlag), ellers lukker Leaflet popupen når kartet flyttes.
   for (const [id, lyr] of cache.features) {
     if (!newIds.has(id)) {
+      if (hasOpenPopup(lyr)) continue;
       try {
         layer.removeLayer(lyr);
       } catch {
@@ -144,6 +146,25 @@ export function diffRender<T>(
     }
   }
 }
+
+/** True hvis laget – eller noe underlag – har en åpen popup. */
+export function hasOpenPopup(lyr: any): boolean {
+  if (!lyr) return false;
+  try {
+    if (typeof lyr.isPopupOpen === "function" && lyr.isPopupOpen()) return true;
+    if (typeof lyr.eachLayer === "function") {
+      let open = false;
+      lyr.eachLayer((child: any) => {
+        if (!open && hasOpenPopup(child)) open = true;
+      });
+      return open;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 
 /**
  * Clear all rendered features for a cache key and wipe its cached bounds.
