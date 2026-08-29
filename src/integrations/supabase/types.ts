@@ -925,6 +925,83 @@ export type Database = {
           },
         ]
       }
+      battery_types: {
+        Row: {
+          capacity_max_mah: number | null
+          capacity_min_mah: number | null
+          cell_count: number | null
+          cell_deviation_critical_v: number
+          cell_deviation_warn_v: number
+          company_id: string | null
+          created_at: string
+          design_capacity_mah: number | null
+          drone_models: string[]
+          health_critical_pct: number
+          health_warn_pct: number
+          id: string
+          manufacturer: string | null
+          max_cycles: number | null
+          max_temp_c: number | null
+          name: string
+          nominal_voltage_v: number | null
+          updated_at: string
+          voltage_max_v: number | null
+          voltage_min_v: number | null
+        }
+        Insert: {
+          capacity_max_mah?: number | null
+          capacity_min_mah?: number | null
+          cell_count?: number | null
+          cell_deviation_critical_v?: number
+          cell_deviation_warn_v?: number
+          company_id?: string | null
+          created_at?: string
+          design_capacity_mah?: number | null
+          drone_models?: string[]
+          health_critical_pct?: number
+          health_warn_pct?: number
+          id?: string
+          manufacturer?: string | null
+          max_cycles?: number | null
+          max_temp_c?: number | null
+          name: string
+          nominal_voltage_v?: number | null
+          updated_at?: string
+          voltage_max_v?: number | null
+          voltage_min_v?: number | null
+        }
+        Update: {
+          capacity_max_mah?: number | null
+          capacity_min_mah?: number | null
+          cell_count?: number | null
+          cell_deviation_critical_v?: number
+          cell_deviation_warn_v?: number
+          company_id?: string | null
+          created_at?: string
+          design_capacity_mah?: number | null
+          drone_models?: string[]
+          health_critical_pct?: number
+          health_warn_pct?: number
+          id?: string
+          manufacturer?: string | null
+          max_cycles?: number | null
+          max_temp_c?: number | null
+          name?: string
+          nominal_voltage_v?: number | null
+          updated_at?: string
+          voltage_max_v?: number | null
+          voltage_min_v?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battery_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bulk_email_campaigns: {
         Row: {
           company_id: string | null
@@ -3476,10 +3553,18 @@ export type Database = {
       equipment: {
         Row: {
           aktiv: boolean
+          battery_cell_deviation_critical_v: number | null
+          battery_cell_deviation_warn_v: number | null
           battery_cycles: number | null
+          battery_design_capacity_mah: number | null
           battery_full_capacity_mah: number | null
+          battery_health_critical_pct: number | null
           battery_health_pct: number | null
+          battery_health_warn_pct: number | null
           battery_max_cell_deviation_v: number | null
+          battery_max_cycles: number | null
+          battery_type_id: string | null
+          battery_type_locked: boolean
           company_id: string
           flyvetimer: number
           hours_at_last_maintenance: number | null
@@ -3509,10 +3594,18 @@ export type Database = {
         }
         Insert: {
           aktiv?: boolean
+          battery_cell_deviation_critical_v?: number | null
+          battery_cell_deviation_warn_v?: number | null
           battery_cycles?: number | null
+          battery_design_capacity_mah?: number | null
           battery_full_capacity_mah?: number | null
+          battery_health_critical_pct?: number | null
           battery_health_pct?: number | null
+          battery_health_warn_pct?: number | null
           battery_max_cell_deviation_v?: number | null
+          battery_max_cycles?: number | null
+          battery_type_id?: string | null
+          battery_type_locked?: boolean
           company_id: string
           flyvetimer?: number
           hours_at_last_maintenance?: number | null
@@ -3542,10 +3635,18 @@ export type Database = {
         }
         Update: {
           aktiv?: boolean
+          battery_cell_deviation_critical_v?: number | null
+          battery_cell_deviation_warn_v?: number | null
           battery_cycles?: number | null
+          battery_design_capacity_mah?: number | null
           battery_full_capacity_mah?: number | null
+          battery_health_critical_pct?: number | null
           battery_health_pct?: number | null
+          battery_health_warn_pct?: number | null
           battery_max_cell_deviation_v?: number | null
+          battery_max_cycles?: number | null
+          battery_type_id?: string | null
+          battery_type_locked?: boolean
           company_id?: string
           flyvetimer?: number
           hours_at_last_maintenance?: number | null
@@ -3574,6 +3675,13 @@ export type Database = {
           vekt?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "equipment_battery_type_id_fkey"
+            columns: ["battery_type_id"]
+            isOneToOne: false
+            referencedRelation: "battery_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "equipment_company_id_fkey"
             columns: ["company_id"]
