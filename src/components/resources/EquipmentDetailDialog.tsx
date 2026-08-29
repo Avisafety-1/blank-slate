@@ -579,8 +579,9 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     {equipment.battery_cycles != null && (
                       <div>
                         <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.battery.cycles')}</p>
-                        <p className={`text-sm font-medium ${equipment.battery_cycles > 300 ? 'text-destructive' : equipment.battery_cycles > 200 ? 'text-yellow-600 dark:text-yellow-400' : ''}`}>
+                        <p className={`text-sm font-medium ${levelColorClass(cycleLevel(equipment.battery_cycles, batteryHealth.config))}`}>
                           {equipment.battery_cycles}
+                          {batteryHealth.config.maxCycles ? ` / ${batteryHealth.config.maxCycles}` : ''}
                         </p>
                       </div>
                     )}
