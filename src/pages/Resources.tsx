@@ -22,6 +22,7 @@ import { AddCompetencyDialog } from "@/components/resources/AddCompetencyDialog"
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { EquipmentBatteryIndicators } from "@/components/resources/EquipmentBatteryIndicators";
 import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
