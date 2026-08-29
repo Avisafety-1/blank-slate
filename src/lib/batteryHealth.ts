@@ -19,6 +19,8 @@ export interface BatteryType {
   capacity_max_mah: number | null;
   voltage_min_v: number | null;
   voltage_max_v: number | null;
+  /** Number of packs the log reports combined capacity for. NULL = auto-detect. */
+  pack_count: number | null;
 }
 
 /** Per-equipment overrides stored on the equipment row. */
@@ -31,6 +33,7 @@ export interface BatteryEquipmentOverrides {
   battery_health_critical_pct?: number | null;
   battery_cell_deviation_warn_v?: number | null;
   battery_cell_deviation_critical_v?: number | null;
+  battery_pack_count?: number | null;
 }
 
 export interface BatteryHealthConfig {
@@ -41,6 +44,8 @@ export interface BatteryHealthConfig {
   cellDeviationWarnV: number;
   cellDeviationCriticalV: number;
   typeName: string | null;
+  /** Packs per reported capacity value. null = auto-detect from the log. */
+  packCount: number | null;
 }
 
 export const DEFAULT_BATTERY_CONFIG: BatteryHealthConfig = {
@@ -51,7 +56,9 @@ export const DEFAULT_BATTERY_CONFIG: BatteryHealthConfig = {
   cellDeviationWarnV: 0.05,
   cellDeviationCriticalV: 0.1,
   typeName: null,
+  packCount: null,
 };
+
 
 /** Merges catalog values with per-equipment overrides. */
 export function resolveBatteryConfig(
