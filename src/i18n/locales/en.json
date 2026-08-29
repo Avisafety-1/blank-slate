@@ -4940,7 +4940,8 @@
         "colTemp": "Temp",
         "colVoltage": "Voltage",
         "colCellDev": "Cell dev",
-        "colCapacity": "Capacity"
+        "colCapacity": "Capacity",
+        "healthUnknown": "Health unknown — choose a battery type"
       },
       "pdf": {
         "title": "Logbook - {{name}}",
@@ -5204,6 +5205,31 @@
         "notesChecklist": "Performed via checklist from drone card",
         "notesCard": "Performed from drone card"
       }
+    },
+    "batteryHealthSettings": {
+      "title": "Battery health settings",
+      "howTitle": "How health is calculated",
+      "howBody": "Health is calculated from the flight logs, not DJI's health field (which is usually empty). We compare measured full capacity against the battery type's design capacity, and the cycle count against the maximum recommended cycles. The lower of the two is shown. If only one value is available, that one is used.",
+      "currentData": "Latest reading: {{capacity}} mAh, {{cycles}} cycles.",
+      "previewValue": "Calculated health with these settings: {{value}}%.",
+      "previewUnknown": "Cannot be calculated yet — choose a battery type with a design capacity or maximum cycles.",
+      "typeLabel": "Battery type",
+      "suggested": "Auto-detected: {{name}}",
+      "noType": "No battery type selected",
+      "typeInfo": "Design capacity: {{capacity}} mAh · Max cycles: {{cycles}} · Drones: {{models}}",
+      "paramsLabel": "Parameters",
+      "paramsHint": "Leave a field empty to use the value from the battery type.",
+      "designCapacity": "Design capacity (mAh)",
+      "maxCycles": "Max cycles",
+      "healthWarn": "Health warning threshold (%)",
+      "healthCritical": "Health critical threshold (%)",
+      "devWarn": "Cell deviation warning (V)",
+      "devCritical": "Cell deviation critical (V)",
+      "scopeLabel": "Apply to",
+      "scopeSingle": "This battery only",
+      "scopeGroup": "All batteries of this type",
+      "saved": "Battery health settings saved",
+      "saveError": "Could not save the settings"
     }
   },
   "documents": {
