@@ -510,7 +510,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         </div>
                         {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
                         {dbStatus !== "Grønn" && (
-                          <AlertDialog>
+                          <AlertDialog onOpenChange={(o) => { if (o) setAckComment(""); }}>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
                                 {t('resourceDialogs.equipmentDetail.statusHints.clearWarning')}
@@ -526,13 +526,27 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                                   }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="equipment-ack-comment" className="text-sm">{t('resourceDialogs.equipmentDetail.statusHints.clearWarningCommentLabel')}</Label>
+                                <Textarea
+                                  id="equipment-ack-comment"
+                                  value={ackComment}
+                                  onChange={(e) => setAckComment(e.target.value)}
+                                  placeholder={t('resourceDialogs.equipmentDetail.statusHints.clearWarningCommentPlaceholder')}
+                                  rows={3}
+                                />
+                              </div>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={async () => {
                                   if (!user) return;
-                                  const note = latestWarning
+                                  const baseNote = latestWarning
                                     ? t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescriptionWithTitle', { from: equipment.status, title: latestWarning.title })
                                     : t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescription', { from: equipment.status });
+                                  const comment = ackComment.trim();
+                                  const note = comment
+                                    ? `${baseNote} ${t('resourceDialogs.equipmentDetail.statusHints.clearWarningCommentNote', { comment })}`
+                                    : baseNote;
                                   const { error } = await (supabase as any).rpc('acknowledge_resource_warning', {
                                     _resource_type: 'equipment',
                                     _resource_id: equipment.id,
