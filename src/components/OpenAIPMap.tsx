@@ -1518,6 +1518,29 @@ export function OpenAIPMap({
       });
     };
 
+    // Nkom mobildekning: viewport-basert henting av fargelagte ruter
+    const nkomLayerMap: Array<['4g' | '5g', L.LayerGroup]> = [
+      ['4g', mobildekning4gLayer],
+      ['5g', mobildekning5gLayer],
+    ];
+    const fetchNkomLayers = () => {
+      const b = map.getBounds();
+      const bounds = {
+        minLat: b.getSouth(), minLng: b.getWest(),
+        maxLat: b.getNorth(), maxLng: b.getEast(),
+      };
+      nkomLayerMap.forEach(([band, lg]) => {
+        if (!map.hasLayer(lg)) return;
+        if (map.getZoom() < 9) {
+          resetCache(`nkom:${band}`, lg);
+          return;
+        }
+        fetchNkomCoverage({ layer: lg, mode: interactiveModeRef.current, bounds, band });
+      });
+    };
+
+
+
 
     // CAA dronesoner: refetch on moveend per aktivert lag
     const caaLayerMap: Array<[string, L.LayerGroup]> = [
