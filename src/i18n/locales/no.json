@@ -5220,7 +5220,7 @@
       "openButton": "Innstillinger for batteri",
       "title": "Batterihelse-innstillinger",
       "howTitle": "Slik regnes helsen ut",
-      "howBody": "Helsen beregnes ut fra flyloggene, ikke DJI sitt helsefelt (som ofte er tomt). Vi sammenligner målt full kapasitet mot batteritypens designkapasitet. Sykluser og celleavvik vurderes hver for seg, og den verste statusen blir vist.",
+      "howBody": "Helsen beregnes ut fra flyloggene, ikke DJI sitt helsefelt (som ofte er tomt). Vi sammenligner målt full kapasitet mot batteritypens designkapasitet. Sykluser og celleavvik vurderes hver for seg, og den verste statusen blir vist. Flyr dronen med to batterier samtidig (f.eks. M300/M350/M400), rapporterer loggen samlet kapasitet – da deles kapasiteten på antall batterier i pakken før sammenligningen.",
       "currentData": "Siste måling: {{capacity}} mAh, {{cycles}} sykluser.",
       "previewValue": "Beregnet helse med disse innstillingene: {{value}} %.",
       "previewUnknown": "Kan ikke beregnes ennå — velg en batteritype med designkapasitet.",
@@ -5258,7 +5258,14 @@
       "typeNameRequired": "Navn er påkrevd",
       "useTypeValues": "Bruk typens verdier",
       "overrideActive": "Egendefinerte verdier for dette batteriet overstyrer verdiene fra batteritypen.",
-      "catalogReadOnly": "Katalogbatterier kan ikke endres. Verdiene du skriver under gjelder kun dette batteriet (eller gruppen), ikke katalogtypen. Lag en egendefinert batteritype (+) hvis du vil lagre egne verdier."
+      "catalogReadOnly": "Katalogbatterier kan ikke endres. Verdiene du skriver under gjelder kun dette batteriet (eller gruppen), ikke katalogtypen. Lag en egendefinert batteritype (+) hvis du vil lagre egne verdier.",
+      "packCount": "Antall batterier i pakken",
+      "packAuto": "Automatisk (oppdages fra loggen)",
+      "packSingle": "1 batteri",
+      "packDual": "2 batterier (dobbelpakke)",
+      "packHelp": "Noen droner (M300/M350/M400, FlyCart) flyr med to batterier, og loggen rapporterer samlet kapasitet. Da deles kapasiteten på antall batterier før helsen regnes ut.",
+      "packDetected": "Loggen ser ut til å rapportere samlet kapasitet for {{count}} batterier – kapasiteten deles på {{count}} før helsen regnes ut.",
+      "packConfigured": "Kapasiteten deles på {{count}} batterier (satt manuelt)."
     }
   },
   "documents": {

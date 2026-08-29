@@ -19,6 +19,8 @@ export interface BatteryType {
   capacity_max_mah: number | null;
   voltage_min_v: number | null;
   voltage_max_v: number | null;
+  /** Number of packs the log reports combined capacity for. NULL = auto-detect. */
+  pack_count: number | null;
 }
 
 /** Per-equipment overrides stored on the equipment row. */
@@ -31,6 +33,7 @@ export interface BatteryEquipmentOverrides {
   battery_health_critical_pct?: number | null;
   battery_cell_deviation_warn_v?: number | null;
   battery_cell_deviation_critical_v?: number | null;
+  battery_pack_count?: number | null;
 }
 
 export interface BatteryHealthConfig {
@@ -41,6 +44,8 @@ export interface BatteryHealthConfig {
   cellDeviationWarnV: number;
   cellDeviationCriticalV: number;
   typeName: string | null;
+  /** Packs per reported capacity value. null = auto-detect from the log. */
+  packCount: number | null;
 }
 
 export const DEFAULT_BATTERY_CONFIG: BatteryHealthConfig = {
@@ -51,7 +56,9 @@ export const DEFAULT_BATTERY_CONFIG: BatteryHealthConfig = {
   cellDeviationWarnV: 0.05,
   cellDeviationCriticalV: 0.1,
   typeName: null,
+  packCount: null,
 };
+
 
 /** Merges catalog values with per-equipment overrides. */
 export function resolveBatteryConfig(
@@ -82,6 +89,7 @@ export function resolveBatteryConfig(
       num(type?.cell_deviation_critical_v) ??
       DEFAULT_BATTERY_CONFIG.cellDeviationCriticalV,
     typeName: type?.name ?? null,
+    packCount: num(overrides?.battery_pack_count) ?? num(type?.pack_count) ?? null,
   };
 }
 
@@ -99,8 +107,34 @@ export interface BatteryHealthResult {
   source: BatteryHealthSource;
   capacityHealth: number | null;
   cycleHealth: number | null;
+  /** Packs the reported capacity was divided by (1 = single battery). */
+  packCount: number;
+  /** True when the pack count was inferred from the log, not configured. */
+  packCountAutoDetected: boolean;
   /** Reason keys for the i18n explanation when value is null. */
   missing: ("designCapacity" | "maxCycles" | "logData")[];
+}
+
+/** Largest pack size we try to detect (DJI drones fly at most 2 packs today). */
+const MAX_AUTO_PACKS = 2;
+/** How far the ratio may sit from a whole pack multiple and still count. */
+const PACK_TOLERANCE = 0.25;
+
+/**
+ * Some drones (M300/M350/M400, FlyCart) fly two batteries at once and the DJI
+ * log reports the *combined* capacity. Detects that by comparing the reported
+ * capacity against the design capacity of a single pack.
+ */
+export function detectPackCount(
+  capacityMah: number | null | undefined,
+  designCapacityMah: number | null | undefined,
+): number {
+  if (!capacityMah || !designCapacityMah) return 1;
+  const ratio = capacityMah / designCapacityMah;
+  for (let n = MAX_AUTO_PACKS; n >= 2; n--) {
+    if (Math.abs(ratio - n) <= PACK_TOLERANCE * n) return n;
+  }
+  return 1;
 }
 
 /**
@@ -117,11 +151,18 @@ export function computeBatteryHealth(
 ): BatteryHealthResult {
   const missing: BatteryHealthResult["missing"] = [];
 
+  const configuredPacks =
+    config.packCount && config.packCount >= 1 ? Math.round(config.packCount) : null;
+  const packCount =
+    configuredPacks ?? detectPackCount(input.capacityMah, config.designCapacityMah);
+  const packCountAutoDetected = configuredPacks == null && packCount > 1;
+  const perPackCapacity = input.capacityMah != null ? input.capacityMah / packCount : null;
+
   let capacityHealth: number | null = null;
-  if (input.capacityMah != null && config.designCapacityMah) {
+  if (perPackCapacity != null && config.designCapacityMah) {
     capacityHealth = Math.max(
       0,
-      Math.min(120, (input.capacityMah / config.designCapacityMah) * 100),
+      Math.min(120, (perPackCapacity / config.designCapacityMah) * 100),
     );
   } else if (input.capacityMah != null && !config.designCapacityMah) {
     missing.push("designCapacity");
@@ -134,30 +175,21 @@ export function computeBatteryHealth(
     missing.push("maxCycles");
   }
 
+  const base = { capacityHealth, cycleHealth, packCount, packCountAutoDetected, missing };
+
   if (capacityHealth != null) {
-    return {
-      value: Math.round(capacityHealth),
-      source: "capacity",
-      capacityHealth,
-      cycleHealth,
-      missing,
-    };
+    return { value: Math.round(capacityHealth), source: "capacity", ...base };
   }
   if (input.djiHealthPct != null && input.djiHealthPct > 0) {
-    return {
-      value: Math.round(input.djiHealthPct),
-      source: "dji",
-      capacityHealth,
-      cycleHealth,
-      missing,
-    };
+    return { value: Math.round(input.djiHealthPct), source: "dji", ...base };
   }
   if (cycleHealth != null) {
-    return { value: Math.round(cycleHealth), source: "cycles", capacityHealth, cycleHealth, missing };
+    return { value: Math.round(cycleHealth), source: "cycles", ...base };
   }
   if (input.capacityMah == null && input.cycles == null) missing.push("logData");
-  return { value: null, source: "none", capacityHealth, cycleHealth, missing };
+  return { value: null, source: "none", ...base };
 }
+
 
 export type BatteryStatusLevel = "ok" | "warn" | "critical" | "unknown";
 
@@ -336,6 +368,7 @@ export interface BatteryTypeInput {
   health_critical_pct: number;
   cell_deviation_warn_v: number;
   cell_deviation_critical_v: number;
+  pack_count?: number | null;
 }
 
 /** Creates a company-scoped battery type (visible to the company + its departments). */

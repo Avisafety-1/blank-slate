@@ -944,6 +944,7 @@ export type Database = {
           max_temp_c: number | null
           name: string
           nominal_voltage_v: number | null
+          pack_count: number | null
           updated_at: string
           voltage_max_v: number | null
           voltage_min_v: number | null
@@ -966,6 +967,7 @@ export type Database = {
           max_temp_c?: number | null
           name: string
           nominal_voltage_v?: number | null
+          pack_count?: number | null
           updated_at?: string
           voltage_max_v?: number | null
           voltage_min_v?: number | null
@@ -988,6 +990,7 @@ export type Database = {
           max_temp_c?: number | null
           name?: string
           nominal_voltage_v?: number | null
+          pack_count?: number | null
           updated_at?: string
           voltage_max_v?: number | null
           voltage_min_v?: number | null
@@ -3563,6 +3566,7 @@ export type Database = {
           battery_health_warn_pct: number | null
           battery_max_cell_deviation_v: number | null
           battery_max_cycles: number | null
+          battery_pack_count: number | null
           battery_type_id: string | null
           battery_type_locked: boolean
           company_id: string
@@ -3604,6 +3608,7 @@ export type Database = {
           battery_health_warn_pct?: number | null
           battery_max_cell_deviation_v?: number | null
           battery_max_cycles?: number | null
+          battery_pack_count?: number | null
           battery_type_id?: string | null
           battery_type_locked?: boolean
           company_id: string
@@ -3645,6 +3650,7 @@ export type Database = {
           battery_health_warn_pct?: number | null
           battery_max_cell_deviation_v?: number | null
           battery_max_cycles?: number | null
+          battery_pack_count?: number | null
           battery_type_id?: string | null
           battery_type_locked?: boolean
           company_id?: string
