@@ -1175,6 +1175,31 @@ export function OpenAIPMap({
       } as any
     );
 
+    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør)
+    const NKOM_WMS_URL = "https://api.nkom.no/geoserverAPI/wms?";
+    const NKOM_ATTRIB = '© <a href="https://nkom.no/dekningskart/" target="_blank" rel="noopener">Nkom</a> – Dekningskart (arealdekning)';
+    const mobildekning4gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
+      layers: "Dekningskart:2023 - 4G arealdekning mobil",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.55,
+      version: "1.3.0",
+      attribution: NKOM_ATTRIB,
+      minZoom: 0,
+      maxZoom: 20,
+    } as any);
+    const mobildekning5gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
+      layers: "Dekningskart:2023 - 5G arealdekning mobil",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.55,
+      version: "1.3.0",
+      attribution: NKOM_ATTRIB,
+      minZoom: 0,
+      maxZoom: 20,
+    } as any);
+
+
     // NAIS skipstrafikk
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
@@ -1221,6 +1246,8 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "luftfartshindre", name: t('pages.map.layers.aviationObstacles'), layer: [nrlLayer, obstaclesLayer], enabled: false, icon: "alertTriangle", group: gInf });
     layerConfigs.push({ id: "kraftledninger", name: t('pages.map.layers.powerLines'), layer: kraftledningerLayer, enabled: false, icon: "zap", group: gInf });
     layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
+    layerConfigs.push({ id: "mobildekning_4g", name: t('pages.map.layers.mobileCoverage4g'), layer: mobildekning4gLayer, enabled: false, icon: "radio", group: gInf });
+    layerConfigs.push({ id: "mobildekning_5g", name: t('pages.map.layers.mobileCoverage5g'), layer: mobildekning5gLayer, enabled: false, icon: "radio", group: gInf });
     if (tensioLuftnettLayer) {
       layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
     }

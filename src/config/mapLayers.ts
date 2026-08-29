@@ -50,6 +50,8 @@ export const MAP_LAYER_CATALOG: MapLayerCatalogEntry[] = [
   { id: "luftfartshindre",      name: "Luftfartshindre",      group: "Infrastruktur",       icon: "alertTriangle",  defaultEnabled: false },
   { id: "kraftledninger",       name: "Kraftledninger",       group: "Infrastruktur",       icon: "zap",            defaultEnabled: false },
   { id: "eiendomsgrenser",      name: "Eiendomsgrenser",      group: "Infrastruktur",       icon: "mapPin",         defaultEnabled: false },
+  { id: "mobildekning_4g",      name: "Mobildekning 4G",      group: "Infrastruktur",       icon: "radio",          defaultEnabled: false },
+  { id: "mobildekning_5g",      name: "Mobildekning 5G",      group: "Infrastruktur",       icon: "radio",          defaultEnabled: false },
   { id: "tensio_luftnett",      name: "Luftnett Tensio",      group: "Infrastruktur",       icon: "zap",            defaultEnabled: true, restrictedToCompanyNameContains: "tensio" },
   { id: "flyplasser",           name: "Flyplasser",           group: "Infrastruktur",       icon: "planeLanding",   defaultEnabled: true },
 
