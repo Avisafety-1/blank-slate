@@ -45,6 +45,21 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { BatteryHealthSettingsDialog } from "@/components/resources/BatteryHealthSettingsDialog";
+import {
+  fetchBatteryTypes,
+  autoMatchBatteryType,
+  persistAutoMatch,
+  resolveBatteryConfig,
+  computeBatteryHealth,
+  batteryHealthLevel,
+  cellDeviationLevel,
+  levelColorClass,
+  DEFAULT_BATTERY_CONFIG,
+  type BatteryHealthConfig,
+  type BatteryEquipmentOverrides,
+  type BatteryMatch,
+} from "@/lib/batteryHealth";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
