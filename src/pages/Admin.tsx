@@ -980,33 +980,8 @@ const Admin = () => {
                         onClick={async () => {
                           if (!confirm('Dette vil vise en oppdateringsbanner for alle tilkoblede brukere. Fortsett?')) return;
                           try {
-                            const channel = supabase.channel('global-force-reload');
-                            await channel.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: false, timestamp: Date.now() },
-                            });
-                            // Bump the version in app_config for offline users
-                            const { data: current } = await supabase
-                              .from('app_config')
-                              .select('value')
-                              .eq('key', 'app_version')
-                              .single();
-                            const nextVersion = String(Number(current?.value || '0') + 1);
-                            await supabase
-                              .from('app_config')
-                              .update({ value: nextVersion, updated_at: new Date().toISOString() })
-                              .eq('key', 'app_version');
-                            // Re-send broadcast with the version so clients can persist it
-                            const ch2 = supabase.channel('global-force-reload');
-                            await ch2.send({
-                              type: 'broadcast',
-                              event: 'reload',
-                              payload: { forceImmediate: false, version: nextVersion, timestamp: Date.now() },
-                            });
-                            supabase.removeChannel(ch2);
+                            const nextVersion = await broadcastAppUpdate(false);
                             toast.success(`Oppdateringssignal sendt til alle brukere (v${nextVersion})`);
-                            supabase.removeChannel(channel);
                           } catch (err) {
                             console.error('Force reload error:', err);
                             toast.error('Kunne ikke sende oppdateringssignal');
