@@ -509,7 +509,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                           </Badge>
                         </div>
                         {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
-                        {dbDriving && (
+                        {dbStatus !== "Grønn" && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
@@ -529,23 +529,22 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                               <AlertDialogFooter>
                                 <AlertDialogCancel>{t('resourceDialogs.equipmentDetail.cancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={async () => {
-                                  if (!user || !companyId) return;
-                                  const { error } = await supabase.from('equipment').update({ status: 'Grønn' }).eq('id', equipment.id);
+                                  if (!user) return;
+                                  const note = latestWarning
+                                    ? t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescriptionWithTitle', { from: equipment.status, title: latestWarning.title })
+                                    : t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescription', { from: equipment.status });
+                                  const { error } = await (supabase as any).rpc('acknowledge_resource_warning', {
+                                    _resource_type: 'equipment',
+                                    _resource_id: equipment.id,
+                                    _note: note,
+                                  });
                                   if (error) {
-                                    toast.error(t('resourceDialogs.equipmentDetail.toasts.clearWarningError', { message: error.message }));
+                                    const msg = /not_authorized/.test(error.message)
+                                      ? t('resourceDialogs.equipmentDetail.toasts.clearWarningNotAuthorized')
+                                      : error.message;
+                                    toast.error(t('resourceDialogs.equipmentDetail.toasts.clearWarningError', { message: msg }));
                                     return;
                                   }
-                                  await supabase.from('equipment_log_entries').insert({
-                                    equipment_id: equipment.id,
-                                    company_id: companyId,
-                                    user_id: user.id,
-                                    entry_date: new Date().toISOString().split('T')[0],
-                                    entry_type: 'Kvittering',
-                                    title: 'Advarsel kvittert ut',
-                                    description: latestWarning
-                                      ? t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescriptionWithTitle', { from: equipment.status, title: latestWarning.title })
-                                      : t('resourceDialogs.equipmentDetail.toasts.clearWarningLogDescription', { from: equipment.status }),
-                                  });
                                   queryClient.invalidateQueries({ queryKey: ['equipment'] });
                                   onEquipmentUpdated();
                                   toast.success(t('resourceDialogs.equipmentDetail.toasts.clearWarningSuccess'));
@@ -556,11 +555,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                             </AlertDialogContent>
                           </AlertDialog>
                         )}
-                        {dbStatus !== "Grønn" && !dbDriving && (
+                        {dbStatus !== "Grønn" && maintenanceOnlyStatus !== "Grønn" && (
                           <p className="text-xs text-muted-foreground mt-1.5 italic">
-                            {t('resourceDialogs.equipmentDetail.statusHints.afterMaintenanceNote')}
+                            {t('resourceDialogs.equipmentDetail.statusHints.maintenanceStillActive')}
                           </p>
                         )}
+
 
                       </div>
                     </div>
