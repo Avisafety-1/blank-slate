@@ -105,6 +105,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ackComment, setAckComment] = useState("");
   const [linkedEquipment, setLinkedEquipment] = useState<any[]>([]);
   // Keeps the ids of linked equipment available inside realtime callbacks
   const linkedEquipmentIdsRef = useRef<string[]>([]);
@@ -1108,7 +1109,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   {aggregatedStatus !== "Grønn" && <StatusReasonList reasons={statusReasons} />}
                   {/* Acknowledge whenever a log-driven warning exists on the resource itself */}
                   {dbStatus !== "Grønn" && (
-                    <AlertDialog>
+                    <AlertDialog onOpenChange={(o) => { if (o) setAckComment(""); }}>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" size="sm" className="text-xs h-6 px-2 mt-2">
                           {tt("acknowledge.button")}
@@ -1124,15 +1125,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             }
                           </AlertDialogDescription>
                         </AlertDialogHeader>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="drone-ack-comment" className="text-sm">{tt("acknowledge.commentLabel")}</Label>
+                          <Textarea
+                            id="drone-ack-comment"
+                            value={ackComment}
+                            onChange={(e) => setAckComment(e.target.value)}
+                            placeholder={tt("acknowledge.commentPlaceholder")}
+                            rows={3}
+                          />
+                        </div>
                         <AlertDialogFooter>
                           <AlertDialogCancel>{tt("acknowledge.cancel")}</AlertDialogCancel>
                           <AlertDialogAction onClick={async () => {
                             if (!user) return;
                             const suffix = latestWarning ? tt("acknowledge.logDescriptionSuffix", { title: latestWarning.title }) : "";
+                            const comment = ackComment.trim();
+                            const commentPart = comment ? ` ${tt("acknowledge.commentNote", { comment })}` : "";
                             const { error } = await (supabase as any).rpc('acknowledge_resource_warning', {
                               _resource_type: 'drone',
                               _resource_id: drone.id,
-                              _note: tt("acknowledge.logDescription", { from: drone.status, suffix }),
+                              _note: tt("acknowledge.logDescription", { from: drone.status, suffix }) + commentPart,
                             });
                             if (error) {
                               const msg = /not_authorized/.test(error.message)
