@@ -181,13 +181,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
     if (!equipment) { setLatestWarning(null); return; }
     const { data } = await supabase
       .from("equipment_log_entries")
-      .select("title, entry_date")
+      .select("title, entry_date, entry_type, description, created_at")
       .eq("equipment_id", equipment.id)
-      .eq("entry_type", "Advarsel")
-      .order("entry_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setLatestWarning(data || null);
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setLatestWarning(pickLatestRelevantWarning(data as any));
   };
 
   const fetchMissionsSinceMaintenance = async () => {
