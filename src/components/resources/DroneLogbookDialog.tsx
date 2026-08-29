@@ -108,7 +108,9 @@ export const DroneLogbookDialog = ({
     title: "",
     description: "",
     entry_date: new Date().toISOString().split('T')[0],
+    new_status: "",
   });
+
 
   useEffect(() => {
     if (open && droneId) {
@@ -425,7 +427,9 @@ export const DroneLogbookDialog = ({
       title: log.rawEntry.title,
       description: log.rawEntry.description || "",
       entry_date: log.rawEntry.entry_date.split('T')[0],
+      new_status: "",
     });
+
     clearImage();
     setShowAddEntry(true);
   };
