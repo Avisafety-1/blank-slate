@@ -1,37 +1,42 @@
-# Fiks «Tving oppdatering» – send broadcast via subscribet kanal
+# Fiks «Tving oppdatering» + tvungent flagg for senere innlogginger
 
-## Årsak (verifisert i koden)
+## Del 1: Fiks broadcast-sendingen (hovedbuggen, verifisert i koden)
 
-- `src/pages/Admin.tsx` (begge knappene, linje ~920 og ~960): oppretter `supabase.channel('global-force-reload')` og kaller `channel.send(...)` **uten å subscribe først**. Supabase broadcast krever at kanalen er subscribet før `send` leveres – ellers når meldingen aldri frem til brukerne.
-- Det som derimot fungerer er `app_version`-bumpen i `app_config`. Når brukere kommer online sjekker `useForceReload` (Layer 2) versjonen og viser banneret med «Oppdater nå» – uansett om du trykket «Tving umiddelbart» eller ikke.
-- Resultat: brukere får alltid banner, aldri tvungen reload.
+- `src/pages/Admin.tsx` (begge knappene, ~linje 920 og ~960): oppretter `supabase.channel('global-force-reload')` og kaller `channel.send(...)` **uten å subscribe først**. Supabase broadcast krever at kanalen er subscribet før `send` leveres – ellers når meldingen aldri frem. I tillegg sendes det to ganger per klikk (to kanaler).
+- I dag er det kun `app_version`-bumpet som virker: brukere får banneret «Oppdater nå» via versjonssjekken, aldri tvungen reload.
 
-## Endring
+### Endring i `Admin.tsx` (begge knappene)
 
-I `src/pages/Admin.tsx`, begge knappene:
-
-1. Bump `app_version` i `app_config` først (som i dag).
-2. Opprett kanalen, `await channel.subscribe()` og vent til status er `SUBSCRIBED` (med timeout ~5s og feil hvis det feiler).
-3. Send én broadcast med `{ forceImmediate, version: nextVersion }`.
+1. Bump `app_version` i `app_config` først.
+2. Opprett én kanal, `await channel.subscribe()`, vent til `SUBSCRIBED` (timeout ~5s, tydelig feil ved feil).
+3. Send én broadcast med `{ forceImmediate, version }`.
 4. `supabase.removeChannel(channel)` i `finally`.
 
-Dette fjerner også den doble sendingen (to kanaler per klikk) som finnes i dag.
+### Mottakerlogikken (uendret)
 
-## Ønsket oppførsel (uendret i mottakerlogikken)
+- **«Send oppdateringssignal»** (`forceImmediate: false`) → statuslinje med «Oppdater nå»-knapp. Ingen tvungen reload.
+- **«Tving umiddelbart»** (`forceImmediate: true`) → appen reloader umiddelbart uten varsel hos tilkoblede brukere.
 
-- **«Send oppdateringssignal»** (`forceImmediate: false`) → brukere ser fortsatt statuslinjen med «Oppdater nå»-knapp. Ingen tvungen reload.
-- **«Tving umiddelbart»** (`forceImmediate: true`) → appen oppdateres umiddelbart uten varsel/banner hos brukeren.
-- `useForceReload.ts` har allerede riktig logikk for dette – kun sender-siden i `Admin.tsx` må fikses slik at broadcast-meldingen faktisk når frem (subscribe før send).
-- Offline-brukere får fortsatt oppdateringen via versjonssjekken når de kobler til igjen (frivillig banner for dem – det kan ikke tvinges da de ikke er tilkoblet).
+## Del 2: Tvungen oppdatering også for brukere som logger inn senere
 
-## Robusthet og begrensninger
+Problem: brukere som var avlogget/offline da «Tving umiddelbart» ble trykket, får i dag kun det frivillige banneret ved neste innlogging (versjonsmismatch). Ønsket: de skal også oppdateres uten varsel.
 
-- Hvis broadcast-subscription feiler, kaster vi en tydelig feil og ruller ikke tilbake `app_version`-bumpet. Offline/fremtidige brukere får da fortsatt banner via versjonssjekken.
-- Kun brukere med aktiv Supabase Realtime-tilkobling og gyldig sesjon mottar tvungen reload. Brukere uten nett eller med avbrutt websocket får oppdateringen først når de kobler til igjen.
-- «Tving umiddelbart» kan medføre tap av ulagret arbeid; confirm-dialogen beholdes.
-- Ingen databaseendringer, ingen nye tabeller, ingen RLS-endringer.
+### Endring
+
+- `Admin.tsx` («Tving umiddelbart»): i tillegg til versjonsbump, sett en ny nøkkel i `app_config`, f.eks. `app_version_force_immediate = <versjon>`, som markerer at alle med eldre lokal versjon enn denne skal tvinges. «Send oppdateringssignal» rører ikke denne nøkkelen.
+- `useForceReload.ts` (Layer 2, versjonssjekk ved online/mount): hent begge nøklene. Hvis lokal versjon er eldre enn `app_version_force_immediate` → kall `performReload()` direkte (uten banner). Ellers, ved vanlig versjonsmismatch → vis banner som i dag.
+- Vurder å nullstille/cleare `app_version_force_immediate` etter en velykket tvungen reload, slik at en gammel tvungen versjon ikke tvinger reload på evig loop hvis versjonssammenligningen glipper. Enklere alternativ: aldri nullstill – flagget tvinger kun reload når lokal versjon faktisk er eldre, og `performReload` lagrer ny versjon før reload, så det skjer maks én gang per bruker.
+
+## Risikovurdering: lav
+
+- Kun to filer endres (`Admin.tsx`, `useForceReload.ts`). Ingen databaseendringer (gjenbruker eksisterende `app_config`-tabellen, ingen nye kolonner/tabeller/RLS).
+- Samme versjonsformat (numerisk streng) brukes for begge nøkler.
+- Confirm-dialoger beholdes. `performReload()` synker offline-kø og lagrer versjon før reload – eksisterende sikkerhetsmekanismer gjenbrukes.
+- Største rest-risiko: evig reload-loop hvis versjonslagring feiler. Demper: `performReload` persisterer versjonen **før** reload, og tvang kun ved faktisk eldre versjon.
+- Begrensning (uunngåelig): brukere uten nett/gyldig sesjon kan ikke tvinges – de får det når de kobler til.
 
 ## Verifisering
 
 - Typecheck.
-- Åpne appen i to faner (én admin, én vanlig bruker), trykk «Tving umiddelbart» og bekreft at bruker-fanen reloader uten banner, og at «Send oppdateringssignal» viser banner.
+- To faner (admin + bruker): «Send oppdateringssignal» → banner; «Tving umiddelbart» → reload uten banner.
+- Simuler offline-bruker: tving oppdatering mens bruker er avlogget → ved innlogging skjer reload uten banner.
