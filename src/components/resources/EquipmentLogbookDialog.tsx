@@ -142,7 +142,7 @@ export const EquipmentLogbookDialog = ({
     try {
       const { data } = await (supabase
         .from('flight_logs')
-        .select('flight_date, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
+        .select('flight_date, drone_id, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v')
         .eq('company_id', companyId) as any)
         .eq('battery_sn', equipmentSerienummer)
         .not('battery_cycles', 'is', null)
@@ -150,8 +150,9 @@ export const EquipmentLogbookDialog = ({
         .limit(100);
 
       if (data) {
+        const rows = data as any[];
         setBatteryTrend(
-          data.map((r: any) => ({
+          rows.map((r: any) => ({
             date: new Date(r.flight_date),
             cycles: r.battery_cycles,
             health: r.battery_health_pct,
@@ -162,11 +163,61 @@ export const EquipmentLogbookDialog = ({
             cellDeviation: r.battery_cell_deviation_max_v,
           }))
         );
+
+        // Resolve the drone model the battery last flew with — the log already
+        // tells us which aircraft it was used on, so we can auto-pick the type.
+        const lastWithDrone = [...rows].reverse().find((r) => r.drone_id);
+        let droneModel: string | null = null;
+        if (lastWithDrone?.drone_id) {
+          const { data: drone } = await (supabase as any)
+            .from('drones')
+            .select('modell')
+            .eq('id', lastWithDrone.drone_id)
+            .maybeSingle();
+          droneModel = drone?.modell ?? null;
+        }
+        const last = rows[rows.length - 1];
+        await loadBatteryConfig(droneModel, {
+          capacityMah: last?.battery_full_capacity_mah ?? null,
+          packVoltageV: last?.battery_voltage_min_v ?? null,
+        });
       }
     } catch (e) {
       console.error('Error fetching battery trend:', e);
     }
   };
+
+  const loadBatteryConfig = async (
+    droneModel: string | null,
+    signals: { capacityMah: number | null; packVoltageV: number | null },
+  ) => {
+    try {
+      const [types, { data: eq }] = await Promise.all([
+        fetchBatteryTypes(),
+        (supabase as any)
+          .from('equipment')
+          .select('battery_type_id, battery_type_locked, battery_design_capacity_mah, battery_max_cycles, battery_health_warn_pct, battery_health_critical_pct, battery_cell_deviation_warn_v, battery_cell_deviation_critical_v')
+          .eq('id', equipmentId)
+          .maybeSingle(),
+      ]);
+
+      const overrides = (eq || {}) as BatteryEquipmentOverrides;
+      let type = types.find((tp) => tp.id === overrides.battery_type_id) || null;
+
+      const match = autoMatchBatteryType(types, { droneModel, ...signals });
+      setBatterySuggestion(match);
+
+      if (!type && match && !overrides.battery_type_locked) {
+        type = match.type;
+        persistAutoMatch(equipmentId, match.type.id);
+      }
+
+      setBatteryConfig(resolveBatteryConfig(type, overrides));
+    } catch (e) {
+      console.error('Error loading battery config:', e);
+    }
+  };
+
 
   const fetchAllLogs = async () => {
     setIsLoading(true);
