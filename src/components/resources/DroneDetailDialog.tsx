@@ -392,13 +392,11 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     if (!drone) { setLatestWarning(null); return; }
     const { data } = await supabase
       .from("drone_log_entries")
-      .select("title, entry_date")
+      .select("title, entry_date, entry_type, description, created_at")
       .eq("drone_id", drone.id)
-      .eq("entry_type", "Advarsel")
-      .order("entry_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setLatestWarning(data || null);
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setLatestWarning(pickLatestRelevantWarning(data as any));
   };
 
   const fetchLastFlown = async () => {
