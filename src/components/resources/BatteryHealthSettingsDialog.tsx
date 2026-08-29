@@ -778,7 +778,18 @@ export const BatteryHealthSettingsDialog = ({
                         })
                       : t("resourceDialogs.batteryHealthSettings.previewUnknown")}
                   </p>
+                  {preview.packCount > 1 && (
+                    <p className="mt-1 text-[11px] text-muted-foreground break-words">
+                      {t(
+                        preview.packCountAutoDetected
+                          ? "resourceDialogs.batteryHealthSettings.packDetected"
+                          : "resourceDialogs.batteryHealthSettings.packConfigured",
+                        { count: preview.packCount },
+                      )}
+                    </p>
+                  )}
                 </div>
+
               </div>
 
               {/* Scope */}
