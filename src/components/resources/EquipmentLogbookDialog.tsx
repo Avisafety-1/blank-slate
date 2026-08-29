@@ -918,7 +918,7 @@ export const EquipmentLogbookDialog = ({
                               {/* Desktop layout */}
                               <div className="hidden sm:grid sm:grid-cols-7 gap-2 items-center">
                                 <span className="text-muted-foreground">{format(entry.date, 'dd.MM.yyyy')}</span>
-                                <span>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
+                                <span className={levelColorClass(cycleLevel(entry.cycles, batteryConfig))}>{entry.cycles != null ? `${entry.cycles}` : '—'}</span>
                                 <span className={rowHealth != null ? rowHealthColor : ''}>
                                   {rowHealth != null ? `${rowHealth}%` : '—'}
                                 </span>
