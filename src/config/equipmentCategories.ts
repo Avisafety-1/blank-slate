@@ -14,6 +14,7 @@ export const EQUIPMENT_CATEGORIES: EquipmentCategory[] = [
   { id: "Verneutstyr", label: "Verneutstyr" },
   { id: "Verktøy", label: "Verktøy" },
   { id: "Bæresystem", label: "Bæresystem" },
+  { id: "Fallskjerm", label: "Fallskjerm" },
 ];
 
 const BATTERY_ALIASES = ["batteri", "battery", "batteries", "batterier"];
