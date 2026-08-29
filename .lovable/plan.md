@@ -1,15 +1,28 @@
-# Mobildekningskart – beholdes som i dag
+# Fiks «Tving oppdatering» – send broadcast via subscribet kanal
 
-## Konklusjon fra gjennomgangen
+## Årsak (verifisert i koden)
 
-- Nkoms karttjeneste (WMS) har kun **2023-utgaven** av 4G/5G-arealdekning. Nyere tall (2024/2025) finnes kun som kommune-/fylkesstatistikk (XLSX), ikke som geografisk kartlag.
-- Nkom publiserer **ikke operatørdelte geografiske data** (Telenor/Telia/Ice). Operatørene har egne dekningskart på sine nettsider, men ingen offisielle tredjeparts-APIer.
+- `src/pages/Admin.tsx` (begge knappene, linje ~920 og ~960): oppretter `supabase.channel('global-force-reload')` og kaller `channel.send(...)` **uten å subscribe først**. Supabase broadcast krever at kanalen er subscribet før `send` leveres – ellers når meldingen aldri frem til brukerne.
+- Det som derimot fungerer er `app_version`-bumpen i `app_config`. Når brukere kommer online sjekker `useForceReload` (Layer 2) versjonen og viser banneret med «Oppdater nå» – uansett om du trykket «Tving umiddelbart» eller ikke.
+- Resultat: brukere får alltid banner, aldri tvungen reload.
 
-## Beslutning
+## Endring
 
-Ingen kodeendring. De eksisterende kartlagene «Mobildekning 4G» og «Mobildekning 5G» (Nkom 2023, arealdekning) beholdes uendret, med dagens fargekoding og popup med prosentfordeling og forbehold.
+I `src/pages/Admin.tsx`, begge knappene:
 
-## Konsekvens
+1. Bump `app_version` i `app_config` først (som i dag).
+2. Opprett kanalen, `await channel.subscribe()` og vent til status er `SUBSCRIBED` (med timeout ~5s og feil hvis det feiler).
+3. Send én broadcast med `{ forceImmediate, version: nextVersion }`.
+4. `supabase.removeChannel(channel)` i `finally`.
 
-- Ingen endringer i kode, database eller edge functions.
-- Popup-forbeholdet i kartet viser fortsatt at dataene er arealdekning fra 2023 og ikke sanntid eller operatørspesifikt.
+Dette fjerner også den doble sendingen (to kanaler per klikk) som finnes i dag.
+
+## Ingen endring i
+
+- `useForceReload.ts` – mottakerlogikken er riktig: `forceImmediate: true` → umiddelbar `performReload()` (uten banner), `false` → banner.
+- Offline-brukere får fortsatt oppdateringen via versjonssjekken når de kobler til igjen (frivillig banner for dem – det kan ikke tvinges da de ikke er tilkoblet).
+
+## Verifisering
+
+- Typecheck.
+- Åpne appen i to faner (én admin, én vanlig bruker), trykk «Tving umiddelbart» og bekreft at bruker-fanen reloader uten banner, og at «Send oppdateringssignal» viser banner.
