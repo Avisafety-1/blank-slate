@@ -75,6 +75,7 @@ interface DroneLogResult {
   minGpsSatellites: number | null;
   maxGpsSatellites: number | null;
   batterySN: string | null;
+  battery2SN?: string | null;
   batteryHealth: number | null;
   batteryFullCapacity: number | null;
   batteryCurrentCapacity: number | null;
@@ -389,7 +390,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [warningActions, setWarningActions] = useState<Record<number, { saveToLog: boolean; newStatus: string; targetLogbooks: string[] }>>({});
   const [oldPilotIds, setOldPilotIds] = useState<string[]>([]);
   const [unmatchedBatterySN, setUnmatchedBatterySN] = useState<string | null>(null);
+  const [unmatchedBattery2SN, setUnmatchedBattery2SN] = useState<string | null>(null);
   const [showAddEquipmentDialog, setShowAddEquipmentDialog] = useState(false);
+  const [addEquipmentSlot, setAddEquipmentSlot] = useState<1 | 2>(1);
+  const [linkBattery2ToExisting, setLinkBattery2ToExisting] = useState(false);
   const [oldEquipmentIds, setOldEquipmentIds] = useState<string[]>([]);
   const [operationType, setOperationType] = useState<"VLOS" | "BVLOS" | "EVLOS">("VLOS");
   const [oldDroneId, setOldDroneId] = useState<string | null>(null);
@@ -715,7 +719,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setLogToLogbooks(true);
     setWarningActions({});
     setUnmatchedBatterySN(null);
+    setUnmatchedBattery2SN(null);
+    setLinkBattery2ToExisting(false);
     setShowAddEquipmentDialog(false);
+    setAddEquipmentSlot(1);
     setUnmatchedDroneSN(null);
     setUpdateDroneSnConfirmed(false);
     setShowAddDroneDialog(false);
@@ -730,20 +737,35 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // ── Battery matching helper ──
   const matchBatteryFromResult = (data: DroneLogResult) => {
-    if (!data.batterySN) {
-      setUnmatchedBatterySN(null);
-      return;
-    }
-    const sn = data.batterySN.trim();
-    const match = equipmentList.find(e =>
-      snMatchesDjiSn(e.serienummer, sn) || snMatchesDjiSn(e.internal_serial, sn)
-    );
-    if (match) {
-      setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
-      toast.info(`Batteri matchet automatisk: ${match.navn}`);
-      setUnmatchedBatterySN(null);
+    // Battery 1 (SERIAL.battery / DETAILS.batterySN) and — for dual-battery
+    // aircraft — battery 2 (SERIAL.battery2) are matched independently.
+    const matchOne = (
+      rawSn: string | null | undefined,
+      setUnmatched: (v: string | null) => void,
+      skipIds: string[],
+    ): string | null => {
+      if (!rawSn || !rawSn.trim()) { setUnmatched(null); return null; }
+      const sn = rawSn.trim();
+      const match = equipmentList.find(e =>
+        !skipIds.includes(e.id) &&
+        (snMatchesDjiSn(e.serienummer, sn) || snMatchesDjiSn(e.internal_serial, sn))
+      );
+      if (match) {
+        setSelectedEquipment(prev => prev.includes(match.id) ? prev : [...prev, match.id]);
+        toast.info(`Batteri matchet automatisk: ${match.navn}`);
+        setUnmatched(null);
+        return match.id;
+      }
+      setUnmatched(sn);
+      return null;
+    };
+
+    const firstId = matchOne(data.batterySN, setUnmatchedBatterySN, []);
+    const sn2 = (data.battery2SN || '').trim();
+    if (sn2 && sn2 !== (data.batterySN || '').trim()) {
+      matchOne(sn2, setUnmatchedBattery2SN, firstId ? [firstId] : []);
     } else {
-      setUnmatchedBatterySN(data.batterySN);
+      setUnmatchedBattery2SN(null);
     }
   };
 
@@ -778,7 +800,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
   };
 
-  const batteryDefaultValues: EquipmentDefaultValues | undefined = unmatchedBatterySN ? (() => {
+  const buildBatteryDefaults = (sn: string | null): EquipmentDefaultValues | undefined => sn ? (() => {
     const merknader: string[] = [];
     if (result?.batteryHealth != null) merknader.push(`Helse: ${result.batteryHealth}%`);
     if (result?.batteryFullCapacity != null) merknader.push(`Kapasitet: ${result.batteryFullCapacity} mAh`);
@@ -786,12 +808,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (result?.batteryTemperature != null) merknader.push(`Maks temp: ${result.batteryTemperature}°C`);
     return {
       type: 'Batteri',
-      serienummer: unmatchedBatterySN,
-      internal_serial: unmatchedBatterySN,
-      navn: `Batteri ${unmatchedBatterySN}`,
+      serienummer: sn,
+      internal_serial: sn,
+      navn: `Batteri ${sn}`,
       merknader: merknader.length > 0 ? `Fra DJI-logg: ${merknader.join(', ')}` : undefined,
     };
   })() : undefined;
+
+  const batteryDefaultValues = buildBatteryDefaults(
+    addEquipmentSlot === 2 ? unmatchedBattery2SN : unmatchedBatterySN,
+  );
 
   const droneDefaultValues: DroneDefaultValues | undefined = unmatchedDroneSN ? {
     modell: result?.droneType || '',
@@ -1523,6 +1549,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       minGpsSatellites: parsed.minGpsSatellites || null,
       maxGpsSatellites: parsed.maxGpsSatellites || null,
       batterySN: parsed.batterySN || null,
+      battery2SN: parsed.battery2SN || null,
       batteryHealth: parsed.batteryHealth || null,
       batteryFullCapacity: parsed.batteryFullCapacity || null,
       batteryCurrentCapacity: parsed.batteryCurrentCapacity || null,
@@ -1735,6 +1762,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         ? Math.max(r.battery1CellDeviationMax ?? 0, r.battery2CellDeviationMax ?? 0) || null
         : (r.batteryCellDeviationMax || null),
       dronelog_warnings: r.warnings.length > 0 ? r.warnings : null,
+      // Battery 2 (dual-battery aircraft) — stored separately, aggregates above unchanged
+      battery2_sn: r.battery2SN || null,
+      battery2_cycles: r.battery2Cycles ?? null,
+      battery2_full_capacity_mah: r.battery2FullCapacity ?? null,
+      battery2_voltage_min_v: r.battery2MinVoltage ?? null,
+      battery2_temp_max_c: r.battery2TempMax ?? null,
+      battery2_cell_deviation_max_v: r.battery2CellDeviationMax ?? null,
     };
   };
 
@@ -3104,7 +3138,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               </div>
             </div>
             <div className="flex gap-2 ml-6 flex-wrap">
-              <Button size="sm" variant="default" onClick={() => setShowAddEquipmentDialog(true)}>
+              <Button size="sm" variant="default" onClick={() => { setAddEquipmentSlot(1); setShowAddEquipmentDialog(true); }}>
                 <PlusCircle className="w-3 h-3 mr-1" />
                 Opprett batteri
               </Button>
@@ -3145,6 +3179,62 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           </div>
         )}
 
+        {/* Battery 2 create prompt (dual-battery aircraft) */}
+        {unmatchedBattery2SN && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-2">
+            <div className="flex items-start gap-2">
+              <Battery className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  {t('uploadLog.battery2.unknown', { sn: unmatchedBattery2SN })}
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                  {t('uploadLog.battery2.unknownHelp')}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 ml-6 flex-wrap">
+              <Button size="sm" variant="default" onClick={() => { setAddEquipmentSlot(2); setShowAddEquipmentDialog(true); }}>
+                <PlusCircle className="w-3 h-3 mr-1" />
+                {t('uploadLog.battery2.create')}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setLinkBattery2ToExisting(true)}>
+                <Wrench className="w-3 h-3 mr-1" />
+                {t('uploadLog.battery2.link')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setUnmatchedBattery2SN(null)}>
+                {t('uploadLog.battery2.skip')}
+              </Button>
+            </div>
+            {linkBattery2ToExisting && (
+              <div className="ml-6 mt-2">
+                <Label className="text-xs mb-1 block">{t('uploadLog.battery2.selectExisting')}</Label>
+                <Select onValueChange={async (eqId) => {
+                  const { error } = await supabase.from('equipment').update({ internal_serial: unmatchedBattery2SN }).eq('id', eqId);
+                  if (error) { toast.error('Kunne ikke oppdatere internt serienummer'); return; }
+                  setEquipmentList(prev => prev.map(e => e.id === eqId ? { ...e, internal_serial: unmatchedBattery2SN } : e));
+                  setSelectedEquipment(prev => prev.includes(eqId) ? prev : [...prev, eqId]);
+                  const matched = equipmentList.find(e => e.id === eqId);
+                  toast.success(`Batteri koblet: ${matched?.navn || eqId}`);
+                  setUnmatchedBattery2SN(null);
+                  setLinkBattery2ToExisting(false);
+                }}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={t('uploadLog.battery2.selectPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {equipmentList.filter(e => isBatteryType(e.type)).map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.navn} {e.serienummer ? `(${e.serienummer})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* AddEquipmentDialog for battery creation */}
         {user && showAddEquipmentDialog && (
           <AddEquipmentDialog
@@ -3158,7 +3248,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             onEquipmentCreated={(newEq) => {
               setEquipmentList(prev => [...prev, { ...newEq, internal_serial: null }]);
               setSelectedEquipment(prev => [...prev, newEq.id]);
-              setUnmatchedBatterySN(null);
+              if (addEquipmentSlot === 2) setUnmatchedBattery2SN(null);
+              else setUnmatchedBatterySN(null);
               setShowAddEquipmentDialog(false);
             }}
           />

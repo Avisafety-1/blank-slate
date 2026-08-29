@@ -28,7 +28,7 @@ export const FIELDS = [
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
   // Hardware identifiers (collected for future drone identification — not used for matching yet)
-  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN",
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN","SERIAL.battery","SERIAL.battery2",
   "APP.warn",
 ].join(",");
 
@@ -99,6 +99,20 @@ function findHeaderIndex(headers: string[], target: string): number {
   return headers.findIndex((h) => h.toLowerCase().replace(/\s*\[.*\]$/, "") === baseName);
 }
 
+/**
+ * Picks the most complete battery serial. `SERIAL.battery` is the newer field and
+ * often carries the full 20-char SN, while `DETAILS.batterySerial`/`batterySN` is
+ * the older, sometimes truncated 16-char variant. Never downgrade to a shorter SN.
+ */
+export function pickBatterySn(serialField: string, detailsField: string): string {
+  const a = (serialField || "").trim();
+  const b = (detailsField || "").trim();
+  if (!a) return b;
+  if (!b) return a;
+  if (a.length >= b.length) return a;
+  return b;
+}
+
 export function parseCsvMinimal(csvText: string) {
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) throw new Error("Empty CSV");
@@ -113,7 +127,8 @@ export function parseCsvMinimal(csvText: string) {
     return isNaN(v) ? null : v;
   };
   const aircraftSN = get("DETAILS.aircraftSN") || get("DETAILS.aircraftSerial");
-  const batterySN = get("DETAILS.batterySN") || get("DETAILS.batterySerial");
+  const batterySN = pickBatterySn(get("SERIAL.battery"), get("DETAILS.batterySN") || get("DETAILS.batterySerial"));
+  const battery2SN = get("SERIAL.battery2").trim() || null;
   const sha256Hash = get("DETAILS.sha256Hash");
   const totalTimeSec = getNum("DETAILS.totalTime [s]");
   const durationMinutes = totalTimeSec ? Math.round(totalTimeSec / 60) : Math.round((lines.length - 1) / 600);
@@ -208,7 +223,7 @@ export function parseCsvMinimal(csvText: string) {
   const endPos = positions.length > 0 ? positions[positions.length - 1] : null;
 
   return {
-    aircraftSN, batterySN, sha256Hash,
+    aircraftSN, batterySN, battery2SN, sha256Hash,
     // Hardware identifiers (informational only — no matching logic uses these yet)
     fcSN: get("DETAILS.fcSN") || null,
     rcSN: get("DETAILS.rcSN") || null,

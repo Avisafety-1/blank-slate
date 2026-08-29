@@ -8409,6 +8409,15 @@
       "cameraSN": "Camera SN",
       "gimbalSN": "Gimbal SN",
       "batterySN": "Battery SN"
+    },
+    "battery2": {
+      "unknown": "Unknown battery 2: {{sn}}",
+      "unknownHelp": "The log contains a second battery that was not found in your resources. Create a new one or link it to an existing one.",
+      "create": "Create battery 2",
+      "link": "Link to existing",
+      "skip": "Skip",
+      "selectExisting": "Select existing battery",
+      "selectPlaceholder": "Select battery..."
     }
   },
   "statusReasons": {

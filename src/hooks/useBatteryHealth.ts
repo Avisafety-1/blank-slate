@@ -21,6 +21,8 @@ export interface BatteryTrendEntry {
   voltageMin: number | null;
   capacityMah: number | null;
   cellDeviation: number | null;
+  /** True when the values come from a per-pack column (battery2_*), i.e. already per battery. */
+  perPack?: boolean;
 }
 
 export interface BatteryHealthData {
@@ -41,7 +43,8 @@ export const computeEntryHealth = (
 ): number | null =>
   computeBatteryHealth(
     { capacityMah: e?.capacityMah ?? null, cycles: e?.cycles ?? null, djiHealthPct: e?.health ?? null },
-    config,
+    // battery2_* values are already per pack — never divide them by pack count
+    e?.perPack ? { ...config, packCount: 1 } : config,
   ).value;
 
 /**
@@ -66,28 +69,54 @@ export function useBatteryHealth(
     if (!enabled || !equipmentId || !serienummer || !companyId) return;
     setLoading(true);
     try {
-      const { data } = await (supabase
-        .from("flight_logs")
-        .select(
-          "flight_date, drone_id, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v",
-        )
-        .eq("company_id", companyId) as any)
-        .eq("battery_sn", serienummer)
-        .not("battery_cycles", "is", null)
-        .order("flight_date", { ascending: true })
-        .limit(100);
+      const [{ data }, { data: data2 }] = await Promise.all([
+        (supabase
+          .from("flight_logs")
+          .select(
+            "flight_date, drone_id, battery_cycles, battery_health_pct, battery_temp_min_c, battery_temp_max_c, battery_voltage_min_v, battery_full_capacity_mah, battery_cell_deviation_max_v",
+          )
+          .eq("company_id", companyId) as any)
+          .eq("battery_sn", serienummer)
+          .not("battery_cycles", "is", null)
+          .order("flight_date", { ascending: true })
+          .limit(100),
+        // Logs where this battery was the SECOND pack (SERIAL.battery2)
+        (supabase
+          .from("flight_logs")
+          .select(
+            "flight_date, drone_id, battery2_cycles, battery2_temp_max_c, battery2_voltage_min_v, battery2_full_capacity_mah, battery2_cell_deviation_max_v",
+          )
+          .eq("company_id", companyId) as any)
+          .eq("battery2_sn", serienummer)
+          .order("flight_date", { ascending: true })
+          .limit(100),
+      ]);
 
       const rows = (data || []) as any[];
-      const entries: BatteryTrendEntry[] = rows.map((r: any) => ({
-        date: new Date(r.flight_date),
-        cycles: r.battery_cycles,
-        health: r.battery_health_pct,
-        tempMin: r.battery_temp_min_c,
-        tempMax: r.battery_temp_max_c,
-        voltageMin: r.battery_voltage_min_v,
-        capacityMah: r.battery_full_capacity_mah,
-        cellDeviation: r.battery_cell_deviation_max_v,
-      }));
+      const rows2 = (data2 || []) as any[];
+      const entries: BatteryTrendEntry[] = [
+        ...rows.map((r: any) => ({
+          date: new Date(r.flight_date),
+          cycles: r.battery_cycles,
+          health: r.battery_health_pct,
+          tempMin: r.battery_temp_min_c,
+          tempMax: r.battery_temp_max_c,
+          voltageMin: r.battery_voltage_min_v,
+          capacityMah: r.battery_full_capacity_mah,
+          cellDeviation: r.battery_cell_deviation_max_v,
+        })),
+        ...rows2.map((r: any) => ({
+          date: new Date(r.flight_date),
+          cycles: r.battery2_cycles,
+          health: null,
+          tempMin: null,
+          tempMax: r.battery2_temp_max_c,
+          voltageMin: r.battery2_voltage_min_v,
+          capacityMah: r.battery2_full_capacity_mah,
+          cellDeviation: r.battery2_cell_deviation_max_v,
+          perPack: true,
+        })),
+      ].sort((a, b) => a.date.getTime() - b.date.getTime());
       setTrend(entries);
 
       // The log tells us which drone the battery flew with — use it as the

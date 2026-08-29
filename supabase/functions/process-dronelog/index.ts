@@ -170,7 +170,7 @@ const FIELDS = [
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxHeight [m]","DETAILS.maxHorizontalSpeed [m/s]","DETAILS.maxVerticalSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
   // Hardware identifiers (collected for future drone identification — not used for matching yet)
-  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN",
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN","SERIAL.battery","SERIAL.battery2",
   "APP.warning",
 ].join(",");
 
@@ -341,6 +341,8 @@ function parseCsvToResult(csvText: string) {
   const detCameraSNIdx = findHeaderIndex(headers, "DETAILS.cameraSN");
   const detGimbalSNIdx = findHeaderIndex(headers, "DETAILS.gimbalSN");
   const serialAircraftSNIdx = findHeaderIndex(headers, "SERIAL.aircraftSN");
+  const serialBatteryIdx = findHeaderIndex(headers, "SERIAL.battery");
+  const serialBattery2Idx = findHeaderIndex(headers, "SERIAL.battery2");
 
   console.log("Column indices — lat:", latIdx, "lon:", lonIdx, "alt:", altIdx, "height:", heightIdx,
     "time:", timeIdx, "speed:", speedIdx, "battery:", batteryIdx, "gpsNum:", gpsNumIdx,
@@ -365,8 +367,16 @@ function parseCsvToResult(csvText: string) {
   const batteryCycles = battLoopIdx >= 0 ? parseInt(firstRow[battLoopIdx]) : NaN;
   const rawBatterySN = detBatterySNIdx >= 0 ? firstRow[detBatterySNIdx] : "";
   const batterySerial = detBatterySerialIdx >= 0 ? firstRow[detBatterySerialIdx] : "";
-  const batterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
-  console.log("Battery SN indices — batterySN:", detBatterySNIdx, "batterySerial:", detBatterySerialIdx, "resolved:", batterySN);
+  const legacyBatterySN = (rawBatterySN || batterySerial).replace(/^"|"$/g, "").trim();
+  // SERIAL.battery / SERIAL.battery2 are the newer fields and often carry the full
+  // 20-char serial. Never downgrade to a shorter SN than the legacy DETAILS value.
+  const serialBattery = serialBatteryIdx >= 0 ? (firstRow[serialBatteryIdx] || "").replace(/^"|"$/g, "").trim() : "";
+  const battery2SN = serialBattery2Idx >= 0 ? (firstRow[serialBattery2Idx] || "").replace(/^"|"$/g, "").trim() : "";
+  const batterySN = serialBattery && serialBattery.length >= legacyBatterySN.length
+    ? serialBattery
+    : legacyBatterySN;
+  console.log("Battery SN — legacy:", legacyBatterySN || "(none)", "| SERIAL.battery:", serialBattery || "(none)",
+    "| SERIAL.battery2:", battery2SN || "(none)", "| resolved:", batterySN);
 
   // Hardware identifiers (flight controller, remote controller, camera, gimbal).
   // Collected for future drone identification work — NOT used by matching logic today.
@@ -836,6 +846,7 @@ function parseCsvToResult(csvText: string) {
     maxGpsSatellites: maxGpsSats > 0 ? maxGpsSats : null,
     // Battery extended
     batterySN: batterySN || null,
+    battery2SN: battery2SN || null,
     batteryHealth: !isNaN(batteryHealth) ? Math.round(batteryHealth * 10) / 10 : null,
     batteryFullCapacity: !isNaN(batteryFullCap) ? Math.round(batteryFullCap) : null,
     batteryCurrentCapacity: !isNaN(batteryCurrCap) ? Math.round(batteryCurrCap) : null,
