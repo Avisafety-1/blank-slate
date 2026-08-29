@@ -5254,7 +5254,8 @@
       "typeDeleteError": "Could not delete the battery type",
       "typeNameRequired": "Name is required",
       "useTypeValues": "Use values from type",
-      "overrideActive": "Custom values for this battery override the values from the battery type."
+      "overrideActive": "Custom values for this battery override the values from the battery type.",
+      "catalogReadOnly": "Catalog battery types cannot be edited. Values below apply only to this battery (or group), not to the catalog type. Create a custom battery type (+) to store your own values."
     }
   },
   "documents": {
