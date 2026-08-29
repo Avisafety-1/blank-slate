@@ -4250,6 +4250,12 @@ export type Database = {
           battery_temp_max_c: number | null
           battery_temp_min_c: number | null
           battery_voltage_min_v: number | null
+          battery2_cell_deviation_max_v: number | null
+          battery2_cycles: number | null
+          battery2_full_capacity_mah: number | null
+          battery2_sn: string | null
+          battery2_temp_max_c: number | null
+          battery2_voltage_min_v: number | null
           company_id: string
           completed_checklists: string[] | null
           created_at: string | null
@@ -4294,6 +4300,12 @@ export type Database = {
           battery_temp_max_c?: number | null
           battery_temp_min_c?: number | null
           battery_voltage_min_v?: number | null
+          battery2_cell_deviation_max_v?: number | null
+          battery2_cycles?: number | null
+          battery2_full_capacity_mah?: number | null
+          battery2_sn?: string | null
+          battery2_temp_max_c?: number | null
+          battery2_voltage_min_v?: number | null
           company_id: string
           completed_checklists?: string[] | null
           created_at?: string | null
@@ -4338,6 +4350,12 @@ export type Database = {
           battery_temp_max_c?: number | null
           battery_temp_min_c?: number | null
           battery_voltage_min_v?: number | null
+          battery2_cell_deviation_max_v?: number | null
+          battery2_cycles?: number | null
+          battery2_full_capacity_mah?: number | null
+          battery2_sn?: string | null
+          battery2_temp_max_c?: number | null
+          battery2_voltage_min_v?: number | null
           company_id?: string
           completed_checklists?: string[] | null
           created_at?: string | null
