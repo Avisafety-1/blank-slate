@@ -560,7 +560,7 @@ export const BatteryHealthSettingsDialog = ({
                           disabled={typeSaving}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          {t("common.delete")}
+                          {t("actions.delete")}
                         </Button>
                       )}
                       <Button
