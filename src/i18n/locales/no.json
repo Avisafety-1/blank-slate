@@ -4701,6 +4701,9 @@
         "clearWarningWithDetail": "Advarsel: «{{title}}» ({{date}}). Vil du kvittere ut og sette status tilbake til Grønn?",
         "clearWarningDefault": "Er du sikker på at du vil kvittere ut advarselen og sette status tilbake til Grønn?",
         "clearWarningConfirm": "Kvitter ut",
+        "clearWarningCommentLabel": "Kommentar (valgfritt)",
+        "clearWarningCommentPlaceholder": "Begrunn hvorfor advarselen kvitteres ut …",
+        "clearWarningCommentNote": "Kommentar: {{comment}}",
         "afterMaintenanceNote": "Advarsel fra logg kan kvitteres ut etter at vedlikehold er utført",
         "maintenanceStillActive": "Vedlikeholdsvarsler forsvinner ikke ved kvittering — de må lukkes ved inspeksjon eller vedlikehold."
       },
