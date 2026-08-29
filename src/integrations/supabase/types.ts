@@ -8364,6 +8364,10 @@ export type Database = {
         Returns: unknown
       }
       _st_within: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      acknowledge_resource_warning: {
+        Args: { _note?: string; _resource_id: string; _resource_type: string }
+        Returns: boolean
+      }
       add_drone_flight_hours: {
         Args: { p_drone_id: string; p_minutes: number }
         Returns: undefined
