@@ -12,7 +12,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
-import { findSnMatches, parseFlightDate, droneOptionLabel } from "@/lib/droneLogMatching";
+import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn } from "@/lib/droneLogMatching";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; dji_aircraft_name?: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
@@ -256,15 +256,28 @@ export const BatchLogPanel = ({
           return;
         }
         const parsed = data?.parsed_result;
+        // Auto-match battery 2 (SERIAL.battery2) for dual-battery aircraft
+        const sn2 = (parsed?.battery2SN || "").trim();
+        const battery2Match = sn2
+          ? equipmentList.find(e =>
+              isBatteryType(e.type) &&
+              e.id !== data?.matched_battery_id &&
+              (snMatchesDjiSn(e.serienummer, sn2) || snMatchesDjiSn((e as any).internal_serial, sn2)))
+          : undefined;
         setRows(prev => prev.map(r => r.pendingLogId === row.pendingLogId
           ? {
               ...r,
               parsing: false,
               parsed,
               droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed }) || data?.matched_drone_id || "",
-              equipmentIds: r.equipmentIds.length
-                ? r.equipmentIds
-                : (data?.matched_battery_id ? [data.matched_battery_id] : []),
+              equipmentIds: (() => {
+                const base = r.equipmentIds.length
+                  ? r.equipmentIds
+                  : (data?.matched_battery_id ? [data.matched_battery_id] : []);
+                return battery2Match && !base.includes(battery2Match.id)
+                  ? [...base, battery2Match.id]
+                  : base;
+              })(),
             }
           : r));
       } catch (e: any) {
