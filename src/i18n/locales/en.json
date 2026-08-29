@@ -3704,6 +3704,8 @@
         "aviationObstacles": "Aviation obstacles",
         "powerLines": "Power lines",
         "propertyBoundaries": "Property boundaries",
+        "mobileCoverage4g": "Mobile coverage 4G",
+        "mobileCoverage5g": "Mobile coverage 5G",
         "tensioPowerGrid": "Tensio power grid",
         "airports": "Airports",
         "drones": "Drones",
