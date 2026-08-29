@@ -24,6 +24,13 @@ Dette fjerner også den doble sendingen (to kanaler per klikk) som finnes i dag.
 - `useForceReload.ts` har allerede riktig logikk for dette – kun sender-siden i `Admin.tsx` må fikses slik at broadcast-meldingen faktisk når frem (subscribe før send).
 - Offline-brukere får fortsatt oppdateringen via versjonssjekken når de kobler til igjen (frivillig banner for dem – det kan ikke tvinges da de ikke er tilkoblet).
 
+## Robusthet og begrensninger
+
+- Hvis broadcast-subscription feiler, kaster vi en tydelig feil og ruller ikke tilbake `app_version`-bumpet. Offline/fremtidige brukere får da fortsatt banner via versjonssjekken.
+- Kun brukere med aktiv Supabase Realtime-tilkobling og gyldig sesjon mottar tvungen reload. Brukere uten nett eller med avbrutt websocket får oppdateringen først når de kobler til igjen.
+- «Tving umiddelbart» kan medføre tap av ulagret arbeid; confirm-dialogen beholdes.
+- Ingen databaseendringer, ingen nye tabeller, ingen RLS-endringer.
+
 ## Verifisering
 
 - Typecheck.
