@@ -96,6 +96,65 @@ interface UserRole {
 type UnlockedModuleAccess = Record<string, TrainingModuleKey[]>;
 
 // Superadmin er bevisst utelatt — kan ikke tildeles via UI
+/**
+ * Bumper app_version og sender ett broadcast til alle tilkoblede brukere.
+ * Broadcast må sendes på en SUBSCRIBED kanal – ellers leveres den aldri.
+ * Ved forceImmediate markeres versjonen i app_config slik at også brukere
+ * som logger inn senere tvinges til reload uten banner.
+ */
+async function broadcastAppUpdate(forceImmediate: boolean): Promise<string> {
+  // 1. Bump version first so offline users pick it up on reconnect
+  const { data: current } = await supabase
+    .from('app_config')
+    .select('value')
+    .eq('key', 'app_version')
+    .single();
+  const nextVersion = String(Number(current?.value || '0') + 1);
+  const { error: bumpError } = await supabase
+    .from('app_config')
+    .update({ value: nextVersion, updated_at: new Date().toISOString() })
+    .eq('key', 'app_version');
+  if (bumpError) throw bumpError;
+
+  if (forceImmediate) {
+    // Mark this version as forced: anyone with an older local version reloads silently
+    const { error: flagError } = await supabase
+      .from('app_config')
+      .upsert(
+        { key: 'app_version_force_immediate', value: nextVersion, updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+    if (flagError) throw flagError;
+  }
+
+  // 2. Send exactly one broadcast on a subscribed channel
+  const channel = supabase.channel('global-force-reload');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Realtime-tilkobling tok for lang tid')), 5000);
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          clearTimeout(timeout);
+          resolve();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          clearTimeout(timeout);
+          reject(new Error(`Realtime-tilkobling feilet (${status})`));
+        }
+      });
+    });
+    const result = await channel.send({
+      type: 'broadcast',
+      event: 'reload',
+      payload: { forceImmediate, version: nextVersion, timestamp: Date.now() },
+    });
+    if (result !== 'ok') throw new Error(`Broadcast feilet (${result})`);
+  } finally {
+    supabase.removeChannel(channel);
+  }
+
+  return nextVersion;
+}
+
 const availableRoles = [
   { value: "administrator", labelKey: "roles.administrator" },
   { value: "bruker", labelKey: "roles.bruker" },
