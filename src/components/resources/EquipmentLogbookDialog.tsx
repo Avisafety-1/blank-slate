@@ -1023,9 +1023,9 @@ export const EquipmentLogbookDialog = ({
                                   <span className="text-muted-foreground text-xs">{format(entry.date, 'dd.MM.yyyy')}</span>
                                   <div className="flex gap-3 text-xs">
                                     {entry.cycles != null && <span>🔄 {entry.cycles}</span>}
-                                    {entry.health != null && (
-                                      <span className={entry.health < 60 ? 'text-destructive' : entry.health < 80 ? 'text-yellow-600 dark:text-yellow-400' : ''}>
-                                        ❤️ {entry.health}%
+                                    {rowHealth != null && (
+                                      <span className={rowHealthColor}>
+                                        ❤️ {rowHealth}%
                                       </span>
                                     )}
                                   </div>
@@ -1035,7 +1035,7 @@ export const EquipmentLogbookDialog = ({
                                     {entry.tempMax != null && <span>🌡 {entry.tempMax}°C</span>}
                                     {entry.voltageMin != null && <span>⚡ {entry.voltageMin.toFixed(2)}V</span>}
                                     {entry.cellDeviation != null && (
-                                      <span className={entry.cellDeviation > 0.1 ? 'text-destructive' : ''}>
+                                      <span className={levelColorClass(cellDeviationLevel(entry.cellDeviation, batteryConfig))}>
                                         📊 {entry.cellDeviation.toFixed(3)}V
                                       </span>
                                     )}
@@ -1044,7 +1044,9 @@ export const EquipmentLogbookDialog = ({
                                 )}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
+
                         </div>
                       </div>
                     );
