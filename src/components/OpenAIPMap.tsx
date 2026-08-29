@@ -1175,6 +1175,31 @@ export function OpenAIPMap({
       } as any
     );
 
+    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør)
+    const NKOM_WMS_URL = "https://api.nkom.no/geoserverAPI/wms?";
+    const NKOM_ATTRIB = '© <a href="https://nkom.no/dekningskart/" target="_blank" rel="noopener">Nkom</a> – Dekningskart (arealdekning)';
+    const mobildekning4gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
+      layers: "Dekningskart:2023 - 4G arealdekning mobil",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.55,
+      version: "1.3.0",
+      attribution: NKOM_ATTRIB,
+      minZoom: 0,
+      maxZoom: 20,
+    } as any);
+    const mobildekning5gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
+      layers: "Dekningskart:2023 - 5G arealdekning mobil",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.55,
+      version: "1.3.0",
+      attribution: NKOM_ATTRIB,
+      minZoom: 0,
+      maxZoom: 20,
+    } as any);
+
+
     // NAIS skipstrafikk
     if (!map.getPane('naisPane')) {
       map.createPane('naisPane');
