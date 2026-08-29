@@ -39,7 +39,7 @@ const FIELDS = [
   "DETAILS.batterySN","DETAILS.batterySerial","DETAILS.totalTime [s]","DETAILS.totalDistance [m]","DETAILS.maxAltitude [m]","DETAILS.maxHSpeed [m/s]","DETAILS.maxVSpeed [m/s]","DETAILS.maxDistance [m]",
   "DETAILS.sha256Hash","DETAILS.guid",
   // Hardware identifiers (collected for future drone identification — not used for matching yet)
-  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN",
+  "DETAILS.fcSN","DETAILS.rcSN","DETAILS.cameraSN","DETAILS.gimbalSN","SERIAL.aircraftSN","SERIAL.battery","SERIAL.battery2",
   "APP.warn",
 ].join(",");
 
