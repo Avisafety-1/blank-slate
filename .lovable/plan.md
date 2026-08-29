@@ -17,9 +17,11 @@ I `src/pages/Admin.tsx`, begge knappene:
 
 Dette fjerner også den doble sendingen (to kanaler per klikk) som finnes i dag.
 
-## Ingen endring i
+## Ønsket oppførsel (uendret i mottakerlogikken)
 
-- `useForceReload.ts` – mottakerlogikken er riktig: `forceImmediate: true` → umiddelbar `performReload()` (uten banner), `false` → banner.
+- **«Send oppdateringssignal»** (`forceImmediate: false`) → brukere ser fortsatt statuslinjen med «Oppdater nå»-knapp. Ingen tvungen reload.
+- **«Tving umiddelbart»** (`forceImmediate: true`) → appen oppdateres umiddelbart uten varsel/banner hos brukeren.
+- `useForceReload.ts` har allerede riktig logikk for dette – kun sender-siden i `Admin.tsx` må fikses slik at broadcast-meldingen faktisk når frem (subscribe før send).
 - Offline-brukere får fortsatt oppdateringen via versjonssjekken når de kobler til igjen (frivillig banner for dem – det kan ikke tvinges da de ikke er tilkoblet).
 
 ## Verifisering
