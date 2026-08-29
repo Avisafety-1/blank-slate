@@ -48,19 +48,12 @@ import autoTable from "jspdf-autotable";
 import { createPdfDocument, sanitizeForPdf, sanitizeFilenameForPdf, formatDateForPdf, addSignatureToPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { BatteryHealthSettingsDialog } from "@/components/resources/BatteryHealthSettingsDialog";
 import {
-  fetchBatteryTypes,
-  autoMatchBatteryType,
-  persistAutoMatch,
-  resolveBatteryConfig,
   computeBatteryHealth,
   batteryHealthLevel,
   cellDeviationLevel,
   levelColorClass,
-  DEFAULT_BATTERY_CONFIG,
-  type BatteryHealthConfig,
-  type BatteryEquipmentOverrides,
-  type BatteryMatch,
 } from "@/lib/batteryHealth";
+import { useBatteryHealth, type BatteryTrendEntry } from "@/hooks/useBatteryHealth";
 
 interface EquipmentLogbookDialogProps {
   open: boolean;
@@ -70,17 +63,6 @@ interface EquipmentLogbookDialogProps {
   flyvetimer: number;
   equipmentType?: string;
   equipmentSerienummer?: string;
-}
-
-interface BatteryTrendEntry {
-  date: Date;
-  cycles: number | null;
-  health: number | null;
-  tempMin: number | null;
-  tempMax: number | null;
-  voltageMin: number | null;
-  capacityMah: number | null;
-  cellDeviation: number | null;
 }
 
 interface LogEntry {
