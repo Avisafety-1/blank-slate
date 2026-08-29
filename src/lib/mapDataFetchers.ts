@@ -2170,6 +2170,17 @@ const NKOM_LAYERS: Record<'4g' | '5g', string> = {
   '5g': 'Dekningskart:2023 - 5G arealdekning mobil',
 };
 
+// Delt canvas-renderer per band (lazily opprettet). Én renderer per lag
+// holder antallet canvas-elementer nede og gjør rendring av tusenvis av
+// dekningsruter mye raskere enn standard SVG.
+const nkomRenderers: Partial<Record<'4g' | '5g', L.Canvas>> = {};
+function getNkomRenderer(band: '4g' | '5g'): L.Canvas {
+  if (!nkomRenderers[band]) {
+    nkomRenderers[band] = L.canvas({ pane: 'overlayPane', padding: 0.3 });
+  }
+  return nkomRenderers[band]!;
+}
+
 function nkomCoverageColor(p: { val?: number; d0?: number }): { color: string; label: string } {
   const val = Number(p.val ?? 0);
   const d0 = Number(p.d0 ?? 0);
