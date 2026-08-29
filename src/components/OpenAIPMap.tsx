@@ -49,6 +49,7 @@ import {
   fetchActiveAdvisories,
   fetchPilotPositions,
   fetchNaturvernZones,
+  fetchNkomCoverage,
   fetchVernRestrictionZones,
   fetchCaaDroneZones,
   fetchDkDroneZones,
@@ -1653,6 +1654,7 @@ export function OpenAIPMap({
         fetchDkLayers();
         fetchUnifiedLayers();
         fetchObstaclesViewport();
+        fetchNkomLayers();
         fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
       }, 300);
     };
@@ -1665,6 +1667,7 @@ export function OpenAIPMap({
       resetCache('naturvern', naturvernLayer);
       resetCache('vernRestriction', naturvernLayer);
       resetCache('obstacles', obstaclesLayer);
+      nkomLayerMap.forEach(([band, lg]) => resetCache(`nkom:${band}`, lg));
       caaLayerMap.forEach(([layerId, lg]) => resetCache(`caa:${layerId}`, lg));
       dkDroneLayerMap.forEach(([layerId, lg]) => resetCache(`dk:${layerId}`, lg));
       resetCache('dkNature', dkNatureLayer);
@@ -1679,6 +1682,7 @@ export function OpenAIPMap({
       fetchDkLayers();
       fetchUnifiedLayers();
       fetchObstaclesViewport();
+      fetchNkomLayers();
       fetchNotams({ layer: notamLayer, pane: 'notamPane', pinPane: 'notamPinPane', mode: interactiveModeRef.current });
     };
 
@@ -1699,6 +1703,7 @@ export function OpenAIPMap({
       const unifiedMatch = unifiedLayerMap.some(([, lg]) => lg === e.layer);
       if (unifiedMatch) fetchUnifiedLayers();
       if (e.layer === obstaclesLayer) fetchObstaclesViewport();
+      if (nkomLayerMap.some(([, lg]) => lg === e.layer)) fetchNkomLayers();
     });
     // Reset cache + clear features when CAA/DK/kraft/nais lag toggles off, so re-toggle fetches fresh
     map.on('layerremove', (e: any) => {
@@ -1710,6 +1715,8 @@ export function OpenAIPMap({
       if (e.layer === kraftledningerLayer) resetCache('kraft', kraftledningerLayer);
       if (e.layer === naisLayer) resetCache('ais', naisLayer);
       if (e.layer === obstaclesLayer) resetCache('obstacles', obstaclesLayer);
+      const nkomMatch = nkomLayerMap.find(([, lg]) => lg === e.layer);
+      if (nkomMatch) resetCache(`nkom:${nkomMatch[0]}`, nkomMatch[1]);
       if (e.layer === notamLayer) resetCache('notam', notamLayer);
 
       const unifiedMatch = unifiedLayerMap.find(([, lg]) => lg === e.layer);
