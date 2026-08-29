@@ -710,7 +710,7 @@ export const EquipmentLogbookDialog = ({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive shrink-0"
-                                  onClick={() => handleDeleteEntry(log.id)}
+                                  onClick={() => setDeleteConfirm({ open: true, logId: log.id })}
                                 >
                                   <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </Button>
