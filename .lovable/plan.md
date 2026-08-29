@@ -1,44 +1,52 @@
-# Per-batteri-data fra droneloggen (i stedet for "dual battery")
+# Per-batteri-håndtering av droneloggene (erstatter "dual battery"-delingen)
 
-Du har rett i premisset. Slik ser dagens kode og data faktisk ut:
+Du har rett: når `SERIAL.battery` og `SERIAL.battery2` finnes, skal hver pakke behandles som sitt eget batteri, og pakkeantall-delingen blir overflødig for nye logger.
 
-- CSV-parseren i `process-dronelog` leser allerede `BATTERY1.*` og `BATTERY2.*` hver for seg (sykluser, fullCapacity, celleavvik, temp, spenning) og setter et `isDualBattery`-flagg.
-- Men **databasen har bare ett sett batterikolonner** på `flight_logs`: `battery_sn`, `battery_cycles`, `battery_full_capacity_mah`, `battery_health_pct`, `battery_voltage_min_v`, `battery_temp_min_c`, `battery_temp_max_c`, `battery_cell_deviation_max_v`. Per-pakke-verdiene parseres og kastes.
-- Opplastingen (`BatchLogPanel`, `UploadDroneLogDialog`) slår sammen to pakker til én rad: verste spenning/temp/sykluser, laveste kapasitet, og `BATTERY.fullCapacity` som er *summen* av pakkene.
-- Serienummeret kommer fra ett enkelt felt (`DETAILS.batterySN`). I databasen har hver logg nøyaktig ett `battery_sn` — også for M350 (31 logger, snitt 10 072 mAh) og M400 (37 logger, snitt 20 232 mAh).
-- `dji-parse-proxy` (dronelog-API-veien) mapper kun ett `f.battery`-objekt og `details.battery_sn` per frame — den leser ikke en eventuell liste med batterier.
+## Slik er det i dag (verifisert)
 
-Konsekvens i dag: på tomotors-droner får **ett** batteri kreditert kombinert kapasitet (derav 120 % helse), og **det andre batteriet får ingen data i det hele tatt**. "Dual battery"-delingen jeg la inn er en korreksjon av symptomet, ikke av årsaken.
+- CSV-parseren leser allerede `BATTERY1.*` og `BATTERY2.*` (sykluser, fullCapacity, celleavvik, temp, spenning) og setter `isDualBattery`.
+- Vi ber i dag **ikke** om `SERIAL.battery` / `SERIAL.battery2` i feltlisten; vi leser kun `DETAILS.batterySN` / `DETAILS.batterySerial` — ett serienummer per logg.
+- `dji-parse-proxy` mapper kun ett `f.battery`-objekt og `details.battery_sn` per frame.
+- `flight_logs` har bare ett sett batterikolonner (`battery_sn`, `battery_cycles`, `battery_full_capacity_mah`, `battery_health_pct`, `battery_voltage_min_v`, `battery_temp_min_c`, `battery_temp_max_c`, `battery_cell_deviation_max_v`).
+- Følge: på M350 (31 logger, snitt 10 072 mAh) og M400 (37 logger, snitt 20 232 mAh) får ett batteri kombinert kapasitet, og pakke nummer to får ingenting.
 
-Ikke verifisert ennå: om dronelog-APIet faktisk leverer serienummer per pakke. Det avgjør hvor langt vi kan gå, og er derfor første steg.
+## Det som skal bygges
 
-## Steg 1 – Verifiser hva APIet leverer (ingen produksjonsendring)
+### 1. Hent begge serienumrene
 
-- Hent feltlisten fra dronelog-APIet (`GET /fields`, allerede implementert som health-check i `process-dronelog`) og se etter batteri-array eller `BATTERY1/BATTERY2`-serienumre.
-- Kjør en kjent M350/M400-logg gjennom parseren i diagnosemodus og les de eksisterende `[DIAG] Unique battery SN values`-loggene i edge function-loggene.
+- Legg `SERIAL.battery` og `SERIAL.battery2` (samt `BATTERY1/BATTERY2`-feltene vi allerede parser) inn i feltlisten som sendes til dronelog-APIet i `process-dronelog`, `dji-process-single` og `dji-sync-worker`.
+- Utvid `dji-parse-proxy` slik at den mapper serienummer per pakke i stedet for kun `details.battery_sn`.
+- Parseren returnerer en `batteries[]`-liste: `{ index, sn, cycles, fullCapacityMah, healthPct, voltageMin, tempMin, tempMax, cellDeviationMax }`. Ett element for enkeltbatteri, to for tomotors-droner.
+- Feltnavnene verifiseres mot `/fields`-endepunktet før vi låser dem (dokumentasjonen vår lister foreløpig kun `SERIAL.aircraftSN`).
 
-Utfallet bestemmer 2A eller 2B.
+### 2. Lagre én rad per batteri
 
-## Steg 2A – APIet gir SN per pakke (ønsket løsning)
+- Ny tabell `flight_log_batteries`: referanse til `flight_logs`, `battery_index`, `battery_sn`, `equipment_id` (nullbar), sykluser, full/nåværende kapasitet, helse, min spenning, temp min/maks, celleavvik. Selskapsisolering via RLS mot flyloggen, med GRANTs som for øvrige tabeller.
+- `flight_logs` beholder dagens aggregerte felter uendret, slik at eksisterende visninger og eksport ikke brekker.
 
-Én flytur skal skrive **én rad per batteri**.
+### 3. Automatch og opprettelse av begge batteriene ved import
 
-- Ny tabell `flight_log_batteries`: kobling til `flight_logs`, `battery_index` (1/2), `battery_sn`, `cycles`, `full_capacity_mah`, `current_capacity_mah`, `health_pct`, `voltage_min_v`, `temp_min_c`, `temp_max_c`, `cell_deviation_max_v`. Selskaps-isolasjon arves fra flyloggen via RLS, med GRANTs som for øvrige tabeller.
-- `process-dronelog` og `dji-parse-proxy` returnerer en `batteries[]`-liste i stedet for bare aggregatet.
-- Opplastingsflytene skriver radene, og beholder dagens felt på `flight_logs` som aggregat for bakoverkompatibilitet.
-- Batterihelse (`useBatteryHealth`) matcher på `flight_log_batteries.battery_sn` og faller tilbake til `flight_logs.battery_sn` for gamle logger. Hvert batteri får da sin egen kapasitet, sykluser og celleavvik — ingen deling på pakkeantall.
-- "Antall batterier i pakken" beholdes kun som fallback for historiske logger, med tekst som forklarer at nye logger bruker per-batteri-data.
+I opplastingsdialogene (`UploadDroneLogDialog`, `BatchLogPanel`, ventende auto-sync-logger):
 
-## Steg 2B – APIet gir bare ett SN for begge pakkene
+- Vis begge batteriene som hver sin rad med sitt serienummer.
+- Hvert serienummer matches automatisk mot eksisterende utstyr (samme prefiks-/eksakt-logikk som for droner i `droneLogMatching.ts`).
+- Er et serienummer ukjent, tilbys "Opprett batteri" med serienummer, modell foreslått fra dronetypen og selskapstilhørighet — slik at man kan ende opp med to nye batterier fra én logg.
+- Brukeren kan også manuelt velge eksisterende batteri per rad, eller hoppe over.
+- Flytid og loggbokføring skrives til begge valgte batterier, ikke bare det ene.
 
-- Behold per-pakke-målinger (kapasitet, sykluser, celleavvik) fra `BATTERY1/BATTERY2` i egne kolonner, men uten separat serienummer kan de ikke tilskrives to forskjellige utstyrsrader.
-- Da beholdes pakkeantall-delingen som i dag, men helsen regnes ut fra den *enkelte pakkens* `BATTERY1.fullCapacity` når den finnes — mer presist enn å dele summen.
-- Vi noterer i dialogen at DJI-loggen ikke skiller serienummer på tomotors-droner.
+### 4. Batterihelse per batteri
 
-## Migrering av eksisterende data
+- `useBatteryHealth` leser primært `flight_log_batteries` på serienummer; hvert batteri får sin egen kapasitet, sykluser og celleavvik. Ingen deling på pakkeantall.
+- Fallback til `flight_logs` for historiske logger, der pakkeantall-logikken beholdes uendret slik at gammel historikk ikke hopper.
+- "Antall batterier i pakken" i innstillingsdialogen blir merket som fallback for eldre logger, med forklarende tekst.
 
-- Gamle logger endres ikke. Helsen for disse regnes fortsatt ut med pakkeantall-logikken, slik at historikken ikke hopper.
+### 5. Historiske logger
+
+- Ingen omskriving av gamle rader. De vises som i dag.
+- Nye importer og fremtidig auto-sync bruker per-batteri-veien automatisk.
 
 ## Teknisk oppsummering
 
-Berørte filer: `supabase/functions/process-dronelog/index.ts`, `supabase/functions/dji-parse-proxy/index.ts`, `src/components/upload/BatchLogPanel.tsx`, `src/components/UploadDroneLogDialog.tsx`, `src/hooks/useBatteryHealth.ts`, `src/lib/batteryHealth.ts`, batteridialogene under `src/components/resources/`, samt en migrasjon for 2A.
+Berørte filer: `supabase/functions/process-dronelog/index.ts`, `supabase/functions/dji-process-single/index.ts`, `supabase/functions/dji-sync-worker/index.ts`, `supabase/functions/dji-parse-proxy/index.ts`, `supabase/functions/_shared/dji-parser.ts`, `src/components/UploadDroneLogDialog.tsx`, `src/components/upload/BatchLogPanel.tsx`, `src/components/PendingDjiLogsSection.tsx`, `src/lib/droneLogMatching.ts`, `src/hooks/useBatteryHealth.ts`, `src/lib/batteryHealth.ts`, batteridialogene under `src/components/resources/`, i18n (no + en), samt én migrasjon for `flight_log_batteries`.
+
+Rekkefølge: felt-verifisering mot `/fields` → migrasjon → edge functions → import-UI → helseberegning.
