@@ -1175,37 +1175,12 @@ export function OpenAIPMap({
       } as any
     );
 
-    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør)
-    const NKOM_WMS_URL = "https://api.nkom.no/geoserverAPI/wms?";
-    const NKOM_ATTRIB = '© <a href="https://nkom.no/dekningskart/" target="_blank" rel="noopener">Nkom</a> – Dekningskart (arealdekning)';
-    // Nkom-tjenesten rendrer kun mellom skala 1:10 000 og 1:2 500 000 (ca. zoom 8–15).
-    // Utenfor dette returnerer WMS-en tomme bilder, derfor låser vi native zoom-nivåene.
-    const NKOM_MIN_ZOOM = 8;
-    const NKOM_MAX_NATIVE_ZOOM = 15;
-    const mobildekning4gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
-      layers: "Dekningskart:2023 - 4G arealdekning mobil",
-      styles: "",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.55,
-      version: "1.3.0",
-      attribution: NKOM_ATTRIB,
-      minZoom: NKOM_MIN_ZOOM,
-      maxZoom: 20,
-      maxNativeZoom: NKOM_MAX_NATIVE_ZOOM,
-    } as any);
-    const mobildekning5gLayer = L.tileLayer.wms(NKOM_WMS_URL, {
-      layers: "Dekningskart:2023 - 5G arealdekning mobil",
-      styles: "",
-      format: "image/png",
-      transparent: true,
-      opacity: 0.55,
-      version: "1.3.0",
-      attribution: NKOM_ATTRIB,
-      minZoom: NKOM_MIN_ZOOM,
-      maxZoom: 20,
-      maxNativeZoom: NKOM_MAX_NATIVE_ZOOM,
-    } as any);
+    // Nkom mobildekning (arealdekning, ikke sanntid / ikke per operatør).
+    // Rutene hentes som GeoJSON og fargelegges etter dekningsgrad, siden
+    // Nkom sin egen WMS tegner alt i samme grå farge.
+    const mobildekning4gLayer = L.layerGroup();
+    const mobildekning5gLayer = L.layerGroup();
+
 
 
 
