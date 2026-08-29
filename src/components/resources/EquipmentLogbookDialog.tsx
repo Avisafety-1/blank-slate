@@ -808,6 +808,14 @@ export const EquipmentLogbookDialog = ({
 
                     return (
                       <div className="space-y-4">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start gap-2 h-11"
+                          onClick={() => setBatterySettingsOpen(true)}
+                        >
+                          <Settings2 className="w-4 h-4" />
+                          <span className="font-medium">{t('resourceDialogs.batteryHealthSettings.openButton')}</span>
+                        </Button>
                         {/* Summary cards - 4 cols on desktop, 2 on mobile */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                           <div className="border rounded-lg p-3 bg-card">
@@ -821,19 +829,7 @@ export const EquipmentLogbookDialog = ({
                             </p>
                           </div>
                           <div className="border rounded-lg p-3 bg-card">
-                            <div className="flex items-start justify-between gap-1">
-                              <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 -mt-1 -mr-1 shrink-0"
-                                onClick={() => setBatterySettingsOpen(true)}
-                                aria-label={t('resourceDialogs.batteryHealthSettings.title')}
-                                title={t('resourceDialogs.batteryHealthSettings.title')}
-                              >
-                                <Settings2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.health')}</p>
                             <p className={`text-lg font-bold ${healthColor}`}>
                               {latestHealthValue != null ? `${latestHealthValue}%` : '—'}
                             </p>
@@ -843,6 +839,7 @@ export const EquipmentLogbookDialog = ({
                                 : `${firstHealthValue ?? '?'}% → ${latestHealthValue}%${batteryConfig.typeName ? ` · ${batteryConfig.typeName}` : ''}`}
                             </p>
                           </div>
+
 
                           <div className="border rounded-lg p-3 bg-card">
                             <p className="text-xs text-muted-foreground flex items-center gap-1"><Thermometer className="w-3 h-3" /> {t('resourceDialogs.equipmentLogbook.battery.maxTemp')}</p>
