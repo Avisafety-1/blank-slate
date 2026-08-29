@@ -584,22 +584,32 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                         </p>
                       </div>
                     )}
-                    {equipment.battery_health_pct != null && (
-                      <div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.health')}</p>
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium ${equipment.battery_health_pct < 60 ? 'text-destructive' : equipment.battery_health_pct < 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {equipment.battery_health_pct}%
-                          </p>
-                          <div className="flex-1 h-2 rounded-full bg-muted">
-                            <div
-                              className={`h-full rounded-full transition-all ${equipment.battery_health_pct < 60 ? 'bg-destructive' : equipment.battery_health_pct < 80 ? 'bg-yellow-500' : 'bg-emerald-500'}`}
-                              style={{ width: `${Math.min(100, equipment.battery_health_pct)}%` }}
-                            />
+                    {(equipment.battery_health_pct != null || batteryHealth.latestHealth != null) && (() => {
+                      const healthValue = batteryHealth.latestHealth ?? equipment.battery_health_pct ?? null;
+                      const level = batteryHealthLevel(healthValue, batteryHealth.config);
+                      const barColor = level === 'critical' ? 'bg-destructive' : level === 'warn' ? 'bg-yellow-500' : 'bg-emerald-500';
+                      return (
+                        <div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><Heart className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.health')}</p>
+                          <div className="flex items-center gap-2">
+                            <p className={`text-sm font-medium ${levelColorClass(level)}`}>
+                              {healthValue != null ? `${healthValue}%` : '—'}
+                            </p>
+                            {healthValue != null && (
+                              <div className="flex-1 h-2 rounded-full bg-muted">
+                                <div
+                                  className={`h-full rounded-full transition-all ${barColor}`}
+                                  style={{ width: `${Math.min(100, healthValue)}%` }}
+                                />
+                              </div>
+                            )}
                           </div>
+                          {batteryHealth.config.typeName && (
+                            <p className="text-[10px] text-muted-foreground">{batteryHealth.config.typeName}</p>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                     {equipment.battery_full_capacity_mah != null && (
                       <div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1"><Zap className="w-3 h-3" /> {t('resourceDialogs.equipmentDetail.battery.capacity')}</p>
