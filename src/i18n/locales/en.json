@@ -5068,7 +5068,10 @@
         "toastSuccess": "Warning acknowledged — status set to Green",
         "toastFailure": "Could not acknowledge: {{message}}",
         "maintenanceStillActive": "Maintenance warnings are not cleared by acknowledging — they must be closed by inspection or maintenance.",
-        "errorNotAuthorized": "You do not have permission to acknowledge warnings on this resource."
+        "errorNotAuthorized": "You do not have permission to acknowledge warnings on this resource.",
+        "commentLabel": "Comment (optional)",
+        "commentPlaceholder": "Explain why the warning is acknowledged …",
+        "commentNote": "Comment: {{comment}}"
       },
       "inspection": {
         "sectionTitle": "Inspection",

@@ -5070,7 +5070,10 @@
         "toastSuccess": "Advarsel kvittert ut — status satt til Grønn",
         "toastFailure": "Kunne ikke kvittere ut: {{message}}",
         "maintenanceStillActive": "Vedlikeholdsvarsler forsvinner ikke ved kvittering — de må lukkes ved inspeksjon eller vedlikehold.",
-        "errorNotAuthorized": "Du har ikke rettigheter til å kvittere ut advarsler på denne ressursen."
+        "errorNotAuthorized": "Du har ikke rettigheter til å kvittere ut advarsler på denne ressursen.",
+        "commentLabel": "Kommentar (valgfritt)",
+        "commentPlaceholder": "Begrunn hvorfor advarselen kvitteres ut …",
+        "commentNote": "Kommentar: {{comment}}"
       },
       "inspection": {
         "sectionTitle": "Inspeksjon",
