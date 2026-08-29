@@ -3222,7 +3222,21 @@
     "ardupilotReadySelect": "ArduPilot log ready — select it under \"Pending flight logs\" to finish the import.",
     "ardupilotQueued": "ArduPilot log queued and processing in the background. It will appear under \"Pending flight logs\" shortly.",
     "linkedToDrone": "(Linked to drone)",
-    "pilotAutoMatchedFromDrone": "Auto-selected from drone link"
+    "pilotAutoMatchedFromDrone": "Auto-selected from drone link",
+    "warningTitles": {
+      "lowBattery": "Low battery level during flight",
+      "cellDeviation": "Cell deviation detected on battery",
+      "lowBatteryHealth": "Low battery health detected",
+      "highBatteryTemp": "High battery temperature detected",
+      "highAltitude": "High flight altitude detected",
+      "rth": "Return-to-home / failsafe landing triggered",
+      "highVibration": "High vibration detected",
+      "imuClipping": "IMU clipping detected",
+      "failsafe": "Failsafe triggered during flight",
+      "highWind": "Strong wind detected",
+      "signalLoss": "Signal loss detected",
+      "generic": "Warning from flight log"
+    }
   },
   "twoFactor": {
     "title": "Two-Factor Authentication (2FA)",

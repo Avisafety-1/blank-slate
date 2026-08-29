@@ -1967,13 +1967,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       if (!action) continue;
 
       const warning = warnings[i];
-      let title = warning.type === 'low_battery'
-        ? t('dronelog.warningLowBattery', 'Lavt batterinivå under flytur')
-        : warning.type === 'cell_deviation'
-          ? 'Celleavvik registrert på batteri'
-          : warning.type === 'low_battery_health'
-            ? 'Lav batterihelse registrert'
-            : t('dronelog.warningAltitude', 'Advarsel fra flylogg');
+      const warningTitleKeys: Record<string, string> = {
+        low_battery: 'dronelog.warningTitles.lowBattery',
+        cell_deviation: 'dronelog.warningTitles.cellDeviation',
+        low_battery_health: 'dronelog.warningTitles.lowBatteryHealth',
+        high_battery_temp: 'dronelog.warningTitles.highBatteryTemp',
+        high_altitude: 'dronelog.warningTitles.highAltitude',
+        altitude: 'dronelog.warningTitles.highAltitude',
+        rth: 'dronelog.warningTitles.rth',
+        high_vibration: 'dronelog.warningTitles.highVibration',
+        imu_clipping: 'dronelog.warningTitles.imuClipping',
+        failsafe: 'dronelog.warningTitles.failsafe',
+        high_wind: 'dronelog.warningTitles.highWind',
+        signal_loss: 'dronelog.warningTitles.signalLoss',
+      };
+      const titleKey = warningTitleKeys[warning.type];
+      let title = titleKey
+        ? t(titleKey)
+        : (warning.message?.trim() || t('dronelog.warningTitles.generic'));
+
 
       // Save to each selected logbook target
       for (const target of action.targetLogbooks) {
