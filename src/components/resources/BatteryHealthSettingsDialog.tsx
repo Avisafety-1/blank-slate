@@ -235,6 +235,7 @@ export const BatteryHealthSettingsDialog = ({
         return [...rest, saved].sort((a, b) => a.name.localeCompare(b.name));
       });
       setTypeId(saved.id);
+      clearOverrides();
       setTypeEditorMode("closed");
       toast.success(t("resourceDialogs.batteryHealthSettings.typeSaved"));
     } catch (e) {
@@ -280,7 +281,8 @@ export const BatteryHealthSettingsDialog = ({
         const { error } = await (supabase as any)
           .from("equipment")
           .update(payload)
-          .eq("battery_type_id", groupTypeId);
+          .eq("battery_type_id", groupTypeId)
+          .eq("company_id", companyId as string);
         if (error) throw error;
       }
 
@@ -363,7 +365,7 @@ export const BatteryHealthSettingsDialog = ({
                   </Badge>
                 )}
                 <div className="flex gap-2">
-                  <Select value={typeId} onValueChange={setTypeId}>
+                  <Select value={typeId} onValueChange={handleTypeChange}>
                     <SelectTrigger className="h-10 flex-1 min-w-0">
                       <SelectValue />
                     </SelectTrigger>

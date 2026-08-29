@@ -5252,7 +5252,9 @@
       "typeSaveError": "Could not save the battery type",
       "typeDeleted": "Battery type deleted",
       "typeDeleteError": "Could not delete the battery type",
-      "typeNameRequired": "Name is required"
+      "typeNameRequired": "Name is required",
+      "useTypeValues": "Use values from type",
+      "overrideActive": "Custom values for this battery override the values from the battery type."
     }
   },
   "documents": {
