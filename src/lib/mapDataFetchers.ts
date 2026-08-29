@@ -2260,8 +2260,13 @@ export async function fetchNkomCoverage(params: BoundsFetchParams & { band: '4g'
           fillColor: color,
           fillOpacity: 0.35,
         };
+        // Canvas-renderer per band: tusenvis av ruter som SVG-noder gjør
+        // kartet tregt; canvas tegner alle rutene i én operasjon. Klikk og
+        // popups fungerer fortsatt (Leaflet treff-testing på canvas).
+        const renderer = getNkomRenderer(band);
         return L.geoJSON({ type: 'Feature' as const, geometry, properties: p } as any, {
           interactive: mode !== 'routePlanning',
+          renderer,
           pane: 'overlayPane',
           style,
           onEachFeature:
