@@ -30,6 +30,8 @@ import { getStatusColorClasses, calculateUsageStatus, calculateEquipmentMaintena
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
+import { useBatteryHealth } from "@/hooks/useBatteryHealth";
+import { batteryHealthLevel, levelColorClass } from "@/lib/batteryHealth";
 
 interface Equipment {
   id: string;
