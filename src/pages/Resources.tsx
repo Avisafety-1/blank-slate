@@ -740,7 +740,7 @@ const Resources = () => {
                   <div 
                     key={item.id} 
                     data-tour={_eqIdx === 0 ? "resources-equipment-card" : undefined}
-                    className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 hover:bg-background/70"
+                    className="p-3 bg-background/50 rounded-lg border border-border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50 hover:bg-background/70 flex flex-col"
                     onClick={() => {
                       setSelectedEquipment(item);
                       setEquipmentDetailOpen(true);
@@ -769,18 +769,20 @@ const Resources = () => {
                         varsel_oppdrag: item.varsel_oppdrag,
                       }), (item.status as Status) || "Grønn")} />
                     </div>
-                    <EquipmentBatteryIndicators
-                      equipmentId={item.id}
-                      type={item.type}
-                      serienummer={item.serienummer}
-                      internalSerial={item.internal_serial}
-                      companyId={item.company_id ?? companyId}
-                    />
-                    <div className="text-sm space-y-1 mt-2">
+                    <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>
                       {item.neste_vedlikehold && (
                         <p>{t('flight.nextMaintenance')}: {format(new Date(item.neste_vedlikehold), "dd.MM.yyyy")}</p>
                       )}
+                    </div>
+                    <div className="mt-auto">
+                      <EquipmentBatteryIndicators
+                        equipmentId={item.id}
+                        type={item.type}
+                        serienummer={item.serienummer}
+                        internalSerial={item.internal_serial}
+                        companyId={item.company_id ?? companyId}
+                      />
                     </div>
                   </div>
                 ))}
