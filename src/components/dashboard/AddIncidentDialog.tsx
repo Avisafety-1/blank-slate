@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff, Maximize2, Minimize2 } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff, Maximize2, Minimize2, Building2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -73,8 +73,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   // Resource data
   const [companyProfiles, setCompanyProfiles] = useState<Array<{ id: string; full_name?: string | null }>>([]);
-  const [companyDrones, setCompanyDrones] = useState<Array<{ id: string; modell: string; serienummer: string }>>([]);
-  const [companyEquipment, setCompanyEquipment] = useState<Array<{ id: string; navn: string; type: string }>>([]);
+  const [companyDrones, setCompanyDrones] = useState<Array<{ id: string; modell: string; serienummer: string; company_id?: string | null; companies?: { navn?: string | null } | null }>>([]);
+  const [companyEquipment, setCompanyEquipment] = useState<Array<{ id: string; navn: string; type: string; company_id?: string | null; companies?: { navn?: string | null } | null }>>([]);
 
   const [formData, setFormData] = useState({
     tittel: "",
@@ -210,10 +210,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const fetchResourceData = async () => {
     if (!companyId) return;
     try {
+      // Ingen company_id-filter: RLS (synlige selskaper + avdelingssynlighet)
+      // bestemmer hvilke ressurser brukeren faktisk kan se.
       const [profilesRes, dronesRes, equipRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name").eq("company_id", companyId),
-        supabase.from("drones").select("id, modell, serienummer").eq("company_id", companyId).eq("aktiv", true),
-        supabase.from("equipment").select("id, navn, type").eq("company_id", companyId).eq("aktiv", true),
+        supabase.from("profiles").select("id, full_name"),
+        supabase.from("drones").select("id, modell, serienummer, company_id, companies(navn)").eq("aktiv", true),
+        supabase.from("equipment").select("id, navn, type, company_id, companies(navn)").eq("aktiv", true),
       ]);
       setCompanyProfiles(profilesRes.data || []);
       setCompanyDrones(dronesRes.data || []);
@@ -347,8 +349,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     const entryTitle = t('incidents.logbookEntryTitle', { title: incidentTitle });
 
     if (droneId) {
-      await supabase.from("drone_log_entries").insert({
-        company_id: companyId,
+      // Bruk ressursens egen avdeling slik at oppføringen havner i riktig loggbok
+      const droneCompanyId = companyDrones.find(d => d.id === droneId)?.company_id || companyId;
+      const { error: droneLogError } = await supabase.from("drone_log_entries").insert({
+        company_id: droneCompanyId,
         drone_id: droneId,
         entry_date: today,
         entry_type: "hendelse",
@@ -356,11 +360,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         description,
         user_id: user?.id || null,
       });
+      if (droneLogError) console.error("Error creating drone log entry:", droneLogError);
     }
 
     if (equipmentIds.length > 0) {
       const entries = equipmentIds.map(eqId => ({
-        company_id: companyId,
+        company_id: companyEquipment.find(e => e.id === eqId)?.company_id || companyId,
         equipment_id: eqId,
         entry_date: today,
         entry_type: "hendelse",
@@ -368,7 +373,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         description,
         user_id: user?.id || null,
       }));
-      await supabase.from("equipment_log_entries").insert(entries);
+      const { error: eqLogError } = await supabase.from("equipment_log_entries").insert(entries);
+      if (eqLogError) console.error("Error creating equipment log entries:", eqLogError);
     }
   };
 
@@ -918,6 +924,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             >
                               <Check className={cn("mr-2 h-4 w-4", droneId === drone.id ? "opacity-100" : "opacity-0")} />
                               {drone.modell} <span className="text-muted-foreground ml-1 text-xs">({drone.serienummer})</span>
+                              {drone.company_id && drone.company_id !== companyId && drone.companies?.navn && (
+                                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                                  <Building2 className="h-3 w-3" />{drone.companies.navn}
+                                </span>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>
@@ -954,6 +965,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             onCheckedChange={() => toggleEquipment(eq.id)}
                           />
                           {eq.navn} <span className="text-muted-foreground text-xs">({eq.type})</span>
+                          {eq.company_id && eq.company_id !== companyId && eq.companies?.navn && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                              <Building2 className="h-3 w-3" />{eq.companies.navn}
+                            </span>
+                          )}
                         </label>
                       ))}
                       {companyEquipment.length === 0 && (
