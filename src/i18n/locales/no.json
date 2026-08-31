@@ -1268,8 +1268,8 @@
     "notificationSettings": "Varslingsinnstillinger oppdatert",
     "couldNotUpdateSettings": "Kunne ikke oppdatere innstillinger",
     "notificationOptions": {
-      "newIncidents": "E-post ved nye hendelser",
-      "newIncidentsDesc": "Få beskjed når nye hendelser rapporteres",
+      "newIncidents": "E-post ved nye hendelser og avvik",
+      "newIncidentsDesc": "Få e-post når det registreres en ny hendelse eller et nytt avvik",
       "newMissions": "E-post ved nye oppdrag",
       "newMissionsDesc": "Få beskjed når nye oppdrag opprettes",
       "documentExpiry": "E-post når dokumenter nærmer seg utløpsdato",
@@ -8520,7 +8520,7 @@
     "status": {
       "new": "Ny",
       "in_progress": "Under behandling",
-      "closed": "Lukket"
+      "closed": "Ferdigbehandlet"
     },
     "phase": {
       "takeoff": "Take-off",
@@ -8573,6 +8573,10 @@
       "defaultSubject": "Avvik – {{mission}}",
       "requestSubject": "Be om hendelsesrapport – {{mission}}",
       "requestBody": "Hei,\n\nAvviket «{{category}}» fra oppdraget «{{mission}}» bør registreres som en hendelse. Kan du opprette en hendelsesrapport?"
+    },
+    "statusChange": {
+      "success": "Status oppdatert",
+      "error": "Kunne ikke endre status. Kun oppfølgingsansvarlige kan endre status."
     }
   },
   "missionBadges": {
