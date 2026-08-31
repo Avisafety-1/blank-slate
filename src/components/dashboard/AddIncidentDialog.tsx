@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
-import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff, Maximize2, Minimize2 } from "lucide-react";
+import { ImagePlus, X, Check, ChevronsUpDown, ChevronDown, EyeOff, Maximize2, Minimize2, Building2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
