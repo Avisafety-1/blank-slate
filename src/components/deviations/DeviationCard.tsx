@@ -42,9 +42,9 @@ interface Props {
 }
 
 const statusStyles: Record<DeviationStatus, string> = {
-  new: "bg-destructive/15 text-destructive border-destructive/30",
-  in_progress: "bg-warning/15 text-warning border-warning/30",
-  closed: "bg-success/15 text-success border-success/30",
+  new: "bg-destructive/15 text-black border-destructive/30",
+  in_progress: "bg-warning/15 text-black border-warning/30",
+  closed: "bg-success/15 text-black border-success/30",
 };
 
 const scoreTone = (score: number | null) => {
@@ -93,6 +93,11 @@ export const DeviationCard = ({
             <h3 className="font-semibold text-base break-words">
               {categoryMain ? translateDeviationCategory(categoryMain) : t("deviations.card.noCategory")}
             </h3>
+            {report.flight_phase && (
+              <Badge variant="outline" className="text-[11px]">
+                {t(`deviations.phase.${report.flight_phase}`)}
+              </Badge>
+            )}
             {canChangeStatus && onStatusChange ? (
               <Select
                 value={report.status}
@@ -113,11 +118,6 @@ export const DeviationCard = ({
             ) : (
               <Badge variant="outline" className={cn("text-[11px]", statusStyles[report.status])}>
                 {t(`deviations.status.${report.status}`)}
-              </Badge>
-            )}
-            {report.flight_phase && (
-              <Badge variant="outline" className="text-[11px]">
-                {t(`deviations.phase.${report.flight_phase}`)}
               </Badge>
             )}
             {report.incident_id && (
