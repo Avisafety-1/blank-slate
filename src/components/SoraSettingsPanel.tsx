@@ -334,10 +334,10 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
       {/* ── Avanserte oppdragsparametere (collapsed) ── */}
       {selectedDrone && (
-        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="rounded-md border border-border bg-muted/30">
-          <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
-            <span className="text-xs font-medium text-foreground">{t("soraPanel.advancedParams")}</span>
-            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", advancedOpen && "rotate-180")} />
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen} className="rounded-md border border-border bg-secondary shadow-sm">
+          <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2.5 hover:bg-secondary/80 transition-colors">
+            <span className="text-sm font-semibold text-secondary-foreground">{t("soraPanel.advancedParams")}</span>
+            <ChevronDown className={cn("h-4 w-4 text-secondary-foreground transition-transform", advancedOpen && "rotate-180")} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="space-y-3 p-3 pt-0">
