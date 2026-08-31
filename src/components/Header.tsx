@@ -151,14 +151,10 @@ export const Header = () => {
 
           {parentCompanyId && parentCompanyName && parentCompanyName !== companyName && companyName && (
             <div
-              className="flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
-              title={`${parentCompanyName} › ${companyName}`}
+              className="hidden lg:flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
+              title={companyName}
             >
-              <span className="hidden lg:inline text-xs text-muted-foreground truncate">
-                {parentCompanyName}
-              </span>
-              <span className="hidden lg:inline text-xs text-muted-foreground">›</span>
-              <span className="text-xs sm:text-sm font-semibold text-foreground truncate">
+              <span className="text-sm font-semibold text-foreground truncate">
                 {companyName}
               </span>
             </div>
