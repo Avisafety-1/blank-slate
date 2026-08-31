@@ -965,6 +965,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             onCheckedChange={() => toggleEquipment(eq.id)}
                           />
                           {eq.navn} <span className="text-muted-foreground text-xs">({eq.type})</span>
+                          {eq.company_id && eq.company_id !== companyId && eq.companies?.navn && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                              <Building2 className="h-3 w-3" />{eq.companies.navn}
+                            </span>
+                          )}
                         </label>
                       ))}
                       {companyEquipment.length === 0 && (
