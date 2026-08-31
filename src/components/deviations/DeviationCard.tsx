@@ -42,9 +42,9 @@ interface Props {
 }
 
 const statusStyles: Record<DeviationStatus, string> = {
-  new: "bg-destructive/15 text-destructive border-destructive/30",
-  in_progress: "bg-warning/15 text-warning border-warning/30",
-  closed: "bg-success/15 text-success border-success/30",
+  new: "bg-destructive/15 text-black border-destructive/30",
+  in_progress: "bg-warning/15 text-black border-warning/30",
+  closed: "bg-success/15 text-black border-success/30",
 };
 
 const scoreTone = (score: number | null) => {
