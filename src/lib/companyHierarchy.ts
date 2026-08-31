@@ -22,13 +22,18 @@ export async function resolveRootCompanyName(
   });
 
   const targetId: string = (rootId as string | null) ?? companyId;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("companies")
-    .select("name")
+    .select("navn")
     .eq("id", targetId)
     .maybeSingle();
 
-  const name = (data as any)?.name ?? null;
+  // Ikke cache feil (nettverk/RLS) — ellers kan et forbigående problem skjule
+  // selskaps-avhengige kartlag for resten av økten.
+  if (error) return null;
+
+  const name = (data as any)?.navn ?? (data as any)?.name ?? null;
   rootNameCache.set(companyId, name);
   return name;
+
 }
