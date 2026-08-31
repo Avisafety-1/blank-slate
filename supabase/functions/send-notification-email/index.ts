@@ -17,6 +17,7 @@ const corsHeaders = {
 // Types that require an authenticated, company-scoped caller (companyId in body).
 const COMPANY_SCOPED_TYPES = new Set([
   'notify_new_incident',
+  'notify_new_deviation',
   'notify_new_mission',
   'notify_followup_assigned',
   'notify_mission_approval',
