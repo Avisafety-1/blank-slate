@@ -1266,8 +1266,8 @@
     "notificationSettings": "Notification settings updated",
     "couldNotUpdateSettings": "Could not update settings",
     "notificationOptions": {
-      "newIncidents": "Email for new incidents",
-      "newIncidentsDesc": "Get notified when new incidents are reported",
+      "newIncidents": "Email on new incidents and deviations",
+      "newIncidentsDesc": "Get an email when a new incident or deviation is reported",
       "newMissions": "Email for new missions",
       "newMissionsDesc": "Get notified when new missions are created",
       "documentExpiry": "Email when documents are expiring",
@@ -8518,7 +8518,7 @@
     "status": {
       "new": "New",
       "in_progress": "In progress",
-      "closed": "Closed"
+      "closed": "Completed"
     },
     "phase": {
       "takeoff": "Take-off",
@@ -8571,6 +8571,10 @@
       "defaultSubject": "Deviation – {{mission}}",
       "requestSubject": "Request incident report – {{mission}}",
       "requestBody": "Hi,\n\nThe deviation \"{{category}}\" from mission \"{{mission}}\" should be registered as an incident. Could you create an incident report?"
+    },
+    "statusChange": {
+      "success": "Status updated",
+      "error": "Could not change status. Only follow-up responsible users can change status."
     }
   },
   "missionBadges": {

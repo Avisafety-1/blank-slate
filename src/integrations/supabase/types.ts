@@ -9338,6 +9338,10 @@ export type Database = {
           id: string
         }[]
       }
+      set_deviation_status: {
+        Args: { _deviation_id: string; _status: string }
+        Returns: undefined
+      }
       set_resource_status: {
         Args: { _resource_id: string; _resource_type: string; _status: string }
         Returns: string

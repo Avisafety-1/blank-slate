@@ -17,6 +17,7 @@ const corsHeaders = {
 // Types that require an authenticated, company-scoped caller (companyId in body).
 const COMPANY_SCOPED_TYPES = new Set([
   'notify_new_incident',
+  'notify_new_deviation',
   'notify_new_mission',
   'notify_followup_assigned',
   'notify_mission_approval',
@@ -60,6 +61,7 @@ interface EmailRequest {
   excludeUserIds?: string[];
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
+  deviation?: { categoryPath?: string[]; comment?: string | null; flightPhase?: string | null; missionTitle?: string | null; missionLocation?: string | null; reporterName?: string | null; reportedAt?: string | null; };
   mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
@@ -108,7 +110,7 @@ serve(async (req: Request): Promise<Response> => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
     const body: EmailRequest & { dry_run?: boolean; trainingAssigned?: { recipientId: string; courseName: string } } = await req.json();
-    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, flightAlert, dry_run: dryRun } = body;
+    const { recipientId, recipientEmail, notificationType, subject, htmlContent, type, companyId, missionId, campaignId, excludeUserIds = [], newUser, incident, deviation, mission, followupAssigned, approvalMission, pilotComment, missionMention, trainingAssigned, flightAlert, dry_run: dryRun } = body;
     // sentBy is server-set from authenticated caller below — body value is ignored.
     let sentBy: string | undefined;
     const requestLanguage: EmailLanguage = resolveLanguage(req, body as any);
@@ -306,6 +308,82 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
         if (!user?.email) continue;
         await sendEmail({ from: senderAddress, to: user.email, subject: sanitizeSubject(templateResult.subject), html: templateResult.content });
         emailsSent++;
+      }
+      return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    // Handle new deviation report notification (to follow-up responsible users)
+    if (type === 'notify_new_deviation' && companyId && deviation) {
+      const { data: responsibles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('approved', true)
+        .eq('can_be_incident_responsible', true);
+
+      const excluded = new Set((excludeUserIds || []).filter(Boolean));
+      const candidateIds = [...new Set((responsibles || []).map((r: any) => r.id))].filter((id) => !excluded.has(id));
+      if (!candidateIds.length) {
+        return new Response(JSON.stringify({ success: true, emailsSent: 0, message: 'No responsible users' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('user_id')
+        .in('user_id', candidateIds)
+        .eq('email_new_incident', true);
+      const notifyIds = (prefs || []).map((p: any) => p.user_id);
+      if (!notifyIds.length) {
+        return new Response(JSON.stringify({ success: true, emailsSent: 0, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+      }
+
+      const isEn = normalizeLanguage((body as any).language) === 'en';
+      const categoryText = (deviation.categoryPath || []).join(' › ');
+      const phaseLabels: Record<string, { no: string; en: string }> = {
+        takeoff: { no: 'Take-off', en: 'Take-off' },
+        in_flight: { no: 'Under flyging', en: 'In flight' },
+        landing: { no: 'Landing', en: 'Landing' },
+      };
+      const phaseText = deviation.flightPhase ? (isEn ? phaseLabels[deviation.flightPhase]?.en : phaseLabels[deviation.flightPhase]?.no) || deviation.flightPhase : '';
+      const L = isEn
+        ? { title: 'New deviation report', mission: 'Mission', category: 'Category', phase: 'Flight phase', comment: 'Comment', reporter: 'Reported by', time: 'Time', link: 'Open deviations', location: 'Location' }
+        : { title: 'Nytt avvik registrert', mission: 'Oppdrag', category: 'Kategori', phase: 'Kritisk fase', comment: 'Kommentar', reporter: 'Rapportert av', time: 'Tidspunkt', link: 'Åpne avvik', location: 'Lokasjon' };
+
+      const LOGO_URL = 'https://app.avisafe.no/avisafe-logo-text.png';
+      const deviationUrl = 'https://app.avisafe.no/hendelser?tab=deviations';
+      const row = (label: string, value?: string | null) =>
+        value ? `<p style="margin:6px 0;"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>` : '';
+
+      const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;color:#333;line-height:1.6;">
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+  <div style="text-align:center;padding:10px 0 20px;"><img src="${LOGO_URL}" alt="AviSafe" width="180" style="max-width:180px;height:auto;border:0;" /></div>
+  <div style="background:#b45309;color:#fff;padding:16px 20px;border-radius:8px 8px 0 0;"><h1 style="margin:0;font-size:20px;">${escapeHtml(L.title)}</h1></div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 8px 8px;">
+    ${row(L.category, categoryText)}
+    ${row(L.mission, deviation.missionTitle || null)}
+    ${row(L.location, deviation.missionLocation || null)}
+    ${row(L.phase, phaseText || null)}
+    ${row(L.comment, deviation.comment || null)}
+    ${row(L.reporter, deviation.reporterName || null)}
+    ${row(L.time, deviation.reportedAt || null)}
+    <p style="margin-top:20px;"><a href="${deviationUrl}" style="display:inline-block;background:#1e40af;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;">${escapeHtml(L.link)}</a></p>
+  </div>
+</div></body></html>`;
+
+      const emailConfig = await getEmailConfig(companyId);
+      const senderAddress = formatSenderAddress(emailConfig.fromName || 'AviSafe', emailConfig.fromEmail);
+      const subjectLine = sanitizeSubject(`${L.title}${categoryText ? `: ${categoryText}` : ''}`);
+
+      let emailsSent = 0;
+      for (const userId of notifyIds) {
+        try {
+          const { data: { user: authUser } } = await supabase.auth.admin.getUserById(userId);
+          if (!authUser?.email) continue;
+          await sendEmail({ from: senderAddress, to: authUser.email, subject: subjectLine, html });
+          emailsSent++;
+        } catch (e) {
+          console.error('Deviation notification failed for', userId, e);
+        }
       }
       return new Response(JSON.stringify({ success: true, emailsSent }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
