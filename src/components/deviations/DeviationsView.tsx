@@ -116,6 +116,7 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
               }}
               onCreateIncident={(rep) => setIncidentMissionId(rep.mission_id)}
               onOpenMission={openMission}
+              onStatusChange={handleStatusChange}
             />
           ))}
         </div>
