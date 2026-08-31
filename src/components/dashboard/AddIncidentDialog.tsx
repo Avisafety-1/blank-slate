@@ -349,8 +349,10 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
     const entryTitle = t('incidents.logbookEntryTitle', { title: incidentTitle });
 
     if (droneId) {
-      await supabase.from("drone_log_entries").insert({
-        company_id: companyId,
+      // Bruk ressursens egen avdeling slik at oppføringen havner i riktig loggbok
+      const droneCompanyId = companyDrones.find(d => d.id === droneId)?.company_id || companyId;
+      const { error: droneLogError } = await supabase.from("drone_log_entries").insert({
+        company_id: droneCompanyId,
         drone_id: droneId,
         entry_date: today,
         entry_type: "hendelse",
@@ -358,11 +360,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         description,
         user_id: user?.id || null,
       });
+      if (droneLogError) console.error("Error creating drone log entry:", droneLogError);
     }
 
     if (equipmentIds.length > 0) {
       const entries = equipmentIds.map(eqId => ({
-        company_id: companyId,
+        company_id: companyEquipment.find(e => e.id === eqId)?.company_id || companyId,
         equipment_id: eqId,
         entry_date: today,
         entry_type: "hendelse",
