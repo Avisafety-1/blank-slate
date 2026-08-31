@@ -36,6 +36,7 @@ interface Props {
   onRequestIncident: (r: DeviationReport) => void;
   onCreateIncident: (r: DeviationReport) => void;
   onOpenMission: (missionId: string) => void;
+  onStatusChange?: (r: DeviationReport, status: DeviationStatus) => void;
 }
 
 const statusStyles: Record<DeviationStatus, string> = {
