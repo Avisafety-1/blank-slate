@@ -150,7 +150,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
         body: {
           type: "notify_new_deviation",
           companyId,
-          excludeUserIds: [user.id],
+          
           deviation: {
             categoryPath: path.map((p) => translateDeviationCategory(p.label)),
             comment: comment.trim() || null,
