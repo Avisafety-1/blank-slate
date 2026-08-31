@@ -137,28 +137,30 @@ export const Header = () => {
     <header className="bg-card/95 border-b border-glass sticky top-0 pt-[env(safe-area-inset-top)] z-[1100] w-full">
       <div className="w-full px-3 sm:px-4 pt-1 sm:pt-2 pb-2 sm:pb-3">
         <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
-          <Button 
-            variant="ghost" 
-            className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
-            onClick={() => navigate("/")}
-          >
-            <img 
-              src={avisafeLogo} 
-              alt="AviSafe" 
-              className="h-8 sm:h-10 lg:h-12 w-auto max-w-[42vw] sm:max-w-none dark:invert"
-            />
-          </Button>
-
-          {parentCompanyId && parentCompanyName && parentCompanyName !== companyName && companyName && (
-            <div
-              className="hidden md:flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
-              title={companyName}
+          <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+            <Button 
+              variant="ghost" 
+              className="flex items-center hover:bg-transparent p-0 flex-shrink-0"
+              onClick={() => navigate("/")}
             >
-              <span className="text-sm font-semibold text-foreground truncate">
-                {companyName}
-              </span>
-            </div>
-          )}
+              <img 
+                src={avisafeLogo} 
+                alt="AviSafe" 
+                className="h-8 sm:h-10 lg:h-12 w-auto max-w-[42vw] sm:max-w-none dark:invert"
+              />
+            </Button>
+
+            {parentCompanyId && parentCompanyName && parentCompanyName !== companyName && companyName && (
+              <div
+                className="hidden md:flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
+                title={companyName}
+              >
+                <span className="text-sm font-semibold text-foreground truncate">
+                  {companyName}
+                </span>
+              </div>
+            )}
+          </div>
 
 
           
