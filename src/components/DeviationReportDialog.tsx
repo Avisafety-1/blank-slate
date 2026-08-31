@@ -133,7 +133,36 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
       toast.error(`Kunne ikke lagre rapport: ${error.message}`);
     } else {
       toast.success("Avviksrapport lagret");
+      void notifyResponsibles();
       handleClose();
+    }
+  };
+
+  const notifyResponsibles = async () => {
+    if (!missionId || !companyId || !user) return;
+    try {
+      const [{ data: mission }, { data: profile }] = await Promise.all([
+        supabase.from("missions").select("tittel, lokasjon").eq("id", missionId).maybeSingle(),
+        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      ]);
+      await invokeEmailFunction("send-notification-email", {
+        body: {
+          type: "notify_new_deviation",
+          companyId,
+          excludeUserIds: [user.id],
+          deviation: {
+            categoryPath: path.map((p) => translateDeviationCategory(p.label)),
+            comment: comment.trim() || null,
+            flightPhase: flightPhase,
+            missionTitle: (mission as any)?.tittel ?? null,
+            missionLocation: (mission as any)?.lokasjon ?? null,
+            reporterName: (profile as any)?.full_name ?? null,
+            reportedAt: new Date().toLocaleString("nb-NO"),
+          },
+        },
+      });
+    } catch (e) {
+      console.error("[DeviationReport] notification failed", e);
     }
   };
 
