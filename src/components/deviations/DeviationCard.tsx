@@ -62,8 +62,11 @@ export const DeviationCard = ({
   onRequestIncident,
   onCreateIncident,
   onOpenMission,
+  onStatusChange,
 }: Props) => {
   const { t, i18n } = useTranslation();
+  const { canBeIncidentResponsible } = useAuth() as any;
+  const canChangeStatus = !!canBeIncidentResponsible;
   const dateLocale = i18n.language === "en" ? enUS : nb;
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(report.comment_count);
