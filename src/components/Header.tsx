@@ -151,7 +151,7 @@ export const Header = () => {
 
           {parentCompanyId && parentCompanyName && parentCompanyName !== companyName && companyName && (
             <div
-              className="hidden lg:flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
+              className="hidden md:flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
               title={companyName}
             >
               <span className="text-sm font-semibold text-foreground truncate">
