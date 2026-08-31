@@ -87,9 +87,28 @@ export const DeviationCard = ({
             <h3 className="font-semibold text-base break-words">
               {categoryMain ? translateDeviationCategory(categoryMain) : t("deviations.card.noCategory")}
             </h3>
-            <Badge variant="outline" className={cn("text-[11px]", statusStyles[report.status])}>
-              {t(`deviations.status.${report.status}`)}
-            </Badge>
+            {canChangeStatus && onStatusChange ? (
+              <Select
+                value={report.status}
+                onValueChange={(v) => onStatusChange(report, v as DeviationStatus)}
+              >
+                <SelectTrigger
+                  className={cn("h-7 w-auto min-w-[150px] text-[11px] px-2 py-0", statusStyles[report.status])}
+                  aria-label={t("deviations.edit.status")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">{t("deviations.status.new")}</SelectItem>
+                  <SelectItem value="in_progress">{t("deviations.status.in_progress")}</SelectItem>
+                  <SelectItem value="closed">{t("deviations.status.closed")}</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <Badge variant="outline" className={cn("text-[11px]", statusStyles[report.status])}>
+                {t(`deviations.status.${report.status}`)}
+              </Badge>
+            )}
             {report.flight_phase && (
               <Badge variant="outline" className="text-[11px]">
                 {t(`deviations.phase.${report.flight_phase}`)}
