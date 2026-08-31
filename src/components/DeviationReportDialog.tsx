@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
 import { translateDeviationCategory } from "@/lib/i18nHelpers";
+import { invokeEmailFunction } from "@/lib/emailInvoke";
 
 interface Category {
   id: string;
