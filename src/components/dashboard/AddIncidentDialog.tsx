@@ -924,6 +924,11 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
                             >
                               <Check className={cn("mr-2 h-4 w-4", droneId === drone.id ? "opacity-100" : "opacity-0")} />
                               {drone.modell} <span className="text-muted-foreground ml-1 text-xs">({drone.serienummer})</span>
+                              {drone.company_id && drone.company_id !== companyId && drone.companies?.navn && (
+                                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                                  <Building2 className="h-3 w-3" />{drone.companies.navn}
+                                </span>
+                              )}
                             </CommandItem>
                           ))}
                         </CommandGroup>
