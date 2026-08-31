@@ -373,7 +373,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         description,
         user_id: user?.id || null,
       }));
-      await supabase.from("equipment_log_entries").insert(entries);
+      const { error: eqLogError } = await supabase.from("equipment_log_entries").insert(entries);
+      if (eqLogError) console.error("Error creating equipment log entries:", eqLogError);
     }
   };
 
