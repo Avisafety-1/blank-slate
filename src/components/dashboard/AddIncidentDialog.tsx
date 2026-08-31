@@ -73,8 +73,8 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
 
   // Resource data
   const [companyProfiles, setCompanyProfiles] = useState<Array<{ id: string; full_name?: string | null }>>([]);
-  const [companyDrones, setCompanyDrones] = useState<Array<{ id: string; modell: string; serienummer: string }>>([]);
-  const [companyEquipment, setCompanyEquipment] = useState<Array<{ id: string; navn: string; type: string }>>([]);
+  const [companyDrones, setCompanyDrones] = useState<Array<{ id: string; modell: string; serienummer: string; company_id?: string | null; companies?: { navn?: string | null } | null }>>([]);
+  const [companyEquipment, setCompanyEquipment] = useState<Array<{ id: string; navn: string; type: string; company_id?: string | null; companies?: { navn?: string | null } | null }>>([]);
 
   const [formData, setFormData] = useState({
     tittel: "",
