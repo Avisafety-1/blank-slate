@@ -61,6 +61,7 @@ interface EmailRequest {
   excludeUserIds?: string[];
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
+  deviation?: { categoryPath?: string[]; comment?: string | null; flightPhase?: string | null; missionTitle?: string | null; missionLocation?: string | null; reporterName?: string | null; reportedAt?: string | null; };
   mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
