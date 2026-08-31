@@ -210,10 +210,12 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
   const fetchResourceData = async () => {
     if (!companyId) return;
     try {
+      // Ingen company_id-filter: RLS (synlige selskaper + avdelingssynlighet)
+      // bestemmer hvilke ressurser brukeren faktisk kan se.
       const [profilesRes, dronesRes, equipRes] = await Promise.all([
-        supabase.from("profiles").select("id, full_name").eq("company_id", companyId),
-        supabase.from("drones").select("id, modell, serienummer").eq("company_id", companyId).eq("aktiv", true),
-        supabase.from("equipment").select("id, navn, type").eq("company_id", companyId).eq("aktiv", true),
+        supabase.from("profiles").select("id, full_name"),
+        supabase.from("drones").select("id, modell, serienummer, company_id, companies(navn)").eq("aktiv", true),
+        supabase.from("equipment").select("id, navn, type, company_id, companies(navn)").eq("aktiv", true),
       ]);
       setCompanyProfiles(profilesRes.data || []);
       setCompanyDrones(dronesRes.data || []);
