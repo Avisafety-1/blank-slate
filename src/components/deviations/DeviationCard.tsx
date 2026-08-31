@@ -93,6 +93,11 @@ export const DeviationCard = ({
             <h3 className="font-semibold text-base break-words">
               {categoryMain ? translateDeviationCategory(categoryMain) : t("deviations.card.noCategory")}
             </h3>
+            {report.flight_phase && (
+              <Badge variant="outline" className="text-[11px]">
+                {t(`deviations.phase.${report.flight_phase}`)}
+              </Badge>
+            )}
             {canChangeStatus && onStatusChange ? (
               <Select
                 value={report.status}
@@ -113,11 +118,6 @@ export const DeviationCard = ({
             ) : (
               <Badge variant="outline" className={cn("text-[11px]", statusStyles[report.status])}>
                 {t(`deviations.status.${report.status}`)}
-              </Badge>
-            )}
-            {report.flight_phase && (
-              <Badge variant="outline" className="text-[11px]">
-                {t(`deviations.phase.${report.flight_phase}`)}
               </Badge>
             )}
             {report.incident_id && (
