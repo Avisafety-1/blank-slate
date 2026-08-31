@@ -148,6 +148,23 @@ export const Header = () => {
               className="h-8 sm:h-10 lg:h-12 w-auto max-w-[42vw] sm:max-w-none dark:invert"
             />
           </Button>
+
+          {parentCompanyId && parentCompanyName && parentCompanyName !== companyName && companyName && (
+            <div
+              className="flex items-center gap-1 min-w-0 max-w-[35vw] lg:max-w-[420px] px-2 py-1 rounded-md bg-muted/60 border border-glass"
+              title={`${parentCompanyName} › ${companyName}`}
+            >
+              <span className="hidden lg:inline text-xs text-muted-foreground truncate">
+                {parentCompanyName}
+              </span>
+              <span className="hidden lg:inline text-xs text-muted-foreground">›</span>
+              <span className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                {companyName}
+              </span>
+            </div>
+          )}
+
+
           
           {/* Mobile company selector and menu */}
           <div className="flex items-center justify-end gap-0.5 lg:hidden flex-1 min-w-0 flex-wrap overflow-visible">
