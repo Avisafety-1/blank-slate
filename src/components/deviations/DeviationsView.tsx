@@ -39,6 +39,19 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
     setMissionDetail(data);
   };
 
+  const handleStatusChange = async (report: DeviationReport, status: DeviationStatus) => {
+    const { error } = await (supabase as any).rpc("set_deviation_status", {
+      _deviation_id: report.id,
+      _status: status,
+    });
+    if (error) {
+      toast.error(t("deviations.statusChange.error"));
+      return;
+    }
+    toast.success(t("deviations.statusChange.success"));
+    refetch();
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return reports.filter((r) => {
