@@ -355,20 +355,33 @@ export const BatchLogPanel = ({
       if (extFields.dronelog_sha256) {
         const { data: dup } = await supabase
           .from("flight_logs")
-          .select("id")
+          .select("id, dji_log_id, dji_file_name")
           .eq("company_id", companyId)
           .eq("dronelog_sha256", extFields.dronelog_sha256)
           .limit(1)
           .maybeSingle();
         if (dup) {
+          // Selvlæring: merk den eksisterende flyloggen med DJI-ID/filnavn slik at
+          // den blir filtrert bort fra DJI-listen heretter.
+          const learnedId = row.log.dji_log_id && /^\d+$/.test(String(row.log.dji_log_id))
+            ? String(row.log.dji_log_id)
+            : null;
+          const learnedFile = ((row.log.parsed_result as any)?.djiFileName || "").trim() || null;
+          const patch: Record<string, string> = {};
+          if (learnedId && !(dup as any).dji_log_id) patch.dji_log_id = learnedId;
+          if (learnedFile && !(dup as any).dji_file_name) patch.dji_file_name = learnedFile;
+          if (Object.keys(patch).length > 0) {
+            await supabase.from("flight_logs").update(patch as any).eq("id", (dup as any).id);
+          }
           // Mark pending log approved against existing
           await supabase.from("pending_dji_logs")
             .update({ status: "approved", processed_flight_log_id: (dup as any).id })
             .eq("id", row.pendingLogId);
-          updateRow(row.pendingLogId, { status: "saved", errorMessage: "Allerede importert" });
+          updateRow(row.pendingLogId, { status: "saved", errorMessage: "Allerede importert – merket, skjules heretter" });
           return true;
         }
       }
+
 
       // Determine mission: existing chosen, or auto-create
       let missionId = row.missionId || null;

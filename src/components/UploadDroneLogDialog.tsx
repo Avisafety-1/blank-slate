@@ -1064,7 +1064,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         // 2. SHA-256 dedup check (pending_dji_logs + flight_logs)
         if (data.sha256Hash) {
-          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId);
+          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId, null, bulkFiles[i]?.name || null);
+
           if (isDup) {
             results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
             setBulkResults([...results]);
@@ -1188,7 +1189,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         // 2. SHA-256 dedup check
         if (data.sha256Hash) {
-          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId);
+          const isDup = await checkDuplicateAll(data.sha256Hash, localCompanyId, selectedLogs[i]?.id ?? null, selectedLogs[i]?.fileName ?? null);
           if (isDup) {
             results[i] = { ...results[i], status: 'duplicate', durationMinutes: data.durationMinutes, droneModel: data.aircraftName || data.droneType || undefined };
             setBulkResults([...results]);
@@ -1279,16 +1280,42 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
 
-  const checkDuplicateAll = async (sha256: string, cid: string): Promise<boolean> => {
+  /**
+   * Selvlæring ved duplikat: skriv DJI-ID/filnavn på en eksisterende flylogg som mangler dem,
+   * slik at loggen filtreres bort fra DJI-listen ved neste listing.
+   */
+  const learnDjiIdentifiers = async (
+    row: { id: string; dji_log_id?: string | null; dji_file_name?: string | null },
+    djiLogId?: string | null,
+    fileName?: string | null,
+  ) => {
+    const learnedId = djiLogId && /^\d+$/.test(String(djiLogId)) ? String(djiLogId) : null;
+    const learnedFile = (fileName || '').trim().startsWith('DJIFlightRecord') ? (fileName || '').trim() : null;
+    const patch: Record<string, string> = {};
+    if (learnedId && !row.dji_log_id) patch.dji_log_id = learnedId;
+    if (learnedFile && !row.dji_file_name) patch.dji_file_name = learnedFile;
+    if (Object.keys(patch).length === 0) return;
+    await (supabase.from('flight_logs') as any).update(patch).eq('id', row.id);
+  };
+
+  const checkDuplicateAll = async (
+    sha256: string,
+    cid: string,
+    djiLogId?: string | null,
+    fileName?: string | null,
+  ): Promise<boolean> => {
     if (!cid || !sha256) return false;
     // Check flight_logs
     const { data: flData } = await (supabase
       .from('flight_logs')
-      .select('id')
+      .select('id, dji_log_id, dji_file_name')
       .eq('company_id', cid) as any)
       .eq('dronelog_sha256', sha256)
       .limit(1);
-    if (flData && flData.length > 0) return true;
+    if (flData && flData.length > 0) {
+      await learnDjiIdentifiers(flData[0], djiLogId, fileName);
+      return true;
+    }
     // Check pending_dji_logs
     const { data: pdData } = await supabase
       .from('pending_dji_logs')
@@ -1298,6 +1325,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .limit(1);
     return !!(pdData && pdData.length > 0);
   };
+
 
   const enrichLogsWithPilots = async (logs: any[]): Promise<MatchedFlightLog[]> => {
     if (!logs || logs.length === 0) return [];
