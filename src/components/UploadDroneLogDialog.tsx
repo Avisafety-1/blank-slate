@@ -1743,15 +1743,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .order('tidspunkt', { ascending: true });
 
     if (missions && missions.length > 0) {
-      // Sort by closest to flight start
-      const sorted = [...missions].sort((a, b) => {
-        const diffA = Math.abs(new Date(a.tidspunkt).getTime() - flightStart!.getTime());
-        const diffB = Math.abs(new Date(b.tidspunkt).getTime() - flightStart!.getTime());
-        return diffA - diffB;
-      });
-      console.log('[DroneLog] Found', sorted.length, 'matching missions');
+      // Second rule: when several missions match on date, prefer the one that has
+      // the log's drone linked (mission_drones). Time distance decides within each group.
+      let missionDroneIds: Record<string, string[]> = {};
+      if (droneIdHint && missions.length > 1) {
+        const { data: md } = await supabase
+          .from('mission_drones')
+          .select('mission_id, drone_id')
+          .in('mission_id', missions.map(m => m.id));
+        (md || []).forEach((row: any) => {
+          (missionDroneIds[row.mission_id] ||= []).push(row.drone_id);
+        });
+      }
+      const { sorted, bestId, droneMatchIds } = pickBestMission(
+        missions,
+        missionDroneIds,
+        droneIdHint,
+        flightStart,
+      );
+      console.log('[DroneLog] Found', sorted.length, 'matching missions;', droneMatchIds.length, 'match on drone');
       setMatchedMissions(sorted);
-      setSelectedMissionId(sorted[0].id); // Pre-select closest
+      setDroneMatchedMissionIds(droneMatchIds);
+      if (bestId) setSelectedMissionId(bestId);
 
       // Fetch all existing flight logs for matched missions so user can choose
       const missionIds = sorted.map(m => m.id);
