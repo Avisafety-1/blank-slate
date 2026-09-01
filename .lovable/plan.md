@@ -1,42 +1,26 @@
-# Hvorfor ingen logger merkes som «allerede importert» for hauggard@gmail.com
+# DJI-importfiltrering: behold dagens oppførsel
 
-## Hva loggene faktisk viser
+Konklusjon etter undersøkelse: ingenting er ødelagt, og ingen endring gjøres i koden.
 
-Edge function-loggene for `process-dronelog` i dag:
+## Hva som faktisk skjedde
 
-```text
-16:31  annotate: 110 logger, 57 kjente   (support@avisafe.no)
-16:38  annotate: 110 logger,  0 kjente   (hauggard@gmail.com)
-16:39  annotate: 110 logger,  0 kjente
-16:40  annotate: 110 logger,  0 kjente
-```
+- `hauggard@gmail.com` stod i selskapet Elverum Videregående Skole, mens DJI-kontoen (rikardvb@gmail.com) sine flyturer er importert til Avisafe.
+- Annoteringen kjørte riktig, men fant null treff: `110 logger, 0 kjente, 0 selvlært, 0 pending-selvlært`.
+- Elverum har fortsatt 0 rader med `dji_file_name` og ingen nye flylogger siste døgn. De 58 pending-loggene og 12 synkjobbene fra i dag ble laget kl. 11:00 UTC av Elverums egne brukere, før innloggingen.
+- I Avisafe-selskapet filtreres loggene som forventet.
 
-Annoteringen kjører altså helt riktig — den finner bare ingen treff.
+## Hva annoteringen skriver (og ikke skriver)
 
-Årsaken er en ren selskaps-mismatch:
+Skriver, kun ved treff og kun på tomme felt:
 
-- `hauggard@gmail.com` har profil-selskap **Elverum Videregående Skole**.
-- DJI-kontoen som er lagret på brukeren er **rikardvb@gmail.com**, og den credential-raden peker på selskapet **Avisafe**.
-- De 110 loggene i listen er rikardvb sine flyturer, og de er importert til **Avisafe / Moderavdeling** — ikke til Elverum.
-- Elverum har 218 egne flylogger (101 med `dji_log_id`), men de kommer fra andre DJI-kontoer (sverrerass@hotmail.com / martinsm93@gmail.com) og finnes ikke i denne listen.
+- `flight_logs.dji_log_id`
+- `flight_logs.dji_file_name`
+- `pending_dji_logs.dji_log_id`
 
-Så: null treff er teknisk korrekt gitt dagens regel «filtrer kun innenfor eget selskap + mor + avdelinger». Det er igjen superadmin-unntaket der én DJI-konto brukes på tvers av flere selskaper.
+Skriver aldri: nye flylogger, flytid, dato, drone, batteri, loggbokoppføringer. Sletter ingenting.
 
-## Forslag: ta med selskapet som DJI-kontoen er knyttet til
+Treff krever ett av: samme DJI-ID, samme filnavn, eller starttid innen ±3 min og varighet innen ±2 min — og alltid innenfor eget selskap + moderselskap + avdelinger.
 
-Minimal og trygg utvidelse som ikke endrer noe for vanlige brukere:
+## Beslutning
 
-Når vi bygger selskapsomfanget i annoteringen, legg til `company_id` fra brukerens rad i `dji_credentials` (pluss dens mor/avdelinger), i tillegg til profil-selskapet.
-
-- For vanlige brukere er `dji_credentials.company_id` identisk med profil-selskapet → ingen endring i oppførsel i det hele tatt.
-- For superadmin som bruker samme DJI-konto på flere selskaper vil loggene som allerede er importert i det selskapet DJI-kontoen ble knyttet til, bli gjenkjent og filtrert bort.
-
-Alternativt (hvis du heller vil beholde dagens strenge regel): la det stå som det er, og godta at listen ikke filtreres når du tester fra et selskap som ikke eier importene.
-
-## Teknisk
-
-Fil: `supabase/functions/process-dronelog/index.ts`, funksjonen `annotateDjiImportStates`.
-
-- Signaturen tar i dag kun `companyId`. Utvid til å slå opp `dji_credentials.company_id` for den innloggede brukeren (service client) og legg denne inn i `companyIds`-settet før mor/barn-oppslaget, slik at mor/avdelinger også utledes for den.
-- Ingen endringer i RLS, tabeller, kolonner eller matchings-toleranser (`±3 min` start, `±2 min` varighet). Selvlæringen av `dji_log_id`/`dji_file_name` fungerer som før, men vil nå også kunne treffe rader i credential-selskapet.
-- Ingen frontend-endringer nødvendig; `importState` og «Se alle»-bryteren fungerer uendret.
+Dagens selskapsavgrensning beholdes uendret. Ingen filer endres.
