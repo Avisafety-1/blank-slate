@@ -40,7 +40,7 @@ Når en pending-rad signaturmatches, lagres listens `dji_log_id` på pending-rad
 
 ## Teknisk
 
-- Data: én `UPDATE`-spørring for tilbakeføringen (ca. 263 rader).
+- Ingen dataendringer i denne omgang — ingen blind ID-tilbakeføring.
 - Kode: `src/components/UploadDroneLogDialog.tsx`, `src/components/upload/BatchLogPanel.tsx`, `supabase/functions/process-dronelog/index.ts`.
 - i18n: nye/endrede nøkler for duplikatmeldingen i både `no.json` og `en.json`.
 - Ingen endringer i RLS, tilgangsregler eller databaseskjema.
@@ -48,5 +48,5 @@ Når en pending-rad signaturmatches, lagres listens `dji_log_id` på pending-rad
 ## Verifisering
 
 - Kjør TypeScript-sjekk og `deno check` for `process-dronelog`.
-- Kontroller i databasen at antall flylogger med `dji_log_id` øker etter tilbakeføringen, og at ingen andre felter er rørt.
 - I preview: åpne DJI-listen, bekreft at flere logger skjules som standard, og at en logg som fortsatt dukker opp og gir «allerede importert» forsvinner permanent etter ett forsøk.
+- Kontroller i databasen at `dji_file_name` fylles ut på tidligere tomme flylogger etter listing/duplikattreff.
