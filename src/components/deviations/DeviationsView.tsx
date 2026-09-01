@@ -175,6 +175,14 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
           defaultMissionId={incidentMissionId}
         />
       )}
+
+      <DeviationReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        missionId={null}
+        flightLogId={null}
+        onDone={refetch}
+      />
     </div>
   );
 };
