@@ -50,6 +50,10 @@ interface RowState {
   missionId: string;
   missionUserOverride: boolean;
   autoMatchedMissionId: string | null;
+  /** mission_id -> drone_ids linked to that mission (same-day candidates) */
+  missionDroneMap?: Record<string, string[]>;
+  /** true when the auto-selected mission was chosen because it has this log's drone */
+  missionMatchedOnDrone?: boolean;
   autoMatchedDroneId: string | null;
   autoMatchedPilotId: string | null;
   pilotUserOverride: boolean;
