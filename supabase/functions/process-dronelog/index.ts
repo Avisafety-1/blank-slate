@@ -145,7 +145,7 @@ async function tryFlyParser(
     const form = new FormData();
     form.append(
       "file",
-      new Blob([fileBytes], { type: "application/octet-stream" }),
+      new Blob([fileBytes as BlobPart], { type: "application/octet-stream" }),
       fileName,
     );
     form.append("fields", fields.join(","));
