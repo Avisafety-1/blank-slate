@@ -148,7 +148,24 @@ async function annotateDjiImportStates(
     }) || null;
   };
 
+  // Signaturmatch mot pending-køen (samme toleranser) når ID-en er en annen.
+  const pendingSignatureMatch = (l: any): any | null => {
+    const startMs = listLogStartMs(l);
+    if (startMs === null) return null;
+    const durMin = listLogDurationMin(l);
+    return pendingSignatureRows.find((r: any) => {
+      const rowStart = new Date(r.flight_date).getTime();
+      if (isNaN(rowStart)) return false;
+      if (Math.abs(rowStart - startMs) > MATCH_START_TOLERANCE_MS) return false;
+      if (durMin !== null && r.duration_seconds != null) {
+        if (Math.abs(r.duration_seconds / 60 - durMin) > MATCH_DURATION_TOLERANCE_MIN) return false;
+      }
+      return true;
+    }) || null;
+  };
+
   const learnUpdates: Array<{ id: string; dji_log_id?: string; dji_file_name?: string }> = [];
+  const pendingLearnUpdates: Array<{ id: string; dji_log_id: string }> = [];
 
   const annotated = logs.map((l) => {
     const id = String(l.id);
@@ -171,6 +188,16 @@ async function annotateDjiImportStates(
         if (!match.dji_log_id) upd.dji_log_id = id;
         if (!match.dji_file_name && fileName) upd.dji_file_name = fileName;
         if (upd.dji_log_id || upd.dji_file_name) learnUpdates.push(upd);
+      } else {
+        const pMatch = pendingSignatureMatch(l);
+        if (pMatch) {
+          state = pMatch.status === "approved"
+            ? "imported"
+            : pMatch.status === "dismissed"
+            ? "dismissed"
+            : "pending";
+          if (!pMatch.dji_log_id) pendingLearnUpdates.push({ id: pMatch.id, dji_log_id: id });
+        }
       }
     }
     return { ...l, importState: state };
@@ -183,10 +210,16 @@ async function annotateDjiImportStates(
       await serviceClient.from("flight_logs").update(fields).eq("id", id);
     } catch (_) { /* ignorer */ }
   }
+  for (const upd of pendingLearnUpdates.slice(0, 200)) {
+    try {
+      await serviceClient.from("pending_dji_logs").update({ dji_log_id: upd.dji_log_id }).eq("id", upd.id);
+    } catch (_) { /* ignorer */ }
+  }
 
-  console.log(`[process-dronelog] annotate: ${annotated.length} logger, ${annotated.filter((a) => a.importState !== "importable").length} kjente, ${learnUpdates.length} selvlært`);
+  console.log(`[process-dronelog] annotate: ${annotated.length} logger, ${annotated.filter((a) => a.importState !== "importable").length} kjente, ${learnUpdates.length} selvlært, ${pendingLearnUpdates.length} pending-selvlært`);
   return annotated;
 }
+
 
 
 /**
