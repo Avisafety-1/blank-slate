@@ -533,7 +533,7 @@ Deno.serve(async (req) => {
       }
       const password = await decryptPassword(cred.dji_password_encrypted);
       const recovered = await djiLoginWithKeyRecovery(serviceClient, {
-        resolved: resolvedKey,
+        resolved: resolvedKey!,
         userId: pendingLog.user_id,
         companyId: pendingLog.company_id,
         email: cred.dji_email,
