@@ -392,7 +392,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-  const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(true);
+  // Av som standard: permanent kobling skal være et bevisst valg, ellers samler
+  // batterier opp koblinger til alle droner de har fløyet med ved hver import.
+  const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(false);
 
   const [logToLogbooks, setLogToLogbooks] = useState(true);
   const [logbookOpen, setLogbookOpen] = useState(true);
@@ -1853,25 +1855,29 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       eq => selectedEquipment.includes(eq.id) && isBatteryType(eq.type)
     );
     if (batteryEquipment.length === 0) return;
+    // Ingen permanent kobling og ingen historikkstøy med mindre brukeren aktivt
+    // har valgt det. Selve flyturen logges uansett i begge loggbøker.
+    if (!linkBatteryToDrone) return;
 
-    // Permanent link on drone card (only when user opted in)
-    if (linkBatteryToDrone) {
-      try {
-        const rows = batteryEquipment.map(b => ({
-          drone_id: selectedDroneId,
-          equipment_id: b.id,
-        }));
-        await (supabase as any)
-          .from('drone_equipment')
-          .upsert(rows, { onConflict: 'drone_id,equipment_id', ignoreDuplicates: true });
-      } catch (err) {
-        console.error('Failed to link battery to drone:', err);
-      }
-    }
-
-    // Audit history (kept regardless of opt-in)
     for (const bat of batteryEquipment) {
       try {
+        // Finnes koblingen allerede? Da skal det ikke skrives ny historikk.
+        const { data: existingLink } = await (supabase as any)
+          .from('drone_equipment')
+          .select('drone_id')
+          .eq('drone_id', selectedDroneId)
+          .eq('equipment_id', bat.id)
+          .maybeSingle();
+
+        if (!existingLink) {
+          await (supabase as any)
+            .from('drone_equipment')
+            .upsert(
+              [{ drone_id: selectedDroneId, equipment_id: bat.id }],
+              { onConflict: 'drone_id,equipment_id', ignoreDuplicates: true },
+            );
+        }
+
         const { data: latest } = await supabase
           .from('drone_equipment_history')
           .select('action')
@@ -1879,7 +1885,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           .eq('item_id', bat.id)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (latest && latest.length > 0 && latest[0].action === 'added') continue;
+        if (existingLink || (latest && latest.length > 0 && latest[0].action === 'added')) continue;
         await supabase.from('drone_equipment_history').insert({
           drone_id: selectedDroneId,
           company_id: companyId,
