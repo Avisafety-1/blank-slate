@@ -4150,7 +4150,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             ) : (
               <div className="space-y-2">
                 {/* Select all + bulk import button */}
-                <div className="flex items-center justify-between pb-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-1 min-w-0">
                   <label className="flex items-center gap-2 cursor-pointer text-sm">
                     <Checkbox
                       checked={visibleImportableLogs.length > 0 && selectedDjiLogIds.size === visibleImportableLogs.length && Array.from(selectedDjiLogIds).every(id => visibleImportableLogs.some(l => l.id === id))}
