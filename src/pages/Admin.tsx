@@ -1670,6 +1670,26 @@ const Admin = () => {
                                 </Tooltip>
                               )}
                               
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setUserActive(profile.id, profile.full_name, profile.is_active !== false)}
+                                    disabled={!canManageRoles}
+                                    className="h-10 px-3"
+                                  >
+                                    {profile.is_active === false ? (
+                                      <UserCheck className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                      <UserX className="w-4 h-4 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {profile.is_active === false ? t('admin.activateUser') : t('admin.deactivateUser')}
+                                </TooltipContent>
+                              </Tooltip>
                               <Button
                                 size="sm"
                                 variant="ghost"
