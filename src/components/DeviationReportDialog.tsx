@@ -65,7 +65,8 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
 
   useEffect(() => {
     if (!open) return;
-    setStep("prompt");
+    setStep(missionId ? "prompt" : "select_mission");
+    setSelectedMissionId(missionId);
     setPath([]);
     setComment("");
     setSearch("");
@@ -79,7 +80,25 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
         setCategories(data || []);
       })();
     }
-  }, [open, companyId]);
+  }, [open, companyId, missionId]);
+
+  // Fetch missions when the dialog is opened without a pre-selected mission
+  useEffect(() => {
+    if (!open || missionId) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("missions")
+          .select("id, tittel, status, tidspunkt, lokasjon")
+          .order("tidspunkt", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        setMissions((data as MissionOption[]) || []);
+      } catch (e) {
+        console.error("[DeviationReportDialog] failed to fetch missions", e);
+      }
+    })();
+  }, [open, missionId]);
 
   const catById = useMemo(() => {
     const m = new Map<string, Category>();
