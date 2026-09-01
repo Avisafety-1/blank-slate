@@ -1303,22 +1303,31 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        const rawLogs = Array.isArray(data.result)
-          ? data.result
-          : Array.isArray(data.logs)
-            ? data.logs
-            : Array.isArray(data)
-              ? data
-              : [];
+        // DroneLog kan returnere logglisten på flere plasser (bl.a. nøstet i
+        // `result.logs`). Finn listen, annoter, og skriv den tilbake på samme sted.
+        let listPath: "root" | "result" | "result.logs" | "result.data" | "logs" | "data" | null = null;
+        let rawLogs: any[] = [];
+        if (Array.isArray(data)) { listPath = "root"; rawLogs = data as any[]; }
+        else if (Array.isArray(data?.result)) { listPath = "result"; rawLogs = data.result; }
+        else if (Array.isArray(data?.result?.logs)) { listPath = "result.logs"; rawLogs = data.result.logs; }
+        else if (Array.isArray(data?.result?.data)) { listPath = "result.data"; rawLogs = data.result.data; }
+        else if (Array.isArray(data?.logs)) { listPath = "logs"; rawLogs = data.logs; }
+        else if (Array.isArray(data?.data)) { listPath = "data"; rawLogs = data.data; }
+        console.log(`[process-dronelog] dji-list-logs listPath=${listPath ?? "none"} count=${rawLogs.length}`);
+
         const annotated = await annotateDjiImportStates(rawLogs, profileCompanyId);
-        if (Array.isArray(data.result)) {
-          data.result = annotated;
-        } else if (Array.isArray(data.logs)) {
-          data.logs = annotated;
-        } else if (Array.isArray(data)) {
-          return new Response(JSON.stringify(annotated.map((l) => ({ ...l, sessionKeySource: keySource }))), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        switch (listPath) {
+          case "root":
+            return new Response(JSON.stringify(annotated.map((l) => ({ ...l, sessionKeySource: keySource }))), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          case "result": data.result = annotated; break;
+          case "result.logs": data.result.logs = annotated; break;
+          case "result.data": data.result.data = annotated; break;
+          case "logs": data.logs = annotated; break;
+          case "data": data.data = annotated; break;
+          default: break;
         }
         return new Response(JSON.stringify({ ...data, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
       }
 
 
