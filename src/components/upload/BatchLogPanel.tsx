@@ -206,6 +206,31 @@ export const BatchLogPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [droneIdsByProfile, myDroneIds, drones, personnelByDrone, personnel]);
 
+  // Drone may become known after the missions were fetched — redo the preselect then
+  // (never touches rows where the user picked a mission themselves).
+  useEffect(() => {
+    setRows(prev => prev.map(r => {
+      if (!r.missionsLoaded || r.missionUserOverride || !r.droneId || r.missions.length < 2) return r;
+      const baseDate = parseFlightDate(r.parsed?.startTime) ?? parseFlightDate(r.log.flight_date);
+      if (!baseDate || isNaN(baseDate.getTime())) return r;
+      const { sorted, bestId, droneMatchIds } = pickBestMission(
+        r.missions as any[],
+        r.missionDroneMap || {},
+        r.droneId,
+        baseDate,
+      );
+      if (bestId === r.autoMatchedMissionId) return r;
+      return {
+        ...r,
+        missions: sorted as any,
+        autoMatchedMissionId: bestId,
+        missionMatchedOnDrone: !!bestId && droneMatchIds.includes(bestId),
+        missionId: bestId || "",
+      };
+    }));
+  }, [rows.map(r => `${r.pendingLogId}:${r.droneId}:${r.missionsLoaded}`).join(",")]);
+
+
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
     rows.forEach(async (row, idx) => {
