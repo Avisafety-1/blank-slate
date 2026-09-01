@@ -50,6 +50,8 @@ interface RowState {
   equipmentIds: string[];
   missionId: string;
   missionUserOverride: boolean;
+  /** custom title used when creating a new mission for this log */
+  newMissionTitle?: string;
   autoMatchedMissionId: string | null;
   /** mission_id -> drone_ids linked to that mission (same-day candidates) */
   missionDroneMap?: Record<string, string[]>;
@@ -84,6 +86,13 @@ interface Props {
 }
 
 const parseDate = (raw: string | null): Date | null => parseFlightDate(raw);
+
+const defaultMissionTitle = (row: { parsed: any | null; log: { flight_date: string | null; source_file_type?: string | null } }): string => {
+  const parsed = row.parsed;
+  const d = parseDate(parsed?.startTime ?? null) || parseDate(row.log?.flight_date ?? null) || new Date();
+  const isArdu = parsed?.source === "ardupilot" || row.log?.source_file_type === "ardupilot";
+  return `${isArdu ? "ArduPilot" : "DJI"}-flylogg ${format(d, "dd.MM.yyyy HH:mm")}`;
+};
 
 const downsample = <T,>(arr: T[], max: number): T[] => {
   if (arr.length <= max) return arr;
@@ -179,6 +188,7 @@ export const BatchLogPanel = ({
           equipmentIds: eq,
           missionId: "",
           missionUserOverride: false,
+          newMissionTitle: "",
           autoMatchedMissionId: null,
           autoMatchedDroneId: autoDroneId,
           operationType: "VLOS",
@@ -440,7 +450,7 @@ export const BatchLogPanel = ({
         const { data: m, error: mErr } = await supabase.from("missions").insert({
           company_id: companyId,
           user_id: userId,
-          tittel: `${isArdu ? "ArduPilot" : "DJI"}-flylogg ${format(effectiveDate, "dd.MM.yyyy HH:mm")}`,
+          tittel: (row.newMissionTitle || "").trim() || `${isArdu ? "ArduPilot" : "DJI"}-flylogg ${format(effectiveDate, "dd.MM.yyyy HH:mm")}`,
           lokasjon: parsed.startPosition ? `${parsed.startPosition.lat.toFixed(5)}, ${parsed.startPosition.lng.toFixed(5)}` : "Ukjent",
           tidspunkt: effectiveDate.toISOString(),
           status: "Fullført",
@@ -762,6 +772,14 @@ export const BatchLogPanel = ({
                         autoMatchedId={row.autoMatchedMissionId}
                         onChange={(v) => updateRow(row.pendingLogId, { missionId: v, missionUserOverride: true })}
                       />
+                      {!row.missionId && (
+                        <Input
+                          value={row.newMissionTitle ?? ""}
+                          onChange={(e) => updateRow(row.pendingLogId, { newMissionTitle: e.target.value })}
+                          placeholder={defaultMissionTitle(row)}
+                          className="h-8 text-xs mt-1"
+                        />
+                      )}
                     </div>
 
                   </div>
