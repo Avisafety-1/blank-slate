@@ -77,7 +77,8 @@ export function useBatteryHealth(
           )
           .eq("company_id", companyId) as any)
           .eq("battery_sn", serienummer)
-          .not("battery_cycles", "is", null)
+          // Ikke krev syklustall: mange DJI-logger (bl.a. Mini 5) mangler
+          // BATTERY.loopNum, men har kapasitet/spenning/temperatur som skal vises.
           .order("flight_date", { ascending: true })
           .limit(100),
         // Logs where this battery was the SECOND pack (SERIAL.battery2)
