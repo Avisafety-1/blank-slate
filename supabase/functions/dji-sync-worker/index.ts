@@ -184,7 +184,7 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
         error_code: "unsupported_format",
         error_message: "Loggen kan ikke parses automatisk fra DJI Cloud. Last opp .txt manuelt fra dronen.",
         last_error_at: new Date().toISOString(),
-      }).then(({ error }) => {
+      }).then(({ error }: { error: any }) => {
         if (error && (error as any).code !== "23505") {
           console.error(`[worker] pending_dji_logs insert (unsupported) failed:`, error.message);
         }
