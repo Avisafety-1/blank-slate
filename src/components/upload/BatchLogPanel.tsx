@@ -222,22 +222,36 @@ export const BatchLogPanel = ({
             .lte("tidspunkt", end.toISOString())
             .order("tidspunkt", { ascending: true })
             .limit(20);
-          // Sort by closest to flight start
-          const sorted = (data || []).slice().sort((a: any, b: any) => {
-            const dA = Math.abs(new Date(a.tidspunkt).getTime() - baseDate.getTime());
-            const dB = Math.abs(new Date(b.tidspunkt).getTime() - baseDate.getTime());
-            return dA - dB;
-          });
-          const autoId = sorted.length > 0 ? sorted[0].id : null;
+          const dayMissions = (data || []) as any[];
+          // Second rule: when several missions match the date, prefer the one that has
+          // this log's drone linked. Time distance decides within each group.
+          const missionDroneMap: Record<string, string[]> = {};
+          if (dayMissions.length > 1) {
+            const { data: md } = await supabase
+              .from("mission_drones")
+              .select("mission_id, drone_id")
+              .in("mission_id", dayMissions.map(m => m.id));
+            (md || []).forEach((r: any) => {
+              (missionDroneMap[r.mission_id] ||= []).push(r.drone_id);
+            });
+          }
           setRows(prev => prev.map(r => {
             if (r.pendingLogId !== row.pendingLogId) return r;
+            const { sorted, bestId, droneMatchIds } = pickBestMission(
+              dayMissions,
+              missionDroneMap,
+              r.droneId || null,
+              baseDate,
+            );
             return {
               ...r,
               missions: sorted as any,
               missionsLoaded: true,
-              autoMatchedMissionId: autoId,
+              missionDroneMap,
+              autoMatchedMissionId: bestId,
+              missionMatchedOnDrone: !!bestId && droneMatchIds.includes(bestId),
               // Only preselect if user hasn't manually overridden
-              missionId: r.missionUserOverride ? r.missionId : (autoId || ""),
+              missionId: r.missionUserOverride ? r.missionId : (bestId || ""),
             };
           }));
         }
