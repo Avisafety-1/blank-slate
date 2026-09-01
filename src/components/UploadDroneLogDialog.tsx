@@ -11,7 +11,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState, useEffect, useRef, type KeyboardEvent } from "react";
+import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
+import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -145,6 +146,7 @@ interface DjiLog {
   totalDistance?: number;
   maxHeight?: number;
   url?: string;
+  importState?: 'importable' | 'imported' | 'pending' | 'queued' | 'dismissed' | 'unsupported';
 }
 
 interface BulkResult {
@@ -358,6 +360,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [djiHasMore, setDjiHasMore] = useState(false);
   const [isDjiLoading, setIsDjiLoading] = useState(false);
   const [selectedDjiLogIds, setSelectedDjiLogIds] = useState<Set<string>>(new Set());
+  const [showAllDjiLogs, setShowAllDjiLogs] = useState(false);
+  const [currentDjiLogId, setCurrentDjiLogId] = useState<string | null>(null);
+  const isDjiLogKnown = (log: DjiLog) => log.importState !== undefined && log.importState !== 'importable';
+  const visibleDjiLogs = useMemo(() => showAllDjiLogs ? djiLogs : djiLogs.filter(l => !isDjiLogKnown(l)), [djiLogs, showAllDjiLogs]);
+  const hiddenCount = useMemo(() => djiLogs.filter(l => isDjiLogKnown(l)).length, [djiLogs]);
+  const visibleImportableLogs = useMemo(() => visibleDjiLogs.filter(l => !isDjiLogKnown(l)), [visibleDjiLogs]);
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
@@ -708,6 +716,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setDjiLogs([]);
     setDjiHasMore(false);
     setSelectedDjiLogIds(new Set());
+    setShowAllDjiLogs(false);
+    setCurrentDjiLogId(null);
     setPilotId("");
     setPilotTouched(false);
     setPilotAutoMatchedFromDrone(false);
@@ -1143,7 +1153,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsBulkProcessing(true);
     bulkAbortRef.current = false;
 
-    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id));
+    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id) && !isDjiLogKnown(l));
+    if (selectedLogs.length === 0) {
+      setIsBulkProcessing(false);
+      return;
+    }
     const results: BulkResult[] = selectedLogs.map(l => ({
       fileName: l.aircraft || l.fileName || l.date || 'Ukjent',
       status: 'pending' as const,
@@ -1211,7 +1225,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           .insert({
             company_id: localCompanyId,
             user_id: user?.id,
-            dji_log_id: data.sha256Hash || crypto.randomUUID(),
+            dji_log_id: selectedLogs[i].id,
             aircraft_name: data.aircraftName || data.droneType || null,
             aircraft_sn: data.aircraftSN || data.aircraftSerial || null,
             flight_date: effectiveDate.toISOString(),
@@ -1385,6 +1399,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         totalDistance: l.totalDistance || 0,
         maxHeight: l.maxHeight || 0,
         url: l.downloadUrl || l.url || '',
+        importState: l.importState || 'importable',
       })).sort((a: any, b: any) => b._timestamp - a._timestamp);
       const dedupe = (logs: DjiLog[]) => {
         const seen = new Set<string>();
@@ -1425,6 +1440,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handleSelectDjiLog = async (log: DjiLog) => {
     if (!log.id || !djiAccountId || djiImportCooldown) return;
     setProcessingLogId(log.id);
+    setCurrentDjiLogId(log.id);
     setIsProcessing(true);
     try {
       const data: DroneLogResult = await callDronelogAction("dji-process-log", {
@@ -2060,6 +2076,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         flight_duration_minutes: result.durationMinutes,
         drone_id: selectedDroneId || null,
         entry_source: (result as any)?.source === 'ardupilot' ? 'ardupilot' : 'dronelogapi',
+        ...(currentDjiLogId ? { dji_log_id: currentDjiLogId } : {}),
         ...(importedDate ? { flight_date: importedDate.toISOString() } : {}),
         ...(result.startPosition
           ? { departure_location: `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` }
@@ -2146,6 +2163,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         operation_type: operationType,
+        dji_log_id: currentDjiLogId || null,
         ...extFields,
       } as any).select('id').single();
       if (logError) throw logError;
@@ -2212,6 +2230,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         movements: 1, flight_track: { positions: flightTrack } as any,
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         operation_type: operationType,
+        dji_log_id: currentDjiLogId || null,
         ...buildExtendedFields(result),
       };
 
@@ -4043,9 +4062,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 Logg ut av DJI
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {t('dronelog.selectLog', 'Velg en flylogg å importere:')}
-            </p>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                {t('dronelog.selectLog', 'Velg en flylogg å importere:')}
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground shrink-0">
+                <Switch
+                  checked={showAllDjiLogs}
+                  onCheckedChange={(checked) => setShowAllDjiLogs(checked === true)}
+                />
+                {t('dronelog.showAllLogs', 'Se alle')}
+              </label>
+            </div>
 
             {isDjiLoading && !isProcessing ? (
               <div className="flex items-center justify-center py-8">
@@ -4061,17 +4089,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 <div className="flex items-center justify-between pb-1">
                   <label className="flex items-center gap-2 cursor-pointer text-sm">
                     <Checkbox
-                      checked={selectedDjiLogIds.size === djiLogs.length && djiLogs.length > 0}
+                      checked={visibleImportableLogs.length > 0 && selectedDjiLogIds.size === visibleImportableLogs.length && Array.from(selectedDjiLogIds).every(id => visibleImportableLogs.some(l => l.id === id))}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setSelectedDjiLogIds(new Set(djiLogs.map(l => l.id)));
+                          setSelectedDjiLogIds(new Set(visibleImportableLogs.map(l => l.id)));
                         } else {
                           setSelectedDjiLogIds(new Set());
                         }
                       }}
-                      disabled={processingLogId !== null || isBulkProcessing}
+                      disabled={processingLogId !== null || isBulkProcessing || visibleImportableLogs.length === 0}
                     />
-                    <span className="text-muted-foreground">Velg alle</span>
+                    <span className="text-muted-foreground">{t('dronelog.selectAll', 'Velg alle')}</span>
                   </label>
                   {selectedDjiLogIds.size > 0 && (
                     <Button
@@ -4080,47 +4108,84 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       disabled={processingLogId !== null || isBulkProcessing || djiImportCooldown}
                     >
                       <CloudDownload className="w-4 h-4 mr-1" />
-                      Importer {selectedDjiLogIds.size} valgte
+                      {t('dronelog.importNSelected', 'Importer {{count}} valgte', { count: selectedDjiLogIds.size })}
                     </Button>
                   )}
                 </div>
+
+                {hiddenCount > 0 && !showAllDjiLogs && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('dronelog.hiddenCount', '{{count}} allerede importert/til behandling er skjult', { count: hiddenCount })}
+                  </p>
+                )}
+
                 <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-                  {djiLogs.map(log => (
-                    <div
-                      key={log.id}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-muted hover:border-primary/50 hover:bg-muted/30 transition-all text-left"
-                    >
-                      <Checkbox
-                        checked={selectedDjiLogIds.has(log.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedDjiLogIds(prev => {
-                            const next = new Set(prev);
-                            if (checked) next.add(log.id); else next.delete(log.id);
-                            return next;
-                          });
-                        }}
-                        disabled={processingLogId !== null || isBulkProcessing}
-                      />
-                      <button
-                        className="flex-1 flex items-center gap-3 min-w-0 disabled:opacity-50"
-                        onClick={() => handleSelectDjiLog(log)}
-                        disabled={processingLogId !== null || djiImportCooldown || isBulkProcessing}
+                  {visibleDjiLogs.map(log => {
+                    const known = isDjiLogKnown(log);
+                    const badge = (() => {
+                      switch (log.importState) {
+                        case 'imported': return { label: t('dronelog.importedBadge', 'Importert'), variant: 'default' as const };
+                        case 'pending': return { label: t('dronelog.pendingBadge', 'I kø'), variant: 'secondary' as const };
+                        case 'queued': return { label: t('dronelog.queuedBadge', 'Auto-sync'), variant: 'secondary' as const };
+                        case 'dismissed': return { label: t('dronelog.dismissedBadge', 'Avvist'), variant: 'outline' as const };
+                        case 'unsupported': return { label: t('dronelog.unsupportedBadge', 'Støttes ikke'), variant: 'destructive' as const };
+                        default: return null;
+                      }
+                    })();
+                    return (
+                      <div
+                        key={log.id}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all",
+                          known
+                            ? "border-muted/50 bg-muted/20 opacity-70"
+                            : "border-muted hover:border-primary/50 hover:bg-muted/30"
+                        )}
                       >
-                        <Plane className="w-5 h-5 text-primary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
-                          {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>{log.date}</span>
-                            {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
-                            {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
-                            {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
+                        <Checkbox
+                          checked={selectedDjiLogIds.has(log.id)}
+                          onCheckedChange={(checked) => {
+                            if (known) return;
+                            setSelectedDjiLogIds(prev => {
+                              const next = new Set(prev);
+                              if (checked) next.add(log.id); else next.delete(log.id);
+                              return next;
+                            });
+                          }}
+                          disabled={known || processingLogId !== null || isBulkProcessing}
+                        />
+                        <button
+                          className="flex-1 flex items-center gap-3 min-w-0 disabled:opacity-50"
+                          onClick={() => handleSelectDjiLog(log)}
+                          disabled={known || processingLogId !== null || djiImportCooldown || isBulkProcessing}
+                          title={known ? t('dronelog.alreadyImportedTooltip', 'Denne loggen er allerede registrert') : undefined}
+                        >
+                          <Plane className="w-5 h-5 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{log.aircraft || log.fileName || 'Ukjent drone'}</p>
+                            {log.aircraft && log.fileName && <p className="text-xs text-muted-foreground truncate">{log.fileName}</p>}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{log.date}</span>
+                              {log.duration > 0 && <span>{Math.round(log.duration / 60)} min</span>}
+                              {(log.maxHeight ?? 0) > 0 && <span><Mountain className="inline w-3 h-3 mr-0.5" />{Math.round(log.maxHeight!)}m</span>}
+                              {(log.totalDistance ?? 0) > 0 && <span><Route className="inline w-3 h-3 mr-0.5" />{log.totalDistance! >= 1000 ? `${(log.totalDistance! / 1000).toFixed(1)}km` : `${Math.round(log.totalDistance!)}m`}</span>}
+                            </div>
                           </div>
-                        </div>
-                        {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-                      </button>
-                    </div>
-                  ))}
+                          {badge && (
+                            <Badge variant={badge.variant} className="text-[10px] py-0 px-1.5 h-5 shrink-0">
+                              {badge.label}
+                            </Badge>
+                          )}
+                          {processingLogId === log.id && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {visibleDjiLogs.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      {t('dronelog.noImportableLogs', 'Ingen nye logger å importere.')}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

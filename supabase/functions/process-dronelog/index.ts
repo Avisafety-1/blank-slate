@@ -27,6 +27,74 @@ const DJI_PARSER_URL = (Deno.env.get("DJI_PARSER_URL") ?? "").replace(/\/+$/, ""
 const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 /**
+ * Annoterer hver logg fra DroneLog med import-tilstand basert på
+ * flight_logs, pending_dji_logs og dji_sync_jobs for det aktive selskapet.
+ */
+async function annotateDjiImportStates(
+  logs: any[],
+  companyId: string | null,
+): Promise<any[]> {
+  if (!logs.length || !companyId) return logs;
+  const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const ids = [...new Set(logs.map((l) => String(l.id)).filter(Boolean))];
+  if (!ids.length) return logs;
+
+  const importedIds = new Set<string>();
+  const pendingMap = new Map<string, string>();
+  const queuedIds = new Set<string>();
+
+  // Hent allerede importerte loggføringer (dji_log_id er satt).
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { data: rows } = await serviceClient
+      .from("flight_logs")
+      .select("dji_log_id")
+      .eq("company_id", companyId)
+      .in("dji_log_id", chunk);
+    (rows || []).forEach((r: any) => {
+      if (r.dji_log_id) importedIds.add(r.dji_log_id);
+    });
+  }
+
+  // Hent manuelt opplastede/pending-logger.
+  const { data: pendingRows } = await serviceClient
+    .from("pending_dji_logs")
+    .select("dji_log_id, status")
+    .eq("company_id", companyId)
+    .in("dji_log_id", ids);
+  (pendingRows || []).forEach((r: any) => {
+    pendingMap.set(r.dji_log_id, r.status);
+  });
+
+  // Hent auto-sync-kø.
+  const { data: syncRows } = await serviceClient
+    .from("dji_sync_jobs")
+    .select("dji_log_id, status")
+    .eq("company_id", companyId)
+    .in("dji_log_id", ids)
+    .in("status", ["pending", "queued"]);
+  (syncRows || []).forEach((r: any) => {
+    queuedIds.add(r.dji_log_id);
+  });
+
+  return logs.map((l) => {
+    const id = String(l.id);
+    let state = "importable";
+    if (importedIds.has(id) || pendingMap.get(id) === "approved") {
+      state = "imported";
+    } else if (pendingMap.get(id) === "dismissed") {
+      state = "dismissed";
+    } else if (pendingMap.get(id)) {
+      state = "pending";
+    } else if (queuedIds.has(id)) {
+      state = "queued";
+    }
+    return { ...l, importState: state };
+  });
+}
+
+/**
  * Klassifiser feilrespons fra DroneLog `/accounts/dji` (DJI login).
  * Reglene baserer seg på dokumenterte koder + observerte upstream-meldinger:
  *   - 429                          → rate_limited (DJI struper innlogging)
@@ -77,7 +145,7 @@ async function tryFlyParser(
     const form = new FormData();
     form.append(
       "file",
-      new Blob([fileBytes], { type: "application/octet-stream" }),
+      new Blob([fileBytes as BlobPart], { type: "application/octet-stream" }),
       fileName,
     );
     form.append("fields", fields.join(","));
@@ -1151,6 +1219,22 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ error: "Too many requests", details: data, upstreamStatus: 429, retryAfter, remaining: data?.remaining ?? null }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           return new Response(JSON.stringify({ error: data.message || "Failed to list logs", details: data, upstreamStatus: res.status }), { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        const rawLogs = Array.isArray(data.result)
+          ? data.result
+          : Array.isArray(data.logs)
+            ? data.logs
+            : Array.isArray(data)
+              ? data
+              : [];
+        const annotated = await annotateDjiImportStates(rawLogs, profileCompanyId);
+        if (Array.isArray(data.result)) {
+          data.result = annotated;
+        } else if (Array.isArray(data.logs)) {
+          data.logs = annotated;
+        } else if (Array.isArray(data)) {
+          return new Response(JSON.stringify(annotated.map((l) => ({ ...l, sessionKeySource: keySource }))), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         return new Response(JSON.stringify({ ...data, sessionKeySource: keySource }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }

@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     const form = new FormData();
     form.append(
       "file",
-      new Blob([fileBytes], { type: "application/octet-stream" }),
+      new Blob([fileBytes as BlobPart], { type: "application/octet-stream" }),
       fileName,
     );
     // Ny app ignorerer `fields` og returnerer alle frames; vi filtrerer på vår side.
