@@ -311,7 +311,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Søk i kategorier…"
+                placeholder={t("deviations.edit.searchCategories", "Søk i kategorier…")}
                 className="pl-8 h-9"
               />
             </div>
@@ -319,7 +319,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
             {search.trim() ? (
               <div className="space-y-1 max-h-60 overflow-y-auto border rounded-md p-1">
                 {searchResults.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic px-2 py-3">Ingen treff</p>
+                  <p className="text-xs text-muted-foreground italic px-2 py-3">{t("deviations.edit.noMatches", "Ingen treff")}</p>
                 ) : (
                   searchResults.map(({ cat, path: p }) => (
                     <button
@@ -356,15 +356,21 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                 )}
 
                 {/* Back */}
-                {path.length > 0 && (
+                {(path.length > 0 || !missionId) && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setPath((p) => p.slice(0, -1))}
+                    onClick={() => {
+                      if (path.length > 0) {
+                        setPath((p) => p.slice(0, -1));
+                      } else {
+                        setStep("select_mission");
+                      }
+                    }}
                     className="h-7 px-2"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Tilbake
+                    {t("actions.back", "Tilbake")}
                   </Button>
                 )}
 
@@ -388,25 +394,25 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground italic px-1">
-                    Ingen flere underkategorier — du kan lagre rapporten nå.
+                    {t("deviations.edit.noMatches", "Ingen treff")}
                   </p>
                 )}
               </>
             )}
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Kommentar (valgfritt)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("deviations.edit.comment", "Kommentar")} ({t("common.optional", "valgfritt")})</label>
               <Textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Beskriv hendelsen…"
+                placeholder={t("deviations.message.requestBody", "Beskriv hendelsen…")}
                 rows={3}
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Kritisk fase (valgfritt)
+                {t("deviations.edit.phase", "Kritisk fase")} ({t("common.optional", "valgfritt")})
               </label>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(PHASE_LABELS) as FlightPhase[]).map((p) => (
@@ -425,10 +431,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
 
             <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button variant="outline" onClick={handleClose} disabled={submitting}>
-                Avbryt
+                {t("actions.cancel", "Avbryt")}
               </Button>
               <Button onClick={handleSubmit} disabled={submitting || path.length === 0}>
-                {submitting ? "Lagrer…" : "Lagre rapport"}
+                {submitting ? t("common.saving", "Lagrer…") : t("actions.report", "Lagre rapport")}
               </Button>
             </DialogFooter>
           </div>
