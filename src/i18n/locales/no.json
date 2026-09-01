@@ -160,7 +160,8 @@
       "resetDesc": "Klikk knappen under for å verifisere lenken og sette nytt passord.",
       "verifyAndSet": "Verifiser og sett nytt passord",
       "linkNotWorking": "Fungerte ikke lenken? Send ny link"
-    }
+    },
+    "accountDeactivated": "Kontoen din er deaktivert. Kontakt administrator for å få tilgang igjen."
   },
   "flight": {
     "activeFlight": "Pågående flytur",
@@ -831,7 +832,8 @@
       "personnelTitle": "Personell",
       "equipmentTitle": "Utstyr",
       "droneName": "Navn"
-    }
+    },
+    "deactivated": "Deaktivert"
   },
   "logFlight": {
     "title": "Logg flytid",
@@ -2838,7 +2840,15 @@
     },
     "companySoraTitle": "{{company}} — SORA-innstillinger",
     "companySoraDesc": "Konfigurer selskapsspesifikke grenser og krav for AI-risikovurdering",
-    "companyFallback": "Selskapet"
+    "companyFallback": "Selskapet",
+    "deactivateUser": "Deaktiver bruker",
+    "activateUser": "Aktiver bruker",
+    "confirmDeactivateUser": "Er du sikker på at du vil deaktivere {{name}}? Brukeren beholdes i systemet, men blokkeres fra innlogging og aktive økter avsluttes.",
+    "confirmActivateUser": "Aktiver {{name}} igjen? Brukeren får tilbake tilgangen til å logge inn.",
+    "userDeactivated": "Brukeren er deaktivert",
+    "userActivated": "Brukeren er aktivert",
+    "errorUpdatingActiveStatus": "Kunne ikke endre aktiv-status",
+    "deactivatedBadge": "Deaktivert"
   },
   "riskAssessment": {
     "flightMode": "Flygemodus",

@@ -160,7 +160,8 @@
       "resetDesc": "Click the button below to verify the link and set a new password.",
       "verifyAndSet": "Verify and set new password",
       "linkNotWorking": "Link didn't work? Send new link"
-    }
+    },
+    "accountDeactivated": "Your account has been deactivated. Contact an administrator to regain access."
   },
   "flight": {
     "activeFlight": "Active flight",
@@ -829,7 +830,8 @@
       "personnelTitle": "Personnel",
       "equipmentTitle": "Equipment",
       "droneName": "Name"
-    }
+    },
+    "deactivated": "Deactivated"
   },
   "logFlight": {
     "title": "Log flight time",
@@ -2836,7 +2838,15 @@
     },
     "companySoraTitle": "{{company}} — SORA settings",
     "companySoraDesc": "Configure company-specific limits and requirements for the AI risk assessment",
-    "companyFallback": "The company"
+    "companyFallback": "The company",
+    "deactivateUser": "Deactivate user",
+    "activateUser": "Activate user",
+    "confirmDeactivateUser": "Are you sure you want to deactivate {{name}}? The user remains in the system but is blocked from signing in, and active sessions are ended.",
+    "confirmActivateUser": "Activate {{name}} again? The user regains access to sign in.",
+    "userDeactivated": "User deactivated",
+    "userActivated": "User activated",
+    "errorUpdatingActiveStatus": "Could not change active status",
+    "deactivatedBadge": "Deactivated"
   },
   "riskAssessment": {
     "flightMode": "Flight mode",
