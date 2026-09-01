@@ -1501,6 +1501,9 @@ const Admin = () => {
                                   <p className="font-medium text-sm sm:text-base truncate">
                                     {profile.full_name || t('common.notSpecified')}
                                   </p>
+                                  {profile.is_active === false && (
+                                    <Badge variant="secondary" className="text-[10px] shrink-0">{t('admin.deactivatedBadge')}</Badge>
+                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {profile.email || t('admin.noEmail')}
