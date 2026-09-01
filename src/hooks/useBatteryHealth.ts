@@ -117,7 +117,13 @@ export function useBatteryHealth(
           cellDeviation: r.battery2_cell_deviation_max_v,
           perPack: true,
         })),
-      ].sort((a, b) => a.date.getTime() - b.date.getTime());
+      ]
+        // Ta bare med logger som faktisk har batteridata å vise
+        .filter((e) =>
+          e.cycles != null || e.health != null || e.capacityMah != null ||
+          e.voltageMin != null || e.tempMax != null || e.tempMin != null ||
+          e.cellDeviation != null)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
       setTrend(entries);
 
       // The log tells us which drone the battery flew with — use it as the
