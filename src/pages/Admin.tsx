@@ -544,6 +544,37 @@ const Admin = () => {
     }
   };
 
+  const setUserActive = async (userId: string, userName: string | null, currentlyActive: boolean) => {
+    const name = userName || t('common.notSpecified');
+    const confirmText = currentlyActive
+      ? t('admin.confirmDeactivateUser', { name })
+      : t('admin.confirmActivateUser', { name });
+    if (!confirm(confirmText)) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-set-user-active", {
+        body: { user_id: userId, active: !currentlyActive },
+      });
+
+      if (error) {
+        console.error("admin-set-user-active invoke error:", error);
+        throw error;
+      }
+      if (!data?.success) {
+        const detail = data?.error || data?.detail || "Update failed";
+        console.error("admin-set-user-active returned failure:", data);
+        throw new Error(detail);
+      }
+
+      toast.success(currentlyActive ? t('admin.userDeactivated') : t('admin.userActivated'));
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating active status:", error);
+      const msg = error?.message || t('admin.errorUpdatingActiveStatus');
+      toast.error(`${t('admin.errorUpdatingActiveStatus')}: ${msg}`);
+    }
+  };
+
   const getUserRoles = (userId: string) => {
     return userRoles.filter((r) => r.user_id === userId);
   };
