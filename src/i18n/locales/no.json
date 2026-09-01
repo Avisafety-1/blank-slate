@@ -3222,6 +3222,7 @@
     "passwordEncryptedNote": "Passordet lagres kryptert på serveren. Du kan logge ut når som helst.",
     "noLogs": "Ingen flylogger funnet i DJI-kontoen.",
     "selectAll": "Velg alle",
+    "deselectAll": "Fjern alle",
     "showAllLogs": "Se alle",
     "importNSelected": "Importer {{count}} valgte",
     "hiddenCount": "{{count}} allerede importert/til behandling er skjult",

@@ -3220,6 +3220,7 @@
     "passwordEncryptedNote": "The password is stored encrypted on the server. You can sign out at any time.",
     "noLogs": "No flight logs found in the DJI account.",
     "selectAll": "Select all",
+    "deselectAll": "Deselect all",
     "showAllLogs": "Show all",
     "importNSelected": "Import {{count}} selected",
     "hiddenCount": "{{count}} already imported/pending are hidden",
