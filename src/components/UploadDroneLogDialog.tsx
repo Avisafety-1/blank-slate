@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { AddEquipmentDialog, EquipmentDefaultValues } from "@/components/resources/AddEquipmentDialog";
@@ -3546,7 +3546,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl max-h-[95vh] h-[95vh] flex flex-col overflow-x-hidden' : 'max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden'} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl max-h-[95dvh] h-[95dvh] !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -3556,7 +3556,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-          <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'flex gap-6 h-full flex-1 min-h-0' : ''}`}>
+          <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'flex gap-6 flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
             <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
 
@@ -3760,9 +3760,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                <ScrollArea className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {renderResultPanel()}
-                </ScrollArea>
+                </div>
               </div>
             )}
           </div>
