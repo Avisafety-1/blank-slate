@@ -711,6 +711,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setMatchedLog(null);
     setMatchCandidates([]);
     setMatchedMissions([]);
+    setDroneMatchedMissionIds([]);
     setSelectedMissionId('');
     setSelectedFlightLogChoice('');
     setSelectedDroneId("");
