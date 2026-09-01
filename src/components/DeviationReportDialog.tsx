@@ -205,23 +205,100 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
     }
   };
 
+  const selectedMission = useMemo(
+    () => missions.find((m) => m.id === selectedMissionId) || null,
+    [missions, selectedMissionId]
+  );
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="w-[95vw] max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {step === "prompt" ? "Avviksrapport" : "Velg kategori"}
+            {step === "select_mission"
+              ? t("deviations.reportDialog.selectMission", "Velg oppdrag")
+              : step === "prompt"
+                ? t("deviations.title", "Avviksrapport")
+                : t("deviations.edit.category", "Velg kategori")}
           </DialogTitle>
         </DialogHeader>
 
-        {step === "prompt" && (
-          <>
-            <p className="text-sm">Ønsker du å rapportere noe fra flyturen?</p>
+        {step === "select_mission" && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t("deviations.reportDialog.selectMission", "Velg oppdrag")}</Label>
+              <Popover open={missionPopoverOpen} onOpenChange={setMissionPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                    disabled={missions.length === 0}
+                  >
+                    {selectedMission
+                      ? selectedMission.tittel
+                      : t("deviations.reportDialog.selectMission", "Velg oppdrag")}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t("deviations.reportDialog.searchMissions", "Søk etter oppdrag...")} />
+                    <CommandList>
+                      <CommandEmpty>{t("deviations.reportDialog.noMissionsFound", "Ingen oppdrag funnet")}</CommandEmpty>
+                      <CommandGroup>
+                        {missions.map((mission) => (
+                          <CommandItem
+                            key={mission.id}
+                            value={`${mission.tittel} ${mission.status} ${mission.lokasjon || ""}`}
+                            onSelect={() => {
+                              setSelectedMissionId(mission.id);
+                              setMissionPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedMissionId === mission.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col items-start">
+                              <span>{mission.tittel}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(mission.tidspunkt).toLocaleDateString("nb-NO")}
+                                {mission.lokasjon ? ` · ${mission.lokasjon}` : ""}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button variant="outline" onClick={handleClose}>
-                Nei
+                {t("actions.cancel", "Avbryt")}
               </Button>
-              <Button onClick={() => setStep("select")}>Ja</Button>
+              <Button
+                onClick={() => setStep("select")}
+                disabled={!selectedMissionId}
+              >
+                {t("actions.next", "Neste")}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "prompt" && (
+          <>
+            <p className="text-sm">{t("deviations.reportDialog.prompt", "Ønsker du å rapportere noe fra flyturen?")}</p>
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
+              <Button variant="outline" onClick={handleClose}>
+                {t("actions.no", "Nei")}
+              </Button>
+              <Button onClick={() => setStep("select")}>{t("actions.yes", "Ja")}</Button>
             </DialogFooter>
           </>
         )}
