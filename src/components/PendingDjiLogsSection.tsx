@@ -163,12 +163,38 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   // Filter is now applied serverside via the onlyMine flag in fetchPendingLogs
   const displayedLogs = logs;
 
+  // Only logs that are normally selectable via the checkbox should be bulk-selected
+  const selectableIds = displayedLogs
+    .filter(log => {
+      const isArdu = log.source_file_type === 'ardupilot' || log.parsed_result?.source === 'ardupilot';
+      const hasError = !!log.error_code;
+      const isRateLimited =
+        !isArdu &&
+        log.error_code === "rate_limit" &&
+        log.last_error_at &&
+        (Date.now() - new Date(log.last_error_at).getTime()) < 2 * 60 * 1000;
+      return onToggleSelect && !isArdu && !hasError && !isRateLimited && !isMobile;
+    })
+    .map(log => log.id);
+
+  const allSelectableSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds?.has(id));
+
   return (
     <div className={`space-y-2 min-w-0 w-full max-w-full overflow-x-hidden ${expanded ? 'flex-1 flex flex-col min-h-0' : ''}`}>
       <div className="flex items-center gap-2 flex-wrap min-w-0">
         <Clock className="w-4 h-4 text-primary shrink-0" />
         <p className="text-sm font-medium min-w-0 break-words">{t('dronelog.pendingAutoSync')}</p>
         <Badge variant="secondary" className="text-xs shrink-0">{displayedLogs.length}{hasMore ? "+" : ""}</Badge>
+        {selectableIds.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+            onClick={() => onSelectAll?.(selectableIds, !allSelectableSelected)}
+          >
+            {allSelectableSelected ? t('dronelog.deselectAll') : t('dronelog.selectAll')}
+          </Button>
+        )}
         <div className="flex items-center gap-1.5 ml-auto shrink-0">
           <Switch id="only-mine" checked={onlyMine} onCheckedChange={setOnlyMine} />
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">{t('dronelog.onlyMine')}</Label>
