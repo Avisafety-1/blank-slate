@@ -8512,6 +8512,7 @@
     "title": "Deviations",
     "empty": "No deviations reported",
     "searchPlaceholder": "Search deviations, missions or pilot…",
+    "registerNew": "Register new deviation",
     "filters": {
       "all": "All statuses"
     },
@@ -8519,6 +8520,12 @@
       "new": "New",
       "in_progress": "In progress",
       "closed": "Completed"
+    },
+    "reportDialog": {
+      "selectMission": "Select mission",
+      "searchMissions": "Search missions...",
+      "noMissionsFound": "No missions found",
+      "prompt": "Do you want to report something from the flight?"
     },
     "phase": {
       "takeoff": "Take-off",
