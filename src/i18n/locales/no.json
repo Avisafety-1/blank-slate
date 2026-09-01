@@ -3197,6 +3197,7 @@
     "warningAltitude": "Uventet høydeendring registrert",
     "warningDroneStatus": "Dronens status settes til gul. Du kan kvittere ut advarselen i dronekortet.",
     "matchFound": "Eksisterende flylogg funnet!",
+    "matchedOnDrone": "Matchet på drone",
     "noMatch": "Ingen eksisterende flylogg matcher. Du kan opprette et nytt oppdrag.",
     "updateExisting": "Oppdater flylogg",
     "createMission": "Opprett nytt oppdrag",

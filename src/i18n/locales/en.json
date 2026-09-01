@@ -3195,6 +3195,7 @@
     "warningAltitude": "Unexpected altitude change detected",
     "warningDroneStatus": "Drone status will be set to yellow. You can acknowledge the warning in the drone card.",
     "matchFound": "Existing flight log found!",
+    "matchedOnDrone": "Matched on drone",
     "noMatch": "No existing flight log matches. You can create a new mission.",
     "updateExisting": "Update flight log",
     "createMission": "Create new mission",

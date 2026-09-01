@@ -31,7 +31,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel } from "@/lib/droneLogMatching";
+import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
 
 // ── Types ──
 
@@ -341,6 +341,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
   const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
   const [matchedMissions, setMatchedMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
+  // Missions among the matches that have the log's drone linked (used for the "matched on drone" badge)
+  const [droneMatchedMissionIds, setDroneMatchedMissionIds] = useState<string[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -709,6 +711,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setMatchedLog(null);
     setMatchCandidates([]);
     setMatchedMissions([]);
+    setDroneMatchedMissionIds([]);
     setSelectedMissionId('');
     setSelectedFlightLogChoice('');
     setSelectedDroneId("");
@@ -784,11 +787,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   // ── Drone matching helper ──
-  const matchDroneFromResult = (data: DroneLogResult) => {
+  /** Returns the matched drone id (or null) so callers can use it before state has flushed. */
+  const matchDroneFromResult = (data: DroneLogResult): string | null => {
     if (!data.aircraftSN && !data.aircraftSerial) {
       setUnmatchedDroneSN(null);
       setAmbiguousDroneMatch(false);
-      return;
+      return null;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
     const matches = findSnMatches(drones as any[], sn, myDroneIds, data.aircraftName || null);
@@ -796,7 +800,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // Several drones share the same (truncated) SN prefix — let the user choose.
       setAmbiguousDroneMatch(true);
       setUnmatchedDroneSN(null);
-      return;
+      return null;
     }
     setAmbiguousDroneMatch(false);
     const match = matches[0];
@@ -809,9 +813,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           : `${terminology.vehicle} matchet automatisk: ${match.modell}`,
       );
       setUnmatchedDroneSN(null);
-    } else {
-      setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
+      return match.id;
     }
+    setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
+    return null;
   };
 
   const buildBatteryDefaults = (sn: string | null): EquipmentDefaultValues | undefined => sn ? (() => {
@@ -1000,11 +1005,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const result: DroneLogResult = data;
       console.log('[DroneLog] startTime from API:', result.startTime, '| aircraftSN:', result.aircraftSN, '| aircraftSerial:', result.aircraftSerial);
       setResult(result);
+      let droneIdHint: string | null = selectedDroneId || null;
       if (!selectedDroneId) {
-        matchDroneFromResult(result);
+        droneIdHint = matchDroneFromResult(result);
       }
       matchBatteryFromResult(result);
-      await findMatchingFlightLog(result);
+      await findMatchingFlightLog(result, droneIdHint);
       setStep('result');
     } catch (error: any) {
       console.error('[DroneLog] upload error:', error);
@@ -1484,11 +1490,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
+      let droneIdHint: string | null = selectedDroneId || null;
       if (!selectedDroneId) {
-        matchDroneFromResult(data);
+        droneIdHint = matchDroneFromResult(data);
       }
       matchBatteryFromResult(data);
-      await findMatchingFlightLog(data);
+      await findMatchingFlightLog(data, droneIdHint);
       setStep('result');
     } catch (error: any) {
       console.error('DJI process log error:', error);
@@ -1620,13 +1627,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     
     // Auto-match drone
+    let droneIdHint: string | null = null;
     if (pendingLog.matched_drone_id) {
       setSelectedDroneId(pendingLog.matched_drone_id);
+      droneIdHint = pendingLog.matched_drone_id;
     } else {
-      matchDroneFromResult(data);
+      droneIdHint = matchDroneFromResult(data);
     }
     matchBatteryFromResult(data);
-    await findMatchingFlightLog(data);
+    await findMatchingFlightLog(data, droneIdHint);
     // On desktop/tablet, show split view; on mobile, navigate to result step
     if (isMobile) {
       setStep('result');
@@ -1641,7 +1650,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // ── Shared logic ──
 
-  const findMatchingFlightLog = async (data: DroneLogResult) => {
+  const findMatchingFlightLog = async (data: DroneLogResult, droneIdHint?: string | null) => {
     if (!companyId) return;
 
     // Early SHA-256 duplicate check — catches orphaned flight_logs too
@@ -1735,15 +1744,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       .order('tidspunkt', { ascending: true });
 
     if (missions && missions.length > 0) {
-      // Sort by closest to flight start
-      const sorted = [...missions].sort((a, b) => {
-        const diffA = Math.abs(new Date(a.tidspunkt).getTime() - flightStart!.getTime());
-        const diffB = Math.abs(new Date(b.tidspunkt).getTime() - flightStart!.getTime());
-        return diffA - diffB;
-      });
-      console.log('[DroneLog] Found', sorted.length, 'matching missions');
+      // Second rule: when several missions match on date, prefer the one that has
+      // the log's drone linked (mission_drones). Time distance decides within each group.
+      let missionDroneIds: Record<string, string[]> = {};
+      if (droneIdHint && missions.length > 1) {
+        const { data: md } = await supabase
+          .from('mission_drones')
+          .select('mission_id, drone_id')
+          .in('mission_id', missions.map(m => m.id));
+        (md || []).forEach((row: any) => {
+          (missionDroneIds[row.mission_id] ||= []).push(row.drone_id);
+        });
+      }
+      const { sorted, bestId, droneMatchIds } = pickBestMission(
+        missions,
+        missionDroneIds,
+        droneIdHint,
+        flightStart,
+      );
+      console.log('[DroneLog] Found', sorted.length, 'matching missions;', droneMatchIds.length, 'match on drone');
       setMatchedMissions(sorted);
-      setSelectedMissionId(sorted[0].id); // Pre-select closest
+      setDroneMatchedMissionIds(droneMatchIds);
+      if (bestId) setSelectedMissionId(bestId);
 
       // Fetch all existing flight logs for matched missions so user can choose
       const missionIds = sorted.map(m => m.id);
@@ -3449,6 +3471,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <RadioGroupItem value={m.id} />
                   <div className="text-sm">
                     <span className="font-medium">{m.tittel}</span>
+                    {droneMatchedMissionIds.includes(m.id) && (
+                      <Badge variant="secondary" className="ml-2 text-[10px] py-0">
+                        {t('dronelog.matchedOnDrone', 'Matchet på drone')}
+                      </Badge>
+                    )}
                     <span className="text-muted-foreground"> — {format(new Date(m.tidspunkt), 'dd.MM.yyyy HH:mm')}</span>
                     {m.lokasjon && <span className="text-muted-foreground"> — {m.lokasjon}</span>}
                     <span className={`ml-1 text-xs ${m.status === 'Fullført' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>({m.status})</span>

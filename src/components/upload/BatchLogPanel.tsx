@@ -12,7 +12,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
-import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn } from "@/lib/droneLogMatching";
+import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn, pickBestMission } from "@/lib/droneLogMatching";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; dji_aircraft_name?: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
@@ -50,6 +50,10 @@ interface RowState {
   missionId: string;
   missionUserOverride: boolean;
   autoMatchedMissionId: string | null;
+  /** mission_id -> drone_ids linked to that mission (same-day candidates) */
+  missionDroneMap?: Record<string, string[]>;
+  /** true when the auto-selected mission was chosen because it has this log's drone */
+  missionMatchedOnDrone?: boolean;
   autoMatchedDroneId: string | null;
   autoMatchedPilotId: string | null;
   pilotUserOverride: boolean;
@@ -202,6 +206,31 @@ export const BatchLogPanel = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [droneIdsByProfile, myDroneIds, drones, personnelByDrone, personnel]);
 
+  // Drone may become known after the missions were fetched — redo the preselect then
+  // (never touches rows where the user picked a mission themselves).
+  useEffect(() => {
+    setRows(prev => prev.map(r => {
+      if (!r.missionsLoaded || r.missionUserOverride || !r.droneId || r.missions.length < 2) return r;
+      const baseDate = parseFlightDate(r.parsed?.startTime) ?? parseFlightDate(r.log.flight_date);
+      if (!baseDate || isNaN(baseDate.getTime())) return r;
+      const { sorted, bestId, droneMatchIds } = pickBestMission(
+        r.missions as any[],
+        r.missionDroneMap || {},
+        r.droneId,
+        baseDate,
+      );
+      if (bestId === r.autoMatchedMissionId) return r;
+      return {
+        ...r,
+        missions: sorted as any,
+        autoMatchedMissionId: bestId,
+        missionMatchedOnDrone: !!bestId && droneMatchIds.includes(bestId),
+        missionId: bestId || "",
+      };
+    }));
+  }, [rows.map(r => `${r.pendingLogId}:${r.droneId}:${r.missionsLoaded}`).join(",")]);
+
+
   // Parse missing logs + fetch same-day missions
   useEffect(() => {
     rows.forEach(async (row, idx) => {
@@ -222,22 +251,36 @@ export const BatchLogPanel = ({
             .lte("tidspunkt", end.toISOString())
             .order("tidspunkt", { ascending: true })
             .limit(20);
-          // Sort by closest to flight start
-          const sorted = (data || []).slice().sort((a: any, b: any) => {
-            const dA = Math.abs(new Date(a.tidspunkt).getTime() - baseDate.getTime());
-            const dB = Math.abs(new Date(b.tidspunkt).getTime() - baseDate.getTime());
-            return dA - dB;
-          });
-          const autoId = sorted.length > 0 ? sorted[0].id : null;
+          const dayMissions = (data || []) as any[];
+          // Second rule: when several missions match the date, prefer the one that has
+          // this log's drone linked. Time distance decides within each group.
+          const missionDroneMap: Record<string, string[]> = {};
+          if (dayMissions.length > 1) {
+            const { data: md } = await supabase
+              .from("mission_drones")
+              .select("mission_id, drone_id")
+              .in("mission_id", dayMissions.map(m => m.id));
+            (md || []).forEach((r: any) => {
+              (missionDroneMap[r.mission_id] ||= []).push(r.drone_id);
+            });
+          }
           setRows(prev => prev.map(r => {
             if (r.pendingLogId !== row.pendingLogId) return r;
+            const { sorted, bestId, droneMatchIds } = pickBestMission(
+              dayMissions,
+              missionDroneMap,
+              r.droneId || null,
+              baseDate,
+            );
             return {
               ...r,
               missions: sorted as any,
               missionsLoaded: true,
-              autoMatchedMissionId: autoId,
+              missionDroneMap,
+              autoMatchedMissionId: bestId,
+              missionMatchedOnDrone: !!bestId && droneMatchIds.includes(bestId),
               // Only preselect if user hasn't manually overridden
-              missionId: r.missionUserOverride ? r.missionId : (autoId || ""),
+              missionId: r.missionUserOverride ? r.missionId : (bestId || ""),
             };
           }));
         }
@@ -706,7 +749,8 @@ export const BatchLogPanel = ({
                         Oppdrag
                         {row.autoMatchedMissionId && row.missionId === row.autoMatchedMissionId && !row.missionUserOverride && (
                           <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
-                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                            <Sparkles className="w-2.5 h-2.5" />
+                            {row.missionMatchedOnDrone ? "matchet på drone" : "auto-matchet"}
                           </span>
                         )}
                       </label>
