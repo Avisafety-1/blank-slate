@@ -4118,15 +4118,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: DJI Logs list ── */}
         {step === 'dji-logs' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 min-w-0 max-w-full overflow-x-hidden">
+            <div className="flex items-center justify-between gap-2 min-w-0">
               {backButton('dji-login')}
-              <Button variant="ghost" size="sm" onClick={handleDjiLogout} className="text-xs text-muted-foreground">
+              <Button variant="ghost" size="sm" onClick={handleDjiLogout} className="text-xs text-muted-foreground shrink-0">
                 Logg ut av DJI
               </Button>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
+              <p className="text-sm text-muted-foreground min-w-0">
                 {t('dronelog.selectLog', 'Velg en flylogg å importere:')}
               </p>
               <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground shrink-0">
@@ -4137,6 +4137,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {t('dronelog.showAllLogs', 'Se alle')}
               </label>
             </div>
+
 
             {isDjiLoading && !isProcessing ? (
               <div className="flex items-center justify-center py-8">
