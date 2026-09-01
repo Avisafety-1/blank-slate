@@ -392,7 +392,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-  const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(true);
+  // Av som standard: permanent kobling skal være et bevisst valg, ellers samler
+  // batterier opp koblinger til alle droner de har fløyet med ved hver import.
+  const [linkBatteryToDrone, setLinkBatteryToDrone] = useState(false);
 
   const [logToLogbooks, setLogToLogbooks] = useState(true);
   const [logbookOpen, setLogbookOpen] = useState(true);
