@@ -20,6 +20,18 @@ Ny migrasjon på `profiles`:
 
 Tilgangsregler: eksisterende regler for `profiles` beholdes. Selve av-/påskrudden gjøres kun via en server-funksjon som verifiserer at den som ber om det er admin eller superadmin i samme selskapshierarki — vanlige brukere kan ikke endre feltet.
 
+## Ingen tilbakevirkende kraft (garanti)
+
+Endringen kan ikke deaktivere noen som er aktiv i dag:
+
+- Kolonnen legges til som `is_active boolean NOT NULL DEFAULT true`, så alle eksisterende rader får verdien «aktiv» i samme operasjon. Migrasjonen inneholder ingen `UPDATE`, ingen `false`-verdier og ingen betinget logikk.
+- Innloggingssperren ligger i Auth (`ban_duration`) og settes kun av edge-funksjonen når en admin trykker «Deaktiver» på én konkret bruker. Migrasjonen rører ikke `auth.users`, og det kjøres ingen bulk-ban eller bakgrunnsjobb.
+- Ingen eksisterende økter avsluttes av utrullingen; `signOut` kalles bare for den ene brukeren som deaktiveres manuelt.
+- Frontend-sjekkene bruker `is_active === false` (eksplisitt), ikke «falsy», så en manglende/ikke-lastet verdi aldri tolkes som deaktivert.
+- Personellkortets badge vises kun ved `is_active === false`.
+- Etter migrasjonen verifiseres det med en telling at antall rader med `is_active = false` er 0.
+
+
 ## Teknisk
 
 **Ny edge function `admin-set-user-active`** (bygget over samme mønster som `admin-delete-user`):
