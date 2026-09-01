@@ -86,6 +86,16 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
           />
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setReportDialogOpen(true)}
+            className="gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t("deviations.registerNew", "Registrer nytt avvik")}</span>
+            <span className="sm:hidden">{t("actions.report", "Rapporter")}</span>
+          </Button>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
