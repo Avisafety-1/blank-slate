@@ -341,6 +341,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [matchedLog, setMatchedLog] = useState<MatchedFlightLog | null>(null);
   const [matchCandidates, setMatchCandidates] = useState<MatchedFlightLog[]>([]);
   const [matchedMissions, setMatchedMissions] = useState<Array<{ id: string; tittel: string; tidspunkt: string; status: string; lokasjon: string }>>([]);
+  // Missions among the matches that have the log's drone linked (used for the "matched on drone" badge)
+  const [droneMatchedMissionIds, setDroneMatchedMissionIds] = useState<string[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
   const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
