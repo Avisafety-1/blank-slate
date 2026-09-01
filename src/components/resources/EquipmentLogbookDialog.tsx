@@ -229,10 +229,20 @@ export const EquipmentLogbookDialog = ({
         const droneIds = [...new Set(droneHistory.map(e => e.drone_id))];
         
         const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
-        const { data: drones } = await supabase.from("drones").select("id, modell").in("id", droneIds);
+        const { data: drones } = await supabase
+          .from("drones")
+          .select("id, modell, serienummer, internal_serial, dji_aircraft_name")
+          .in("id", droneIds);
         
         const userMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
-        const droneMap = new Map(drones?.map(d => [d.id, d.modell]) || []);
+        // Flere droner kan ha samme modellnavn (f.eks. "DJI Mini 5") — vis derfor
+        // også kallenavn/serienummer slik at oppføringen peker på riktig drone.
+        const droneMap = new Map(
+          drones?.map((d: any) => {
+            const suffix = (d.dji_aircraft_name || d.internal_serial || d.serienummer || "").trim();
+            return [d.id, suffix ? `${d.modell} (${suffix})` : d.modell];
+          }) || [],
+        );
 
         droneHistory.forEach(entry => {
           const isAdded = entry.action === 'added';
