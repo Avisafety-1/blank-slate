@@ -3470,6 +3470,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <RadioGroupItem value={m.id} />
                   <div className="text-sm">
                     <span className="font-medium">{m.tittel}</span>
+                    {droneMatchedMissionIds.includes(m.id) && (
+                      <Badge variant="secondary" className="ml-2 text-[10px] py-0">
+                        {t('dronelog.matchedOnDrone', 'Matchet på drone')}
+                      </Badge>
+                    )}
                     <span className="text-muted-foreground"> — {format(new Date(m.tidspunkt), 'dd.MM.yyyy HH:mm')}</span>
                     {m.lokasjon && <span className="text-muted-foreground"> — {m.lokasjon}</span>}
                     <span className={`ml-1 text-xs ${m.status === 'Fullført' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>({m.status})</span>
