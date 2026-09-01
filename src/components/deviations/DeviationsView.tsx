@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GlassCard } from "@/components/GlassCard";
 import { Loader2, RefreshCw, Search, FileWarning, Plus } from "lucide-react";
 import { useDeviationReports, type DeviationReport, type DeviationStatus } from "@/hooks/useDeviationReports";
 import { DeviationCard } from "./DeviationCard";
@@ -73,45 +73,52 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
     });
   }, [reports, search, statusFilter]);
 
+  const statusOptions: Array<DeviationStatus | "all"> = ["all", "new", "in_progress", "closed"];
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("deviations.searchPlaceholder")}
-            className="pl-8"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setReportDialogOpen(true)}
-            className="gap-1"
-          >
+      <GlassCard className="mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={t("deviations.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Button onClick={() => setReportDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">{t("deviations.registerNew", "Registrer nytt avvik")}</span>
-            <span className="sm:hidden">{t("actions.report", "Rapporter")}</span>
-          </Button>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("deviations.filters.all")}</SelectItem>
-              <SelectItem value="new">{t("deviations.status.new")}</SelectItem>
-              <SelectItem value="in_progress">{t("deviations.status.in_progress")}</SelectItem>
-              <SelectItem value="closed">{t("deviations.status.closed")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={() => refetch()} aria-label={t("actions.refresh")}>
-            <RefreshCw className="w-4 h-4" />
+            {t("deviations.registerNew", "Registrer nytt avvik")}
           </Button>
         </div>
-      </div>
+
+        <div className="flex gap-2 mt-4 flex-wrap">
+          {statusOptions.map((status) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === "all" ? t("deviations.filters.all") : t(`deviations.status.${status}`)}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto gap-2"
+            onClick={() => refetch()}
+            aria-label={t("actions.refresh")}
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t("actions.refresh")}
+          </Button>
+        </div>
+      </GlassCard>
+
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
