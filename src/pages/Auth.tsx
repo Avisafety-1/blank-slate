@@ -229,7 +229,7 @@ const Auth = () => {
         // Check if user has a profile with a valid company_id
         let { data: profile, error } = await supabase
           .from('profiles')
-          .select('id, company_id, approved')
+          .select('id, company_id, approved, is_active')
           .eq('id', user.id)
           .maybeSingle();
         
@@ -239,7 +239,7 @@ const Auth = () => {
           await new Promise(r => setTimeout(r, 1000));
           const { data: retryProfile, error: retryErr } = await supabase
             .from('profiles')
-            .select('id, company_id, approved')
+            .select('id, company_id, approved, is_active')
             .eq('id', user.id)
             .maybeSingle();
           
@@ -255,8 +255,10 @@ const Auth = () => {
         }
 
         if (profile && profile.company_id) {
-          // User has a profile with company_id
-          if (profile.approved) {
+          if ((profile as any).is_active === false) {
+            toast.error(t('auth.accountDeactivated'));
+            await supabase.auth.signOut();
+          } else if (profile.approved) {
             // Check MFA requirement before redirecting (skip for passkey sessions)
             const { data: sessData } = await supabase.auth.getSession();
             if (!isPasskeyLogin(sessData?.session ?? null)) {
@@ -507,10 +509,15 @@ const Auth = () => {
           // Check if user is approved
           const {
             data: profileData
-          } = await supabase.from("profiles").select("approved").eq("id", data.user.id).maybeSingle();
+          } = await supabase.from("profiles").select("approved, is_active").eq("id", data.user.id).maybeSingle();
           if (profileData && !(profileData as any).approved) {
             await supabase.auth.signOut();
             toast.error(t('auth.accountPendingApproval'));
+            return;
+          }
+          if (profileData && (profileData as any).is_active === false) {
+            await supabase.auth.signOut();
+            toast.error(t('auth.accountDeactivated'));
             return;
           }
           toast.success(t('auth.loginSuccess'), { id: 'login-success' });

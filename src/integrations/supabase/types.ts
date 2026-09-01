@@ -7073,12 +7073,15 @@ export type Database = {
           can_be_incident_responsible: boolean
           company_id: string
           created_at: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
           email: string | null
           flight_time_affects_status: boolean
           flyvetimer: number | null
           full_name: string | null
           id: string
           incident_responsible_company_ids: string[] | null
+          is_active: boolean
           is_technical_responsible: boolean | null
           nødkontakt_navn: string | null
           nødkontakt_telefon: string | null
@@ -7105,12 +7108,15 @@ export type Database = {
           can_be_incident_responsible?: boolean
           company_id: string
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email?: string | null
           flight_time_affects_status?: boolean
           flyvetimer?: number | null
           full_name?: string | null
           id: string
           incident_responsible_company_ids?: string[] | null
+          is_active?: boolean
           is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null
@@ -7137,12 +7143,15 @@ export type Database = {
           can_be_incident_responsible?: boolean
           company_id?: string
           created_at?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email?: string | null
           flight_time_affects_status?: boolean
           flyvetimer?: number | null
           full_name?: string | null
           id?: string
           incident_responsible_company_ids?: string[] | null
+          is_active?: boolean
           is_technical_responsible?: boolean | null
           nødkontakt_navn?: string | null
           nødkontakt_telefon?: string | null

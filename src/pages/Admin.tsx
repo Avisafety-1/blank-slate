@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
-import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap, Rss } from "lucide-react";
+import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap, Rss, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -66,6 +66,7 @@ interface Profile {
   approved: boolean;
   approved_at: string | null;
   approved_by: string | null;
+  is_active?: boolean;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
@@ -540,6 +541,37 @@ const Admin = () => {
       console.error("Error deleting user:", error);
       const msg = error?.message || t('admin.errorDeletingUser');
       toast.error(`${t('admin.errorDeletingUser')}: ${msg}`);
+    }
+  };
+
+  const setUserActive = async (userId: string, userName: string | null, currentlyActive: boolean) => {
+    const name = userName || t('common.notSpecified');
+    const confirmText = currentlyActive
+      ? t('admin.confirmDeactivateUser', { name })
+      : t('admin.confirmActivateUser', { name });
+    if (!confirm(confirmText)) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-set-user-active", {
+        body: { user_id: userId, active: !currentlyActive },
+      });
+
+      if (error) {
+        console.error("admin-set-user-active invoke error:", error);
+        throw error;
+      }
+      if (!data?.success) {
+        const detail = data?.error || data?.detail || "Update failed";
+        console.error("admin-set-user-active returned failure:", data);
+        throw new Error(detail);
+      }
+
+      toast.success(currentlyActive ? t('admin.userDeactivated') : t('admin.userActivated'));
+      fetchData();
+    } catch (error: any) {
+      console.error("Error updating active status:", error);
+      const msg = error?.message || t('admin.errorUpdatingActiveStatus');
+      toast.error(`${t('admin.errorUpdatingActiveStatus')}: ${msg}`);
     }
   };
 
@@ -1267,16 +1299,19 @@ const Admin = () => {
                     {filteredApprovedUsers.map((profile) => {
                       const userRole = userRoles.find((r) => r.user_id === profile.id);
                       return (
-                        <div 
+                        <div
                           key={profile.id}
-                          className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
+                          className={`flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors ${profile.is_active === false ? "opacity-60" : ""}`}
                         >
                           <div className="flex-1 min-w-0">
                             {isCompactAdmin ? (
                               <div className="space-y-2">
                                 <div>
-                                  <p className="font-medium text-sm truncate">
+                                  <p className="font-medium text-sm truncate flex items-center gap-2">
                                     {profile.full_name || t('common.notSpecified')}
+                                    {profile.is_active === false && (
+                                      <Badge variant="secondary" className="text-[10px] shrink-0">{t('admin.deactivatedBadge')}</Badge>
+                                    )}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
                                     {profile.email || t('admin.noEmail')}
@@ -1434,6 +1469,19 @@ const Admin = () => {
                                       <Button
                                         size="sm"
                                         variant="ghost"
+                                        onClick={() => setUserActive(profile.id, profile.full_name, profile.is_active !== false)}
+                                        disabled={!canManageRoles}
+                                        className="w-full h-9 justify-start"
+                                      >
+                                        {profile.is_active === false ? (
+                                          <><UserCheck className="w-4 h-4 mr-2" />{t('admin.activateUser')}</>
+                                        ) : (
+                                          <><UserX className="w-4 h-4 mr-2" />{t('admin.deactivateUser')}</>
+                                        )}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
                                         onClick={() => deleteUser(profile.id, profile.full_name)}
                                         className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
                                       >
@@ -1453,6 +1501,9 @@ const Admin = () => {
                                   <p className="font-medium text-sm sm:text-base truncate">
                                     {profile.full_name || t('common.notSpecified')}
                                   </p>
+                                  {profile.is_active === false && (
+                                    <Badge variant="secondary" className="text-[10px] shrink-0">{t('admin.deactivatedBadge')}</Badge>
+                                  )}
                                 </div>
                                 <p className="text-xs text-muted-foreground truncate">
                                   {profile.email || t('admin.noEmail')}
@@ -1619,6 +1670,26 @@ const Admin = () => {
                                 </Tooltip>
                               )}
                               
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setUserActive(profile.id, profile.full_name, profile.is_active !== false)}
+                                    disabled={!canManageRoles}
+                                    className="h-10 px-3"
+                                  >
+                                    {profile.is_active === false ? (
+                                      <UserCheck className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                      <UserX className="w-4 h-4 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {profile.is_active === false ? t('admin.activateUser') : t('admin.deactivateUser')}
+                                </TooltipContent>
+                              </Tooltip>
                               <Button
                                 size="sm"
                                 variant="ghost"
