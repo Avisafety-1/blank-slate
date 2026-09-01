@@ -1113,7 +1113,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_drone_id: droneId,
             matched_battery_id: batteryId,
             status: 'pending',
-            parsed_result: { ...(data as any), djiFileName: selectedLogs[i].fileName || null } as any,
+            parsed_result: { ...(data as any), djiFileName: bulkFiles[i]?.name || null } as any,
             source_file_type: (data as any)?.source === 'ardupilot' ? 'ardupilot' : 'dji',
           } as any);
 
@@ -1237,7 +1237,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_drone_id: droneId,
             matched_battery_id: batteryId,
             status: 'pending',
-            parsed_result: data as any,
+            parsed_result: { ...(data as any), djiFileName: selectedLogs[i].fileName || null } as any,
           } as any);
 
         if (insertError) throw new Error(insertError.message);
