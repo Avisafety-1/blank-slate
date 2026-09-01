@@ -349,7 +349,7 @@ async function tryFlyParserCsv(
   if (!DJI_PARSER_URL || !DJI_PARSER_TOKEN) return null;
   try {
     const form = new FormData();
-    form.append("file", new Blob([fileBytes], { type: "application/octet-stream" }), `${logId}.txt`);
+    form.append("file", new Blob([fileBytes as BlobPart], { type: "application/octet-stream" }), `${logId}.txt`);
     form.append("fields", fields.join(","));
     const res = await fetch(`${DJI_PARSER_URL}/parse`, {
       method: "POST",
