@@ -28,8 +28,35 @@ const DJI_PARSER_TOKEN = Deno.env.get("DJI_PARSER_TOKEN");
 
 /**
  * Annoterer hver logg fra DroneLog med import-tilstand basert på
- * flight_logs, pending_dji_logs og dji_sync_jobs for det aktive selskapet.
+ * flight_logs, pending_dji_logs og dji_sync_jobs.
+ *
+ * DroneLog sin numeriske logg-ID er kontospesifikk (personlige API-nøkler gir nye
+ * ID-er for samme fysiske flytur), så vi matcher i tillegg på DJI-filnavn og på
+ * en signatur av starttidspunkt + varighet.
  */
+const MATCH_START_TOLERANCE_MS = 3 * 60 * 1000;
+const MATCH_DURATION_TOLERANCE_MIN = 2;
+
+function listLogStartMs(l: any): number | null {
+  const ts = l?.timestamp;
+  if (typeof ts === "number" && ts > 0) return ts < 1e12 ? ts * 1000 : ts;
+  if (typeof ts === "string" && ts) {
+    const d = new Date(ts).getTime();
+    if (!isNaN(d)) return d;
+  }
+  if (l?.date) {
+    const d = new Date(l.date).getTime();
+    if (!isNaN(d)) return d;
+  }
+  return null;
+}
+
+function listLogDurationMin(l: any): number | null {
+  if (typeof l?.totalTime === "number" && l.totalTime > 0) return Math.round(l.totalTime / 1000 / 60);
+  if (typeof l?.duration === "number" && l.duration > 0) return Math.round(l.duration / 60);
+  return null;
+}
+
 async function annotateDjiImportStates(
   logs: any[],
   companyId: string | null,
@@ -38,50 +65,84 @@ async function annotateDjiImportStates(
   const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const ids = [...new Set(logs.map((l) => String(l.id)).filter(Boolean))];
   if (!ids.length) return logs;
+  const fileNames = [...new Set(logs.map((l) => (l?.fileName || "").trim()).filter(Boolean))];
 
-  const importedIds = new Set<string>();
-  const pendingMap = new Map<string, string>();
-  const queuedIds = new Set<string>();
+  // Selskapsomfang: eget selskap + moderselskap + underavdelinger.
+  const companyIds = new Set<string>([companyId]);
+  try {
+    const [{ data: own }, { data: children }] = await Promise.all([
+      serviceClient.from("companies").select("parent_company_id").eq("id", companyId).maybeSingle(),
+      serviceClient.from("companies").select("id").eq("parent_company_id", companyId),
+    ]);
+    if (own?.parent_company_id) companyIds.add(own.parent_company_id);
+    (children || []).forEach((c: any) => companyIds.add(c.id));
+  } catch (_) { /* fallback til eget selskap */ }
+  const scope = Array.from(companyIds);
 
-  // Hent allerede importerte loggføringer (dji_log_id er satt).
-  const chunkSize = 100;
-  for (let i = 0; i < ids.length; i += chunkSize) {
-    const chunk = ids.slice(i, i + chunkSize);
-    const { data: rows } = await serviceClient
+  // Tidsvindu fra listen (med romslig margin) for signaturmatch.
+  const startTimes = logs.map(listLogStartMs).filter((v): v is number => v !== null);
+  const minTs = startTimes.length ? new Date(Math.min(...startTimes) - 86_400_000).toISOString() : null;
+  const maxTs = startTimes.length ? new Date(Math.max(...startTimes) + 86_400_000).toISOString() : null;
+
+  let flightRows: any[] = [];
+  {
+    let q = serviceClient
       .from("flight_logs")
-      .select("dji_log_id")
-      .eq("company_id", companyId)
-      .in("dji_log_id", chunk);
-    (rows || []).forEach((r: any) => {
-      if (r.dji_log_id) importedIds.add(r.dji_log_id);
-    });
+      .select("id, company_id, dji_log_id, dji_file_name, flight_date, start_time_utc, flight_duration_minutes")
+      .in("company_id", scope);
+    if (minTs && maxTs) q = q.gte("flight_date", minTs).lte("flight_date", maxTs);
+    const { data } = await q.limit(2000);
+    flightRows = data || [];
   }
 
-  // Hent manuelt opplastede/pending-logger.
+  const importedIds = new Set<string>();
+  const importedFiles = new Set<string>();
+  flightRows.forEach((r: any) => {
+    if (r.dji_log_id) importedIds.add(String(r.dji_log_id));
+    if (r.dji_file_name) importedFiles.add(String(r.dji_file_name).trim());
+  });
+
+  const pendingMap = new Map<string, string>();
   const { data: pendingRows } = await serviceClient
     .from("pending_dji_logs")
     .select("dji_log_id, status")
-    .eq("company_id", companyId)
+    .in("company_id", scope)
     .in("dji_log_id", ids);
-  (pendingRows || []).forEach((r: any) => {
-    pendingMap.set(r.dji_log_id, r.status);
-  });
+  (pendingRows || []).forEach((r: any) => pendingMap.set(String(r.dji_log_id), r.status));
 
-  // Hent auto-sync-kø.
+  const queuedIds = new Set<string>();
   const { data: syncRows } = await serviceClient
     .from("dji_sync_jobs")
     .select("dji_log_id, status")
-    .eq("company_id", companyId)
+    .in("company_id", scope)
     .in("dji_log_id", ids)
     .in("status", ["pending", "queued"]);
-  (syncRows || []).forEach((r: any) => {
-    queuedIds.add(r.dji_log_id);
-  });
+  (syncRows || []).forEach((r: any) => queuedIds.add(String(r.dji_log_id)));
 
-  return logs.map((l) => {
+  // Signaturmatch mot eksisterende flylogger (start ±3 min, varighet ±2 min).
+  const signatureMatch = (l: any): any | null => {
+    const startMs = listLogStartMs(l);
+    if (startMs === null) return null;
+    const durMin = listLogDurationMin(l);
+    return flightRows.find((r: any) => {
+      const rowStart = new Date(r.start_time_utc || r.flight_date).getTime();
+      if (isNaN(rowStart)) return false;
+      if (Math.abs(rowStart - startMs) > MATCH_START_TOLERANCE_MS) return false;
+      if (durMin !== null && r.flight_duration_minutes != null) {
+        if (Math.abs(r.flight_duration_minutes - durMin) > MATCH_DURATION_TOLERANCE_MIN) return false;
+      }
+      return true;
+    }) || null;
+  };
+
+  const learnUpdates: Array<{ id: string; dji_log_id?: string; dji_file_name?: string }> = [];
+
+  const annotated = logs.map((l) => {
     const id = String(l.id);
+    const fileName = (l?.fileName || "").trim();
     let state = "importable";
-    if (importedIds.has(id) || pendingMap.get(id) === "approved") {
+
+    if (importedIds.has(id) || (fileName && importedFiles.has(fileName)) || pendingMap.get(id) === "approved") {
       state = "imported";
     } else if (pendingMap.get(id) === "dismissed") {
       state = "dismissed";
@@ -89,10 +150,31 @@ async function annotateDjiImportStates(
       state = "pending";
     } else if (queuedIds.has(id)) {
       state = "queued";
+    } else {
+      const match = signatureMatch(l);
+      if (match) {
+        state = "imported";
+        const upd: any = { id: match.id };
+        if (!match.dji_log_id) upd.dji_log_id = id;
+        if (!match.dji_file_name && fileName) upd.dji_file_name = fileName;
+        if (upd.dji_log_id || upd.dji_file_name) learnUpdates.push(upd);
+      }
     }
     return { ...l, importState: state };
   });
+
+  // Selvlæring: fyll inn tomme ID-/filnavnfelt slik at neste listing matcher eksakt.
+  for (const upd of learnUpdates.slice(0, 200)) {
+    const { id, ...fields } = upd;
+    try {
+      await serviceClient.from("flight_logs").update(fields).eq("id", id);
+    } catch (_) { /* ignorer */ }
+  }
+
+  console.log(`[process-dronelog] annotate: ${annotated.length} logger, ${annotated.filter((a) => a.importState !== "importable").length} kjente, ${learnUpdates.length} selvlært`);
+  return annotated;
 }
+
 
 /**
  * Klassifiser feilrespons fra DroneLog `/accounts/dji` (DJI login).
