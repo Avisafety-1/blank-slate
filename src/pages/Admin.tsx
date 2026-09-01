@@ -1299,9 +1299,9 @@ const Admin = () => {
                     {filteredApprovedUsers.map((profile) => {
                       const userRole = userRoles.find((r) => r.user_id === profile.id);
                       return (
-                        <div 
+                        <div
                           key={profile.id}
-                          className="flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors"
+                          className={`flex items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent/5 transition-colors ${profile.is_active === false ? "opacity-60" : ""}`}
                         >
                           <div className="flex-1 min-w-0">
                             {isCompactAdmin ? (
