@@ -110,6 +110,36 @@ export const parseFlightDate = (raw: string | null | undefined): Date | null => 
   return null;
 };
 
+/**
+ * Picks the best mission for a flight log among same-day missions.
+ * Rule: missions that have the log's drone linked win; among those (or among all,
+ * when nothing matches on drone) the one closest in time to the flight start wins.
+ * Returns the ordered list (drone matches first) plus the id to preselect.
+ */
+export const pickBestMission = <T extends { id: string; tidspunkt: string }>(
+  missions: T[],
+  missionDroneIds: Record<string, string[]>,
+  droneId: string | null | undefined,
+  flightStart: Date,
+): { sorted: T[]; bestId: string | null; droneMatchIds: string[] } => {
+  const byTime = [...missions].sort(
+    (a, b) =>
+      Math.abs(new Date(a.tidspunkt).getTime() - flightStart.getTime()) -
+      Math.abs(new Date(b.tidspunkt).getTime() - flightStart.getTime()),
+  );
+  const droneMatchIds = droneId
+    ? byTime.filter(m => (missionDroneIds[m.id] || []).includes(droneId)).map(m => m.id)
+    : [];
+  if (droneMatchIds.length === 0) {
+    return { sorted: byTime, bestId: byTime[0]?.id ?? null, droneMatchIds };
+  }
+  const sorted = [
+    ...byTime.filter(m => droneMatchIds.includes(m.id)),
+    ...byTime.filter(m => !droneMatchIds.includes(m.id)),
+  ];
+  return { sorted, bestId: sorted[0].id, droneMatchIds };
+};
+
 /** Label for a drone in pickers: "Modell – Navn (SN)" — name only when set. */
 export const droneOptionLabel = (d: { modell?: string | null; serienummer?: string | null; dji_aircraft_name?: string | null }) => {
   const name = (d.dji_aircraft_name || '').trim();
