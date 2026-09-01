@@ -1646,12 +1646,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (data.sha256Hash) {
       const { data: dupMatch } = await (supabase
         .from('flight_logs')
-        .select('id, flight_date, flight_duration_minutes, drone_id, mission_id, departure_location, landing_location, missions(tittel, tidspunkt)')
+        .select('id, dji_log_id, dji_file_name, flight_date, flight_duration_minutes, drone_id, mission_id, departure_location, landing_location, missions(tittel, tidspunkt)')
         .eq('company_id', companyId) as any)
         .eq('dronelog_sha256', data.sha256Hash)
         .limit(1)
         .maybeSingle();
       if (dupMatch) {
+        await learnDjiIdentifiers(dupMatch, currentDjiLogId, currentDjiFileName);
+
         const [enrichedDup] = await enrichLogsWithPilots([dupMatch]);
         const duplicateBelongsToSelectedPilot = !!pilotId && (enrichedDup?.pilot_ids || []).includes(pilotId);
         // If the duplicate belongs to a mission, fetch all logs for that mission
