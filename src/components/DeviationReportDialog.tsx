@@ -137,13 +137,13 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
   };
 
   const handleSubmit = async () => {
-    if (!missionId || !companyId || !user || path.length === 0) {
+    if (!selectedMissionId || !companyId || !user || path.length === 0) {
       handleClose();
       return;
     }
     setSubmitting(true);
     const payload = {
-      mission_id: missionId,
+      mission_id: selectedMissionId,
       flight_log_id: flightLogId,
       company_id: companyId,
       reported_by: user.id,
@@ -178,10 +178,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
   };
 
   const notifyResponsibles = async () => {
-    if (!missionId || !companyId || !user) return;
+    if (!selectedMissionId || !companyId || !user) return;
     try {
       const [{ data: mission }, { data: profile }] = await Promise.all([
-        supabase.from("missions").select("tittel, lokasjon").eq("id", missionId).maybeSingle(),
+        supabase.from("missions").select("tittel, lokasjon").eq("id", selectedMissionId).maybeSingle(),
         supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
       ]);
       await invokeEmailFunction("send-notification-email", {
