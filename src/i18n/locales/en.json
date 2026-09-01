@@ -8514,7 +8514,7 @@
     "searchPlaceholder": "Search deviations, missions or pilot…",
     "registerNew": "Register new deviation",
     "filters": {
-      "all": "All statuses"
+      "all": "All"
     },
     "status": {
       "new": "New",

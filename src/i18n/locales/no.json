@@ -8516,7 +8516,7 @@
     "searchPlaceholder": "Søk i avvik, oppdrag eller pilot…",
     "registerNew": "Registrer nytt avvik",
     "filters": {
-      "all": "Alle statuser"
+      "all": "Alle"
     },
     "status": {
       "new": "Ny",
