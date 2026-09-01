@@ -3787,6 +3787,21 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     setResult(null);
                   }
                 }}
+                onSelectAll={(ids, select) => {
+                  setBatchSelectedIds(prev => {
+                    const next = new Set(prev);
+                    ids.forEach(id => {
+                      if (select) next.add(id);
+                      else next.delete(id);
+                    });
+                    return next;
+                  });
+                  // Clear single-log view when entering batch mode
+                  if (selectedPendingLogId) {
+                    setSelectedPendingLogId(null);
+                    setResult(null);
+                  }
+                }}
               />
             </div>
             </div>
