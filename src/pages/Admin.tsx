@@ -1307,8 +1307,11 @@ const Admin = () => {
                             {isCompactAdmin ? (
                               <div className="space-y-2">
                                 <div>
-                                  <p className="font-medium text-sm truncate">
+                                  <p className="font-medium text-sm truncate flex items-center gap-2">
                                     {profile.full_name || t('common.notSpecified')}
+                                    {profile.is_active === false && (
+                                      <Badge variant="secondary" className="text-[10px] shrink-0">{t('admin.deactivatedBadge')}</Badge>
+                                    )}
                                   </p>
                                   <p className="text-xs text-muted-foreground truncate">
                                     {profile.email || t('admin.noEmail')}
