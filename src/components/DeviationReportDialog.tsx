@@ -33,6 +33,16 @@ interface Props {
 
 type FlightPhase = "takeoff" | "in_flight" | "landing";
 
+type Step = "select_mission" | "prompt" | "select";
+
+interface MissionOption {
+  id: string;
+  tittel: string;
+  status: string;
+  tidspunkt: string;
+  lokasjon: string | null;
+}
+
 const PHASE_LABELS: Record<FlightPhase, string> = {
   takeoff: "Takeoff",
   in_flight: "In flight",
@@ -40,14 +50,18 @@ const PHASE_LABELS: Record<FlightPhase, string> = {
 };
 
 export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLogId, onDone }: Props) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
-  const [step, setStep] = useState<"prompt" | "select">("prompt");
+  const [step, setStep] = useState<Step>(missionId ? "prompt" : "select_mission");
   const [categories, setCategories] = useState<Category[]>([]);
   const [path, setPath] = useState<Category[]>([]); // selected path from root
   const [comment, setComment] = useState("");
   const [search, setSearch] = useState("");
   const [flightPhase, setFlightPhase] = useState<FlightPhase | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [missions, setMissions] = useState<MissionOption[]>([]);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
+  const [missionPopoverOpen, setMissionPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
