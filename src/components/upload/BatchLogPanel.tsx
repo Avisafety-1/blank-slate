@@ -357,7 +357,7 @@ export const BatchLogPanel = ({
 
     try {
       // SHA-256 dedup check
-      let extFields: any = buildExtended(parsed);
+      let extFields: any = buildExtended(parsed, row.droneId);
       if (extFields.dronelog_sha256) {
         const { data: dup } = await supabase
           .from("flight_logs")
