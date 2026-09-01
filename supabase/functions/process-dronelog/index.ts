@@ -110,6 +110,19 @@ async function annotateDjiImportStates(
     .in("dji_log_id", ids);
   (pendingRows || []).forEach((r: any) => pendingMap.set(String(r.dji_log_id), r.status));
 
+  // Pending-rader i samme tidsvindu — brukes til signaturmatch når ID-en er en annen.
+  let pendingSignatureRows: any[] = [];
+  {
+    let pq = serviceClient
+      .from("pending_dji_logs")
+      .select("id, dji_log_id, status, flight_date, duration_seconds")
+      .in("company_id", scope);
+    if (minTs && maxTs) pq = pq.gte("flight_date", minTs).lte("flight_date", maxTs);
+    const { data } = await pq.limit(2000);
+    pendingSignatureRows = data || [];
+  }
+
+
   const queuedIds = new Set<string>();
   const { data: syncRows } = await serviceClient
     .from("dji_sync_jobs")
