@@ -12,7 +12,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
-import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn } from "@/lib/droneLogMatching";
+import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn, pickBestMission } from "@/lib/droneLogMatching";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; dji_aircraft_name?: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
