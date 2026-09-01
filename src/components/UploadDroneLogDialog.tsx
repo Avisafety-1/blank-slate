@@ -1004,11 +1004,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       const result: DroneLogResult = data;
       console.log('[DroneLog] startTime from API:', result.startTime, '| aircraftSN:', result.aircraftSN, '| aircraftSerial:', result.aircraftSerial);
       setResult(result);
+      let droneIdHint: string | null = selectedDroneId || null;
       if (!selectedDroneId) {
-        matchDroneFromResult(result);
+        droneIdHint = matchDroneFromResult(result);
       }
       matchBatteryFromResult(result);
-      await findMatchingFlightLog(result);
+      await findMatchingFlightLog(result, droneIdHint);
       setStep('result');
     } catch (error: any) {
       console.error('[DroneLog] upload error:', error);
