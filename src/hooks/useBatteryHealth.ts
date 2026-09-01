@@ -139,10 +139,11 @@ export function useBatteryHealth(
         droneModel = drone?.modell ?? null;
       }
 
-      const last = rows[rows.length - 1];
+      const lastWithCapacity = [...rows].reverse().find((r) => r.battery_full_capacity_mah != null);
+      const lastWithVoltage = [...rows].reverse().find((r) => r.battery_voltage_min_v != null);
       const signals = {
-        capacityMah: last?.battery_full_capacity_mah ?? null,
-        packVoltageV: last?.battery_voltage_min_v ?? null,
+        capacityMah: lastWithCapacity?.battery_full_capacity_mah ?? null,
+        packVoltageV: lastWithVoltage?.battery_voltage_min_v ?? null,
       };
 
       const [types, { data: eq }] = await Promise.all([
