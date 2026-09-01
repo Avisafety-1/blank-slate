@@ -3,13 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, ChevronRight, Search, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
 import { translateDeviationCategory } from "@/lib/i18nHelpers";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface Category {
   id: string;
