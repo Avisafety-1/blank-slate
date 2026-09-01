@@ -4260,6 +4260,7 @@ export type Database = {
           completed_checklists: string[] | null
           created_at: string | null
           departure_location: string
+          dji_file_name: string | null
           dji_log_id: string | null
           drone_id: string | null
           drone_model: string | null
@@ -4311,6 +4312,7 @@ export type Database = {
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location: string
+          dji_file_name?: string | null
           dji_log_id?: string | null
           drone_id?: string | null
           drone_model?: string | null
@@ -4362,6 +4364,7 @@ export type Database = {
           completed_checklists?: string[] | null
           created_at?: string | null
           departure_location?: string
+          dji_file_name?: string | null
           dji_log_id?: string | null
           drone_id?: string | null
           drone_model?: string | null
