@@ -1469,6 +1469,19 @@ const Admin = () => {
                                       <Button
                                         size="sm"
                                         variant="ghost"
+                                        onClick={() => setUserActive(profile.id, profile.full_name, profile.is_active !== false)}
+                                        disabled={!canManageRoles}
+                                        className="w-full h-9 justify-start"
+                                      >
+                                        {profile.is_active === false ? (
+                                          <><UserCheck className="w-4 h-4 mr-2" />{t('admin.activateUser')}</>
+                                        ) : (
+                                          <><UserX className="w-4 h-4 mr-2" />{t('admin.deactivateUser')}</>
+                                        )}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
                                         onClick={() => deleteUser(profile.id, profile.full_name)}
                                         className="w-full h-9 text-destructive hover:text-destructive hover:bg-destructive/10 justify-start"
                                       >
