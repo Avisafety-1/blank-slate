@@ -29,6 +29,7 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
   const [messageTarget, setMessageTarget] = useState<DeviationReport | null>(null);
   const [messageMode, setMessageMode] = useState<"message" | "request_incident">("message");
   const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [missionDetail, setMissionDetail] = useState<any | null>(null);
 
   const openMission = async (missionId: string) => {
