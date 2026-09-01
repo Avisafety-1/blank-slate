@@ -24,6 +24,7 @@ type OpType = "VLOS" | "BVLOS" | "EVLOS";
 
 interface PendingLog {
   id: string;
+  dji_log_id: string;
   aircraft_name: string | null;
   aircraft_sn: string | null;
   flight_date: string | null;
