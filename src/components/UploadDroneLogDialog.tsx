@@ -370,6 +370,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const visibleDjiLogs = useMemo(() => showAllDjiLogs ? djiLogs : djiLogs.filter(l => !isDjiLogKnown(l)), [djiLogs, showAllDjiLogs]);
   const hiddenCount = useMemo(() => djiLogs.filter(l => isDjiLogKnown(l)).length, [djiLogs]);
   const visibleImportableLogs = useMemo(() => visibleDjiLogs.filter(l => !isDjiLogKnown(l)), [visibleDjiLogs]);
+  const defaultNewMissionTitle = useMemo(() => {
+    if (!result) return '';
+    const d = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
+    return `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(d, 'dd.MM.yyyy HH:mm')}`;
+  }, [result]);
+
+  useEffect(() => {
+    setNewMissionTitle(defaultNewMissionTitle);
+  }, [defaultNewMissionTitle]);
+
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
