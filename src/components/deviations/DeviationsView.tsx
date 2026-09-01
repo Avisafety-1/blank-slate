@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GlassCard } from "@/components/GlassCard";
 import { Loader2, RefreshCw, Search, FileWarning, Plus } from "lucide-react";
 import { useDeviationReports, type DeviationReport, type DeviationStatus } from "@/hooks/useDeviationReports";
 import { DeviationCard } from "./DeviationCard";
