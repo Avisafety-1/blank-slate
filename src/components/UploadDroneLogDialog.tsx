@@ -1489,11 +1489,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       });
       console.log('[DroneLog] DJI startTime:', data.startTime, '| aircraftSN:', data.aircraftSN, '| aircraftSerial:', data.aircraftSerial);
       setResult(data);
+      let droneIdHint: string | null = selectedDroneId || null;
       if (!selectedDroneId) {
-        matchDroneFromResult(data);
+        droneIdHint = matchDroneFromResult(data);
       }
       matchBatteryFromResult(data);
-      await findMatchingFlightLog(data);
+      await findMatchingFlightLog(data, droneIdHint);
       setStep('result');
     } catch (error: any) {
       console.error('DJI process log error:', error);
