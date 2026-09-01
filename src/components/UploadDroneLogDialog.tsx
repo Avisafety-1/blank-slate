@@ -3505,6 +3505,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           </div>
         )}
 
+        {/* Name for new mission */}
+        {result && !matchedLog && (selectedMissionId === '__new__' || matchedMissions.length === 0) && (
+          <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-2">
+            <Label htmlFor="new-mission-title" className="text-sm font-medium">
+              {t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
+            </Label>
+            <Input
+              id="new-mission-title"
+              value={newMissionTitle}
+              onChange={(e) => setNewMissionTitle(e.target.value)}
+              placeholder={defaultNewMissionTitle}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('dronelog.newMissionNameHint', 'Forslaget fylles ut automatisk, men kan endres.')}
+            </p>
+          </div>
+        )}
+
         {/* Show existing flight logs for chosen mission */}
         {selectedMissionId && selectedMissionId !== '__new__' && getAllLogsForMission(selectedMissionId).length > 0 && (
           <div className="p-3 rounded-lg bg-accent/30 border border-border">
