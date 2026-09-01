@@ -749,7 +749,8 @@ export const BatchLogPanel = ({
                         Oppdrag
                         {row.autoMatchedMissionId && row.missionId === row.autoMatchedMissionId && !row.missionUserOverride && (
                           <span className="inline-flex items-center gap-0.5 text-[9px] text-primary normal-case">
-                            <Sparkles className="w-2.5 h-2.5" /> auto-matchet
+                            <Sparkles className="w-2.5 h-2.5" />
+                            {row.missionMatchedOnDrone ? "matchet på drone" : "auto-matchet"}
                           </span>
                         )}
                       </label>
