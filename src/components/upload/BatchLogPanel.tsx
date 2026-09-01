@@ -519,7 +519,7 @@ export const BatchLogPanel = ({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 pr-2">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="space-y-2.5">
           {rows.map(row => {
             const date = parseDate(row.log.flight_date);
@@ -707,7 +707,7 @@ export const BatchLogPanel = ({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="pt-3 mt-3 border-t border-border shrink-0">
         <Button

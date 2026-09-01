@@ -3760,9 +3760,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                <ScrollArea className="flex-1 min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {renderResultPanel()}
-                </ScrollArea>
+                </div>
               </div>
             )}
           </div>
