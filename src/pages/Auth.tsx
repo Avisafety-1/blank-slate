@@ -255,8 +255,10 @@ const Auth = () => {
         }
 
         if (profile && profile.company_id) {
-          // User has a profile with company_id
-          if (profile.approved) {
+          if ((profile as any).is_active === false) {
+            toast.error(t('auth.accountDeactivated'));
+            await supabase.auth.signOut();
+          } else if (profile.approved) {
             // Check MFA requirement before redirecting (skip for passkey sessions)
             const { data: sessData } = await supabase.auth.getSession();
             if (!isPasskeyLogin(sessData?.session ?? null)) {
