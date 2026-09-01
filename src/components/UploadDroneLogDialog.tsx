@@ -1153,7 +1153,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsBulkProcessing(true);
     bulkAbortRef.current = false;
 
-    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id));
+    const selectedLogs = djiLogs.filter(l => selectedIds.includes(l.id) && !isDjiLogKnown(l));
+    if (selectedLogs.length === 0) {
+      setIsBulkProcessing(false);
+      return;
+    }
     const results: BulkResult[] = selectedLogs.map(l => ({
       fileName: l.aircraft || l.fileName || l.date || 'Ukjent',
       status: 'pending' as const,
