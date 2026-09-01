@@ -784,11 +784,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   };
 
   // ── Drone matching helper ──
-  const matchDroneFromResult = (data: DroneLogResult) => {
+  /** Returns the matched drone id (or null) so callers can use it before state has flushed. */
+  const matchDroneFromResult = (data: DroneLogResult): string | null => {
     if (!data.aircraftSN && !data.aircraftSerial) {
       setUnmatchedDroneSN(null);
       setAmbiguousDroneMatch(false);
-      return;
+      return null;
     }
     const sn = (data.aircraftSN || data.aircraftSerial || '').trim();
     const matches = findSnMatches(drones as any[], sn, myDroneIds, data.aircraftName || null);
@@ -796,7 +797,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // Several drones share the same (truncated) SN prefix — let the user choose.
       setAmbiguousDroneMatch(true);
       setUnmatchedDroneSN(null);
-      return;
+      return null;
     }
     setAmbiguousDroneMatch(false);
     const match = matches[0];
@@ -809,9 +810,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           : `${terminology.vehicle} matchet automatisk: ${match.modell}`,
       );
       setUnmatchedDroneSN(null);
-    } else {
-      setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
+      return match.id;
     }
+    setUnmatchedDroneSN(data.aircraftSN || data.aircraftSerial || null);
+    return null;
   };
 
   const buildBatteryDefaults = (sn: string | null): EquipmentDefaultValues | undefined => sn ? (() => {
