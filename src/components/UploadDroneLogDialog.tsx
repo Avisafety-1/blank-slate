@@ -1649,7 +1649,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
   // ── Shared logic ──
 
-  const findMatchingFlightLog = async (data: DroneLogResult) => {
+  const findMatchingFlightLog = async (data: DroneLogResult, droneIdHint?: string | null) => {
     if (!companyId) return;
 
     // Early SHA-256 duplicate check — catches orphaned flight_logs too
