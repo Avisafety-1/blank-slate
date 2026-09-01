@@ -3,13 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, ChevronRight, Search, Check, ChevronsUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { addToQueue } from "@/lib/offlineQueue";
 import { translateDeviationCategory } from "@/lib/i18nHelpers";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface Category {
   id: string;
@@ -28,6 +33,16 @@ interface Props {
 
 type FlightPhase = "takeoff" | "in_flight" | "landing";
 
+type Step = "select_mission" | "prompt" | "select";
+
+interface MissionOption {
+  id: string;
+  tittel: string;
+  status: string;
+  tidspunkt: string;
+  lokasjon: string | null;
+}
+
 const PHASE_LABELS: Record<FlightPhase, string> = {
   takeoff: "Takeoff",
   in_flight: "In flight",
@@ -35,18 +50,23 @@ const PHASE_LABELS: Record<FlightPhase, string> = {
 };
 
 export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLogId, onDone }: Props) => {
+  const { t } = useTranslation();
   const { user, companyId } = useAuth();
-  const [step, setStep] = useState<"prompt" | "select">("prompt");
+  const [step, setStep] = useState<Step>(missionId ? "prompt" : "select_mission");
   const [categories, setCategories] = useState<Category[]>([]);
   const [path, setPath] = useState<Category[]>([]); // selected path from root
   const [comment, setComment] = useState("");
   const [search, setSearch] = useState("");
   const [flightPhase, setFlightPhase] = useState<FlightPhase | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [missions, setMissions] = useState<MissionOption[]>([]);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(missionId);
+  const [missionPopoverOpen, setMissionPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setStep("prompt");
+    setStep(missionId ? "prompt" : "select_mission");
+    setSelectedMissionId(missionId);
     setPath([]);
     setComment("");
     setSearch("");
@@ -60,7 +80,25 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
         setCategories(data || []);
       })();
     }
-  }, [open, companyId]);
+  }, [open, companyId, missionId]);
+
+  // Fetch missions when the dialog is opened without a pre-selected mission
+  useEffect(() => {
+    if (!open || missionId) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("missions")
+          .select("id, tittel, status, tidspunkt, lokasjon")
+          .order("tidspunkt", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        setMissions((data as MissionOption[]) || []);
+      } catch (e) {
+        console.error("[DeviationReportDialog] failed to fetch missions", e);
+      }
+    })();
+  }, [open, missionId]);
 
   const catById = useMemo(() => {
     const m = new Map<string, Category>();
@@ -99,13 +137,13 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
   };
 
   const handleSubmit = async () => {
-    if (!missionId || !companyId || !user || path.length === 0) {
+    if (!selectedMissionId || !companyId || !user || path.length === 0) {
       handleClose();
       return;
     }
     setSubmitting(true);
     const payload = {
-      mission_id: missionId,
+      mission_id: selectedMissionId,
       flight_log_id: flightLogId,
       company_id: companyId,
       reported_by: user.id,
@@ -140,10 +178,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
   };
 
   const notifyResponsibles = async () => {
-    if (!missionId || !companyId || !user) return;
+    if (!selectedMissionId || !companyId || !user) return;
     try {
       const [{ data: mission }, { data: profile }] = await Promise.all([
-        supabase.from("missions").select("tittel, lokasjon").eq("id", missionId).maybeSingle(),
+        supabase.from("missions").select("tittel, lokasjon").eq("id", selectedMissionId).maybeSingle(),
         supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
       ]);
       await invokeEmailFunction("send-notification-email", {
@@ -167,23 +205,100 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
     }
   };
 
+  const selectedMission = useMemo(
+    () => missions.find((m) => m.id === selectedMissionId) || null,
+    [missions, selectedMissionId]
+  );
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="w-[95vw] max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {step === "prompt" ? "Avviksrapport" : "Velg kategori"}
+            {step === "select_mission"
+              ? t("deviations.reportDialog.selectMission", "Velg oppdrag")
+              : step === "prompt"
+                ? t("deviations.title", "Avviksrapport")
+                : t("deviations.edit.category", "Velg kategori")}
           </DialogTitle>
         </DialogHeader>
 
-        {step === "prompt" && (
-          <>
-            <p className="text-sm">Ønsker du å rapportere noe fra flyturen?</p>
+        {step === "select_mission" && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t("deviations.reportDialog.selectMission", "Velg oppdrag")}</Label>
+              <Popover open={missionPopoverOpen} onOpenChange={setMissionPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                    disabled={missions.length === 0}
+                  >
+                    {selectedMission
+                      ? selectedMission.tittel
+                      : t("deviations.reportDialog.selectMission", "Velg oppdrag")}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t("deviations.reportDialog.searchMissions", "Søk etter oppdrag...")} />
+                    <CommandList>
+                      <CommandEmpty>{t("deviations.reportDialog.noMissionsFound", "Ingen oppdrag funnet")}</CommandEmpty>
+                      <CommandGroup>
+                        {missions.map((mission) => (
+                          <CommandItem
+                            key={mission.id}
+                            value={`${mission.tittel} ${mission.status} ${mission.lokasjon || ""}`}
+                            onSelect={() => {
+                              setSelectedMissionId(mission.id);
+                              setMissionPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedMissionId === mission.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col items-start">
+                              <span>{mission.tittel}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(mission.tidspunkt).toLocaleDateString("nb-NO")}
+                                {mission.lokasjon ? ` · ${mission.lokasjon}` : ""}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
             <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button variant="outline" onClick={handleClose}>
-                Nei
+                {t("actions.cancel", "Avbryt")}
               </Button>
-              <Button onClick={() => setStep("select")}>Ja</Button>
+              <Button
+                onClick={() => setStep("select")}
+                disabled={!selectedMissionId}
+              >
+                {t("actions.next", "Neste")}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "prompt" && (
+          <>
+            <p className="text-sm">{t("deviations.reportDialog.prompt", "Ønsker du å rapportere noe fra flyturen?")}</p>
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
+              <Button variant="outline" onClick={handleClose}>
+                {t("actions.no", "Nei")}
+              </Button>
+              <Button onClick={() => setStep("select")}>{t("actions.yes", "Ja")}</Button>
             </DialogFooter>
           </>
         )}
@@ -196,7 +311,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Søk i kategorier…"
+                placeholder={t("deviations.edit.searchCategories", "Søk i kategorier…")}
                 className="pl-8 h-9"
               />
             </div>
@@ -204,7 +319,7 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
             {search.trim() ? (
               <div className="space-y-1 max-h-60 overflow-y-auto border rounded-md p-1">
                 {searchResults.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic px-2 py-3">Ingen treff</p>
+                  <p className="text-xs text-muted-foreground italic px-2 py-3">{t("deviations.edit.noMatches", "Ingen treff")}</p>
                 ) : (
                   searchResults.map(({ cat, path: p }) => (
                     <button
@@ -241,15 +356,21 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                 )}
 
                 {/* Back */}
-                {path.length > 0 && (
+                {(path.length > 0 || !missionId) && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setPath((p) => p.slice(0, -1))}
+                    onClick={() => {
+                      if (path.length > 0) {
+                        setPath((p) => p.slice(0, -1));
+                      } else {
+                        setStep("select_mission");
+                      }
+                    }}
                     className="h-7 px-2"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
-                    Tilbake
+                    {t("actions.back", "Tilbake")}
                   </Button>
                 )}
 
@@ -273,25 +394,25 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground italic px-1">
-                    Ingen flere underkategorier — du kan lagre rapporten nå.
+                    {t("deviations.edit.noMatches", "Ingen treff")}
                   </p>
                 )}
               </>
             )}
 
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Kommentar (valgfritt)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("deviations.edit.comment", "Kommentar")} ({t("common.optional", "valgfritt")})</label>
               <Textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Beskriv hendelsen…"
+                placeholder={t("deviations.message.requestBody", "Beskriv hendelsen…")}
                 rows={3}
               />
             </div>
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                Kritisk fase (valgfritt)
+                {t("deviations.edit.phase", "Kritisk fase")} ({t("common.optional", "valgfritt")})
               </label>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(PHASE_LABELS) as FlightPhase[]).map((p) => (
@@ -310,10 +431,10 @@ export const DeviationReportDialog = ({ open, onOpenChange, missionId, flightLog
 
             <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button variant="outline" onClick={handleClose} disabled={submitting}>
-                Avbryt
+                {t("actions.cancel", "Avbryt")}
               </Button>
               <Button onClick={handleSubmit} disabled={submitting || path.length === 0}>
-                {submitting ? "Lagrer…" : "Lagre rapport"}
+                {submitting ? t("common.saving", "Lagrer…") : t("actions.report", "Lagre rapport")}
               </Button>
             </DialogFooter>
           </div>

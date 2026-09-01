@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, Search, FileWarning } from "lucide-react";
+import { Loader2, RefreshCw, Search, FileWarning, Plus } from "lucide-react";
 import { useDeviationReports, type DeviationReport, type DeviationStatus } from "@/hooks/useDeviationReports";
 import { DeviationCard } from "./DeviationCard";
 import { EditDeviationDialog } from "./EditDeviationDialog";
 import { DeviationMessageDialog } from "./DeviationMessageDialog";
+import { DeviationReportDialog } from "@/components/DeviationReportDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,7 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
   const [messageTarget, setMessageTarget] = useState<DeviationReport | null>(null);
   const [messageMode, setMessageMode] = useState<"message" | "request_incident">("message");
   const [incidentMissionId, setIncidentMissionId] = useState<string | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [missionDetail, setMissionDetail] = useState<any | null>(null);
 
   const openMission = async (missionId: string) => {
@@ -84,6 +86,16 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
           />
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setReportDialogOpen(true)}
+            className="gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t("deviations.registerNew", "Registrer nytt avvik")}</span>
+            <span className="sm:hidden">{t("actions.report", "Rapporter")}</span>
+          </Button>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
@@ -163,6 +175,14 @@ export const DeviationsView = ({ active, focusDeviationId }: Props) => {
           defaultMissionId={incidentMissionId}
         />
       )}
+
+      <DeviationReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        missionId={null}
+        flightLogId={null}
+        onDone={refetch}
+      />
     </div>
   );
 };

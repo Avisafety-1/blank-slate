@@ -8514,6 +8514,7 @@
     "title": "Avvik",
     "empty": "Ingen avvik rapportert",
     "searchPlaceholder": "Søk i avvik, oppdrag eller pilot…",
+    "registerNew": "Registrer nytt avvik",
     "filters": {
       "all": "Alle statuser"
     },
@@ -8521,6 +8522,12 @@
       "new": "Ny",
       "in_progress": "Under behandling",
       "closed": "Ferdigbehandlet"
+    },
+    "reportDialog": {
+      "selectMission": "Velg oppdrag",
+      "searchMissions": "Søk etter oppdrag...",
+      "noMissionsFound": "Ingen oppdrag funnet",
+      "prompt": "Ønsker du å rapportere noe fra flyturen?"
     },
     "phase": {
       "takeoff": "Take-off",
