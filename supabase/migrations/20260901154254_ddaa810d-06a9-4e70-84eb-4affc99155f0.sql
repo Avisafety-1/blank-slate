@@ -1,0 +1,2 @@
+ALTER TABLE public.flight_logs ADD COLUMN IF NOT EXISTS dji_file_name text;
+CREATE INDEX IF NOT EXISTS idx_flight_logs_company_dji_file_name ON public.flight_logs (company_id, dji_file_name) WHERE dji_file_name IS NOT NULL;

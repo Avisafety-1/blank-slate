@@ -435,6 +435,7 @@ export const BatchLogPanel = ({
         notes: `Batch-import fra ${isArdu ? "ArduPilot" : "DJI"}-flylogg.`,
         operation_type: row.operationType,
         dji_log_id: row.log.dji_log_id || null,
+        dji_file_name: (row.log.parsed_result as any)?.djiFileName || null,
         ...extFields,
       };
       // If user linked to existing mission and a SHA dup might exist later, keep SHA for dedup

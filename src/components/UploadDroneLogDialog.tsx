@@ -362,6 +362,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [selectedDjiLogIds, setSelectedDjiLogIds] = useState<Set<string>>(new Set());
   const [showAllDjiLogs, setShowAllDjiLogs] = useState(false);
   const [currentDjiLogId, setCurrentDjiLogId] = useState<string | null>(null);
+  const [currentDjiFileName, setCurrentDjiFileName] = useState<string | null>(null);
   const isDjiLogKnown = (log: DjiLog) => log.importState !== undefined && log.importState !== 'importable';
   const visibleDjiLogs = useMemo(() => showAllDjiLogs ? djiLogs : djiLogs.filter(l => !isDjiLogKnown(l)), [djiLogs, showAllDjiLogs]);
   const hiddenCount = useMemo(() => djiLogs.filter(l => isDjiLogKnown(l)).length, [djiLogs]);
@@ -718,6 +719,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setSelectedDjiLogIds(new Set());
     setShowAllDjiLogs(false);
     setCurrentDjiLogId(null);
+    setCurrentDjiFileName(null);
     setPilotId("");
     setPilotTouched(false);
     setPilotAutoMatchedFromDrone(false);
@@ -1111,7 +1113,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_drone_id: droneId,
             matched_battery_id: batteryId,
             status: 'pending',
-            parsed_result: data as any,
+            parsed_result: { ...(data as any), djiFileName: bulkFiles[i]?.name || null } as any,
             source_file_type: (data as any)?.source === 'ardupilot' ? 'ardupilot' : 'dji',
           } as any);
 
@@ -1235,7 +1237,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             matched_drone_id: droneId,
             matched_battery_id: batteryId,
             status: 'pending',
-            parsed_result: data as any,
+            parsed_result: { ...(data as any), djiFileName: selectedLogs[i].fileName || null } as any,
           } as any);
 
         if (insertError) throw new Error(insertError.message);
@@ -1441,6 +1443,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!log.id || !djiAccountId || djiImportCooldown) return;
     setProcessingLogId(log.id);
     setCurrentDjiLogId(log.id);
+    setCurrentDjiFileName(log.fileName || null);
     setIsProcessing(true);
     try {
       const data: DroneLogResult = await callDronelogAction("dji-process-log", {
@@ -2077,6 +2080,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         drone_id: selectedDroneId || null,
         entry_source: (result as any)?.source === 'ardupilot' ? 'ardupilot' : 'dronelogapi',
         ...(currentDjiLogId ? { dji_log_id: currentDjiLogId } : {}),
+        ...(currentDjiFileName ? { dji_file_name: currentDjiFileName } : {}),
         ...(importedDate ? { flight_date: importedDate.toISOString() } : {}),
         ...(result.startPosition
           ? { departure_location: `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` }
@@ -2164,6 +2168,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         operation_type: operationType,
         dji_log_id: currentDjiLogId || null,
+        dji_file_name: currentDjiFileName || null,
         ...extFields,
       } as any).select('id').single();
       if (logError) throw logError;
@@ -2231,6 +2236,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         notes: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg. Maks hastighet: ${result.maxSpeed} m/s, Min batteri: ${(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage ? result.batteryMinVoltage + 'V' : result.minBattery >= 0 ? result.minBattery + '%' : 'N/A'}`,
         operation_type: operationType,
         dji_log_id: currentDjiLogId || null,
+        dji_file_name: currentDjiFileName || null,
         ...buildExtendedFields(result),
       };
 
