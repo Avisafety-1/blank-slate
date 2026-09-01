@@ -43,6 +43,7 @@ interface PendingDjiLogsSectionProps {
   expanded?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (log: PendingDjiLog) => void;
+  onSelectAll?: (ids: string[], select: boolean) => void;
 }
 
 export interface PendingDjiLogsSectionRef {
