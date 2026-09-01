@@ -507,10 +507,15 @@ const Auth = () => {
           // Check if user is approved
           const {
             data: profileData
-          } = await supabase.from("profiles").select("approved").eq("id", data.user.id).maybeSingle();
+          } = await supabase.from("profiles").select("approved, is_active").eq("id", data.user.id).maybeSingle();
           if (profileData && !(profileData as any).approved) {
             await supabase.auth.signOut();
             toast.error(t('auth.accountPendingApproval'));
+            return;
+          }
+          if (profileData && (profileData as any).is_active === false) {
+            await supabase.auth.signOut();
+            toast.error(t('auth.accountDeactivated'));
             return;
           }
           toast.success(t('auth.loginSuccess'), { id: 'login-success' });
