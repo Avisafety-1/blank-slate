@@ -344,6 +344,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // Missions among the matches that have the log's drone linked (used for the "matched on drone" badge)
   const [droneMatchedMissionIds, setDroneMatchedMissionIds] = useState<string[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string>('');
+  const [newMissionTitle, setNewMissionTitle] = useState<string>('');
   const [selectedFlightLogChoice, setSelectedFlightLogChoice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [manualPickerOpen, setManualPickerOpen] = useState(false);
@@ -369,6 +370,16 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const visibleDjiLogs = useMemo(() => showAllDjiLogs ? djiLogs : djiLogs.filter(l => !isDjiLogKnown(l)), [djiLogs, showAllDjiLogs]);
   const hiddenCount = useMemo(() => djiLogs.filter(l => isDjiLogKnown(l)).length, [djiLogs]);
   const visibleImportableLogs = useMemo(() => visibleDjiLogs.filter(l => !isDjiLogKnown(l)), [visibleDjiLogs]);
+  const defaultNewMissionTitle = useMemo(() => {
+    if (!result) return '';
+    const d = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
+    return `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(d, 'dd.MM.yyyy HH:mm')}`;
+  }, [result]);
+
+  useEffect(() => {
+    setNewMissionTitle(defaultNewMissionTitle);
+  }, [defaultNewMissionTitle]);
+
   const [saveCredentials, setSaveCredentials] = useState(false);
   const [enableAutoSync, setEnableAutoSync] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
@@ -2204,7 +2215,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       });
       const { data: mission, error: missionError } = await supabase.from('missions').insert({
         company_id: companyId, user_id: user.id,
-        tittel: `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
+        tittel: newMissionTitle.trim() || defaultNewMissionTitle || `${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'}-flylogg ${format(effectiveDate, 'dd.MM.yyyy HH:mm')}`,
         lokasjon: result.startPosition ? `${result.startPosition.lat.toFixed(5)}, ${result.startPosition.lng.toFixed(5)}` : 'Ukjent',
         tidspunkt: effectiveDate.toISOString(), status: 'Fullført', risk_nivå: 'Lav',
         beskrivelse: `Importert fra ${(result as any)?.source === 'ardupilot' ? 'ArduPilot' : 'DJI'} flylogg. Flytid: ${result.durationMinutes} min, Maks hastighet: ${result.maxSpeed} m/s`,
@@ -3502,6 +3513,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               limit={manualLimit}
               onLoadMore={() => setManualLimit(l => l + 10)}
             />
+          </div>
+        )}
+
+        {/* Name for new mission */}
+        {result && !matchedLog && (selectedMissionId === '__new__' || matchedMissions.length === 0) && (
+          <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-2">
+            <Label htmlFor="new-mission-title" className="text-sm font-medium">
+              {t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
+            </Label>
+            <Input
+              id="new-mission-title"
+              value={newMissionTitle}
+              onChange={(e) => setNewMissionTitle(e.target.value)}
+              placeholder={defaultNewMissionTitle}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('dronelog.newMissionNameHint', 'Forslaget fylles ut automatisk, men kan endres.')}
+            </p>
           </div>
         )}
 

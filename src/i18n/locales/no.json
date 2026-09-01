@@ -3261,7 +3261,9 @@
       "highWind": "Sterk vind registrert",
       "signalLoss": "Signaltap registrert",
       "generic": "Advarsel fra flylogg"
-    }
+    },
+    "newMissionName": "Navn på nytt oppdrag",
+    "newMissionNameHint": "Forslaget fylles ut automatisk, men kan endres."
   },
   "twoFactor": {
     "title": "Tofaktorautentisering (2FA)",
