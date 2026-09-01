@@ -1915,12 +1915,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     if (!companyId || !sha256) return false;
     const { data } = await (supabase
       .from('flight_logs')
-      .select('id')
+      .select('id, dji_log_id, dji_file_name')
       .eq('company_id', companyId) as any)
       .eq('dronelog_sha256', sha256)
       .limit(1);
-    return (data && data.length > 0);
+    if (data && data.length > 0) {
+      await learnDjiIdentifiers(data[0], currentDjiLogId, currentDjiFileName);
+      return true;
+    }
+    return false;
   };
+
+
 
   const saveLogbookEntries = async (flightLogId: string, durationMinutes: number, isUpdate: boolean = false, oldDurationMinutes: number = 0) => {
     if (!logToLogbooks || !companyId || !user) return;
