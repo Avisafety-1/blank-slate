@@ -1626,13 +1626,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     
     // Auto-match drone
+    let droneIdHint: string | null = null;
     if (pendingLog.matched_drone_id) {
       setSelectedDroneId(pendingLog.matched_drone_id);
+      droneIdHint = pendingLog.matched_drone_id;
     } else {
-      matchDroneFromResult(data);
+      droneIdHint = matchDroneFromResult(data);
     }
     matchBatteryFromResult(data);
-    await findMatchingFlightLog(data);
+    await findMatchingFlightLog(data, droneIdHint);
     // On desktop/tablet, show split view; on mobile, navigate to result step
     if (isMobile) {
       setStep('result');
