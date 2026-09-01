@@ -293,7 +293,13 @@ export const BatchLogPanel = ({
   const updateRow = (id: string, patch: Partial<RowState>) =>
     setRows(prev => prev.map(r => r.pendingLogId === id ? { ...r, ...patch } : r));
 
-  const buildExtended = (parsed: any) => {
+  const buildExtended = (parsed: any, droneId?: string | null) => {
+    // DJI-logger (bl.a. Mini 5) leverer ofte tomt DETAILS.droneType — bruk da
+    // modellen til dronen loggen er matchet mot, slik at batteri-katalogen kan
+    // auto-matche på modellnavn i stedet for kun kapasitet.
+    const matchedDroneModel = droneId
+      ? (drones.find((d: any) => d.id === droneId) as any)?.modell ?? null
+      : null;
     const startDate = parseDate(parsed.startTime);
     const endDate = parseDate(parsed.endTimeUtc);
     return {
