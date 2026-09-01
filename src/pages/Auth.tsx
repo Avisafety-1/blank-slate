@@ -229,7 +229,7 @@ const Auth = () => {
         // Check if user has a profile with a valid company_id
         let { data: profile, error } = await supabase
           .from('profiles')
-          .select('id, company_id, approved')
+          .select('id, company_id, approved, is_active')
           .eq('id', user.id)
           .maybeSingle();
         
@@ -239,7 +239,7 @@ const Auth = () => {
           await new Promise(r => setTimeout(r, 1000));
           const { data: retryProfile, error: retryErr } = await supabase
             .from('profiles')
-            .select('id, company_id, approved')
+            .select('id, company_id, approved, is_active')
             .eq('id', user.id)
             .maybeSingle();
           
