@@ -954,6 +954,9 @@ const Resources = () => {
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-semibold truncate">
                             {person.full_name || t('common.unknownName')}
+                            {person.is_active === false && (
+                              <Badge variant="secondary" className="ml-2 text-[10px]">{t('resources.deactivated')}</Badge>
+                            )}
                           </h3>
                           <StatusBadge status={getPersonStatus(person)} />
                         </div>
