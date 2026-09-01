@@ -77,7 +77,8 @@ export function useBatteryHealth(
           )
           .eq("company_id", companyId) as any)
           .eq("battery_sn", serienummer)
-          .not("battery_cycles", "is", null)
+          // Ikke krev syklustall: mange DJI-logger (bl.a. Mini 5) mangler
+          // BATTERY.loopNum, men har kapasitet/spenning/temperatur som skal vises.
           .order("flight_date", { ascending: true })
           .limit(100),
         // Logs where this battery was the SECOND pack (SERIAL.battery2)
@@ -116,7 +117,13 @@ export function useBatteryHealth(
           cellDeviation: r.battery2_cell_deviation_max_v,
           perPack: true,
         })),
-      ].sort((a, b) => a.date.getTime() - b.date.getTime());
+      ]
+        // Ta bare med logger som faktisk har batteridata å vise
+        .filter((e) =>
+          e.cycles != null || e.health != null || e.capacityMah != null ||
+          e.voltageMin != null || e.tempMax != null || e.tempMin != null ||
+          e.cellDeviation != null)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
       setTrend(entries);
 
       // The log tells us which drone the battery flew with — use it as the
@@ -132,10 +139,11 @@ export function useBatteryHealth(
         droneModel = drone?.modell ?? null;
       }
 
-      const last = rows[rows.length - 1];
+      const lastWithCapacity = [...rows].reverse().find((r) => r.battery_full_capacity_mah != null);
+      const lastWithVoltage = [...rows].reverse().find((r) => r.battery_voltage_min_v != null);
       const signals = {
-        capacityMah: last?.battery_full_capacity_mah ?? null,
-        packVoltageV: last?.battery_voltage_min_v ?? null,
+        capacityMah: lastWithCapacity?.battery_full_capacity_mah ?? null,
+        packVoltageV: lastWithVoltage?.battery_voltage_min_v ?? null,
       };
 
       const [types, { data: eq }] = await Promise.all([

@@ -293,7 +293,13 @@ export const BatchLogPanel = ({
   const updateRow = (id: string, patch: Partial<RowState>) =>
     setRows(prev => prev.map(r => r.pendingLogId === id ? { ...r, ...patch } : r));
 
-  const buildExtended = (parsed: any) => {
+  const buildExtended = (parsed: any, droneId?: string | null) => {
+    // DJI-logger (bl.a. Mini 5) leverer ofte tomt DETAILS.droneType — bruk da
+    // modellen til dronen loggen er matchet mot, slik at batteri-katalogen kan
+    // auto-matche på modellnavn i stedet for kun kapasitet.
+    const matchedDroneModel = droneId
+      ? (drones.find((d: any) => d.id === droneId) as any)?.modell ?? null
+      : null;
     const startDate = parseDate(parsed.startTime);
     const endDate = parseDate(parsed.endTimeUtc);
     return {
@@ -305,10 +311,10 @@ export const BatchLogPanel = ({
       max_height_m: parsed.maxAltitude || null,
       max_horiz_speed_ms: parsed.detailsMaxSpeed || null,
       max_vert_speed_ms: parsed.maxVSpeed || null,
-      drone_model: parsed.droneType || null,
+      drone_model: parsed.droneType || matchedDroneModel || null,
       aircraft_serial: parsed.aircraftSerial || parsed.aircraftSN || null,
       log_identifiers: { aircraftName: parsed.aircraftName ?? null, droneType: parsed.droneType ?? null, guid: parsed.guid ?? null, fcSN: parsed.fcSN ?? null, rcSN: parsed.rcSN ?? null, cameraSN: parsed.cameraSN ?? null, gimbalSN: parsed.gimbalSN ?? null } as any,
-      battery_cycles: parsed.batteryCycles || null,
+      battery_cycles: parsed.batteryCycles ?? null,
       battery_temp_min_c: parsed.batteryTempMin || null,
       battery_temp_max_c: parsed.batteryTemperature || null,
       battery_voltage_min_v: parsed.batteryMinVoltage || null,
@@ -351,7 +357,7 @@ export const BatchLogPanel = ({
 
     try {
       // SHA-256 dedup check
-      let extFields: any = buildExtended(parsed);
+      let extFields: any = buildExtended(parsed, row.droneId);
       if (extFields.dronelog_sha256) {
         const { data: dup } = await supabase
           .from("flight_logs")
