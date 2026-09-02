@@ -212,18 +212,38 @@ async function enqueueForUser(
     let pendingSignatures: Array<{ t: number; d: number | null }> = [];
     if (dated.length > 0) {
       const times = dated.map((c) => c.parsedDate!.getTime());
-      const { data: sigRows } = await serviceClient
-        .from("pending_dji_logs")
-        .select("flight_date, duration_seconds")
-        .eq("company_id", company.id)
-        .gte("flight_date", new Date(Math.min(...times) - START_TOLERANCE_MS).toISOString())
-        .lte("flight_date", new Date(Math.max(...times) + START_TOLERANCE_MS).toISOString());
-      pendingSignatures = ((sigRows || []) as any[])
+      const fromIso = new Date(Math.min(...times) - START_TOLERANCE_MS).toISOString();
+      const toIso = new Date(Math.max(...times) + START_TOLERANCE_MS).toISOString();
+      const [sigRes, flRes] = await Promise.all([
+        serviceClient
+          .from("pending_dji_logs")
+          .select("flight_date, duration_seconds")
+          .eq("company_id", company.id)
+          .gte("flight_date", fromIso)
+          .lte("flight_date", toIso),
+        // Already processed flights count too: a log imported manually and linked
+        // to a mission may have no sha stored, so id/sha dedupe can't see it.
+        serviceClient
+          .from("flight_logs")
+          .select("flight_date, start_time_utc, flight_duration_minutes")
+          .eq("company_id", company.id)
+          .gte("flight_date", fromIso)
+          .lte("flight_date", toIso),
+      ]);
+      pendingSignatures = ((sigRes.data || []) as any[])
         .filter((r) => r.flight_date)
         .map((r) => ({
           t: new Date(r.flight_date).getTime(),
           d: typeof r.duration_seconds === "number" ? r.duration_seconds : null,
         }));
+      for (const r of ((flRes.data || []) as any[])) {
+        const stamp = r.start_time_utc || r.flight_date;
+        if (!stamp) continue;
+        pendingSignatures.push({
+          t: new Date(stamp).getTime(),
+          d: typeof r.flight_duration_minutes === "number" ? r.flight_duration_minutes * 60 : null,
+        });
+      }
     }
     const matchesPendingSignature = (c: Candidate) => {
       if (!c.parsedDate || pendingSignatures.length === 0) return false;
@@ -235,6 +255,7 @@ async function enqueueForUser(
         return Math.abs(p.d - dur) <= DURATION_TOLERANCE_S;
       });
     };
+
 
     const rows = candidates
       .filter((c) => !seen.has(c.dji_log_id) && !matchesPendingSignature(c))
