@@ -202,8 +202,43 @@ async function enqueueForUser(
       ...((jobRes.data || []) as any[]).map((r) => r.dji_log_id),
     ]);
 
+    // Signature dedupe: the same flight may already be pending from a manual
+    // upload, where dji_log_id is the file sha256 and can never match by id.
+    // Skip candidates whose start time (±3 min) and duration (±2 min) match a
+    // pending row, so we never download/parse them at all.
+    const START_TOLERANCE_MS = 3 * 60_000;
+    const DURATION_TOLERANCE_S = 120;
+    const dated = candidates.filter((c) => c.parsedDate);
+    let pendingSignatures: Array<{ t: number; d: number | null }> = [];
+    if (dated.length > 0) {
+      const times = dated.map((c) => c.parsedDate!.getTime());
+      const { data: sigRows } = await serviceClient
+        .from("pending_dji_logs")
+        .select("flight_date, duration_seconds")
+        .eq("company_id", company.id)
+        .gte("flight_date", new Date(Math.min(...times) - START_TOLERANCE_MS).toISOString())
+        .lte("flight_date", new Date(Math.max(...times) + START_TOLERANCE_MS).toISOString());
+      pendingSignatures = ((sigRows || []) as any[])
+        .filter((r) => r.flight_date)
+        .map((r) => ({
+          t: new Date(r.flight_date).getTime(),
+          d: typeof r.duration_seconds === "number" ? r.duration_seconds : null,
+        }));
+    }
+    const matchesPendingSignature = (c: Candidate) => {
+      if (!c.parsedDate || pendingSignatures.length === 0) return false;
+      const t = c.parsedDate.getTime();
+      const dur = typeof c.log.duration === "number" ? c.log.duration : null;
+      return pendingSignatures.some((p) => {
+        if (Math.abs(p.t - t) > START_TOLERANCE_MS) return false;
+        if (dur === null || p.d === null) return true;
+        return Math.abs(p.d - dur) <= DURATION_TOLERANCE_S;
+      });
+    };
+
     const rows = candidates
-      .filter((c) => !seen.has(c.dji_log_id))
+      .filter((c) => !seen.has(c.dji_log_id) && !matchesPendingSignature(c))
+
       .map((c) => ({
         company_id: company.id,
         user_id: cred.user_id,
