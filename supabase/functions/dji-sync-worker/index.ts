@@ -120,7 +120,36 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
         .eq("company_id", job.company_id).eq("dronelog_sha256", parsed.sha256Hash)
         .maybeSingle();
       if (existingFlight) { alreadyImported = true; existingFlightLogId = existingFlight.id; }
+
+      // 4b. Same file already waiting in pending_dji_logs (e.g. uploaded manually,
+      // where dji_log_id is the sha256). Don't create a second pending row.
+      const { data: existingPending } = await serviceClient
+        .from("pending_dji_logs")
+        .select("id, dji_log_id")
+        .eq("company_id", job.company_id)
+        .eq("parsed_result->>sha256Hash", parsed.sha256Hash)
+        .limit(1)
+        .maybeSingle();
+      if (existingPending && existingPending.dji_log_id !== job.dji_log_id) {
+        // Self-learning: store the DroneLog numeric id on the existing row if it
+        // still carries the sha-based placeholder id.
+        if (!/^\d+$/.test(String(existingPending.dji_log_id ?? ""))) {
+          await serviceClient.from("pending_dji_logs")
+            .update({ dji_log_id: job.dji_log_id })
+            .eq("id", existingPending.id);
+        }
+        const total_ms = Date.now() - t0;
+        await serviceClient.from("dji_sync_jobs").update({
+          status: "done",
+          last_error: null,
+          last_error_at: null,
+          locked_until: null,
+          step_durations: { ...step_durations, total_ms, duplicate: 1 },
+        }).eq("id", job.id);
+        return { status: "duplicate", total_ms };
+      }
     }
+
 
     // 5. Insert pending row
     const insStart = Date.now();
