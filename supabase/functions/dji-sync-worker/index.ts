@@ -151,6 +151,45 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
     }
 
 
+    // 4c. Signature fallback: the same flight may already be a processed flight
+    // log without a stored sha256 (manual import linked to an existing mission).
+    // Match on start time (±3 min) and duration (±2 min) instead of creating a
+    // duplicate pending row.
+    if (!alreadyImported && parsed.startTime) {
+      const startMs = new Date(parsed.startTime).getTime();
+      if (!Number.isNaN(startMs)) {
+        const TOL_MS = 3 * 60_000;
+        const { data: sigLogs } = await serviceClient
+          .from("flight_logs")
+          .select("id, flight_date, start_time_utc, flight_duration_minutes")
+          .eq("company_id", job.company_id)
+          .gte("flight_date", new Date(startMs - TOL_MS).toISOString())
+          .lte("flight_date", new Date(startMs + TOL_MS).toISOString());
+        const durS = Math.round(parsed.durationSeconds || 0);
+        const hit = ((sigLogs || []) as any[]).find((f) => {
+          const stamp = f.start_time_utc || f.flight_date;
+          if (!stamp) return false;
+          if (Math.abs(new Date(stamp).getTime() - startMs) > TOL_MS) return false;
+          if (!durS || typeof f.flight_duration_minutes !== "number") return true;
+          return Math.abs(f.flight_duration_minutes * 60 - durS) <= 120;
+        });
+        if (hit) {
+          alreadyImported = true;
+          existingFlightLogId = hit.id;
+          // Self-learning: store the file signature so future syncs match by sha.
+          if (parsed.sha256Hash) {
+            await serviceClient.from("flight_logs")
+              .update({ dronelog_sha256: parsed.sha256Hash })
+              .eq("id", hit.id)
+              .is("dronelog_sha256", null);
+          }
+        }
+      }
+    }
+
+
+
+
     // 5. Insert pending row
     const insStart = Date.now();
     const { error: insErr } = await serviceClient.from("pending_dji_logs").insert({
