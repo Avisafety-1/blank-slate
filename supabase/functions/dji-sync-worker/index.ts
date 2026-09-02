@@ -147,7 +147,9 @@ async function processJob(serviceClient: any, job: Job): Promise<{ status: strin
           step_durations: { ...step_durations, total_ms, duplicate: 1 },
         }).eq("id", job.id);
         return { status: "duplicate", total_ms };
+      }
     }
+
 
     // 4c. Signature fallback: the same flight may already be a processed flight
     // log without a stored sha256 (manual import linked to an existing mission).
