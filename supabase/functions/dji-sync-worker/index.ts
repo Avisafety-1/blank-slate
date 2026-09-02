@@ -270,7 +270,9 @@ Deno.serve(async (req) => {
       failed: results.filter((r) => r.status === "failed").length,
       retry: results.filter((r) => r.status === "retry").length,
       unsupported: results.filter((r) => r.status === "unsupported").length,
+      duplicate: results.filter((r) => r.status === "duplicate").length,
       rate_limited: results.filter((r) => r.status === "rate_limited").length,
+
       elapsed_ms: Date.now() - startMs,
       results,
     });
