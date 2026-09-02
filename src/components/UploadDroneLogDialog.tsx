@@ -2315,8 +2315,25 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         ...buildExtendedFields(result),
       };
 
-      // User chose "add as new flight" — always insert, skip SHA-256 dedup to avoid updating existing log
-      const { dronelog_sha256, ...insertPayload } = logPayload as any;
+      // Keep the file signature (sha256) on the new log when no other log in the
+      // company carries it — the nightly DJI sync dedupes on this field, and
+      // dropping it makes the same flight come back as a "pending" duplicate.
+      // Only clear it when the unique index would reject it.
+      let insertPayload: any = logPayload;
+      if (logPayload.dronelog_sha256) {
+        const { data: shaOwner } = await supabase
+          .from('flight_logs')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('dronelog_sha256', logPayload.dronelog_sha256)
+          .limit(1)
+          .maybeSingle();
+        if (shaOwner) {
+          const { dronelog_sha256, ...rest } = logPayload as any;
+          insertPayload = rest;
+        }
+      }
+
       const { data: inserted, error: logError } = await supabase
         .from('flight_logs')
         .insert(insertPayload as any)
