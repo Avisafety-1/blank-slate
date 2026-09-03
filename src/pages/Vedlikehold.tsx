@@ -634,6 +634,71 @@ const Vedlikehold = () => {
         />
       )}
 
+      {checklistRun && (
+        <ChecklistExecutionDialog
+          open
+          onOpenChange={(o) => { if (!o) setChecklistRun(null); }}
+          checklistId={checklistRun.item.checklistId || undefined}
+          itemName={checklistRun.item.name}
+          onComplete={() => {
+            const target = checklistRun;
+            setChecklistRun(null);
+            if (target) setPending({ item: target.item, kind: target.kind, action: "perform" });
+          }}
+        />
+      )}
+
+      <Dialog open={!!checklistPicker} onOpenChange={(o) => { if (!o) setChecklistPicker(null); }}>
+        <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-primary" />
+              {t("maintenance.maintenanceChecklist")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("maintenance.checklistPickerDescription", { name: checklistPicker?.item.name ?? "" })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder={t("maintenance.checklistSearchPlaceholder")}
+              value={checklistSearch}
+              onChange={(e) => setChecklistSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {checklists
+              .filter((c) => c.tittel.toLowerCase().includes(checklistSearch.trim().toLowerCase()))
+              .map((c) => {
+                const active = checklistPicker?.item.checklistId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => assignChecklist(c.id)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-muted/50",
+                      active && "bg-emerald-500/10 text-emerald-500 font-medium",
+                    )}
+                  >
+                    {c.tittel}
+                  </button>
+                );
+              })}
+            {checklists.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">{t("maintenance.noChecklistsAvailable")}</p>
+            )}
+          </div>
+          {checklistPicker?.item.checklistId && (
+            <Button variant="ghost" size="sm" onClick={() => assignChecklist(null)}>
+              {t("maintenance.removeChecklist")}
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) { setPending(null); setNote(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -8662,6 +8662,13 @@
     "serial": "Serial number",
     "lastFlown": "Last flown",
     "openLogbook": "Open logbook",
-    "never": "Never flown"
+    "never": "Never flown",
+    "maintenanceChecklist": "Maintenance checklist",
+    "noChecklist": "No checklist selected",
+    "checklistUpdated": "Checklist updated",
+    "checklistPickerDescription": "Select a checklist from documents for {{name}}. The choice is saved on the resource card.",
+    "checklistSearchPlaceholder": "Search for checklist...",
+    "noChecklistsAvailable": "No checklists found",
+    "removeChecklist": "Remove checklist"
   }
 }
