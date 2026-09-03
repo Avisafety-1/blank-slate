@@ -248,6 +248,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           ))}
         </div>
       )}
+      </CollapsibleContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
