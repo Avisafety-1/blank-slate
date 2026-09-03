@@ -146,6 +146,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
   const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
   const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
   const missionsStatus = calculateUsageStatus(item.missionsUsed, item.missionsLimit, item.missionsWarning);
+  const cyclesStatus = calculateUsageStatus(item.cyclesUsed ?? 0, item.cyclesLimit ?? null, item.cyclesWarning ?? null);
   const left = daysUntil(item.nextDate);
   const schedules = schedulesByResource[item.id] || [];
 
