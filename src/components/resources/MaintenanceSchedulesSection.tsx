@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { CalendarClock, ClipboardCheck, Pencil, Plus, Save, Trash2, Wrench } from "lucide-react";
+import { CalendarClock, ChevronDown, ClipboardCheck, Pencil, Plus, Save, Trash2, Wrench } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -197,18 +198,20 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const checklistTitle = (id: string | null) => (id ? checklists.find((c) => c.id === id)?.tittel ?? null : null);
 
   return (
-    <div className="border-t border-border pt-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Wrench className="w-4 h-4" />
+    <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
+      <div className="flex items-center justify-between gap-2">
+        <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Wrench className="w-4 h-4 text-primary" />
           {t("maintenance.schedules.sectionTitle")}
-        </p>
-        <Button size="sm" variant="outline" className="w-full sm:w-auto gap-1.5" onClick={openNew} disabled={disabled}>
+          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={openNew} disabled={disabled}>
           <Plus className="w-4 h-4" />
           {t("maintenance.schedules.add")}
         </Button>
       </div>
 
+      <CollapsibleContent className="pt-3">
       {schedules.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("maintenance.schedules.empty")}</p>
       ) : (
@@ -245,6 +248,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           ))}
         </div>
       )}
+      </CollapsibleContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
@@ -356,6 +360,6 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Collapsible>
   );
 };

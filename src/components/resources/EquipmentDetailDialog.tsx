@@ -1026,6 +1026,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {equipment.id && equipment.company_id && (
+                    <MaintenanceSchedulesSection
+                      kind="utstyr"
+                      resourceId={equipment.id}
+                      companyId={equipment.company_id}
+                      onChanged={() => onEquipmentUpdated()}
+                    />
+                  )}
               </div>
 
 
