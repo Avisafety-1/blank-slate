@@ -350,16 +350,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="ghost" className="gap-1.5" onClick={saveAsPreset} disabled={saving}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={saveAsPreset} disabled={saving}>
               <Save className="w-4 h-4" />
               {t("maintenance.schedules.saveAsPreset")}
             </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)} disabled={saving}>
                 {t("actions.cancel")}
               </Button>
-              <Button onClick={save} disabled={saving}>
+              <Button className="flex-1 sm:flex-none" onClick={save} disabled={saving}>
                 {t("actions.save")}
               </Button>
             </div>
