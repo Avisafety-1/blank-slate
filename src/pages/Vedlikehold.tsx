@@ -271,7 +271,7 @@ const Vedlikehold = () => {
   }, [items, search, statusFilter]);
 
   const openDetail = (item: MaintenanceItem) => {
-    navigate(`/ressurser?tab=${tab === "droner" ? "drones" : "equipment"}&id=${item.id}`);
+    setDetail({ item, kind: tab });
   };
 
   const runAction = async () => {
