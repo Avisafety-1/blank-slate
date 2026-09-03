@@ -27,6 +27,8 @@ interface Props {
   resourceId: string;
   companyId: string;
   disabled?: boolean;
+  /** View-only mode: hides add/edit/delete so the section is informational only */
+  readOnly?: boolean;
   onChanged?: () => void;
 }
 
