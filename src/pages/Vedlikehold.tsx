@@ -45,6 +45,12 @@ import {
   STATUS_PRIORITY,
 } from "@/lib/maintenanceStatus";
 import { performDroneInspection, countUniqueMissionsSinceInspection } from "@/lib/droneInspection";
+import {
+  MaintenanceSchedule,
+  calculateScheduleProgress,
+  fetchSchedulesForResources,
+  performSchedule,
+} from "@/lib/maintenanceSchedules";
 
 type TabKey = "droner" | "utstyr";
 
@@ -68,6 +74,8 @@ interface MaintenanceItem {
   lastFlight?: string | null;
   totalHours: number;
   checklistId?: string | null;
+  totalMissions: number;
+  schedule?: MaintenanceSchedule | null;
   raw: any;
 }
 
@@ -107,6 +115,8 @@ const Vedlikehold = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
+  const [schedulesByResource, setSchedulesByResource] = useState<Record<string, MaintenanceSchedule[]>>({});
+  const [scheduleTab, setScheduleTab] = useState<string>("standard");
   const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
   // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
@@ -168,15 +178,39 @@ const Vedlikehold = () => {
       const lastFlightByDrone = new Map<string, string>();
       const lastFlightByEquipment = new Map<string, string>();
 
+      const totalMissionsByResource = new Map<string, number>();
+      const droneMissionSets = new Map<string, Set<string>>();
+
       if (droneIds.length > 0) {
         const { data } = await (supabase as any)
           .from("flight_logs")
-          .select("drone_id, flight_date")
+          .select("drone_id, flight_date, mission_id")
           .in("drone_id", droneIds)
           .order("flight_date", { ascending: false });
         (data || []).forEach((r: any) => {
           if (r.drone_id && !lastFlightByDrone.has(r.drone_id)) lastFlightByDrone.set(r.drone_id, r.flight_date);
+          if (r.drone_id && r.mission_id) {
+            const set = droneMissionSets.get(r.drone_id) ?? new Set<string>();
+            set.add(r.mission_id);
+            droneMissionSets.set(r.drone_id, set);
+          }
         });
+        droneMissionSets.forEach((set, id) => totalMissionsByResource.set(id, set.size));
+      }
+
+      if (equipmentIds.length > 0) {
+        const { data: meRows } = await (supabase as any)
+          .from("mission_equipment")
+          .select("equipment_id, mission_id")
+          .in("equipment_id", equipmentIds);
+        const sets = new Map<string, Set<string>>();
+        (meRows || []).forEach((r: any) => {
+          if (!r.equipment_id || !r.mission_id) return;
+          const set = sets.get(r.equipment_id) ?? new Set<string>();
+          set.add(r.mission_id);
+          sets.set(r.equipment_id, set);
+        });
+        sets.forEach((set, id) => totalMissionsByResource.set(id, set.size));
       }
 
       if (equipmentIds.length > 0) {
@@ -222,6 +256,7 @@ const Vedlikehold = () => {
           lastFlight: lastFlightByDrone.get(d.id) ?? null,
           checklistId: d.sjekkliste_id ?? null,
           totalHours: d.flyvetimer ?? 0,
+          totalMissions: totalMissionsByResource.get(d.id) ?? 0,
           raw: d,
         };
         return item;
@@ -261,6 +296,7 @@ const Vedlikehold = () => {
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
           checklistId: e.sjekkliste_id ?? null,
           totalHours: e.flyvetimer ?? 0,
+          totalMissions: totalMissionsByResource.get(e.id) ?? 0,
           raw: e,
         };
         return item;
@@ -268,6 +304,12 @@ const Vedlikehold = () => {
 
       setDroneItems(drones);
       setEquipmentItems(equipment);
+
+      const [droneSchedules, equipmentSchedules] = await Promise.all([
+        fetchSchedulesForResources("droner", droneIds),
+        fetchSchedulesForResources("utstyr", equipmentIds),
+      ]);
+      setSchedulesByResource({ ...droneSchedules, ...equipmentSchedules });
     } catch (err: any) {
       console.error("Error loading maintenance overview:", err);
       toast.error(t("maintenance.loadError"));
