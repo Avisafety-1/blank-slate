@@ -109,7 +109,7 @@ interface MaintenanceRowProps {
   selected: boolean;
   schedulesByResource: Record<string, MaintenanceSchedule[]>;
   activeSchedule: string;
-  onToggle: () => void;
+  onToggle: (id: string) => void;
   onOpenDetail: (item: MaintenanceItem) => void;
   onStartPerform: (item: MaintenanceItem) => void;
   onOpenLogbook: (item: MaintenanceItem) => void;
