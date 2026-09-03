@@ -172,3 +172,67 @@ export async function performSchedule(params: {
     });
   }
 }
+
+/**
+ * Computes the worst status across all custom maintenance schedules for the
+ * given resources, so extra maintenance affects resource cards and dashboard KPIs.
+ * Returns a map resourceId -> Status (only entries with schedules).
+ */
+export async function fetchScheduleStatusMap(
+  kind: ScheduleKind,
+  resources: { id: string; totalHours: number }[]
+): Promise<Record<string, Status>> {
+  const ids = resources.map((r) => r.id);
+  if (ids.length === 0) return {};
+  let byResource: Record<string, MaintenanceSchedule[]>;
+  try {
+    byResource = await fetchSchedulesForResources(kind, ids);
+  } catch {
+    return {};
+  }
+  const withSchedules = Object.keys(byResource);
+  if (withSchedules.length === 0) return {};
+
+  // Mission totals only needed for schedules using mission intervals
+  const needMissions = withSchedules.filter((id) =>
+    byResource[id].some((s) => (s.interval_missions ?? 0) > 0)
+  );
+  const missionTotals: Record<string, number> = {};
+  if (needMissions.length > 0) {
+    if (kind === "droner") {
+      const { data } = await (supabase as any)
+        .from("flight_logs")
+        .select("drone_id, mission_id")
+        .in("drone_id", needMissions);
+      const sets: Record<string, Set<string>> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.drone_id || !r.mission_id) return;
+        (sets[r.drone_id] ||= new Set()).add(r.mission_id);
+      });
+      Object.entries(sets).forEach(([id, set]) => (missionTotals[id] = set.size));
+    } else {
+      const { data } = await (supabase as any)
+        .from("mission_equipment")
+        .select("equipment_id, mission_id")
+        .in("equipment_id", needMissions);
+      const sets: Record<string, Set<string>> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.equipment_id || !r.mission_id) return;
+        (sets[r.equipment_id] ||= new Set()).add(r.mission_id);
+      });
+      Object.entries(sets).forEach(([id, set]) => (missionTotals[id] = set.size));
+    }
+  }
+
+  const result: Record<string, Status> = {};
+  resources.forEach((res) => {
+    const schedules = byResource[res.id];
+    if (!schedules || schedules.length === 0) return;
+    const totals = { totalHours: res.totalHours ?? 0, totalMissions: missionTotals[res.id] ?? 0 };
+    result[res.id] = schedules.reduce(
+      (worst, s) => worstStatus(worst, calculateScheduleProgress(s, totals).status),
+      "Grønn" as Status
+    );
+  });
+  return result;
+}
