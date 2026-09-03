@@ -8634,5 +8634,30 @@
     "loadMore": "Load more",
     "unknownDrone": "Unknown drone",
     "loadError": "Could not load the flight analysis"
+  },
+  "maintenance": {
+    "title": "Maintenance overview",
+    "perform": "Perform maintenance",
+    "reset": "Reset",
+    "hours": "Flight hours",
+    "missions": "Missions",
+    "days": "Days",
+    "notSet": "Not set",
+    "daysLeft": "{{count}} days left ({{date}})",
+    "searchPlaceholder": "Search by name, model or serial number...",
+    "allStatuses": "All statuses",
+    "loading": "Loading...",
+    "empty": "No resources to show",
+    "loadError": "Could not load the maintenance overview",
+    "actionError": "The action failed",
+    "performedType": "Maintenance performed",
+    "performedSuccess": "Maintenance recorded for {{name}}",
+    "resetSuccess": "Counters reset for {{name}}",
+    "confirmPerformTitle": "Perform maintenance",
+    "confirmResetTitle": "Reset counters",
+    "confirmPerformDescription": "Record performed maintenance for {{name}}. This sets last performed to today, calculates a new due date and resets the hour and mission counters.",
+    "confirmResetDescription": "Reset hour, mission and date counters for {{name}} without recording performed maintenance. No log entry is created.",
+    "notePlaceholder": "Note (optional)",
+    "openOverview": "Maintenance"
   }
 }

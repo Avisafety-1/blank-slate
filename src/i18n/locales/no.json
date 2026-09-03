@@ -8636,5 +8636,30 @@
     "loadMore": "Last flere",
     "unknownDrone": "Ukjent drone",
     "loadError": "Kunne ikke laste flyanalysen"
+  },
+  "maintenance": {
+    "title": "Vedlikeholdsoversikt",
+    "perform": "Utfør vedlikehold",
+    "reset": "Nullstill",
+    "hours": "Flytimer",
+    "missions": "Oppdrag",
+    "days": "Dager",
+    "notSet": "Ikke satt",
+    "daysLeft": "{{count}} dager igjen ({{date}})",
+    "searchPlaceholder": "Søk etter navn, modell eller serienummer...",
+    "allStatuses": "Alle statuser",
+    "loading": "Laster...",
+    "empty": "Ingen ressurser å vise",
+    "loadError": "Kunne ikke laste vedlikeholdsoversikten",
+    "actionError": "Handlingen feilet",
+    "performedType": "Vedlikehold utført",
+    "performedSuccess": "Vedlikehold registrert for {{name}}",
+    "resetSuccess": "Tellere nullstilt for {{name}}",
+    "confirmPerformTitle": "Utfør vedlikehold",
+    "confirmResetTitle": "Nullstill tellere",
+    "confirmPerformDescription": "Registrer utført vedlikehold for {{name}}. Dette setter sist utført til i dag, beregner ny forfallsdato og nullstiller timer- og oppdragstellere.",
+    "confirmResetDescription": "Nullstill timer-, oppdrags- og datotellere for {{name}} uten å registrere et utført vedlikehold. Ingen loggoppføring opprettes.",
+    "notePlaceholder": "Notat (valgfritt)",
+    "openOverview": "Vedlikehold"
   }
 }
