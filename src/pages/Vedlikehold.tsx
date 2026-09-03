@@ -325,64 +325,59 @@ const Vedlikehold = () => {
 
   const baseItems = tab === "droner" ? droneItems : equipmentItems;
 
-  const scheduleNames = useMemo(() => {
-    const names = new Set<string>();
-    baseItems.forEach((i) => (schedulesByResource[i.id] || []).forEach((s) => names.add(s.navn)));
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  // Forhåndsvelg det intervallet som forfaller først for hver ressurs
+  useEffect(() => {
+    setSelectedScheduleById((prev) => {
+      const next: Record<string, string> = { ...prev };
+      let changed = false;
+      baseItems.forEach((item) => {
+        const schedules = schedulesByResource[item.id] || [];
+        const current = next[item.id];
+        const valid = current === "standard" || schedules.some((s) => s.navn === current);
+        if (valid) return;
+        let bestName = "standard";
+        let bestDays = daysUntil(item.nextDate) ?? Infinity;
+        schedules.forEach((sch) => {
+          const d = daysUntil(sch.next_due_date) ?? Infinity;
+          if (d < bestDays) {
+            bestDays = d;
+            bestName = sch.navn;
+          }
+        });
+        next[item.id] = bestName;
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
   }, [baseItems, schedulesByResource]);
 
-  // Forhåndsvelg intervallet som forfaller først
-  useEffect(() => {
-    if (scheduleNames.length === 0) {
-      setScheduleTab("standard");
-      return;
-    }
-    if (scheduleTab !== "standard" && scheduleNames.includes(scheduleTab)) return;
-    let best: { name: string; days: number } | null = null;
-    baseItems.forEach((i) => {
-      (schedulesByResource[i.id] || []).forEach((sch) => {
-        if (!sch.next_due_date) return;
-        const days = daysUntil(sch.next_due_date) ?? Infinity;
-        if (!best || days < best.days) best = { name: sch.navn, days };
-      });
-    });
-    const standardBest = baseItems.reduce<number>((min, i) => {
-      const d = daysUntil(i.nextDate);
-      return d === null ? min : Math.min(min, d);
-    }, Infinity);
-    if (best && best.days < standardBest) setScheduleTab(best.name);
-    else setScheduleTab("standard");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduleNames.join("|"), tab]);
-
   const items = useMemo<MaintenanceItem[]>(() => {
-    if (scheduleTab === "standard") return baseItems;
-    return baseItems
-      .map((item) => {
-        const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === scheduleTab);
-        if (!sch) return null;
-        const progress = calculateScheduleProgress(sch, {
-          totalHours: item.totalHours,
-          totalMissions: item.totalMissions,
-        });
-        const derived: MaintenanceItem = {
-          ...item,
-          hoursUsed: progress.hoursUsed,
-          hoursLimit: sch.interval_hours ?? null,
-          hoursWarning: sch.warn_hours ?? null,
-          missionsUsed: progress.missionsUsed,
-          missionsLimit: sch.interval_missions ?? null,
-          missionsWarning: sch.warn_missions ?? null,
-          nextDate: sch.next_due_date ?? null,
-          warningDays: sch.warn_days ?? 14,
-          status: progress.status,
-          checklistId: sch.sjekkliste_id ?? null,
-          schedule: sch,
-        };
-        return derived;
-      })
-      .filter((i): i is MaintenanceItem => !!i);
-  }, [baseItems, schedulesByResource, scheduleTab]);
+    return baseItems.map((item) => {
+      const sel = selectedScheduleById[item.id] ?? "standard";
+      if (sel === "standard") return item;
+      const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === sel);
+      if (!sch) return item;
+      const progress = calculateScheduleProgress(sch, {
+        totalHours: item.totalHours,
+        totalMissions: item.totalMissions,
+      });
+      const derived: MaintenanceItem = {
+        ...item,
+        hoursUsed: progress.hoursUsed,
+        hoursLimit: sch.interval_hours ?? null,
+        hoursWarning: sch.warn_hours ?? null,
+        missionsUsed: progress.missionsUsed,
+        missionsLimit: sch.interval_missions ?? null,
+        missionsWarning: sch.warn_missions ?? null,
+        nextDate: sch.next_due_date ?? null,
+        warningDays: sch.warn_days ?? 14,
+        status: progress.status,
+        checklistId: sch.sjekkliste_id ?? null,
+        schedule: sch,
+      };
+      return derived;
+    });
+  }, [baseItems, schedulesByResource, selectedScheduleById]);
 
   const visibleItems = useMemo(() => {
     const s = search.trim().toLowerCase();
