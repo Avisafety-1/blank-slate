@@ -950,7 +950,25 @@ const Vedlikehold = () => {
                 ) : visibleItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">{t("maintenance.empty")}</p>
                 ) : (
-                  visibleItems.map(renderRow)
+                  visibleItems.map((item) => (
+                    <MaintenanceRow
+                      key={item.id}
+                      item={item}
+                      kind={tab}
+                      selected={selected.has(item.id)}
+                      schedulesByResource={schedulesByResource}
+                      activeSchedule={selectedScheduleById[item.id] ?? "standard"}
+                      onToggle={toggleSelected}
+                      onOpenDetail={openDetail}
+                      onStartPerform={startPerform}
+                      onOpenLogbook={handleOpenLogbook}
+                      onReset={handleReset}
+                      onPickChecklist={handlePickChecklist}
+                      onSetSchedule={handleSetSchedule}
+                      t={t}
+                      checklistName={checklistName}
+                    />
+                  ))
                 )}
               </TabsContent>
               <TabsContent value="utstyr" className="mt-0 space-y-3">
@@ -959,7 +977,25 @@ const Vedlikehold = () => {
                 ) : visibleItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">{t("maintenance.empty")}</p>
                 ) : (
-                  visibleItems.map(renderRow)
+                  visibleItems.map((item) => (
+                    <MaintenanceRow
+                      key={item.id}
+                      item={item}
+                      kind={tab}
+                      selected={selected.has(item.id)}
+                      schedulesByResource={schedulesByResource}
+                      activeSchedule={selectedScheduleById[item.id] ?? "standard"}
+                      onToggle={toggleSelected}
+                      onOpenDetail={openDetail}
+                      onStartPerform={startPerform}
+                      onOpenLogbook={handleOpenLogbook}
+                      onReset={handleReset}
+                      onPickChecklist={handlePickChecklist}
+                      onSetSchedule={handleSetSchedule}
+                      t={t}
+                      checklistName={checklistName}
+                    />
+                  ))
                 )}
               </TabsContent>
             </Tabs>
