@@ -345,6 +345,13 @@ serve(async (req) => {
         }
       }
 
+      // ── Batteries: charge-cycle based ──
+      for (const it of cycleItems) {
+        if (it.companyId !== profile.company_id) continue;
+        if (itemsNeedingAttention.some((x) => x.id === it.id)) continue;
+        itemsNeedingAttention.push(it as MaintenanceItem);
+      }
+
       // ── Accessories: still date-based (unchanged) ──
       const companyAccessories = accessories?.filter((a: any) => a.company_id === profile.company_id) || [];
       for (const acc of companyAccessories) {
