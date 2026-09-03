@@ -368,6 +368,15 @@ const Vedlikehold = () => {
         }
       }
 
+    }
+  };
+
+  const runAction = async () => {
+    if (!pending || !user || submitting) return;
+    const { item, kind, action } = pending;
+    setSubmitting(true);
+    try {
+      await applyMaintenance(item, kind, action, note);
       toast.success(
         action === "perform"
           ? t("maintenance.performedSuccess", { name: item.name })
@@ -382,6 +391,29 @@ const Vedlikehold = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const runBulkPerform = async () => {
+    if (submitting || bulkItems.length === 0) return;
+    setSubmitting(true);
+    let ok = 0;
+    let failed = 0;
+    for (const item of bulkItems) {
+      try {
+        await applyMaintenance(item, tab, "perform", note);
+        ok++;
+      } catch (err) {
+        console.error("Bulk maintenance failed for", item.id, err);
+        failed++;
+      }
+    }
+    setSubmitting(false);
+    if (failed === 0) toast.success(t("maintenance.bulkDone", { count: ok }));
+    else toast.error(t("maintenance.bulkPartial", { ok, failed }));
+    setBulkOpen(false);
+    setSelected(new Set());
+    setNote("");
+    await fetchAll();
   };
 
   const accentClasses: Record<Status, string> = {
