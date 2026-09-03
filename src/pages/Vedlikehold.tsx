@@ -63,6 +63,7 @@ interface MaintenanceItem {
   serial?: string | null;
   lastFlight?: string | null;
   totalHours: number;
+  checklistId?: string | null;
   raw: any;
 }
 
@@ -93,6 +94,10 @@ const Vedlikehold = () => {
   const [note, setNote] = useState("");
   const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
+  const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [checklistSearch, setChecklistSearch] = useState("");
+  const [checklistRun, setChecklistRun] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const { checklists } = useChecklists();
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -180,6 +185,7 @@ const Vedlikehold = () => {
           status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
           serial: d.serienummer || d.internal_serial || null,
           lastFlight: lastFlightByDrone.get(d.id) ?? null,
+          checklistId: d.sjekkliste_id ?? null,
           totalHours: d.flyvetimer ?? 0,
           raw: d,
         };
@@ -217,6 +223,7 @@ const Vedlikehold = () => {
           status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
           serial: e.serienummer || null,
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
+          checklistId: e.sjekkliste_id ?? null,
           totalHours: e.flyvetimer ?? 0,
           raw: e,
         };
@@ -361,9 +368,46 @@ const Vedlikehold = () => {
   };
 
   const accentClasses: Record<Status, string> = {
-    "Grønn": "bg-status-green",
-    "Gul": "bg-status-yellow",
-    "Rød": "bg-status-red",
+    "Grønn": "bg-gradient-to-b from-emerald-400 to-emerald-600",
+    "Gul": "bg-gradient-to-b from-amber-400 to-orange-600",
+    "Rød": "bg-gradient-to-b from-red-500 to-rose-700",
+  };
+
+  const ringClasses: Record<Status, string> = {
+    "Grønn": "border-emerald-500/30 hover:border-emerald-500/60",
+    "Gul": "border-orange-500/40 hover:border-orange-500/70",
+    "Rød": "border-red-500/50 hover:border-red-500/80",
+  };
+
+  const checklistName = (id?: string | null) =>
+    id ? (checklists.find((c) => c.id === id)?.tittel ?? null) : null;
+
+  const startPerform = (item: MaintenanceItem) => {
+    setNote("");
+    if (item.checklistId) {
+      setChecklistRun({ item, kind: tab });
+      return;
+    }
+    setPending({ item, kind: tab, action: "perform" });
+  };
+
+  const assignChecklist = async (checklistId: string | null) => {
+    if (!checklistPicker) return;
+    const { item, kind } = checklistPicker;
+    try {
+      const table = kind === "droner" ? "drones" : "equipment";
+      const { error } = await (supabase as any)
+        .from(table)
+        .update({ sjekkliste_id: checklistId })
+        .eq("id", item.id);
+      if (error) throw error;
+      toast.success(t("maintenance.checklistUpdated"));
+      setChecklistPicker(null);
+      await fetchAll();
+    } catch (err: any) {
+      console.error("Failed to set checklist:", err);
+      toast.error(err.message || t("maintenance.actionError"));
+    }
   };
 
   const renderRow = (item: MaintenanceItem) => {
@@ -375,9 +419,9 @@ const Vedlikehold = () => {
     return (
       <div
         key={item.id}
-        className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 backdrop-blur-md transition-all duration-300 hover:border-border hover:bg-card/70 hover:shadow-xl"
+        className={cn("group relative overflow-hidden rounded-2xl border-2 bg-card/50 backdrop-blur-md transition-all duration-300 hover:bg-card/70 hover:shadow-xl", ringClasses[item.status])}
       >
-        <div className={cn("absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
+        <div className={cn("absolute left-0 top-0 h-full w-1.5 opacity-90 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
 
         <div className="flex flex-col lg:flex-row">
           {/* Identitet + handlinger */}
@@ -399,6 +443,12 @@ const Vedlikehold = () => {
                 <p className="text-sm text-muted-foreground truncate">
                   {[item.subtitle, item.isForeignCompany ? item.companyName : null].filter(Boolean).join(" • ")}
                 </p>
+                <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
+                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
+                  <span className={item.checklistId ? "text-emerald-500 font-medium truncate" : "text-muted-foreground/70 truncate"}>
+                    {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
+                  </span>
+                </p>
               </div>
               <div className="text-right shrink-0">
                 <StatusBadge status={item.status} className="justify-end mb-2" />
@@ -413,9 +463,13 @@ const Vedlikehold = () => {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button size="sm" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "perform" }); }}>
+              <Button size="sm" className="gap-1.5" onClick={() => startPerform(item)}>
                 <Wrench className="w-4 h-4" />
                 {t("maintenance.perform")}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setChecklistSearch(""); setChecklistPicker({ item, kind: tab }); }}>
+                <ClipboardCheck className="w-4 h-4" />
+                {t("maintenance.maintenanceChecklist")}
               </Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLogbook({ item, kind: tab })}>
                 <BookOpen className="w-4 h-4" />
@@ -436,18 +490,33 @@ const Vedlikehold = () => {
               limit={item.hoursLimit}
               status={hoursStatus}
               fractionDigits={1}
+              warningAt={
+                item.hoursLimit
+                  ? (item.hoursWarning && item.hoursWarning > 0
+                      ? (item.hoursLimit - item.hoursWarning) / item.hoursLimit
+                      : 0.8)
+                  : null
+              }
             />
             <MaintenanceBar
               label={t("maintenance.missions")}
               current={item.missionsUsed}
               limit={item.missionsLimit}
               status={missionsStatus}
+              warningAt={
+                item.missionsLimit
+                  ? (item.missionsWarning && item.missionsWarning > 0
+                      ? (item.missionsLimit - item.missionsWarning) / item.missionsLimit
+                      : 0.8)
+                  : null
+              }
             />
             <MaintenanceBar
               label={t("maintenance.days")}
               current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
               limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
               status={dateStatus}
+              warningAt={item.nextDate ? 0.5 : null}
               valueText={
                 item.nextDate
                   ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
