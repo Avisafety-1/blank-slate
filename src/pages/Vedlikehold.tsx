@@ -547,8 +547,8 @@ const Vedlikehold = () => {
                   {item.subtitle}
                 </p>
                 <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
-                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
-                  <span className={item.checklistId ? "text-emerald-500 font-medium truncate" : "text-muted-foreground/70 truncate"}>
+                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
+                  <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
                     {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
                   </span>
                 </p>
@@ -827,8 +827,8 @@ const Vedlikehold = () => {
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-xs flex items-center gap-1.5 truncate">
-                    <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
-                    <span className={item.checklistId ? "text-emerald-500 truncate" : "text-muted-foreground/70 truncate"}>
+                    <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
+                    <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
                       {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
                     </span>
                   </p>
