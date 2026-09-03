@@ -1,6 +1,6 @@
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import droneBackground from "@/assets/drone-background.png";
-import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip, Building2, GraduationCap } from "lucide-react";
+import { Plane, Plus, Gauge, Users, Search, Radio, Filter, Paperclip, Building2, GraduationCap, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -513,10 +513,16 @@ const Resources = () => {
                   <Plane className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{terminology.vehicles}</h2>
                 </div>
-                <Button data-tour="resources-drone-add" onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  {t('actions.add')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => navigate("/vedlikehold?tab=droner")} size="sm" variant="outline" className="gap-1">
+                    <Wrench className="w-4 h-4" />
+                    {t('maintenance.openOverview')}
+                  </Button>
+                  <Button data-tour="resources-drone-add" onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    {t('actions.add')}
+                  </Button>
+                </div>
               </div>
               
               {/* Search field */}
@@ -656,7 +662,11 @@ const Resources = () => {
                   <Gauge className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{t('resources.equipment')}</h2>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <Button onClick={() => navigate("/vedlikehold?tab=utstyr")} size="sm" variant="outline" className="gap-1">
+                    <Wrench className="w-4 h-4" />
+                    {t('maintenance.openOverview')}
+                  </Button>
                   <Button data-tour="resources-equipment-add" onClick={() => setEquipmentDialogOpen(true)} size="sm" className="gap-2">
                     <Plus className="w-4 h-4" />
                     {t('actions.add')}

@@ -36,6 +36,7 @@ const Index = React.lazy(() => import("./pages/Index"));
 const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
 const Admin = React.lazy(() => import("./pages/Admin"));
 const Resources = React.lazy(() => import("./pages/Resources"));
+const Vedlikehold = React.lazy(() => import("./pages/Vedlikehold"));
 const KartPage = React.lazy(() => import("./pages/Kart"));
 const Documents = React.lazy(() => import("./pages/Documents"));
 const Kalender = React.lazy(() => import("./pages/Kalender"));
@@ -241,6 +242,7 @@ const App = () => {
                   <Route element={<AuthenticatedLayout />}>
                     <Route path="/" element={<DomainGuard><Index /></DomainGuard>} />
                     <Route path="/ressurser" element={<DomainGuard><TrainingModuleRestricted moduleKey="resources"><Resources /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/vedlikehold" element={<DomainGuard><TrainingModuleRestricted moduleKey="resources"><Suspense fallback={<LoadingSpinner />}><Vedlikehold /></Suspense></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/kart" element={<DomainGuard><TrainingModuleRestricted moduleKey="map"><KartPage /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/dokumenter" element={<DomainGuard><TrainingModuleRestricted moduleKey="documents"><Documents /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/kalender" element={<DomainGuard><TrainingModuleRestricted moduleKey="calendar"><Kalender /></TrainingModuleRestricted></DomainGuard>} />
