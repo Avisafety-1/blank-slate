@@ -307,7 +307,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </Select>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">{t("maintenance.schedules.intervalDays")}</Label>
                 <Input type="number" min="0" value={form.interval_days} onChange={(e) => setForm({ ...form, interval_days: e.target.value })} />
