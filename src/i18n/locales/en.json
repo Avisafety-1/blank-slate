@@ -8658,6 +8658,10 @@
     "confirmPerformDescription": "Record performed maintenance for {{name}}. This sets last performed to today, calculates a new due date and resets the hour and mission counters.",
     "confirmResetDescription": "Reset hour, mission and date counters for {{name}} without recording performed maintenance. No log entry is created.",
     "notePlaceholder": "Note (optional)",
-    "openOverview": "Maintenance"
+    "openOverview": "Maintenance",
+    "serial": "Serial number",
+    "lastFlown": "Last flown",
+    "openLogbook": "Open logbook",
+    "never": "Never flown"
   }
 }

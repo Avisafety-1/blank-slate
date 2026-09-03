@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ArrowLeft, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
@@ -24,7 +24,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MaintenanceBar } from "@/components/maintenance/MaintenanceBar";
+import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
+import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
 
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -54,6 +57,9 @@ interface MaintenanceItem {
   nextDate: string | null;
   warningDays: number;
   status: Status;
+  serial?: string | null;
+  lastFlight?: string | null;
+  totalHours: number;
   raw: any;
 }
 
@@ -82,6 +88,7 @@ const Vedlikehold = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
+  const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
 
   useEffect(() => {
@@ -114,6 +121,36 @@ const Vedlikehold = () => {
       if (droneRes.error) throw droneRes.error;
       if (equipmentRes.error) throw equipmentRes.error;
 
+      const droneIds = (droneRes.data || []).map((d: any) => d.id);
+      const equipmentIds = (equipmentRes.data || []).map((e: any) => e.id);
+      const lastFlightByDrone = new Map<string, string>();
+      const lastFlightByEquipment = new Map<string, string>();
+
+      if (droneIds.length > 0) {
+        const { data } = await (supabase as any)
+          .from("flight_logs")
+          .select("drone_id, flight_date")
+          .in("drone_id", droneIds)
+          .order("flight_date", { ascending: false });
+        (data || []).forEach((r: any) => {
+          if (r.drone_id && !lastFlightByDrone.has(r.drone_id)) lastFlightByDrone.set(r.drone_id, r.flight_date);
+        });
+      }
+
+      if (equipmentIds.length > 0) {
+        const { data } = await (supabase as any)
+          .from("flight_log_equipment")
+          .select("equipment_id, flight_logs(flight_date)")
+          .in("equipment_id", equipmentIds);
+        (data || []).forEach((r: any) => {
+          const date = r.flight_logs?.flight_date;
+          if (!date || !r.equipment_id) return;
+          const current = lastFlightByEquipment.get(r.equipment_id);
+          if (!current || date > current) lastFlightByEquipment.set(r.equipment_id, date);
+        });
+      }
+
+
       const drones = await Promise.all((droneRes.data || []).map(async (d: any) => {
         let missionsUsed = 0;
         if (d.inspection_interval_missions) {
@@ -138,6 +175,9 @@ const Vedlikehold = () => {
           nextDate: d.neste_inspeksjon ?? null,
           warningDays: d.varsel_dager ?? 14,
           status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          serial: d.serienummer || d.internal_serial || null,
+          lastFlight: lastFlightByDrone.get(d.id) ?? null,
+          totalHours: d.flyvetimer ?? 0,
           raw: d,
         };
         return item;
@@ -172,6 +212,9 @@ const Vedlikehold = () => {
           nextDate: e.neste_vedlikehold ?? null,
           warningDays: e.varsel_dager ?? 14,
           status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          serial: e.serienummer || null,
+          lastFlight: lastFlightByEquipment.get(e.id) ?? null,
+          totalHours: e.flyvetimer ?? 0,
           raw: e,
         };
         return item;
@@ -314,6 +357,12 @@ const Vedlikehold = () => {
     }
   };
 
+  const accentClasses: Record<Status, string> = {
+    "Grønn": "bg-status-green",
+    "Gul": "bg-status-yellow",
+    "Rød": "bg-status-red",
+  };
+
   const renderRow = (item: MaintenanceItem) => {
     const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
     const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
@@ -323,54 +372,86 @@ const Vedlikehold = () => {
     return (
       <div
         key={item.id}
-        className="p-3 sm:p-4 rounded-lg border border-border bg-background/50 hover:bg-background/70 transition-colors"
+        className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 backdrop-blur-md transition-all duration-300 hover:border-border hover:bg-card/70 hover:shadow-xl"
       >
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-          <button type="button" className="text-left min-w-0" onClick={() => openDetail(item)}>
-            <h3 className="font-semibold truncate hover:underline">{item.name}</h3>
-            {item.subtitle && <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>}
-            {item.isForeignCompany && item.companyName && (
-              <Badge variant="secondary" className="mt-1 text-xs">{item.companyName}</Badge>
-            )}
-          </button>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <StatusBadge status={item.status} />
-            <Button size="sm" className="gap-1" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "perform" }); }}>
-              <Wrench className="w-4 h-4" />
-              {t("maintenance.perform")}
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "reset" }); }}>
-              <RotateCcw className="w-4 h-4" />
-              {t("maintenance.reset")}
-            </Button>
-          </div>
-        </div>
+        <div className={cn("absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
 
-        <div className="space-y-2">
-          <MaintenanceBar
-            label={t("maintenance.hours")}
-            current={item.hoursUsed}
-            limit={item.hoursLimit}
-            status={hoursStatus}
-            fractionDigits={1}
-          />
-          <MaintenanceBar
-            label={t("maintenance.missions")}
-            current={item.missionsUsed}
-            limit={item.missionsLimit}
-            status={missionsStatus}
-          />
-          <MaintenanceBar
-            label={t("maintenance.days")}
-            current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
-            limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
-            status={dateStatus}
-            valueText={
-              item.nextDate
-                ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
-                : undefined
-            }
-          />
+        <div className="flex flex-col lg:flex-row">
+          {/* Identitet + handlinger */}
+          <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 lg:border-r border-border/50">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {item.serial && (
+                  <span className="inline-block mb-2 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                    {t("maintenance.serial")}: {item.serial}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openDetail(item)}
+                  className="block text-left text-lg sm:text-xl font-bold leading-tight truncate hover:underline"
+                >
+                  {item.name}
+                </button>
+                <p className="text-sm text-muted-foreground truncate">
+                  {[item.subtitle, item.isForeignCompany ? item.companyName : null].filter(Boolean).join(" • ")}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <StatusBadge status={item.status} className="justify-end mb-2" />
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center justify-end gap-1">
+                  <CalendarClock className="w-3 h-3" />
+                  {t("maintenance.lastFlown")}
+                </p>
+                <p className="text-xs font-semibold">
+                  {item.lastFlight ? new Date(item.lastFlight).toLocaleDateString() : t("maintenance.never")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button size="sm" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "perform" }); }}>
+                <Wrench className="w-4 h-4" />
+                {t("maintenance.perform")}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLogbook({ item, kind: tab })}>
+                <BookOpen className="w-4 h-4" />
+                {t("maintenance.openLogbook")}
+              </Button>
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "reset" }); }}>
+                <RotateCcw className="w-4 h-4" />
+                {t("maintenance.reset")}
+              </Button>
+            </div>
+          </div>
+
+          {/* Kompakte statusbarer */}
+          <div className="w-full lg:w-80 shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/20">
+            <MaintenanceBar
+              label={t("maintenance.hours")}
+              current={item.hoursUsed}
+              limit={item.hoursLimit}
+              status={hoursStatus}
+              fractionDigits={1}
+            />
+            <MaintenanceBar
+              label={t("maintenance.missions")}
+              current={item.missionsUsed}
+              limit={item.missionsLimit}
+              status={missionsStatus}
+            />
+            <MaintenanceBar
+              label={t("maintenance.days")}
+              current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
+              limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
+              status={dateStatus}
+              valueText={
+                item.nextDate
+                  ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
+                  : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     );
@@ -459,6 +540,27 @@ const Vedlikehold = () => {
           </GlassCard>
         </main>
       </div>
+
+      {logbook && logbook.kind === "droner" && (
+        <DroneLogbookDialog
+          open
+          onOpenChange={(o) => { if (!o) setLogbook(null); }}
+          droneId={logbook.item.id}
+          droneModell={logbook.item.name}
+          flyvetimer={logbook.item.totalHours}
+        />
+      )}
+      {logbook && logbook.kind === "utstyr" && (
+        <EquipmentLogbookDialog
+          open
+          onOpenChange={(o) => { if (!o) setLogbook(null); }}
+          equipmentId={logbook.item.id}
+          equipmentNavn={logbook.item.name}
+          flyvetimer={logbook.item.totalHours}
+          equipmentType={logbook.item.raw?.type}
+          equipmentSerienummer={logbook.item.serial ?? undefined}
+        />
+      )}
 
       <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) { setPending(null); setNote(""); } }}>
         <AlertDialogContent>

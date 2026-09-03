@@ -8660,6 +8660,10 @@
     "confirmPerformDescription": "Registrer utført vedlikehold for {{name}}. Dette setter sist utført til i dag, beregner ny forfallsdato og nullstiller timer- og oppdragstellere.",
     "confirmResetDescription": "Nullstill timer-, oppdrags- og datotellere for {{name}} uten å registrere et utført vedlikehold. Ingen loggoppføring opprettes.",
     "notePlaceholder": "Notat (valgfritt)",
-    "openOverview": "Vedlikehold"
+    "openOverview": "Vedlikehold",
+    "serial": "Serienummer",
+    "lastFlown": "Sist flydd",
+    "openLogbook": "Åpne loggbok",
+    "never": "Aldri flydd"
   }
 }
