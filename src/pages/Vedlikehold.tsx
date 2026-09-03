@@ -616,6 +616,23 @@ const Vedlikehold = () => {
         </main>
       </div>
 
+      {detail && detail.kind === "droner" && (
+        <DroneDetailDialog
+          open
+          onOpenChange={(o) => { if (!o) setDetail(null); }}
+          drone={detail.item.raw}
+          onDroneUpdated={() => { fetchAll(); }}
+        />
+      )}
+      {detail && detail.kind === "utstyr" && (
+        <EquipmentDetailDialog
+          open
+          onOpenChange={(o) => { if (!o) setDetail(null); }}
+          equipment={detail.item.raw}
+          onEquipmentUpdated={() => { fetchAll(); }}
+        />
+      )}
+
       {logbook && logbook.kind === "droner" && (
         <DroneLogbookDialog
           open
