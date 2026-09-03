@@ -1939,20 +1939,26 @@ serve(async (req) => {
         linkedEquipment,
       );
       const dbStatus = (d.status as MaintStatus) || 'Grønn';
-      const finalStatus = worstStatus(result.status, dbStatus);
-      // ownStatus skal ikke ta hensyn til DB-status fra koblet utstyr; bruk kun beregnet ownStatus.
-      const ownStatus = result.ownStatus;
+      const custom = customDroneSchedules[d.id];
+      const customStatus = custom?.status ?? 'Grønn';
+      const customReasons = custom?.reasons ?? [];
+      const finalStatus = worstStatus(worstStatus(result.status, dbStatus), customStatus);
+      // ownStatus skal ikke ta hensyn til DB-status fra koblet utstyr, men
+      // egendefinert vedlikehold på selve dronen er dronens eget vedlikehold.
+      const ownStatus = worstStatus(result.ownStatus, customStatus);
+      const allReasons = [...result.reasons, ...customReasons];
       if (finalStatus !== dbStatus) {
-        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', endelig='${finalStatus}', egen='${ownStatus}'. Årsaker: ${result.reasons.join('; ')}`);
+        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', egendefinert='${customStatus}', endelig='${finalStatus}', egen='${ownStatus}'. Årsaker: ${allReasons.join('; ')}`);
       }
       return {
         status: finalStatus,
         ownStatus,
-        reasons: result.reasons,
-        ownReasons: result.ownReasons,
+        reasons: allReasons,
+        ownReasons: [...result.ownReasons, ...customReasons],
         linkedReasons: result.linkedReasons,
         affectedItems: result.affectedItems,
       };
+
     };
 
     const computeEquipmentStatus = async (e: any): Promise<MaintStatus> => {
