@@ -1300,6 +1300,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               )}
 
+              {drone.company_id && (
+                <MaintenanceSchedulesSection
+                  kind="droner"
+                  resourceId={drone.id}
+                  companyId={drone.company_id}
+                  onChanged={() => onDroneUpdated()}
+                />
+              )}
+
               {drone.merknader && (
                 <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
                   <div className="flex items-start gap-2">
