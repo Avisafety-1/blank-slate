@@ -715,15 +715,19 @@ const Vedlikehold = () => {
           <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
             {(() => {
               const schedules = schedulesByResource[item.id] || [];
-              const selected = selectedScheduleById[item.id] ?? "standard";
+              const activeSchedule = selectedScheduleById[item.id] ?? "standard";
               if (schedules.length === 0) return null;
+              const tabCount = 1 + schedules.length;
               return (
-                <div className="flex flex-wrap gap-1.5">
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
+                >
                   <Button
                     size="sm"
-                    variant={selected === "standard" ? "default" : "outline"}
+                    variant={activeSchedule === "standard" ? "default" : "outline"}
                     onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: "standard" }))}
-                    className="text-xs h-7 px-2"
+                    className="text-xs h-8 px-2 w-full truncate"
                   >
                     {t("maintenance.schedules.standardTab")}
                   </Button>
@@ -731,9 +735,9 @@ const Vedlikehold = () => {
                     <Button
                       key={sch.id}
                       size="sm"
-                      variant={selected === sch.navn ? "default" : "outline"}
+                      variant={activeSchedule === sch.navn ? "default" : "outline"}
                       onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: sch.navn }))}
-                      className="text-xs h-7 px-2"
+                      className="text-xs h-8 px-2 w-full truncate"
                     >
                       {sch.navn}
                     </Button>
