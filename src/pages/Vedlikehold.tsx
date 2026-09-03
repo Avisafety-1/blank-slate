@@ -283,6 +283,19 @@ const MaintenanceRow = memo(function MaintenanceRow({
                 : null
             }
           />
+          {item.cyclesLimit ? (
+            <MaintenanceBar
+              label={t("maintenance.cycles")}
+              current={item.cyclesUsed ?? 0}
+              limit={item.cyclesLimit}
+              status={cyclesStatus}
+              warningAt={
+                item.cyclesWarning && item.cyclesWarning > 0
+                  ? (item.cyclesLimit - item.cyclesWarning) / item.cyclesLimit
+                  : 0.8
+              }
+            />
+          ) : null}
           <MaintenanceBar
             label={t("maintenance.days")}
             current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
