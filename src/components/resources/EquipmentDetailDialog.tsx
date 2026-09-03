@@ -243,13 +243,17 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       // Count actual total missions for this equipment
       const totalMissions = await countEquipmentMissions();
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("equipment")
         .update({
           sist_vedlikeholdt: today,
           neste_vedlikehold,
           hours_at_last_maintenance: equipment.flyvetimer || 0,
           missions_at_last_maintenance: totalMissions,
+          // Reset the battery charge-cycle baseline so cycle-based maintenance starts over
+          ...((equipment as any).battery_cycles != null
+            ? { cycles_at_last_inspection: (equipment as any).battery_cycles }
+            : {}),
         })
         .eq("id", equipment.id);
 
@@ -756,6 +760,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   kind="utstyr"
                   resourceId={equipment.id}
                   companyId={(equipment.company_id || companyId) as string}
+                  isBattery={isBatteryType(equipment.type)}
                   onChanged={() => onEquipmentUpdated()}
                 />
               )}
@@ -895,6 +900,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       kind="utstyr"
                       resourceId={equipment.id}
                       companyId={equipment.company_id}
+                      isBattery={isBatteryType(equipment.type)}
                       onChanged={() => onEquipmentUpdated()}
                     />
                   )}

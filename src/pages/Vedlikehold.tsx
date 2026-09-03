@@ -68,6 +68,11 @@ interface MaintenanceItem {
   missionsUsed: number;
   missionsLimit: number | null;
   missionsWarning: number | null;
+  /** Battery charge cycles (batteries only) */
+  cyclesUsed?: number;
+  cyclesLimit?: number | null;
+  cyclesWarning?: number | null;
+  totalCycles?: number | null;
   nextDate: string | null;
   warningDays: number;
   status: Status;
@@ -141,6 +146,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
   const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
   const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
   const missionsStatus = calculateUsageStatus(item.missionsUsed, item.missionsLimit, item.missionsWarning);
+  const cyclesStatus = calculateUsageStatus(item.cyclesUsed ?? 0, item.cyclesLimit ?? null, item.cyclesWarning ?? null);
   const left = daysUntil(item.nextDate);
   const schedules = schedulesByResource[item.id] || [];
 
@@ -277,6 +283,19 @@ const MaintenanceRow = memo(function MaintenanceRow({
                 : null
             }
           />
+          {item.cyclesLimit ? (
+            <MaintenanceBar
+              label={t("maintenance.cycles")}
+              current={item.cyclesUsed ?? 0}
+              limit={item.cyclesLimit}
+              status={cyclesStatus}
+              warningAt={
+                item.cyclesWarning && item.cyclesWarning > 0
+                  ? (item.cyclesLimit - item.cyclesWarning) / item.cyclesLimit
+                  : 0.8
+              }
+            />
+          ) : null}
           <MaintenanceBar
             label={t("maintenance.days")}
             current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
@@ -488,7 +507,13 @@ const Vedlikehold = () => {
         const dateStatus = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
         const hoursStatus = calculateUsageStatus(hoursUsed, e.inspection_interval_hours, e.varsel_timer);
         const missionsStatus = calculateUsageStatus(missionsUsed, e.inspection_interval_missions, e.varsel_oppdrag);
-        const status = [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+        const totalCycles = e.battery_cycles ?? null;
+        const cyclesUsed = totalCycles != null ? Math.max(0, totalCycles - (e.cycles_at_last_inspection ?? 0)) : 0;
+        const cyclesStatus =
+          totalCycles != null
+            ? calculateUsageStatus(cyclesUsed, e.inspection_interval_cycles, e.varsel_sykluser)
+            : ("Grønn" as Status);
+        const status = [dateStatus, hoursStatus, missionsStatus, cyclesStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
         const item: MaintenanceItem = {
           id: e.id,
           name: e.navn,
@@ -502,6 +527,10 @@ const Vedlikehold = () => {
           missionsUsed,
           missionsLimit: e.inspection_interval_missions ?? null,
           missionsWarning: e.varsel_oppdrag ?? null,
+          cyclesUsed,
+          cyclesLimit: totalCycles != null ? e.inspection_interval_cycles ?? null : null,
+          cyclesWarning: e.varsel_sykluser ?? null,
+          totalCycles,
           nextDate: e.neste_vedlikehold ?? null,
           warningDays: e.varsel_dager ?? 14,
           status,
@@ -575,6 +604,7 @@ const Vedlikehold = () => {
       const progress = calculateScheduleProgress(sch, {
         totalHours: item.totalHours,
         totalMissions: item.totalMissions,
+        totalCycles: item.totalCycles ?? null,
       });
       const derived: MaintenanceItem = {
         ...item,
@@ -584,6 +614,9 @@ const Vedlikehold = () => {
         missionsUsed: progress.missionsUsed,
         missionsLimit: sch.interval_missions ?? null,
         missionsWarning: sch.warn_missions ?? null,
+        cyclesUsed: progress.cyclesUsed,
+        cyclesLimit: item.totalCycles != null ? sch.interval_cycles ?? null : null,
+        cyclesWarning: sch.warn_cycles ?? null,
         nextDate: sch.next_due_date ?? null,
         warningDays: sch.warn_days ?? 14,
         status: progress.status,
@@ -679,6 +712,7 @@ const Vedlikehold = () => {
         userId: user.id,
         totalHours: item.totalHours,
         totalMissions: item.totalMissions,
+        totalCycles: item.totalCycles ?? null,
         notes: noteText,
         reset: action === "reset",
       });
@@ -739,6 +773,7 @@ const Vedlikehold = () => {
           hours_at_last_maintenance: e.flyvetimer ?? 0,
           missions_at_last_maintenance: totalMissions,
         };
+        if (e.battery_cycles != null) update.cycles_at_last_inspection = e.battery_cycles;
         if (action === "perform") update.sist_vedlikeholdt = today;
 
         const { error } = await (supabase as any).from("equipment").update(update).eq("id", e.id);

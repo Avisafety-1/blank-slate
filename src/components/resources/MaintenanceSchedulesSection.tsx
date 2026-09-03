@@ -31,6 +31,8 @@ interface Props {
   readOnly?: boolean;
   /** Show the resource's standard maintenance as the first entry (default true) */
   includeStandard?: boolean;
+  /** Battery equipment: enables charge-cycle based intervals */
+  isBattery?: boolean;
   onChanged?: () => void;
 }
 
@@ -40,9 +42,11 @@ const emptyForm = {
   interval_days: "",
   interval_hours: "",
   interval_missions: "",
+  interval_cycles: "",
   warn_days: "",
   warn_hours: "",
   warn_missions: "",
+  warn_cycles: "",
   email_alerts_enabled: true,
   /** Standard maintenance only */
   start_date: "",
@@ -61,9 +65,11 @@ interface StandardEntry {
   interval_days: number | null;
   interval_hours: number | null;
   interval_missions: number | null;
+  interval_cycles: number | null;
   warn_days: number | null;
   warn_hours: number | null;
   warn_missions: number | null;
+  warn_cycles: number | null;
 }
 
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
@@ -83,7 +89,7 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, onChanged }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
@@ -130,15 +136,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           interval_days: data.inspection_interval_days ?? null,
           interval_hours: data.inspection_interval_hours ?? null,
           interval_missions: data.inspection_interval_missions ?? null,
+          interval_cycles: null,
           warn_days: data.varsel_dager ?? null,
           warn_hours: data.varsel_timer ?? null,
           warn_missions: data.varsel_oppdrag ?? null,
+          warn_cycles: null,
         });
       } else {
         const { data, error } = await (supabase as any)
           .from("equipment")
           .select(
-            "sjekkliste_id, sist_vedlikeholdt, neste_vedlikehold, vedlikeholdsintervall_dager, inspection_interval_hours, inspection_interval_missions, varsel_dager, varsel_timer, varsel_oppdrag"
+            "sjekkliste_id, sist_vedlikeholdt, neste_vedlikehold, vedlikeholdsintervall_dager, inspection_interval_hours, inspection_interval_missions, inspection_interval_cycles, varsel_dager, varsel_timer, varsel_oppdrag, varsel_sykluser"
           )
           .eq("id", resourceId)
           .maybeSingle();
@@ -152,9 +160,11 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           interval_days: data.vedlikeholdsintervall_dager ?? null,
           interval_hours: data.inspection_interval_hours ?? null,
           interval_missions: data.inspection_interval_missions ?? null,
+          interval_cycles: data.inspection_interval_cycles ?? null,
           warn_days: data.varsel_dager ?? null,
           warn_hours: data.varsel_timer ?? null,
           warn_missions: data.varsel_oppdrag ?? null,
+          warn_cycles: data.varsel_sykluser ?? null,
         });
       }
     } catch (err) {
@@ -195,9 +205,11 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       interval_days: s.interval_days != null ? String(s.interval_days) : "",
       interval_hours: s.interval_hours != null ? String(s.interval_hours) : "",
       interval_missions: s.interval_missions != null ? String(s.interval_missions) : "",
+      interval_cycles: s.interval_cycles != null ? String(s.interval_cycles) : "",
       warn_days: s.warn_days != null ? String(s.warn_days) : "",
       warn_hours: s.warn_hours != null ? String(s.warn_hours) : "",
       warn_missions: s.warn_missions != null ? String(s.warn_missions) : "",
+      warn_cycles: s.warn_cycles != null ? String(s.warn_cycles) : "",
       email_alerts_enabled: s.email_alerts_enabled,
     });
     setOpen(true);
@@ -208,14 +220,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     setEditing(null);
     setEditingStandard(true);
     setForm({
+      ...emptyForm,
       navn: t("maintenance.schedules.standardTab"),
       sjekkliste_id: standard.sjekkliste_id || "none",
       interval_days: standard.interval_days != null ? String(standard.interval_days) : "",
       interval_hours: standard.interval_hours != null ? String(standard.interval_hours) : "",
       interval_missions: standard.interval_missions != null ? String(standard.interval_missions) : "",
+      interval_cycles: standard.interval_cycles != null ? String(standard.interval_cycles) : "",
       warn_days: standard.warn_days != null ? String(standard.warn_days) : "",
       warn_hours: standard.warn_hours != null ? String(standard.warn_hours) : "",
       warn_missions: standard.warn_missions != null ? String(standard.warn_missions) : "",
+      warn_cycles: standard.warn_cycles != null ? String(standard.warn_cycles) : "",
       email_alerts_enabled: true,
       start_date: toDateInput(standard.start_date),
       last_at: toDateInput(standard.last_at),
@@ -234,9 +249,11 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       interval_days: p.interval_days != null ? String(p.interval_days) : "",
       interval_hours: p.interval_hours != null ? String(p.interval_hours) : "",
       interval_missions: p.interval_missions != null ? String(p.interval_missions) : "",
+      interval_cycles: isBattery && p.interval_cycles != null ? String(p.interval_cycles) : "",
       warn_days: p.warn_days != null ? String(p.warn_days) : "",
       warn_hours: p.warn_hours != null ? String(p.warn_hours) : "",
       warn_missions: p.warn_missions != null ? String(p.warn_missions) : "",
+      warn_cycles: isBattery && p.warn_cycles != null ? String(p.warn_cycles) : "",
       email_alerts_enabled: p.email_alerts_enabled,
     }));
   };
@@ -268,6 +285,12 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           varsel_dager: num(form.warn_days) ?? 14,
           varsel_timer: num(form.warn_hours),
           varsel_oppdrag: num(form.warn_missions),
+          ...(isBattery
+            ? {
+                inspection_interval_cycles: num(form.interval_cycles),
+                varsel_sykluser: num(form.warn_cycles),
+              }
+            : {}),
         };
 
     const { error } = await (supabase as any)
@@ -298,6 +321,12 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           warn_hours: num(form.warn_hours),
           warn_missions: num(form.warn_missions),
           email_alerts_enabled: form.email_alerts_enabled,
+          ...(isBattery
+            ? {
+                interval_cycles: num(form.interval_cycles),
+                warn_cycles: num(form.warn_cycles),
+              }
+            : {}),
         };
         if (editing) {
           const { error } = await (supabase as any)
@@ -353,6 +382,9 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         warn_hours: num(form.warn_hours),
         warn_missions: num(form.warn_missions),
         email_alerts_enabled: form.email_alerts_enabled,
+        ...(isBattery
+          ? { interval_cycles: num(form.interval_cycles), warn_cycles: num(form.warn_cycles) }
+          : {}),
         created_by: user?.id ?? null,
       });
       if (error) throw error;
@@ -389,6 +421,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     intervalDays: number | null;
     intervalHours: number | null;
     intervalMissions: number | null;
+    intervalCycles?: number | null;
     checklistId: string | null;
     nextDate: string | null;
     onEdit: () => void;
@@ -404,6 +437,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           {opts.intervalDays ? <span>{t("maintenance.schedules.everyDays", { days: opts.intervalDays })}</span> : null}
           {opts.intervalHours ? <span>{t("maintenance.schedules.everyHours", { hours: opts.intervalHours })}</span> : null}
           {opts.intervalMissions ? <span>{t("maintenance.schedules.everyMissions", { count: opts.intervalMissions })}</span> : null}
+          {opts.intervalCycles ? <span>{t("maintenance.schedules.everyCycles", { count: opts.intervalCycles })}</span> : null}
         </p>
         <p className="text-xs flex items-center gap-1.5 mt-0.5">
           <ClipboardCheck className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -463,6 +497,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               intervalDays: standard.interval_days,
               intervalHours: standard.interval_hours,
               intervalMissions: standard.interval_missions,
+              intervalCycles: isBattery ? standard.interval_cycles : null,
               checklistId: standard.sjekkliste_id,
               nextDate: standard.next_at,
               onEdit: openEditStandard,
@@ -474,6 +509,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               intervalDays: s.interval_days,
               intervalHours: s.interval_hours,
               intervalMissions: s.interval_missions,
+              intervalCycles: isBattery ? s.interval_cycles ?? null : null,
               checklistId: s.sjekkliste_id,
               nextDate: s.next_due_date,
               onEdit: () => openEdit(s),
@@ -623,6 +659,12 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                 <Label className="text-xs">{t("maintenance.schedules.intervalMissions")}</Label>
                 <Input type="number" min="0" value={form.interval_missions} onChange={(e) => setForm({ ...form, interval_missions: e.target.value })} />
               </div>
+              {isBattery && (
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.intervalCycles")}</Label>
+                  <Input type="number" min="0" value={form.interval_cycles} onChange={(e) => setForm({ ...form, interval_cycles: e.target.value })} />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -638,7 +680,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                 <Label className="text-xs">{t("maintenance.schedules.warnMissions")}</Label>
                 <Input type="number" min="0" value={form.warn_missions} onChange={(e) => setForm({ ...form, warn_missions: e.target.value })} />
               </div>
+              {isBattery && (
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.warnCycles")}</Label>
+                  <Input type="number" min="0" value={form.warn_cycles} onChange={(e) => setForm({ ...form, warn_cycles: e.target.value })} />
+                </div>
+              )}
             </div>
+
+            {isBattery && (
+              <p className="text-xs text-muted-foreground">{t("maintenance.schedules.cyclesHint")}</p>
+            )}
 
             {!editingStandard && (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">

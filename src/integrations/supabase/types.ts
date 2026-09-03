@@ -3580,9 +3580,11 @@ export type Database = {
           battery_type_id: string | null
           battery_type_locked: boolean
           company_id: string
+          cycles_at_last_inspection: number | null
           flyvetimer: number
           hours_at_last_maintenance: number | null
           id: string
+          inspection_interval_cycles: number | null
           inspection_interval_hours: number | null
           inspection_interval_missions: number | null
           internal_serial: string | null
@@ -3601,6 +3603,7 @@ export type Database = {
           user_id: string | null
           varsel_dager: number | null
           varsel_oppdrag: number | null
+          varsel_sykluser: number | null
           varsel_timer: number | null
           vedlikehold_startdato: string | null
           vedlikeholdsintervall_dager: number | null
@@ -3622,9 +3625,11 @@ export type Database = {
           battery_type_id?: string | null
           battery_type_locked?: boolean
           company_id: string
+          cycles_at_last_inspection?: number | null
           flyvetimer?: number
           hours_at_last_maintenance?: number | null
           id?: string
+          inspection_interval_cycles?: number | null
           inspection_interval_hours?: number | null
           inspection_interval_missions?: number | null
           internal_serial?: string | null
@@ -3643,6 +3648,7 @@ export type Database = {
           user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
+          varsel_sykluser?: number | null
           varsel_timer?: number | null
           vedlikehold_startdato?: string | null
           vedlikeholdsintervall_dager?: number | null
@@ -3664,9 +3670,11 @@ export type Database = {
           battery_type_id?: string | null
           battery_type_locked?: boolean
           company_id?: string
+          cycles_at_last_inspection?: number | null
           flyvetimer?: number
           hours_at_last_maintenance?: number | null
           id?: string
+          inspection_interval_cycles?: number | null
           inspection_interval_hours?: number | null
           inspection_interval_missions?: number | null
           internal_serial?: string | null
@@ -3685,6 +3693,7 @@ export type Database = {
           user_id?: string | null
           varsel_dager?: number | null
           varsel_oppdrag?: number | null
+          varsel_sykluser?: number | null
           varsel_timer?: number | null
           vedlikehold_startdato?: string | null
           vedlikeholdsintervall_dager?: number | null
@@ -5252,6 +5261,7 @@ export type Database = {
           created_by: string | null
           email_alerts_enabled: boolean
           id: string
+          interval_cycles: number | null
           interval_days: number | null
           interval_hours: number | null
           interval_missions: number | null
@@ -5263,6 +5273,7 @@ export type Database = {
           navn: string
           sist_verifisert: string | null
           updated_at: string
+          warn_cycles: number | null
           warn_days: number | null
           warn_hours: number | null
           warn_missions: number | null
@@ -5273,6 +5284,7 @@ export type Database = {
           created_by?: string | null
           email_alerts_enabled?: boolean
           id?: string
+          interval_cycles?: number | null
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
@@ -5284,6 +5296,7 @@ export type Database = {
           navn: string
           sist_verifisert?: string | null
           updated_at?: string
+          warn_cycles?: number | null
           warn_days?: number | null
           warn_hours?: number | null
           warn_missions?: number | null
@@ -5294,6 +5307,7 @@ export type Database = {
           created_by?: string | null
           email_alerts_enabled?: boolean
           id?: string
+          interval_cycles?: number | null
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
@@ -5305,6 +5319,7 @@ export type Database = {
           navn?: string
           sist_verifisert?: string | null
           updated_at?: string
+          warn_cycles?: number | null
           warn_days?: number | null
           warn_hours?: number | null
           warn_missions?: number | null
@@ -5316,11 +5331,13 @@ export type Database = {
           company_id: string
           created_at: string
           created_by: string | null
+          cycles_at_last: number | null
           drone_id: string | null
           email_alerts_enabled: boolean
           equipment_id: string | null
           hours_at_last: number | null
           id: string
+          interval_cycles: number | null
           interval_days: number | null
           interval_hours: number | null
           interval_missions: number | null
@@ -5332,6 +5349,7 @@ export type Database = {
           sjekkliste_id: string | null
           start_date: string | null
           updated_at: string
+          warn_cycles: number | null
           warn_days: number | null
           warn_hours: number | null
           warn_missions: number | null
@@ -5340,11 +5358,13 @@ export type Database = {
           company_id: string
           created_at?: string
           created_by?: string | null
+          cycles_at_last?: number | null
           drone_id?: string | null
           email_alerts_enabled?: boolean
           equipment_id?: string | null
           hours_at_last?: number | null
           id?: string
+          interval_cycles?: number | null
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
@@ -5356,6 +5376,7 @@ export type Database = {
           sjekkliste_id?: string | null
           start_date?: string | null
           updated_at?: string
+          warn_cycles?: number | null
           warn_days?: number | null
           warn_hours?: number | null
           warn_missions?: number | null
@@ -5364,11 +5385,13 @@ export type Database = {
           company_id?: string
           created_at?: string
           created_by?: string | null
+          cycles_at_last?: number | null
           drone_id?: string | null
           email_alerts_enabled?: boolean
           equipment_id?: string | null
           hours_at_last?: number | null
           id?: string
+          interval_cycles?: number | null
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
@@ -5380,6 +5403,7 @@ export type Database = {
           sjekkliste_id?: string | null
           start_date?: string | null
           updated_at?: string
+          warn_cycles?: number | null
           warn_days?: number | null
           warn_hours?: number | null
           warn_missions?: number | null

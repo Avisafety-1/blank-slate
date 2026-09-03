@@ -21,6 +21,10 @@ export interface MaintenanceSchedule {
   hours_at_last: number | null;
   missions_at_last: number | null;
   email_alerts_enabled: boolean;
+  /** Battery charge cycles between maintenance (batteries only) */
+  interval_cycles?: number | null;
+  warn_cycles?: number | null;
+  cycles_at_last?: number | null;
 }
 
 export interface MaintenanceSchedulePreset {
@@ -34,6 +38,8 @@ export interface MaintenanceSchedulePreset {
   warn_hours: number | null;
   warn_missions: number | null;
   email_alerts_enabled: boolean;
+  interval_cycles?: number | null;
+  warn_cycles?: number | null;
   is_global?: boolean;
   kategori?: string | null;
   modellfamilie?: string | null;
@@ -77,23 +83,30 @@ export async function fetchSchedulePresets(companyId: string): Promise<Maintenan
 export interface ScheduleProgress {
   hoursUsed: number;
   missionsUsed: number;
+  /** Battery charge cycles used since the last time this schedule was performed */
+  cyclesUsed: number;
   status: Status;
 }
 
 export function calculateScheduleProgress(
   schedule: MaintenanceSchedule,
-  totals: { totalHours: number; totalMissions: number }
+  totals: { totalHours: number; totalMissions: number; totalCycles?: number | null }
 ): ScheduleProgress {
   const hoursUsed = Math.max(0, (totals.totalHours ?? 0) - (schedule.hours_at_last ?? 0));
   const missionsUsed = Math.max(0, (totals.totalMissions ?? 0) - (schedule.missions_at_last ?? 0));
+  const cyclesUsed = Math.max(0, (totals.totalCycles ?? 0) - (schedule.cycles_at_last ?? 0));
   const dateStatus = calculateMaintenanceStatus(schedule.next_due_date, schedule.warn_days ?? 14);
   const hoursStatus = calculateUsageStatus(hoursUsed, schedule.interval_hours, schedule.warn_hours);
   const missionsStatus = calculateUsageStatus(missionsUsed, schedule.interval_missions, schedule.warn_missions);
-  const status = [dateStatus, hoursStatus, missionsStatus].reduce(
+  const cyclesStatus =
+    totals.totalCycles != null
+      ? calculateUsageStatus(cyclesUsed, schedule.interval_cycles ?? null, schedule.warn_cycles ?? null)
+      : ("Grønn" as Status);
+  const status = [dateStatus, hoursStatus, missionsStatus, cyclesStatus].reduce(
     (w, s) => worstStatus(w, s),
     "Grønn" as Status
   );
-  return { hoursUsed, missionsUsed, status };
+  return { hoursUsed, missionsUsed, cyclesUsed, status };
 }
 
 /** Days until the schedule is due; null when no date is configured. */
@@ -123,10 +136,11 @@ export async function performSchedule(params: {
   userId: string;
   totalHours: number;
   totalMissions: number;
+  totalCycles?: number | null;
   notes?: string;
   reset?: boolean;
 }): Promise<void> {
-  const { schedule, kind, userId, totalHours, totalMissions, notes = "", reset = false } = params;
+  const { schedule, kind, userId, totalHours, totalMissions, totalCycles, notes = "", reset = false } = params;
   const now = new Date().toISOString();
 
   const update: Record<string, any> = {
@@ -135,6 +149,7 @@ export async function performSchedule(params: {
     missions_at_last: totalMissions,
     notification_sent: false,
   };
+  if (totalCycles != null) update.cycles_at_last = totalCycles;
   if (!reset) update.last_performed_at = now;
 
   const { error } = await (supabase as any)
@@ -229,11 +244,32 @@ export async function fetchScheduleStatusMap(
     }
   }
 
+  // Battery charge cycles only needed for equipment schedules using cycle intervals
+  const cycleTotals: Record<string, number> = {};
+  if (kind === "utstyr") {
+    const needCycles = withSchedules.filter((id) =>
+      byResource[id].some((s) => (s.interval_cycles ?? 0) > 0)
+    );
+    if (needCycles.length > 0) {
+      const { data } = await (supabase as any)
+        .from("equipment")
+        .select("id, battery_cycles")
+        .in("id", needCycles);
+      (data || []).forEach((r: any) => {
+        if (r.battery_cycles != null) cycleTotals[r.id] = r.battery_cycles;
+      });
+    }
+  }
+
   const result: Record<string, Status> = {};
   resources.forEach((res) => {
     const schedules = byResource[res.id];
     if (!schedules || schedules.length === 0) return;
-    const totals = { totalHours: res.totalHours ?? 0, totalMissions: missionTotals[res.id] ?? 0 };
+    const totals = {
+      totalHours: res.totalHours ?? 0,
+      totalMissions: missionTotals[res.id] ?? 0,
+      totalCycles: cycleTotals[res.id] ?? null,
+    };
     result[res.id] = schedules.reduce(
       (worst, s) => worstStatus(worst, calculateScheduleProgress(s, totals).status),
       "Grønn" as Status
