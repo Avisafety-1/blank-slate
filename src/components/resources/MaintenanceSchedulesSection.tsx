@@ -221,7 +221,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       ) : (
         <div className="space-y-2">
           {schedules.map((s) => (
-            <div key={s.id} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+            <div key={s.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{s.navn}</p>
                 <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
@@ -240,14 +240,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(s)} disabled={disabled} aria-label={t("actions.edit")}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => remove(s)} disabled={disabled} aria-label={t("actions.delete")}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center justify-end sm:justify-start gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(s)} disabled={disabled} aria-label={t("actions.edit")}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(s)} disabled={disabled} aria-label={t("actions.delete")}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
