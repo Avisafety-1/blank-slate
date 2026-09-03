@@ -280,6 +280,7 @@ const Vedlikehold = () => {
         const dateStatus = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
         const hoursStatus = calculateUsageStatus(hoursUsed, e.inspection_interval_hours, e.varsel_timer);
         const missionsStatus = calculateUsageStatus(missionsUsed, e.inspection_interval_missions, e.varsel_oppdrag);
+        const status = [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
         const item: MaintenanceItem = {
           id: e.id,
           name: e.navn,
@@ -295,7 +296,8 @@ const Vedlikehold = () => {
           missionsWarning: e.varsel_oppdrag ?? null,
           nextDate: e.neste_vedlikehold ?? null,
           warningDays: e.varsel_dager ?? 14,
-          status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          status,
+          sortStatus: status,
           serial: e.serienummer || null,
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
           checklistId: e.sjekkliste_id ?? null,
