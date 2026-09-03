@@ -8670,6 +8670,17 @@
     "checklistSearchPlaceholder": "Search for checklist...",
     "noChecklistsAvailable": "No checklists found",
     "removeChecklist": "Remove checklist",
-    "allDepartments": "All departments"
+    "allDepartments": "All departments",
+    "selectAll": "Select all",
+    "clearSelection": "Clear selection",
+    "selectedCount": "{{count}} selected",
+    "bulkPerform": "Sign off selected",
+    "bulkTitle": "Sign off maintenance",
+    "bulkDescription": "Review the checklists for the selected resources and sign off the maintenance in one go.",
+    "bulkOpenChecklist": "Open checklist",
+    "bulkPerformAll": "Sign off all ({{count}})",
+    "bulkDone": "Maintenance recorded for {{count}} resources",
+    "bulkPartial": "{{ok}} recorded, {{failed}} failed",
+    "checklistDone": "Checklist completed"
   }
 }
