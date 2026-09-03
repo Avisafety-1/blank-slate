@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useTranslation, type TFunction } from "react-i18next";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
 
