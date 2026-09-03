@@ -202,15 +202,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   return (
     <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
       <div className="flex items-center justify-between gap-2">
-        <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Wrench className="w-4 h-4 text-primary" />
-          {t("maintenance.schedules.sectionTitle")}
-          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
+          <Wrench className="w-4 h-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-left">{t("maintenance.schedules.sectionTitle")}</span>
+          <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={openNew} disabled={disabled}>
-          <Plus className="w-4 h-4" />
-          {t("maintenance.schedules.add")}
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={openNew} disabled={disabled}>
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t("maintenance.schedules.add")}</span>
+          </Button>
+        )}
       </div>
 
       <CollapsibleContent className="pt-3">
