@@ -95,6 +95,10 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState("");
+  const ownPresets = presets.filter((p) => !p.is_global);
+  const catalogPresets = presets.filter((p) => p.is_global);
+  const selectedPreset = presets.find((p) => p.id === selectedPresetId) || null;
   const [presetNameOpen, setPresetNameOpen] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
