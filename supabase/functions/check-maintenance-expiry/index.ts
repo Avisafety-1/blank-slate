@@ -518,6 +518,16 @@ serve(async (req) => {
       console.log(`Marked ${dronesNeedingNotification.length} drones as notified.`);
     }
 
+    // ── Mark custom schedules as notified ──
+    if (schedulesNeedingNotification.length > 0) {
+      await supabase
+        .from('maintenance_schedules')
+        .update({ notification_sent: true })
+        .in('id', schedulesNeedingNotification);
+      console.log(`Marked ${schedulesNeedingNotification.length} custom schedules as notified.`);
+    }
+
+
     console.log(`Maintenance check complete. Sent ${totalEmailsSent} emails, ${totalPushSent} push notifications.`);
 
     return new Response(
