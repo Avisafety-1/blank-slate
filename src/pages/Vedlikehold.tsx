@@ -507,7 +507,13 @@ const Vedlikehold = () => {
         const dateStatus = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
         const hoursStatus = calculateUsageStatus(hoursUsed, e.inspection_interval_hours, e.varsel_timer);
         const missionsStatus = calculateUsageStatus(missionsUsed, e.inspection_interval_missions, e.varsel_oppdrag);
-        const status = [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+        const totalCycles = e.battery_cycles ?? null;
+        const cyclesUsed = totalCycles != null ? Math.max(0, totalCycles - (e.cycles_at_last_inspection ?? 0)) : 0;
+        const cyclesStatus =
+          totalCycles != null
+            ? calculateUsageStatus(cyclesUsed, e.inspection_interval_cycles, e.varsel_sykluser)
+            : ("Grønn" as Status);
+        const status = [dateStatus, hoursStatus, missionsStatus, cyclesStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
         const item: MaintenanceItem = {
           id: e.id,
           name: e.navn,
