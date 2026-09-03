@@ -29,6 +29,8 @@ interface Props {
   disabled?: boolean;
   /** View-only mode: hides add/edit/delete so the section is informational only */
   readOnly?: boolean;
+  /** Show the resource's standard maintenance as the first entry (default true) */
+  includeStandard?: boolean;
   onChanged?: () => void;
 }
 
@@ -42,28 +44,122 @@ const emptyForm = {
   warn_hours: "",
   warn_missions: "",
   email_alerts_enabled: true,
+  /** Standard maintenance only */
+  start_date: "",
+  last_at: "",
+  next_at: "",
 };
 
 type FormState = typeof emptyForm;
 
-const num = (v: string) => (v.trim() === "" ? null : Number(v));
+/** Standard maintenance rendered with the same shape as a custom schedule. */
+interface StandardEntry {
+  sjekkliste_id: string | null;
+  start_date: string | null;
+  last_at: string | null;
+  next_at: string | null;
+  interval_days: number | null;
+  interval_hours: number | null;
+  interval_missions: number | null;
+  warn_days: number | null;
+  warn_hours: number | null;
+  warn_missions: number | null;
+}
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, onChanged }: Props) => {
+const num = (v: string) => (v.trim() === "" ? null : Number(v));
+const toDateInput = (v: string | null | undefined) => (v ? new Date(v).toISOString().split("T")[0] : "");
+
+/** Mirrors the previous inline form: next = max(startDate, lastAt) + intervalDays */
+const calcStandardNext = (startDate: string, lastAt: string, intervalDays: number | null, manualNext: string) => {
+  if (intervalDays && (startDate || lastAt)) {
+    let base = startDate ? new Date(startDate) : new Date(lastAt);
+    if (lastAt) {
+      const last = new Date(lastAt);
+      if (!startDate || last > base) base = last;
+    }
+    base.setDate(base.getDate() + intervalDays);
+    return base.toISOString().split("T")[0];
+  }
+  return manualNext || null;
+};
+
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, onChanged }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [standard, setStandard] = useState<StandardEntry | null>(null);
   const [presets, setPresets] = useState<MaintenanceSchedulePreset[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
+  const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  const isDrone = kind === "droner";
+
+  const loadStandard = async () => {
+    if (!includeStandard || !resourceId) {
+      setStandard(null);
+      return;
+    }
+    try {
+      if (isDrone) {
+        const { data, error } = await (supabase as any)
+          .from("drones")
+          .select(
+            "sjekkliste_id, inspection_start_date, sist_inspeksjon, neste_inspeksjon, inspection_interval_days, inspection_interval_hours, inspection_interval_missions, varsel_dager, varsel_timer, varsel_oppdrag"
+          )
+          .eq("id", resourceId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) return setStandard(null);
+        setStandard({
+          sjekkliste_id: data.sjekkliste_id ?? null,
+          start_date: data.inspection_start_date ?? null,
+          last_at: data.sist_inspeksjon ?? null,
+          next_at: data.neste_inspeksjon ?? null,
+          interval_days: data.inspection_interval_days ?? null,
+          interval_hours: data.inspection_interval_hours ?? null,
+          interval_missions: data.inspection_interval_missions ?? null,
+          warn_days: data.varsel_dager ?? null,
+          warn_hours: data.varsel_timer ?? null,
+          warn_missions: data.varsel_oppdrag ?? null,
+        });
+      } else {
+        const { data, error } = await (supabase as any)
+          .from("equipment")
+          .select(
+            "sjekkliste_id, sist_vedlikeholdt, neste_vedlikehold, vedlikeholdsintervall_dager, inspection_interval_hours, inspection_interval_missions, varsel_dager, varsel_timer, varsel_oppdrag"
+          )
+          .eq("id", resourceId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) return setStandard(null);
+        setStandard({
+          sjekkliste_id: data.sjekkliste_id ?? null,
+          start_date: null,
+          last_at: data.sist_vedlikeholdt ?? null,
+          next_at: data.neste_vedlikehold ?? null,
+          interval_days: data.vedlikeholdsintervall_dager ?? null,
+          interval_hours: data.inspection_interval_hours ?? null,
+          interval_missions: data.inspection_interval_missions ?? null,
+          warn_days: data.varsel_dager ?? null,
+          warn_hours: data.varsel_timer ?? null,
+          warn_missions: data.varsel_oppdrag ?? null,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load standard maintenance:", err);
+    }
+  };
 
   const load = async () => {
     try {
       const map = await fetchSchedulesForResources(kind, [resourceId]);
       setSchedules(map[resourceId] || []);
       if (companyId) setPresets(await fetchSchedulePresets(companyId));
+      await loadStandard();
     } catch (err: any) {
       console.error("Failed to load maintenance schedules:", err);
     }
@@ -76,13 +172,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const openNew = () => {
     setEditing(null);
+    setEditingStandard(false);
     setForm(emptyForm);
     setOpen(true);
   };
 
   const openEdit = (s: MaintenanceSchedule) => {
     setEditing(s);
+    setEditingStandard(false);
     setForm({
+      ...emptyForm,
       navn: s.navn,
       sjekkliste_id: s.sjekkliste_id || "none",
       interval_days: s.interval_days != null ? String(s.interval_days) : "",
@@ -96,12 +195,33 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     setOpen(true);
   };
 
+  const openEditStandard = () => {
+    if (!standard) return;
+    setEditing(null);
+    setEditingStandard(true);
+    setForm({
+      navn: t("maintenance.schedules.standardTab"),
+      sjekkliste_id: standard.sjekkliste_id || "none",
+      interval_days: standard.interval_days != null ? String(standard.interval_days) : "",
+      interval_hours: standard.interval_hours != null ? String(standard.interval_hours) : "",
+      interval_missions: standard.interval_missions != null ? String(standard.interval_missions) : "",
+      warn_days: standard.warn_days != null ? String(standard.warn_days) : "",
+      warn_hours: standard.warn_hours != null ? String(standard.warn_hours) : "",
+      warn_missions: standard.warn_missions != null ? String(standard.warn_missions) : "",
+      email_alerts_enabled: true,
+      start_date: toDateInput(standard.start_date),
+      last_at: toDateInput(standard.last_at),
+      next_at: toDateInput(standard.next_at),
+    });
+    setOpen(true);
+  };
+
   const applyPreset = (presetId: string) => {
     const p = presets.find((x) => x.id === presetId);
     if (!p) return;
     setForm((prev) => ({
       ...prev,
-      navn: prev.navn || p.navn,
+      navn: editingStandard ? prev.navn : prev.navn || p.navn,
       interval_days: p.interval_days != null ? String(p.interval_days) : "",
       interval_hours: p.interval_hours != null ? String(p.interval_hours) : "",
       interval_missions: p.interval_missions != null ? String(p.interval_missions) : "",
@@ -112,38 +232,78 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     }));
   };
 
+  const saveStandard = async () => {
+    const intervalDays = num(form.interval_days);
+    const nextDate = calcStandardNext(form.start_date, form.last_at, intervalDays, form.next_at);
+    const checklist = form.sjekkliste_id !== "none" ? form.sjekkliste_id : null;
+    const payload: Record<string, any> = isDrone
+      ? {
+          sjekkliste_id: checklist,
+          inspection_start_date: form.start_date || null,
+          sist_inspeksjon: form.last_at || null,
+          neste_inspeksjon: nextDate,
+          inspection_interval_days: intervalDays,
+          inspection_interval_hours: num(form.interval_hours),
+          inspection_interval_missions: num(form.interval_missions),
+          varsel_dager: num(form.warn_days) ?? 14,
+          varsel_timer: num(form.warn_hours),
+          varsel_oppdrag: num(form.warn_missions),
+        }
+      : {
+          sjekkliste_id: checklist,
+          sist_vedlikeholdt: form.last_at || null,
+          neste_vedlikehold: nextDate,
+          vedlikeholdsintervall_dager: intervalDays,
+          inspection_interval_hours: num(form.interval_hours),
+          inspection_interval_missions: num(form.interval_missions),
+          varsel_dager: num(form.warn_days) ?? 14,
+          varsel_timer: num(form.warn_hours),
+          varsel_oppdrag: num(form.warn_missions),
+        };
+
+    const { error } = await (supabase as any)
+      .from(isDrone ? "drones" : "equipment")
+      .update(payload)
+      .eq("id", resourceId);
+    if (error) throw error;
+  };
+
   const save = async () => {
-    if (!form.navn.trim()) {
+    if (!editingStandard && !form.navn.trim()) {
       toast.error(t("maintenance.schedules.nameRequired"));
       return;
     }
     setSaving(true);
     try {
-      const payload: Record<string, any> = {
-        company_id: companyId,
-        navn: form.navn.trim(),
-        sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
-        interval_days: num(form.interval_days),
-        interval_hours: num(form.interval_hours),
-        interval_missions: num(form.interval_missions),
-        warn_days: num(form.warn_days),
-        warn_hours: num(form.warn_hours),
-        warn_missions: num(form.warn_missions),
-        email_alerts_enabled: form.email_alerts_enabled,
-      };
-      if (editing) {
-        const { error } = await (supabase as any)
-          .from("maintenance_schedules")
-          .update(payload)
-          .eq("id", editing.id);
-        if (error) throw error;
+      if (editingStandard) {
+        await saveStandard();
       } else {
-        payload[kind === "droner" ? "drone_id" : "equipment_id"] = resourceId;
-        payload.created_by = user?.id ?? null;
-        payload.start_date = new Date().toISOString();
-        payload.next_due_date = nextDueFromInterval(payload.interval_days);
-        const { error } = await (supabase as any).from("maintenance_schedules").insert(payload);
-        if (error) throw error;
+        const payload: Record<string, any> = {
+          company_id: companyId,
+          navn: form.navn.trim(),
+          sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
+          interval_days: num(form.interval_days),
+          interval_hours: num(form.interval_hours),
+          interval_missions: num(form.interval_missions),
+          warn_days: num(form.warn_days),
+          warn_hours: num(form.warn_hours),
+          warn_missions: num(form.warn_missions),
+          email_alerts_enabled: form.email_alerts_enabled,
+        };
+        if (editing) {
+          const { error } = await (supabase as any)
+            .from("maintenance_schedules")
+            .update(payload)
+            .eq("id", editing.id);
+          if (error) throw error;
+        } else {
+          payload[kind === "droner" ? "drone_id" : "equipment_id"] = resourceId;
+          payload.created_by = user?.id ?? null;
+          payload.start_date = new Date().toISOString();
+          payload.next_due_date = nextDueFromInterval(payload.interval_days);
+          const { error } = await (supabase as any).from("maintenance_schedules").insert(payload);
+          if (error) throw error;
+        }
       }
       toast.success(t("maintenance.schedules.saved"));
       setOpen(false);
@@ -199,12 +359,64 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const checklistTitle = (id: string | null) => (id ? checklists.find((c) => c.id === id)?.tittel ?? null : null);
 
+  const renderCard = (opts: {
+    key: string;
+    navn: string;
+    intervalDays: number | null;
+    intervalHours: number | null;
+    intervalMissions: number | null;
+    checklistId: string | null;
+    nextDate: string | null;
+    onEdit: () => void;
+    onDelete?: () => void;
+  }) => (
+    <div
+      key={opts.key}
+      className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold truncate">{opts.navn}</p>
+        <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
+          {opts.intervalDays ? <span>{t("maintenance.schedules.everyDays", { days: opts.intervalDays })}</span> : null}
+          {opts.intervalHours ? <span>{t("maintenance.schedules.everyHours", { hours: opts.intervalHours })}</span> : null}
+          {opts.intervalMissions ? <span>{t("maintenance.schedules.everyMissions", { count: opts.intervalMissions })}</span> : null}
+        </p>
+        <p className="text-xs flex items-center gap-1.5 mt-0.5">
+          <ClipboardCheck className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{checklistTitle(opts.checklistId) ?? t("maintenance.noChecklist")}</span>
+        </p>
+        {opts.nextDate && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+            <CalendarClock className="w-3.5 h-3.5" />
+            {t("maintenance.schedules.nextDue", { date: new Date(opts.nextDate).toLocaleDateString() })}
+          </p>
+        )}
+      </div>
+      {!readOnly && (
+        <div className="flex items-center justify-end sm:justify-start gap-1 shrink-0">
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={opts.onEdit} disabled={disabled} aria-label={t("actions.edit")}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          {opts.onDelete && (
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={opts.onDelete} disabled={disabled} aria-label={t("actions.delete")}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const hasEntries = schedules.length > 0 || !!standard;
+
   return (
     <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
       <div className="flex items-center justify-between gap-2">
         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
           <Wrench className="w-4 h-4 shrink-0 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-left">{t("maintenance.schedules.sectionTitle")}</span>
+          <span className="min-w-0 flex-1 truncate text-left">
+            {standard ? t("maintenance.schedules.allSectionTitle") : t("maintenance.schedules.sectionTitle")}
+          </span>
           <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
         {!readOnly && (
@@ -216,42 +428,34 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       </div>
 
       <CollapsibleContent className="pt-3">
-      {schedules.length === 0 ? (
+      {!hasEntries ? (
         <p className="text-sm text-muted-foreground">{t("maintenance.schedules.empty")}</p>
       ) : (
         <div className="space-y-2">
-          {schedules.map((s) => (
-            <div key={s.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{s.navn}</p>
-                <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                  {s.interval_days ? <span>{t("maintenance.schedules.everyDays", { days: s.interval_days })}</span> : null}
-                  {s.interval_hours ? <span>{t("maintenance.schedules.everyHours", { hours: s.interval_hours })}</span> : null}
-                  {s.interval_missions ? <span>{t("maintenance.schedules.everyMissions", { count: s.interval_missions })}</span> : null}
-                </p>
-                <p className="text-xs flex items-center gap-1.5 mt-0.5">
-                  <ClipboardCheck className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{checklistTitle(s.sjekkliste_id) ?? t("maintenance.noChecklist")}</span>
-                </p>
-                {s.next_due_date && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                    <CalendarClock className="w-3.5 h-3.5" />
-                    {t("maintenance.schedules.nextDue", { date: new Date(s.next_due_date).toLocaleDateString() })}
-                  </p>
-                )}
-              </div>
-              {!readOnly && (
-                <div className="flex items-center justify-end sm:justify-start gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(s)} disabled={disabled} aria-label={t("actions.edit")}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(s)} disabled={disabled} aria-label={t("actions.delete")}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
+          {standard &&
+            renderCard({
+              key: "standard",
+              navn: t("maintenance.schedules.standardTab"),
+              intervalDays: standard.interval_days,
+              intervalHours: standard.interval_hours,
+              intervalMissions: standard.interval_missions,
+              checklistId: standard.sjekkliste_id,
+              nextDate: standard.next_at,
+              onEdit: openEditStandard,
+            })}
+          {schedules.map((s) =>
+            renderCard({
+              key: s.id,
+              navn: s.navn,
+              intervalDays: s.interval_days,
+              intervalHours: s.interval_hours,
+              intervalMissions: s.interval_missions,
+              checklistId: s.sjekkliste_id,
+              nextDate: s.next_due_date,
+              onEdit: () => openEdit(s),
+              onDelete: () => remove(s),
+            })
+          )}
         </div>
       )}
       </CollapsibleContent>
@@ -260,9 +464,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editing ? t("maintenance.schedules.editTitle") : t("maintenance.schedules.addTitle")}
+              {editingStandard
+                ? t("maintenance.schedules.editStandardTitle")
+                : editing
+                  ? t("maintenance.schedules.editTitle")
+                  : t("maintenance.schedules.addTitle")}
             </DialogTitle>
-            <DialogDescription>{t("maintenance.schedules.dialogDescription")}</DialogDescription>
+            <DialogDescription>
+              {editingStandard
+                ? t("maintenance.schedules.standardDialogDescription")
+                : t("maintenance.schedules.dialogDescription")}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -289,6 +501,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                 value={form.navn}
                 onChange={(e) => setForm({ ...form, navn: e.target.value })}
                 placeholder={t("maintenance.schedules.namePlaceholder")}
+                readOnly={editingStandard}
+                className={editingStandard ? "bg-muted/60 cursor-not-allowed" : undefined}
               />
             </div>
 
@@ -306,6 +520,40 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                 </SelectContent>
               </Select>
             </div>
+
+            {editingStandard && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {isDrone && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">{t("maintenance.schedules.startDate")}</Label>
+                    <Input
+                      type="date"
+                      value={form.start_date}
+                      onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.lastPerformed")}</Label>
+                  <Input
+                    type="date"
+                    value={form.last_at}
+                    onChange={(e) => setForm({ ...form, last_at: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.nextDueLabel")}</Label>
+                  <Input
+                    type="date"
+                    value={
+                      calcStandardNext(form.start_date, form.last_at, num(form.interval_days), form.next_at) || ""
+                    }
+                    onChange={(e) => setForm({ ...form, next_at: e.target.value })}
+                    disabled={!!num(form.interval_days)}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1">
@@ -337,17 +585,21 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-              <div>
-                <Label htmlFor="schedule-email">{t("maintenance.schedules.emailAlerts")}</Label>
-                <p className="text-xs text-muted-foreground">{t("maintenance.schedules.emailAlertsHelp")}</p>
+            {!editingStandard && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                <div>
+                  <Label htmlFor="schedule-email">{t("maintenance.schedules.emailAlerts")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("maintenance.schedules.emailAlertsHelp")}</p>
+                </div>
+                <Switch
+                  id="schedule-email"
+                  checked={form.email_alerts_enabled}
+                  onCheckedChange={(v) => setForm({ ...form, email_alerts_enabled: v })}
+                />
               </div>
-              <Switch
-                id="schedule-email"
-                checked={form.email_alerts_enabled}
-                onCheckedChange={(v) => setForm({ ...form, email_alerts_enabled: v })}
-              />
-            </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">{t("maintenance.schedules.statusTriggerHint")}</p>
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">

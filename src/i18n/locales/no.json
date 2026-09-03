@@ -8714,7 +8714,14 @@
       "everyHours": "Hver {{hours}} time",
       "everyMissions": "Hvert {{count}}. oppdrag",
       "nextDue": "Neste: {{date}}",
-      "standardTab": "Standard vedlikehold"
+      "standardTab": "Standard vedlikehold",
+      "allSectionTitle": "Vedlikehold og inspeksjoner",
+      "editStandardTitle": "Rediger standard vedlikehold",
+      "standardDialogDescription": "Standard vedlikehold er ressursens hovedinspeksjon. Innstillingene her styrer status, varsler og kalender som før.",
+      "startDate": "Startdato",
+      "lastPerformed": "Sist utført",
+      "nextDueLabel": "Neste forfall",
+      "statusTriggerHint": "Status trigges av det som kommer først av dager, flytimer eller oppdrag."
     },
     "inspectionsTitle": "Inspeksjoner",
     "nextUpBadge": "Neste",

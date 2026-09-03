@@ -405,7 +405,8 @@ export const DroneFormFields = ({
 
         {statusReasonsSlot}
 
-        {/* Inspection & maintenance intervals */}
+        {/* Inspection & maintenance intervals (edit mode uses the unified maintenance section below) */}
+        {mode === "create" && (
         <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
           <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-sm font-semibold text-foreground">
             <span className="flex items-center gap-2">
@@ -541,6 +542,8 @@ export const DroneFormFields = ({
           <p className="text-xs text-muted-foreground">{tt("inspectionForm.statusTriggerHint")}</p>
           </CollapsibleContent>
         </Collapsible>
+        )}
+
 
         {schedulesSlot}
 
