@@ -56,6 +56,9 @@ interface MaintenanceItem {
   nextDate: string | null;
   warningDays: number;
   status: Status;
+  serial?: string | null;
+  lastFlight?: string | null;
+  totalHours: number;
   raw: any;
 }
 
