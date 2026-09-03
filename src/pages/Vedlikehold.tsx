@@ -27,6 +27,7 @@ import { MaintenanceBar } from "@/components/maintenance/MaintenanceBar";
 import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
 import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
 
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -87,6 +88,7 @@ const Vedlikehold = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
+  const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
 
   useEffect(() => {
@@ -538,6 +540,27 @@ const Vedlikehold = () => {
           </GlassCard>
         </main>
       </div>
+
+      {logbook && logbook.kind === "droner" && (
+        <DroneLogbookDialog
+          open
+          onOpenChange={(o) => { if (!o) setLogbook(null); }}
+          droneId={logbook.item.id}
+          droneModell={logbook.item.name}
+          flyvetimer={logbook.item.totalHours}
+        />
+      )}
+      {logbook && logbook.kind === "utstyr" && (
+        <EquipmentLogbookDialog
+          open
+          onOpenChange={(o) => { if (!o) setLogbook(null); }}
+          equipmentId={logbook.item.id}
+          equipmentNavn={logbook.item.name}
+          flyvetimer={logbook.item.totalHours}
+          equipmentType={logbook.item.raw?.type}
+          equipmentSerienummer={logbook.item.serial ?? undefined}
+        />
+      )}
 
       <AlertDialog open={!!pending} onOpenChange={(o) => { if (!o) { setPending(null); setNote(""); } }}>
         <AlertDialogContent>
