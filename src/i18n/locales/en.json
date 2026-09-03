@@ -8712,7 +8712,14 @@
       "everyHours": "Every {{hours}} hours",
       "everyMissions": "Every {{count}} missions",
       "nextDue": "Next: {{date}}",
-      "standardTab": "Standard maintenance"
+      "standardTab": "Standard maintenance",
+      "allSectionTitle": "Maintenance and inspections",
+      "editStandardTitle": "Edit standard maintenance",
+      "standardDialogDescription": "Standard maintenance is the resource's main inspection. These settings drive status, alerts and calendar as before.",
+      "startDate": "Start date",
+      "lastPerformed": "Last performed",
+      "nextDueLabel": "Next due",
+      "statusTriggerHint": "Status is triggered by whichever comes first of days, flight hours or missions."
     },
     "inspectionsTitle": "Inspections",
     "nextUpBadge": "Next up",
