@@ -708,7 +708,7 @@ const Vedlikehold = () => {
           </div>
 
           {/* Kompakte statusbarer */}
-          <div className="w-full lg:w-80 shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/20">
+          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 lg:order-first lg:border-r border-border/50">
             <MaintenanceBar
               label={t("maintenance.hours")}
               current={item.hoursUsed}
