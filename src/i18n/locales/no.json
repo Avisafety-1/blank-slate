@@ -8672,6 +8672,17 @@
     "checklistSearchPlaceholder": "Søk etter sjekkliste...",
     "noChecklistsAvailable": "Ingen sjekklister funnet",
     "removeChecklist": "Fjern sjekkliste",
-    "allDepartments": "Alle avdelinger"
+    "allDepartments": "Alle avdelinger",
+    "selectAll": "Merk alle",
+    "clearSelection": "Fjern merking",
+    "selectedCount": "{{count}} valgt",
+    "bulkPerform": "Kvitter ut valgte",
+    "bulkTitle": "Kvitter ut vedlikehold",
+    "bulkDescription": "Gå gjennom sjekklistene for de valgte ressursene og kvitter ut vedlikeholdet samlet.",
+    "bulkOpenChecklist": "Åpne sjekkliste",
+    "bulkPerformAll": "Kvitter ut alle ({{count}})",
+    "bulkDone": "Vedlikehold registrert for {{count}} ressurser",
+    "bulkPartial": "{{ok}} registrert, {{failed}} feilet",
+    "checklistDone": "Sjekkliste gjennomført"
   }
 }
