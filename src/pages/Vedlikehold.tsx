@@ -107,6 +107,30 @@ const Vedlikehold = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
+  const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
+
+  // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
+  useEffect(() => {
+    const known = new Set(checklists.map((c) => c.id));
+    const missing = Array.from(
+      new Set(
+        [...droneItems, ...equipmentItems]
+          .map((i) => i.checklistId)
+          .filter((id): id is string => !!id && !known.has(id) && !extraChecklistNames[id])
+      )
+    );
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from("documents").select("id, tittel").in("id", missing);
+      if (!data?.length) return;
+      setExtraChecklistNames((prev) => {
+        const next = { ...prev };
+        data.forEach((d: any) => { next[d.id] = d.tittel; });
+        return next;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [droneItems, equipmentItems, checklists]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
@@ -448,7 +472,7 @@ const Vedlikehold = () => {
   };
 
   const checklistName = (id?: string | null) =>
-    id ? (checklists.find((c) => c.id === id)?.tittel ?? null) : null;
+    id ? (checklists.find((c) => c.id === id)?.tittel ?? extraChecklistNames[id] ?? null) : null;
 
   const startPerform = (item: MaintenanceItem) => {
     setNote("");
@@ -523,8 +547,8 @@ const Vedlikehold = () => {
                   {item.subtitle}
                 </p>
                 <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
-                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
-                  <span className={item.checklistId ? "text-emerald-500 font-medium truncate" : "text-muted-foreground/70 truncate"}>
+                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
+                  <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
                     {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
                   </span>
                 </p>
@@ -803,8 +827,8 @@ const Vedlikehold = () => {
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{item.name}</p>
                   <p className="text-xs flex items-center gap-1.5 truncate">
-                    <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
-                    <span className={item.checklistId ? "text-emerald-500 truncate" : "text-muted-foreground/70 truncate"}>
+                    <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
+                    <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
                       {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
                     </span>
                   </p>
@@ -818,12 +842,15 @@ const Vedlikehold = () => {
             ))}
           </div>
 
-          <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t("maintenance.notePlaceholder")}
-            rows={2}
-          />
+          <div className="space-y-1">
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("maintenance.notePlaceholder")}
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">{t("maintenance.noteHelp")}</p>
+          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={submitting}>
