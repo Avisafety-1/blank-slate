@@ -109,6 +109,29 @@ const Vedlikehold = () => {
   const { checklists } = useChecklists();
   const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
+  // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
+  useEffect(() => {
+    const known = new Set(checklists.map((c) => c.id));
+    const missing = Array.from(
+      new Set(
+        [...droneItems, ...equipmentItems]
+          .map((i) => i.checklistId)
+          .filter((id): id is string => !!id && !known.has(id) && !extraChecklistNames[id])
+      )
+    );
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from("documents").select("id, tittel").in("id", missing);
+      if (!data?.length) return;
+      setExtraChecklistNames((prev) => {
+        const next = { ...prev };
+        data.forEach((d: any) => { next[d.id] = d.tittel; });
+        return next;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [droneItems, equipmentItems, checklists]);
+
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading, navigate]);
