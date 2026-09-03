@@ -8682,6 +8682,37 @@
     "bulkDone": "Maintenance recorded for {{count}} resources",
     "bulkPartial": "{{ok}} recorded, {{failed}} failed",
     "checklistDone": "Checklist completed",
-    "noteHelp": "The note is saved as a comment on the maintenance entry in each selected resource's logbook."
+    "noteHelp": "The note is saved as a comment on the maintenance entry in each selected resource's logbook.",
+    "schedules": {
+      "sectionTitle": "Custom maintenance intervals",
+      "add": "Add new inspection",
+      "addTitle": "New inspection",
+      "editTitle": "Edit inspection",
+      "dialogDescription": "This inspection is tracked independently of the standard maintenance, with its own checklist and interval.",
+      "empty": "No custom inspections configured.",
+      "nameLabel": "Inspection name",
+      "namePlaceholder": "E.g. Propeller change 200 hours",
+      "nameRequired": "Name is required",
+      "checklistLabel": "Checklist",
+      "intervalDays": "Interval (days)",
+      "intervalHours": "Interval (hours)",
+      "intervalMissions": "Interval (missions)",
+      "warnDays": "Warning (days)",
+      "warnHours": "Warning (hours)",
+      "warnMissions": "Warning (missions)",
+      "emailAlerts": "Email alerts",
+      "emailAlertsHelp": "Send an alert when this inspection is approaching its due date.",
+      "usePreset": "Use saved template",
+      "usePresetPlaceholder": "Select template",
+      "saveAsPreset": "Save as template",
+      "presetSaved": "Template saved",
+      "saved": "Inspection saved",
+      "deleted": "Inspection deleted",
+      "everyDays": "Every {{days}} days",
+      "everyHours": "Every {{hours}} hours",
+      "everyMissions": "Every {{count}} missions",
+      "nextDue": "Next: {{date}}",
+      "standardTab": "Standard maintenance"
+    }
   }
 }
