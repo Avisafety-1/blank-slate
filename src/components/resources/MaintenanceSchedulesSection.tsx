@@ -27,6 +27,8 @@ interface Props {
   resourceId: string;
   companyId: string;
   disabled?: boolean;
+  /** View-only mode: hides add/edit/delete so the section is informational only */
+  readOnly?: boolean;
   onChanged?: () => void;
 }
 
@@ -46,7 +48,7 @@ type FormState = typeof emptyForm;
 
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, onChanged }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, onChanged }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
@@ -200,15 +202,17 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   return (
     <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
       <div className="flex items-center justify-between gap-2">
-        <CollapsibleTrigger className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <Wrench className="w-4 h-4 text-primary" />
-          {t("maintenance.schedules.sectionTitle")}
-          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
+          <Wrench className="w-4 h-4 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-left">{t("maintenance.schedules.sectionTitle")}</span>
+          <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={openNew} disabled={disabled}>
-          <Plus className="w-4 h-4" />
-          {t("maintenance.schedules.add")}
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={openNew} disabled={disabled}>
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">{t("maintenance.schedules.add")}</span>
+          </Button>
+        )}
       </div>
 
       <CollapsibleContent className="pt-3">
@@ -217,7 +221,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       ) : (
         <div className="space-y-2">
           {schedules.map((s) => (
-            <div key={s.id} className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+            <div key={s.id} className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{s.navn}</p>
                 <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
@@ -236,14 +240,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(s)} disabled={disabled} aria-label={t("actions.edit")}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="ghost" onClick={() => remove(s)} disabled={disabled} aria-label={t("actions.delete")}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center justify-end sm:justify-start gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(s)} disabled={disabled} aria-label={t("actions.edit")}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(s)} disabled={disabled} aria-label={t("actions.delete")}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -301,7 +307,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </Select>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">{t("maintenance.schedules.intervalDays")}</Label>
                 <Input type="number" min="0" value={form.interval_days} onChange={(e) => setForm({ ...form, interval_days: e.target.value })} />
@@ -316,7 +322,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">{t("maintenance.schedules.warnDays")}</Label>
                 <Input type="number" min="0" value={form.warn_days} onChange={(e) => setForm({ ...form, warn_days: e.target.value })} />
@@ -344,16 +350,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="ghost" className="gap-1.5" onClick={saveAsPreset} disabled={saving}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={saveAsPreset} disabled={saving}>
               <Save className="w-4 h-4" />
               {t("maintenance.schedules.saveAsPreset")}
             </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)} disabled={saving}>
                 {t("actions.cancel")}
               </Button>
-              <Button onClick={save} disabled={saving}>
+              <Button className="flex-1 sm:flex-none" onClick={save} disabled={saving}>
                 {t("actions.save")}
               </Button>
             </div>
