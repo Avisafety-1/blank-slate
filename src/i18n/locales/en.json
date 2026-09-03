@@ -8681,6 +8681,7 @@
     "bulkPerformAll": "Sign off all ({{count}})",
     "bulkDone": "Maintenance recorded for {{count}} resources",
     "bulkPartial": "{{ok}} recorded, {{failed}} failed",
-    "checklistDone": "Checklist completed"
+    "checklistDone": "Checklist completed",
+    "noteHelp": "The note is saved as a comment on the maintenance entry in each selected resource's logbook."
   }
 }
