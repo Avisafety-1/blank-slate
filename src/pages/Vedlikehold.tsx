@@ -31,6 +31,7 @@ import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDia
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useChecklists } from "@/hooks/useChecklists";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,6 +115,7 @@ const Vedlikehold = () => {
   const changeTab = (value: string) => {
     const next = (value === "utstyr" ? "utstyr" : "droner") as TabKey;
     setTab(next);
+    setSelected(new Set());
     setSearchParams({ tab: next }, { replace: true });
   };
 
@@ -493,7 +495,13 @@ const Vedlikehold = () => {
           {/* Identitet + handlinger */}
           <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 lg:border-r border-border/50">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <Checkbox
+                className="mt-1 shrink-0"
+                checked={selected.has(item.id)}
+                onCheckedChange={() => toggleSelected(item.id)}
+                aria-label={item.name}
+              />
+              <div className="min-w-0 flex-1">
                 {item.serial && (
                   <span className="inline-block mb-2 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
                     {t("maintenance.serial")}: {item.serial}
@@ -674,6 +682,36 @@ const Vedlikehold = () => {
                 )}
               </div>
 
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setSelected(
+                      selected.size === visibleItems.length && visibleItems.length > 0
+                        ? new Set()
+                        : new Set(visibleItems.map((i) => i.id)),
+                    )
+                  }
+                  disabled={visibleItems.length === 0}
+                >
+                  {selected.size === visibleItems.length && visibleItems.length > 0
+                    ? t("maintenance.clearSelection")
+                    : t("maintenance.selectAll")}
+                </Button>
+                {selected.size > 0 && (
+                  <>
+                    <span className="text-xs text-muted-foreground">
+                      {t("maintenance.selectedCount", { count: bulkItems.length })}
+                    </span>
+                    <Button size="sm" className="gap-1.5" onClick={() => { setNote(""); setBulkOpen(true); }}>
+                      <Wrench className="w-4 h-4" />
+                      {t("maintenance.bulkPerform")}
+                    </Button>
+                  </>
+                )}
+              </div>
+
               <TabsContent value="droner" className="mt-0 space-y-3">
                 {isLoading ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">{t("maintenance.loading")}</p>
@@ -745,6 +783,68 @@ const Vedlikehold = () => {
             const target = checklistRun;
             setChecklistRun(null);
             if (target) setPending({ item: target.item, kind: target.kind, action: "perform" });
+          }}
+        />
+      )}
+
+      <Dialog open={bulkOpen} onOpenChange={(o) => { if (!o) setBulkOpen(false); }}>
+        <DialogContent className="max-w-xl max-h-[90dvh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-primary" />
+              {t("maintenance.bulkTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("maintenance.bulkDescription")}</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {bulkItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                  <p className="text-xs flex items-center gap-1.5 truncate">
+                    <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
+                    <span className={item.checklistId ? "text-emerald-500 truncate" : "text-muted-foreground/70 truncate"}>
+                      {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
+                    </span>
+                  </p>
+                </div>
+                {item.checklistId && (
+                  <Button size="sm" variant="outline" className="shrink-0" onClick={() => setBulkChecklist(item)}>
+                    {t("maintenance.bulkOpenChecklist")}
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("maintenance.notePlaceholder")}
+            rows={2}
+          />
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={submitting}>
+              {t("actions.cancel")}
+            </Button>
+            <Button onClick={runBulkPerform} disabled={submitting || bulkItems.length === 0}>
+              {t("maintenance.bulkPerformAll", { count: bulkItems.length })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {bulkChecklist && (
+        <ChecklistExecutionDialog
+          open
+          onOpenChange={(o) => { if (!o) setBulkChecklist(null); }}
+          checklistId={bulkChecklist.checklistId || undefined}
+          itemName={bulkChecklist.name}
+          onComplete={() => {
+            setBulkChecklist(null);
+            toast.success(t("maintenance.checklistDone"));
           }}
         />
       )}
