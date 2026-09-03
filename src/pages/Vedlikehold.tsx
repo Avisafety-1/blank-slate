@@ -631,18 +631,36 @@ const Vedlikehold = () => {
     [visibleItems, selected],
   );
 
-  const toggleSelected = (id: string) => {
+  const toggleSelected = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  const openDetail = (item: MaintenanceItem) => {
+  const openDetail = useCallback((item: MaintenanceItem) => {
     setDetail({ item, kind: tab });
-  };
+  }, [tab]);
+
+  const handleOpenLogbook = useCallback((item: MaintenanceItem) => {
+    setLogbook({ item, kind: tab });
+  }, [tab]);
+
+  const handleReset = useCallback((item: MaintenanceItem) => {
+    setNote("");
+    setPending({ item, kind: tab, action: "reset" });
+  }, [tab]);
+
+  const handlePickChecklist = useCallback((item: MaintenanceItem) => {
+    setChecklistSearch("");
+    setChecklistPicker({ item, kind: tab });
+  }, [tab]);
+
+  const handleSetSchedule = useCallback((itemId: string, scheduleName: string) => {
+    setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
+  }, []);
 
   const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
     if (!user) return;
