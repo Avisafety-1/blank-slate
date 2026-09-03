@@ -378,6 +378,7 @@ const Vedlikehold = () => {
         nextDate: sch.next_due_date ?? null,
         warningDays: sch.warn_days ?? 14,
         status: progress.status,
+        sortStatus: item.sortStatus,
         checklistId: sch.sjekkliste_id ?? null,
         schedule: sch,
       };
