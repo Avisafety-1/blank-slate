@@ -304,6 +304,15 @@ const Resources = () => {
         return { ...item, _missionsSinceMaintenance };
       }));
 
+      // Custom (extra) maintenance schedules also affect equipment status
+      const eqScheduleStatuses = await fetchScheduleStatusMap(
+        "utstyr",
+        equipmentWithMissions.map((e: any) => ({ id: e.id, totalHours: e.flyvetimer ?? 0 }))
+      );
+      equipmentWithMissions.forEach((e: any) => {
+        e._scheduleStatus = eqScheduleStatuses[e.id] ?? "Grønn";
+      });
+
       setEquipment(equipmentWithMissions);
       if (companyId) setCachedData(`offline_equipment_${companyId}`, equipmentWithMissions);
     } catch (err) {
@@ -752,7 +761,7 @@ const Resources = () => {
                         inspection_interval_missions: item.inspection_interval_missions,
                         varsel_oppdrag: item.varsel_oppdrag,
                       });
-                      const status = worstStatus(eqStatus, (item.status as Status) || "Grønn");
+                      const status = worstStatus(worstStatus(eqStatus, (item.status as Status) || "Grønn"), (item._scheduleStatus as Status) || "Grønn");
                       if (status !== equipmentStatusFilter) return false;
                     }
                     return true;
@@ -788,7 +797,7 @@ const Resources = () => {
                         missions_since_maintenance: item._missionsSinceMaintenance ?? 0,
                         inspection_interval_missions: item.inspection_interval_missions,
                         varsel_oppdrag: item.varsel_oppdrag,
-                      }), (item.status as Status) || "Grønn")} />
+                      }), worstStatus((item.status as Status) || "Grønn", (item._scheduleStatus as Status) || "Grønn"))} />
                     </div>
                     <div className="text-sm space-y-1">
                       <p>SN: {item.serienummer}</p>
@@ -823,7 +832,7 @@ const Resources = () => {
                       missions_since_maintenance: item._missionsSinceMaintenance ?? 0,
                       inspection_interval_missions: item.inspection_interval_missions,
                       varsel_oppdrag: item.varsel_oppdrag,
-                    }), (item.status as Status) || "Grønn") !== equipmentStatusFilter) return false;
+                    }), worstStatus((item.status as Status) || "Grønn", (item._scheduleStatus as Status) || "Grønn")) !== equipmentStatusFilter) return false;
                     return true;
                 }).length === 0 && (equipmentSearch || equipmentTypeFilter !== "alle" || equipmentStatusFilter !== "alle") && (
                   <p className="text-sm text-muted-foreground text-center py-4">
