@@ -227,6 +227,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const applyPreset = (presetId: string) => {
     const p = presets.find((x) => x.id === presetId);
     if (!p) return;
+    setSelectedPresetId(presetId);
     setForm((prev) => ({
       ...prev,
       navn: editingStandard ? prev.navn : prev.navn || p.navn,
