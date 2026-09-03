@@ -355,6 +355,12 @@ const Vedlikehold = () => {
     }
   };
 
+  const accentClasses: Record<Status, string> = {
+    "Grønn": "bg-status-green",
+    "Gul": "bg-status-yellow",
+    "Rød": "bg-status-red",
+  };
+
   const renderRow = (item: MaintenanceItem) => {
     const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
     const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
@@ -364,54 +370,86 @@ const Vedlikehold = () => {
     return (
       <div
         key={item.id}
-        className="p-3 sm:p-4 rounded-lg border border-border bg-background/50 hover:bg-background/70 transition-colors"
+        className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 backdrop-blur-md transition-all duration-300 hover:border-border hover:bg-card/70 hover:shadow-xl"
       >
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-          <button type="button" className="text-left min-w-0" onClick={() => openDetail(item)}>
-            <h3 className="font-semibold truncate hover:underline">{item.name}</h3>
-            {item.subtitle && <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>}
-            {item.isForeignCompany && item.companyName && (
-              <Badge variant="secondary" className="mt-1 text-xs">{item.companyName}</Badge>
-            )}
-          </button>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <StatusBadge status={item.status} />
-            <Button size="sm" className="gap-1" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "perform" }); }}>
-              <Wrench className="w-4 h-4" />
-              {t("maintenance.perform")}
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "reset" }); }}>
-              <RotateCcw className="w-4 h-4" />
-              {t("maintenance.reset")}
-            </Button>
-          </div>
-        </div>
+        <div className={cn("absolute left-0 top-0 h-full w-1 opacity-60 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
 
-        <div className="space-y-2">
-          <MaintenanceBar
-            label={t("maintenance.hours")}
-            current={item.hoursUsed}
-            limit={item.hoursLimit}
-            status={hoursStatus}
-            fractionDigits={1}
-          />
-          <MaintenanceBar
-            label={t("maintenance.missions")}
-            current={item.missionsUsed}
-            limit={item.missionsLimit}
-            status={missionsStatus}
-          />
-          <MaintenanceBar
-            label={t("maintenance.days")}
-            current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
-            limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
-            status={dateStatus}
-            valueText={
-              item.nextDate
-                ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
-                : undefined
-            }
-          />
+        <div className="flex flex-col lg:flex-row">
+          {/* Identitet + handlinger */}
+          <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 lg:border-r border-border/50">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {item.serial && (
+                  <span className="inline-block mb-2 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                    {t("maintenance.serial")}: {item.serial}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openDetail(item)}
+                  className="block text-left text-lg sm:text-xl font-bold leading-tight truncate hover:underline"
+                >
+                  {item.name}
+                </button>
+                <p className="text-sm text-muted-foreground truncate">
+                  {[item.subtitle, item.isForeignCompany ? item.companyName : null].filter(Boolean).join(" • ")}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <StatusBadge status={item.status} className="justify-end mb-2" />
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center justify-end gap-1">
+                  <CalendarClock className="w-3 h-3" />
+                  {t("maintenance.lastFlown")}
+                </p>
+                <p className="text-xs font-semibold">
+                  {item.lastFlight ? new Date(item.lastFlight).toLocaleDateString() : t("maintenance.never")}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button size="sm" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "perform" }); }}>
+                <Wrench className="w-4 h-4" />
+                {t("maintenance.perform")}
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLogbook({ item, kind: tab })}>
+                <BookOpen className="w-4 h-4" />
+                {t("maintenance.openLogbook")}
+              </Button>
+              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "reset" }); }}>
+                <RotateCcw className="w-4 h-4" />
+                {t("maintenance.reset")}
+              </Button>
+            </div>
+          </div>
+
+          {/* Kompakte statusbarer */}
+          <div className="w-full lg:w-80 shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/20">
+            <MaintenanceBar
+              label={t("maintenance.hours")}
+              current={item.hoursUsed}
+              limit={item.hoursLimit}
+              status={hoursStatus}
+              fractionDigits={1}
+            />
+            <MaintenanceBar
+              label={t("maintenance.missions")}
+              current={item.missionsUsed}
+              limit={item.missionsLimit}
+              status={missionsStatus}
+            />
+            <MaintenanceBar
+              label={t("maintenance.days")}
+              current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
+              limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
+              status={dateStatus}
+              valueText={
+                item.nextDate
+                  ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
+                  : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     );
