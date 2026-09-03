@@ -45,6 +45,12 @@ import {
   STATUS_PRIORITY,
 } from "@/lib/maintenanceStatus";
 import { performDroneInspection, countUniqueMissionsSinceInspection } from "@/lib/droneInspection";
+import {
+  MaintenanceSchedule,
+  calculateScheduleProgress,
+  fetchSchedulesForResources,
+  performSchedule,
+} from "@/lib/maintenanceSchedules";
 
 type TabKey = "droner" | "utstyr";
 
@@ -68,6 +74,8 @@ interface MaintenanceItem {
   lastFlight?: string | null;
   totalHours: number;
   checklistId?: string | null;
+  totalMissions: number;
+  schedule?: MaintenanceSchedule | null;
   raw: any;
 }
 
@@ -107,6 +115,8 @@ const Vedlikehold = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
+  const [schedulesByResource, setSchedulesByResource] = useState<Record<string, MaintenanceSchedule[]>>({});
+  const [scheduleTab, setScheduleTab] = useState<string>("standard");
   const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
   // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
@@ -168,15 +178,39 @@ const Vedlikehold = () => {
       const lastFlightByDrone = new Map<string, string>();
       const lastFlightByEquipment = new Map<string, string>();
 
+      const totalMissionsByResource = new Map<string, number>();
+      const droneMissionSets = new Map<string, Set<string>>();
+
       if (droneIds.length > 0) {
         const { data } = await (supabase as any)
           .from("flight_logs")
-          .select("drone_id, flight_date")
+          .select("drone_id, flight_date, mission_id")
           .in("drone_id", droneIds)
           .order("flight_date", { ascending: false });
         (data || []).forEach((r: any) => {
           if (r.drone_id && !lastFlightByDrone.has(r.drone_id)) lastFlightByDrone.set(r.drone_id, r.flight_date);
+          if (r.drone_id && r.mission_id) {
+            const set = droneMissionSets.get(r.drone_id) ?? new Set<string>();
+            set.add(r.mission_id);
+            droneMissionSets.set(r.drone_id, set);
+          }
         });
+        droneMissionSets.forEach((set, id) => totalMissionsByResource.set(id, set.size));
+      }
+
+      if (equipmentIds.length > 0) {
+        const { data: meRows } = await (supabase as any)
+          .from("mission_equipment")
+          .select("equipment_id, mission_id")
+          .in("equipment_id", equipmentIds);
+        const sets = new Map<string, Set<string>>();
+        (meRows || []).forEach((r: any) => {
+          if (!r.equipment_id || !r.mission_id) return;
+          const set = sets.get(r.equipment_id) ?? new Set<string>();
+          set.add(r.mission_id);
+          sets.set(r.equipment_id, set);
+        });
+        sets.forEach((set, id) => totalMissionsByResource.set(id, set.size));
       }
 
       if (equipmentIds.length > 0) {
@@ -222,6 +256,7 @@ const Vedlikehold = () => {
           lastFlight: lastFlightByDrone.get(d.id) ?? null,
           checklistId: d.sjekkliste_id ?? null,
           totalHours: d.flyvetimer ?? 0,
+          totalMissions: totalMissionsByResource.get(d.id) ?? 0,
           raw: d,
         };
         return item;
@@ -261,6 +296,7 @@ const Vedlikehold = () => {
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
           checklistId: e.sjekkliste_id ?? null,
           totalHours: e.flyvetimer ?? 0,
+          totalMissions: totalMissionsByResource.get(e.id) ?? 0,
           raw: e,
         };
         return item;
@@ -268,6 +304,12 @@ const Vedlikehold = () => {
 
       setDroneItems(drones);
       setEquipmentItems(equipment);
+
+      const [droneSchedules, equipmentSchedules] = await Promise.all([
+        fetchSchedulesForResources("droner", droneIds),
+        fetchSchedulesForResources("utstyr", equipmentIds),
+      ]);
+      setSchedulesByResource({ ...droneSchedules, ...equipmentSchedules });
     } catch (err: any) {
       console.error("Error loading maintenance overview:", err);
       toast.error(t("maintenance.loadError"));
@@ -281,7 +323,66 @@ const Vedlikehold = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, companyId]);
 
-  const items = tab === "droner" ? droneItems : equipmentItems;
+  const baseItems = tab === "droner" ? droneItems : equipmentItems;
+
+  const scheduleNames = useMemo(() => {
+    const names = new Set<string>();
+    baseItems.forEach((i) => (schedulesByResource[i.id] || []).forEach((s) => names.add(s.navn)));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [baseItems, schedulesByResource]);
+
+  // Forhåndsvelg intervallet som forfaller først
+  useEffect(() => {
+    if (scheduleNames.length === 0) {
+      setScheduleTab("standard");
+      return;
+    }
+    if (scheduleTab !== "standard" && scheduleNames.includes(scheduleTab)) return;
+    let best: { name: string; days: number } | null = null;
+    baseItems.forEach((i) => {
+      (schedulesByResource[i.id] || []).forEach((sch) => {
+        if (!sch.next_due_date) return;
+        const days = daysUntil(sch.next_due_date) ?? Infinity;
+        if (!best || days < best.days) best = { name: sch.navn, days };
+      });
+    });
+    const standardBest = baseItems.reduce<number>((min, i) => {
+      const d = daysUntil(i.nextDate);
+      return d === null ? min : Math.min(min, d);
+    }, Infinity);
+    if (best && best.days < standardBest) setScheduleTab(best.name);
+    else setScheduleTab("standard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleNames.join("|"), tab]);
+
+  const items = useMemo<MaintenanceItem[]>(() => {
+    if (scheduleTab === "standard") return baseItems;
+    return baseItems
+      .map((item) => {
+        const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === scheduleTab);
+        if (!sch) return null;
+        const progress = calculateScheduleProgress(sch, {
+          totalHours: item.totalHours,
+          totalMissions: item.totalMissions,
+        });
+        const derived: MaintenanceItem = {
+          ...item,
+          hoursUsed: progress.hoursUsed,
+          hoursLimit: sch.interval_hours ?? null,
+          hoursWarning: sch.warn_hours ?? null,
+          missionsUsed: progress.missionsUsed,
+          missionsLimit: sch.interval_missions ?? null,
+          missionsWarning: sch.warn_missions ?? null,
+          nextDate: sch.next_due_date ?? null,
+          warningDays: sch.warn_days ?? 14,
+          status: progress.status,
+          checklistId: sch.sjekkliste_id ?? null,
+          schedule: sch,
+        };
+        return derived;
+      })
+      .filter((i): i is MaintenanceItem => !!i);
+  }, [baseItems, schedulesByResource, scheduleTab]);
 
   const visibleItems = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -338,6 +439,18 @@ const Vedlikehold = () => {
 
   const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
     if (!user) return;
+    if (item.schedule) {
+      await performSchedule({
+        schedule: item.schedule,
+        kind,
+        userId: user.id,
+        totalHours: item.totalHours,
+        totalMissions: item.totalMissions,
+        notes: noteText,
+        reset: action === "reset",
+      });
+      return;
+    }
     {
       if (kind === "droner") {
         const d = item.raw;
@@ -487,12 +600,20 @@ const Vedlikehold = () => {
     if (!checklistPicker) return;
     const { item, kind } = checklistPicker;
     try {
-      const table = kind === "droner" ? "drones" : "equipment";
-      const { error } = await (supabase as any)
-        .from(table)
-        .update({ sjekkliste_id: checklistId })
-        .eq("id", item.id);
-      if (error) throw error;
+      if (item.schedule) {
+        const { error } = await (supabase as any)
+          .from("maintenance_schedules")
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.schedule.id);
+        if (error) throw error;
+      } else {
+        const table = kind === "droner" ? "drones" : "equipment";
+        const { error } = await (supabase as any)
+          .from(table)
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.id);
+        if (error) throw error;
+      }
       toast.success(t("maintenance.checklistUpdated"));
       setChecklistPicker(null);
       await fetchAll();
@@ -669,6 +790,28 @@ const Vedlikehold = () => {
                   {t("resources.equipment")}
                 </TabsTrigger>
               </TabsList>
+
+              {scheduleNames.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button
+                    size="sm"
+                    variant={scheduleTab === "standard" ? "default" : "outline"}
+                    onClick={() => { setScheduleTab("standard"); setSelected(new Set()); }}
+                  >
+                    {t("maintenance.schedules.standardTab")}
+                  </Button>
+                  {scheduleNames.map((name) => (
+                    <Button
+                      key={name}
+                      size="sm"
+                      variant={scheduleTab === name ? "default" : "outline"}
+                      onClick={() => { setScheduleTab(name); setSelected(new Set()); }}
+                    >
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <div className="relative flex-1">

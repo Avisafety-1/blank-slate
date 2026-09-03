@@ -2769,6 +2769,7 @@ export type Database = {
           inspection_date: string
           inspection_type: string | null
           notes: string | null
+          schedule_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -2779,6 +2780,7 @@ export type Database = {
           inspection_date: string
           inspection_type?: string | null
           notes?: string | null
+          schedule_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -2789,6 +2791,7 @@ export type Database = {
           inspection_date?: string
           inspection_type?: string | null
           notes?: string | null
+          schedule_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -2804,6 +2807,13 @@ export type Database = {
             columns: ["drone_id"]
             isOneToOne: false
             referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_inspections_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_schedules"
             referencedColumns: ["id"]
           },
         ]
@@ -5231,6 +5241,144 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: true
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_schedule_presets: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          email_alerts_enabled: boolean
+          id: string
+          interval_days: number | null
+          interval_hours: number | null
+          interval_missions: number | null
+          navn: string
+          updated_at: string
+          warn_days: number | null
+          warn_hours: number | null
+          warn_missions: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          email_alerts_enabled?: boolean
+          id?: string
+          interval_days?: number | null
+          interval_hours?: number | null
+          interval_missions?: number | null
+          navn: string
+          updated_at?: string
+          warn_days?: number | null
+          warn_hours?: number | null
+          warn_missions?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          email_alerts_enabled?: boolean
+          id?: string
+          interval_days?: number | null
+          interval_hours?: number | null
+          interval_missions?: number | null
+          navn?: string
+          updated_at?: string
+          warn_days?: number | null
+          warn_hours?: number | null
+          warn_missions?: number | null
+        }
+        Relationships: []
+      }
+      maintenance_schedules: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          drone_id: string | null
+          email_alerts_enabled: boolean
+          equipment_id: string | null
+          hours_at_last: number | null
+          id: string
+          interval_days: number | null
+          interval_hours: number | null
+          interval_missions: number | null
+          last_performed_at: string | null
+          missions_at_last: number | null
+          navn: string
+          next_due_date: string | null
+          notification_sent: boolean
+          sjekkliste_id: string | null
+          start_date: string | null
+          updated_at: string
+          warn_days: number | null
+          warn_hours: number | null
+          warn_missions: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          drone_id?: string | null
+          email_alerts_enabled?: boolean
+          equipment_id?: string | null
+          hours_at_last?: number | null
+          id?: string
+          interval_days?: number | null
+          interval_hours?: number | null
+          interval_missions?: number | null
+          last_performed_at?: string | null
+          missions_at_last?: number | null
+          navn: string
+          next_due_date?: string | null
+          notification_sent?: boolean
+          sjekkliste_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+          warn_days?: number | null
+          warn_hours?: number | null
+          warn_missions?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          drone_id?: string | null
+          email_alerts_enabled?: boolean
+          equipment_id?: string | null
+          hours_at_last?: number | null
+          id?: string
+          interval_days?: number | null
+          interval_hours?: number | null
+          interval_missions?: number | null
+          last_performed_at?: string | null
+          missions_at_last?: number | null
+          navn?: string
+          next_due_date?: string | null
+          notification_sent?: boolean
+          sjekkliste_id?: string | null
+          start_date?: string | null
+          updated_at?: string
+          warn_days?: number | null
+          warn_hours?: number | null
+          warn_missions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedules_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
         ]

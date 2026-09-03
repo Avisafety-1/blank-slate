@@ -8684,6 +8684,37 @@
     "bulkDone": "Vedlikehold registrert for {{count}} ressurser",
     "bulkPartial": "{{ok}} registrert, {{failed}} feilet",
     "checklistDone": "Sjekkliste gjennomført",
-    "noteHelp": "Notatet lagres som kommentar på vedlikeholds­oppføringen i loggboken til hver valgte ressurs."
+    "noteHelp": "Notatet lagres som kommentar på vedlikeholds­oppføringen i loggboken til hver valgte ressurs.",
+    "schedules": {
+      "sectionTitle": "Egne vedlikeholdsintervaller",
+      "add": "Legg til ny inspeksjon",
+      "addTitle": "Ny inspeksjon",
+      "editTitle": "Rediger inspeksjon",
+      "dialogDescription": "Denne inspeksjonen følges opp uavhengig av standard vedlikehold, med egen sjekkliste og eget intervall.",
+      "empty": "Ingen egne inspeksjoner er satt opp.",
+      "nameLabel": "Navn på inspeksjon",
+      "namePlaceholder": "F.eks. Propellbytte 200 timer",
+      "nameRequired": "Navn må fylles ut",
+      "checklistLabel": "Sjekkliste",
+      "intervalDays": "Intervall (dager)",
+      "intervalHours": "Intervall (timer)",
+      "intervalMissions": "Intervall (oppdrag)",
+      "warnDays": "Varsel (dager)",
+      "warnHours": "Varsel (timer)",
+      "warnMissions": "Varsel (oppdrag)",
+      "emailAlerts": "E-postvarsel",
+      "emailAlertsHelp": "Send varsel når denne inspeksjonen nærmer seg forfall.",
+      "usePreset": "Bruk lagret mal",
+      "usePresetPlaceholder": "Velg mal",
+      "saveAsPreset": "Lagre som mal",
+      "presetSaved": "Malen er lagret",
+      "saved": "Inspeksjonen er lagret",
+      "deleted": "Inspeksjonen er slettet",
+      "everyDays": "Hver {{days}}. dag",
+      "everyHours": "Hver {{hours}} time",
+      "everyMissions": "Hvert {{count}}. oppdrag",
+      "nextDue": "Neste: {{date}}",
+      "standardTab": "Standard vedlikehold"
+    }
   }
 }

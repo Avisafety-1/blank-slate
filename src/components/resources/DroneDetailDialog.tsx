@@ -35,6 +35,7 @@ import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { DroneFormFields } from "./DroneFormFields";
+import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
 
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
@@ -1298,6 +1299,15 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </div>
                   )}
                 </div>
+              )}
+
+              {drone.company_id && (
+                <MaintenanceSchedulesSection
+                  kind="droner"
+                  resourceId={drone.id}
+                  companyId={drone.company_id}
+                  onChanged={() => onDroneUpdated()}
+                />
               )}
 
               {drone.merknader && (
