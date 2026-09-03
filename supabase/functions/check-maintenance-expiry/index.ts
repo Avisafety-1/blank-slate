@@ -233,6 +233,36 @@ serve(async (req) => {
       }
     }
 
+    // ── Custom maintenance schedules (independent inspections) ──
+    const { data: customSchedules } = await supabase
+      .from('maintenance_schedules')
+      .select('id, company_id, navn, next_due_date, warn_days, drone_id, equipment_id, drones(modell), equipment(navn)')
+      .eq('email_alerts_enabled', true)
+      .eq('notification_sent', false)
+      .not('next_due_date', 'is', null);
+
+    const schedulesNeedingNotification: string[] = [];
+    const scheduleItemsByCompany = new Map<string, MaintenanceItem[]>();
+    for (const sch of customSchedules || []) {
+      const expiryDate = new Date(sch.next_due_date);
+      expiryDate.setHours(0, 0, 0, 0);
+      const daysUntil = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntil > (sch.warn_days ?? 14)) continue;
+      const resourceName = sch.drones?.modell || sch.equipment?.navn || '';
+      schedulesNeedingNotification.push(sch.id);
+      const list = scheduleItemsByCompany.get(sch.company_id) || [];
+      list.push({
+        id: sch.id,
+        name: `${resourceName} – ${sch.navn}`,
+        type: sch.drone_id ? 'drone' : 'equipment',
+        expiryDate,
+        daysUntilExpiry: daysUntil,
+        companyId: sch.company_id,
+        statusLevel: daysUntil < 0 ? 'Rød' : 'Gul',
+      });
+      scheduleItemsByCompany.set(sch.company_id, list);
+    }
+
     let totalEmailsSent = 0;
     let totalPushSent = 0;
     const parentMaintenanceNotificationKeys = new Set<string>();
@@ -306,6 +336,11 @@ serve(async (req) => {
             statusLevel: 'Gul',
           });
         }
+      }
+
+      // ── Custom schedules for the user's company ──
+      for (const item of scheduleItemsByCompany.get(profile.company_id) || []) {
+        itemsNeedingAttention.push(item);
       }
 
       if (itemsNeedingAttention.length === 0) continue;
