@@ -484,7 +484,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       )}
       </CollapsibleContent>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelectedPresetId(""); }}>
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
