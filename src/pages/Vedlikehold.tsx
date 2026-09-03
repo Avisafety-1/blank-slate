@@ -323,7 +323,66 @@ const Vedlikehold = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, companyId]);
 
-  const items = tab === "droner" ? droneItems : equipmentItems;
+  const baseItems = tab === "droner" ? droneItems : equipmentItems;
+
+  const scheduleNames = useMemo(() => {
+    const names = new Set<string>();
+    baseItems.forEach((i) => (schedulesByResource[i.id] || []).forEach((s) => names.add(s.navn)));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [baseItems, schedulesByResource]);
+
+  // Forhåndsvelg intervallet som forfaller først
+  useEffect(() => {
+    if (scheduleNames.length === 0) {
+      setScheduleTab("standard");
+      return;
+    }
+    if (scheduleTab !== "standard" && scheduleNames.includes(scheduleTab)) return;
+    let best: { name: string; days: number } | null = null;
+    baseItems.forEach((i) => {
+      (schedulesByResource[i.id] || []).forEach((sch) => {
+        if (!sch.next_due_date) return;
+        const days = daysUntil(sch.next_due_date) ?? Infinity;
+        if (!best || days < best.days) best = { name: sch.navn, days };
+      });
+    });
+    const standardBest = baseItems.reduce<number>((min, i) => {
+      const d = daysUntil(i.nextDate);
+      return d === null ? min : Math.min(min, d);
+    }, Infinity);
+    if (best && best.days < standardBest) setScheduleTab(best.name);
+    else setScheduleTab("standard");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleNames.join("|"), tab]);
+
+  const items = useMemo<MaintenanceItem[]>(() => {
+    if (scheduleTab === "standard") return baseItems;
+    return baseItems
+      .map((item) => {
+        const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === scheduleTab);
+        if (!sch) return null;
+        const progress = calculateScheduleProgress(sch, {
+          totalHours: item.totalHours,
+          totalMissions: item.totalMissions,
+        });
+        const derived: MaintenanceItem = {
+          ...item,
+          hoursUsed: progress.hoursUsed,
+          hoursLimit: sch.interval_hours ?? null,
+          hoursWarning: sch.warn_hours ?? null,
+          missionsUsed: progress.missionsUsed,
+          missionsLimit: sch.interval_missions ?? null,
+          missionsWarning: sch.warn_missions ?? null,
+          nextDate: sch.next_due_date ?? null,
+          warningDays: sch.warn_days ?? 14,
+          status: progress.status,
+          checklistId: sch.sjekkliste_id ?? null,
+          schedule: sch,
+        };
+        return derived;
+      })
+      .filter((i): i is MaintenanceItem => !!i);
+  }, [baseItems, schedulesByResource, scheduleTab]);
 
   const visibleItems = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -380,6 +439,18 @@ const Vedlikehold = () => {
 
   const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
     if (!user) return;
+    if (item.schedule) {
+      await performSchedule({
+        schedule: item.schedule,
+        kind,
+        userId: user.id,
+        totalHours: item.totalHours,
+        totalMissions: item.totalMissions,
+        notes: noteText,
+        reset: action === "reset",
+      });
+      return;
+    }
     {
       if (kind === "droner") {
         const d = item.raw;
@@ -529,12 +600,20 @@ const Vedlikehold = () => {
     if (!checklistPicker) return;
     const { item, kind } = checklistPicker;
     try {
-      const table = kind === "droner" ? "drones" : "equipment";
-      const { error } = await (supabase as any)
-        .from(table)
-        .update({ sjekkliste_id: checklistId })
-        .eq("id", item.id);
-      if (error) throw error;
+      if (item.schedule) {
+        const { error } = await (supabase as any)
+          .from("maintenance_schedules")
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.schedule.id);
+        if (error) throw error;
+      } else {
+        const table = kind === "droner" ? "drones" : "equipment";
+        const { error } = await (supabase as any)
+          .from(table)
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.id);
+        if (error) throw error;
+      }
       toast.success(t("maintenance.checklistUpdated"));
       setChecklistPicker(null);
       await fetchAll();
@@ -711,6 +790,28 @@ const Vedlikehold = () => {
                   {t("resources.equipment")}
                 </TabsTrigger>
               </TabsList>
+
+              {scheduleNames.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Button
+                    size="sm"
+                    variant={scheduleTab === "standard" ? "default" : "outline"}
+                    onClick={() => { setScheduleTab("standard"); setSelected(new Set()); }}
+                  >
+                    {t("maintenance.schedules.standardTab")}
+                  </Button>
+                  {scheduleNames.map((name) => (
+                    <Button
+                      key={name}
+                      size="sm"
+                      variant={scheduleTab === name ? "default" : "outline"}
+                      onClick={() => { setScheduleTab(name); setSelected(new Set()); }}
+                    >
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <div className="relative flex-1">
