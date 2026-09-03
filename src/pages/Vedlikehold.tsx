@@ -293,11 +293,9 @@ const Vedlikehold = () => {
     setDetail({ item, kind: tab });
   };
 
-  const runAction = async () => {
-    if (!pending || !user || submitting) return;
-    const { item, kind, action } = pending;
-    setSubmitting(true);
-    try {
+  const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
+    if (!user) return;
+    {
       if (kind === "droner") {
         const d = item.raw;
         if (action === "perform") {
