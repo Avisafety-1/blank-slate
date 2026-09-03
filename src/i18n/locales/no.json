@@ -8715,6 +8715,15 @@
       "everyMissions": "Hvert {{count}}. oppdrag",
       "nextDue": "Neste: {{date}}",
       "standardTab": "Standard vedlikehold"
-    }
+    },
+    "inspectionsTitle": "Inspeksjoner",
+    "nextUpBadge": "Neste",
+    "hoursBar": "Flytimer siden inspeksjon",
+    "missionsBar": "Oppdrag siden inspeksjon",
+    "lastDone": "Sist utført",
+    "nextDue": "Neste",
+    "inspectionDaysLeft": "{{days}} dager igjen",
+    "inspectionOverdue": "{{days}} dager på overtid",
+    "dateOnlyInterval": "Kun datobasert intervall"
   }
 }
