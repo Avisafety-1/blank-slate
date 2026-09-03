@@ -1803,6 +1803,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                     </div>
                   ) : null
                 }
+                schedulesSlot={
+                  drone?.id && drone?.company_id ? (
+                    <MaintenanceSchedulesSection
+                      kind="droner"
+                      resourceId={drone.id}
+                      companyId={drone.company_id}
+                      onChanged={() => onDroneUpdated()}
+                    />
+                  ) : null
+                }
               />
 
             </>
