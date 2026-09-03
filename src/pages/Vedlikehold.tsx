@@ -116,7 +116,7 @@ const Vedlikehold = () => {
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
   const [schedulesByResource, setSchedulesByResource] = useState<Record<string, MaintenanceSchedule[]>>({});
-  const [scheduleTab, setScheduleTab] = useState<string>("standard");
+  const [selectedScheduleById, setSelectedScheduleById] = useState<Record<string, string>>({});
   const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
   // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
@@ -325,64 +325,59 @@ const Vedlikehold = () => {
 
   const baseItems = tab === "droner" ? droneItems : equipmentItems;
 
-  const scheduleNames = useMemo(() => {
-    const names = new Set<string>();
-    baseItems.forEach((i) => (schedulesByResource[i.id] || []).forEach((s) => names.add(s.navn)));
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  // Forhåndsvelg det intervallet som forfaller først for hver ressurs
+  useEffect(() => {
+    setSelectedScheduleById((prev) => {
+      const next: Record<string, string> = { ...prev };
+      let changed = false;
+      baseItems.forEach((item) => {
+        const schedules = schedulesByResource[item.id] || [];
+        const current = next[item.id];
+        const valid = current === "standard" || schedules.some((s) => s.navn === current);
+        if (valid) return;
+        let bestName = "standard";
+        let bestDays = daysUntil(item.nextDate) ?? Infinity;
+        schedules.forEach((sch) => {
+          const d = daysUntil(sch.next_due_date) ?? Infinity;
+          if (d < bestDays) {
+            bestDays = d;
+            bestName = sch.navn;
+          }
+        });
+        next[item.id] = bestName;
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
   }, [baseItems, schedulesByResource]);
 
-  // Forhåndsvelg intervallet som forfaller først
-  useEffect(() => {
-    if (scheduleNames.length === 0) {
-      setScheduleTab("standard");
-      return;
-    }
-    if (scheduleTab !== "standard" && scheduleNames.includes(scheduleTab)) return;
-    let best: { name: string; days: number } | null = null;
-    baseItems.forEach((i) => {
-      (schedulesByResource[i.id] || []).forEach((sch) => {
-        if (!sch.next_due_date) return;
-        const days = daysUntil(sch.next_due_date) ?? Infinity;
-        if (!best || days < best.days) best = { name: sch.navn, days };
-      });
-    });
-    const standardBest = baseItems.reduce<number>((min, i) => {
-      const d = daysUntil(i.nextDate);
-      return d === null ? min : Math.min(min, d);
-    }, Infinity);
-    if (best && best.days < standardBest) setScheduleTab(best.name);
-    else setScheduleTab("standard");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scheduleNames.join("|"), tab]);
-
   const items = useMemo<MaintenanceItem[]>(() => {
-    if (scheduleTab === "standard") return baseItems;
-    return baseItems
-      .map((item) => {
-        const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === scheduleTab);
-        if (!sch) return null;
-        const progress = calculateScheduleProgress(sch, {
-          totalHours: item.totalHours,
-          totalMissions: item.totalMissions,
-        });
-        const derived: MaintenanceItem = {
-          ...item,
-          hoursUsed: progress.hoursUsed,
-          hoursLimit: sch.interval_hours ?? null,
-          hoursWarning: sch.warn_hours ?? null,
-          missionsUsed: progress.missionsUsed,
-          missionsLimit: sch.interval_missions ?? null,
-          missionsWarning: sch.warn_missions ?? null,
-          nextDate: sch.next_due_date ?? null,
-          warningDays: sch.warn_days ?? 14,
-          status: progress.status,
-          checklistId: sch.sjekkliste_id ?? null,
-          schedule: sch,
-        };
-        return derived;
-      })
-      .filter((i): i is MaintenanceItem => !!i);
-  }, [baseItems, schedulesByResource, scheduleTab]);
+    return baseItems.map((item) => {
+      const sel = selectedScheduleById[item.id] ?? "standard";
+      if (sel === "standard") return item;
+      const sch = (schedulesByResource[item.id] || []).find((s) => s.navn === sel);
+      if (!sch) return item;
+      const progress = calculateScheduleProgress(sch, {
+        totalHours: item.totalHours,
+        totalMissions: item.totalMissions,
+      });
+      const derived: MaintenanceItem = {
+        ...item,
+        hoursUsed: progress.hoursUsed,
+        hoursLimit: sch.interval_hours ?? null,
+        hoursWarning: sch.warn_hours ?? null,
+        missionsUsed: progress.missionsUsed,
+        missionsLimit: sch.interval_missions ?? null,
+        missionsWarning: sch.warn_missions ?? null,
+        nextDate: sch.next_due_date ?? null,
+        warningDays: sch.warn_days ?? 14,
+        status: progress.status,
+        checklistId: sch.sjekkliste_id ?? null,
+        schedule: sch,
+      };
+      return derived;
+    });
+  }, [baseItems, schedulesByResource, selectedScheduleById]);
 
   const visibleItems = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -708,7 +703,36 @@ const Vedlikehold = () => {
           </div>
 
           {/* Kompakte statusbarer */}
-          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 lg:order-first lg:border-r border-border/50">
+          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
+            {(() => {
+              const schedules = schedulesByResource[item.id] || [];
+              const selected = selectedScheduleById[item.id] ?? "standard";
+              if (schedules.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={selected === "standard" ? "default" : "outline"}
+                    onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: "standard" }))}
+                    className="text-xs h-7 px-2"
+                  >
+                    {t("maintenance.schedules.standardTab")}
+                  </Button>
+                  {schedules.map((sch) => (
+                    <Button
+                      key={sch.id}
+                      size="sm"
+                      variant={selected === sch.navn ? "default" : "outline"}
+                      onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: sch.navn }))}
+                      className="text-xs h-7 px-2"
+                    >
+                      {sch.navn}
+                    </Button>
+                  ))}
+                </div>
+              );
+            })()}
+
             <MaintenanceBar
               label={t("maintenance.hours")}
               current={item.hoursUsed}
@@ -792,27 +816,6 @@ const Vedlikehold = () => {
                 </TabsTrigger>
               </TabsList>
 
-              {scheduleNames.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Button
-                    size="sm"
-                    variant={scheduleTab === "standard" ? "default" : "outline"}
-                    onClick={() => { setScheduleTab("standard"); setSelected(new Set()); }}
-                  >
-                    {t("maintenance.schedules.standardTab")}
-                  </Button>
-                  {scheduleNames.map((name) => (
-                    <Button
-                      key={name}
-                      size="sm"
-                      variant={scheduleTab === name ? "default" : "outline"}
-                      onClick={() => { setScheduleTab(name); setSelected(new Set()); }}
-                    >
-                      {name}
-                    </Button>
-                  ))}
-                </div>
-              )}
 
               <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <div className="relative flex-1">
