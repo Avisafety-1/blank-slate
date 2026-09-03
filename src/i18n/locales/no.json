@@ -8644,6 +8644,7 @@
     "hours": "Flytimer",
     "missions": "Oppdrag",
     "days": "Dager",
+    "cycles": "Ladesykluser",
     "notSet": "Ikke satt",
     "daysLeft": "{{count}} dager igjen ({{date}})",
     "searchPlaceholder": "Søk etter navn, modell eller serienummer...",
