@@ -10,6 +10,8 @@ import {
   worstStatus,
   type Status as MaintStatus,
 } from "./maintenanceStatus.ts";
+import { fetchCustomScheduleStatuses } from "./customSchedules.ts";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
