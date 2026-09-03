@@ -712,6 +712,7 @@ const Vedlikehold = () => {
         userId: user.id,
         totalHours: item.totalHours,
         totalMissions: item.totalMissions,
+        totalCycles: item.totalCycles ?? null,
         notes: noteText,
         reset: action === "reset",
       });
