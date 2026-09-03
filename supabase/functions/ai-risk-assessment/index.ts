@@ -1886,6 +1886,26 @@ serve(async (req) => {
       } catch (_) { return 0; }
     };
 
+    // Egendefinerte vedlikehold (maintenance_schedules) påvirker også ressursstatus.
+    // Hentes i batch for alle aktuelle droner/utstyr før statusberegningen.
+    const droneStatusInputs = [
+      ...(droneData ? [droneData] : []),
+      ...((assignedDrones as any[]) || []),
+    ].filter((d: any, i: number, arr: any[]) => d?.id && arr.findIndex((x: any) => x.id === d.id) === i);
+    const customDroneSchedules = await fetchCustomScheduleStatuses(
+      supabase,
+      "droner",
+      droneStatusInputs.map((d: any) => ({ id: d.id, totalHours: d.flyvetimer ?? 0 })),
+    );
+    const customEquipmentSchedules = await fetchCustomScheduleStatuses(
+      supabase,
+      "utstyr",
+      ((assignedEquipment as any[]) || [])
+        .filter((e: any) => e?.id)
+        .map((e: any) => ({ id: e.id, totalHours: e.flyvetimer ?? 0 })),
+    );
+
+
     const computeDroneStatus = async (d: any): Promise<{
       status: MaintStatus;
       ownStatus: MaintStatus;
