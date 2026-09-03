@@ -406,11 +406,15 @@ export const DroneFormFields = ({
         {statusReasonsSlot}
 
         {/* Inspection & maintenance intervals */}
-        <div className="rounded-lg border bg-background/60 p-3 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Calendar className="w-4 h-4 text-primary" />
-            {tt("inspectionForm.sectionTitle")}
-          </div>
+        <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
+          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-sm font-semibold text-foreground">
+            <span className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              {tt("inspectionForm.sectionTitle")}
+            </span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 pt-4">
 
           {checklists.length > 0 && (
             <div>
@@ -535,7 +539,10 @@ export const DroneFormFields = ({
             <p className="text-sm text-muted-foreground">{tt("inspectionForm.autoCalcHint")}</p>
           )}
           <p className="text-xs text-muted-foreground">{tt("inspectionForm.statusTriggerHint")}</p>
-        </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {schedulesSlot}
 
         {adminSlot}
       </div>
