@@ -314,7 +314,9 @@ const Vedlikehold = () => {
   const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [checklistTarget, setChecklistTarget] = useState<string>("standard");
   const [checklistSearch, setChecklistSearch] = useState("");
+
   const [checklistRun, setChecklistRun] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -655,8 +657,10 @@ const Vedlikehold = () => {
 
   const handlePickChecklist = useCallback((item: MaintenanceItem) => {
     setChecklistSearch("");
+    setChecklistTarget(selectedScheduleById[item.id] ?? "standard");
     setChecklistPicker({ item, kind: tab });
-  }, [tab]);
+  }, [tab, selectedScheduleById]);
+
 
   const handleSetSchedule = useCallback((itemId: string, scheduleName: string) => {
     setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
@@ -815,12 +819,16 @@ const Vedlikehold = () => {
   const assignChecklist = async (checklistId: string | null) => {
     if (!checklistPicker) return;
     const { item, kind } = checklistPicker;
+    const targetSchedule =
+      checklistTarget === "standard"
+        ? null
+        : (schedulesByResource[item.id] || []).find((s) => s.navn === checklistTarget) ?? null;
     try {
-      if (item.schedule) {
+      if (targetSchedule) {
         const { error } = await (supabase as any)
           .from("maintenance_schedules")
           .update({ sjekkliste_id: checklistId })
-          .eq("id", item.schedule.id);
+          .eq("id", targetSchedule.id);
         if (error) throw error;
       } else {
         const table = kind === "droner" ? "drones" : "equipment";
@@ -830,6 +838,7 @@ const Vedlikehold = () => {
           .eq("id", item.id);
         if (error) throw error;
       }
+
       toast.success(t("maintenance.checklistUpdated"));
       setChecklistPicker(null);
       await fetchAll();
@@ -839,7 +848,17 @@ const Vedlikehold = () => {
     }
   };
 
+  const pickerSchedules = checklistPicker ? (schedulesByResource[checklistPicker.item.id] || []) : [];
+  const pickerCurrentChecklistId = (() => {
+    if (!checklistPicker) return null;
+    if (checklistTarget === "standard") {
+      return baseItems.find((i) => i.id === checklistPicker.item.id)?.checklistId ?? null;
+    }
+    return pickerSchedules.find((s) => s.navn === checklistTarget)?.sjekkliste_id ?? null;
+  })();
+
   return (
+
     <div className="min-h-screen relative w-full overflow-x-hidden">
       <div
         className="fixed inset-0 z-0"
@@ -1131,6 +1150,30 @@ const Vedlikehold = () => {
               {t("maintenance.checklistPickerDescription", { name: checklistPicker?.item.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${1 + pickerSchedules.length}, minmax(0, 1fr))` }}
+          >
+            <Button
+              size="sm"
+              variant={checklistTarget === "standard" ? "default" : "outline"}
+              className="text-xs h-8 px-2 w-full truncate"
+              onClick={() => setChecklistTarget("standard")}
+            >
+              {t("maintenance.schedules.standardTab")}
+            </Button>
+            {pickerSchedules.map((sch) => (
+              <Button
+                key={sch.id}
+                size="sm"
+                variant={checklistTarget === sch.navn ? "default" : "outline"}
+                className="text-xs h-8 px-2 w-full truncate"
+                onClick={() => setChecklistTarget(sch.navn)}
+              >
+                {sch.navn}
+              </Button>
+            ))}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -1144,7 +1187,7 @@ const Vedlikehold = () => {
             {checklists
               .filter((c) => c.tittel.toLowerCase().includes(checklistSearch.trim().toLowerCase()))
               .map((c) => {
-                const active = checklistPicker?.item.checklistId === c.id;
+                const active = pickerCurrentChecklistId === c.id;
                 return (
                   <button
                     key={c.id}
@@ -1163,11 +1206,12 @@ const Vedlikehold = () => {
               <p className="text-sm text-muted-foreground py-4 text-center">{t("maintenance.noChecklistsAvailable")}</p>
             )}
           </div>
-          {checklistPicker?.item.checklistId && (
+          {pickerCurrentChecklistId && (
             <Button variant="ghost" size="sm" onClick={() => assignChecklist(null)}>
               {t("maintenance.removeChecklist")}
             </Button>
           )}
+
         </DialogContent>
       </Dialog>
 
