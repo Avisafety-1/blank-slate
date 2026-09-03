@@ -703,7 +703,36 @@ const Vedlikehold = () => {
           </div>
 
           {/* Kompakte statusbarer */}
-          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 lg:order-first lg:border-r border-border/50">
+          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
+            {(() => {
+              const schedules = schedulesByResource[item.id] || [];
+              const selected = selectedScheduleById[item.id] ?? "standard";
+              if (schedules.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={selected === "standard" ? "default" : "outline"}
+                    onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: "standard" }))}
+                    className="text-xs h-7 px-2"
+                  >
+                    {t("maintenance.schedules.standardTab")}
+                  </Button>
+                  {schedules.map((sch) => (
+                    <Button
+                      key={sch.id}
+                      size="sm"
+                      variant={selected === sch.navn ? "default" : "outline"}
+                      onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: sch.navn }))}
+                      className="text-xs h-7 px-2"
+                    >
+                      {sch.navn}
+                    </Button>
+                  ))}
+                </div>
+              );
+            })()}
+
             <MaintenanceBar
               label={t("maintenance.hours")}
               current={item.hoursUsed}
