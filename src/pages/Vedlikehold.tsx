@@ -26,6 +26,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { MaintenanceBar } from "@/components/maintenance/MaintenanceBar";
 import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
 import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
+import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
+import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -93,6 +95,7 @@ const Vedlikehold = () => {
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
   const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [checklistSearch, setChecklistSearch] = useState("");
