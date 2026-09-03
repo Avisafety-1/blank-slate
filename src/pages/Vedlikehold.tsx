@@ -848,7 +848,17 @@ const Vedlikehold = () => {
     }
   };
 
+  const pickerSchedules = checklistPicker ? (schedulesByResource[checklistPicker.item.id] || []) : [];
+  const pickerCurrentChecklistId = (() => {
+    if (!checklistPicker) return null;
+    if (checklistTarget === "standard") {
+      return baseItems.find((i) => i.id === checklistPicker.item.id)?.checklistId ?? null;
+    }
+    return pickerSchedules.find((s) => s.navn === checklistTarget)?.sjekkliste_id ?? null;
+  })();
+
   return (
+
     <div className="min-h-screen relative w-full overflow-x-hidden">
       <div
         className="fixed inset-0 z-0"
