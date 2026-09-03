@@ -8669,6 +8669,7 @@
     "checklistPickerDescription": "Select a checklist from documents for {{name}}. The choice is saved on the resource card.",
     "checklistSearchPlaceholder": "Search for checklist...",
     "noChecklistsAvailable": "No checklists found",
-    "removeChecklist": "Remove checklist"
+    "removeChecklist": "Remove checklist",
+    "allDepartments": "All departments"
   }
 }

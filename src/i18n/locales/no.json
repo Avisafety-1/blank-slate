@@ -8671,6 +8671,7 @@
     "checklistPickerDescription": "Velg en sjekkliste fra dokumentene for {{name}}. Valget lagres på ressurskortet.",
     "checklistSearchPlaceholder": "Søk etter sjekkliste...",
     "noChecklistsAvailable": "Ingen sjekklister funnet",
-    "removeChecklist": "Fjern sjekkliste"
+    "removeChecklist": "Fjern sjekkliste",
+    "allDepartments": "Alle avdelinger"
   }
 }
