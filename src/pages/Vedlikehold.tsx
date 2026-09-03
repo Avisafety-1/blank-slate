@@ -282,7 +282,7 @@ const Vedlikehold = () => {
         };
         if (action === "perform") update.sist_vedlikeholdt = today;
 
-        const { error } = await supabase.from("equipment").update(update).eq("id", e.id);
+        const { error } = await (supabase as any).from("equipment").update(update).eq("id", e.id);
         if (error) throw error;
 
         if (action === "perform" && companyId) {
