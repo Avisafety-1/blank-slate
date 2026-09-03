@@ -173,6 +173,9 @@ const Vedlikehold = () => {
           nextDate: d.neste_inspeksjon ?? null,
           warningDays: d.varsel_dager ?? 14,
           status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          serial: d.serienummer || d.internal_serial || null,
+          lastFlight: lastFlightByDrone.get(d.id) ?? null,
+          totalHours: d.flyvetimer ?? 0,
           raw: d,
         };
         return item;
