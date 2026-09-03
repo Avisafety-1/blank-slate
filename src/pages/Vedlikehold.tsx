@@ -638,7 +638,7 @@ const Vedlikehold = () => {
 
         <div className="flex flex-col lg:flex-row">
           {/* Identitet + handlinger */}
-          <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 lg:border-r border-border/50">
+          <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 border-border/50">
             <div className="flex items-start justify-between gap-3">
               <Checkbox
                 className="mt-1 shrink-0"
