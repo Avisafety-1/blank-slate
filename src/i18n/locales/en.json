@@ -8713,6 +8713,15 @@
       "everyMissions": "Every {{count}} missions",
       "nextDue": "Next: {{date}}",
       "standardTab": "Standard maintenance"
-    }
+    },
+    "inspectionsTitle": "Inspections",
+    "nextUpBadge": "Next up",
+    "hoursBar": "Flight hours since inspection",
+    "missionsBar": "Missions since inspection",
+    "lastDone": "Last performed",
+    "nextDue": "Next due",
+    "inspectionDaysLeft": "{{days}} days left",
+    "inspectionOverdue": "{{days}} days overdue",
+    "dateOnlyInterval": "Date-based interval only"
   }
 }

@@ -36,6 +36,7 @@ import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggreg
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { DroneFormFields } from "./DroneFormFields";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
+import { InspectionOverview } from "./InspectionOverview";
 
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
@@ -1185,131 +1186,63 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               )}
 
-              {(drone.sist_inspeksjon || drone.neste_inspeksjon || drone.inspection_interval_days || drone.inspection_interval_hours || drone.inspection_interval_missions) && (
-                <div className="border-t border-border pt-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {tt("inspection.sectionTitle")}
-                    </p>
-                    {(() => {
-                      const isTechRestricted = drone.technical_responsible_id && !allUsersCanAcknowledgeMaintenance && user?.id !== drone.technical_responsible_id;
-                      return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="w-full sm:w-auto">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full sm:w-auto"
-                                  disabled={!!isTechRestricted}
-                                  onClick={() => {
-                                    if (!user || !companyId) return;
-                                    if (drone.sjekkliste_id) {
-                                      setChecklistDialogOpen(true);
-                                      return;
-                                    }
-                                    setConfirmInspectionOpen(true);
-                                  }}
-                                >
-                                  <Wrench className="w-4 h-4 mr-1" />
-                                  {tt("inspection.doButton")}
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {isTechRestricted && (
-                              <TooltipContent>
-                                <p>{tt("inspection.techRestricted", { name: technicalResponsibleName })}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })()}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {drone.sist_inspeksjon && (
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">{tt("inspection.lastInspection")}</p>
-                          <p className="text-base">{new Date(drone.sist_inspeksjon).toLocaleDateString('nb-NO')} {new Date(drone.sist_inspeksjon).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                    )}
-                    {drone.neste_inspeksjon && (
-                      <div className="flex items-start gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">{tt("inspection.nextInspection")}</p>
-                          <p className="text-base">{new Date(drone.neste_inspeksjon).toLocaleDateString('nb-NO')}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {drone.inspection_interval_days && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {tt("inspection.intervalDays", { days: drone.inspection_interval_days })}
-                    </p>
-                  )}
-
-                  {/* Hours-based progress */}
-                  {drone.inspection_interval_hours && (
-                    <div className="mt-3">
-                      {(() => {
-                        const hoursSince = drone.flyvetimer - (drone.hours_at_last_inspection ?? 0);
-                        const limit = drone.inspection_interval_hours;
-                        const pct = Math.min((hoursSince / limit) * 100, 100);
-                        const status = calculateUsageStatus(hoursSince, limit, drone.varsel_timer);
-                        return (
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">{tt("inspection.hoursSinceInspection")}</span>
-                              <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
-                                {hoursSince.toFixed(1)} / {limit} {tt("inspection.hoursUnit")}
-                              </span>
-                            </div>
-                            <Progress value={pct} className={`h-2 ${status === 'Rød' ? '[&>div]:bg-destructive' : status === 'Gul' ? '[&>div]:bg-yellow-500' : ''}`} />
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {/* Missions-based progress */}
-                  {drone.inspection_interval_missions && (
-                    <div className="mt-3">
-                      {(() => {
-                        const limit = drone.inspection_interval_missions;
-                        const pct = Math.min((missionsSinceInspection / limit) * 100, 100);
-                        const status = calculateUsageStatus(missionsSinceInspection, limit, drone.varsel_oppdrag);
-                        return (
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">{tt("inspection.missionsSinceInspection")}</span>
-                              <span className={`font-medium ${getStatusColorClasses(status).split(' ').find(c => c.startsWith('text-')) || ''}`}>
-                                {missionsSinceInspection} / {limit}
-                              </span>
-                            </div>
-                            <Progress value={pct} className={`h-2 ${status === 'Rød' ? '[&>div]:bg-destructive' : status === 'Gul' ? '[&>div]:bg-yellow-500' : ''}`} />
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {drone.company_id && (
-                <MaintenanceSchedulesSection
+                <InspectionOverview
                   kind="droner"
                   resourceId={drone.id}
                   companyId={drone.company_id}
-                  readOnly
-                  onChanged={() => onDroneUpdated()}
+                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions: missionsSinceInspection + (drone.missions_at_last_inspection ?? 0) }}
+                  standard={{
+                    lastAt: drone.sist_inspeksjon,
+                    nextAt: drone.neste_inspeksjon,
+                    intervalDays: drone.inspection_interval_days,
+                    intervalHours: drone.inspection_interval_hours,
+                    intervalMissions: drone.inspection_interval_missions,
+                    warnDays: drone.varsel_dager,
+                    warnHours: drone.varsel_timer,
+                    warnMissions: drone.varsel_oppdrag,
+                    hoursUsed: (drone.flyvetimer ?? 0) - (drone.hours_at_last_inspection ?? 0),
+                    missionsUsed: missionsSinceInspection,
+                    checklistId: drone.sjekkliste_id,
+                  }}
+                  actionSlot={(() => {
+                    const isTechRestricted = drone.technical_responsible_id && !allUsersCanAcknowledgeMaintenance && user?.id !== drone.technical_responsible_id;
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="w-full sm:w-auto">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                                disabled={!!isTechRestricted}
+                                onClick={() => {
+                                  if (!user || !companyId) return;
+                                  if (drone.sjekkliste_id) {
+                                    setChecklistDialogOpen(true);
+                                    return;
+                                  }
+                                  setConfirmInspectionOpen(true);
+                                }}
+                              >
+                                <Wrench className="w-4 h-4 mr-1" />
+                                {tt("inspection.doButton")}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {isTechRestricted && (
+                            <TooltipContent>
+                              <p>{tt("inspection.techRestricted", { name: technicalResponsibleName })}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                 />
               )}
+
 
               {drone.merknader && (
                 <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
