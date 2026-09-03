@@ -51,6 +51,7 @@ interface MaintenanceItem {
   id: string;
   name: string;
   subtitle?: string | null;
+  companyId?: string | null;
   companyName?: string | null;
   isForeignCompany: boolean;
   hoursUsed: number;
@@ -89,6 +90,7 @@ const Vedlikehold = () => {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("alle");
+  const [companyFilter, setCompanyFilter] = useState<string>("alle");
   const [droneItems, setDroneItems] = useState<MaintenanceItem[]>([]);
   const [equipmentItems, setEquipmentItems] = useState<MaintenanceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -175,6 +177,7 @@ const Vedlikehold = () => {
           id: d.id,
           name: d.modell,
           subtitle: d.dji_aircraft_name || d.registration_number || d.serienummer || null,
+          companyId: d.company_id ?? null,
           companyName: d.companies?.navn ?? null,
           isForeignCompany: !!companyId && d.company_id !== companyId,
           hoursUsed,
@@ -213,6 +216,7 @@ const Vedlikehold = () => {
           id: e.id,
           name: e.navn,
           subtitle: e.type || e.serienummer || null,
+          companyId: e.company_id ?? null,
           companyName: e.companies?.navn ?? null,
           isForeignCompany: !!companyId && e.company_id !== companyId,
           hoursUsed,
@@ -255,10 +259,12 @@ const Vedlikehold = () => {
     return items
       .filter((i) => {
         if (statusFilter !== "alle" && i.status !== statusFilter) return false;
+        if (companyFilter !== "alle" && i.companyId !== companyFilter) return false;
         if (!s) return true;
         return (
           i.name?.toLowerCase().includes(s) ||
-          (i.subtitle || "").toLowerCase().includes(s)
+          (i.subtitle || "").toLowerCase().includes(s) ||
+          (i.companyName || "").toLowerCase().includes(s)
         );
       })
       .sort((a, b) => {
@@ -271,7 +277,17 @@ const Vedlikehold = () => {
         if (db === null) return -1;
         return da - db;
       });
-  }, [items, search, statusFilter]);
+  }, [items, search, statusFilter, companyFilter]);
+
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    [...droneItems, ...equipmentItems].forEach((i) => {
+      if (i.companyId && i.companyName) map.set(i.companyId, i.companyName);
+    });
+    return Array.from(map.entries())
+      .map(([id, navn]) => ({ id, navn }))
+      .sort((a, b) => a.navn.localeCompare(b.navn));
+  }, [droneItems, equipmentItems]);
 
   const openDetail = (item: MaintenanceItem) => {
     setDetail({ item, kind: tab });
@@ -441,10 +457,15 @@ const Vedlikehold = () => {
                   onClick={() => openDetail(item)}
                   className="block text-left text-lg sm:text-xl font-bold leading-tight truncate hover:underline"
                 >
-                  {item.name}
+                  <span className="align-middle">{item.name}</span>
+                  {item.companyName && (
+                    <span className="ml-2 align-middle inline-block px-2 py-0.5 rounded-full border border-border/70 bg-muted/60 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {item.companyName}
+                    </span>
+                  )}
                 </button>
                 <p className="text-sm text-muted-foreground truncate">
-                  {[item.subtitle, item.isForeignCompany ? item.companyName : null].filter(Boolean).join(" • ")}
+                  {item.subtitle}
                 </p>
                 <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
                   <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-500" : "text-muted-foreground/60")} />
@@ -591,6 +612,19 @@ const Vedlikehold = () => {
                     <SelectItem value="Grønn">{t("status.green", { defaultValue: "Grønn" })}</SelectItem>
                   </SelectContent>
                 </Select>
+                {companyOptions.length > 1 && (
+                  <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="alle">{t("maintenance.allDepartments", { defaultValue: "Alle avdelinger" })}</SelectItem>
+                      {companyOptions.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.navn}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <TabsContent value="droner" className="mt-0 space-y-3">
