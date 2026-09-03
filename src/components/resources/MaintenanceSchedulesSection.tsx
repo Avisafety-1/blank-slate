@@ -95,6 +95,10 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [presetNameOpen, setPresetNameOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+
 
   const isDrone = kind === "droner";
 
