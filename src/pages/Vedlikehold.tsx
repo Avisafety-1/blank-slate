@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, CalendarClock, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
@@ -655,11 +655,12 @@ const Vedlikehold = () => {
                 <button
                   type="button"
                   onClick={() => openDetail(item)}
-                  className="block text-left text-lg sm:text-xl font-bold leading-tight truncate hover:underline"
+                  className="group/name relative -mx-1 -my-0.5 block w-fit max-w-full text-left rounded-lg px-1 py-0.5 text-lg sm:text-xl font-bold leading-tight truncate transition-all duration-200 hover:bg-primary/10 hover:text-primary hover:shadow-sm"
                 >
                   <span className="align-middle">{item.name}</span>
+                  <ChevronRight className="inline-block w-4 h-4 ml-0.5 align-middle text-primary opacity-0 -translate-x-1 transition-all duration-200 group-hover/name:opacity-100 group-hover/name:translate-x-0" />
                   {item.companyName && (
-                    <span className="ml-2 align-middle inline-block px-2 py-0.5 rounded-full border border-border/70 bg-muted/60 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="ml-2 align-middle inline-block px-2 py-0.5 rounded-full border border-border/70 bg-muted/60 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground group-hover/name:bg-background/80">
                       {item.companyName}
                     </span>
                   )}
