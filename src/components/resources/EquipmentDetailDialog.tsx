@@ -310,17 +310,11 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           serienummer: formData.serienummer,
           internal_serial: formData.internal_serial || null,
           merknader: formData.merknader || null,
-          sist_vedlikeholdt: formData.sist_vedlikeholdt || null,
-          neste_vedlikehold: formData.neste_vedlikehold || null,
           flyvetimer: formData.flyvetimer,
-          varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
           vekt: formData.vekt ? parseFloat(formData.vekt) : null,
-          vedlikeholdsintervall_dager: formData.vedlikeholdsintervall_dager ? parseInt(formData.vedlikeholdsintervall_dager) : null,
-          sjekkliste_id: formData.sjekkliste_id || null,
-          inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
-          inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
-          varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
-          varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
+          // Standard maintenance fields (intervals, warnings, checklist, dates)
+          // are owned by the unified maintenance section and saved from its dialog.
+
         })
         .eq("id", equipment.id);
 
