@@ -23,6 +23,7 @@ import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, Sh
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
+import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
@@ -755,6 +756,15 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
                 </div>
               </div>
+
+              {(equipment.company_id || companyId) && (
+                <MaintenanceSchedulesSection
+                  kind="utstyr"
+                  resourceId={equipment.id}
+                  companyId={(equipment.company_id || companyId) as string}
+                  onChanged={() => onEquipmentUpdated()}
+                />
+              )}
 
               {equipment.merknader && (
                 <div className="border border-amber-500/30 bg-amber-500/10 rounded-lg p-3">
