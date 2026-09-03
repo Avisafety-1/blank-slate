@@ -317,15 +317,26 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     }
   };
 
+  const openPresetName = () => {
+    setPresetName(form.navn.trim() || t("maintenance.schedules.standardTab"));
+    setPresetNameOpen(true);
+  };
+
   const saveAsPreset = async () => {
-    if (!form.navn.trim() || !companyId) {
-      toast.error(t("maintenance.schedules.nameRequired"));
+    const navn = presetName.trim();
+    if (!navn || !companyId) {
+      toast.error(t("maintenance.schedules.presetNameRequired"));
+      return;
+    }
+    if (presets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
+      toast.error(t("maintenance.schedules.presetNameDuplicate"));
       return;
     }
     try {
+      setSavingPreset(true);
       const { error } = await (supabase as any).from("maintenance_schedule_presets").insert({
         company_id: companyId,
-        navn: form.navn.trim(),
+        navn,
         interval_days: num(form.interval_days),
         interval_hours: num(form.interval_hours),
         interval_missions: num(form.interval_missions),
@@ -337,12 +348,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       });
       if (error) throw error;
       toast.success(t("maintenance.schedules.presetSaved"));
+      setPresetNameOpen(false);
       setPresets(await fetchSchedulePresets(companyId));
     } catch (err: any) {
       console.error("Failed to save preset:", err);
       toast.error(err.message || t("maintenance.actionError"));
+    } finally {
+      setSavingPreset(false);
     }
   };
+
 
   const remove = async (s: MaintenanceSchedule) => {
     try {
