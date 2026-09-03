@@ -449,7 +449,7 @@ const Vedlikehold = () => {
   };
 
   const checklistName = (id?: string | null) =>
-    id ? (checklists.find((c) => c.id === id)?.tittel ?? null) : null;
+    id ? (checklists.find((c) => c.id === id)?.tittel ?? extraChecklistNames[id] ?? null) : null;
 
   const startPerform = (item: MaintenanceItem) => {
     setNote("");
