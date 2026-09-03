@@ -116,7 +116,7 @@ const Vedlikehold = () => {
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
   const [schedulesByResource, setSchedulesByResource] = useState<Record<string, MaintenanceSchedule[]>>({});
-  const [scheduleTab, setScheduleTab] = useState<string>("standard");
+  const [selectedScheduleById, setSelectedScheduleById] = useState<Record<string, string>>({});
   const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
   // Sjekklister som tilhører andre avdelinger er ikke med i useChecklists – hent navnene direkte
