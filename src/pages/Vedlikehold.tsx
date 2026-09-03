@@ -26,6 +26,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { MaintenanceBar } from "@/components/maintenance/MaintenanceBar";
 import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
 import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
+import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useChecklists } from "@/hooks/useChecklists";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
