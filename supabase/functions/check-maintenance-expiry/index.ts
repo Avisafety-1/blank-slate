@@ -185,6 +185,30 @@ serve(async (req) => {
       .select('id, navn, neste_vedlikehold, company_id, varsel_dager')
       .not('neste_vedlikehold', 'is', null);
 
+    // ── Batteries with charge-cycle based maintenance ──
+    const { data: cycleEquipment } = await supabase
+      .from('equipment')
+      .select('id, navn, company_id, aktiv, battery_cycles, inspection_interval_cycles, varsel_sykluser, cycles_at_last_inspection')
+      .eq('aktiv', true)
+      .gt('inspection_interval_cycles', 0)
+      .not('battery_cycles', 'is', null);
+
+    const cycleItems = (cycleEquipment || []).flatMap((e: any) => {
+      const used = Math.max(0, (e.battery_cycles ?? 0) - (e.cycles_at_last_inspection ?? 0));
+      const limit = e.inspection_interval_cycles as number;
+      const warn = e.varsel_sykluser ?? Math.round(limit * 0.2);
+      if (used < limit - warn) return [];
+      return [{
+        id: e.id,
+        name: `${e.navn} (${used}/${limit} sykluser)`,
+        type: 'equipment' as const,
+        expiryDate: today,
+        daysUntilExpiry: 0,
+        companyId: e.company_id,
+        statusLevel: (used >= limit ? 'Rød' : 'Gul') as 'Rød' | 'Gul',
+      }];
+    });
+
     const companyIdsWithResources = [...new Set([
       ...(drones || []).map((d: any) => d.company_id),
       ...(equipment || []).map((e: any) => e.company_id),
