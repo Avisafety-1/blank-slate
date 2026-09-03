@@ -400,7 +400,9 @@ const Vedlikehold = () => {
         );
       })
       .sort((a, b) => {
-        const p = STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
+        // Use the stable standard-maintenance status for ordering so clicking schedule tabs
+        // does not make the row jump around.
+        const p = STATUS_PRIORITY[b.sortStatus] - STATUS_PRIORITY[a.sortStatus];
         if (p !== 0) return p;
         const da = daysUntil(a.nextDate);
         const db = daysUntil(b.nextDate);
