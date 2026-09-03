@@ -27,6 +27,7 @@ import { AddDronetagDialog } from "@/components/resources/AddDronetagDialog";
 import { DronetagDetailDialog } from "@/components/resources/DronetagDetailDialog";
 import { useTerminology } from "@/hooks/useTerminology";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, worstStatus } from "@/lib/maintenanceStatus";
+import { fetchScheduleStatusMap } from "@/lib/maintenanceSchedules";
 import { useStatusData } from "@/hooks/useStatusData";
 import { Status } from "@/types";
 import { usePresence } from "@/hooks/usePresence";
@@ -251,6 +252,16 @@ const Resources = () => {
         const finalStatus = worstStatus(status, dbStatus);
         return { ...drone, _aggregatedStatus: finalStatus, last_flown: lastFlownMap[drone.id] || null };
       }));
+
+      // Custom (extra) maintenance schedules also affect the resource status
+      const scheduleStatuses = await fetchScheduleStatusMap(
+        "droner",
+        dronesWithStatus.map((d: any) => ({ id: d.id, totalHours: d.flyvetimer ?? 0 }))
+      );
+      dronesWithStatus.forEach((d: any) => {
+        const s = scheduleStatuses[d.id];
+        if (s) d._aggregatedStatus = worstStatus(d._aggregatedStatus as Status, s);
+      });
       setDrones(dronesWithStatus);
       if (companyId) setCachedData(`offline_drones_${companyId}`, dronesWithStatus);
     } catch (err) {
