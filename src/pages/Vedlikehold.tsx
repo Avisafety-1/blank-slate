@@ -604,6 +604,7 @@ const Vedlikehold = () => {
       const progress = calculateScheduleProgress(sch, {
         totalHours: item.totalHours,
         totalMissions: item.totalMissions,
+        totalCycles: item.totalCycles ?? null,
       });
       const derived: MaintenanceItem = {
         ...item,
