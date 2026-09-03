@@ -779,6 +779,47 @@ const Vedlikehold = () => {
     await fetchAll();
   };
 
+  const checklistName = useCallback(
+    (id?: string | null) =>
+      id ? (checklists.find((c) => c.id === id)?.tittel ?? extraChecklistNames[id] ?? null) : null,
+    [checklists, extraChecklistNames]
+  );
+
+  const startPerform = useCallback((item: MaintenanceItem) => {
+    setNote("");
+    if (item.checklistId) {
+      setChecklistRun({ item, kind: tab });
+      return;
+    }
+    setPending({ item, kind: tab, action: "perform" });
+  }, [tab]);
+
+  const assignChecklist = async (checklistId: string | null) => {
+    if (!checklistPicker) return;
+    const { item, kind } = checklistPicker;
+    try {
+      if (item.schedule) {
+        const { error } = await (supabase as any)
+          .from("maintenance_schedules")
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.schedule.id);
+        if (error) throw error;
+      } else {
+        const table = kind === "droner" ? "drones" : "equipment";
+        const { error } = await (supabase as any)
+          .from(table)
+          .update({ sjekkliste_id: checklistId })
+          .eq("id", item.id);
+        if (error) throw error;
+      }
+      toast.success(t("maintenance.checklistUpdated"));
+      setChecklistPicker(null);
+      await fetchAll();
+    } catch (err: any) {
+      console.error("Failed to set checklist:", err);
+      toast.error(err.message || t("maintenance.actionError"));
+    }
+  };
 
   return (
     <div className="min-h-screen relative w-full overflow-x-hidden">
