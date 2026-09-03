@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
 
@@ -70,6 +71,8 @@ interface MaintenanceItem {
   nextDate: string | null;
   warningDays: number;
   status: Status;
+  /** Stable sort key based on standard maintenance so switching schedule tabs does not reorder rows. */
+  sortStatus: Status;
   serial?: string | null;
   lastFlight?: string | null;
   totalHours: number;
@@ -87,6 +90,208 @@ const daysUntil = (date: string | null): number | null => {
   next.setHours(0, 0, 0, 0);
   return Math.floor((next.getTime() - today.getTime()) / 86400000);
 };
+
+const accentClasses: Record<Status, string> = {
+  "Grønn": "bg-gradient-to-b from-emerald-400 to-emerald-600",
+  "Gul": "bg-gradient-to-b from-amber-400 to-orange-600",
+  "Rød": "bg-gradient-to-b from-red-500 to-rose-700",
+};
+
+const ringClasses: Record<Status, string> = {
+  "Grønn": "border-emerald-500/30 hover:border-emerald-500/60",
+  "Gul": "border-orange-500/40 hover:border-orange-500/70",
+  "Rød": "border-red-500/50 hover:border-red-500/80",
+};
+
+interface MaintenanceRowProps {
+  item: MaintenanceItem;
+  kind: TabKey;
+  selected: boolean;
+  schedulesByResource: Record<string, MaintenanceSchedule[]>;
+  activeSchedule: string;
+  onToggle: (id: string) => void;
+  onOpenDetail: (item: MaintenanceItem) => void;
+  onStartPerform: (item: MaintenanceItem) => void;
+  onOpenLogbook: (item: MaintenanceItem) => void;
+  onReset: (item: MaintenanceItem) => void;
+  onPickChecklist: (item: MaintenanceItem) => void;
+  onSetSchedule: (itemId: string, scheduleName: string) => void;
+  t: TFunction;
+  checklistName: (id?: string | null) => string | null;
+}
+
+const MaintenanceRow = memo(function MaintenanceRow({
+  item,
+  kind,
+  selected,
+  schedulesByResource,
+  activeSchedule,
+  onToggle,
+  onOpenDetail,
+  onStartPerform,
+  onOpenLogbook,
+  onReset,
+  onPickChecklist,
+  onSetSchedule,
+  t,
+  checklistName,
+}: MaintenanceRowProps) {
+  const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
+  const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
+  const missionsStatus = calculateUsageStatus(item.missionsUsed, item.missionsLimit, item.missionsWarning);
+  const left = daysUntil(item.nextDate);
+  const schedules = schedulesByResource[item.id] || [];
+
+  return (
+    <div
+      className={cn("group relative overflow-hidden rounded-2xl border-2 bg-card/50 backdrop-blur-md transition-all duration-300 hover:bg-card/70 hover:shadow-xl", ringClasses[item.status])}
+    >
+      <div className={cn("absolute left-0 top-0 h-full w-1.5 opacity-90 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
+
+      <div className="flex flex-col lg:flex-row">
+        {/* Identitet + handlinger */}
+        <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 border-border/50">
+          <div className="flex items-start justify-between gap-3">
+            <Checkbox
+              className="mt-1 shrink-0"
+              checked={selected}
+              onCheckedChange={() => onToggle(item.id)}
+              aria-label={item.name}
+            />
+            <div className="min-w-0 flex-1">
+              {item.serial && (
+                <span className="inline-block mb-2 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                  {t("maintenance.serial")}: {item.serial}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenDetail(item)}
+                className="group/name relative -mx-1 -my-0.5 block w-fit max-w-full text-left rounded-lg px-1 py-0.5 text-lg sm:text-xl font-bold leading-tight truncate transition-all duration-200 hover:bg-primary/10 hover:text-primary hover:shadow-sm"
+              >
+                <span className="align-middle">{item.name}</span>
+                <ChevronRight className="inline-block w-4 h-4 ml-0.5 align-middle text-primary opacity-0 -translate-x-1 transition-all duration-200 group-hover/name:opacity-100 group-hover/name:translate-x-0" />
+                {item.companyName && (
+                  <span className="ml-2 align-middle inline-block px-2 py-0.5 rounded-full border border-border/70 bg-muted/60 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground group-hover/name:bg-background/80">
+                    {item.companyName}
+                  </span>
+                )}
+              </button>
+              <p className="text-sm text-muted-foreground truncate">
+                {item.subtitle}
+              </p>
+              <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
+                <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
+                <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
+                  {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
+                </span>
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <StatusBadge status={item.status} className="justify-end mb-2" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center justify-end gap-1">
+                <CalendarClock className="w-3 h-3" />
+                {t("maintenance.lastFlown")}
+              </p>
+              <p className="text-xs font-semibold">
+                {item.lastFlight ? new Date(item.lastFlight).toLocaleDateString() : t("maintenance.never")}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button size="sm" className="gap-1.5" onClick={() => onStartPerform(item)}>
+              <Wrench className="w-4 h-4" />
+              {t("maintenance.perform")}
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onPickChecklist(item)}>
+              <ClipboardCheck className="w-4 h-4" />
+              {t("maintenance.maintenanceChecklist")}
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenLogbook(item)}>
+              <BookOpen className="w-4 h-4" />
+              {t("maintenance.openLogbook")}
+            </Button>
+            <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => onReset(item)}>
+              <RotateCcw className="w-4 h-4" />
+              {t("maintenance.reset")}
+            </Button>
+          </div>
+        </div>
+
+        {/* Kompakte statusbarer */}
+        <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
+          {schedules.length > 0 && (
+            <div
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${1 + schedules.length}, minmax(0, 1fr))` }}
+            >
+              <Button
+                size="sm"
+                variant={activeSchedule === "standard" ? "default" : "outline"}
+                onClick={() => onSetSchedule(item.id, "standard")}
+                className="text-xs h-8 px-2 w-full truncate"
+              >
+                {t("maintenance.schedules.standardTab")}
+              </Button>
+              {schedules.map((sch) => (
+                <Button
+                  key={sch.id}
+                  size="sm"
+                  variant={activeSchedule === sch.navn ? "default" : "outline"}
+                  onClick={() => onSetSchedule(item.id, sch.navn)}
+                  className="text-xs h-8 px-2 w-full truncate"
+                >
+                  {sch.navn}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          <MaintenanceBar
+            label={t("maintenance.hours")}
+            current={item.hoursUsed}
+            limit={item.hoursLimit}
+            status={hoursStatus}
+            fractionDigits={1}
+            warningAt={
+              item.hoursLimit
+                ? (item.hoursWarning && item.hoursWarning > 0
+                    ? (item.hoursLimit - item.hoursWarning) / item.hoursLimit
+                    : 0.8)
+                : null
+            }
+          />
+          <MaintenanceBar
+            label={t("maintenance.missions")}
+            current={item.missionsUsed}
+            limit={item.missionsLimit}
+            status={missionsStatus}
+            warningAt={
+              item.missionsLimit
+                ? (item.missionsWarning && item.missionsWarning > 0
+                    ? (item.missionsLimit - item.missionsWarning) / item.missionsLimit
+                    : 0.8)
+                : null
+            }
+          />
+          <MaintenanceBar
+            label={t("maintenance.days")}
+            current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
+            limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
+            status={dateStatus}
+            warningAt={item.nextDate ? 0.5 : null}
+            valueText={
+              item.nextDate
+                ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
+                : undefined
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const Vedlikehold = () => {
   const { t } = useTranslation();
@@ -236,6 +441,7 @@ const Vedlikehold = () => {
         const dateStatus = calculateMaintenanceStatus(d.neste_inspeksjon, d.varsel_dager ?? 14);
         const hoursStatus = calculateUsageStatus(hoursUsed, d.inspection_interval_hours, d.varsel_timer);
         const missionsStatus = calculateUsageStatus(missionsUsed, d.inspection_interval_missions, d.varsel_oppdrag);
+        const status = [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
         const item: MaintenanceItem = {
           id: d.id,
           name: d.modell,
@@ -251,7 +457,8 @@ const Vedlikehold = () => {
           missionsWarning: d.varsel_oppdrag ?? null,
           nextDate: d.neste_inspeksjon ?? null,
           warningDays: d.varsel_dager ?? 14,
-          status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          status,
+          sortStatus: status,
           serial: d.serienummer || d.internal_serial || null,
           lastFlight: lastFlightByDrone.get(d.id) ?? null,
           checklistId: d.sjekkliste_id ?? null,
@@ -276,6 +483,7 @@ const Vedlikehold = () => {
         const dateStatus = calculateMaintenanceStatus(e.neste_vedlikehold, e.varsel_dager ?? 14);
         const hoursStatus = calculateUsageStatus(hoursUsed, e.inspection_interval_hours, e.varsel_timer);
         const missionsStatus = calculateUsageStatus(missionsUsed, e.inspection_interval_missions, e.varsel_oppdrag);
+        const status = [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
         const item: MaintenanceItem = {
           id: e.id,
           name: e.navn,
@@ -291,7 +499,8 @@ const Vedlikehold = () => {
           missionsWarning: e.varsel_oppdrag ?? null,
           nextDate: e.neste_vedlikehold ?? null,
           warningDays: e.varsel_dager ?? 14,
-          status: [dateStatus, hoursStatus, missionsStatus].reduce((w, s) => worstStatus(w, s), "Grønn" as Status),
+          status,
+          sortStatus: status,
           serial: e.serienummer || null,
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
           checklistId: e.sjekkliste_id ?? null,
@@ -372,6 +581,7 @@ const Vedlikehold = () => {
         nextDate: sch.next_due_date ?? null,
         warningDays: sch.warn_days ?? 14,
         status: progress.status,
+        sortStatus: item.sortStatus,
         checklistId: sch.sjekkliste_id ?? null,
         schedule: sch,
       };
@@ -393,7 +603,9 @@ const Vedlikehold = () => {
         );
       })
       .sort((a, b) => {
-        const p = STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
+        // Use the stable standard-maintenance status for ordering so clicking schedule tabs
+        // does not make the row jump around.
+        const p = STATUS_PRIORITY[b.sortStatus] - STATUS_PRIORITY[a.sortStatus];
         if (p !== 0) return p;
         const da = daysUntil(a.nextDate);
         const db = daysUntil(b.nextDate);
@@ -419,18 +631,36 @@ const Vedlikehold = () => {
     [visibleItems, selected],
   );
 
-  const toggleSelected = (id: string) => {
+  const toggleSelected = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  const openDetail = (item: MaintenanceItem) => {
+  const openDetail = useCallback((item: MaintenanceItem) => {
     setDetail({ item, kind: tab });
-  };
+  }, [tab]);
+
+  const handleOpenLogbook = useCallback((item: MaintenanceItem) => {
+    setLogbook({ item, kind: tab });
+  }, [tab]);
+
+  const handleReset = useCallback((item: MaintenanceItem) => {
+    setNote("");
+    setPending({ item, kind: tab, action: "reset" });
+  }, [tab]);
+
+  const handlePickChecklist = useCallback((item: MaintenanceItem) => {
+    setChecklistSearch("");
+    setChecklistPicker({ item, kind: tab });
+  }, [tab]);
+
+  const handleSetSchedule = useCallback((itemId: string, scheduleName: string) => {
+    setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
+  }, []);
 
   const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
     if (!user) return;
@@ -567,29 +797,20 @@ const Vedlikehold = () => {
     await fetchAll();
   };
 
-  const accentClasses: Record<Status, string> = {
-    "Grønn": "bg-gradient-to-b from-emerald-400 to-emerald-600",
-    "Gul": "bg-gradient-to-b from-amber-400 to-orange-600",
-    "Rød": "bg-gradient-to-b from-red-500 to-rose-700",
-  };
+  const checklistName = useCallback(
+    (id?: string | null) =>
+      id ? (checklists.find((c) => c.id === id)?.tittel ?? extraChecklistNames[id] ?? null) : null,
+    [checklists, extraChecklistNames]
+  );
 
-  const ringClasses: Record<Status, string> = {
-    "Grønn": "border-emerald-500/30 hover:border-emerald-500/60",
-    "Gul": "border-orange-500/40 hover:border-orange-500/70",
-    "Rød": "border-red-500/50 hover:border-red-500/80",
-  };
-
-  const checklistName = (id?: string | null) =>
-    id ? (checklists.find((c) => c.id === id)?.tittel ?? extraChecklistNames[id] ?? null) : null;
-
-  const startPerform = (item: MaintenanceItem) => {
+  const startPerform = useCallback((item: MaintenanceItem) => {
     setNote("");
     if (item.checklistId) {
       setChecklistRun({ item, kind: tab });
       return;
     }
     setPending({ item, kind: tab, action: "perform" });
-  };
+  }, [tab]);
 
   const assignChecklist = async (checklistId: string | null) => {
     if (!checklistPicker) return;
@@ -616,166 +837,6 @@ const Vedlikehold = () => {
       console.error("Failed to set checklist:", err);
       toast.error(err.message || t("maintenance.actionError"));
     }
-  };
-
-  const renderRow = (item: MaintenanceItem) => {
-    const dateStatus = calculateMaintenanceStatus(item.nextDate, item.warningDays);
-    const hoursStatus = calculateUsageStatus(item.hoursUsed, item.hoursLimit, item.hoursWarning);
-    const missionsStatus = calculateUsageStatus(item.missionsUsed, item.missionsLimit, item.missionsWarning);
-    const left = daysUntil(item.nextDate);
-
-    return (
-      <div
-        key={item.id}
-        className={cn("group relative overflow-hidden rounded-2xl border-2 bg-card/50 backdrop-blur-md transition-all duration-300 hover:bg-card/70 hover:shadow-xl", ringClasses[item.status])}
-      >
-        <div className={cn("absolute left-0 top-0 h-full w-1.5 opacity-90 transition-opacity group-hover:opacity-100", accentClasses[item.status])} />
-
-        <div className="flex flex-col lg:flex-row">
-          {/* Identitet + handlinger */}
-          <div className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 border-b lg:border-b-0 border-border/50">
-            <div className="flex items-start justify-between gap-3">
-              <Checkbox
-                className="mt-1 shrink-0"
-                checked={selected.has(item.id)}
-                onCheckedChange={() => toggleSelected(item.id)}
-                aria-label={item.name}
-              />
-              <div className="min-w-0 flex-1">
-                {item.serial && (
-                  <span className="inline-block mb-2 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
-                    {t("maintenance.serial")}: {item.serial}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => openDetail(item)}
-                  className="group/name relative -mx-1 -my-0.5 block w-fit max-w-full text-left rounded-lg px-1 py-0.5 text-lg sm:text-xl font-bold leading-tight truncate transition-all duration-200 hover:bg-primary/10 hover:text-primary hover:shadow-sm"
-                >
-                  <span className="align-middle">{item.name}</span>
-                  <ChevronRight className="inline-block w-4 h-4 ml-0.5 align-middle text-primary opacity-0 -translate-x-1 transition-all duration-200 group-hover/name:opacity-100 group-hover/name:translate-x-0" />
-                  {item.companyName && (
-                    <span className="ml-2 align-middle inline-block px-2 py-0.5 rounded-full border border-border/70 bg-muted/60 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground group-hover/name:bg-background/80">
-                      {item.companyName}
-                    </span>
-                  )}
-                </button>
-                <p className="text-sm text-muted-foreground truncate">
-                  {item.subtitle}
-                </p>
-                <p className="mt-1 text-xs flex items-center gap-1.5 truncate">
-                  <ClipboardCheck className={cn("w-3.5 h-3.5 shrink-0", item.checklistId ? "text-emerald-600 dark:text-emerald-300" : "text-muted-foreground/60")} />
-                  <span className={item.checklistId ? "text-emerald-600 dark:text-emerald-300 font-semibold truncate" : "text-muted-foreground/70 truncate"}>
-                    {checklistName(item.checklistId) ?? t("maintenance.noChecklist")}
-                  </span>
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <StatusBadge status={item.status} className="justify-end mb-2" />
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center justify-end gap-1">
-                  <CalendarClock className="w-3 h-3" />
-                  {t("maintenance.lastFlown")}
-                </p>
-                <p className="text-xs font-semibold">
-                  {item.lastFlight ? new Date(item.lastFlight).toLocaleDateString() : t("maintenance.never")}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button size="sm" className="gap-1.5" onClick={() => startPerform(item)}>
-                <Wrench className="w-4 h-4" />
-                {t("maintenance.perform")}
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setChecklistSearch(""); setChecklistPicker({ item, kind: tab }); }}>
-                <ClipboardCheck className="w-4 h-4" />
-                {t("maintenance.maintenanceChecklist")}
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setLogbook({ item, kind: tab })}>
-                <BookOpen className="w-4 h-4" />
-                {t("maintenance.openLogbook")}
-              </Button>
-              <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => { setNote(""); setPending({ item, kind: tab, action: "reset" }); }}>
-                <RotateCcw className="w-4 h-4" />
-                {t("maintenance.reset")}
-              </Button>
-            </div>
-          </div>
-
-          {/* Kompakte statusbarer */}
-          <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
-            {(() => {
-              const schedules = schedulesByResource[item.id] || [];
-              const selected = selectedScheduleById[item.id] ?? "standard";
-              if (schedules.length === 0) return null;
-              return (
-                <div className="flex flex-wrap gap-1.5">
-                  <Button
-                    size="sm"
-                    variant={selected === "standard" ? "default" : "outline"}
-                    onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: "standard" }))}
-                    className="text-xs h-7 px-2"
-                  >
-                    {t("maintenance.schedules.standardTab")}
-                  </Button>
-                  {schedules.map((sch) => (
-                    <Button
-                      key={sch.id}
-                      size="sm"
-                      variant={selected === sch.navn ? "default" : "outline"}
-                      onClick={() => setSelectedScheduleById((prev) => ({ ...prev, [item.id]: sch.navn }))}
-                      className="text-xs h-7 px-2"
-                    >
-                      {sch.navn}
-                    </Button>
-                  ))}
-                </div>
-              );
-            })()}
-
-            <MaintenanceBar
-              label={t("maintenance.hours")}
-              current={item.hoursUsed}
-              limit={item.hoursLimit}
-              status={hoursStatus}
-              fractionDigits={1}
-              warningAt={
-                item.hoursLimit
-                  ? (item.hoursWarning && item.hoursWarning > 0
-                      ? (item.hoursLimit - item.hoursWarning) / item.hoursLimit
-                      : 0.8)
-                  : null
-              }
-            />
-            <MaintenanceBar
-              label={t("maintenance.missions")}
-              current={item.missionsUsed}
-              limit={item.missionsLimit}
-              status={missionsStatus}
-              warningAt={
-                item.missionsLimit
-                  ? (item.missionsWarning && item.missionsWarning > 0
-                      ? (item.missionsLimit - item.missionsWarning) / item.missionsLimit
-                      : 0.8)
-                  : null
-              }
-            />
-            <MaintenanceBar
-              label={t("maintenance.days")}
-              current={left === null ? 0 : Math.max(0, item.warningDays * 2 - left)}
-              limit={item.nextDate ? Math.max(1, item.warningDays * 2) : null}
-              status={dateStatus}
-              warningAt={item.nextDate ? 0.5 : null}
-              valueText={
-                item.nextDate
-                  ? t("maintenance.daysLeft", { count: left ?? 0, date: new Date(item.nextDate).toLocaleDateString() })
-                  : undefined
-              }
-            />
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -889,7 +950,25 @@ const Vedlikehold = () => {
                 ) : visibleItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">{t("maintenance.empty")}</p>
                 ) : (
-                  visibleItems.map(renderRow)
+                  visibleItems.map((item) => (
+                    <MaintenanceRow
+                      key={item.id}
+                      item={item}
+                      kind={tab}
+                      selected={selected.has(item.id)}
+                      schedulesByResource={schedulesByResource}
+                      activeSchedule={selectedScheduleById[item.id] ?? "standard"}
+                      onToggle={toggleSelected}
+                      onOpenDetail={openDetail}
+                      onStartPerform={startPerform}
+                      onOpenLogbook={handleOpenLogbook}
+                      onReset={handleReset}
+                      onPickChecklist={handlePickChecklist}
+                      onSetSchedule={handleSetSchedule}
+                      t={t}
+                      checklistName={checklistName}
+                    />
+                  ))
                 )}
               </TabsContent>
               <TabsContent value="utstyr" className="mt-0 space-y-3">
@@ -898,7 +977,25 @@ const Vedlikehold = () => {
                 ) : visibleItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-6 text-center">{t("maintenance.empty")}</p>
                 ) : (
-                  visibleItems.map(renderRow)
+                  visibleItems.map((item) => (
+                    <MaintenanceRow
+                      key={item.id}
+                      item={item}
+                      kind={tab}
+                      selected={selected.has(item.id)}
+                      schedulesByResource={schedulesByResource}
+                      activeSchedule={selectedScheduleById[item.id] ?? "standard"}
+                      onToggle={toggleSelected}
+                      onOpenDetail={openDetail}
+                      onStartPerform={startPerform}
+                      onOpenLogbook={handleOpenLogbook}
+                      onReset={handleReset}
+                      onPickChecklist={handlePickChecklist}
+                      onSetSchedule={handleSetSchedule}
+                      t={t}
+                      checklistName={checklistName}
+                    />
+                  ))
                 )}
               </TabsContent>
             </Tabs>
