@@ -1306,6 +1306,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   kind="droner"
                   resourceId={drone.id}
                   companyId={drone.company_id}
+                  readOnly
                   onChanged={() => onDroneUpdated()}
                 />
               )}
