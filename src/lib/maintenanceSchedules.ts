@@ -68,7 +68,7 @@ export async function fetchSchedulePresets(companyId: string): Promise<Maintenan
   const { data, error } = await (supabase as any)
     .from("maintenance_schedule_presets")
     .select("*")
-    .eq("company_id", companyId)
+    .or(`company_id.eq.${companyId},is_global.is.true`)
     .order("navn", { ascending: true });
   if (error) throw error;
   return (data || []) as MaintenanceSchedulePreset[];
