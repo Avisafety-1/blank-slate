@@ -68,6 +68,11 @@ interface MaintenanceItem {
   missionsUsed: number;
   missionsLimit: number | null;
   missionsWarning: number | null;
+  /** Battery charge cycles (batteries only) */
+  cyclesUsed?: number;
+  cyclesLimit?: number | null;
+  cyclesWarning?: number | null;
+  totalCycles?: number | null;
   nextDate: string | null;
   warningDays: number;
   status: Status;
