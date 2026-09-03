@@ -8642,6 +8642,7 @@
     "hours": "Flight hours",
     "missions": "Missions",
     "days": "Days",
+    "cycles": "Charge cycles",
     "notSet": "Not set",
     "daysLeft": "{{count}} days left ({{date}})",
     "searchPlaceholder": "Search by name, model or serial number...",
