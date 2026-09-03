@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Status } from "@/types";
 import { calculateMaintenanceStatus, calculateDroneAggregatedStatus, calculateEquipmentMaintenanceStatus, calculatePersonnelAggregatedStatus, worstStatus } from "@/lib/maintenanceStatus";
 import { getPilotFlightsForPeople, type PilotFlight } from "@/lib/pilotFlightLogs";
+import { fetchScheduleStatusMap } from "@/lib/maintenanceSchedules";
 
 interface StatusCounts {
   Grønn: number;
@@ -85,7 +86,16 @@ const fetchDrones = async () => {
     return { ...drone, status: worstStatus(status, dbStatus), last_flown: lastFlownMap[drone.id] || null };
   }));
 
-  return dronesWithMissions;
+  // Extra (custom) maintenance schedules also count towards the drone status
+  const droneScheduleStatuses = await fetchScheduleStatusMap(
+    "droner",
+    dronesWithMissions.map((d: any) => ({ id: d.id, totalHours: d.flyvetimer ?? 0 }))
+  );
+
+  return dronesWithMissions.map((d: any) => ({
+    ...d,
+    status: worstStatus(d.status as Status, droneScheduleStatuses[d.id] ?? "Grønn"),
+  }));
 };
 
 const fetchEquipment = async () => {
@@ -132,7 +142,16 @@ const fetchEquipment = async () => {
     return { ...item, status: worstStatus(maintenanceStatus, dbStatus) };
   }));
 
-  return equipmentWithMissions;
+  // Extra (custom) maintenance schedules also count towards the equipment status
+  const eqScheduleStatuses = await fetchScheduleStatusMap(
+    "utstyr",
+    equipmentWithMissions.map((e: any) => ({ id: e.id, totalHours: e.flyvetimer ?? 0 }))
+  );
+
+  return equipmentWithMissions.map((e: any) => ({
+    ...e,
+    status: worstStatus(e.status as Status, eqScheduleStatuses[e.id] ?? "Grønn"),
+  }));
 };
 
 interface CurrencyRule { enabled: boolean; hours: number; days: number }
