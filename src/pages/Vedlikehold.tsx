@@ -657,8 +657,10 @@ const Vedlikehold = () => {
 
   const handlePickChecklist = useCallback((item: MaintenanceItem) => {
     setChecklistSearch("");
+    setChecklistTarget(selectedScheduleById[item.id] ?? "standard");
     setChecklistPicker({ item, kind: tab });
-  }, [tab]);
+  }, [tab, selectedScheduleById]);
+
 
   const handleSetSchedule = useCallback((itemId: string, scheduleName: string) => {
     setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
