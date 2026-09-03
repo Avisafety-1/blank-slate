@@ -155,7 +155,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
             <Checkbox
               className="mt-1 shrink-0"
               checked={selected}
-              onCheckedChange={onToggle}
+              onCheckedChange={() => onToggle(item.id)}
               aria-label={item.name}
             />
             <div className="min-w-0 flex-1">
