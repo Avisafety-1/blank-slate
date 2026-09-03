@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar, ChevronDown, Info } from "lucide-react";
 
 export interface DroneFormValues {
@@ -94,6 +95,8 @@ interface DroneFormFieldsProps {
   technicalResponsibleSlot?: ReactNode;
   /** Rendered at the bottom of the right column (administration section) */
   adminSlot?: ReactNode;
+  /** Rendered after the inspection/maintenance interval card (custom maintenance schedules) */
+  schedulesSlot?: ReactNode;
 }
 
 export const DroneFormFields = ({
@@ -109,6 +112,7 @@ export const DroneFormFields = ({
   statusReasonsSlot,
   technicalResponsibleSlot,
   adminSlot,
+  schedulesSlot,
 }: DroneFormFieldsProps) => {
   const { t } = useTranslation();
   const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
