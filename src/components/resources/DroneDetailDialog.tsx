@@ -36,6 +36,7 @@ import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggreg
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { DroneFormFields } from "./DroneFormFields";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
+import { InspectionOverview } from "./InspectionOverview";
 
 import { translateResourceStatus } from "@/lib/i18nHelpers";
 import { Status } from "@/types";
@@ -1190,7 +1191,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   kind="droner"
                   resourceId={drone.id}
                   companyId={drone.company_id}
-                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions: totalMissions }}
+                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions: missionsSinceInspection + (drone.missions_at_last_inspection ?? 0) }}
                   standard={{
                     lastAt: drone.sist_inspeksjon,
                     nextAt: drone.neste_inspeksjon,
