@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,6 +95,10 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState("");
+  const ownPresets = presets.filter((p) => !p.is_global);
+  const catalogPresets = presets.filter((p) => p.is_global);
+  const selectedPreset = presets.find((p) => p.id === selectedPresetId) || null;
   const [presetNameOpen, setPresetNameOpen] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [savingPreset, setSavingPreset] = useState(false);
@@ -223,6 +227,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const applyPreset = (presetId: string) => {
     const p = presets.find((x) => x.id === presetId);
     if (!p) return;
+    setSelectedPresetId(presetId);
     setForm((prev) => ({
       ...prev,
       navn: editingStandard ? prev.navn : prev.navn || p.navn,
@@ -332,7 +337,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       toast.error(t("maintenance.schedules.presetNameRequired"));
       return;
     }
-    if (presets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
+    if (ownPresets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
       toast.error(t("maintenance.schedules.presetNameDuplicate"));
       return;
     }
@@ -479,7 +484,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       )}
       </CollapsibleContent>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelectedPresetId(""); }}>
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -500,16 +505,47 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
             {presets.length > 0 && (
               <div className="space-y-1">
                 <Label>{t("maintenance.schedules.usePreset")}</Label>
-                <Select onValueChange={applyPreset}>
+                <Select value={selectedPresetId} onValueChange={applyPreset}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("maintenance.schedules.usePresetPlaceholder")} />
                   </SelectTrigger>
-                  <SelectContent>
-                    {presets.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
-                    ))}
+                  <SelectContent className="max-h-72">
+                    {ownPresets.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>{t("maintenance.schedules.ownPresets")}</SelectLabel>
+                        {ownPresets.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {catalogPresets.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>{t("maintenance.schedules.catalogPresets")}</SelectLabel>
+                        {catalogPresets.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
+                {selectedPreset?.is_global && (
+                  <div className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs text-muted-foreground space-y-1">
+                    {selectedPreset.modellfamilie && (
+                      <p className="font-medium text-foreground">{selectedPreset.modellfamilie}</p>
+                    )}
+                    {selectedPreset.merknad && <p>{selectedPreset.merknad}</p>}
+                    {selectedPreset.kilde_url && (
+                      <a
+                        href={selectedPreset.kilde_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        {t("maintenance.schedules.presetSource")}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

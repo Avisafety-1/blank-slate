@@ -25,7 +25,7 @@ export interface MaintenanceSchedule {
 
 export interface MaintenanceSchedulePreset {
   id: string;
-  company_id: string;
+  company_id: string | null;
   navn: string;
   interval_days: number | null;
   interval_hours: number | null;
@@ -34,6 +34,11 @@ export interface MaintenanceSchedulePreset {
   warn_hours: number | null;
   warn_missions: number | null;
   email_alerts_enabled: boolean;
+  is_global?: boolean;
+  kategori?: string | null;
+  modellfamilie?: string | null;
+  kilde_url?: string | null;
+  merknad?: string | null;
 }
 
 export type ScheduleKind = "droner" | "utstyr";
@@ -63,7 +68,7 @@ export async function fetchSchedulePresets(companyId: string): Promise<Maintenan
   const { data, error } = await (supabase as any)
     .from("maintenance_schedule_presets")
     .select("*")
-    .eq("company_id", companyId)
+    .or(`company_id.eq.${companyId},is_global.is.true`)
     .order("navn", { ascending: true });
   if (error) throw error;
   return (data || []) as MaintenanceSchedulePreset[];
