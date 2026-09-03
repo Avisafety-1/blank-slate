@@ -819,12 +819,16 @@ const Vedlikehold = () => {
   const assignChecklist = async (checklistId: string | null) => {
     if (!checklistPicker) return;
     const { item, kind } = checklistPicker;
+    const targetSchedule =
+      checklistTarget === "standard"
+        ? null
+        : (schedulesByResource[item.id] || []).find((s) => s.navn === checklistTarget) ?? null;
     try {
-      if (item.schedule) {
+      if (targetSchedule) {
         const { error } = await (supabase as any)
           .from("maintenance_schedules")
           .update({ sjekkliste_id: checklistId })
-          .eq("id", item.schedule.id);
+          .eq("id", targetSchedule.id);
         if (error) throw error;
       } else {
         const table = kind === "droner" ? "drones" : "equipment";
@@ -834,6 +838,7 @@ const Vedlikehold = () => {
           .eq("id", item.id);
         if (error) throw error;
       }
+
       toast.success(t("maintenance.checklistUpdated"));
       setChecklistPicker(null);
       await fetchAll();
