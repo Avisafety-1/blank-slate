@@ -73,6 +73,8 @@ interface MaintenanceItem {
   status: Status;
   /** Stable sort key based on standard maintenance so switching schedule tabs does not reorder rows. */
   sortStatus: Status;
+  /** Stable date tie-breaker (standard maintenance date) so switching schedule tabs does not reorder rows. */
+  sortDate: string | null;
   serial?: string | null;
   lastFlight?: string | null;
   totalHours: number;
@@ -461,6 +463,7 @@ const Vedlikehold = () => {
           warningDays: d.varsel_dager ?? 14,
           status,
           sortStatus: status,
+          sortDate: d.neste_inspeksjon ?? null,
           serial: d.serienummer || d.internal_serial || null,
           lastFlight: lastFlightByDrone.get(d.id) ?? null,
           checklistId: d.sjekkliste_id ?? null,
@@ -503,6 +506,7 @@ const Vedlikehold = () => {
           warningDays: e.varsel_dager ?? 14,
           status,
           sortStatus: status,
+          sortDate: e.neste_vedlikehold ?? null,
           serial: e.serienummer || null,
           lastFlight: lastFlightByEquipment.get(e.id) ?? null,
           checklistId: e.sjekkliste_id ?? null,
@@ -609,8 +613,8 @@ const Vedlikehold = () => {
         // does not make the row jump around.
         const p = STATUS_PRIORITY[b.sortStatus] - STATUS_PRIORITY[a.sortStatus];
         if (p !== 0) return p;
-        const da = daysUntil(a.nextDate);
-        const db = daysUntil(b.nextDate);
+        const da = daysUntil(a.sortDate ?? a.nextDate);
+        const db = daysUntil(b.sortDate ?? b.nextDate);
         if (da === null && db === null) return (a.name || "").localeCompare(b.name || "");
         if (da === null) return 1;
         if (db === null) return -1;
