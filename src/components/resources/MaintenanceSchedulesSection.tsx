@@ -360,6 +360,6 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Collapsible>
   );
 };
