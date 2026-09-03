@@ -904,7 +904,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                       onChanged={() => onEquipmentUpdated()}
                     />
                   )}
-              </div>
+
 
 
               {isAdmin && deptVis.hasDepartments && (
