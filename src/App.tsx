@@ -36,6 +36,7 @@ const Index = React.lazy(() => import("./pages/Index"));
 const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
 const Admin = React.lazy(() => import("./pages/Admin"));
 const Resources = React.lazy(() => import("./pages/Resources"));
+const Vedlikehold = React.lazy(() => import("./pages/Vedlikehold"));
 const KartPage = React.lazy(() => import("./pages/Kart"));
 const Documents = React.lazy(() => import("./pages/Documents"));
 const Kalender = React.lazy(() => import("./pages/Kalender"));
