@@ -337,7 +337,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       toast.error(t("maintenance.schedules.presetNameRequired"));
       return;
     }
-    if (presets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
+    if (ownPresets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
       toast.error(t("maintenance.schedules.presetNameDuplicate"));
       return;
     }
