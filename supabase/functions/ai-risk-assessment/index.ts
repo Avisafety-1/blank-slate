@@ -1983,7 +1983,15 @@ serve(async (req) => {
         inspection_interval_missions: e.inspection_interval_missions,
         varsel_oppdrag: e.varsel_oppdrag,
       });
-      return worstStatus(maint, (e.status as MaintStatus) || 'Grønn');
+      const custom = customEquipmentSchedules[e.id];
+      if (custom && custom.reasons.length > 0) {
+        console.log(`Utstyr ${e.navn ?? e.id}: egendefinert vedlikehold → ${custom.status}. Årsaker: ${custom.reasons.join('; ')}`);
+      }
+      return worstStatus(
+        worstStatus(maint, (e.status as MaintStatus) || 'Grønn'),
+        custom?.status ?? 'Grønn',
+      );
+
     };
 
     const primaryDroneStatusInfo = droneData ? await computeDroneStatus(droneData) : null;
