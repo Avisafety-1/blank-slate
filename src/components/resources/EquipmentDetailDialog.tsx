@@ -756,6 +756,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   kind="utstyr"
                   resourceId={equipment.id}
                   companyId={(equipment.company_id || companyId) as string}
+                  isBattery={isBatteryType(equipment.type)}
                   onChanged={() => onEquipmentUpdated()}
                 />
               )}
