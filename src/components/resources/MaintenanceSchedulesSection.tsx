@@ -48,7 +48,7 @@ type FormState = typeof emptyForm;
 
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, onChanged }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, onChanged }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
