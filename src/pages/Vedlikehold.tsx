@@ -787,27 +787,6 @@ const Vedlikehold = () => {
                 </TabsTrigger>
               </TabsList>
 
-              {scheduleNames.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Button
-                    size="sm"
-                    variant={scheduleTab === "standard" ? "default" : "outline"}
-                    onClick={() => { setScheduleTab("standard"); setSelected(new Set()); }}
-                  >
-                    {t("maintenance.schedules.standardTab")}
-                  </Button>
-                  {scheduleNames.map((name) => (
-                    <Button
-                      key={name}
-                      size="sm"
-                      variant={scheduleTab === name ? "default" : "outline"}
-                      onClick={() => { setScheduleTab(name); setSelected(new Set()); }}
-                    >
-                      {name}
-                    </Button>
-                  ))}
-                </div>
-              )}
 
               <div className="flex flex-col sm:flex-row gap-2 mb-4">
                 <div className="relative flex-1">
