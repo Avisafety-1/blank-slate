@@ -622,7 +622,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={saveAsPreset} disabled={saving}>
+            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={openPresetName} disabled={saving}>
               <Save className="w-4 h-4" />
               {t("maintenance.schedules.saveAsPreset")}
             </Button>
@@ -637,6 +637,34 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={presetNameOpen} onOpenChange={setPresetNameOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("maintenance.schedules.presetNameTitle")}</DialogTitle>
+            <DialogDescription>{t("maintenance.schedules.presetNameDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Label htmlFor="preset-name">{t("maintenance.schedules.presetNameLabel")}</Label>
+            <Input
+              id="preset-name"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder={t("maintenance.schedules.presetNamePlaceholder")}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPresetNameOpen(false)} disabled={savingPreset}>
+              {t("actions.cancel")}
+            </Button>
+            <Button onClick={saveAsPreset} disabled={savingPreset || !presetName.trim()}>
+              {t("actions.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </Collapsible>
   );
 };
