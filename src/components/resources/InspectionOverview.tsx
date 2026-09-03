@@ -267,12 +267,12 @@ export const InspectionOverview = ({
               {active.daysLeft < 0 ? (
                 <>
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {t("maintenance.overdueDays", { days: Math.abs(active.daysLeft) })}
+                  {t("maintenance.inspectionOverdue", { days: Math.abs(active.daysLeft) })}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  {t("maintenance.daysLeft", { days: active.daysLeft })}
+                  {t("maintenance.inspectionDaysLeft", { days: active.daysLeft })}
                 </>
               )}
             </span>
