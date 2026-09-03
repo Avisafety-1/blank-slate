@@ -49,7 +49,7 @@ export const MaintenanceBar = ({
     hasLimit && warningAt != null && warningAt > 0 && warningAt < 1 ? warningAt * 100 : null;
 
   return (
-    <div className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-2 sm:gap-3">
+    <div className="grid grid-cols-[4.5rem_1fr_9rem] items-center gap-2 sm:gap-3">
       <span className="text-xs font-medium text-muted-foreground truncate">{label}</span>
       <div className="relative h-3 rounded-full bg-foreground/15 ring-1 ring-inset ring-border/70 overflow-hidden">
         {hasLimit && (
@@ -68,7 +68,7 @@ export const MaintenanceBar = ({
       </div>
       <span
         className={cn(
-          "text-xs font-semibold tabular-nums whitespace-nowrap",
+          "text-xs font-semibold tabular-nums tracking-tight text-right whitespace-nowrap",
           hasLimit ? textClasses[status] : "text-muted-foreground",
         )}
       >
