@@ -70,6 +70,8 @@ interface MaintenanceItem {
   nextDate: string | null;
   warningDays: number;
   status: Status;
+  /** Stable sort key based on standard maintenance so switching schedule tabs does not reorder rows. */
+  sortStatus: Status;
   serial?: string | null;
   lastFlight?: string | null;
   totalHours: number;
