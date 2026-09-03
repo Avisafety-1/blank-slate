@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MaintenanceBar } from "@/components/maintenance/MaintenanceBar";
+import DroneLogbookDialog from "@/components/resources/DroneLogbookDialog";
+import EquipmentLogbookDialog from "@/components/resources/EquipmentLogbookDialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
