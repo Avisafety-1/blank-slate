@@ -10,6 +10,8 @@ import {
   worstStatus,
   type Status as MaintStatus,
 } from "./maintenanceStatus.ts";
+import { fetchCustomScheduleStatuses } from "./customSchedules.ts";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1886,6 +1888,26 @@ serve(async (req) => {
       } catch (_) { return 0; }
     };
 
+    // Egendefinerte vedlikehold (maintenance_schedules) påvirker også ressursstatus.
+    // Hentes i batch for alle aktuelle droner/utstyr før statusberegningen.
+    const droneStatusInputs = [
+      ...(droneData ? [droneData] : []),
+      ...((assignedDrones as any[]) || []),
+    ].filter((d: any, i: number, arr: any[]) => d?.id && arr.findIndex((x: any) => x.id === d.id) === i);
+    const customDroneSchedules = await fetchCustomScheduleStatuses(
+      supabase,
+      "droner",
+      droneStatusInputs.map((d: any) => ({ id: d.id, totalHours: d.flyvetimer ?? 0 })),
+    );
+    const customEquipmentSchedules = await fetchCustomScheduleStatuses(
+      supabase,
+      "utstyr",
+      ((assignedEquipment as any[]) || [])
+        .filter((e: any) => e?.id)
+        .map((e: any) => ({ id: e.id, totalHours: e.flyvetimer ?? 0 })),
+    );
+
+
     const computeDroneStatus = async (d: any): Promise<{
       status: MaintStatus;
       ownStatus: MaintStatus;
@@ -1919,20 +1941,26 @@ serve(async (req) => {
         linkedEquipment,
       );
       const dbStatus = (d.status as MaintStatus) || 'Grønn';
-      const finalStatus = worstStatus(result.status, dbStatus);
-      // ownStatus skal ikke ta hensyn til DB-status fra koblet utstyr; bruk kun beregnet ownStatus.
-      const ownStatus = result.ownStatus;
+      const custom = customDroneSchedules[d.id];
+      const customStatus = custom?.status ?? 'Grønn';
+      const customReasons = custom?.reasons ?? [];
+      const finalStatus = worstStatus(worstStatus(result.status, dbStatus), customStatus);
+      // ownStatus skal ikke ta hensyn til DB-status fra koblet utstyr, men
+      // egendefinert vedlikehold på selve dronen er dronens eget vedlikehold.
+      const ownStatus = worstStatus(result.ownStatus, customStatus);
+      const allReasons = [...result.reasons, ...customReasons];
       if (finalStatus !== dbStatus) {
-        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', endelig='${finalStatus}', egen='${ownStatus}'. Årsaker: ${result.reasons.join('; ')}`);
+        console.log(`Drone ${d.modell} (${d.id}): rå DB-status='${dbStatus}', beregnet='${result.status}', egendefinert='${customStatus}', endelig='${finalStatus}', egen='${ownStatus}'. Årsaker: ${allReasons.join('; ')}`);
       }
       return {
         status: finalStatus,
         ownStatus,
-        reasons: result.reasons,
-        ownReasons: result.ownReasons,
+        reasons: allReasons,
+        ownReasons: [...result.ownReasons, ...customReasons],
         linkedReasons: result.linkedReasons,
         affectedItems: result.affectedItems,
       };
+
     };
 
     const computeEquipmentStatus = async (e: any): Promise<MaintStatus> => {
@@ -1957,7 +1985,15 @@ serve(async (req) => {
         inspection_interval_missions: e.inspection_interval_missions,
         varsel_oppdrag: e.varsel_oppdrag,
       });
-      return worstStatus(maint, (e.status as MaintStatus) || 'Grønn');
+      const custom = customEquipmentSchedules[e.id];
+      if (custom && custom.reasons.length > 0) {
+        console.log(`Utstyr ${e.navn ?? e.id}: egendefinert vedlikehold → ${custom.status}. Årsaker: ${custom.reasons.join('; ')}`);
+      }
+      return worstStatus(
+        worstStatus(maint, (e.status as MaintStatus) || 'Grønn'),
+        custom?.status ?? 'Grønn',
+      );
+
     };
 
     const primaryDroneStatusInfo = droneData ? await computeDroneStatus(droneData) : null;
