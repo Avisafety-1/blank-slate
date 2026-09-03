@@ -107,6 +107,7 @@ const Vedlikehold = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
+  const [extraChecklistNames, setExtraChecklistNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
