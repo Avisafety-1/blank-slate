@@ -102,6 +102,9 @@ const Vedlikehold = () => {
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [checklistSearch, setChecklistSearch] = useState("");
   const [checklistRun, setChecklistRun] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkChecklist, setBulkChecklist] = useState<MaintenanceItem | null>(null);
   const { checklists } = useChecklists();
 
   useEffect(() => {
@@ -289,6 +292,20 @@ const Vedlikehold = () => {
       .sort((a, b) => a.navn.localeCompare(b.navn));
   }, [droneItems, equipmentItems]);
 
+  const bulkItems = useMemo(
+    () => visibleItems.filter((i) => selected.has(i.id)),
+    [visibleItems, selected],
+  );
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const openDetail = (item: MaintenanceItem) => {
     setDetail({ item, kind: tab });
   };
@@ -306,7 +323,7 @@ const Vedlikehold = () => {
             currentFlyvetimer: d.flyvetimer ?? 0,
             inspectionIntervalDays: d.inspection_interval_days ?? null,
             inspectionType: t("maintenance.performedType"),
-            notes: note,
+            notes: noteText,
           });
         } else {
           const { count: totalMissions } = await supabase
@@ -363,7 +380,7 @@ const Vedlikehold = () => {
             entry_date: today,
             entry_type: "vedlikehold",
             title: t("maintenance.performedType"),
-            description: note || t("maintenance.performedType"),
+            description: noteText || t("maintenance.performedType"),
           });
         }
       }
