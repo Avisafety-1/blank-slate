@@ -5247,7 +5247,7 @@ export type Database = {
       }
       maintenance_schedule_presets: {
         Row: {
-          company_id: string
+          company_id: string | null
           created_at: string
           created_by: string | null
           email_alerts_enabled: boolean
@@ -5255,14 +5255,20 @@ export type Database = {
           interval_days: number | null
           interval_hours: number | null
           interval_missions: number | null
+          is_global: boolean
+          kategori: string | null
+          kilde_url: string | null
+          merknad: string | null
+          modellfamilie: string | null
           navn: string
+          sist_verifisert: string | null
           updated_at: string
           warn_days: number | null
           warn_hours: number | null
           warn_missions: number | null
         }
         Insert: {
-          company_id: string
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           email_alerts_enabled?: boolean
@@ -5270,14 +5276,20 @@ export type Database = {
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
+          is_global?: boolean
+          kategori?: string | null
+          kilde_url?: string | null
+          merknad?: string | null
+          modellfamilie?: string | null
           navn: string
+          sist_verifisert?: string | null
           updated_at?: string
           warn_days?: number | null
           warn_hours?: number | null
           warn_missions?: number | null
         }
         Update: {
-          company_id?: string
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           email_alerts_enabled?: boolean
@@ -5285,7 +5297,13 @@ export type Database = {
           interval_days?: number | null
           interval_hours?: number | null
           interval_missions?: number | null
+          is_global?: boolean
+          kategori?: string | null
+          kilde_url?: string | null
+          merknad?: string | null
+          modellfamilie?: string | null
           navn?: string
+          sist_verifisert?: string | null
           updated_at?: string
           warn_days?: number | null
           warn_hours?: number | null
