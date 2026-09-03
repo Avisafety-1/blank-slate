@@ -95,6 +95,10 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [presetNameOpen, setPresetNameOpen] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [savingPreset, setSavingPreset] = useState(false);
+
 
   const isDrone = kind === "droner";
 
@@ -317,15 +321,26 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     }
   };
 
+  const openPresetName = () => {
+    setPresetName(form.navn.trim() || t("maintenance.schedules.standardTab"));
+    setPresetNameOpen(true);
+  };
+
   const saveAsPreset = async () => {
-    if (!form.navn.trim() || !companyId) {
-      toast.error(t("maintenance.schedules.nameRequired"));
+    const navn = presetName.trim();
+    if (!navn || !companyId) {
+      toast.error(t("maintenance.schedules.presetNameRequired"));
+      return;
+    }
+    if (presets.some((p) => p.navn.trim().toLowerCase() === navn.toLowerCase())) {
+      toast.error(t("maintenance.schedules.presetNameDuplicate"));
       return;
     }
     try {
+      setSavingPreset(true);
       const { error } = await (supabase as any).from("maintenance_schedule_presets").insert({
         company_id: companyId,
-        navn: form.navn.trim(),
+        navn,
         interval_days: num(form.interval_days),
         interval_hours: num(form.interval_hours),
         interval_missions: num(form.interval_missions),
@@ -337,12 +352,16 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       });
       if (error) throw error;
       toast.success(t("maintenance.schedules.presetSaved"));
+      setPresetNameOpen(false);
       setPresets(await fetchSchedulePresets(companyId));
     } catch (err: any) {
       console.error("Failed to save preset:", err);
       toast.error(err.message || t("maintenance.actionError"));
+    } finally {
+      setSavingPreset(false);
     }
   };
+
 
   const remove = async (s: MaintenanceSchedule) => {
     try {
@@ -603,7 +622,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={saveAsPreset} disabled={saving}>
+            <Button variant="ghost" className="gap-1.5 w-full sm:w-auto" onClick={openPresetName} disabled={saving}>
               <Save className="w-4 h-4" />
               {t("maintenance.schedules.saveAsPreset")}
             </Button>
@@ -618,6 +637,34 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={presetNameOpen} onOpenChange={setPresetNameOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("maintenance.schedules.presetNameTitle")}</DialogTitle>
+            <DialogDescription>{t("maintenance.schedules.presetNameDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Label htmlFor="preset-name">{t("maintenance.schedules.presetNameLabel")}</Label>
+            <Input
+              id="preset-name"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder={t("maintenance.schedules.presetNamePlaceholder")}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPresetNameOpen(false)} disabled={savingPreset}>
+              {t("actions.cancel")}
+            </Button>
+            <Button onClick={saveAsPreset} disabled={savingPreset || !presetName.trim()}>
+              {t("actions.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </Collapsible>
   );
 };

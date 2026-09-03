@@ -8706,6 +8706,13 @@
       "usePresetPlaceholder": "Select template",
       "saveAsPreset": "Save as template",
       "presetSaved": "Template saved",
+      "presetNameTitle": "Save as template",
+      "presetNameDescription": "Give the template a name. The maintenance entry keeps its own name.",
+      "presetNameLabel": "Template name",
+      "presetNamePlaceholder": "E.g. 200-hour inspection",
+      "presetNameRequired": "The template needs a name",
+      "presetNameDuplicate": "A template with this name already exists",
+
       "saved": "Inspection saved",
       "deleted": "Inspection deleted",
       "everyDays": "Every {{days}} days",

@@ -8708,6 +8708,13 @@
       "usePresetPlaceholder": "Velg mal",
       "saveAsPreset": "Lagre som mal",
       "presetSaved": "Malen er lagret",
+      "presetNameTitle": "Lagre som mal",
+      "presetNameDescription": "Gi malen et navn. Selve vedlikeholdet beholder navnet sitt.",
+      "presetNameLabel": "Navn på mal",
+      "presetNamePlaceholder": "F.eks. 200-timers ettersyn",
+      "presetNameRequired": "Malen må ha et navn",
+      "presetNameDuplicate": "Det finnes allerede en mal med dette navnet",
+
       "saved": "Inspeksjonen er lagret",
       "deleted": "Inspeksjonen er slettet",
       "everyDays": "Hver {{days}}. dag",
