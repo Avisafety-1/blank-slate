@@ -513,10 +513,16 @@ const Resources = () => {
                   <Plane className="w-5 h-5 text-primary" />
                   <h2 className="text-lg font-semibold">{terminology.vehicles}</h2>
                 </div>
-                <Button data-tour="resources-drone-add" onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  {t('actions.add')}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => navigate("/vedlikehold?tab=droner")} size="sm" variant="outline" className="gap-1">
+                    <Wrench className="w-4 h-4" />
+                    {t('maintenance.openOverview')}
+                  </Button>
+                  <Button data-tour="resources-drone-add" onClick={() => setDroneDialogOpen(true)} size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    {t('actions.add')}
+                  </Button>
+                </div>
               </div>
               
               {/* Search field */}
