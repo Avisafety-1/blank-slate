@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, CalendarClock, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
