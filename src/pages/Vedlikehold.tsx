@@ -773,6 +773,7 @@ const Vedlikehold = () => {
           hours_at_last_maintenance: e.flyvetimer ?? 0,
           missions_at_last_maintenance: totalMissions,
         };
+        if (e.battery_cycles != null) update.cycles_at_last_inspection = e.battery_cycles;
         if (action === "perform") update.sist_vedlikeholdt = today;
 
         const { error } = await (supabase as any).from("equipment").update(update).eq("id", e.id);
