@@ -119,6 +119,36 @@ const Vedlikehold = () => {
       if (droneRes.error) throw droneRes.error;
       if (equipmentRes.error) throw equipmentRes.error;
 
+      const droneIds = (droneRes.data || []).map((d: any) => d.id);
+      const equipmentIds = (equipmentRes.data || []).map((e: any) => e.id);
+      const lastFlightByDrone = new Map<string, string>();
+      const lastFlightByEquipment = new Map<string, string>();
+
+      if (droneIds.length > 0) {
+        const { data } = await (supabase as any)
+          .from("flight_logs")
+          .select("drone_id, flight_date")
+          .in("drone_id", droneIds)
+          .order("flight_date", { ascending: false });
+        (data || []).forEach((r: any) => {
+          if (r.drone_id && !lastFlightByDrone.has(r.drone_id)) lastFlightByDrone.set(r.drone_id, r.flight_date);
+        });
+      }
+
+      if (equipmentIds.length > 0) {
+        const { data } = await (supabase as any)
+          .from("flight_log_equipment")
+          .select("equipment_id, flight_logs(flight_date)")
+          .in("equipment_id", equipmentIds);
+        (data || []).forEach((r: any) => {
+          const date = r.flight_logs?.flight_date;
+          if (!date || !r.equipment_id) return;
+          const current = lastFlightByEquipment.get(r.equipment_id);
+          if (!current || date > current) lastFlightByEquipment.set(r.equipment_id, date);
+        });
+      }
+
+
       const drones = await Promise.all((droneRes.data || []).map(async (d: any) => {
         let missionsUsed = 0;
         if (d.inspection_interval_missions) {
