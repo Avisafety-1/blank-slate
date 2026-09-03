@@ -500,16 +500,47 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
             {presets.length > 0 && (
               <div className="space-y-1">
                 <Label>{t("maintenance.schedules.usePreset")}</Label>
-                <Select onValueChange={applyPreset}>
+                <Select value={selectedPresetId} onValueChange={applyPreset}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("maintenance.schedules.usePresetPlaceholder")} />
                   </SelectTrigger>
-                  <SelectContent>
-                    {presets.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
-                    ))}
+                  <SelectContent className="max-h-72">
+                    {ownPresets.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>{t("maintenance.schedules.ownPresets")}</SelectLabel>
+                        {ownPresets.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {catalogPresets.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel>{t("maintenance.schedules.catalogPresets")}</SelectLabel>
+                        {catalogPresets.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.navn}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
                   </SelectContent>
                 </Select>
+                {selectedPreset?.is_global && (
+                  <div className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs text-muted-foreground space-y-1">
+                    {selectedPreset.modellfamilie && (
+                      <p className="font-medium text-foreground">{selectedPreset.modellfamilie}</p>
+                    )}
+                    {selectedPreset.merknad && <p>{selectedPreset.merknad}</p>}
+                    {selectedPreset.kilde_url && (
+                      <a
+                        href={selectedPreset.kilde_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        {t("maintenance.schedules.presetSource")}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
