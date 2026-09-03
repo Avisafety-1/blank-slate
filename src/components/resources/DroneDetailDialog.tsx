@@ -810,22 +810,13 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           status: formData.status,
           flyvetimer: formData.flyvetimer,
           merknader: formData.merknader || null,
-          sist_inspeksjon: formData.sist_inspeksjon
-            ? (formData.sist_inspeksjon.includes('T') ? formData.sist_inspeksjon : formData.sist_inspeksjon || null)
-            : null,
-          neste_inspeksjon: formData.neste_inspeksjon || null,
           kjøpsdato: formData.kjøpsdato || null,
           klasse: formData.klasse || null,
           vekt: formData.vekt ? parseFloat(formData.vekt) : null,
           payload: formData.payload ? parseFloat(formData.payload) : null,
-          inspection_start_date: formData.inspection_start_date || null,
-          inspection_interval_days: formData.inspection_interval_days ? parseInt(formData.inspection_interval_days) : null,
-          inspection_interval_hours: formData.inspection_interval_hours ? parseFloat(formData.inspection_interval_hours) : null,
-          inspection_interval_missions: formData.inspection_interval_missions ? parseInt(formData.inspection_interval_missions) : null,
-          varsel_dager: formData.varsel_dager ? parseInt(formData.varsel_dager) : 14,
-          varsel_timer: formData.varsel_timer ? parseFloat(formData.varsel_timer) : null,
-          varsel_oppdrag: formData.varsel_oppdrag ? parseInt(formData.varsel_oppdrag) : null,
-          sjekkliste_id: formData.sjekkliste_id && formData.sjekkliste_id !== "none" ? formData.sjekkliste_id : null,
+          // Standard maintenance fields (inspection intervals, warnings, checklist)
+          // are owned by the unified maintenance section and saved from its dialog.
+
           operations_checklist_ids: formData.operations_checklist_ids.length > 0 ? formData.operations_checklist_ids : null,
           post_flight_checklist_id: formData.post_flight_checklist_id && formData.post_flight_checklist_id !== "none" ? formData.post_flight_checklist_id : null,
           technical_responsible_id: formTechnicalResponsibleId || null,
