@@ -842,12 +842,15 @@ const Vedlikehold = () => {
             ))}
           </div>
 
-          <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={t("maintenance.notePlaceholder")}
-            rows={2}
-          />
+          <div className="space-y-1">
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("maintenance.notePlaceholder")}
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">{t("maintenance.noteHelp")}</p>
+          </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={submitting}>
