@@ -10,6 +10,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -340,6 +341,7 @@ const Vedlikehold = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
+  const [performedDate, setPerformedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
@@ -716,7 +718,7 @@ const Vedlikehold = () => {
     setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
   }, []);
 
-  const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
+  const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string, performedDay?: string) => {
     if (!user) return;
     if (item.schedule) {
       await performSchedule({
@@ -728,6 +730,7 @@ const Vedlikehold = () => {
         totalCycles: item.totalCycles ?? null,
         notes: noteText,
         reset: action === "reset",
+        performedDate: performedDay,
       });
       return;
     }
@@ -743,6 +746,7 @@ const Vedlikehold = () => {
             inspectionIntervalDays: d.inspection_interval_days ?? null,
             inspectionType: t("maintenance.performedType"),
             notes: noteText,
+            performedDate: performedDay,
           });
         } else {
           const totalMissions = await fetchTotalMissionsFor("droner", d.id);
@@ -765,10 +769,10 @@ const Vedlikehold = () => {
         }
       } else {
         const e = item.raw;
-        const today = new Date().toISOString().split("T")[0];
+        const today = performedDay ?? new Date().toISOString().split("T")[0];
         let nextMaintenance: string | null = null;
         if (e.vedlikeholdsintervall_dager) {
-          const nextDate = new Date();
+          const nextDate = new Date(`${today}T12:00:00`);
           nextDate.setDate(nextDate.getDate() + e.vedlikeholdsintervall_dager);
           nextMaintenance = nextDate.toISOString().split("T")[0];
         }
@@ -810,7 +814,7 @@ const Vedlikehold = () => {
     const { item, kind, action } = pending;
     setSubmitting(true);
     try {
-      await applyMaintenance(item, kind, action, note);
+      await applyMaintenance(item, kind, action, note, action === "perform" ? performedDate : undefined);
       toast.success(
         action === "perform"
           ? t("maintenance.performedSuccess", { name: item.name })
@@ -858,6 +862,7 @@ const Vedlikehold = () => {
 
   const startPerform = useCallback((item: MaintenanceItem) => {
     setNote("");
+    setPerformedDate(new Date().toISOString().split("T")[0]);
     if (item.checklistId) {
       setChecklistRun({ item, kind: tab });
       return;
@@ -1306,12 +1311,24 @@ const Vedlikehold = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pending?.action === "perform" && (
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t("maintenance.notePlaceholder")}
-              rows={3}
-            />
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="performed-date" className="text-xs">{t("maintenance.performedDate")}</Label>
+                <Input
+                  id="performed-date"
+                  type="date"
+                  value={performedDate}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setPerformedDate(e.target.value || new Date().toISOString().split("T")[0])}
+                />
+              </div>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("maintenance.notePlaceholder")}
+                rows={3}
+              />
+            </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>{t("actions.cancel")}</AlertDialogCancel>

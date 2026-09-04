@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchTotalMissionsFor } from "@/lib/maintenanceSchedules";
+import { fetchTotalMissionsFor, dateInputToDate } from "@/lib/maintenanceSchedules";
 
 /**
  * Shared helper to perform a drone inspection.
@@ -17,6 +17,8 @@ export async function performDroneInspection(params: {
   inspectionIntervalDays: number | null;
   inspectionType?: string;
   notes?: string;
+  /** Optional YYYY-MM-DD to backdate the inspection (defaults to today). */
+  performedDate?: string;
 }): Promise<void> {
   const {
     droneId,
@@ -26,9 +28,11 @@ export async function performDroneInspection(params: {
     inspectionIntervalDays,
     inspectionType = "Manuell inspeksjon",
     notes = "",
+    performedDate,
   } = params;
 
-  const now = new Date().toISOString();
+  const performedAt = dateInputToDate(performedDate) ?? new Date();
+  const now = performedAt.toISOString();
 
   // Count total unique missions for this drone up to now (shared helper so the
   // stored baseline matches what every inspection view displays)
@@ -37,7 +41,7 @@ export async function performDroneInspection(params: {
 
   let nextInspection: string | null = null;
   if (inspectionIntervalDays) {
-    const nextDate = new Date();
+    const nextDate = new Date(performedAt);
     nextDate.setDate(nextDate.getDate() + inspectionIntervalDays);
     nextInspection = nextDate.toISOString().split("T")[0];
   }

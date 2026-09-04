@@ -156,11 +156,18 @@ export function scheduleDaysLeft(schedule: MaintenanceSchedule): number | null {
   return Math.floor((next.getTime() - today.getTime()) / 86400000);
 }
 
-export function nextDueFromInterval(intervalDays: number | null | undefined): string | null {
+export function nextDueFromInterval(intervalDays: number | null | undefined, base: Date = new Date()): string | null {
   if (!intervalDays) return null;
-  const d = new Date();
+  const d = new Date(base);
   d.setDate(d.getDate() + intervalDays);
   return d.toISOString();
+}
+
+/** Parses a YYYY-MM-DD date input value into a Date at noon (avoids TZ edge cases). */
+export function dateInputToDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(`${value}T12:00:00`);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 /**
@@ -176,12 +183,15 @@ export async function performSchedule(params: {
   totalCycles?: number | null;
   notes?: string;
   reset?: boolean;
+  /** Optional YYYY-MM-DD to backdate the performed maintenance (defaults to today). */
+  performedDate?: string;
 }): Promise<void> {
-  const { schedule, kind, userId, totalHours, totalMissions, totalCycles, notes = "", reset = false } = params;
-  const now = new Date().toISOString();
+  const { schedule, kind, userId, totalHours, totalMissions, totalCycles, notes = "", reset = false, performedDate } = params;
+  const performedAt = dateInputToDate(performedDate) ?? new Date();
+  const now = performedAt.toISOString();
 
   const update: Record<string, any> = {
-    next_due_date: nextDueFromInterval(schedule.interval_days),
+    next_due_date: nextDueFromInterval(schedule.interval_days, performedAt),
     hours_at_last: totalHours,
     missions_at_last: totalMissions,
     notification_sent: false,

@@ -17,6 +17,7 @@ import {
   MaintenanceSchedule,
   MaintenanceSchedulePreset,
   ScheduleKind,
+  dateInputToDate,
   fetchSchedulePresets,
   fetchSchedulesForResources,
   nextDueFromInterval,
@@ -226,7 +227,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const openNew = () => {
     setEditing(null);
     setEditingStandard(false);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, start_date: toDateInput(new Date().toISOString()) });
     setOpen(true);
   };
 
@@ -246,6 +247,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       warn_missions: s.warn_missions != null ? String(s.warn_missions) : "",
       warn_cycles: s.warn_cycles != null ? String(s.warn_cycles) : "",
       email_alerts_enabled: s.email_alerts_enabled,
+      start_date: toDateInput(s.start_date),
+      last_at: toDateInput(s.last_performed_at),
     });
   };
 
@@ -388,6 +391,9 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       if (editingStandard) {
         await saveStandard();
       } else if (isDraft) {
+        const startIso = dateInputToDate(form.start_date)?.toISOString() ?? editing?.start_date ?? new Date().toISOString();
+        const lastIso = dateInputToDate(form.last_at)?.toISOString() ?? editing?.last_performed_at ?? null;
+        const baseDate = dateInputToDate(form.last_at) ?? dateInputToDate(form.start_date) ?? new Date();
         const draft: MaintenanceSchedule = {
           id: editing?.id ?? `draft-${Date.now()}`,
           company_id: companyId,
@@ -395,15 +401,15 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           equipment_id: kind === "utstyr" ? "" : null,
           navn: form.navn.trim(),
           sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
-          start_date: editing?.start_date ?? new Date().toISOString(),
+          start_date: startIso,
           interval_days: num(form.interval_days),
           interval_hours: num(form.interval_hours),
           interval_missions: num(form.interval_missions),
           warn_days: num(form.warn_days),
           warn_hours: num(form.warn_hours),
           warn_missions: num(form.warn_missions),
-          last_performed_at: editing?.last_performed_at ?? null,
-          next_due_date: nextDueFromInterval(num(form.interval_days)),
+          last_performed_at: lastIso,
+          next_due_date: nextDueFromInterval(num(form.interval_days), baseDate),
           hours_at_last: editing?.hours_at_last ?? null,
           missions_at_last: editing?.missions_at_last ?? null,
           email_alerts_enabled: form.email_alerts_enabled,
@@ -433,7 +439,19 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               }
             : {}),
         };
+        const startIso = dateInputToDate(form.start_date)?.toISOString() ?? null;
+        const lastIso = dateInputToDate(form.last_at)?.toISOString() ?? null;
+        const baseDate = dateInputToDate(form.last_at) ?? dateInputToDate(form.start_date) ?? new Date();
         if (editing) {
+          payload.start_date = startIso ?? editing.start_date;
+          payload.last_performed_at = lastIso ?? editing.last_performed_at;
+          // Recompute next due only when the user changed the dates
+          const datesChanged =
+            form.start_date !== toDateInput(editing.start_date) ||
+            form.last_at !== toDateInput(editing.last_performed_at);
+          if (datesChanged) {
+            payload.next_due_date = nextDueFromInterval(payload.interval_days, baseDate);
+          }
           const { error } = await (supabase as any)
             .from("maintenance_schedules")
             .update(payload)
@@ -442,8 +460,9 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         } else {
           payload[kind === "droner" ? "drone_id" : "equipment_id"] = resourceId;
           payload.created_by = user?.id ?? null;
-          payload.start_date = new Date().toISOString();
-          payload.next_due_date = nextDueFromInterval(payload.interval_days);
+          payload.start_date = startIso ?? new Date().toISOString();
+          payload.last_performed_at = lastIso;
+          payload.next_due_date = nextDueFromInterval(payload.interval_days, baseDate);
           const { error } = await (supabase as any).from("maintenance_schedules").insert(payload);
           if (error) throw error;
         }
@@ -764,7 +783,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </Select>
             </div>
 
-            {editingStandard && (
+            {editingStandard ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {isDrone && (
                   <div className="space-y-1">
@@ -795,6 +814,26 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                     disabled={!!num(form.interval_days)}
                   />
                 </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.startDate")}</Label>
+                  <Input
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.lastPerformed")}</Label>
+                  <Input
+                    type="date"
+                    value={form.last_at}
+                    onChange={(e) => setForm({ ...form, last_at: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">{t("maintenance.schedules.dateHint")}</p>
               </div>
             )}
 
