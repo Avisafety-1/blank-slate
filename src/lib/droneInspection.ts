@@ -29,12 +29,10 @@ export async function performDroneInspection(params: {
 
   const now = new Date().toISOString();
 
-  // Count total unique missions for this drone up to now
-  const { count: totalMissions } = await supabase
-    .from("flight_logs")
-    .select("mission_id", { count: "exact", head: true })
-    .eq("drone_id", droneId)
-    .not("mission_id", "is", null);
+  // Count total unique missions for this drone up to now (shared helper so the
+  // stored baseline matches what every inspection view displays)
+  const totalMissions = await fetchTotalMissionsFor("droner", droneId);
+
 
   let nextInspection: string | null = null;
   if (inspectionIntervalDays) {
