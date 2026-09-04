@@ -21,6 +21,7 @@ import {
   fetchSchedulesForResources,
   nextDueFromInterval,
 } from "@/lib/maintenanceSchedules";
+import { cn } from "@/lib/utils";
 
 interface Props {
   kind: ScheduleKind;
@@ -46,6 +47,9 @@ interface Props {
   /** Controlled "new schedule" dialog open state (parent owns it) */
   externalNewOpen?: boolean;
   onExternalNewOpenChange?: (open: boolean) => void;
+  /** Controlled "edit all maintenance" dialog open state (parent owns it): shows tabs for standard + each schedule */
+  externalEditOpen?: boolean;
+  onExternalEditOpenChange?: (open: boolean) => void;
 }
 
 const emptyForm = {
