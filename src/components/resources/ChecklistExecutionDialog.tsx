@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect, type ReactNode } from "react";
 import { CheckCircle2, Circle, ClipboardCheck, FileText, ExternalLink, AlertTriangle, Loader2, ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -40,6 +40,8 @@ interface ChecklistExecutionDialogProps {
   checklistId?: string;
   itemName: string;
   onComplete: (checklistId: string) => void | Promise<void>;
+  /** Optional extra content (e.g. date/note fields) rendered above the footer buttons */
+  footerContent?: ReactNode;
 }
 
 function tryParseChecklistItems(beskrivelse: string | null): ChecklistItem[] | null {
