@@ -596,7 +596,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     <Battery className="w-4 h-4 text-primary" />
                     {t('resourceDialogs.equipmentDetail.battery.sectionTitle')}
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                     {equipment.battery_cycles != null && (
                       <div>
                         <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.battery.cycles')}</p>

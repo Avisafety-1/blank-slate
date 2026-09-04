@@ -291,7 +291,7 @@ export const InspectionOverview = ({
   const canPerformSchedule = !!userId && !active.isStandard && !!active.schedule;
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background/60 p-3 sm:p-4 space-y-3">
+    <div className="rounded-xl border border-border/70 bg-background/60 p-3 sm:p-4 space-y-3 min-w-0 overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <p className="text-sm font-semibold flex items-center gap-2">
           <Wrench className="w-4 h-4 text-primary" />
