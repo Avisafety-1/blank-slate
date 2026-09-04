@@ -741,38 +741,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </CollapsibleContent>
               </Collapsible>
 
-              <div className="border-t border-border pt-3 sm:pt-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                  <p className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.sectionTitle')}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePerformMaintenance}
-                    disabled={isSubmitting}
-                    className="text-xs gap-1 w-full sm:w-auto"
-                  >
-                    <Wrench className="w-3 h-3" />
-                    {t('resourceDialogs.equipmentDetail.maintenance.perform')}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.lastMaintenance')}</p>
-                    </div>
-                    <p className="text-sm sm:text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notPerformed')}</p>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.nextMaintenance')}</p>
-                    </div>
-                    <p className="text-sm sm:text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notSetDate')}</p>
-                  </div>
 
-                </div>
-              </div>
+
 
               {(equipment.company_id || companyId) && (
                 <MaintenanceSchedulesSection
