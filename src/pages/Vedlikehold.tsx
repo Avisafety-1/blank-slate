@@ -1192,22 +1192,22 @@ const Vedlikehold = () => {
             <Button
               size="sm"
               variant={checklistTarget === "standard" ? "default" : "outline"}
-              className="text-xs h-8 px-2 w-full min-w-0 truncate"
+              className="text-xs h-8 px-2 w-full min-w-0 overflow-hidden"
               title={t("maintenance.schedules.standardTab")}
               onClick={() => setChecklistTarget("standard")}
             >
-              {t("maintenance.schedules.standardTab")}
+              <span className="truncate min-w-0">{t("maintenance.schedules.standardTab")}</span>
             </Button>
             {pickerSchedules.map((sch) => (
               <Button
                 key={sch.id}
                 size="sm"
                 variant={checklistTarget === sch.navn ? "default" : "outline"}
-                className="text-xs h-8 px-2 w-full min-w-0 truncate"
+                className="text-xs h-8 px-2 w-full min-w-0 overflow-hidden"
                 title={sch.navn}
                 onClick={() => setChecklistTarget(sch.navn)}
               >
-                {sch.navn}
+                <span className="truncate min-w-0">{sch.navn}</span>
               </Button>
             ))}
           </div>
