@@ -230,7 +230,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     setOpen(true);
   };
 
-  const openEdit = (s: MaintenanceSchedule) => {
+  const fillFormSchedule = (s: MaintenanceSchedule) => {
     setEditing(s);
     setEditingStandard(false);
     setForm({
@@ -247,10 +247,14 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       warn_cycles: s.warn_cycles != null ? String(s.warn_cycles) : "",
       email_alerts_enabled: s.email_alerts_enabled,
     });
+  };
+
+  const openEdit = (s: MaintenanceSchedule) => {
+    fillFormSchedule(s);
     setOpen(true);
   };
 
-  const openEditStandard = () => {
+  const fillFormStandard = () => {
     if (!standard) return;
     setEditing(null);
     setEditingStandard(true);
