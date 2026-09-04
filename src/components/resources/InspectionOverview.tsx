@@ -164,6 +164,17 @@ export const InspectionOverview = ({
         decimals: 0,
       });
     }
+    if (standard.intervalCycles) {
+      const cyclesUsed = standard.cyclesUsed ?? 0;
+      standardBars.push({
+        key: "cycles",
+        label: t("maintenance.cycles"),
+        used: cyclesUsed,
+        limit: standard.intervalCycles,
+        status: calculateUsageStatus(cyclesUsed, standard.intervalCycles, standard.warnCycles ?? null),
+        decimals: 0,
+      });
+    }
     const standardDateStatus = calculateMaintenanceStatus(standard.nextAt, standard.warnDays ?? 14);
     const hasStandard =
       !!standard.lastAt || !!standard.nextAt || !!standard.intervalDays || standardBars.length > 0;
@@ -184,6 +195,7 @@ export const InspectionOverview = ({
     schedules.forEach((s) => {
       const hoursUsed = Math.max(0, (totals.totalHours ?? 0) - (s.hours_at_last ?? 0));
       const missionsUsed = Math.max(0, (totals.totalMissions ?? 0) - (s.missions_at_last ?? 0));
+      const cyclesUsed = Math.max(0, (totals.totalCycles ?? 0) - (s.cycles_at_last ?? 0));
       const bars: InspectionView["bars"] = [];
       if (s.interval_hours) {
         bars.push({
@@ -206,6 +218,16 @@ export const InspectionOverview = ({
           decimals: 0,
         });
       }
+      if (s.interval_cycles && totals.totalCycles != null) {
+        bars.push({
+          key: "cycles",
+          label: t("maintenance.cycles"),
+          used: cyclesUsed,
+          limit: s.interval_cycles,
+          status: calculateUsageStatus(cyclesUsed, s.interval_cycles, s.warn_cycles ?? null),
+          decimals: 0,
+        });
+      }
       const dateStatus = calculateMaintenanceStatus(s.next_due_date, s.warn_days ?? 14);
       items.push({
         id: s.id,
@@ -216,9 +238,11 @@ export const InspectionOverview = ({
         nextAt: s.next_due_date,
         checklistId: s.sjekkliste_id,
         isStandard: false,
+        schedule: s,
         bars,
       });
     });
+
 
     const rank = (v: InspectionView) => {
       const dayScore = v.daysLeft == null ? 9_999 : v.daysLeft;
