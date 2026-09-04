@@ -439,7 +439,19 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               }
             : {}),
         };
+        const startIso = dateInputToDate(form.start_date)?.toISOString() ?? null;
+        const lastIso = dateInputToDate(form.last_at)?.toISOString() ?? null;
+        const baseDate = dateInputToDate(form.last_at) ?? dateInputToDate(form.start_date) ?? new Date();
         if (editing) {
+          payload.start_date = startIso ?? editing.start_date;
+          payload.last_performed_at = lastIso ?? editing.last_performed_at;
+          // Recompute next due only when the user changed the dates
+          const datesChanged =
+            form.start_date !== toDateInput(editing.start_date) ||
+            form.last_at !== toDateInput(editing.last_performed_at);
+          if (datesChanged) {
+            payload.next_due_date = nextDueFromInterval(payload.interval_days, baseDate);
+          }
           const { error } = await (supabase as any)
             .from("maintenance_schedules")
             .update(payload)
@@ -448,8 +460,9 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         } else {
           payload[kind === "droner" ? "drone_id" : "equipment_id"] = resourceId;
           payload.created_by = user?.id ?? null;
-          payload.start_date = new Date().toISOString();
-          payload.next_due_date = nextDueFromInterval(payload.interval_days);
+          payload.start_date = startIso ?? new Date().toISOString();
+          payload.last_performed_at = lastIso;
+          payload.next_due_date = nextDueFromInterval(payload.interval_days, baseDate);
           const { error } = await (supabase as any).from("maintenance_schedules").insert(payload);
           if (error) throw error;
         }
