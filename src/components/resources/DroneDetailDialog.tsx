@@ -137,6 +137,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [totalMissions, setTotalMissions] = useState(0);
+
   const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
@@ -434,7 +436,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
     const count = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
     setMissionsSinceInspection(count || 0);
+    const { fetchTotalMissionsFor } = await import("@/lib/maintenanceSchedules");
+    setTotalMissions(await fetchTotalMissionsFor("droner", drone.id));
   };
+
 
   // Calculate next inspection when start date, interval, or sist_inspeksjon changes
   useEffect(() => {
@@ -1182,7 +1187,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   kind="droner"
                   resourceId={drone.id}
                   companyId={drone.company_id}
-                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions: missionsSinceInspection + (drone.missions_at_last_inspection ?? 0) }}
+                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions }}
                   standard={{
                     lastAt: drone.sist_inspeksjon,
                     nextAt: drone.neste_inspeksjon,
