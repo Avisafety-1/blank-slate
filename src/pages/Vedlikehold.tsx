@@ -1310,12 +1310,24 @@ const Vedlikehold = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pending?.action === "perform" && (
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={t("maintenance.notePlaceholder")}
-              rows={3}
-            />
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="performed-date" className="text-xs">{t("maintenance.performedDate")}</Label>
+                <Input
+                  id="performed-date"
+                  type="date"
+                  value={performedDate}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setPerformedDate(e.target.value || new Date().toISOString().split("T")[0])}
+                />
+              </div>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("maintenance.notePlaceholder")}
+                rows={3}
+              />
+            </div>
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>{t("actions.cancel")}</AlertDialogCancel>
