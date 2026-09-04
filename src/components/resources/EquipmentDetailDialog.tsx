@@ -198,10 +198,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       .from("mission_equipment")
       .select("mission_id")
       .eq("equipment_id", equipment.id);
-    if (!data) { setMissionsSinceMaintenance(0); return; }
-    const totalMissions = new Set(data.map((r: any) => r.mission_id)).size;
-    setMissionsSinceMaintenance(totalMissions - (equipment.missions_at_last_maintenance || 0));
+    if (!data) { setMissionsSinceMaintenance(0); setTotalMissions(0); return; }
+    const total = new Set(data.map((r: any) => r.mission_id)).size;
+    setTotalMissions(total);
+    setMissionsSinceMaintenance(total - (equipment.missions_at_last_maintenance || 0));
   };
+
 
   // Calculate next maintenance when last maintenance or interval changes
   useEffect(() => {
