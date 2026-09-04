@@ -184,17 +184,19 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const load = async () => {
     try {
-      const map = await fetchSchedulesForResources(kind, [resourceId]);
-      setSchedulesState(map[resourceId] || []);
+      if (!isDraft && resourceId) {
+        const map = await fetchSchedulesForResources(kind, [resourceId]);
+        setSchedulesState(map[resourceId] || []);
+        await loadStandard();
+      }
       if (companyId) setPresets(await fetchSchedulePresets(companyId));
-      await loadStandard();
     } catch (err: any) {
       console.error("Failed to load maintenance schedules:", err);
     }
   };
 
   useEffect(() => {
-    if (resourceId) load();
+    if (resourceId || companyId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resourceId, companyId, kind]);
 
