@@ -216,6 +216,10 @@ const MaintenanceRow = memo(function MaintenanceRow({
               <Wrench className="w-4 h-4" />
               {t("maintenance.perform")}
             </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNewInspection(item)}>
+              <Plus className="w-4 h-4" />
+              {t("maintenance.schedules.add")}
+            </Button>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onPickChecklist(item)}>
               <ClipboardCheck className="w-4 h-4" />
               {t("maintenance.maintenanceChecklist")}
@@ -338,6 +342,7 @@ const Vedlikehold = () => {
   const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [newInspection, setNewInspection] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [checklistTarget, setChecklistTarget] = useState<string>("standard");
   const [checklistSearch, setChecklistSearch] = useState("");
 
