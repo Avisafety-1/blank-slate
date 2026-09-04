@@ -1,16 +1,30 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useChecklists } from "@/hooks/useChecklists";
 import { calculateMaintenanceStatus, calculateUsageStatus, worstStatus } from "@/lib/maintenanceStatus";
 import {
   MaintenanceSchedule,
   ScheduleKind,
   fetchSchedulesForResources,
+  performSchedule,
   scheduleDaysLeft,
 } from "@/lib/maintenanceSchedules";
+import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { Status } from "@/types";
 
 export interface StandardInspectionInput {
@@ -25,6 +39,10 @@ export interface StandardInspectionInput {
   hoursUsed: number;
   missionsUsed: number;
   checklistId?: string | null;
+  /** Battery charge cycles (batteries only) */
+  intervalCycles?: number | null;
+  warnCycles?: number | null;
+  cyclesUsed?: number;
 }
 
 interface Props {
@@ -32,12 +50,17 @@ interface Props {
   resourceId: string;
   companyId: string | null;
   standard: StandardInspectionInput;
-  totals: { totalHours: number; totalMissions: number };
+  totals: { totalHours: number; totalMissions: number; totalCycles?: number | null };
   /** Rendered on the right of the header for the standard inspection tab */
   actionSlot?: ReactNode;
   /** Reload trigger */
   refreshKey?: unknown;
+  /** Enables "perform maintenance" on custom inspection tabs */
+  userId?: string | null;
+  resourceName?: string;
+  onPerformed?: () => void;
 }
+
 
 interface InspectionView {
   id: string;
