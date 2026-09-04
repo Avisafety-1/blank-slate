@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { DroneFormFields, DroneFormValues, emptyDroneFormValues } from "./DroneFormFields";
+import { MaintenanceSchedulesSection, StandardEntry } from "./MaintenanceSchedulesSection";
+import { MaintenanceSchedule, nextDueFromInterval } from "@/lib/maintenanceSchedules";
 
 interface DroneModel {
   id: string;
@@ -58,6 +60,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [values, setValues] = useState<DroneFormValues>(emptyDroneFormValues);
   const [technicalResponsibleId, setTechnicalResponsibleId] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{ id: string; full_name: string | null }[]>([]);
+  const [draftSchedules, setDraftSchedules] = useState<MaintenanceSchedule[]>([]);
 
   const terminology = useTerminology();
   const { checklists } = useChecklists();
