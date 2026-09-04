@@ -71,8 +71,10 @@ interface InspectionView {
   nextAt: string | null;
   checklistId: string | null;
   isStandard: boolean;
+  schedule?: MaintenanceSchedule;
   bars: { key: string; label: string; used: number; limit: number; status: Status; decimals: number; unit?: string }[];
 }
+
 
 const barClasses = (status: Status) =>
   status === "Rød"
