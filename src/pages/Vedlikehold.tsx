@@ -235,7 +235,8 @@ const MaintenanceRow = memo(function MaintenanceRow({
                 size="sm"
                 variant={activeSchedule === "standard" ? "default" : "outline"}
                 onClick={() => onSetSchedule(item.id, "standard")}
-                className="text-xs h-8 px-2 w-full truncate"
+                className="text-xs h-8 px-2 w-full min-w-0 truncate"
+                title={t("maintenance.schedules.standardTab")}
               >
                 {t("maintenance.schedules.standardTab")}
               </Button>
@@ -245,7 +246,8 @@ const MaintenanceRow = memo(function MaintenanceRow({
                   size="sm"
                   variant={activeSchedule === sch.navn ? "default" : "outline"}
                   onClick={() => onSetSchedule(item.id, sch.navn)}
-                  className="text-xs h-8 px-2 w-full truncate"
+                  className="text-xs h-8 px-2 w-full min-w-0 truncate"
+                  title={sch.navn}
                 >
                   {sch.navn}
                 </Button>
