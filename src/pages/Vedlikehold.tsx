@@ -230,10 +230,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
         {/* Kompakte statusbarer */}
         <div className="w-full lg:w-[26rem] shrink-0 p-4 sm:p-5 flex flex-col justify-center gap-4 bg-muted/60 dark:bg-black/25 border-t lg:border-t-0 lg:border-l border-border/50">
           {schedules.length > 0 && (
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${1 + schedules.length}, minmax(0, 1fr))` }}
-            >
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 size="sm"
                 variant={activeSchedule === "standard" ? "default" : "outline"}
