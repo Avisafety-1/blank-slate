@@ -134,7 +134,7 @@ export const InspectionOverview = ({
     return () => {
       cancelled = true;
     };
-  }, [kind, resourceId, refreshKey]);
+  }, [kind, resourceId, refreshKey, reload]);
 
   const checklistTitle = (id: string | null) =>
     id ? checklists.find((c) => c.id === id)?.tittel ?? null : null;
