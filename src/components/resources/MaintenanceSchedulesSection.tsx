@@ -766,7 +766,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               </Select>
             </div>
 
-            {editingStandard && (
+            {editingStandard ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {isDrone && (
                   <div className="space-y-1">
@@ -797,6 +797,26 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                     disabled={!!num(form.interval_days)}
                   />
                 </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.startDate")}</Label>
+                  <Input
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">{t("maintenance.schedules.lastPerformed")}</Label>
+                  <Input
+                    type="date"
+                    value={form.last_at}
+                    onChange={(e) => setForm({ ...form, last_at: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">{t("maintenance.schedules.dateHint")}</p>
               </div>
             )}
 
