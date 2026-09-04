@@ -813,7 +813,7 @@ const Vedlikehold = () => {
     const { item, kind, action } = pending;
     setSubmitting(true);
     try {
-      await applyMaintenance(item, kind, action, note);
+      await applyMaintenance(item, kind, action, note, action === "perform" ? performedDate : undefined);
       toast.success(
         action === "perform"
           ? t("maintenance.performedSuccess", { name: item.name })
@@ -861,6 +861,7 @@ const Vedlikehold = () => {
 
   const startPerform = useCallback((item: MaintenanceItem) => {
     setNote("");
+    setPerformedDate(new Date().toISOString().split("T")[0]);
     if (item.checklistId) {
       setChecklistRun({ item, kind: tab });
       return;
