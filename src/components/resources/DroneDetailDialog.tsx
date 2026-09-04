@@ -138,6 +138,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
   const [totalMissions, setTotalMissions] = useState(0);
+  const [schedulesRefreshKey, setSchedulesRefreshKey] = useState(0);
 
   const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
@@ -1188,6 +1189,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   resourceId={drone.id}
                   companyId={drone.company_id}
                   totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions }}
+                  userId={user?.id ?? null}
+                  resourceName={`${drone.modell} (${drone.serienummer})`}
+                  refreshKey={schedulesRefreshKey}
+                  onPerformed={() => { setSchedulesRefreshKey((n) => n + 1); onDroneUpdated(); }}
                   standard={{
                     lastAt: drone.sist_inspeksjon,
                     nextAt: drone.neste_inspeksjon,
@@ -1739,7 +1744,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       kind="droner"
                       resourceId={drone.id}
                       companyId={drone.company_id}
-                      onChanged={() => onDroneUpdated()}
+                      onChanged={() => { setSchedulesRefreshKey((n) => n + 1); onDroneUpdated(); }}
                     />
                   ) : null
                 }

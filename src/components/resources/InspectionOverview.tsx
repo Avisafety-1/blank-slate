@@ -1,16 +1,30 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardCheck, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useChecklists } from "@/hooks/useChecklists";
 import { calculateMaintenanceStatus, calculateUsageStatus, worstStatus } from "@/lib/maintenanceStatus";
 import {
   MaintenanceSchedule,
   ScheduleKind,
   fetchSchedulesForResources,
+  performSchedule,
   scheduleDaysLeft,
 } from "@/lib/maintenanceSchedules";
+import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { Status } from "@/types";
 
 export interface StandardInspectionInput {
@@ -25,6 +39,10 @@ export interface StandardInspectionInput {
   hoursUsed: number;
   missionsUsed: number;
   checklistId?: string | null;
+  /** Battery charge cycles (batteries only) */
+  intervalCycles?: number | null;
+  warnCycles?: number | null;
+  cyclesUsed?: number;
 }
 
 interface Props {
@@ -32,12 +50,17 @@ interface Props {
   resourceId: string;
   companyId: string | null;
   standard: StandardInspectionInput;
-  totals: { totalHours: number; totalMissions: number };
+  totals: { totalHours: number; totalMissions: number; totalCycles?: number | null };
   /** Rendered on the right of the header for the standard inspection tab */
   actionSlot?: ReactNode;
   /** Reload trigger */
   refreshKey?: unknown;
+  /** Enables "perform maintenance" on custom inspection tabs */
+  userId?: string | null;
+  resourceName?: string;
+  onPerformed?: () => void;
 }
+
 
 interface InspectionView {
   id: string;
@@ -48,8 +71,10 @@ interface InspectionView {
   nextAt: string | null;
   checklistId: string | null;
   isStandard: boolean;
+  schedule?: MaintenanceSchedule;
   bars: { key: string; label: string; used: number; limit: number; status: Status; decimals: number; unit?: string }[];
 }
+
 
 const barClasses = (status: Status) =>
   status === "Rød"
@@ -80,11 +105,20 @@ export const InspectionOverview = ({
   totals,
   actionSlot,
   refreshKey,
+  userId,
+  resourceName,
+  onPerformed,
 }: Props) => {
   const { t } = useTranslation();
   const { checklists } = useChecklists();
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [confirmSchedule, setConfirmSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [checklistSchedule, setChecklistSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +134,7 @@ export const InspectionOverview = ({
     return () => {
       cancelled = true;
     };
-  }, [kind, resourceId, refreshKey]);
+  }, [kind, resourceId, refreshKey, reload]);
 
   const checklistTitle = (id: string | null) =>
     id ? checklists.find((c) => c.id === id)?.tittel ?? null : null;
@@ -130,6 +164,17 @@ export const InspectionOverview = ({
         decimals: 0,
       });
     }
+    if (standard.intervalCycles) {
+      const cyclesUsed = standard.cyclesUsed ?? 0;
+      standardBars.push({
+        key: "cycles",
+        label: t("maintenance.cycles"),
+        used: cyclesUsed,
+        limit: standard.intervalCycles,
+        status: calculateUsageStatus(cyclesUsed, standard.intervalCycles, standard.warnCycles ?? null),
+        decimals: 0,
+      });
+    }
     const standardDateStatus = calculateMaintenanceStatus(standard.nextAt, standard.warnDays ?? 14);
     const hasStandard =
       !!standard.lastAt || !!standard.nextAt || !!standard.intervalDays || standardBars.length > 0;
@@ -150,6 +195,7 @@ export const InspectionOverview = ({
     schedules.forEach((s) => {
       const hoursUsed = Math.max(0, (totals.totalHours ?? 0) - (s.hours_at_last ?? 0));
       const missionsUsed = Math.max(0, (totals.totalMissions ?? 0) - (s.missions_at_last ?? 0));
+      const cyclesUsed = Math.max(0, (totals.totalCycles ?? 0) - (s.cycles_at_last ?? 0));
       const bars: InspectionView["bars"] = [];
       if (s.interval_hours) {
         bars.push({
@@ -172,6 +218,16 @@ export const InspectionOverview = ({
           decimals: 0,
         });
       }
+      if (s.interval_cycles && totals.totalCycles != null) {
+        bars.push({
+          key: "cycles",
+          label: t("maintenance.cycles"),
+          used: cyclesUsed,
+          limit: s.interval_cycles,
+          status: calculateUsageStatus(cyclesUsed, s.interval_cycles, s.warn_cycles ?? null),
+          decimals: 0,
+        });
+      }
       const dateStatus = calculateMaintenanceStatus(s.next_due_date, s.warn_days ?? 14);
       items.push({
         id: s.id,
@@ -182,9 +238,11 @@ export const InspectionOverview = ({
         nextAt: s.next_due_date,
         checklistId: s.sjekkliste_id,
         isStandard: false,
+        schedule: s,
         bars,
       });
     });
+
 
     const rank = (v: InspectionView) => {
       const dayScore = v.daysLeft == null ? 9_999 : v.daysLeft;
@@ -203,10 +261,34 @@ export const InspectionOverview = ({
     setActiveId(views[0].id);
   }, [views, activeId]);
 
+  const runSchedule = async (schedule: MaintenanceSchedule) => {
+    if (!userId) return;
+    setSubmitting(true);
+    try {
+      await performSchedule({
+        schedule,
+        kind,
+        userId,
+        totalHours: totals.totalHours ?? 0,
+        totalMissions: totals.totalMissions ?? 0,
+        totalCycles: totals.totalCycles ?? null,
+      });
+      toast.success(t("maintenance.performedSuccess", { name: schedule.navn }));
+      setReload((n) => n + 1);
+      onPerformed?.();
+    } catch (error: any) {
+      toast.error(t("maintenance.actionError") + (error?.message ? `: ${error.message}` : ""));
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (views.length === 0) return null;
 
   const active = views.find((v) => v.id === activeId) ?? views[0];
   const soonest = views[0];
+  const canPerformSchedule = !!userId && !active.isStandard && !!active.schedule;
 
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-3 sm:p-4 space-y-3">
@@ -215,8 +297,26 @@ export const InspectionOverview = ({
           <Wrench className="w-4 h-4 text-primary" />
           {t("maintenance.inspectionsTitle")}
         </p>
-        {active.isStandard && actionSlot}
+        {active.isStandard
+          ? actionSlot
+          : canPerformSchedule && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={submitting}
+                onClick={() => {
+                  const s = active.schedule!;
+                  if (s.sjekkliste_id) setChecklistSchedule(s);
+                  else setConfirmSchedule(s);
+                }}
+              >
+                <Wrench className="w-4 h-4 mr-1" />
+                {t("maintenance.perform")}
+              </Button>
+            )}
       </div>
+
 
       {/* Tabs */}
       <div className="grid grid-cols-2 gap-1.5">
@@ -310,9 +410,48 @@ export const InspectionOverview = ({
           <p className="text-xs text-muted-foreground">{t("maintenance.dateOnlyInterval")}</p>
         )}
       </div>
+
+      {checklistSchedule?.sjekkliste_id && (
+        <ChecklistExecutionDialog
+          open={!!checklistSchedule}
+          onOpenChange={(o) => { if (!o) setChecklistSchedule(null); }}
+          checklistId={checklistSchedule.sjekkliste_id}
+          itemName={`${resourceName ?? ""} – ${checklistSchedule.navn}`.trim()}
+          onComplete={async () => {
+            await runSchedule(checklistSchedule);
+            setChecklistSchedule(null);
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!confirmSchedule} onOpenChange={(o) => { if (!o) setConfirmSchedule(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("maintenance.confirmPerformTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("maintenance.confirmPerformDescription", { name: confirmSchedule?.navn })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const s = confirmSchedule;
+                setConfirmSchedule(null);
+                if (s) {
+                  try { await runSchedule(s); } catch { /* toast already shown */ }
+                }
+              }}
+            >
+              {t("maintenance.perform")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
+
 
 function daysUntil(date: string | null): number | null {
   if (!date) return null;

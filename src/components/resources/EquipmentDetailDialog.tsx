@@ -19,11 +19,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
+import { Gauge, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
+import { InspectionOverview } from "./InspectionOverview";
+
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
@@ -98,6 +100,10 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [customType, setCustomType] = useState("");
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
   const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
+  const [totalMissions, setTotalMissions] = useState(0);
+  const [schedulesRefreshKey, setSchedulesRefreshKey] = useState(0);
+
+
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [visibilityWarning, setVisibilityWarning] = useState<{
     missing: MissingVisibility[];
@@ -196,10 +202,12 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
       .from("mission_equipment")
       .select("mission_id")
       .eq("equipment_id", equipment.id);
-    if (!data) { setMissionsSinceMaintenance(0); return; }
-    const totalMissions = new Set(data.map((r: any) => r.mission_id)).size;
-    setMissionsSinceMaintenance(totalMissions - (equipment.missions_at_last_maintenance || 0));
+    if (!data) { setMissionsSinceMaintenance(0); setTotalMissions(0); return; }
+    const total = new Set(data.map((r: any) => r.mission_id)).size;
+    setTotalMissions(total);
+    setMissionsSinceMaintenance(total - (equipment.missions_at_last_maintenance || 0));
   };
+
 
   // Calculate next maintenance when last maintenance or interval changes
   useEffect(() => {
@@ -642,37 +650,52 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
               )}
 
-              {/* Hours progress */}
-              {equipment.inspection_interval_hours != null && equipment.inspection_interval_hours > 0 && (() => {
-                const hoursSince = (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0);
-                const pct = Math.min(100, (hoursSince / equipment.inspection_interval_hours) * 100);
-                const status = calculateUsageStatus(hoursSince, equipment.inspection_interval_hours, equipment.varsel_timer);
-                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
-                return (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.hoursSinceMaintenance', { current: hoursSince.toFixed(1), limit: equipment.inspection_interval_hours })}</p>
-                    <div className="w-full h-2 rounded-full bg-muted">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Inspections (standard + custom) with tabs — same view as drone cards */}
+              {(equipment.company_id || companyId) && (
+                <InspectionOverview
+                  kind="utstyr"
+                  resourceId={equipment.id}
+                  companyId={(equipment.company_id || companyId) as string}
+                  userId={user?.id ?? null}
+                  resourceName={equipment.navn}
+                  refreshKey={schedulesRefreshKey}
+                  totals={{
+                    totalHours: equipment.flyvetimer ?? 0,
+                    totalMissions,
+                    totalCycles: isBatteryType(equipment.type) ? equipment.battery_cycles ?? null : null,
+                  }}
+                  standard={{
+                    lastAt: equipment.sist_vedlikeholdt,
+                    nextAt: equipment.neste_vedlikehold,
+                    intervalDays: equipment.vedlikeholdsintervall_dager ?? null,
+                    intervalHours: equipment.inspection_interval_hours ?? null,
+                    intervalMissions: equipment.inspection_interval_missions ?? null,
+                    warnDays: equipment.varsel_dager,
+                    warnHours: equipment.varsel_timer,
+                    warnMissions: equipment.varsel_oppdrag,
+                    hoursUsed: (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0),
+                    missionsUsed: missionsSinceMaintenance,
+                    checklistId: equipment.sjekkliste_id,
+                  }}
+                  onPerformed={() => {
+                    setSchedulesRefreshKey((n) => n + 1);
+                    onEquipmentUpdated();
+                  }}
+                  actionSlot={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePerformMaintenance}
+                      disabled={isSubmitting}
+                      className="w-full sm:w-auto gap-1"
+                    >
+                      <Wrench className="w-4 h-4" />
+                      {t('resourceDialogs.equipmentDetail.maintenance.perform')}
+                    </Button>
+                  }
+                />
+              )}
 
-              {/* Missions progress */}
-              {equipment.inspection_interval_missions != null && equipment.inspection_interval_missions > 0 && (() => {
-                const missionsSince = (equipment as any)._missionsSinceMaintenance || 0;
-                const pct = Math.min(100, (missionsSince / equipment.inspection_interval_missions) * 100);
-                const status = calculateUsageStatus(missionsSince, equipment.inspection_interval_missions, equipment.varsel_oppdrag);
-                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
-                return (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.missionsSinceMaintenance', { current: missionsSince, limit: equipment.inspection_interval_missions })}</p>
-                    <div className="w-full h-2 rounded-full bg-muted">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* Maintenance details in collapsible */}
               <Collapsible>
@@ -722,38 +745,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </CollapsibleContent>
               </Collapsible>
 
-              <div className="border-t border-border pt-3 sm:pt-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                  <p className="text-sm font-medium">{t('resourceDialogs.equipmentDetail.maintenance.sectionTitle')}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePerformMaintenance}
-                    disabled={isSubmitting}
-                    className="text-xs gap-1 w-full sm:w-auto"
-                  >
-                    <Wrench className="w-3 h-3" />
-                    {t('resourceDialogs.equipmentDetail.maintenance.perform')}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.lastMaintenance')}</p>
-                    </div>
-                    <p className="text-sm sm:text-base">{equipment.sist_vedlikeholdt ? new Date(equipment.sist_vedlikeholdt).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notPerformed')}</p>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-start gap-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.nextMaintenance')}</p>
-                    </div>
-                    <p className="text-sm sm:text-base">{equipment.neste_vedlikehold ? new Date(equipment.neste_vedlikehold).toLocaleDateString() : t('resourceDialogs.equipmentDetail.labels.notSetDate')}</p>
-                  </div>
 
-                </div>
-              </div>
+
 
               {(equipment.company_id || companyId) && (
                 <MaintenanceSchedulesSection
@@ -761,7 +754,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   resourceId={equipment.id}
                   companyId={(equipment.company_id || companyId) as string}
                   isBattery={isBatteryType(equipment.type)}
-                  onChanged={() => onEquipmentUpdated()}
+                  onChanged={() => { setSchedulesRefreshKey((n) => n + 1); onEquipmentUpdated(); }}
+
                 />
               )}
 
