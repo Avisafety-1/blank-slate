@@ -280,6 +280,31 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         }
       }
 
+      // Persist draft custom maintenance schedules now that the drone exists
+      if (droneData?.id && draftSchedules.length > 0) {
+        const rows = draftSchedules.map((s) => ({
+          company_id: companyId,
+          drone_id: droneData.id,
+          navn: s.navn,
+          sjekkliste_id: s.sjekkliste_id,
+          interval_days: s.interval_days,
+          interval_hours: s.interval_hours,
+          interval_missions: s.interval_missions,
+          warn_days: s.warn_days,
+          warn_hours: s.warn_hours,
+          warn_missions: s.warn_missions,
+          email_alerts_enabled: s.email_alerts_enabled,
+          created_by: userId,
+          start_date: new Date().toISOString(),
+          next_due_date: nextDueFromInterval(s.interval_days),
+        }));
+        const { error: schedError } = await (supabase as any).from("maintenance_schedules").insert(rows);
+        if (schedError) {
+          console.error("Failed to save draft maintenance schedules:", schedError);
+          toast.error(t("maintenance.actionError"));
+        }
+      }
+
       toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
       setValues(emptyDroneFormValues);
       setSelectedModelId("");
@@ -311,6 +336,16 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             onModelSelect={handleModelSelect}
             checklists={checklists}
             isMobile={isMobile}
+            schedulesSlot={
+              <MaintenanceSchedulesSection
+                kind="droner"
+                companyId={companyId}
+                draftStandard={standardEntry}
+                onDraftStandardChange={handleDraftStandardChange}
+                draftSchedules={draftSchedules}
+                onDraftSchedulesChange={setDraftSchedules}
+              />
+            }
             technicalResponsibleSlot={
               <div className="border-t pt-4">
                 <Label>{tt("techResponsible.label")}</Label>
