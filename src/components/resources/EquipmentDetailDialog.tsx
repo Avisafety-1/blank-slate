@@ -404,7 +404,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`w-[95vw] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto p-4 sm:p-6`}>
+      <DialogContent className={`w-[calc(100vw-1rem)] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90dvh] overflow-y-auto overflow-x-hidden p-3 sm:p-6`}>
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
