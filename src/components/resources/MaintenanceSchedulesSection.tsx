@@ -24,7 +24,8 @@ import {
 
 interface Props {
   kind: ScheduleKind;
-  resourceId: string;
+  /** Omit to enable draft mode (resource not created yet): edits stay local and are exposed via the draft callbacks */
+  resourceId?: string;
   companyId: string;
   disabled?: boolean;
   /** View-only mode: hides add/edit/delete so the section is informational only */
@@ -34,6 +35,12 @@ interface Props {
   /** Battery equipment: enables charge-cycle based intervals */
   isBattery?: boolean;
   onChanged?: () => void;
+  /** Draft mode: controlled standard entry */
+  draftStandard?: StandardEntry | null;
+  onDraftStandardChange?: (entry: StandardEntry) => void;
+  /** Draft mode: controlled custom schedules */
+  draftSchedules?: MaintenanceSchedule[];
+  onDraftSchedulesChange?: (schedules: MaintenanceSchedule[]) => void;
 }
 
 const emptyForm = {
@@ -57,7 +64,7 @@ const emptyForm = {
 type FormState = typeof emptyForm;
 
 /** Standard maintenance rendered with the same shape as a custom schedule. */
-interface StandardEntry {
+export interface StandardEntry {
   sjekkliste_id: string | null;
   start_date: string | null;
   last_at: string | null;
@@ -89,12 +96,15 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
-  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
-  const [standard, setStandard] = useState<StandardEntry | null>(null);
+  const isDraft = !resourceId;
+  const [schedulesState, setSchedulesState] = useState<MaintenanceSchedule[]>([]);
+  const [standardState, setStandardState] = useState<StandardEntry | null>(null);
+  const schedules = isDraft ? (draftSchedules ?? []) : schedulesState;
+  const standard = isDraft ? (includeStandard ? (draftStandard ?? null) : null) : standardState;
   const [presets, setPresets] = useState<MaintenanceSchedulePreset[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
@@ -114,7 +124,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const loadStandard = async () => {
     if (!includeStandard || !resourceId) {
-      setStandard(null);
+      setStandardState(null);
       return;
     }
     try {
@@ -127,8 +137,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           .eq("id", resourceId)
           .maybeSingle();
         if (error) throw error;
-        if (!data) return setStandard(null);
-        setStandard({
+        if (!data) return setStandardState(null);
+        setStandardState({
           sjekkliste_id: data.sjekkliste_id ?? null,
           start_date: data.inspection_start_date ?? null,
           last_at: data.sist_inspeksjon ?? null,
@@ -151,8 +161,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           .eq("id", resourceId)
           .maybeSingle();
         if (error) throw error;
-        if (!data) return setStandard(null);
-        setStandard({
+        if (!data) return setStandardState(null);
+        setStandardState({
           sjekkliste_id: data.sjekkliste_id ?? null,
           start_date: null,
           last_at: data.sist_vedlikeholdt ?? null,
@@ -174,17 +184,19 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const load = async () => {
     try {
-      const map = await fetchSchedulesForResources(kind, [resourceId]);
-      setSchedules(map[resourceId] || []);
+      if (!isDraft && resourceId) {
+        const map = await fetchSchedulesForResources(kind, [resourceId]);
+        setSchedulesState(map[resourceId] || []);
+        await loadStandard();
+      }
       if (companyId) setPresets(await fetchSchedulePresets(companyId));
-      await loadStandard();
     } catch (err: any) {
       console.error("Failed to load maintenance schedules:", err);
     }
   };
 
   useEffect(() => {
-    if (resourceId) load();
+    if (resourceId || companyId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resourceId, companyId, kind]);
 
@@ -262,6 +274,25 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     const intervalDays = num(form.interval_days);
     const nextDate = calcStandardNext(form.start_date, form.last_at, intervalDays, form.next_at);
     const checklist = form.sjekkliste_id !== "none" ? form.sjekkliste_id : null;
+
+    if (isDraft) {
+      onDraftStandardChange?.({
+        sjekkliste_id: checklist,
+        start_date: form.start_date || null,
+        last_at: form.last_at || null,
+        next_at: nextDate,
+        interval_days: intervalDays,
+        interval_hours: num(form.interval_hours),
+        interval_missions: num(form.interval_missions),
+        interval_cycles: isBattery ? num(form.interval_cycles) : null,
+        warn_days: num(form.warn_days),
+        warn_hours: num(form.warn_hours),
+        warn_missions: num(form.warn_missions),
+        warn_cycles: isBattery ? num(form.warn_cycles) : null,
+      });
+      return;
+    }
+
     const payload: Record<string, any> = isDrone
       ? {
           sjekkliste_id: checklist,
@@ -309,6 +340,33 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     try {
       if (editingStandard) {
         await saveStandard();
+      } else if (isDraft) {
+        const draft: MaintenanceSchedule = {
+          id: editing?.id ?? `draft-${Date.now()}`,
+          company_id: companyId,
+          drone_id: kind === "droner" ? "" : null,
+          equipment_id: kind === "utstyr" ? "" : null,
+          navn: form.navn.trim(),
+          sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
+          start_date: editing?.start_date ?? new Date().toISOString(),
+          interval_days: num(form.interval_days),
+          interval_hours: num(form.interval_hours),
+          interval_missions: num(form.interval_missions),
+          warn_days: num(form.warn_days),
+          warn_hours: num(form.warn_hours),
+          warn_missions: num(form.warn_missions),
+          last_performed_at: editing?.last_performed_at ?? null,
+          next_due_date: nextDueFromInterval(num(form.interval_days)),
+          hours_at_last: editing?.hours_at_last ?? null,
+          missions_at_last: editing?.missions_at_last ?? null,
+          email_alerts_enabled: form.email_alerts_enabled,
+          ...(isBattery
+            ? { interval_cycles: num(form.interval_cycles), warn_cycles: num(form.warn_cycles), cycles_at_last: editing?.cycles_at_last ?? null }
+            : {}),
+        };
+        onDraftSchedulesChange?.(
+          editing ? schedules.map((s) => (s.id === editing.id ? draft : s)) : [...schedules, draft]
+        );
       } else {
         const payload: Record<string, any> = {
           company_id: companyId,
@@ -401,6 +459,11 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
 
   const remove = async (s: MaintenanceSchedule) => {
+    if (isDraft) {
+      onDraftSchedulesChange?.(schedules.filter((x) => x.id !== s.id));
+      toast.success(t("maintenance.schedules.deleted"));
+      return;
+    }
     try {
       const { error } = await (supabase as any).from("maintenance_schedules").delete().eq("id", s.id);
       if (error) throw error;

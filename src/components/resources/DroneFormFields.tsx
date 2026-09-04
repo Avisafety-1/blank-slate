@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Calendar, ChevronDown, Info } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 
 export interface DroneFormValues {
   modell: string;
@@ -102,7 +101,6 @@ interface DroneFormFieldsProps {
 export const DroneFormFields = ({
   values,
   onChange,
-  mode,
   droneModels,
   selectedModelId,
   onModelSelect,
@@ -404,146 +402,6 @@ export const DroneFormFields = ({
         </div>
 
         {statusReasonsSlot}
-
-        {/* Inspection & maintenance intervals (edit mode uses the unified maintenance section below) */}
-        {mode === "create" && (
-        <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
-          <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-sm font-semibold text-foreground">
-            <span className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary" />
-              {tt("inspectionForm.sectionTitle")}
-            </span>
-            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="space-y-4 pt-4">
-
-          {checklists.length > 0 && (
-            <div>
-              <Label htmlFor="sjekkliste">{tt("checklists.inspectionLabel")}</Label>
-              <Select value={values.sjekkliste_id} onValueChange={(value) => onChange({ sjekkliste_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder={tt("checklists.inspectionPlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{tt("checklists.none")}</SelectItem>
-                  {checklists.map((checklist) => (
-                    <SelectItem key={checklist.id} value={checklist.id}>
-                      {checklist.tittel}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">{tt("checklists.inspectionHint")}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="sist_inspeksjon">{tt("inspection.lastInspection")}</Label>
-              <Input
-                id="sist_inspeksjon"
-                type="date"
-                value={values.sist_inspeksjon}
-                onChange={(e) => onChange({ sist_inspeksjon: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="neste_inspeksjon">{tt("inspection.nextInspection")}</Label>
-              <Input
-                id="neste_inspeksjon"
-                type="date"
-                value={values.neste_inspeksjon}
-                onChange={(e) => onChange({ neste_inspeksjon: e.target.value })}
-                disabled={!!values.inspection_interval_days}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="inspection_start_date">{tt("inspectionForm.startDate")}</Label>
-              <Input
-                id="inspection_start_date"
-                type="date"
-                value={values.inspection_start_date}
-                onChange={(e) => onChange({ inspection_start_date: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="inspection_interval_days">{tt("inspectionForm.intervalDays")}</Label>
-              <Input
-                id="inspection_interval_days"
-                type="number"
-                placeholder={tt("inspectionForm.intervalDaysPlaceholder")}
-                value={values.inspection_interval_days}
-                onChange={(e) => onChange({ inspection_interval_days: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="inspection_interval_hours">{tt("inspectionForm.intervalHours")}</Label>
-              <Input
-                id="inspection_interval_hours"
-                type="number"
-                step="0.1"
-                placeholder={tt("inspectionForm.intervalHoursPlaceholder")}
-                value={values.inspection_interval_hours}
-                onChange={(e) => onChange({ inspection_interval_hours: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="inspection_interval_missions">{tt("inspectionForm.intervalMissions")}</Label>
-              <Input
-                id="inspection_interval_missions"
-                type="number"
-                placeholder={tt("inspectionForm.intervalMissionsPlaceholder")}
-                value={values.inspection_interval_missions}
-                onChange={(e) => onChange({ inspection_interval_missions: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="varsel_dager">{tt("inspectionForm.warnDays")}</Label>
-              <Input
-                id="varsel_dager"
-                type="number"
-                placeholder={tt("inspectionForm.warnDaysPlaceholder")}
-                value={values.varsel_dager}
-                onChange={(e) => onChange({ varsel_dager: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="varsel_timer">{tt("inspectionForm.warnHours")}</Label>
-              <Input
-                id="varsel_timer"
-                type="number"
-                step="0.1"
-                placeholder={tt("inspectionForm.warnHoursPlaceholder")}
-                value={values.varsel_timer}
-                onChange={(e) => onChange({ varsel_timer: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="varsel_oppdrag">{tt("inspectionForm.warnMissions")}</Label>
-              <Input
-                id="varsel_oppdrag"
-                type="number"
-                placeholder={tt("inspectionForm.warnMissionsPlaceholder")}
-                value={values.varsel_oppdrag}
-                onChange={(e) => onChange({ varsel_oppdrag: e.target.value })}
-              />
-            </div>
-          </div>
-          {values.inspection_start_date && values.inspection_interval_days && (
-            <p className="text-sm text-muted-foreground">{tt("inspectionForm.autoCalcHint")}</p>
-          )}
-          <p className="text-xs text-muted-foreground">{tt("inspectionForm.statusTriggerHint")}</p>
-          </CollapsibleContent>
-        </Collapsible>
-        )}
-
 
         {schedulesSlot}
 

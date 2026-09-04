@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { DroneFormFields, DroneFormValues, emptyDroneFormValues } from "./DroneFormFields";
+import { MaintenanceSchedulesSection, StandardEntry } from "./MaintenanceSchedulesSection";
+import { MaintenanceSchedule, nextDueFromInterval } from "@/lib/maintenanceSchedules";
 
 interface DroneModel {
   id: string;
@@ -58,6 +60,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
   const [values, setValues] = useState<DroneFormValues>(emptyDroneFormValues);
   const [technicalResponsibleId, setTechnicalResponsibleId] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{ id: string; full_name: string | null }[]>([]);
+  const [draftSchedules, setDraftSchedules] = useState<MaintenanceSchedule[]>([]);
 
   const terminology = useTerminology();
   const { checklists } = useChecklists();
@@ -130,6 +133,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setSelectedModelId("");
       setValues(emptyDroneFormValues);
       setTechnicalResponsibleId(null);
+      setDraftSchedules([]);
     } else {
       setValues({
         ...emptyDroneFormValues,
@@ -154,6 +158,37 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     }
     return "";
   })();
+
+  // Draft-mode standard maintenance: mirror of DroneFormValues for the shared maintenance section
+  const numOrNull = (v: string) => (v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+  const standardEntry: StandardEntry = {
+    sjekkliste_id: values.sjekkliste_id !== "none" ? values.sjekkliste_id : null,
+    start_date: values.inspection_start_date || null,
+    last_at: values.sist_inspeksjon || null,
+    next_at: calculatedNextInspection || values.neste_inspeksjon || null,
+    interval_days: numOrNull(values.inspection_interval_days),
+    interval_hours: numOrNull(values.inspection_interval_hours),
+    interval_missions: numOrNull(values.inspection_interval_missions),
+    interval_cycles: null,
+    warn_days: numOrNull(values.varsel_dager),
+    warn_hours: numOrNull(values.varsel_timer),
+    warn_missions: numOrNull(values.varsel_oppdrag),
+    warn_cycles: null,
+  };
+  const handleDraftStandardChange = (entry: StandardEntry) => {
+    onChange({
+      sjekkliste_id: entry.sjekkliste_id ?? "none",
+      inspection_start_date: entry.start_date ?? "",
+      sist_inspeksjon: entry.last_at ?? "",
+      neste_inspeksjon: entry.next_at ?? "",
+      inspection_interval_days: entry.interval_days != null ? String(entry.interval_days) : "",
+      inspection_interval_hours: entry.interval_hours != null ? String(entry.interval_hours) : "",
+      inspection_interval_missions: entry.interval_missions != null ? String(entry.interval_missions) : "",
+      varsel_dager: entry.warn_days != null ? String(entry.warn_days) : "",
+      varsel_timer: entry.warn_hours != null ? String(entry.warn_hours) : "",
+      varsel_oppdrag: entry.warn_missions != null ? String(entry.warn_missions) : "",
+    });
+  };
 
   const handleModelSelect = (modelId: string) => {
     setSelectedModelId(modelId);
@@ -245,6 +280,31 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
         }
       }
 
+      // Persist draft custom maintenance schedules now that the drone exists
+      if (droneData?.id && draftSchedules.length > 0) {
+        const rows = draftSchedules.map((s) => ({
+          company_id: companyId,
+          drone_id: droneData.id,
+          navn: s.navn,
+          sjekkliste_id: s.sjekkliste_id,
+          interval_days: s.interval_days,
+          interval_hours: s.interval_hours,
+          interval_missions: s.interval_missions,
+          warn_days: s.warn_days,
+          warn_hours: s.warn_hours,
+          warn_missions: s.warn_missions,
+          email_alerts_enabled: s.email_alerts_enabled,
+          created_by: userId,
+          start_date: new Date().toISOString(),
+          next_due_date: nextDueFromInterval(s.interval_days),
+        }));
+        const { error: schedError } = await (supabase as any).from("maintenance_schedules").insert(rows);
+        if (schedError) {
+          console.error("Failed to save draft maintenance schedules:", schedError);
+          toast.error(t("maintenance.actionError"));
+        }
+      }
+
       toast.success(t('resourceDialogs.addDrone.lagtTil', { vehicle: terminology.vehicle }));
       setValues(emptyDroneFormValues);
       setSelectedModelId("");
@@ -276,6 +336,16 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
             onModelSelect={handleModelSelect}
             checklists={checklists}
             isMobile={isMobile}
+            schedulesSlot={
+              <MaintenanceSchedulesSection
+                kind="droner"
+                companyId={companyId}
+                draftStandard={standardEntry}
+                onDraftStandardChange={handleDraftStandardChange}
+                draftSchedules={draftSchedules}
+                onDraftSchedulesChange={setDraftSchedules}
+              />
+            }
             technicalResponsibleSlot={
               <div className="border-t pt-4">
                 <Label>{tt("techResponsible.label")}</Label>
