@@ -41,7 +41,7 @@ export async function performDroneInspection(params: {
 
   let nextInspection: string | null = null;
   if (inspectionIntervalDays) {
-    const nextDate = new Date();
+    const nextDate = new Date(performedAt);
     nextDate.setDate(nextDate.getDate() + inspectionIntervalDays);
     nextInspection = nextDate.toISOString().split("T")[0];
   }
