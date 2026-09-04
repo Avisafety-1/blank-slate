@@ -391,6 +391,9 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       if (editingStandard) {
         await saveStandard();
       } else if (isDraft) {
+        const startIso = dateInputToDate(form.start_date)?.toISOString() ?? editing?.start_date ?? new Date().toISOString();
+        const lastIso = dateInputToDate(form.last_at)?.toISOString() ?? editing?.last_performed_at ?? null;
+        const baseDate = dateInputToDate(form.last_at) ?? dateInputToDate(form.start_date) ?? new Date();
         const draft: MaintenanceSchedule = {
           id: editing?.id ?? `draft-${Date.now()}`,
           company_id: companyId,
@@ -398,15 +401,15 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           equipment_id: kind === "utstyr" ? "" : null,
           navn: form.navn.trim(),
           sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
-          start_date: editing?.start_date ?? new Date().toISOString(),
+          start_date: startIso,
           interval_days: num(form.interval_days),
           interval_hours: num(form.interval_hours),
           interval_missions: num(form.interval_missions),
           warn_days: num(form.warn_days),
           warn_hours: num(form.warn_hours),
           warn_missions: num(form.warn_missions),
-          last_performed_at: editing?.last_performed_at ?? null,
-          next_due_date: nextDueFromInterval(num(form.interval_days)),
+          last_performed_at: lastIso,
+          next_due_date: nextDueFromInterval(num(form.interval_days), baseDate),
           hours_at_last: editing?.hours_at_last ?? null,
           missions_at_last: editing?.missions_at_last ?? null,
           email_alerts_enabled: form.email_alerts_enabled,
