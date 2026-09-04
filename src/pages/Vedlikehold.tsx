@@ -123,7 +123,7 @@ interface MaintenanceRowProps {
   onStartPerform: (item: MaintenanceItem) => void;
   onOpenLogbook: (item: MaintenanceItem) => void;
   onReset: (item: MaintenanceItem) => void;
-  onPickChecklist: (item: MaintenanceItem) => void;
+  onEditMaintenance: (item: MaintenanceItem) => void;
   onNewInspection: (item: MaintenanceItem) => void;
   onSetSchedule: (itemId: string, scheduleName: string) => void;
   t: TFunction;
@@ -141,7 +141,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
   onStartPerform,
   onOpenLogbook,
   onReset,
-  onPickChecklist,
+  onEditMaintenance,
   onNewInspection,
   onSetSchedule,
   t,
@@ -343,6 +343,7 @@ const Vedlikehold = () => {
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [newInspection, setNewInspection] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [editMaintenance, setEditMaintenance] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [checklistTarget, setChecklistTarget] = useState<string>("standard");
   const [checklistSearch, setChecklistSearch] = useState("");
 
@@ -700,11 +701,9 @@ const Vedlikehold = () => {
     setPending({ item, kind: tab, action: "reset" });
   }, [tab]);
 
-  const handlePickChecklist = useCallback((item: MaintenanceItem) => {
-    setChecklistSearch("");
-    setChecklistTarget(selectedScheduleById[item.id] ?? "standard");
-    setChecklistPicker({ item, kind: tab });
-  }, [tab, selectedScheduleById]);
+  const handleEditMaintenance = useCallback((item: MaintenanceItem) => {
+    setEditMaintenance({ item, kind: tab });
+  }, [tab]);
 
   const handleNewInspection = useCallback((item: MaintenanceItem) => {
     setNewInspection({ item, kind: tab });
