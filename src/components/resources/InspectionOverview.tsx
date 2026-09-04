@@ -261,10 +261,34 @@ export const InspectionOverview = ({
     setActiveId(views[0].id);
   }, [views, activeId]);
 
+  const runSchedule = async (schedule: MaintenanceSchedule) => {
+    if (!userId) return;
+    setSubmitting(true);
+    try {
+      await performSchedule({
+        schedule,
+        kind,
+        userId,
+        totalHours: totals.totalHours ?? 0,
+        totalMissions: totals.totalMissions ?? 0,
+        totalCycles: totals.totalCycles ?? null,
+      });
+      toast.success(t("maintenance.performedSuccess", { name: schedule.navn }));
+      setReload((n) => n + 1);
+      onPerformed?.();
+    } catch (error: any) {
+      toast.error(t("maintenance.actionError") + (error?.message ? `: ${error.message}` : ""));
+      throw error;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (views.length === 0) return null;
 
   const active = views.find((v) => v.id === activeId) ?? views[0];
   const soonest = views[0];
+  const canPerformSchedule = !!userId && !active.isStandard && !!active.schedule;
 
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-3 sm:p-4 space-y-3">
@@ -273,8 +297,26 @@ export const InspectionOverview = ({
           <Wrench className="w-4 h-4 text-primary" />
           {t("maintenance.inspectionsTitle")}
         </p>
-        {active.isStandard && actionSlot}
+        {active.isStandard
+          ? actionSlot
+          : canPerformSchedule && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={submitting}
+                onClick={() => {
+                  const s = active.schedule!;
+                  if (s.sjekkliste_id) setChecklistSchedule(s);
+                  else setConfirmSchedule(s);
+                }}
+              >
+                <Wrench className="w-4 h-4 mr-1" />
+                {t("maintenance.perform")}
+              </Button>
+            )}
       </div>
+
 
       {/* Tabs */}
       <div className="grid grid-cols-2 gap-1.5">
