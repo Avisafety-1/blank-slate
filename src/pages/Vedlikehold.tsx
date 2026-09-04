@@ -745,6 +745,7 @@ const Vedlikehold = () => {
             inspectionIntervalDays: d.inspection_interval_days ?? null,
             inspectionType: t("maintenance.performedType"),
             notes: noteText,
+            performedDate: performedDay,
           });
         } else {
           const totalMissions = await fetchTotalMissionsFor("droner", d.id);
@@ -767,10 +768,10 @@ const Vedlikehold = () => {
         }
       } else {
         const e = item.raw;
-        const today = new Date().toISOString().split("T")[0];
+        const today = performedDay ?? new Date().toISOString().split("T")[0];
         let nextMaintenance: string | null = null;
         if (e.vedlikeholdsintervall_dager) {
-          const nextDate = new Date();
+          const nextDate = new Date(`${today}T12:00:00`);
           nextDate.setDate(nextDate.getDate() + e.vedlikeholdsintervall_dager);
           nextMaintenance = nextDate.toISOString().split("T")[0];
         }
