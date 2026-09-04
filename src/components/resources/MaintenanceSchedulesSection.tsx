@@ -105,7 +105,7 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange, externalEditOpen, onExternalEditOpenChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
@@ -122,6 +122,14 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     if (openControlled) onExternalNewOpenChange?.(v);
     else setOpenState(v);
   };
+  const [editAllState, setEditAllState] = useState(false);
+  const editAllControlled = externalEditOpen !== undefined;
+  const editAllOpen = editAllControlled ? !!externalEditOpen : editAllState;
+  const setEditAllOpen = (v: boolean) => {
+    if (editAllControlled) onExternalEditOpenChange?.(v);
+    else setEditAllState(v);
+  };
+  const [activeTab, setActiveTab] = useState("");
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
