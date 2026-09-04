@@ -96,12 +96,15 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
-  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
-  const [standard, setStandard] = useState<StandardEntry | null>(null);
+  const isDraft = !resourceId;
+  const [schedulesState, setSchedulesState] = useState<MaintenanceSchedule[]>([]);
+  const [standardState, setStandardState] = useState<StandardEntry | null>(null);
+  const schedules = isDraft ? (draftSchedules ?? []) : schedulesState;
+  const standard = isDraft ? (includeStandard ? (draftStandard ?? null) : null) : standardState;
   const [presets, setPresets] = useState<MaintenanceSchedulePreset[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
