@@ -101,7 +101,7 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
