@@ -410,9 +410,48 @@ export const InspectionOverview = ({
           <p className="text-xs text-muted-foreground">{t("maintenance.dateOnlyInterval")}</p>
         )}
       </div>
+
+      {checklistSchedule?.sjekkliste_id && (
+        <ChecklistExecutionDialog
+          open={!!checklistSchedule}
+          onOpenChange={(o) => { if (!o) setChecklistSchedule(null); }}
+          checklistId={checklistSchedule.sjekkliste_id}
+          itemName={`${resourceName ?? ""} – ${checklistSchedule.navn}`.trim()}
+          onComplete={async () => {
+            await runSchedule(checklistSchedule);
+            setChecklistSchedule(null);
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!confirmSchedule} onOpenChange={(o) => { if (!o) setConfirmSchedule(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("maintenance.confirmPerformTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("maintenance.confirmPerformDescription", { name: confirmSchedule?.navn })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const s = confirmSchedule;
+                setConfirmSchedule(null);
+                if (s) {
+                  try { await runSchedule(s); } catch { /* toast already shown */ }
+                }
+              }}
+            >
+              {t("maintenance.perform")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
+
 
 function daysUntil(date: string | null): number | null {
   if (!date) return null;
