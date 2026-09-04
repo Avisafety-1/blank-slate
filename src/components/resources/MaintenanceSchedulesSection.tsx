@@ -226,7 +226,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const openNew = () => {
     setEditing(null);
     setEditingStandard(false);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, start_date: toDateInput(new Date().toISOString()) });
     setOpen(true);
   };
 
@@ -246,6 +246,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       warn_missions: s.warn_missions != null ? String(s.warn_missions) : "",
       warn_cycles: s.warn_cycles != null ? String(s.warn_cycles) : "",
       email_alerts_enabled: s.email_alerts_enabled,
+      start_date: toDateInput(s.start_date),
+      last_at: toDateInput(s.last_performed_at),
     });
   };
 
