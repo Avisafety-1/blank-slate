@@ -1192,7 +1192,8 @@ const Vedlikehold = () => {
             <Button
               size="sm"
               variant={checklistTarget === "standard" ? "default" : "outline"}
-              className="text-xs h-8 px-2 w-full truncate"
+              className="text-xs h-8 px-2 w-full min-w-0 truncate"
+              title={t("maintenance.schedules.standardTab")}
               onClick={() => setChecklistTarget("standard")}
             >
               {t("maintenance.schedules.standardTab")}
@@ -1202,7 +1203,8 @@ const Vedlikehold = () => {
                 key={sch.id}
                 size="sm"
                 variant={checklistTarget === sch.navn ? "default" : "outline"}
-                className="text-xs h-8 px-2 w-full truncate"
+                className="text-xs h-8 px-2 w-full min-w-0 truncate"
+                title={sch.navn}
                 onClick={() => setChecklistTarget(sch.navn)}
               >
                 {sch.navn}
