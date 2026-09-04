@@ -105,11 +105,20 @@ export const InspectionOverview = ({
   totals,
   actionSlot,
   refreshKey,
+  userId,
+  resourceName,
+  onPerformed,
 }: Props) => {
   const { t } = useTranslation();
   const { checklists } = useChecklists();
   const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [confirmSchedule, setConfirmSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [checklistSchedule, setChecklistSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+
 
   useEffect(() => {
     let cancelled = false;
