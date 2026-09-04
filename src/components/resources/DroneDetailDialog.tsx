@@ -137,6 +137,8 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sist_vedlikehold: "",
   });
   const [missionsSinceInspection, setMissionsSinceInspection] = useState(0);
+  const [totalMissions, setTotalMissions] = useState(0);
+
   const [lastFlown, setLastFlown] = useState<string | null>(null);
   const [technicalResponsiblePersons, setTechnicalResponsiblePersons] = useState<{id: string; full_name: string | null}[]>([]);
   const [technicalResponsibleName, setTechnicalResponsibleName] = useState<string | null>(null);
