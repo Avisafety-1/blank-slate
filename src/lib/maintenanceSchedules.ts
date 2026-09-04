@@ -70,6 +70,43 @@ export async function fetchSchedulesForResources(
   return map;
 }
 
+/**
+ * Single source of truth for the total number of unique missions a resource has
+ * been used on. Drones count distinct mission_id on flight_logs, equipment counts
+ * distinct mission_id on mission_equipment. All inspection views and all
+ * "mark as performed" baselines MUST use this so the numbers never diverge.
+ */
+export async function fetchTotalMissions(
+  kind: ScheduleKind,
+  resourceIds: string[]
+): Promise<Record<string, number>> {
+  const totals: Record<string, number> = {};
+  if (resourceIds.length === 0) return totals;
+  const table = kind === "droner" ? "flight_logs" : "mission_equipment";
+  const column = kind === "droner" ? "drone_id" : "equipment_id";
+  const { data } = await (supabase as any)
+    .from(table)
+    .select(`${column}, mission_id`)
+    .in(column, resourceIds);
+  const sets: Record<string, Set<string>> = {};
+  (data || []).forEach((r: any) => {
+    const id = r[column];
+    if (!id || !r.mission_id) return;
+    (sets[id] ||= new Set()).add(r.mission_id);
+  });
+  resourceIds.forEach((id) => {
+    totals[id] = sets[id]?.size ?? 0;
+  });
+  return totals;
+}
+
+/** Convenience single-resource variant of {@link fetchTotalMissions}. */
+export async function fetchTotalMissionsFor(kind: ScheduleKind, resourceId: string): Promise<number> {
+  const map = await fetchTotalMissions(kind, [resourceId]);
+  return map[resourceId] ?? 0;
+}
+
+
 export async function fetchSchedulePresets(companyId: string): Promise<MaintenanceSchedulePreset[]> {
   const { data, error } = await (supabase as any)
     .from("maintenance_schedule_presets")
