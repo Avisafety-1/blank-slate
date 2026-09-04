@@ -867,7 +867,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
               {t("maintenance.schedules.saveAsPreset")}
             </Button>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)} disabled={saving}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => (editAllOpen ? setEditAllOpen(false) : setOpen(false))} disabled={saving}>
                 {t("actions.cancel")}
               </Button>
               <Button className="flex-1 sm:flex-none" onClick={save} disabled={saving}>
