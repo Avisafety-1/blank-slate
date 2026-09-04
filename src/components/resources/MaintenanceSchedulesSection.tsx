@@ -450,6 +450,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       }
       toast.success(t("maintenance.schedules.saved"));
       setOpen(false);
+      if (editAllOpen) setEditAllOpen(false);
       await load();
       onChanged?.();
     } catch (err: any) {
@@ -634,22 +635,59 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     </Collapsible>
     )}
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelectedPresetId(""); }}>
+      <Dialog
+        open={open || editAllOpen}
+        onOpenChange={(o) => {
+          if (editAllOpen) {
+            setEditAllOpen(o);
+            if (!o) setActiveTab("");
+          } else {
+            setOpen(o);
+            if (!o) setSelectedPresetId("");
+          }
+        }}
+      >
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingStandard
-                ? t("maintenance.schedules.editStandardTitle")
-                : editing
-                  ? t("maintenance.schedules.editTitle")
-                  : t("maintenance.schedules.addTitle")}
+              {editAllOpen
+                ? t("maintenance.schedules.editAllTitle")
+                : editingStandard
+                  ? t("maintenance.schedules.editStandardTitle")
+                  : editing
+                    ? t("maintenance.schedules.editTitle")
+                    : t("maintenance.schedules.addTitle")}
             </DialogTitle>
             <DialogDescription>
-              {editingStandard
-                ? t("maintenance.schedules.standardDialogDescription")
-                : t("maintenance.schedules.dialogDescription")}
+              {editAllOpen
+                ? t("maintenance.schedules.editAllDescription")
+                : editingStandard
+                  ? t("maintenance.schedules.standardDialogDescription")
+                  : t("maintenance.schedules.dialogDescription")}
             </DialogDescription>
           </DialogHeader>
+
+          {editAllOpen && editTabIds.length > 1 && (
+            <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1">
+              {editTabIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    id === activeTab
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/60"
+                  )}
+                >
+                  {id === "standard"
+                    ? t("maintenance.schedules.standardTab")
+                    : schedules.find((s) => s.id === id)?.navn ?? id}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-3">
             {presets.length > 0 && (
