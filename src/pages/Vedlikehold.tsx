@@ -53,6 +53,8 @@ import {
   calculateScheduleProgress,
   fetchSchedulesForResources,
   performSchedule,
+  fetchTotalMissionsFor,
+
 } from "@/lib/maintenanceSchedules";
 
 type TabKey = "droner" | "utstyr";
