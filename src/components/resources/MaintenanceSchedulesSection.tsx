@@ -124,7 +124,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
   const loadStandard = async () => {
     if (!includeStandard || !resourceId) {
-      setStandard(null);
+      setStandardState(null);
       return;
     }
     try {
@@ -137,8 +137,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           .eq("id", resourceId)
           .maybeSingle();
         if (error) throw error;
-        if (!data) return setStandard(null);
-        setStandard({
+        if (!data) return setStandardState(null);
+        setStandardState({
           sjekkliste_id: data.sjekkliste_id ?? null,
           start_date: data.inspection_start_date ?? null,
           last_at: data.sist_inspeksjon ?? null,
@@ -161,8 +161,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           .eq("id", resourceId)
           .maybeSingle();
         if (error) throw error;
-        if (!data) return setStandard(null);
-        setStandard({
+        if (!data) return setStandardState(null);
+        setStandardState({
           sjekkliste_id: data.sjekkliste_id ?? null,
           start_date: null,
           last_at: data.sist_vedlikeholdt ?? null,
@@ -185,7 +185,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const load = async () => {
     try {
       const map = await fetchSchedulesForResources(kind, [resourceId]);
-      setSchedules(map[resourceId] || []);
+      setSchedulesState(map[resourceId] || []);
       if (companyId) setPresets(await fetchSchedulePresets(companyId));
       await loadStandard();
     } catch (err: any) {
