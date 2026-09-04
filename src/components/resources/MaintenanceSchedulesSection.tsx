@@ -21,6 +21,7 @@ import {
   fetchSchedulesForResources,
   nextDueFromInterval,
 } from "@/lib/maintenanceSchedules";
+import { cn } from "@/lib/utils";
 
 interface Props {
   kind: ScheduleKind;
@@ -46,6 +47,9 @@ interface Props {
   /** Controlled "new schedule" dialog open state (parent owns it) */
   externalNewOpen?: boolean;
   onExternalNewOpenChange?: (open: boolean) => void;
+  /** Controlled "edit all maintenance" dialog open state (parent owns it): shows tabs for standard + each schedule */
+  externalEditOpen?: boolean;
+  onExternalEditOpenChange?: (open: boolean) => void;
 }
 
 const emptyForm = {
@@ -101,7 +105,7 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange, externalEditOpen, onExternalEditOpenChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
@@ -118,6 +122,14 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     if (openControlled) onExternalNewOpenChange?.(v);
     else setOpenState(v);
   };
+  const [editAllState, setEditAllState] = useState(false);
+  const editAllControlled = externalEditOpen !== undefined;
+  const editAllOpen = editAllControlled ? !!externalEditOpen : editAllState;
+  const setEditAllOpen = (v: boolean) => {
+    if (editAllControlled) onExternalEditOpenChange?.(v);
+    else setEditAllState(v);
+  };
+  const [activeTab, setActiveTab] = useState("");
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -218,7 +230,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     setOpen(true);
   };
 
-  const openEdit = (s: MaintenanceSchedule) => {
+  const fillFormSchedule = (s: MaintenanceSchedule) => {
     setEditing(s);
     setEditingStandard(false);
     setForm({
@@ -235,10 +247,14 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       warn_cycles: s.warn_cycles != null ? String(s.warn_cycles) : "",
       email_alerts_enabled: s.email_alerts_enabled,
     });
+  };
+
+  const openEdit = (s: MaintenanceSchedule) => {
+    fillFormSchedule(s);
     setOpen(true);
   };
 
-  const openEditStandard = () => {
+  const fillFormStandard = () => {
     if (!standard) return;
     setEditing(null);
     setEditingStandard(true);
@@ -259,8 +275,28 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       last_at: toDateInput(standard.last_at),
       next_at: toDateInput(standard.next_at),
     });
+  };
+
+  const openEditStandard = () => {
+    fillFormStandard();
     setOpen(true);
   };
+
+  // Edit-all mode: tabs for standard + each custom schedule; switching tabs fills the form
+  const editTabIds = editAllOpen
+    ? [...(standard ? ["standard"] : []), ...schedules.map((s) => s.id)]
+    : [];
+  useEffect(() => {
+    if (!editAllOpen || editTabIds.length === 0) return;
+    const id = editTabIds.includes(activeTab) ? activeTab : editTabIds[0];
+    if (id !== activeTab) setActiveTab(id);
+    if (id === "standard") fillFormStandard();
+    else {
+      const s = schedules.find((x) => x.id === id);
+      if (s) fillFormSchedule(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editAllOpen, activeTab, standard, schedules]);
 
   const applyPreset = (presetId: string) => {
     const p = presets.find((x) => x.id === presetId);
@@ -414,6 +450,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       }
       toast.success(t("maintenance.schedules.saved"));
       setOpen(false);
+      if (editAllOpen) setEditAllOpen(false);
       await load();
       onChanged?.();
     } catch (err: any) {
@@ -598,22 +635,59 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     </Collapsible>
     )}
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelectedPresetId(""); }}>
+      <Dialog
+        open={open || editAllOpen}
+        onOpenChange={(o) => {
+          if (editAllOpen) {
+            setEditAllOpen(o);
+            if (!o) setActiveTab("");
+          } else {
+            setOpen(o);
+            if (!o) setSelectedPresetId("");
+          }
+        }}
+      >
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingStandard
-                ? t("maintenance.schedules.editStandardTitle")
-                : editing
-                  ? t("maintenance.schedules.editTitle")
-                  : t("maintenance.schedules.addTitle")}
+              {editAllOpen
+                ? t("maintenance.schedules.editAllTitle")
+                : editingStandard
+                  ? t("maintenance.schedules.editStandardTitle")
+                  : editing
+                    ? t("maintenance.schedules.editTitle")
+                    : t("maintenance.schedules.addTitle")}
             </DialogTitle>
             <DialogDescription>
-              {editingStandard
-                ? t("maintenance.schedules.standardDialogDescription")
-                : t("maintenance.schedules.dialogDescription")}
+              {editAllOpen
+                ? t("maintenance.schedules.editAllDescription")
+                : editingStandard
+                  ? t("maintenance.schedules.standardDialogDescription")
+                  : t("maintenance.schedules.dialogDescription")}
             </DialogDescription>
           </DialogHeader>
+
+          {editAllOpen && editTabIds.length > 1 && (
+            <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1">
+              {editTabIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    id === activeTab
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted/60"
+                  )}
+                >
+                  {id === "standard"
+                    ? t("maintenance.schedules.standardTab")
+                    : schedules.find((s) => s.id === id)?.navn ?? id}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-3">
             {presets.length > 0 && (
