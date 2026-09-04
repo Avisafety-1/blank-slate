@@ -340,6 +340,7 @@ const Vedlikehold = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState("");
+  const [performedDate, setPerformedDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [logbook, setLogbook] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
@@ -716,7 +717,7 @@ const Vedlikehold = () => {
     setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
   }, []);
 
-  const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string) => {
+  const applyMaintenance = async (item: MaintenanceItem, kind: TabKey, action: "perform" | "reset", noteText: string, performedDay?: string) => {
     if (!user) return;
     if (item.schedule) {
       await performSchedule({
@@ -728,6 +729,7 @@ const Vedlikehold = () => {
         totalCycles: item.totalCycles ?? null,
         notes: noteText,
         reset: action === "reset",
+        performedDate: performedDay,
       });
       return;
     }
