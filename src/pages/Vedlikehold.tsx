@@ -1075,6 +1075,20 @@ const Vedlikehold = () => {
         </main>
       </div>
 
+      {newInspection && (
+        <MaintenanceSchedulesSection
+          key={newInspection.item.id}
+          kind={newInspection.kind}
+          resourceId={newInspection.item.id}
+          companyId={newInspection.item.companyId ?? companyId ?? ""}
+          includeStandard={false}
+          isBattery={newInspection.kind === "utstyr" && isBatteryType((newInspection.item.raw as any)?.type)}
+          hideList
+          externalNewOpen
+          onExternalNewOpenChange={(o) => { if (!o) setNewInspection(null); }}
+          onChanged={() => { fetchAll(); }}
+        />
+      )}
       {detail && detail.kind === "droner" && (
         <DroneDetailDialog
           open
