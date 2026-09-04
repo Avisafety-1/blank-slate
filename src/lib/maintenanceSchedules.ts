@@ -183,12 +183,15 @@ export async function performSchedule(params: {
   totalCycles?: number | null;
   notes?: string;
   reset?: boolean;
+  /** Optional YYYY-MM-DD to backdate the performed maintenance (defaults to today). */
+  performedDate?: string;
 }): Promise<void> {
-  const { schedule, kind, userId, totalHours, totalMissions, totalCycles, notes = "", reset = false } = params;
-  const now = new Date().toISOString();
+  const { schedule, kind, userId, totalHours, totalMissions, totalCycles, notes = "", reset = false, performedDate } = params;
+  const performedAt = dateInputToDate(performedDate) ?? new Date();
+  const now = performedAt.toISOString();
 
   const update: Record<string, any> = {
-    next_due_date: nextDueFromInterval(schedule.interval_days),
+    next_due_date: nextDueFromInterval(schedule.interval_days, performedAt),
     hours_at_last: totalHours,
     missions_at_last: totalMissions,
     notification_sent: false,
