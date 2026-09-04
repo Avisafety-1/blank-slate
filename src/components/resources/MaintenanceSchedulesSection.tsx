@@ -542,6 +542,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const hasEntries = schedules.length > 0 || !!standard;
 
   return (
+    <>
+    {!hideList && (
     <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
       <div className="flex items-center justify-between gap-2">
         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
