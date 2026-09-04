@@ -41,6 +41,11 @@ interface Props {
   /** Draft mode: controlled custom schedules */
   draftSchedules?: MaintenanceSchedule[];
   onDraftSchedulesChange?: (schedules: MaintenanceSchedule[]) => void;
+  /** Hide the collapsible list and only provide the dialogs (used for quick "new inspection" access) */
+  hideList?: boolean;
+  /** Controlled "new schedule" dialog open state (parent owns it) */
+  externalNewOpen?: boolean;
+  onExternalNewOpenChange?: (open: boolean) => void;
 }
 
 const emptyForm = {
