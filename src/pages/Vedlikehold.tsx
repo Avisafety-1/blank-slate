@@ -1186,10 +1186,7 @@ const Vedlikehold = () => {
               {t("maintenance.checklistPickerDescription", { name: checklistPicker?.item.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
-          <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${1 + pickerSchedules.length}, minmax(0, 1fr))` }}
-          >
+          <div className="grid grid-cols-2 gap-2">
             <Button
               size="sm"
               variant={checklistTarget === "standard" ? "default" : "outline"}
