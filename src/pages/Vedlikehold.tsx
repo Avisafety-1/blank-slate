@@ -124,6 +124,7 @@ interface MaintenanceRowProps {
   onOpenLogbook: (item: MaintenanceItem) => void;
   onReset: (item: MaintenanceItem) => void;
   onPickChecklist: (item: MaintenanceItem) => void;
+  onNewInspection: (item: MaintenanceItem) => void;
   onSetSchedule: (itemId: string, scheduleName: string) => void;
   t: TFunction;
   checklistName: (id?: string | null) => string | null;
@@ -141,6 +142,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
   onOpenLogbook,
   onReset,
   onPickChecklist,
+  onNewInspection,
   onSetSchedule,
   t,
   checklistName,
