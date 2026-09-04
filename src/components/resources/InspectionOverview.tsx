@@ -219,7 +219,7 @@ export const InspectionOverview = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {views.map((v) => {
           const isActive = v.id === active.id;
           return (
