@@ -275,8 +275,28 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
       last_at: toDateInput(standard.last_at),
       next_at: toDateInput(standard.next_at),
     });
+  };
+
+  const openEditStandard = () => {
+    fillFormStandard();
     setOpen(true);
   };
+
+  // Edit-all mode: tabs for standard + each custom schedule; switching tabs fills the form
+  const editTabIds = editAllOpen
+    ? [...(standard ? ["standard"] : []), ...schedules.map((s) => s.id)]
+    : [];
+  useEffect(() => {
+    if (!editAllOpen || editTabIds.length === 0) return;
+    const id = editTabIds.includes(activeTab) ? activeTab : editTabIds[0];
+    if (id !== activeTab) setActiveTab(id);
+    if (id === "standard") fillFormStandard();
+    else {
+      const s = schedules.find((x) => x.id === id);
+      if (s) fillFormSchedule(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editAllOpen, activeTab, standard, schedules]);
 
   const applyPreset = (presetId: string) => {
     const p = presets.find((x) => x.id === presetId);
