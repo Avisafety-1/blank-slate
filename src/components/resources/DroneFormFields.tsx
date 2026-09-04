@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Calendar, ChevronDown, Info } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 
 export interface DroneFormValues {
   modell: string;
@@ -102,7 +101,6 @@ interface DroneFormFieldsProps {
 export const DroneFormFields = ({
   values,
   onChange,
-  mode,
   droneModels,
   selectedModelId,
   onModelSelect,
