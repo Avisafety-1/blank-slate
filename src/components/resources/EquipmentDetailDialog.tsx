@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
+import { InspectionOverview } from "./InspectionOverview";
+
 import { ResourceVisibilityWarningDialog } from "./ResourceVisibilityWarningDialog";
 import { checkEquipmentResourceVisibility, type MissingVisibility } from "@/lib/droneVisibilityCheck";
 import { useEquipmentTypes } from "@/hooks/useEquipmentTypes";
