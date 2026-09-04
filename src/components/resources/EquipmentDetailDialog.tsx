@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useChecklists } from "@/hooks/useChecklists";
 import { useDepartmentVisibility } from "@/hooks/useDepartmentVisibility";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
-import { Gauge, Calendar, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
+import { Gauge, AlertTriangle, Trash2, Wrench, Book, ClipboardList, ShieldCheck, ChevronDown, Battery, Heart, Zap, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EquipmentLogbookDialog } from "./EquipmentLogbookDialog";
 import { ChecklistExecutionDialog } from "./ChecklistExecutionDialog";
