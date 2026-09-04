@@ -831,6 +831,6 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         </DialogContent>
       </Dialog>
 
-    </Collapsible>
+    </>
   );
 };
