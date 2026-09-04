@@ -17,6 +17,7 @@ import {
   MaintenanceSchedule,
   MaintenanceSchedulePreset,
   ScheduleKind,
+  dateInputToDate,
   fetchSchedulePresets,
   fetchSchedulesForResources,
   nextDueFromInterval,
