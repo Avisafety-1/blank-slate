@@ -404,7 +404,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`w-[95vw] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto p-4 sm:p-6`}>
+      <DialogContent className={`w-[calc(100vw-1rem)] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90dvh] overflow-y-auto overflow-x-hidden p-3 sm:p-6`}>
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -443,38 +443,38 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
           {!isEditing ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.name')}</p>
-                  <p className="text-sm sm:text-base">{equipment.navn}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.navn}</p>
                 </div>
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.type')}</p>
-                  <p className="text-sm sm:text-base">{equipment.type}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.type}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.serial')}</p>
-                  <p className="text-sm sm:text-base">{equipment.serienummer}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.serienummer}</p>
                 </div>
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.internalSerial')}</p>
-                  <p className="text-sm sm:text-base">{equipment.internal_serial || "-"}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.internal_serial || "-"}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.weight')}</p>
-                  <p className="text-sm sm:text-base">{equipment.vekt ? `${equipment.vekt} ${t('resourceDialogs.equipmentDetail.labels.kgSuffix')}` : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.vekt ? `${equipment.vekt} ${t('resourceDialogs.equipmentDetail.labels.kgSuffix')}` : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex justify-between sm:block">
+                <div className="flex justify-between gap-2 sm:block min-w-0">
                   <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.flightHours')}</p>
-                  <p className="text-sm sm:text-base">{Number(equipment.flyvetimer || 0).toFixed(2)} {t('resourceDialogs.equipmentDetail.labels.hoursSuffix')}</p>
+                  <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{Number(equipment.flyvetimer || 0).toFixed(2)} {t('resourceDialogs.equipmentDetail.labels.hoursSuffix')}</p>
                 </div>
 
                 {(() => {
@@ -507,7 +507,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                   });
 
                   return (
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.labels.status')}</p>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -596,7 +596,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                     <Battery className="w-4 h-4 text-primary" />
                     {t('resourceDialogs.equipmentDetail.battery.sectionTitle')}
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
                     {equipment.battery_cycles != null && (
                       <div>
                         <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.battery.cycles')}</p>
@@ -705,29 +705,29 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalDays')}</p>
-                      <p className="text-sm sm:text-base">{equipment.vedlikeholdsintervall_dager ? t('resourceDialogs.equipmentDetail.maintenance.intervalDaysValue', { days: equipment.vedlikeholdsintervall_dager }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                      <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.vedlikeholdsintervall_dager ? t('resourceDialogs.equipmentDetail.maintenance.intervalDaysValue', { days: equipment.vedlikeholdsintervall_dager }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalHours')}</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_hours ? t('resourceDialogs.equipmentDetail.maintenance.intervalHoursValue', { hours: equipment.inspection_interval_hours }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                      <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.inspection_interval_hours ? t('resourceDialogs.equipmentDetail.maintenance.intervalHoursValue', { hours: equipment.inspection_interval_hours }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.intervalMissions')}</p>
-                      <p className="text-sm sm:text-base">{equipment.inspection_interval_missions ? t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsValue', { missions: equipment.inspection_interval_missions }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
+                      <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{equipment.inspection_interval_missions ? t('resourceDialogs.equipmentDetail.maintenance.intervalMissionsValue', { missions: equipment.inspection_interval_missions }) : t('resourceDialogs.equipmentDetail.labels.notSet')}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.warningDays')}</p>
-                      <p className="text-sm sm:text-base">{t('resourceDialogs.equipmentDetail.maintenance.warningDaysValue', { days: equipment.varsel_dager ?? 14 })}</p>
+                      <p className="text-sm sm:text-base min-w-0 truncate text-right sm:text-left">{t('resourceDialogs.equipmentDetail.maintenance.warningDaysValue', { days: equipment.varsel_dager ?? 14 })}</p>
                     </div>
-                    <div className="flex justify-between sm:block">
+                    <div className="flex justify-between gap-2 sm:block min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-muted-foreground">{t('resourceDialogs.equipmentDetail.maintenance.checklist')}</p>
                       <p className="text-sm sm:text-base flex items-center gap-1">
                         {linkedChecklist ? (
