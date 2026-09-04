@@ -668,7 +668,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           </DialogHeader>
 
           {editAllOpen && editTabIds.length > 1 && (
-            <div className="flex flex-wrap gap-1 rounded-lg bg-muted/40 p-1">
+            <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-muted p-1">
               {editTabIds.map((id) => (
                 <button
                   key={id}
@@ -677,8 +677,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
                   className={cn(
                     "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                     id === activeTab
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted/60"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/60 text-muted-foreground hover:bg-background hover:text-foreground"
                   )}
                 >
                   {id === "standard"
