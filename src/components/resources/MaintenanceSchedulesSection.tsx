@@ -340,6 +340,33 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     try {
       if (editingStandard) {
         await saveStandard();
+      } else if (isDraft) {
+        const draft: MaintenanceSchedule = {
+          id: editing?.id ?? `draft-${Date.now()}`,
+          company_id: companyId,
+          drone_id: kind === "droner" ? "" : null,
+          equipment_id: kind === "utstyr" ? "" : null,
+          navn: form.navn.trim(),
+          sjekkliste_id: form.sjekkliste_id !== "none" ? form.sjekkliste_id : null,
+          start_date: editing?.start_date ?? new Date().toISOString(),
+          interval_days: num(form.interval_days),
+          interval_hours: num(form.interval_hours),
+          interval_missions: num(form.interval_missions),
+          warn_days: num(form.warn_days),
+          warn_hours: num(form.warn_hours),
+          warn_missions: num(form.warn_missions),
+          last_performed_at: editing?.last_performed_at ?? null,
+          next_due_date: nextDueFromInterval(num(form.interval_days)),
+          hours_at_last: editing?.hours_at_last ?? null,
+          missions_at_last: editing?.missions_at_last ?? null,
+          email_alerts_enabled: form.email_alerts_enabled,
+          ...(isBattery
+            ? { interval_cycles: num(form.interval_cycles), warn_cycles: num(form.warn_cycles), cycles_at_last: editing?.cycles_at_last ?? null }
+            : {}),
+        };
+        onDraftSchedulesChange?.(
+          editing ? schedules.map((s) => (s.id === editing.id ? draft : s)) : [...schedules, draft]
+        );
       } else {
         const payload: Record<string, any> = {
           company_id: companyId,
