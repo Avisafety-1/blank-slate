@@ -1187,7 +1187,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   kind="droner"
                   resourceId={drone.id}
                   companyId={drone.company_id}
-                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions: missionsSinceInspection + (drone.missions_at_last_inspection ?? 0) }}
+                  totals={{ totalHours: drone.flyvetimer ?? 0, totalMissions }}
                   standard={{
                     lastAt: drone.sist_inspeksjon,
                     nextAt: drone.neste_inspeksjon,
