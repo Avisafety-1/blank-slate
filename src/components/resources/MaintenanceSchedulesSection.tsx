@@ -24,7 +24,8 @@ import {
 
 interface Props {
   kind: ScheduleKind;
-  resourceId: string;
+  /** Omit to enable draft mode (resource not created yet): edits stay local and are exposed via the draft callbacks */
+  resourceId?: string;
   companyId: string;
   disabled?: boolean;
   /** View-only mode: hides add/edit/delete so the section is informational only */
@@ -34,6 +35,12 @@ interface Props {
   /** Battery equipment: enables charge-cycle based intervals */
   isBattery?: boolean;
   onChanged?: () => void;
+  /** Draft mode: controlled standard entry */
+  draftStandard?: StandardEntry | null;
+  onDraftStandardChange?: (entry: StandardEntry) => void;
+  /** Draft mode: controlled custom schedules */
+  draftSchedules?: MaintenanceSchedule[];
+  onDraftSchedulesChange?: (schedules: MaintenanceSchedule[]) => void;
 }
 
 const emptyForm = {
@@ -57,7 +64,7 @@ const emptyForm = {
 type FormState = typeof emptyForm;
 
 /** Standard maintenance rendered with the same shape as a custom schedule. */
-interface StandardEntry {
+export interface StandardEntry {
   sjekkliste_id: string | null;
   start_date: string | null;
   last_at: string | null;
