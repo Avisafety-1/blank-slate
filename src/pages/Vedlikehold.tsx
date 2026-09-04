@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, Plus, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Pencil, Plane, Plus, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
@@ -220,9 +220,9 @@ const MaintenanceRow = memo(function MaintenanceRow({
               <Plus className="w-4 h-4" />
               {t("maintenance.schedules.add")}
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onPickChecklist(item)}>
-              <ClipboardCheck className="w-4 h-4" />
-              {t("maintenance.maintenanceChecklist")}
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEditMaintenance(item)}>
+              <Pencil className="w-4 h-4" />
+              {t("maintenance.editMaintenance")}
             </Button>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenLogbook(item)}>
               <BookOpen className="w-4 h-4" />
