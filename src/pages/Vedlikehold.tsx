@@ -1088,6 +1088,20 @@ const Vedlikehold = () => {
           onChanged={() => { fetchAll(); }}
         />
       )}
+      {editMaintenance && (
+        <MaintenanceSchedulesSection
+          key={`edit-${editMaintenance.item.id}`}
+          kind={editMaintenance.kind}
+          resourceId={editMaintenance.item.id}
+          companyId={editMaintenance.item.companyId ?? companyId ?? ""}
+          includeStandard
+          isBattery={editMaintenance.kind === "utstyr" && isBatteryType((editMaintenance.item.raw as any)?.type)}
+          hideList
+          externalEditOpen
+          onExternalEditOpenChange={(o) => { if (!o) setEditMaintenance(null); }}
+          onChanged={() => { fetchAll(); }}
+        />
+      )}
       {detail && detail.kind === "droner" && (
         <DroneDetailDialog
           open
