@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, Plus, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
@@ -29,6 +29,8 @@ import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
 import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { MaintenanceSchedulesSection } from "@/components/resources/MaintenanceSchedulesSection";
+import { isBatteryType } from "@/config/equipmentCategories";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useChecklists } from "@/hooks/useChecklists";
