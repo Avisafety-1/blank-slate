@@ -319,7 +319,7 @@ export const InspectionOverview = ({
 
 
       {/* Tabs */}
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-1.5">
         {views.map((v) => {
           const isActive = v.id === active.id;
           return (
@@ -327,16 +327,16 @@ export const InspectionOverview = ({
               key={v.id}
               type="button"
               onClick={() => setActiveId(v.id)}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`flex min-w-0 items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors ${
                 isActive
                   ? "border-primary bg-primary/10 text-foreground"
                   : "border-border/60 bg-muted/20 text-muted-foreground hover:bg-muted/40"
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${ringClasses(v.status)}`} />
-              <span className="max-w-[10rem] truncate">{v.name}</span>
+              <span className={`h-2 w-2 shrink-0 rounded-full ${ringClasses(v.status)}`} />
+              <span className="min-w-0 flex-1 truncate text-left">{v.name}</span>
               {v.id === soonest.id && views.length > 1 && (
-                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-semibold">
+                <Badge variant="secondary" className="h-4 shrink-0 px-1.5 text-[10px] font-semibold">
                   {t("maintenance.nextUpBadge")}
                 </Badge>
               )}
