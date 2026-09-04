@@ -646,37 +646,52 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                 </div>
               )}
 
-              {/* Hours progress */}
-              {equipment.inspection_interval_hours != null && equipment.inspection_interval_hours > 0 && (() => {
-                const hoursSince = (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0);
-                const pct = Math.min(100, (hoursSince / equipment.inspection_interval_hours) * 100);
-                const status = calculateUsageStatus(hoursSince, equipment.inspection_interval_hours, equipment.varsel_timer);
-                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
-                return (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.hoursSinceMaintenance', { current: hoursSince.toFixed(1), limit: equipment.inspection_interval_hours })}</p>
-                    <div className="w-full h-2 rounded-full bg-muted">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Inspections (standard + custom) with tabs — same view as drone cards */}
+              {(equipment.company_id || companyId) && (
+                <InspectionOverview
+                  kind="utstyr"
+                  resourceId={equipment.id}
+                  companyId={(equipment.company_id || companyId) as string}
+                  userId={user?.id ?? null}
+                  resourceName={equipment.navn}
+                  refreshKey={schedulesRefreshKey}
+                  totals={{
+                    totalHours: equipment.flyvetimer ?? 0,
+                    totalMissions,
+                    totalCycles: isBatteryType(equipment.type) ? equipment.battery_cycles ?? null : null,
+                  }}
+                  standard={{
+                    lastAt: equipment.sist_vedlikeholdt,
+                    nextAt: equipment.neste_vedlikehold,
+                    intervalDays: equipment.vedlikeholdsintervall_dager ?? null,
+                    intervalHours: equipment.inspection_interval_hours ?? null,
+                    intervalMissions: equipment.inspection_interval_missions ?? null,
+                    warnDays: equipment.varsel_dager,
+                    warnHours: equipment.varsel_timer,
+                    warnMissions: equipment.varsel_oppdrag,
+                    hoursUsed: (equipment.flyvetimer || 0) - (equipment.hours_at_last_maintenance || 0),
+                    missionsUsed: missionsSinceMaintenance,
+                    checklistId: equipment.sjekkliste_id,
+                  }}
+                  onPerformed={() => {
+                    setSchedulesRefreshKey((n) => n + 1);
+                    onEquipmentUpdated();
+                  }}
+                  actionSlot={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePerformMaintenance}
+                      disabled={isSubmitting}
+                      className="w-full sm:w-auto gap-1"
+                    >
+                      <Wrench className="w-4 h-4" />
+                      {t('resourceDialogs.equipmentDetail.maintenance.perform')}
+                    </Button>
+                  }
+                />
+              )}
 
-              {/* Missions progress */}
-              {equipment.inspection_interval_missions != null && equipment.inspection_interval_missions > 0 && (() => {
-                const missionsSince = (equipment as any)._missionsSinceMaintenance || 0;
-                const pct = Math.min(100, (missionsSince / equipment.inspection_interval_missions) * 100);
-                const status = calculateUsageStatus(missionsSince, equipment.inspection_interval_missions, equipment.varsel_oppdrag);
-                const barColor = status === "Rød" ? "bg-destructive" : status === "Gul" ? "bg-yellow-500" : "bg-primary";
-                return (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('resourceDialogs.equipmentDetail.usage.missionsSinceMaintenance', { current: missionsSince, limit: equipment.inspection_interval_missions })}</p>
-                    <div className="w-full h-2 rounded-full bg-muted">
-                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* Maintenance details in collapsible */}
               <Collapsible>
