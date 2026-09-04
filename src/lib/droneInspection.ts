@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchTotalMissionsFor } from "@/lib/maintenanceSchedules";
+import { fetchTotalMissionsFor, dateInputToDate } from "@/lib/maintenanceSchedules";
 
 /**
  * Shared helper to perform a drone inspection.
