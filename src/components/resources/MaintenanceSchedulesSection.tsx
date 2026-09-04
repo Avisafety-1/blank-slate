@@ -41,6 +41,11 @@ interface Props {
   /** Draft mode: controlled custom schedules */
   draftSchedules?: MaintenanceSchedule[];
   onDraftSchedulesChange?: (schedules: MaintenanceSchedule[]) => void;
+  /** Hide the collapsible list and only provide the dialogs (used for quick "new inspection" access) */
+  hideList?: boolean;
+  /** Controlled "new schedule" dialog open state (parent owns it) */
+  externalNewOpen?: boolean;
+  onExternalNewOpenChange?: (open: boolean) => void;
 }
 
 const emptyForm = {
@@ -96,7 +101,7 @@ const calcStandardNext = (startDate: string, lastAt: string, intervalDays: numbe
   return manualNext || null;
 };
 
-export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange }: Props) => {
+export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disabled, readOnly, includeStandard = true, isBattery = false, onChanged, draftStandard, onDraftStandardChange, draftSchedules, onDraftSchedulesChange, hideList = false, externalNewOpen, onExternalNewOpenChange }: Props) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { checklists } = useChecklists();
@@ -106,7 +111,13 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const schedules = isDraft ? (draftSchedules ?? []) : schedulesState;
   const standard = isDraft ? (includeStandard ? (draftStandard ?? null) : null) : standardState;
   const [presets, setPresets] = useState<MaintenanceSchedulePreset[]>([]);
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const openControlled = externalNewOpen !== undefined;
+  const open = openControlled ? !!externalNewOpen : openState;
+  const setOpen = (v: boolean) => {
+    if (openControlled) onExternalNewOpenChange?.(v);
+    else setOpenState(v);
+  };
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -531,6 +542,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const hasEntries = schedules.length > 0 || !!standard;
 
   return (
+    <>
+    {!hideList && (
     <Collapsible defaultOpen className="rounded-lg border bg-background/60 p-3 group">
       <div className="flex items-center justify-between gap-2">
         <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-foreground">
@@ -582,6 +595,8 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         </div>
       )}
       </CollapsibleContent>
+    </Collapsible>
+    )}
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSelectedPresetId(""); }}>
         <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
@@ -816,6 +831,6 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
         </DialogContent>
       </Dialog>
 
-    </Collapsible>
+    </>
   );
 };

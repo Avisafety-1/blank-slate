@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { toast } from "sonner";
-import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, RotateCcw, Search, Wrench } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarClock, ChevronRight, ClipboardCheck, Gauge, Plane, Plus, RotateCcw, Search, Wrench } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { GlassCard } from "@/components/GlassCard";
@@ -29,6 +29,8 @@ import { DroneLogbookDialog } from "@/components/resources/DroneLogbookDialog";
 import { EquipmentLogbookDialog } from "@/components/resources/EquipmentLogbookDialog";
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
+import { MaintenanceSchedulesSection } from "@/components/resources/MaintenanceSchedulesSection";
+import { isBatteryType } from "@/config/equipmentCategories";
 import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecutionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useChecklists } from "@/hooks/useChecklists";
@@ -122,6 +124,7 @@ interface MaintenanceRowProps {
   onOpenLogbook: (item: MaintenanceItem) => void;
   onReset: (item: MaintenanceItem) => void;
   onPickChecklist: (item: MaintenanceItem) => void;
+  onNewInspection: (item: MaintenanceItem) => void;
   onSetSchedule: (itemId: string, scheduleName: string) => void;
   t: TFunction;
   checklistName: (id?: string | null) => string | null;
@@ -139,6 +142,7 @@ const MaintenanceRow = memo(function MaintenanceRow({
   onOpenLogbook,
   onReset,
   onPickChecklist,
+  onNewInspection,
   onSetSchedule,
   t,
   checklistName,
@@ -211,6 +215,10 @@ const MaintenanceRow = memo(function MaintenanceRow({
             <Button size="sm" className="gap-1.5" onClick={() => onStartPerform(item)}>
               <Wrench className="w-4 h-4" />
               {t("maintenance.perform")}
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onNewInspection(item)}>
+              <Plus className="w-4 h-4" />
+              {t("maintenance.schedules.add")}
             </Button>
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onPickChecklist(item)}>
               <ClipboardCheck className="w-4 h-4" />
@@ -334,6 +342,7 @@ const Vedlikehold = () => {
   const [detail, setDetail] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [pending, setPending] = useState<{ item: MaintenanceItem; kind: TabKey; action: "perform" | "reset" } | null>(null);
   const [checklistPicker, setChecklistPicker] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
+  const [newInspection, setNewInspection] = useState<{ item: MaintenanceItem; kind: TabKey } | null>(null);
   const [checklistTarget, setChecklistTarget] = useState<string>("standard");
   const [checklistSearch, setChecklistSearch] = useState("");
 
@@ -697,6 +706,10 @@ const Vedlikehold = () => {
     setChecklistPicker({ item, kind: tab });
   }, [tab, selectedScheduleById]);
 
+  const handleNewInspection = useCallback((item: MaintenanceItem) => {
+    setNewInspection({ item, kind: tab });
+  }, [tab]);
+
 
   const handleSetSchedule = useCallback((itemId: string, scheduleName: string) => {
     setSelectedScheduleById((prev) => ({ ...prev, [itemId]: scheduleName }));
@@ -1021,6 +1034,7 @@ const Vedlikehold = () => {
                       onOpenLogbook={handleOpenLogbook}
                       onReset={handleReset}
                       onPickChecklist={handlePickChecklist}
+                      onNewInspection={handleNewInspection}
                       onSetSchedule={handleSetSchedule}
                       t={t}
                       checklistName={checklistName}
@@ -1048,6 +1062,7 @@ const Vedlikehold = () => {
                       onOpenLogbook={handleOpenLogbook}
                       onReset={handleReset}
                       onPickChecklist={handlePickChecklist}
+                      onNewInspection={handleNewInspection}
                       onSetSchedule={handleSetSchedule}
                       t={t}
                       checklistName={checklistName}
@@ -1060,6 +1075,20 @@ const Vedlikehold = () => {
         </main>
       </div>
 
+      {newInspection && (
+        <MaintenanceSchedulesSection
+          key={newInspection.item.id}
+          kind={newInspection.kind}
+          resourceId={newInspection.item.id}
+          companyId={newInspection.item.companyId ?? companyId ?? ""}
+          includeStandard={false}
+          isBattery={newInspection.kind === "utstyr" && isBatteryType((newInspection.item.raw as any)?.type)}
+          hideList
+          externalNewOpen
+          onExternalNewOpenChange={(o) => { if (!o) setNewInspection(null); }}
+          onChanged={() => { fetchAll(); }}
+        />
+      )}
       {detail && detail.kind === "droner" && (
         <DroneDetailDialog
           open
