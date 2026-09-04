@@ -101,6 +101,8 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
   const [latestWarning, setLatestWarning] = useState<{ title: string; entry_date: string } | null>(null);
   const [missionsSinceMaintenance, setMissionsSinceMaintenance] = useState(0);
   const [totalMissions, setTotalMissions] = useState(0);
+  const [schedulesRefreshKey, setSchedulesRefreshKey] = useState(0);
+
 
   const equipmentTypes = useEquipmentTypes(companyId || "", open);
   const [visibilityWarning, setVisibilityWarning] = useState<{
