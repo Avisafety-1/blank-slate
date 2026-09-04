@@ -434,7 +434,10 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
     const count = await countUniqueMissionsSinceInspection(drone.id, drone.sist_inspeksjon);
     setMissionsSinceInspection(count || 0);
+    const { fetchTotalMissionsFor } = await import("@/lib/maintenanceSchedules");
+    setTotalMissions(await fetchTotalMissionsFor("droner", drone.id));
   };
+
 
   // Calculate next inspection when start date, interval, or sist_inspeksjon changes
   useEffect(() => {
