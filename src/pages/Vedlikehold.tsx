@@ -1032,7 +1032,7 @@ const Vedlikehold = () => {
                       onStartPerform={startPerform}
                       onOpenLogbook={handleOpenLogbook}
                       onReset={handleReset}
-                      onPickChecklist={handlePickChecklist}
+                      onEditMaintenance={handleEditMaintenance}
                       onNewInspection={handleNewInspection}
                       onSetSchedule={handleSetSchedule}
                       t={t}
