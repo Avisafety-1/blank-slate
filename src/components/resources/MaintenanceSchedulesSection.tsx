@@ -111,7 +111,13 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
   const schedules = isDraft ? (draftSchedules ?? []) : schedulesState;
   const standard = isDraft ? (includeStandard ? (draftStandard ?? null) : null) : standardState;
   const [presets, setPresets] = useState<MaintenanceSchedulePreset[]>([]);
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const openControlled = externalNewOpen !== undefined;
+  const open = openControlled ? !!externalNewOpen : openState;
+  const setOpen = (v: boolean) => {
+    if (openControlled) onExternalNewOpenChange?.(v);
+    else setOpenState(v);
+  };
   const [editing, setEditing] = useState<MaintenanceSchedule | null>(null);
   const [editingStandard, setEditingStandard] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
