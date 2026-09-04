@@ -743,11 +743,8 @@ const Vedlikehold = () => {
             notes: noteText,
           });
         } else {
-          const { count: totalMissions } = await supabase
-            .from("flight_logs")
-            .select("mission_id", { count: "exact", head: true })
-            .eq("drone_id", d.id)
-            .not("mission_id", "is", null);
+          const totalMissions = await fetchTotalMissionsFor("droner", d.id);
+
           let nextInspection: string | null = null;
           if (d.inspection_interval_days) {
             const nextDate = new Date();
