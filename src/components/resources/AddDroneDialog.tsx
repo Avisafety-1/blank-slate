@@ -133,6 +133,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
       setSelectedModelId("");
       setValues(emptyDroneFormValues);
       setTechnicalResponsibleId(null);
+      setDraftSchedules([]);
     } else {
       setValues({
         ...emptyDroneFormValues,
@@ -157,6 +158,37 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     }
     return "";
   })();
+
+  // Draft-mode standard maintenance: mirror of DroneFormValues for the shared maintenance section
+  const numOrNull = (v: string) => (v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+  const standardEntry: StandardEntry = {
+    sjekkliste_id: values.sjekkliste_id !== "none" ? values.sjekkliste_id : null,
+    start_date: values.inspection_start_date || null,
+    last_at: values.sist_inspeksjon || null,
+    next_at: calculatedNextInspection || values.neste_inspeksjon || null,
+    interval_days: numOrNull(values.inspection_interval_days),
+    interval_hours: numOrNull(values.inspection_interval_hours),
+    interval_missions: numOrNull(values.inspection_interval_missions),
+    interval_cycles: null,
+    warn_days: numOrNull(values.varsel_dager),
+    warn_hours: numOrNull(values.varsel_timer),
+    warn_missions: numOrNull(values.varsel_oppdrag),
+    warn_cycles: null,
+  };
+  const handleDraftStandardChange = (entry: StandardEntry) => {
+    onChange({
+      sjekkliste_id: entry.sjekkliste_id ?? "none",
+      inspection_start_date: entry.start_date ?? "",
+      sist_inspeksjon: entry.last_at ?? "",
+      neste_inspeksjon: entry.next_at ?? "",
+      inspection_interval_days: entry.interval_days != null ? String(entry.interval_days) : "",
+      inspection_interval_hours: entry.interval_hours != null ? String(entry.interval_hours) : "",
+      inspection_interval_missions: entry.interval_missions != null ? String(entry.interval_missions) : "",
+      varsel_dager: entry.warn_days != null ? String(entry.warn_days) : "",
+      varsel_timer: entry.warn_hours != null ? String(entry.warn_hours) : "",
+      varsel_oppdrag: entry.warn_missions != null ? String(entry.warn_missions) : "",
+    });
+  };
 
   const handleModelSelect = (modelId: string) => {
     setSelectedModelId(modelId);
