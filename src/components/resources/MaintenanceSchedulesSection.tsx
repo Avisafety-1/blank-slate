@@ -274,6 +274,25 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
     const intervalDays = num(form.interval_days);
     const nextDate = calcStandardNext(form.start_date, form.last_at, intervalDays, form.next_at);
     const checklist = form.sjekkliste_id !== "none" ? form.sjekkliste_id : null;
+
+    if (isDraft) {
+      onDraftStandardChange?.({
+        sjekkliste_id: checklist,
+        start_date: form.start_date || null,
+        last_at: form.last_at || null,
+        next_at: nextDate,
+        interval_days: intervalDays,
+        interval_hours: num(form.interval_hours),
+        interval_missions: num(form.interval_missions),
+        interval_cycles: isBattery ? num(form.interval_cycles) : null,
+        warn_days: num(form.warn_days),
+        warn_hours: num(form.warn_hours),
+        warn_missions: num(form.warn_missions),
+        warn_cycles: isBattery ? num(form.warn_cycles) : null,
+      });
+      return;
+    }
+
     const payload: Record<string, any> = isDrone
       ? {
           sjekkliste_id: checklist,
