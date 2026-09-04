@@ -8725,7 +8725,6 @@
       "presetNamePlaceholder": "F.eks. 200-timers ettersyn",
       "presetNameRequired": "Malen må ha et navn",
       "presetNameDuplicate": "Det finnes allerede en mal med dette navnet",
-
       "saved": "Inspeksjonen er lagret",
       "deleted": "Inspeksjonen er slettet",
       "everyDays": "Hver {{days}}. dag",
@@ -8739,7 +8738,8 @@
       "startDate": "Startdato",
       "lastPerformed": "Sist utført",
       "nextDueLabel": "Neste forfall",
-      "statusTriggerHint": "Status trigges av det som kommer først av dager, flytimer eller oppdrag."
+      "statusTriggerHint": "Status trigges av det som kommer først av dager, flytimer eller oppdrag.",
+      "dateHint": "Startdato styrer når intervallet regnes fra. Sett «Sist utført» for å kalibrere vedlikehold som allerede er gjort."
     },
     "inspectionsTitle": "Inspeksjoner",
     "nextUpBadge": "Neste",
@@ -8749,6 +8749,7 @@
     "nextDue": "Neste",
     "inspectionDaysLeft": "{{days}} dager igjen",
     "inspectionOverdue": "{{days}} dager på overtid",
-    "dateOnlyInterval": "Kun datobasert intervall"
+    "dateOnlyInterval": "Kun datobasert intervall",
+    "performedDate": "Dato utført"
   }
 }
