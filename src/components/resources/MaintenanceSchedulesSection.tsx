@@ -459,6 +459,11 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
 
 
   const remove = async (s: MaintenanceSchedule) => {
+    if (isDraft) {
+      onDraftSchedulesChange?.(schedules.filter((x) => x.id !== s.id));
+      toast.success(t("maintenance.schedules.deleted"));
+      return;
+    }
     try {
       const { error } = await (supabase as any).from("maintenance_schedules").delete().eq("id", s.id);
       if (error) throw error;
