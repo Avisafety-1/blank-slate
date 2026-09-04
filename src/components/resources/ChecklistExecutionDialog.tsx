@@ -721,6 +721,12 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
           )}
         </div>
 
+        {props.footerContent && (
+          <div className="flex-shrink-0 border-t border-border/60 pt-3 space-y-3">
+            {props.footerContent}
+          </div>
+        )}
+
         <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('resourceDialogs.checklistExecution.cancel')}
