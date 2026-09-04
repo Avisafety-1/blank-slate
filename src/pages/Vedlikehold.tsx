@@ -1150,10 +1150,39 @@ const Vedlikehold = () => {
           onOpenChange={(o) => { if (!o) setChecklistRun(null); }}
           checklistId={checklistRun.item.checklistId || undefined}
           itemName={checklistRun.item.name}
-          onComplete={() => {
+          footerContent={
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="checklist-performed-date">{t("maintenance.performedDate")}</Label>
+                <Input
+                  id="checklist-performed-date"
+                  type="date"
+                  value={performedDate}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setPerformedDate(e.target.value)}
+                />
+              </div>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t("maintenance.notePlaceholder")}
+                rows={2}
+              />
+            </>
+          }
+          onComplete={async () => {
             const target = checklistRun;
-            setChecklistRun(null);
-            if (target) setPending({ item: target.item, kind: target.kind, action: "perform" });
+            if (!target || !user) return;
+            try {
+              await applyMaintenance(target.item, target.kind, "perform", note, performedDate);
+              toast.success(t("maintenance.performedSuccess", { name: target.item.name }));
+              setNote("");
+              await fetchAll();
+            } catch (err: any) {
+              console.error("Maintenance action failed:", err);
+              toast.error(err.message || t("maintenance.actionError"));
+              throw err;
+            }
           }}
         />
       )}
