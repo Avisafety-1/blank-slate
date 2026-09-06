@@ -8685,6 +8685,8 @@
     "bulkPerformAll": "Kvitter ut alle ({{count}})",
     "bulkDone": "Vedlikehold registrert for {{count}} ressurser",
     "bulkPartial": "{{ok}} registrert, {{failed}} feilet",
+    "techRestricted": "Kun teknisk ansvarlig ({{name}}) kan utføre vedlikehold på denne",
+    "bulkSkippedRestricted": "{{count}} hoppet over – krever teknisk ansvarlig",
     "checklistDone": "Sjekkliste gjennomført",
     "noteHelp": "Notatet lagres som kommentar på vedlikeholds­oppføringen i loggboken til hver valgte ressurs.",
     "schedules": {
