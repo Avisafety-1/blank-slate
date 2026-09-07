@@ -3026,11 +3026,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
         />
 
-        <StepSection
-          id="log-step-flight"
-          title={t('uploadLog.steps.flightData')}
-          description={t('uploadLog.steps.flightDataDesc')}
-        >
+        <StepSection id="log-step-flight">
 
         {/* Extended KPIs */}
         {(result.batteryTemperature != null || result.minGpsSatellites != null || result.batteryMinVoltage != null || result.batteryCycles != null || result.batteryHealth != null || result.maxDistance != null) && (
