@@ -333,7 +333,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
   const [bulkProgress, setBulkProgress] = useState(0);
-  const [highResImport, setHighResImport] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
@@ -2142,12 +2141,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPts = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPts) {
-        const step = Math.ceil(rawTrack.length / maxPts);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       // The imported file is authoritative: correct date, locations and entry source
       // on the existing (often manually estimated) log instead of creating a duplicate.
       const importedDate = result.startTime ? parseFlightDate(result.startTime) : null;
@@ -2202,12 +2196,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // SHA-256 dedup is now handled early in findMatchingFlightLog
 
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPoints) {
-        const step = Math.ceil(rawTrack.length / maxPoints);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
       const weatherSnapshot = await buildMissionWeatherSnapshot({
         flightDate: effectiveDate,
@@ -2285,12 +2274,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPoints) {
-        const step = Math.ceil(rawTrack.length / maxPoints);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
 
       // Link drone, personnel, equipment to mission
