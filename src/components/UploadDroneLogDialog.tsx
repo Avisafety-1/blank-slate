@@ -3452,20 +3452,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         </StepSection>
 
         {/* ── Step 2: logbook ── */}
-        <StepSection
-          id="log-step-logbook"
-          title={t('uploadLog.steps.logbook')}
-          description={t('uploadLog.steps.logbookDesc')}
-        >
+        <StepSection id="log-step-logbook">
           {renderLogbookSection()}
         </StepSection>
 
         {/* ── Step 3: mission ── */}
-        <StepSection
-          id="log-step-mission"
-          title={t('uploadLog.steps.mission')}
-          description={t('uploadLog.steps.missionDesc')}
-        >
+        <StepSection id="log-step-mission">
 
 
         {/* Mission candidates from direct mission search */}
