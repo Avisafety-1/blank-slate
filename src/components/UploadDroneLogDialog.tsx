@@ -3462,7 +3462,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* Mission candidates from direct mission search */}
         {matchedMissions.length > 0 && (
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
+          <SectionCard
+            title={t('uploadLog.steps.mission', 'Oppdrag')}
+            icon={<MapPin className="w-3.5 h-3.5" />}
+            accentClassName="bg-amber-500"
+          >
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
               {matchedMissions.length === 1
                 ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
@@ -3505,7 +3509,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               limit={manualLimit}
               onLoadMore={() => setManualLimit(l => l + 10)}
             />
-          </div>
+          </SectionCard>
         )}
 
         {/* Name for new mission */}
