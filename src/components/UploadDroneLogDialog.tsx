@@ -3028,10 +3028,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         <StepSection
           id="log-step-flight"
-          index={1}
           title={t('uploadLog.steps.flightData')}
           description={t('uploadLog.steps.flightDataDesc')}
-          done
         >
 
         {/* Extended KPIs */}
