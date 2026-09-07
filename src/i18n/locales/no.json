@@ -3248,6 +3248,8 @@
     "ardupilotQueued": "ArduPilot-logg ligger i kø og behandles i bakgrunnen. Den dukker opp under \"Ventende flylogger\" om kort tid.",
     "linkedToDrone": "(Tilknyttet dronen)",
     "pilotAutoMatchedFromDrone": "Auto-valgt fra dronetilknytning",
+    "operationType": "Operasjonstype",
+    "logbookUpdate": "Loggbok-oppdatering",
     "warningTitles": {
       "lowBattery": "Lavt batterinivå under flytur",
       "cellDeviation": "Celleavvik registrert på batteri",
