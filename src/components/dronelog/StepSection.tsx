@@ -1,22 +1,53 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface StepSectionProps {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
   children: ReactNode;
 }
 
+interface SectionCardProps {
+  title: string;
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  accentClassName?: string;
+}
+
 /** One numbered step in the flight log result view. */
-export const StepSection = ({ id, title, description, children }: StepSectionProps) => (
+export const StepSection = ({ id, children }: StepSectionProps) => (
   <section id={id} className="scroll-mt-4 space-y-3">
-    <div className="flex items-center gap-3 border-b-2 border-border pb-2">
-      <div className="min-w-0 border-l-4 border-primary pl-3">
-        <h3 className="text-base font-semibold leading-tight text-foreground">{title}</h3>
-        {description && <p className="text-xs text-muted-foreground leading-tight">{description}</p>}
-      </div>
-    </div>
-    <div className="space-y-3">{children}</div>
+    {children}
   </section>
 );
 
+/** Bordered card with a thick left accent and a title bar, inspired by maintenance cards. */
+export const SectionCard = ({
+  title,
+  icon,
+  children,
+  className,
+  accentClassName = "bg-primary",
+}: SectionCardProps) => (
+  <div
+    className={cn(
+      "relative overflow-hidden rounded-xl border-2 border-border bg-card shadow-sm",
+      className
+    )}
+  >
+    <div className={cn("absolute left-0 top-0 h-full w-1.5", accentClassName)} />
+    <div className="pl-4 p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        {icon && (
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+            {icon}
+          </span>
+        )}
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+      </div>
+      {children}
+    </div>
+  </div>
+);

@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
 import { FlightLogSummaryHeader } from "@/components/dronelog/FlightLogSummaryHeader";
-import { StepSection } from "@/components/dronelog/StepSection";
+import { StepSection, SectionCard } from "@/components/dronelog/StepSection";
 
 // ── Types ──
 
@@ -2600,229 +2600,232 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     return (
       <Collapsible open={logbookOpen} onOpenChange={setLogbookOpen}>
-        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors rounded-t-lg">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <BookOpen className="w-3.5 h-3.5" />
-              </span>
-              <span className="text-sm font-semibold">{t('dronelog.logbookUpdate', 'Loggbok-oppdatering')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={logToLogbooks}
-                onCheckedChange={(checked) => { setLogToLogbooks(checked); }}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${logbookOpen ? 'rotate-180' : ''}`} />
-            </div>
-          </CollapsibleTrigger>
+        <div className="relative overflow-hidden rounded-xl border-2 border-border bg-card shadow-sm">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-primary" />
+          <div className="pl-4">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <BookOpen className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-sm font-semibold">{t('dronelog.logbookUpdate', 'Loggbok-oppdatering')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={logToLogbooks}
+                  onCheckedChange={(checked) => { setLogToLogbooks(checked); }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${logbookOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </CollapsibleTrigger>
 
-          <CollapsibleContent>
-            {logToLogbooks && (
-              <div className="p-3 pt-3 space-y-3 border-t border-border bg-muted/20">
-                {/* Pilot selector */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium flex items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <User className="w-3 h-3" />
-                    </span>
-                    Pilot
-                  </Label>
-                  <Select value={pilotId} onValueChange={handlePilotChange}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Velg pilot" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[...personnel]
-                        .sort((a, b) => Number(dronePersonnelIds.includes(b.id)) - Number(dronePersonnelIds.includes(a.id)))
-                        .map(p => {
-                          const linked = dronePersonnelIds.includes(p.id);
-                          return (
-                            <SelectItem
-                              key={p.id}
-                              value={p.id}
-                              className={linked ? "bg-emerald-500/15 focus:bg-emerald-500/25 data-[state=checked]:bg-emerald-500/25" : undefined}
-                            >
-                              {p.full_name || p.email}
-                              {p.id === user?.id ? ' (deg)' : ''}
-                              {linked && (
-                                <span className="ml-1 text-emerald-600 dark:text-emerald-400">
-                                  {t('dronelog.linkedToDrone')}
-                                </span>
-                              )}
-                            </SelectItem>
-                          );
-                        })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-
-                {/* Drone selector — reuse existing */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium flex items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <Plane className="w-3 h-3" />
-                    </span>
-                    {terminology.vehicle}
-                  </Label>
-                  <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={terminology.selectVehicle} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {drones.map(d => (
-                        <SelectItem key={d.id} value={d.id} textValue={droneOptionLabel(d)} className="items-start py-2 min-h-[2.5rem]">
-                          <DroneOptionContent
-                            modell={d.modell}
-                            dji_aircraft_name={(d as any).dji_aircraft_name}
-                            serienummer={d.serienummer}
-                          />
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {(() => {
-                    const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
-                    if (!parsedSn) return null;
-                    if (ambiguousDroneMatch) {
-                      return (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
-                          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
-                          {t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
-                        </p>
-                      );
-                    }
-                    if (!selectedDroneId || !selectedDrone) return null;
-                    const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
-                    if (!isMatched) return null;
-                    const storedSn = (selectedDrone.serienummer || '').trim();
-                    const canUpdate = parsedSnIsMoreComplete(storedSn, parsedSn);
-                    const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
-                    return (
-                      <>
-                        {storedIsFuller && (
-                          <p className="text-[11px] leading-tight text-muted-foreground">
-                            {t('uploadLog.sn.storedIsFuller', { stored: storedSn, parsed: parsedSn })}
-                          </p>
-                        )}
-                        {canUpdate && (
-                          <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                            <Checkbox
-                              id="update-drone-sn"
-                              checked={updateDroneSnConfirmed}
-                              onCheckedChange={(v) => setUpdateDroneSnConfirmed(v === true)}
-                              className="mt-0.5"
-                            />
-                            <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
-                              {t('uploadLog.sn.updateToFull', { stored: storedSn, parsed: parsedSn, vehicle: terminology.vehicle })}
-                            </Label>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-
-
-                {/* Equipment selector */}
-                {equipmentList.length > 0 && (
+            <CollapsibleContent>
+              {logToLogbooks && (
+                <div className="p-3 pt-0 space-y-3 border-t border-border">
+                  {/* Pilot selector */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium flex items-center gap-1.5">
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <Wrench className="w-3 h-3" />
+                        <User className="w-3 h-3" />
                       </span>
-                      Utstyr
+                      Pilot
                     </Label>
-                    {(() => {
-                      const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
-                      return availableEquipment.length > 0 ? (
-                        <Select
-                          value=""
-                          onValueChange={(val) => {
-                            if (val) setSelectedEquipment(prev => [...prev, val]);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Velg utstyr" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableEquipment.map(eq => (
-                              <SelectItem key={eq.id} value={eq.id}>{eq.navn} ({eq.serienummer})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : null;
-                    })()}
-                    {selectedEquipment.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {selectedEquipment.map(eqId => {
-                          const eq = equipmentList.find(e => e.id === eqId);
-                          if (!eq) return null;
-                          return (
-                            <span key={eqId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
-                              {eq.navn}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedEquipment(prev => prev.filter(id => id !== eqId))}
-                                className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                    <Select value={pilotId} onValueChange={handlePilotChange}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Velg pilot" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...personnel]
+                          .sort((a, b) => Number(dronePersonnelIds.includes(b.id)) - Number(dronePersonnelIds.includes(a.id)))
+                          .map(p => {
+                            const linked = dronePersonnelIds.includes(p.id);
+                            return (
+                              <SelectItem
+                                key={p.id}
+                                value={p.id}
+                                className={linked ? "bg-emerald-500/15 focus:bg-emerald-500/25 data-[state=checked]:bg-emerald-500/25" : undefined}
                               >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {selectedDroneId && selectedEquipment.some(eqId => {
-                      const eq = equipmentList.find(e => e.id === eqId);
-                      return eq && isBatteryType(eq.type);
-                    }) && (
-                      <div className="flex items-start gap-2 pt-1">
-                        <Checkbox
-                          id="link-battery-to-drone"
-                          checked={linkBatteryToDrone}
-                          onCheckedChange={(v) => setLinkBatteryToDrone(v === true)}
-                          className="mt-0.5"
-                        />
-                        <Label htmlFor="link-battery-to-drone" className="text-[11px] leading-tight cursor-pointer text-muted-foreground">
-                          Knytt batteri til {terminology.vehicleLower} (vises permanent på {terminology.vehicleLower}kortet)
-                        </Label>
-                      </div>
-                    )}
+                                {p.full_name || p.email}
+                                {p.id === user?.id ? ' (deg)' : ''}
+                                {linked && (
+                                  <span className="ml-1 text-emerald-600 dark:text-emerald-400">
+                                    {t('dronelog.linkedToDrone')}
+                                  </span>
+                                )}
+                              </SelectItem>
+                            );
+                          })}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                )}
 
-                {/* Summary */}
-                <div className="rounded-md bg-muted/40 p-2 space-y-0.5">
-                  <p className="text-xs font-medium text-muted-foreground">Oppsummering</p>
-                  {selectedPilot && (
-                    <p className="text-xs">
-                      <User className="w-3 h-3 inline mr-1" />
-                      {selectedPilot.full_name || selectedPilot.email} {flightTimeLabelForResource('pilot', pilotId)}
-                    </p>
+                  {/* Drone selector — reuse existing */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium flex items-center gap-1.5">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <Plane className="w-3 h-3" />
+                      </span>
+                      {terminology.vehicle}
+                    </Label>
+                    <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder={terminology.selectVehicle} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drones.map(d => (
+                          <SelectItem key={d.id} value={d.id} textValue={droneOptionLabel(d)} className="items-start py-2 min-h-[2.5rem]">
+                            <DroneOptionContent
+                              modell={d.modell}
+                              dji_aircraft_name={(d as any).dji_aircraft_name}
+                              serienummer={d.serienummer}
+                            />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(() => {
+                      const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+                      if (!parsedSn) return null;
+                      if (ambiguousDroneMatch) {
+                        return (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                            {t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
+                          </p>
+                        );
+                      }
+                      if (!selectedDroneId || !selectedDrone) return null;
+                      const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
+                      if (!isMatched) return null;
+                      const storedSn = (selectedDrone.serienummer || '').trim();
+                      const canUpdate = parsedSnIsMoreComplete(storedSn, parsedSn);
+                      const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
+                      return (
+                        <>
+                          {storedIsFuller && (
+                            <p className="text-[11px] leading-tight text-muted-foreground">
+                              {t('uploadLog.sn.storedIsFuller', { stored: storedSn, parsed: parsedSn })}
+                            </p>
+                          )}
+                          {canUpdate && (
+                            <div className="flex items-start gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                              <Checkbox
+                                id="update-drone-sn"
+                                checked={updateDroneSnConfirmed}
+                                onCheckedChange={(v) => setUpdateDroneSnConfirmed(v === true)}
+                                className="mt-0.5"
+                              />
+                              <Label htmlFor="update-drone-sn" className="text-[11px] leading-tight cursor-pointer text-amber-900 dark:text-amber-200">
+                                {t('uploadLog.sn.updateToFull', { stored: storedSn, parsed: parsedSn, vehicle: terminology.vehicle })}
+                              </Label>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+
+
+                  {/* Equipment selector */}
+                  {equipmentList.length > 0 && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium flex items-center gap-1.5">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <Wrench className="w-3 h-3" />
+                        </span>
+                        Utstyr
+                      </Label>
+                      {(() => {
+                        const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
+                        return availableEquipment.length > 0 ? (
+                          <Select
+                            value=""
+                            onValueChange={(val) => {
+                              if (val) setSelectedEquipment(prev => [...prev, val]);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Velg utstyr" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableEquipment.map(eq => (
+                                <SelectItem key={eq.id} value={eq.id}>{eq.navn} ({eq.serienummer})</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : null;
+                      })()}
+                      {selectedEquipment.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedEquipment.map(eqId => {
+                            const eq = equipmentList.find(e => e.id === eqId);
+                            if (!eq) return null;
+                            return (
+                              <span key={eqId} className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                                {eq.navn}
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedEquipment(prev => prev.filter(id => id !== eqId))}
+                                  className="ml-0.5 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {selectedDroneId && selectedEquipment.some(eqId => {
+                        const eq = equipmentList.find(e => e.id === eqId);
+                        return eq && isBatteryType(eq.type);
+                      }) && (
+                        <div className="flex items-start gap-2 pt-1">
+                          <Checkbox
+                            id="link-battery-to-drone"
+                            checked={linkBatteryToDrone}
+                            onCheckedChange={(v) => setLinkBatteryToDrone(v === true)}
+                            className="mt-0.5"
+                          />
+                          <Label htmlFor="link-battery-to-drone" className="text-[11px] leading-tight cursor-pointer text-muted-foreground">
+                            Knytt batteri til {terminology.vehicleLower} (vises permanent på {terminology.vehicleLower}kortet)
+                          </Label>
+                        </div>
+                      )}
+                    </div>
+
                   )}
-                  {selectedDrone && (
-                    <p className="text-xs">
-                      <Plane className="w-3 h-3 inline mr-1" />
-                      {selectedDrone.modell} {flightTimeLabelForResource('drone', selectedDroneId)}
-                    </p>
-                  )}
-                  {selectedEqNames.length > 0 && selectedEqNames.map(eq => (
-                    <p key={eq.id} className="text-xs">
-                      <Wrench className="w-3 h-3 inline mr-1" />
-                      {eq.navn} {flightTimeLabelForResource('equipment', eq.id)}
-                    </p>
-                  ))}
-                  {!selectedPilot && !selectedDrone && selectedEqNames.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic">Ingen ressurser valgt</p>
-                  )}
+
+                  {/* Summary */}
+                  <div className="rounded-md bg-muted/40 p-2 space-y-0.5">
+                    <p className="text-xs font-medium text-muted-foreground">Oppsummering</p>
+                    {selectedPilot && (
+                      <p className="text-xs">
+                        <User className="w-3 h-3 inline mr-1" />
+                        {selectedPilot.full_name || selectedPilot.email} {flightTimeLabelForResource('pilot', pilotId)}
+                      </p>
+                    )}
+                    {selectedDrone && (
+                      <p className="text-xs">
+                        <Plane className="w-3 h-3 inline mr-1" />
+                        {selectedDrone.modell} {flightTimeLabelForResource('drone', selectedDroneId)}
+                      </p>
+                    )}
+                    {selectedEqNames.length > 0 && selectedEqNames.map(eq => (
+                      <p key={eq.id} className="text-xs">
+                        <Wrench className="w-3 h-3 inline mr-1" />
+                        {eq.navn} {flightTimeLabelForResource('equipment', eq.id)}
+                      </p>
+                    ))}
+                    {!selectedPilot && !selectedDrone && selectedEqNames.length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">Ingen ressurser valgt</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CollapsibleContent>
+              )}
+            </CollapsibleContent>
+          </div>
         </div>
       </Collapsible>
     );
@@ -3026,11 +3029,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
         />
 
-        <StepSection
-          id="log-step-flight"
-          title={t('uploadLog.steps.flightData')}
-          description={t('uploadLog.steps.flightDataDesc')}
-        >
+        <StepSection id="log-step-flight">
 
         {/* Extended KPIs */}
         {(result.batteryTemperature != null || result.minGpsSatellites != null || result.batteryMinVoltage != null || result.batteryCycles != null || result.batteryHealth != null || result.maxDistance != null) && (
@@ -3430,13 +3429,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         )}
 
         {/* Operation type (VLOS / BVLOS / EVLOS) */}
-        <div className="rounded-lg border border-border bg-card p-3 space-y-2 shadow-sm">
-          <Label htmlFor="upload-operation-type" className="text-sm font-semibold flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <Plane className="w-3.5 h-3.5" />
-            </span>
-            {t('dronelog.operationType', 'Operasjonstype')}
-          </Label>
+        <SectionCard
+          title={t('dronelog.operationType', 'Operasjonstype')}
+          icon={<Plane className="w-3.5 h-3.5" />}
+        >
           <Select
             value={operationType}
             onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}
@@ -3451,30 +3447,26 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
-        </div>
+        </SectionCard>
 
         </StepSection>
 
         {/* ── Step 2: logbook ── */}
-        <StepSection
-          id="log-step-logbook"
-          title={t('uploadLog.steps.logbook')}
-          description={t('uploadLog.steps.logbookDesc')}
-        >
+        <StepSection id="log-step-logbook">
           {renderLogbookSection()}
         </StepSection>
 
         {/* ── Step 3: mission ── */}
-        <StepSection
-          id="log-step-mission"
-          title={t('uploadLog.steps.mission')}
-          description={t('uploadLog.steps.missionDesc')}
-        >
+        <StepSection id="log-step-mission">
 
 
         {/* Mission candidates from direct mission search */}
         {matchedMissions.length > 0 && (
-          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
+          <SectionCard
+            title={t('uploadLog.steps.mission', 'Oppdrag')}
+            icon={<MapPin className="w-3.5 h-3.5" />}
+            accentClassName="bg-amber-500"
+          >
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
               {matchedMissions.length === 1
                 ? 'Et oppdrag matcher tidspunktet for denne flyloggen:'
@@ -3517,15 +3509,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
               limit={manualLimit}
               onLoadMore={() => setManualLimit(l => l + 10)}
             />
-          </div>
+          </SectionCard>
         )}
 
         {/* Name for new mission */}
         {result && !matchedLog && (selectedMissionId === '__new__' || matchedMissions.length === 0) && (
-          <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-2">
-            <Label htmlFor="new-mission-title" className="text-sm font-medium">
-              {t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
-            </Label>
+          <SectionCard
+            title={t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
+            icon={<PlusCircle className="w-3.5 h-3.5" />}
+          >
             <Input
               id="new-mission-title"
               value={newMissionTitle}
@@ -3535,15 +3527,17 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             <p className="text-xs text-muted-foreground">
               {t('dronelog.newMissionNameHint', 'Forslaget fylles ut automatisk, men kan endres.')}
             </p>
-          </div>
+          </SectionCard>
         )}
 
         {/* Show existing flight logs for chosen mission */}
         {selectedMissionId && selectedMissionId !== '__new__' && getAllLogsForMission(selectedMissionId).length > 0 && (
-          <div className="p-3 rounded-lg bg-accent/30 border border-border">
-            <p className="text-sm font-medium mb-2">Eksisterende flyturer for valgt pilot på dette oppdraget:</p>
+          <SectionCard
+            title={t('dronelog.existingFlights', 'Eksisterende flyturer')}
+            icon={<Clock className="w-3.5 h-3.5" />}
+          >
             {pilotId && getPilotLogsForMission(selectedMissionId, pilotId).length === 0 && (
-              <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
+              <p className="text-xs text-muted-foreground">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
             )}
             <RadioGroup
               value={selectedFlightLogChoice || (matchedLog ? matchedLog.id : '__new_flight__')}
@@ -3581,7 +3575,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 </div>
               </label>
             </RadioGroup>
-          </div>
+          </SectionCard>
         )}
 
         {matchedLog ? (

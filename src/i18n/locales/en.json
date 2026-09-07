@@ -3248,6 +3248,7 @@
     "pilotAutoMatchedFromDrone": "Auto-selected from drone link",
     "operationType": "Operation type",
     "logbookUpdate": "Logbook update",
+    "existingFlights": "Existing flights",
     "warningTitles": {
       "lowBattery": "Low battery level during flight",
       "cellDeviation": "Cell deviation detected on battery",

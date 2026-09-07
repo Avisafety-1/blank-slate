@@ -3250,6 +3250,7 @@
     "pilotAutoMatchedFromDrone": "Auto-valgt fra dronetilknytning",
     "operationType": "Operasjonstype",
     "logbookUpdate": "Loggbok-oppdatering",
+    "existingFlights": "Eksisterende flyturer",
     "warningTitles": {
       "lowBattery": "Lavt batterinivå under flytur",
       "cellDeviation": "Celleavvik registrert på batteri",
