@@ -2716,7 +2716,11 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                       const isMatched = snMatchesDjiSn(selectedDrone.serienummer, parsedSn) || snMatchesDjiSn((selectedDrone as any).internal_serial, parsedSn);
                       if (!isMatched) return null;
                       const storedSn = (selectedDrone.serienummer || '').trim();
-                      const canUpdate = parsedSnIsMoreComplete(storedSn, parsedSn);
+                      const internalSn = ((selectedDrone as any).internal_serial || '').trim();
+                      // The internal serial already holds the full SN → nothing to complete,
+                      // don't nag about the (often deliberately empty) serienummer field.
+                      const internalCoversSn = snMatchesDjiSn(internalSn, parsedSn) && !parsedSnIsMoreComplete(internalSn, parsedSn);
+                      const canUpdate = !internalCoversSn && parsedSnIsMoreComplete(storedSn, parsedSn);
                       const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
                       return (
                         <>
