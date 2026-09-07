@@ -3479,7 +3479,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step 2: logbook ── */}
         <StepSection id="log-step-logbook">
-          {renderLogbookSection()}
+          {renderLogbookSection(droneAutoMatched)}
         </StepSection>
 
         {/* ── Step 3: mission ── */}
