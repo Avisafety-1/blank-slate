@@ -8766,5 +8766,11 @@
     "inspectionOverdue": "{{days}} dager på overtid",
     "dateOnlyInterval": "Kun datobasert intervall",
     "performedDate": "Dato utført"
+  },
+  "acknowledgeErrors": {
+    "notAuthenticated": "Du er ikke lenger innlogget. Logg inn på nytt og prøv igjen.",
+    "notAuthorized": "Du har ikke rettigheter til å kvittere ut advarsler på denne ressursen.",
+    "notFound": "Fant ikke ressursen. Last siden på nytt og prøv igjen.",
+    "generic": "Noe gikk galt under kvitteringen. Prøv igjen, eller kontakt support hvis feilen vedvarer."
   }
 }

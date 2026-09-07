@@ -8764,5 +8764,11 @@
     "inspectionOverdue": "{{days}} days overdue",
     "dateOnlyInterval": "Date-based interval only",
     "performedDate": "Date performed"
+  },
+  "acknowledgeErrors": {
+    "notAuthenticated": "You are no longer signed in. Sign in again and retry.",
+    "notAuthorized": "You do not have permission to acknowledge warnings on this resource.",
+    "notFound": "The resource could not be found. Reload the page and try again.",
+    "generic": "Something went wrong while acknowledging. Try again, or contact support if it persists."
   }
 }
