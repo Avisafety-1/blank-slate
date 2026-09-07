@@ -457,7 +457,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     let cancelled = false;
     if (!selectedDroneId) {
       setDronePersonnelIds([]);
-      setPilotAutoMatchedFromDrone(false);
       return;
     }
     (async () => {
@@ -475,9 +474,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         personnel.some(p => p.id === ids[0]);
       if (canAutoSelect && pilotId !== ids[0]) {
         setPilotId(ids[0]);
-        setPilotAutoMatchedFromDrone(true);
-      } else if (!canAutoSelect) {
-        setPilotAutoMatchedFromDrone(false);
       }
     })();
     return () => { cancelled = true; };
