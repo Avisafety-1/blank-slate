@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
 import { FlightLogSummaryHeader } from "@/components/dronelog/FlightLogSummaryHeader";
-import { StepSection, StepIndicator } from "@/components/dronelog/StepSection";
+import { StepSection } from "@/components/dronelog/StepSection";
 
 // ── Types ──
 
