@@ -401,7 +401,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [dronePersonnelIds, setDronePersonnelIds] = useState<string[]>([]);
   // True when the user has manually picked a pilot — never auto-override after that
   const [pilotTouched, setPilotTouched] = useState(false);
-  const [pilotAutoMatchedFromDrone, setPilotAutoMatchedFromDrone] = useState(false);
+  
   const [myDroneIds, setMyDroneIds] = useState<string[]>([]);
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
@@ -457,7 +457,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     let cancelled = false;
     if (!selectedDroneId) {
       setDronePersonnelIds([]);
-      setPilotAutoMatchedFromDrone(false);
       return;
     }
     (async () => {
@@ -475,9 +474,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         personnel.some(p => p.id === ids[0]);
       if (canAutoSelect && pilotId !== ids[0]) {
         setPilotId(ids[0]);
-        setPilotAutoMatchedFromDrone(true);
-      } else if (!canAutoSelect) {
-        setPilotAutoMatchedFromDrone(false);
       }
     })();
     return () => { cancelled = true; };
@@ -739,7 +735,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setCurrentDjiFileName(null);
     setPilotId("");
     setPilotTouched(false);
-    setPilotAutoMatchedFromDrone(false);
     setSelectedEquipment([]);
     setOldPilotIds([]);
     setOldEquipmentIds([]);
@@ -2561,7 +2556,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const handlePilotChange = (newPilotId: string) => {
     setPilotId(newPilotId);
     setPilotTouched(true);
-    setPilotAutoMatchedFromDrone(false);
     setSelectedFlightLogChoice('');
     if (!selectedMissionId || selectedMissionId === '__new__') return;
     const pilotLogs = getPilotLogsForMission(selectedMissionId, newPilotId);
@@ -2606,11 +2600,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     return (
       <Collapsible open={logbookOpen} onOpenChange={setLogbookOpen}>
-        <div className="rounded-lg border border-border">
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/30 transition-colors rounded-t-lg">
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors rounded-t-lg">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Loggbok-oppdatering</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <BookOpen className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-sm font-semibold">{t('dronelog.logbookUpdate', 'Loggbok-oppdatering')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -2624,16 +2620,14 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
           <CollapsibleContent>
             {logToLogbooks && (
-              <div className="p-3 pt-0 space-y-3 border-t border-border">
+              <div className="p-3 pt-3 space-y-3 border-t border-border bg-muted/20">
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1 flex-wrap">
-                    <User className="w-3 h-3" />Pilot
-                    {pilotAutoMatchedFromDrone && (
-                      <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                        {t('dronelog.pilotAutoMatchedFromDrone')}
-                      </span>
-                    )}
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <User className="w-3 h-3" />
+                    </span>
+                    Pilot
                   </Label>
                   <Select value={pilotId} onValueChange={handlePilotChange}>
                     <SelectTrigger className="h-8 text-xs">
@@ -2667,7 +2661,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
                 {/* Drone selector — reuse existing */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><Plane className="w-3 h-3" />{terminology.vehicle}</Label>
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Plane className="w-3 h-3" />
+                    </span>
+                    {terminology.vehicle}
+                  </Label>
                   <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder={terminology.selectVehicle} />
@@ -2730,7 +2729,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {/* Equipment selector */}
                 {equipmentList.length > 0 && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs flex items-center gap-1"><Wrench className="w-3 h-3" />Utstyr</Label>
+                    <Label className="text-xs font-medium flex items-center gap-1.5">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <Wrench className="w-3 h-3" />
+                      </span>
+                      Utstyr
+                    </Label>
                     {(() => {
                       const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
                       return availableEquipment.length > 0 ? (
@@ -3024,10 +3028,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         <StepSection
           id="log-step-flight"
-          index={1}
           title={t('uploadLog.steps.flightData')}
           description={t('uploadLog.steps.flightDataDesc')}
-          done
         >
 
         {/* Extended KPIs */}
@@ -3428,13 +3430,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         )}
 
         {/* Operation type (VLOS / BVLOS / EVLOS) */}
-        <div className="rounded-lg border border-border p-3 space-y-1.5">
-          <Label htmlFor="upload-operation-type" className="text-sm font-medium">Operasjonstype</Label>
+        <div className="rounded-lg border border-border bg-card p-3 space-y-2 shadow-sm">
+          <Label htmlFor="upload-operation-type" className="text-sm font-semibold flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Plane className="w-3.5 h-3.5" />
+            </span>
+            {t('dronelog.operationType', 'Operasjonstype')}
+          </Label>
           <Select
             value={operationType}
             onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}
           >
-            <SelectTrigger id="upload-operation-type" className="h-9">
+            <SelectTrigger id="upload-operation-type" className="h-9 bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -3451,10 +3458,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* ── Step 2: logbook ── */}
         <StepSection
           id="log-step-logbook"
-          index={2}
           title={t('uploadLog.steps.logbook')}
           description={t('uploadLog.steps.logbookDesc')}
-          done={!logToLogbooks || !!pilotId}
         >
           {renderLogbookSection()}
         </StepSection>
@@ -3462,10 +3467,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* ── Step 3: mission ── */}
         <StepSection
           id="log-step-mission"
-          index={3}
           title={t('uploadLog.steps.mission')}
           description={t('uploadLog.steps.missionDesc')}
-          done={!!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__')}
         >
 
 

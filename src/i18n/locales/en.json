@@ -3246,6 +3246,8 @@
     "ardupilotQueued": "ArduPilot log queued and processing in the background. It will appear under \"Pending flight logs\" shortly.",
     "linkedToDrone": "(Linked to drone)",
     "pilotAutoMatchedFromDrone": "Auto-selected from drone link",
+    "operationType": "Operation type",
+    "logbookUpdate": "Logbook update",
     "warningTitles": {
       "lowBattery": "Low battery level during flight",
       "cellDeviation": "Cell deviation detected on battery",
