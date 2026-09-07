@@ -22,35 +22,3 @@ export const StepSection = ({ id, title, description, children }: StepSectionPro
   </section>
 );
 
-export interface StepDescriptor {
-  id: string;
-  label: string;
-  done?: boolean;
-}
-
-interface StepIndicatorProps {
-  steps: StepDescriptor[];
-}
-
-/** Clickable 1-2-3 progress row shown above the steps. */
-export const StepIndicator = ({ steps }: StepIndicatorProps) => (
-  <div className="flex items-center gap-1.5 overflow-x-auto">
-    {steps.map((s, i) => (
-      <button
-        key={s.id}
-        type="button"
-        onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-        className="flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-      >
-        <span
-          className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${
-            s.done ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-primary/10 text-primary"
-          }`}
-        >
-          {s.done ? <Check className="h-2.5 w-2.5" /> : i + 1}
-        </span>
-        {s.label}
-      </button>
-    ))}
-  </div>
-);
