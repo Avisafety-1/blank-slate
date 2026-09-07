@@ -2606,11 +2606,13 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     return (
       <Collapsible open={logbookOpen} onOpenChange={setLogbookOpen}>
-        <div className="rounded-lg border border-border">
-          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/30 transition-colors rounded-t-lg">
+        <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/40 transition-colors rounded-t-lg">
             <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Loggbok-oppdatering</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <BookOpen className="w-3.5 h-3.5" />
+              </span>
+              <span className="text-sm font-semibold">{t('dronelog.logbookUpdate', 'Loggbok-oppdatering')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Switch
