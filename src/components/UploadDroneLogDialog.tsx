@@ -866,7 +866,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
     let query = supabase
       .from("drones")
-      .select("id, modell, serienummer, internal_serial, dji_aircraft_name")
+      .select("id, modell, serienummer, internal_serial, dji_aircraft_name, company_id, companies(navn)")
       .eq("aktiv", true);
     if (companyIds.length > 0) query = query.in("company_id", companyIds);
     const { data } = await query.order("modell");
