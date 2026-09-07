@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
 
 interface StepSectionProps {
   id: string;
@@ -11,18 +10,11 @@ interface StepSectionProps {
 }
 
 /** One numbered step in the flight log result view. */
-export const StepSection = ({ id, index, title, description, done, children }: StepSectionProps) => (
+export const StepSection = ({ id, title, description, children }: StepSectionProps) => (
   <section id={id} className="scroll-mt-4 space-y-3">
-    <div className="flex items-center gap-2 border-b border-border pb-2">
-      <span
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-          done ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-primary/10 text-primary"
-        }`}
-      >
-        {done ? <Check className="h-3.5 w-3.5" /> : index}
-      </span>
-      <div className="min-w-0">
-        <h3 className="text-sm font-semibold leading-tight">{title}</h3>
+    <div className="flex items-center gap-3 border-b-2 border-border pb-2">
+      <div className="min-w-0 border-l-4 border-primary pl-3">
+        <h3 className="text-base font-semibold leading-tight text-foreground">{title}</h3>
         {description && <p className="text-xs text-muted-foreground leading-tight">{description}</p>}
       </div>
     </div>
