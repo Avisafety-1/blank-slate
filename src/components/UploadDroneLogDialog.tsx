@@ -3013,12 +3013,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       },
     ];
 
-    const steps = [
-      { id: 'log-step-flight', label: t('uploadLog.steps.flightData'), done: true },
-      { id: 'log-step-logbook', label: t('uploadLog.steps.logbook'), done: !logToLogbooks || !!pilotId },
-      { id: 'log-step-mission', label: t('uploadLog.steps.mission'), done: !!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__') || (selectedMissionId === '__new__' && !!(newMissionTitle.trim() || defaultNewMissionTitle)) },
-    ];
-
     return (
       <div className="space-y-5">
         <FlightLogSummaryHeader
@@ -3027,8 +3021,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           metrics={headerMetrics}
           autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
         />
-
-        <StepIndicator steps={steps} />
 
         <StepSection
           id="log-step-flight"
@@ -3041,18 +3033,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* Extended KPIs */}
         {(result.totalDistance != null || result.maxAltitude != null || result.batteryTemperature != null || result.minGpsSatellites != null) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {result.totalDistance != null && (
-              <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Route className="w-3 h-3" />Distanse</div>
-                <p className="text-sm font-medium">{result.totalDistance >= 1000 ? `${(result.totalDistance / 1000).toFixed(1)} km` : `${result.totalDistance} m`}</p>
-              </div>
-            )}
-            {result.maxAltitude != null && (
-              <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground"><Mountain className="w-3 h-3" />Maks høyde</div>
-                <p className="text-sm font-medium">{result.maxAltitude} m</p>
-              </div>
-            )}
             {result.minGpsSatellites != null && (
               <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground"><Satellite className="w-3 h-3" />GPS sat.</div>
