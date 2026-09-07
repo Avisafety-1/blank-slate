@@ -140,9 +140,40 @@ export const pickBestMission = <T extends { id: string; tidspunkt: string }>(
   return { sorted, bestId: sorted[0].id, droneMatchIds };
 };
 
-/** Label for a drone in pickers: "Modell – Navn (SN)" — name only when set. */
-export const droneOptionLabel = (d: { modell?: string | null; serienummer?: string | null; dji_aircraft_name?: string | null }) => {
+/** Label for a drone in pickers: "Modell – Navn (SN) · Avdeling" — parts only when set. */
+export const droneOptionLabel = (d: {
+  modell?: string | null;
+  serienummer?: string | null;
+  dji_aircraft_name?: string | null;
+  companies?: { navn?: string | null } | null;
+}) => {
   const name = (d.dji_aircraft_name || '').trim();
   const sn = (d.serienummer || '').trim();
-  return `${d.modell || ''}${name ? ` – ${name}` : ''}${sn ? ` (${sn})` : ''}`;
+  const dept = (d.companies?.navn || '').trim();
+  return `${d.modell || ''}${name ? ` – ${name}` : ''}${sn ? ` (${sn})` : ''}${dept ? ` · ${dept}` : ''}`;
+};
+
+/**
+ * A stored auto-match (pending_dji_logs.matched_drone_id) is only trustworthy while the drone
+ * still exists, is visible to the user and still matches the log's serial number or DJI name.
+ * Serial numbers can be cleared or changed after the match was stored.
+ */
+export const storedDroneMatchIsValid = <
+  T extends {
+    id?: string;
+    serienummer?: string | null;
+    internal_serial?: string | null;
+    dji_aircraft_name?: string | null;
+  },
+>(
+  list: T[],
+  storedId: string | null | undefined,
+  sn: string | null | undefined,
+  logAircraftName?: string | null,
+): boolean => {
+  if (!storedId) return false;
+  const drone = list.find(d => d.id === storedId);
+  if (!drone) return false;
+  if (sn && (snMatchesDjiSn(drone.serienummer, sn) || snMatchesDjiSn(drone.internal_serial, sn))) return true;
+  return djiNameMatches(drone.dji_aircraft_name, logAircraftName);
 };
