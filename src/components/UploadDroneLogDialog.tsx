@@ -3520,8 +3520,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           <p className="text-xs text-muted-foreground">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
         </div>
 
-        {/* Logbook section */}
-        {renderLogbookSection()}
+        </StepSection>
+
+        {/* ── Step 2: logbook ── */}
+        <StepSection
+          id="log-step-logbook"
+          index={2}
+          title={t('uploadLog.steps.logbook')}
+          description={t('uploadLog.steps.logbookDesc')}
+          done={!logToLogbooks || !!pilotId}
+        >
+          {renderLogbookSection()}
+        </StepSection>
+
+        {/* ── Step 3: mission ── */}
+        <StepSection
+          id="log-step-mission"
+          index={3}
+          title={t('uploadLog.steps.mission')}
+          description={t('uploadLog.steps.missionDesc')}
+          done={!!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__')}
+        >
+
 
         {/* Mission candidates from direct mission search */}
         {matchedMissions.length > 0 && (
