@@ -329,7 +329,7 @@ export const BatchLogPanel = ({
               ...r,
               parsing: false,
               parsed,
-              droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed }) || data?.matched_drone_id || "",
+              droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed, matched_drone_id: data?.matched_drone_id ?? r.log.matched_drone_id }) || "",
               equipmentIds: (() => {
                 const base = r.equipmentIds.length
                   ? r.equipmentIds
