@@ -401,7 +401,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [dronePersonnelIds, setDronePersonnelIds] = useState<string[]>([]);
   // True when the user has manually picked a pilot — never auto-override after that
   const [pilotTouched, setPilotTouched] = useState(false);
-  const [pilotAutoMatchedFromDrone, setPilotAutoMatchedFromDrone] = useState(false);
+  
   const [myDroneIds, setMyDroneIds] = useState<string[]>([]);
 
   const [equipmentList, setEquipmentList] = useState<EquipmentItem[]>([]);
