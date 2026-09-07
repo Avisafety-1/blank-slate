@@ -31,7 +31,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
+import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission, storedDroneMatchIsValid } from "@/lib/droneLogMatching";
 import { FlightLogSummaryHeader } from "@/components/dronelog/FlightLogSummaryHeader";
 import { StepSection, SectionCard } from "@/components/dronelog/StepSection";
 
@@ -866,7 +866,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     }
     let query = supabase
       .from("drones")
-      .select("id, modell, serienummer, internal_serial, dji_aircraft_name")
+      .select("id, modell, serienummer, internal_serial, dji_aircraft_name, company_id, companies(navn)")
       .eq("aktiv", true);
     if (companyIds.length > 0) query = query.in("company_id", companyIds);
     const { data } = await query.order("modell");
@@ -1644,11 +1644,15 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setResult(data);
 
     
-    // Auto-match drone
+    // Auto-match drone. A stored match is only reused when it still holds today —
+    // the drone can have been deleted, moved or had its serial number cleared since.
     let droneIdHint: string | null = null;
-    if (pendingLog.matched_drone_id) {
-      setSelectedDroneId(pendingLog.matched_drone_id);
-      droneIdHint = pendingLog.matched_drone_id;
+    const storedSn = (data.aircraftSN || data.aircraftSerial || '').trim();
+    if (storedDroneMatchIsValid(drones as any[], pendingLog.matched_drone_id, storedSn, data.aircraftName || null)) {
+      setSelectedDroneId(pendingLog.matched_drone_id!);
+      setUnmatchedDroneSN(null);
+      setAmbiguousDroneMatch(false);
+      droneIdHint = pendingLog.matched_drone_id!;
     } else {
       droneIdHint = matchDroneFromResult(data);
     }
@@ -2691,6 +2695,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                               modell={d.modell}
                               dji_aircraft_name={(d as any).dji_aircraft_name}
                               serienummer={d.serienummer}
+                              department={(d as any).companies?.navn}
                             />
                           </SelectItem>
                         ))}
@@ -3410,6 +3415,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                           modell={d.modell}
                           dji_aircraft_name={(d as any).dji_aircraft_name}
                           serienummer={d.serienummer}
+                          department={(d as any).companies?.navn}
                         />
                       </SelectItem>
                     ))}

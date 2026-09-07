@@ -13,7 +13,7 @@ import { nb } from "date-fns/locale";
 import { toast } from "sonner";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { cn } from "@/lib/utils";
-import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn, pickBestMission } from "@/lib/droneLogMatching";
+import { findSnMatches, parseFlightDate, droneOptionLabel, snMatchesDjiSn, pickBestMission, storedDroneMatchIsValid } from "@/lib/droneLogMatching";
 
 interface Drone { id: string; modell: string; serienummer: string; internal_serial: string | null; dji_aircraft_name?: string | null; }
 interface Personnel { id: string; full_name: string | null; email: string | null; }
@@ -145,7 +145,12 @@ export const BatchLogPanel = ({
       if (matches.length === 1) return matches[0].id;
       if (matches.length > 1) return null; // ambiguous — let the user choose
     }
-    return log.matched_drone_id || null;
+    // Only fall back to the stored match while it still holds (drone may have been
+    // deleted, moved or had its serial number cleared since the log was uploaded).
+    const logName = log.aircraft_name || log.parsed_result?.aircraftName || null;
+    return storedDroneMatchIsValid(drones as any[], log.matched_drone_id, sn, logName)
+      ? log.matched_drone_id
+      : null;
   };
 
   /**
@@ -324,7 +329,7 @@ export const BatchLogPanel = ({
               ...r,
               parsing: false,
               parsed,
-              droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed }) || data?.matched_drone_id || "",
+              droneId: r.droneId || resolveDroneId({ ...r.log, parsed_result: parsed, matched_drone_id: data?.matched_drone_id ?? r.log.matched_drone_id }) || "",
               equipmentIds: (() => {
                 const base = r.equipmentIds.length
                   ? r.equipmentIds
