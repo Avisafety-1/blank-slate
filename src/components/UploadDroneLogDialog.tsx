@@ -2803,6 +2803,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                           })}
                         </div>
                       )}
+                      {(() => {
+                        const parsedBatterySn = (result.batterySN || '').trim();
+                        const parsedBattery2Sn = (result.battery2SN || '').trim();
+                        const autoMatchedEquipment = selectedEquipment.map(eqId => equipmentList.find(e => e.id === eqId)).filter(Boolean).filter(eq =>
+                          (parsedBatterySn && (snMatchesDjiSn(eq!.serienummer, parsedBatterySn) || snMatchesDjiSn(eq!.internal_serial, parsedBatterySn))) ||
+                          (parsedBattery2Sn && (snMatchesDjiSn(eq!.serienummer, parsedBattery2Sn) || snMatchesDjiSn(eq!.internal_serial, parsedBattery2Sn)))
+                        );
+                        if (autoMatchedEquipment.length === 0) return null;
+                        return (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {t('uploadLog.sn.autoMatched')}
+                            {autoMatchedEquipment.length > 1 && (
+                              <span className="text-muted-foreground">({autoMatchedEquipment.length})</span>
+                            )}
+                          </p>
+                        );
+                      })()}
                       {selectedDroneId && selectedEquipment.some(eqId => {
                         const eq = equipmentList.find(e => e.id === eqId);
                         return eq && isBatteryType(eq.type);
