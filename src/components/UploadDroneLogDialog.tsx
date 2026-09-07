@@ -32,6 +32,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
+import { FlightLogSummaryHeader } from "@/components/dronelog/FlightLogSummaryHeader";
+import { StepSection, StepIndicator } from "@/components/dronelog/StepSection";
 
 // ── Types ──
 
@@ -331,7 +333,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [bulkFiles, setBulkFiles] = useState<File[]>([]);
   const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
   const [bulkProgress, setBulkProgress] = useState(0);
-  const [highResImport, setHighResImport] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [selectedDroneId, setSelectedDroneId] = useState("");
   const [drones, setDrones] = useState<Drone[]>([]);
@@ -2140,12 +2141,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPts = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPts) {
-        const step = Math.ceil(rawTrack.length / maxPts);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       // The imported file is authoritative: correct date, locations and entry source
       // on the existing (often manually estimated) log instead of creating a duplicate.
       const importedDate = result.startTime ? parseFlightDate(result.startTime) : null;
@@ -2200,12 +2196,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       // SHA-256 dedup is now handled early in findMatchingFlightLog
 
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPoints) {
-        const step = Math.ceil(rawTrack.length / maxPoints);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
       const weatherSnapshot = await buildMissionWeatherSnapshot({
         flightDate: effectiveDate,
@@ -2283,12 +2274,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     setIsSubmitting(true);
     try {
       const rawTrack = result.positions.map(p => ({ ...p }));
-      const maxPoints = highResImport ? 2000 : 200;
-      let flightTrack = rawTrack;
-      if (rawTrack.length > maxPoints) {
-        const step = Math.ceil(rawTrack.length / maxPoints);
-        flightTrack = rawTrack.filter((_, i) => i % step === 0 || i === rawTrack.length - 1);
-      }
+      const flightTrack = rawTrack;
       const effectiveDate = result.startTime ? (parseFlightDate(result.startTime) || new Date()) : new Date();
 
       // Link drone, personnel, equipment to mission
@@ -2717,9 +2703,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     const storedIsFuller = parsedSnIsMoreComplete(parsedSn, storedSn);
                     return (
                       <>
-                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />{t('uploadLog.sn.autoMatched')}
-                        </p>
                         {storedIsFuller && (
                           <p className="text-[11px] leading-tight text-muted-foreground">
                             {t('uploadLog.sn.storedIsFuller', { stored: storedSn, parsed: parsedSn })}
@@ -2743,35 +2726,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   })()}
                 </div>
 
-
-                {/* Log identifiers — read-only, collected for future drone identification */}
-                {(() => {
-                  const ids: Array<{ label: string; value: string }> = [
-                    { label: t('uploadLog.identifiers.aircraftName'), value: (result.aircraftName || '').trim() },
-                    { label: t('uploadLog.identifiers.aircraftSN'), value: (result.aircraftSN || result.aircraftSerial || '').trim() },
-                    { label: t('uploadLog.identifiers.rcSN'), value: (result.rcSN || '').trim() },
-                    { label: t('uploadLog.identifiers.fcSN'), value: (result.fcSN || '').trim() },
-                    { label: t('uploadLog.identifiers.cameraSN'), value: (result.cameraSN || '').trim() },
-                    { label: t('uploadLog.identifiers.gimbalSN'), value: (result.gimbalSN || '').trim() },
-                    { label: t('uploadLog.identifiers.batterySN'), value: (result.batterySN || '').trim() },
-                  ].filter(i => i.value);
-                  if (ids.length === 0) return null;
-                  return (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs flex items-center gap-1">
-                        <Info className="w-3 h-3" />{t('uploadLog.identifiers.title')}
-                      </Label>
-                      <div className="rounded-md border border-border/50 bg-muted/30 p-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
-                        {ids.map(i => (
-                          <div key={i.label} className="flex items-baseline justify-between gap-2 min-w-0">
-                            <span className="text-[11px] text-muted-foreground shrink-0">{i.label}</span>
-                            <span className="text-[11px] font-mono truncate" title={i.value}>{i.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
 
                 {/* Equipment selector */}
                 {equipmentList.length > 0 && (
@@ -2816,14 +2770,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                           );
                         })}
                       </div>
-                    )}
-                    {selectedEquipment.some(eqId => {
-                      const eq = equipmentList.find(e => e.id === eqId);
-                      return eq && result?.batterySN && eq.serienummer?.trim() === result.batterySN.trim();
-                    }) && (
-                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />Batteri auto-matchet via SN
-                      </p>
                     )}
                     {selectedDroneId && selectedEquipment.some(eqId => {
                       const eq = equipmentList.find(e => e.id === eqId);
@@ -3001,58 +2947,96 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   // ── Extracted result panel (used in both split-view and full result step) ──
   const renderResultPanel = () => {
     if (!result) return null;
-    return (
-      <div className="space-y-4">
-        {/* Flight date/time & drone info header */}
-        {(result.startTime || result.aircraftName || result.droneType || matchedLog) && (
-          <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
-            {result.startTime ? (
-              <p className="text-sm font-medium">
-                {(() => {
-                  const d = parseFlightDate(result.startTime!);
-                  const startStr = d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
-                  if (result.endTimeUtc) {
-                    const end = parseFlightDate(result.endTimeUtc);
-                    if (end) return `${startStr} → ${format(end, 'HH:mm')}`;
-                  }
-                  return startStr;
-                })()}
-              </p>
-            ) : matchedLog ? (
-              <p className="text-sm font-medium">{matchedLog.flight_date}</p>
-            ) : null}
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-              {result.aircraftName && <span>{result.aircraftName}</span>}
-              {result.droneType && <span>{result.droneType}</span>}
-              {(result.aircraftSN || result.aircraftSerial) && <span>SN: {result.aircraftSN || result.aircraftSerial}</span>}
-              {result.batterySN && <span>Batteri SN: {result.batterySN}</span>}
-            </div>
-          </div>
-        )}
+    const headerTitle = (() => {
+      if (result.startTime) {
+        const d = parseFlightDate(result.startTime);
+        const startStr = d ? format(d, 'dd.MM.yyyy HH:mm') : result.startTime;
+        if (result.endTimeUtc) {
+          const end = parseFlightDate(result.endTimeUtc);
+          if (end) return `${startStr} → ${format(end, 'HH:mm')}`;
+        }
+        return startStr;
+      }
+      return matchedLog?.flight_date ? String(matchedLog.flight_date) : null;
+    })();
 
-        {/* Primary KPIs */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />{t('dronelog.flightDuration', 'Flytid')}</div>
-            <p className="font-semibold">{result.durationMinutes} min</p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground"><Zap className="w-3 h-3" />{t('dronelog.maxSpeed', 'Maks hastighet')}</div>
-            <p className="font-semibold">{result.detailsMaxSpeed ?? result.maxSpeed} m/s</p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground"><Battery className="w-3 h-3" />{t('dronelog.minBattery', 'Min. batteri')}</div>
-            <p className={`font-semibold ${result.minBattery >= 0 && result.minBattery < 20 ? 'text-destructive' : ''}`}>
-              {(result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage
-                ? `${result.batteryMinVoltage}V`
-                : result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-muted/50 space-y-1">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="w-3 h-3" />{t('dronelog.dataPoints', 'Datapunkter')}</div>
-            <p className="font-semibold">{result.totalRows}</p>
-          </div>
-        </div>
+    const parsedAircraftSn = (result.aircraftSN || result.aircraftSerial || '').trim();
+    const headerIdentifiers = [
+      (result.aircraftName || '').trim(),
+      (result.droneType || '').trim(),
+      parsedAircraftSn ? `${t('uploadLog.identifiers.aircraftSN')} ${parsedAircraftSn}` : '',
+      (result.batterySN || '').trim() ? `${t('uploadLog.identifiers.batterySN')} ${result.batterySN!.trim()}` : '',
+      (result.rcSN || '').trim() ? `${t('uploadLog.identifiers.rcSN')} ${result.rcSN!.trim()}` : '',
+      (result.fcSN || '').trim() ? `${t('uploadLog.identifiers.fcSN')} ${result.fcSN!.trim()}` : '',
+      (result.cameraSN || '').trim() ? `${t('uploadLog.identifiers.cameraSN')} ${result.cameraSN!.trim()}` : '',
+      (result.gimbalSN || '').trim() ? `${t('uploadLog.identifiers.gimbalSN')} ${result.gimbalSN!.trim()}` : '',
+    ].filter(Boolean) as string[];
+
+    const droneAutoMatched = !!parsedAircraftSn && !!selectedDrone && !ambiguousDroneMatch && (
+      snMatchesDjiSn(selectedDrone.serienummer, parsedAircraftSn) ||
+      snMatchesDjiSn((selectedDrone as any).internal_serial, parsedAircraftSn)
+    );
+
+    const headerMetrics = [
+      {
+        icon: <Clock className="w-3 h-3" />,
+        label: t('dronelog.flightDuration', 'Flytid'),
+        value: `${result.durationMinutes} min`,
+      },
+      {
+        icon: <Zap className="w-3 h-3" />,
+        label: t('dronelog.maxSpeed', 'Maks hastighet'),
+        value: `${result.detailsMaxSpeed ?? result.maxSpeed} m/s`,
+      },
+      {
+        icon: <Battery className="w-3 h-3" />,
+        label: t('dronelog.minBattery', 'Min. batteri'),
+        value: (result as any)?.source === 'ardupilot' && result.minBattery <= 0 && result.batteryMinVoltage
+          ? `${result.batteryMinVoltage}V`
+          : result.minBattery >= 0 ? `${result.minBattery}%` : 'N/A',
+        alert: result.minBattery >= 0 && result.minBattery < 20,
+      },
+      ...(result.maxAltitude != null
+        ? [{ icon: <Mountain className="w-3 h-3" />, label: t('uploadLog.steps.maxAltitude'), value: `${result.maxAltitude} m` }]
+        : []),
+      ...(result.totalDistance != null
+        ? [{
+            icon: <Route className="w-3 h-3" />,
+            label: t('uploadLog.steps.distance'),
+            value: result.totalDistance >= 1000 ? `${(result.totalDistance / 1000).toFixed(1)} km` : `${result.totalDistance} m`,
+          }]
+        : []),
+      {
+        icon: <MapPin className="w-3 h-3" />,
+        label: t('dronelog.dataPoints', 'Datapunkter'),
+        value: result.totalRows,
+      },
+    ];
+
+    const steps = [
+      { id: 'log-step-flight', label: t('uploadLog.steps.flightData'), done: true },
+      { id: 'log-step-logbook', label: t('uploadLog.steps.logbook'), done: !logToLogbooks || !!pilotId },
+      { id: 'log-step-mission', label: t('uploadLog.steps.mission'), done: !!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__') || (selectedMissionId === '__new__' && !!(newMissionTitle.trim() || defaultNewMissionTitle)) },
+    ];
+
+    return (
+      <div className="space-y-5">
+        <FlightLogSummaryHeader
+          title={headerTitle}
+          identifiers={headerIdentifiers}
+          metrics={headerMetrics}
+          autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
+        />
+
+        <StepIndicator steps={steps} />
+
+        <StepSection
+          id="log-step-flight"
+          index={1}
+          title={t('uploadLog.steps.flightData')}
+          description={t('uploadLog.steps.flightDataDesc')}
+          done
+        >
 
         {/* Extended KPIs */}
         {(result.totalDistance != null || result.maxAltitude != null || result.batteryTemperature != null || result.minGpsSatellites != null) && (
@@ -3482,8 +3466,28 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           <p className="text-xs text-muted-foreground">Standard: VLOS. Brukes i statistikken på Status-siden.</p>
         </div>
 
-        {/* Logbook section */}
-        {renderLogbookSection()}
+        </StepSection>
+
+        {/* ── Step 2: logbook ── */}
+        <StepSection
+          id="log-step-logbook"
+          index={2}
+          title={t('uploadLog.steps.logbook')}
+          description={t('uploadLog.steps.logbookDesc')}
+          done={!logToLogbooks || !!pilotId}
+        >
+          {renderLogbookSection()}
+        </StepSection>
+
+        {/* ── Step 3: mission ── */}
+        <StepSection
+          id="log-step-mission"
+          index={3}
+          title={t('uploadLog.steps.mission')}
+          description={t('uploadLog.steps.missionDesc')}
+          done={!!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__')}
+        >
+
 
         {/* Mission candidates from direct mission search */}
         {matchedMissions.length > 0 && (
@@ -3626,24 +3630,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             />
           </div>
         ) : null}
+        </StepSection>
 
-        {/* High-resolution import toggle */}
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-          <Checkbox
-            id="highResImport"
-            checked={highResImport}
-            onCheckedChange={(checked) => setHighResImport(checked === true)}
-            className="mt-0.5"
-          />
-          <div className="space-y-0.5">
-            <Label htmlFor="highResImport" className="text-sm font-medium cursor-pointer">
-              Importer høy-oppløselig posisjonsdata
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Gir ~1-sekunds oppløsning for flyanalyse (bruker mer lagringsplass). Standard er ~6-sekunders oppløsning.
-            </p>
-          </div>
-        </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => {

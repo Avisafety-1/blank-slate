@@ -8466,6 +8466,16 @@
     }
   },
   "uploadLog": {
+    "steps": {
+      "flightData": "Flydata",
+      "flightDataDesc": "Tall og hendelser fra loggen",
+      "logbook": "Loggbok",
+      "logbookDesc": "Pilot, drone og utstyr som får flytid",
+      "mission": "Oppdrag",
+      "missionDesc": "Hvilket oppdrag flyloggen hører til",
+      "maxAltitude": "Maks høyde",
+      "distance": "Distanse"
+    },
     "sn": {
       "autoMatched": "Auto-matchet via SN",
       "ambiguousMatch": "Flere {{sn}}-droner deler samme serienummer-prefiks fra loggen. Velg riktig drone manuelt.",
