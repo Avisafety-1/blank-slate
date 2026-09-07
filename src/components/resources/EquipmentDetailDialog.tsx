@@ -1,3 +1,4 @@
+import { acknowledgeErrorMessage } from "@/lib/acknowledgeError";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
