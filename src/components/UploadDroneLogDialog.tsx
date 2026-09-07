@@ -3426,13 +3426,18 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         )}
 
         {/* Operation type (VLOS / BVLOS / EVLOS) */}
-        <div className="rounded-lg border border-border p-3 space-y-1.5">
-          <Label htmlFor="upload-operation-type" className="text-sm font-medium">Operasjonstype</Label>
+        <div className="rounded-lg border border-border bg-card p-3 space-y-2 shadow-sm">
+          <Label htmlFor="upload-operation-type" className="text-sm font-semibold flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Plane className="w-3.5 h-3.5" />
+            </span>
+            {t('dronelog.operationType', 'Operasjonstype')}
+          </Label>
           <Select
             value={operationType}
             onValueChange={(v) => setOperationType(v as "VLOS" | "BVLOS" | "EVLOS")}
           >
-            <SelectTrigger id="upload-operation-type" className="h-9">
+            <SelectTrigger id="upload-operation-type" className="h-9 bg-background">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
