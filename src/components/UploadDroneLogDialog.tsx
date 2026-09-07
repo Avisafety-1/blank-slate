@@ -3046,7 +3046,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           title={headerTitle}
           identifiers={headerIdentifiers}
           metrics={headerMetrics}
-          autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
         />
 
         <StepSection id="log-step-flight">
