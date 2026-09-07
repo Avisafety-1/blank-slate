@@ -2,10 +2,8 @@ import type { ReactNode } from "react";
 
 interface StepSectionProps {
   id: string;
-  index: number;
   title: string;
   description?: string;
-  done?: boolean;
   children: ReactNode;
 }
 
