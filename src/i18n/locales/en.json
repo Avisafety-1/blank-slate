@@ -8464,6 +8464,16 @@
     }
   },
   "uploadLog": {
+    "steps": {
+      "flightData": "Flight data",
+      "flightDataDesc": "Numbers and events from the log",
+      "logbook": "Logbook",
+      "logbookDesc": "Pilot, drone and equipment receiving flight time",
+      "mission": "Mission",
+      "missionDesc": "Which mission this flight log belongs to",
+      "maxAltitude": "Max altitude",
+      "distance": "Distance"
+    },
     "sn": {
       "autoMatched": "Auto-matched via SN",
       "ambiguousMatch": "Several drones share the same serial number prefix from the log ({{sn}}). Please select the correct one manually.",
