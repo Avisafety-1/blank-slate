@@ -2695,6 +2695,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                               modell={d.modell}
                               dji_aircraft_name={(d as any).dji_aircraft_name}
                               serienummer={d.serienummer}
+                              department={(d as any).companies?.navn}
                             />
                           </SelectItem>
                         ))}
@@ -3414,6 +3415,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                           modell={d.modell}
                           dji_aircraft_name={(d as any).dji_aircraft_name}
                           serienummer={d.serienummer}
+                          department={(d as any).companies?.navn}
                         />
                       </SelectItem>
                     ))}
