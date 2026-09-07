@@ -3532,10 +3532,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* Show existing flight logs for chosen mission */}
         {selectedMissionId && selectedMissionId !== '__new__' && getAllLogsForMission(selectedMissionId).length > 0 && (
-          <div className="p-3 rounded-lg bg-accent/30 border border-border">
-            <p className="text-sm font-medium mb-2">Eksisterende flyturer for valgt pilot på dette oppdraget:</p>
+          <SectionCard
+            title={t('dronelog.existingFlights', 'Eksisterende flyturer')}
+            icon={<Clock className="w-3.5 h-3.5" />}
+          >
             {pilotId && getPilotLogsForMission(selectedMissionId, pilotId).length === 0 && (
-              <p className="text-xs text-muted-foreground mb-2">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
+              <p className="text-xs text-muted-foreground">Ingen eksisterende flytur for valgt pilot. Loggen legges til som ny flytur på oppdraget.</p>
             )}
             <RadioGroup
               value={selectedFlightLogChoice || (matchedLog ? matchedLog.id : '__new_flight__')}
@@ -3573,7 +3575,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 </div>
               </label>
             </RadioGroup>
-          </div>
+          </SectionCard>
         )}
 
         {matchedLog ? (
