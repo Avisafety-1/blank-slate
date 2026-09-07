@@ -854,11 +854,22 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   } : undefined;
 
   const fetchDrones = async () => {
-    const { data } = await supabase
+    if (!companyId && !user) return;
+    // Restrict to the companies the user can actually see (own company + sub-departments),
+    // otherwise drones from unrelated companies can win the serial-number auto-match.
+    let companyIds: string[] = companyId ? [companyId] : [];
+    if (user) {
+      const { data: visible } = await (supabase.rpc as any)("get_user_visible_company_ids", { _user_id: user.id });
+      if (Array.isArray(visible) && visible.length > 0) {
+        companyIds = visible.map((r: any) => (typeof r === "string" ? r : r.company_id)).filter(Boolean);
+      }
+    }
+    let query = supabase
       .from("drones")
       .select("id, modell, serienummer, internal_serial, dji_aircraft_name")
-      .eq("aktiv", true)
-      .order("modell");
+      .eq("aktiv", true);
+    if (companyIds.length > 0) query = query.in("company_id", companyIds);
+    const { data } = await query.order("modell");
     if (data) setDrones(data);
   };
 
