@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface StepSectionProps {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
   children: ReactNode;
 }
