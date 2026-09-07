@@ -3031,7 +3031,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         >
 
         {/* Extended KPIs */}
-        {(result.totalDistance != null || result.maxAltitude != null || result.batteryTemperature != null || result.minGpsSatellites != null) && (
+        {(result.batteryTemperature != null || result.minGpsSatellites != null || result.batteryMinVoltage != null || result.batteryCycles != null || result.batteryHealth != null || result.maxDistance != null) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {result.minGpsSatellites != null && (
               <div className="p-2 rounded-lg bg-muted/30 space-y-0.5">
