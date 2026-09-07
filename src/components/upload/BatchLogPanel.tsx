@@ -145,7 +145,12 @@ export const BatchLogPanel = ({
       if (matches.length === 1) return matches[0].id;
       if (matches.length > 1) return null; // ambiguous — let the user choose
     }
-    return log.matched_drone_id || null;
+    // Only fall back to the stored match while it still holds (drone may have been
+    // deleted, moved or had its serial number cleared since the log was uploaded).
+    const logName = log.aircraft_name || log.parsed_result?.aircraftName || null;
+    return storedDroneMatchIsValid(drones as any[], log.matched_drone_id, sn, logName)
+      ? log.matched_drone_id
+      : null;
   };
 
   /**
