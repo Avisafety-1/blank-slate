@@ -1,3 +1,4 @@
+import { acknowledgeErrorMessage } from "@/lib/acknowledgeError";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1147,10 +1148,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                               _note: tt("acknowledge.logDescription", { from: drone.status, suffix }) + commentPart,
                             });
                             if (error) {
-                              const msg = /not_authorized/.test(error.message)
-                                ? tt("acknowledge.errorNotAuthorized")
-                                : error.message;
-                              toast.error(tt("acknowledge.toastFailure", { message: msg }));
+                              toast.error(acknowledgeErrorMessage(error));
                               return;
                             }
                             queryClient.invalidateQueries({ queryKey: ['drones'] });

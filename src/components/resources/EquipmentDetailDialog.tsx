@@ -1,3 +1,4 @@
+import { acknowledgeErrorMessage } from "@/lib/acknowledgeError";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -560,10 +561,7 @@ export const EquipmentDetailDialog = ({ open, onOpenChange, equipment: initialEq
                                     _note: note,
                                   });
                                   if (error) {
-                                    const msg = /not_authorized/.test(error.message)
-                                      ? t('resourceDialogs.equipmentDetail.toasts.clearWarningNotAuthorized')
-                                      : error.message;
-                                    toast.error(t('resourceDialogs.equipmentDetail.toasts.clearWarningError', { message: msg }));
+                                    toast.error(acknowledgeErrorMessage(error));
                                     return;
                                   }
                                   queryClient.invalidateQueries({ queryKey: ['equipment'] });
