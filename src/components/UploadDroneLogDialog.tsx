@@ -2735,7 +2735,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                 {/* Equipment selector */}
                 {equipmentList.length > 0 && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs flex items-center gap-1"><Wrench className="w-3 h-3" />Utstyr</Label>
+                    <Label className="text-xs font-medium flex items-center gap-1.5">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <Wrench className="w-3 h-3" />
+                      </span>
+                      Utstyr
+                    </Label>
                     {(() => {
                       const availableEquipment = equipmentList.filter(eq => !selectedEquipment.includes(eq.id));
                       return availableEquipment.length > 0 ? (
