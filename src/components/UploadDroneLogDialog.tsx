@@ -31,7 +31,7 @@ import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission } from "@/lib/droneLogMatching";
+import { snMatchesDjiSn, parsedSnIsMoreComplete, findSnMatches, parseFlightDate, droneOptionLabel, pickBestMission, storedDroneMatchIsValid } from "@/lib/droneLogMatching";
 import { FlightLogSummaryHeader } from "@/components/dronelog/FlightLogSummaryHeader";
 import { StepSection, SectionCard } from "@/components/dronelog/StepSection";
 
