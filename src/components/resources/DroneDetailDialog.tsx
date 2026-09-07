@@ -1147,10 +1147,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                               _note: tt("acknowledge.logDescription", { from: drone.status, suffix }) + commentPart,
                             });
                             if (error) {
-                              const msg = /not_authorized/.test(error.message)
-                                ? tt("acknowledge.errorNotAuthorized")
-                                : error.message;
-                              toast.error(tt("acknowledge.toastFailure", { message: msg }));
+                              toast.error(acknowledgeErrorMessage(error));
                               return;
                             }
                             queryClient.invalidateQueries({ queryKey: ['drones'] });
