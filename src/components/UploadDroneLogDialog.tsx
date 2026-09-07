@@ -2626,7 +2626,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
           <CollapsibleContent>
             {logToLogbooks && (
-              <div className="p-3 pt-0 space-y-3 border-t border-border">
+              <div className="p-3 pt-3 space-y-3 border-t border-border bg-muted/20">
                 {/* Pilot selector */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium flex items-center gap-1.5">
