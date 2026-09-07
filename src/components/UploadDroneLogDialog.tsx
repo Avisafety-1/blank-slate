@@ -3458,10 +3458,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* ── Step 2: logbook ── */}
         <StepSection
           id="log-step-logbook"
-          index={2}
           title={t('uploadLog.steps.logbook')}
           description={t('uploadLog.steps.logbookDesc')}
-          done={!logToLogbooks || !!pilotId}
         >
           {renderLogbookSection()}
         </StepSection>
@@ -3469,10 +3467,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         {/* ── Step 3: mission ── */}
         <StepSection
           id="log-step-mission"
-          index={3}
           title={t('uploadLog.steps.mission')}
           description={t('uploadLog.steps.missionDesc')}
-          done={!!matchedLog || (!!selectedMissionId && selectedMissionId !== '__new__')}
         >
 
 
