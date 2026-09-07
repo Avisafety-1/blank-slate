@@ -2588,7 +2588,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     </Button>
   );
 
-  const renderLogbookSection = () => {
+  const renderLogbookSection = (droneAutoMatched: boolean) => {
     if (!result) return null;
     const duration = result.durationMinutes;
     const isUpdate = !!matchedLog;
@@ -2701,6 +2701,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         ))}
                       </SelectContent>
                     </Select>
+                    {droneAutoMatched && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {t('uploadLog.sn.autoMatched')}
+                      </p>
+                    )}
                     {(() => {
                       const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
                       if (!parsedSn) return null;
