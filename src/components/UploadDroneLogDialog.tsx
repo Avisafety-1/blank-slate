@@ -2588,7 +2588,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
     </Button>
   );
 
-  const renderLogbookSection = () => {
+  const renderLogbookSection = (droneAutoMatched: boolean) => {
     if (!result) return null;
     const duration = result.durationMinutes;
     const isUpdate = !!matchedLog;
@@ -2701,6 +2701,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                         ))}
                       </SelectContent>
                     </Select>
+                    {droneAutoMatched && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {t('uploadLog.sn.autoMatched')}
+                      </p>
+                    )}
                     {(() => {
                       const parsedSn = (result.aircraftSN || result.aircraftSerial || '').trim();
                       if (!parsedSn) return null;
@@ -2797,6 +2803,24 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                           })}
                         </div>
                       )}
+                      {(() => {
+                        const parsedBatterySn = (result.batterySN || '').trim();
+                        const parsedBattery2Sn = (result.battery2SN || '').trim();
+                        const autoMatchedEquipment = selectedEquipment.map(eqId => equipmentList.find(e => e.id === eqId)).filter(Boolean).filter(eq =>
+                          (parsedBatterySn && (snMatchesDjiSn(eq!.serienummer, parsedBatterySn) || snMatchesDjiSn(eq!.internal_serial, parsedBatterySn))) ||
+                          (parsedBattery2Sn && (snMatchesDjiSn(eq!.serienummer, parsedBattery2Sn) || snMatchesDjiSn(eq!.internal_serial, parsedBattery2Sn)))
+                        );
+                        if (autoMatchedEquipment.length === 0) return null;
+                        return (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {t('uploadLog.sn.autoMatched')}
+                            {autoMatchedEquipment.length > 1 && (
+                              <span className="text-muted-foreground">({autoMatchedEquipment.length})</span>
+                            )}
+                          </p>
+                        );
+                      })()}
                       {selectedDroneId && selectedEquipment.some(eqId => {
                         const eq = equipmentList.find(e => e.id === eqId);
                         return eq && isBatteryType(eq.type);
@@ -3046,7 +3070,6 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
           title={headerTitle}
           identifiers={headerIdentifiers}
           metrics={headerMetrics}
-          autoMatchedLabel={droneAutoMatched ? t('uploadLog.sn.autoMatched') : null}
         />
 
         <StepSection id="log-step-flight">
@@ -3474,7 +3497,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step 2: logbook ── */}
         <StepSection id="log-step-logbook">
-          {renderLogbookSection()}
+          {renderLogbookSection(droneAutoMatched)}
         </StepSection>
 
         {/* ── Step 3: mission ── */}

@@ -12,7 +12,6 @@ interface Props {
   title?: string | null;
   identifiers: string[];
   metrics: SummaryMetric[];
-  autoMatchedLabel?: string | null;
 }
 
 /**
@@ -20,7 +19,7 @@ interface Props {
  * Holds all identification (date, drone, serial numbers) and key numbers once,
  * so the sections below never repeat them.
  */
-export const FlightLogSummaryHeader = ({ title, identifiers, metrics, autoMatchedLabel }: Props) => {
+export const FlightLogSummaryHeader = ({ title, identifiers, metrics }: Props) => {
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
       <div className="flex items-start justify-between gap-2 min-w-0">
@@ -32,12 +31,6 @@ export const FlightLogSummaryHeader = ({ title, identifiers, metrics, autoMatche
             </p>
           )}
         </div>
-        {autoMatchedLabel && (
-          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-            <CheckCircle className="w-3 h-3" />
-            {autoMatchedLabel}
-          </span>
-        )}
       </div>
 
       {metrics.length > 0 && (
