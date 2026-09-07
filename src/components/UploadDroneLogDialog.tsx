@@ -3514,10 +3514,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* Name for new mission */}
         {result && !matchedLog && (selectedMissionId === '__new__' || matchedMissions.length === 0) && (
-          <div className="p-3 rounded-lg bg-accent/30 border border-border space-y-2">
-            <Label htmlFor="new-mission-title" className="text-sm font-medium">
-              {t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
-            </Label>
+          <SectionCard
+            title={t('dronelog.newMissionName', 'Navn på nytt oppdrag')}
+            icon={<PlusCircle className="w-3.5 h-3.5" />}
+          >
             <Input
               id="new-mission-title"
               value={newMissionTitle}
@@ -3527,7 +3527,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
             <p className="text-xs text-muted-foreground">
               {t('dronelog.newMissionNameHint', 'Forslaget fylles ut automatisk, men kan endres.')}
             </p>
-          </div>
+          </SectionCard>
         )}
 
         {/* Show existing flight logs for chosen mission */}
