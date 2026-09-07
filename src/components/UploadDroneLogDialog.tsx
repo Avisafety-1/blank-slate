@@ -2667,7 +2667,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
                 {/* Drone selector — reuse existing */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs flex items-center gap-1"><Plane className="w-3 h-3" />{terminology.vehicle}</Label>
+                  <Label className="text-xs font-medium flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Plane className="w-3 h-3" />
+                    </span>
+                    {terminology.vehicle}
+                  </Label>
                   <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder={terminology.selectVehicle} />
