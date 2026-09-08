@@ -231,7 +231,34 @@ export function useFlightLogsList(active: boolean) {
   }, [active, filters.pilotId]);
 
 
-  /**
+  // Ids of imported flights that were not planned in advance
+  const [unplannedIds, setUnplannedIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!active || !filters.unplannedOnly) {
+      setUnplannedIds(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      let q = (supabase as any)
+        .from("flight_logs")
+        .select("id, flight_date, start_time_utc, source, mission_id, missions(opprettet_dato)")
+        .not("source", "is", null)
+        .neq("source", "manual")
+        .order("flight_date", { ascending: false })
+        .limit(OPTIONS_SCAN_LIMIT);
+      if (allowedCompanyIds.length) q = q.in("company_id", allowedCompanyIds);
+      const { data } = await q;
+      if (cancelled) return;
+      setUnplannedIds(((data || []) as any[]).filter(r => isUnplannedFlight(r)).map(r => r.id));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, filters.unplannedOnly, allowedKey]);
+
+
    * Applies the active filters to a flight_logs query.
    * `skip` leaves one dimension out so the option list for that dimension
    * reflects everything still reachable with the other selections.
