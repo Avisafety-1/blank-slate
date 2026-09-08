@@ -1749,11 +1749,15 @@ const Status = () => {
             </div>
           </GlassCard>
 
-          <GlassCard
-            className="p-6 cursor-pointer hover:bg-muted/50 transition-colors"
-            onClick={() => navigate("/oppdrag?tab=logs&unplanned=1")}
-          >
-            <div className="flex items-center justify-between">
+          <GlassCard className="p-6 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/oppdrag?tab=logs&unplanned=1")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/oppdrag?tab=logs&unplanned=1"); }}
+              className="flex items-center justify-between"
+            >
+
               <div>
                 <p className="text-sm text-muted-foreground">{t("status.metrics.unplannedFlights")}</p>
                 <p
