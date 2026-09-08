@@ -331,7 +331,7 @@ export function useFlightLogsList(active: boolean) {
       return q;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [companyId, allowedKey, user?.id, mineLogIds, pilotLogIds, filters, debouncedSearch, searchMatches]
+    [companyId, allowedKey, user?.id, mineLogIds, pilotLogIds, filters, debouncedSearch, searchMatches, unplannedIds]
 
   );
 
@@ -541,7 +541,7 @@ export function useFlightLogsList(active: boolean) {
     if (!active) return;
     fetchLogs(0, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, companyId, allowedKey, mineLogIds, pilotLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.companyId, filters.dateFrom, filters.dateTo, debouncedSearch, searchMatches]);
+  }, [active, companyId, allowedKey, mineLogIds, pilotLogIds, filters.onlyMine, filters.droneId, filters.pilotId, filters.source, filters.companyId, filters.dateFrom, filters.dateTo, filters.unplannedOnly, unplannedIds, debouncedSearch, searchMatches]);
 
 
   return {
