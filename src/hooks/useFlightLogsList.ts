@@ -258,8 +258,9 @@ export function useFlightLogsList(active: boolean) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, filters.unplannedOnly, allowedKey]);
 
-
+  /**
    * Applies the active filters to a flight_logs query.
+
    * `skip` leaves one dimension out so the option list for that dimension
    * reflects everything still reachable with the other selections.
    */
