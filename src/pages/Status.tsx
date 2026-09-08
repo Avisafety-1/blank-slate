@@ -1780,7 +1780,7 @@ const Status = () => {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {t("status.metrics.unplannedOfImported", {
-                    count: kpiData.unplannedFlights,
+                    n: kpiData.unplannedFlights,
                     total: kpiData.importedFlights,
                     pct: unplannedPct.toFixed(0),
                   })}

@@ -1509,7 +1509,7 @@
       "totalHoursSummary": "A total of {{hours}} hours across {{flights}} flights.",
       "operationTypeByMonth": "Operation type per month",
       "unplannedFlights": "Unplanned flights",
-      "unplannedOfImported": "{{count}} of {{total}} imported ({{pct}}%)",
+      "unplannedOfImported": "{{n}} of {{total}} imported ({{pct}}%)",
       "unplannedExplainer": "Flights where the mission was created after take-off, or with no mission at all.",
       "unplannedByMonth": "Planned vs unplanned flights",
       "plannedLegend": "Planned",

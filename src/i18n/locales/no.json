@@ -1511,7 +1511,7 @@
       "totalHoursSummary": "Totalt {{hours}} timer fordelt på {{flights}} flyturer.",
       "operationTypeByMonth": "Operasjonstype per måned",
       "unplannedFlights": "Ikke planlagte flyturer",
-      "unplannedOfImported": "{{count}} av {{total}} importerte ({{pct}} %)",
+      "unplannedOfImported": "{{n}} av {{total}} importerte ({{pct}} %)",
       "unplannedExplainer": "Flyturer der oppdraget først ble opprettet etter at flyturen startet, eller helt uten oppdrag.",
       "unplannedByMonth": "Planlagte vs. ikke planlagte flyturer",
       "plannedLegend": "Planlagt",
