@@ -738,6 +738,8 @@ const Status = () => {
         [t("status.hookMessages.export.totalFlightHours"), kpiData.totalFlightHours],
         [t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)],
         [t("status.hookMessages.export.activeResources"), kpiData.activeResources],
+        [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
+
       ];
       const wsKPI = XLSX.utils.aoa_to_sheet(kpiSheetData);
       XLSX.utils.book_append_sheet(wb, wsKPI, t("status.hookMessages.export.kpiSheet"));
@@ -933,6 +935,8 @@ const Status = () => {
       sections.push([t("status.hookMessages.export.totalFlightHours"), String(kpiData.totalFlightHours)]);
       sections.push([t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)]);
       sections.push([t("status.hookMessages.export.activeResources"), String(kpiData.activeResources)]);
+      sections.push([t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`]);
+
       sections.push([]);
 
       // Missions by Month
@@ -1262,6 +1266,8 @@ const Status = () => {
           [t("status.hookMessages.pdf.totalFlightHours"), kpiData.totalFlightHours.toString()],
           [t("status.hookMessages.pdf.incidentRate"), `${kpiData.incidentRate.toFixed(1)}%`],
           [t("status.hookMessages.pdf.activeResources"), kpiData.activeResources.toString()],
+          [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
+
         ],
         theme: 'grid',
         headStyles: { fillColor: COLORS.primary },
