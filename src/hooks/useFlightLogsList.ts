@@ -505,6 +505,8 @@ export function useFlightLogsList(active: boolean) {
     async (offset: number, replace: boolean) => {
       if (!companyId) return;
       if (filters.onlyMine && user?.id && mineLogIds === null) return;
+      if (filters.unplannedOnly && unplannedIds === null) return; // wait for the unplanned scan
+
       if (filters.pilotId !== "alle" && pilotLogIds?.pilotId !== filters.pilotId) return; // wait for pilot links
 
       if (replace) setLoading(true);
