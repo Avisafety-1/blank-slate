@@ -720,6 +720,11 @@ const Status = () => {
     ? ((kpiData.completedMissions / kpiData.totalMissions) * 100).toFixed(1)
     : "0";
 
+  const unplannedPct = kpiData.importedFlights > 0
+    ? (kpiData.unplannedFlights / kpiData.importedFlights) * 100
+    : 0;
+
+
   const handleExportExcel = async () => {
     try {
       const wb = XLSX.utils.book_new();
@@ -1743,7 +1748,79 @@ const Status = () => {
               <Package className="w-10 h-10 text-primary opacity-70" />
             </div>
           </GlassCard>
+
+          <GlassCard
+            className="p-6 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => navigate("/oppdrag?tab=logs&unplanned=1")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.unplannedFlights")}</p>
+                <p
+                  className={cn(
+                    "text-3xl font-bold",
+                    unplannedPct >= 50
+                      ? "text-destructive"
+                      : unplannedPct >= 20
+                        ? "text-status-yellow"
+                        : "text-foreground"
+                  )}
+                >
+                  {kpiData.unplannedFlights}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("status.metrics.unplannedOfImported", {
+                    count: kpiData.unplannedFlights,
+                    total: kpiData.importedFlights,
+                    pct: unplannedPct.toFixed(0),
+                  })}
+                </p>
+                <p className="text-[11px] text-muted-foreground/80 mt-1 max-w-[15rem]">
+                  {t("status.metrics.unplannedExplainer")}
+                </p>
+              </div>
+              <AlertCircle className="w-10 h-10 text-status-yellow opacity-70" />
+            </div>
+          </GlassCard>
         </div>
+
+        {/* Planned vs unplanned imported flights */}
+        <GlassCard className="p-6">
+          <h2 className="text-xl font-semibold mb-1 text-foreground">
+            {t("status.metrics.unplannedByMonth")}
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("status.metrics.unplannedExplainer")}</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={unplannedByMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend />
+              <Bar
+                dataKey="planned"
+                stackId="a"
+                name={t("status.metrics.plannedLegend")}
+                fill={COLORS.success}
+              />
+              <Bar
+                dataKey="unplanned"
+                stackId="a"
+                name={t("status.metrics.unplannedLegend")}
+                fill={COLORS.warning}
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+
+
 
         {/* Mission Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
