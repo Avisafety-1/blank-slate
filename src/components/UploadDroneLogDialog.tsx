@@ -393,6 +393,60 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{ done: number; total: number } | null>(null);
   const [syncRemaining, setSyncRemaining] = useState(0);
+
+  // "Sync nå": henter loggene med én gang i stedet for å bare legge dem i kø.
+  // Maks 10 runder à 2 logger = 20 logger per trykk; resten hentes med «Hent flere».
+  async function runSyncNow(fetchMore = false) {
+    if ((window as any).__djiSyncing) return;
+    (window as any).__djiSyncing = true;
+    setSyncJustTriggered(true);
+    setSyncProgress({ done: 0, total: 0 });
+    let processed = 0;
+    let imported = 0;
+    let failed = 0;
+    try {
+      toast.info(fetchMore ? t('dronelog.sync.fetchingMore') : t('dronelog.sync.starting'));
+      for (let round = 0; round < 10; round++) {
+        const { data, error } = await supabase.functions.invoke('dji-sync-now', {
+          body: { enqueue: round === 0 && !fetchMore, limit: 2 },
+        });
+        if (error) throw error;
+        if (data?.enqueue_error && round === 0) {
+          const msg = String(data.enqueue_error);
+          if (/rate|429/i.test(msg)) {
+            toast.warning(t('dronelog.sync.rateLimited'));
+            break;
+          }
+          throw new Error(msg);
+        }
+        processed += data?.processed ?? 0;
+        imported += (data?.done ?? 0);
+        failed += (data?.failed ?? 0);
+        const remaining = data?.remaining ?? 0;
+        setSyncRemaining(remaining);
+        setSyncProgress({ done: processed, total: processed + remaining });
+        pendingLogsRef.current?.refresh();
+        if (data?.rate_limited) {
+          toast.warning(t('dronelog.sync.rateLimited'));
+          break;
+        }
+        if (!data?.processed || remaining === 0) break;
+      }
+      if (imported > 0 || processed > 0) {
+        toast.success(t('dronelog.sync.done', { count: imported, failed }));
+      } else {
+        toast.success(t('dronelog.sync.nothingNew'));
+      }
+    } catch (err: any) {
+      console.error('Manual sync error:', err);
+      toast.error(t('dronelog.sync.failed', { message: err?.message || '' }));
+    } finally {
+      setSyncJustTriggered(false);
+      setSyncProgress(null);
+      pendingLogsRef.current?.refresh();
+      (window as any).__djiSyncing = false;
+    }
+  }
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
   const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
