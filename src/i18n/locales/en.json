@@ -3270,7 +3270,18 @@
       "generic": "Warning from flight log"
     },
     "newMissionName": "Name for new mission",
-    "newMissionNameHint": "The suggestion is filled in automatically but can be edited."
+    "newMissionNameHint": "The suggestion is filled in automatically but can be edited.",
+    "sync": {
+      "syncNow": "Sync now",
+      "starting": "Fetching your logs from DJI …",
+      "fetchingMore": "Fetching more logs …",
+      "progress": "Fetching logs … {{done}} of {{total}}",
+      "done": "Sync complete: {{count}} logs fetched",
+      "nothingNew": "No new logs to fetch",
+      "fetchMore": "Fetch more ({{count}} left)",
+      "rateLimited": "Too many requests to DJI. Wait a few minutes and try again.",
+      "failed": "Sync failed: {{message}}"
+    }
   },
   "twoFactor": {
     "title": "Two-Factor Authentication (2FA)",

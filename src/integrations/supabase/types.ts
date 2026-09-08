@@ -8838,6 +8838,32 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_dji_sync_jobs_for_user: {
+        Args: { _limit: number; _user_id: string }
+        Returns: {
+          attempts: number
+          company_id: string
+          created_at: string
+          dji_log_id: string
+          download_url: string | null
+          id: string
+          last_error: string | null
+          last_error_at: string | null
+          locked_until: string | null
+          payload: Json
+          scheduled_at: string
+          status: string
+          step_durations: Json | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "dji_sync_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       deactivate_stale_airspace_zones: {
         Args: {
           p_country_code: string
