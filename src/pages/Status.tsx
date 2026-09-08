@@ -52,6 +52,8 @@ import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { summarizeUnplanned } from "@/lib/unplannedFlights";
+
 
 interface KPIData {
   totalMissions: number;
@@ -59,7 +61,10 @@ interface KPIData {
   totalFlightHours: number;
   incidentRate: number;
   activeResources: number;
+  importedFlights: number;
+  unplannedFlights: number;
 }
+
 
 interface MonthData {
   month: string;
@@ -94,7 +99,11 @@ const Status = () => {
     totalFlightHours: 0,
     incidentRate: 0,
     activeResources: 0,
+    importedFlights: 0,
+    unplannedFlights: 0,
   });
+  const [unplannedByMonth, setUnplannedByMonth] = useState<{ month: string; planned: number; unplanned: number }[]>([]);
+
   const [missionsByMonth, setMissionsByMonth] = useState<MonthData[]>([]);
   const [missionsByStatus, setMissionsByStatus] = useState<StatusData[]>([]);
   const [missionsByRisk, setMissionsByRisk] = useState<StatusData[]>([]);
@@ -380,6 +389,27 @@ const Status = () => {
       .gte("hendelsestidspunkt", startDate.toISOString())
       .lte("hendelsestidspunkt", endDate.toISOString());
 
+    // Imported flight logs (DJI / ArduPilot) and how many were never planned in advance
+    const { data: importedLogs } = await (supabase as any)
+      .from("flight_logs")
+      .select("id, flight_date, start_time_utc, source, mission_id, missions(opprettet_dato)")
+      .not("source", "is", null)
+      .neq("source", "manual")
+      .gte("flight_date", startDate.toISOString())
+      .lte("flight_date", endDate.toISOString());
+
+    const monthsToShow = getMonthsToShow();
+    const monthOrder: string[] = [];
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: nb }));
+    }
+    const unplannedSummary = summarizeUnplanned(
+      (importedLogs || []) as any[],
+      (d) => format(d, "MMM yyyy", { locale: nb }),
+      monthOrder
+    );
+    setUnplannedByMonth(unplannedSummary.byMonth);
+
     const totalMissions = missions?.length || 0;
     const completedMissions = missions?.filter((m) => m.status === "Fullført").length || 0;
     const totalFlightHours = drones?.reduce((sum, d) => sum + (d.flyvetimer || 0), 0) || 0;
@@ -391,6 +421,9 @@ const Status = () => {
       totalMissions,
       completedMissions,
       totalFlightHours,
+      importedFlights: unplannedSummary.total,
+      unplannedFlights: unplannedSummary.unplanned,
+
       incidentRate,
       activeResources: activeDrones + activeEquipment,
     });
@@ -687,6 +720,11 @@ const Status = () => {
     ? ((kpiData.completedMissions / kpiData.totalMissions) * 100).toFixed(1)
     : "0";
 
+  const unplannedPct = kpiData.importedFlights > 0
+    ? (kpiData.unplannedFlights / kpiData.importedFlights) * 100
+    : 0;
+
+
   const handleExportExcel = async () => {
     try {
       const wb = XLSX.utils.book_new();
@@ -700,6 +738,8 @@ const Status = () => {
         [t("status.hookMessages.export.totalFlightHours"), kpiData.totalFlightHours],
         [t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)],
         [t("status.hookMessages.export.activeResources"), kpiData.activeResources],
+        [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
+
       ];
       const wsKPI = XLSX.utils.aoa_to_sheet(kpiSheetData);
       XLSX.utils.book_append_sheet(wb, wsKPI, t("status.hookMessages.export.kpiSheet"));
@@ -895,6 +935,8 @@ const Status = () => {
       sections.push([t("status.hookMessages.export.totalFlightHours"), String(kpiData.totalFlightHours)]);
       sections.push([t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)]);
       sections.push([t("status.hookMessages.export.activeResources"), String(kpiData.activeResources)]);
+      sections.push([t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`]);
+
       sections.push([]);
 
       // Missions by Month
@@ -1224,6 +1266,8 @@ const Status = () => {
           [t("status.hookMessages.pdf.totalFlightHours"), kpiData.totalFlightHours.toString()],
           [t("status.hookMessages.pdf.incidentRate"), `${kpiData.incidentRate.toFixed(1)}%`],
           [t("status.hookMessages.pdf.activeResources"), kpiData.activeResources.toString()],
+          [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
+
         ],
         theme: 'grid',
         headStyles: { fillColor: COLORS.primary },
@@ -1710,7 +1754,83 @@ const Status = () => {
               <Package className="w-10 h-10 text-primary opacity-70" />
             </div>
           </GlassCard>
+
+          <GlassCard className="p-6 cursor-pointer hover:bg-muted/50 transition-colors">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/oppdrag?tab=logs&unplanned=1")}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/oppdrag?tab=logs&unplanned=1"); }}
+              className="flex items-center justify-between"
+            >
+
+              <div>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.unplannedFlights")}</p>
+                <p
+                  className={cn(
+                    "text-3xl font-bold",
+                    unplannedPct >= 50
+                      ? "text-destructive"
+                      : unplannedPct >= 20
+                        ? "text-status-yellow"
+                        : "text-foreground"
+                  )}
+                >
+                  {kpiData.unplannedFlights}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("status.metrics.unplannedOfImported", {
+                    n: kpiData.unplannedFlights,
+                    total: kpiData.importedFlights,
+                    pct: unplannedPct.toFixed(0),
+                  })}
+                </p>
+                <p className="text-[11px] text-muted-foreground/80 mt-1 max-w-[15rem]">
+                  {t("status.metrics.unplannedExplainer")}
+                </p>
+              </div>
+              <AlertCircle className="w-10 h-10 text-status-yellow opacity-70" />
+            </div>
+          </GlassCard>
         </div>
+
+        {/* Planned vs unplanned imported flights */}
+        <GlassCard className="p-6">
+          <h2 className="text-xl font-semibold mb-1 text-foreground">
+            {t("status.metrics.unplannedByMonth")}
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("status.metrics.unplannedExplainer")}</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={unplannedByMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend />
+              <Bar
+                dataKey="planned"
+                stackId="a"
+                name={t("status.metrics.plannedLegend")}
+                fill={COLORS.success}
+              />
+              <Bar
+                dataKey="unplanned"
+                stackId="a"
+                name={t("status.metrics.unplannedLegend")}
+                fill={COLORS.warning}
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+
+
 
         {/* Mission Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

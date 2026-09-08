@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+
 import { GlassCard } from "@/components/GlassCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,16 @@ export const FlightLogsView = ({ active }: Props) => {
     droneOptions, pilotOptions, sourceOptions, companyOptions, multiCompany, loadMore, refresh,
   } = useFlightLogsList(active);
 
+  const [searchParams] = useSearchParams();
+
+  // Deep link from the /status KPI: show only unplanned imported flights
+  useEffect(() => {
+    if (!active) return;
+    if (searchParams.get("unplanned") === "1") {
+      setFilters(p => (p.unplannedOnly && !p.onlyMine ? p : { ...p, unplannedOnly: true, onlyMine: false }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, searchParams]);
 
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [analysisTrack, setAnalysisTrack] = useState<any>(null);
@@ -32,6 +44,7 @@ export const FlightLogsView = ({ active }: Props) => {
   const [analysisMeta, setAnalysisMeta] = useState<{ date?: string; drone?: string }>({});
 
   const handleOpen = async (log: FlightLogListItem) => {
+
     setOpeningId(log.id);
     try {
       const { data, error } = await (supabase as any)
@@ -75,7 +88,18 @@ export const FlightLogsView = ({ active }: Props) => {
               {t("flightLogs.onlyMine")}
             </Label>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Switch
+              id="flight-logs-unplanned"
+              checked={filters.unplannedOnly}
+              onCheckedChange={v => setFilters(p => ({ ...p, unplannedOnly: v }))}
+            />
+            <Label htmlFor="flight-logs-unplanned" className="text-sm cursor-pointer">
+              {t("flightLogs.onlyUnplanned")}
+            </Label>
+          </div>
         </div>
+
 
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${multiCompany ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
           {multiCompany && (

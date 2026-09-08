@@ -1507,7 +1507,13 @@
       "noFlightsInPeriod": "No flights in selected period",
       "hoursPerOperationType": "Flight hours per operation type",
       "totalHoursSummary": "A total of {{hours}} hours across {{flights}} flights.",
-      "operationTypeByMonth": "Operation type per month"
+      "operationTypeByMonth": "Operation type per month",
+      "unplannedFlights": "Unplanned flights",
+      "unplannedOfImported": "{{n}} of {{total}} imported ({{pct}}%)",
+      "unplannedExplainer": "Flights where the mission was created after take-off, or with no mission at all.",
+      "unplannedByMonth": "Planned vs unplanned flights",
+      "plannedLegend": "Planned",
+      "unplannedLegend": "Unplanned"
     },
     "services": {
       "droneStatusDistribution": "Drone status distribution",
@@ -8646,7 +8652,8 @@
     "empty": "No flight logs found",
     "loadMore": "Load more",
     "unknownDrone": "Unknown drone",
-    "loadError": "Could not load the flight analysis"
+    "loadError": "Could not load the flight analysis",
+    "onlyUnplanned": "Unplanned only"
   },
   "maintenance": {
     "title": "Maintenance overview",
