@@ -42,6 +42,8 @@ export interface FlightLogFilters {
   companyId: string; // "alle" | uuid
   dateFrom: string; // yyyy-mm-dd | ""
   dateTo: string;
+  /** Only imported flights that were not planned in advance (see lib/unplannedFlights). */
+  unplannedOnly: boolean;
 }
 
 export const DEFAULT_FLIGHT_LOG_FILTERS: FlightLogFilters = {
@@ -53,7 +55,9 @@ export const DEFAULT_FLIGHT_LOG_FILTERS: FlightLogFilters = {
   companyId: "alle",
   dateFrom: "",
   dateTo: "",
+  unplannedOnly: false,
 };
+
 
 
 const PAGE_SIZE = 30;
