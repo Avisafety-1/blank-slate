@@ -3845,47 +3845,30 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
             {/* Sync now button */}
             {hasSavedCredentials && (
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={(window as any).__djiSyncing}
-                onClick={async () => {
-                  if ((window as any).__djiSyncing) return;
-                  (window as any).__djiSyncing = true;
-                  setSyncJustTriggered(true);
-                   try {
-                    toast.info('Starter synkronisering...');
-                    const { data, error } = await supabase.functions.invoke('dji-auto-sync', {
-                      body: { companyId, userId: user?.id },
-                    });
-                    if (error) throw error;
-                    const companyDetails = data?.companies?.[0]?.details || '';
-                    const isRateLimited = data?.rate_limited || companyDetails.toLowerCase().includes('rate limit');
-                    const isLoginError = companyDetails.toLowerCase().includes('login failed') || 
-                      (data?.errors > 0 && data?.synced === 0 && companyDetails.toLowerCase().includes('login'));
-                    
-                    if (isRateLimited) {
-                      toast.warning('For mange påloggingsforsøk mot DJI. Vent noen minutter og prøv igjen.');
-                    } else if (isLoginError || (data?.errors > 0 && data?.synced === 0)) {
-                      const detail = companyDetails || `${data.errors} feil oppsto`;
-                      toast.error(`Sync feilet: ${detail}`);
-                    } else {
-                      toast.success(`Sync fullført: ${data?.synced || 0} nye logger hentet${data?.errors ? `, ${data.errors} feil` : ''}`);
-                    }
-                  } catch (err: any) {
-                    console.error('Manual sync error:', err);
-                    toast.error('Sync feilet: ' + (err.message || 'Ukjent feil'));
-                  } finally {
-                    setSyncJustTriggered(false);
-                    pendingLogsRef.current?.refresh();
-                    setTimeout(() => { (window as any).__djiSyncing = false; }, 15000);
-                  }
-                }}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Sync nå
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={syncJustTriggered}
+                  onClick={() => runSyncNow(false)}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${syncJustTriggered ? 'animate-spin' : ''}`} />
+                  {syncJustTriggered && syncProgress
+                    ? t('dronelog.sync.progress', { done: syncProgress.done, total: syncProgress.total })
+                    : t('dronelog.sync.syncNow')}
+                </Button>
+                {!syncJustTriggered && syncRemaining > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => runSyncNow(true)}
+                  >
+                    {t('dronelog.sync.fetchMore', { count: syncRemaining })}
+                  </Button>
+                )}
+              </>
             )}
+
 
             {/* Post-sync feedback */}
             {syncJustTriggered && (
