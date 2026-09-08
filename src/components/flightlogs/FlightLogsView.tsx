@@ -88,7 +88,18 @@ export const FlightLogsView = ({ active }: Props) => {
               {t("flightLogs.onlyMine")}
             </Label>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Switch
+              id="flight-logs-unplanned"
+              checked={filters.unplannedOnly}
+              onCheckedChange={v => setFilters(p => ({ ...p, unplannedOnly: v }))}
+            />
+            <Label htmlFor="flight-logs-unplanned" className="text-sm cursor-pointer">
+              {t("flightLogs.onlyUnplanned")}
+            </Label>
+          </div>
         </div>
+
 
         <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${multiCompany ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
           {multiCompany && (
