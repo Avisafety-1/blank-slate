@@ -52,6 +52,8 @@ import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
+import { summarizeUnplanned } from "@/lib/unplannedFlights";
+
 
 interface KPIData {
   totalMissions: number;
@@ -59,7 +61,10 @@ interface KPIData {
   totalFlightHours: number;
   incidentRate: number;
   activeResources: number;
+  importedFlights: number;
+  unplannedFlights: number;
 }
+
 
 interface MonthData {
   month: string;
@@ -94,7 +99,11 @@ const Status = () => {
     totalFlightHours: 0,
     incidentRate: 0,
     activeResources: 0,
+    importedFlights: 0,
+    unplannedFlights: 0,
   });
+  const [unplannedByMonth, setUnplannedByMonth] = useState<{ month: string; planned: number; unplanned: number }[]>([]);
+
   const [missionsByMonth, setMissionsByMonth] = useState<MonthData[]>([]);
   const [missionsByStatus, setMissionsByStatus] = useState<StatusData[]>([]);
   const [missionsByRisk, setMissionsByRisk] = useState<StatusData[]>([]);
