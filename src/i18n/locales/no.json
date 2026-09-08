@@ -3272,7 +3272,18 @@
       "generic": "Advarsel fra flylogg"
     },
     "newMissionName": "Navn på nytt oppdrag",
-    "newMissionNameHint": "Forslaget fylles ut automatisk, men kan endres."
+    "newMissionNameHint": "Forslaget fylles ut automatisk, men kan endres.",
+    "sync": {
+      "syncNow": "Sync nå",
+      "starting": "Henter loggene fra DJI nå …",
+      "fetchingMore": "Henter flere logger …",
+      "progress": "Henter logger … {{done}} av {{total}}",
+      "done": "Sync fullført: {{count}} logger hentet{{failed, select, 0 {} other {, {{failed}} feilet}}}",
+      "nothingNew": "Ingen nye logger å hente",
+      "fetchMore": "Hent flere ({{count}} igjen)",
+      "rateLimited": "For mange forespørsler mot DJI. Vent noen minutter og prøv igjen.",
+      "failed": "Sync feilet: {{message}}"
+    }
   },
   "twoFactor": {
     "title": "Tofaktorautentisering (2FA)",
