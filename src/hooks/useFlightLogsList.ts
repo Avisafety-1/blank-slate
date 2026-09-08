@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
 import { getPilotFlightLogIds } from "@/lib/pilotFlightLogs";
+import { isUnplannedFlight } from "@/lib/unplannedFlights";
+
 
 
 
