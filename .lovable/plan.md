@@ -1,34 +1,42 @@
-# Ny KPI: importerte flylogger uten oppdrag
+# Ny KPI: importerte flyturer som ikke var planlagt
 
-## Hva som lages
+## Problemet med enkel måling
 
-En ny KPI-boks på `/status` som viser hvor mange flylogger som er importert automatisk (DJI / ArduPilot) i den valgte perioden, men som ikke er knyttet til et oppdrag. Dette forteller hvor mange flyturer som ble gjennomført uten å være planlagt i Avisafe.
+Å telle logger uten oppdragskobling fungerer ikke, fordi det som regel opprettes et nytt oppdrag når loggen behandles. Loggen får da en kobling, selv om flyturen aldri var planlagt på forhånd.
 
-Boksen viser:
-- Stort tall: antall importerte flylogger uten oppdrag i perioden
-- Undertekst: andel i prosent av alle importerte flylogger i perioden (f.eks. "16 av 1195 (1,3 %)")
-- Fargesignal: nøytral ved 0, gul ved lav andel, rød når andelen er høy
-- Klikk på boksen åpner flyloggsiden filtrert til disse loggene, slik at de kan knyttes til oppdrag i etterkant
+## Bedre måling
 
-I tillegg en liten månedsgraf under KPI-kortene som viser utviklingen (planlagt vs. ikke planlagt), slik at trenden er synlig over perioden.
+En flytur regnes som **ikke planlagt** når én av disse stemmer:
 
-## Datagrunnlag
+1. Loggen har ingen oppdragskobling i det hele tatt, eller
+2. Oppdraget den er koblet til ble **opprettet etter at flyturen startet** (med litt slingringsmonn, standard 15 minutter) — altså et oppdrag laget i etterkant for å dokumentere turen.
 
-Tallene hentes fra flyloggene som allerede finnes:
-- Importerte logger = logger med kilde `dronelogapi` (DJI) eller `ardupilot`
-- Uten oppdrag = ingen oppdragskobling på loggen
-- Perioden følger periodevelgeren som allerede finnes øverst på statussiden
+Kontroll mot dagens data: av 1 195 importerte logger har bare 16 ingen oppdragskobling, mens 797 er koblet til et oppdrag som ble opprettet etter at flyturen startet. Det bekrefter at målet må bygge på tidspunktet oppdraget ble opprettet.
+
+Gjelder kun logger importert automatisk fra DJI eller ArduPilot.
+
+## Hva som vises på /status
+
+Ny KPI-boks:
+- Stort tall: antall ikke-planlagte importerte flyturer i valgt periode
+- Undertekst: andel av alle importerte flyturer i perioden, f.eks. "797 av 1 195 (67 %)"
+- Fargesignal: grønn ved lav andel, gul/rød når andelen stiger
+- Klikk åpner flyloggene med dette filteret, slik at man kan gå gjennom dem
+
+Under KPI-kortene: en månedsgraf med planlagt vs. ikke planlagt, så trenden er synlig.
+
+For å unngå misforståelse får boksen en liten forklaringstekst: "Flyturer der oppdraget først ble opprettet etter at flyturen startet, eller helt uten oppdrag."
 
 Ingen databaseendringer er nødvendig.
 
 ## Varsling (senere)
 
-Varsling tas ikke med nå. Løsningen forberedes ved at beregningen legges i en egen gjenbrukbar funksjon, slik at en senere varslingsjobb (f.eks. ukentlig e-post til admin når antallet overstiger en grense) kan bruke samme regel.
+Ikke med nå, men regelen legges i én gjenbrukbar funksjon slik at en senere varslingsjobb (f.eks. ukentlig e-post når andelen overstiger en grense) bruker nøyaktig samme definisjon.
 
 ## Teknisk
 
-- `src/pages/Status.tsx`: utvid `KPIData` med `importedFlightLogs`, `importedWithoutMission`; hent i `fetchKPIData` via en spørring mot `flight_logs` filtrert på `flight_date` i perioden og `source in ('dronelogapi','ardupilot')`, tell rader med `mission_id is null`. Nytt `GlassCard` i KPI-rutenettet (rutenettet går fra 4 til 5 kort; behold `lg:grid-cols-4` med wrap).
-- Månedsdata: ny state `unplannedByMonth` bygget etter samme mønster som `missionsByMonth`, rendret med eksisterende Recharts-oppsett.
-- Klikk navigerer til flyloggvisningen med query-param for filter (`?unlinked=1`); `FlightLogsView` leser paramet og filtrerer på manglende oppdrag + importert kilde.
-- Eksport (Excel/PDF) i `Status.tsx`: legg den nye KPI-en inn i KPI-arket/-tabellen.
+- Ny fil `src/lib/unplannedFlights.ts`: `isUnplannedFlight(log, mission, toleranceMinutes = 15)` og `summarizeUnplanned(logs)` som returnerer `{ total, unplanned, pct, byMonth }`. Kilde-filter: `source in ('dronelogapi','ardupilot')`.
+- `src/pages/Status.tsx`: i `fetchKPIData`, hent `flight_logs` i perioden med `select("id, flight_date, start_time_utc, source, mission_id, missions(opprettet_dato)")` og kjør `summarizeUnplanned`. Utvid `KPIData` med `importedFlights` og `unplannedFlights`. Nytt `GlassCard` i KPI-rutenettet (5 kort, beholder `lg:grid-cols-4` med wrap) + ny state `unplannedByMonth` rendret som stablet Recharts-graf ved siden av eksisterende månedsgrafer.
+- Klikk navigerer til flyloggvisningen med `?unplanned=1`; `FlightLogsView` leser paramet og filtrerer med samme hjelpefunksjon.
+- Excel/PDF-eksport i `Status.tsx`: legg KPI-en inn i KPI-arket og KPI-tabellen.
 - i18n: nye nøkler under `status.metrics.*` i både `no.json` og `en.json`.
