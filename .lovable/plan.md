@@ -1,32 +1,32 @@
-# Elverum: dagens flylogger «sitter fast» i synkekøen
+# «Sync nå» henter loggene med én gang
 
-## Hva som har skjedd (bekreftet i databasen)
+I dag legger «Sync nå» bare loggene i kø, og køen tømmes først i nattvinduet (fra kl. 23 norsk tid). Derfor ser piloten loggene som «allerede behandlet med auto-sync», men finner dem ikke i listen. Etter denne endringen henter «Sync nå» loggene med én gang, mens du ser på.
 
-- Dronepilot ELVIS trykket **«Sync nå»** i DJI-fanen kl. 13:35 i dag. Det la **19 logger i synkekøen** (`dji_sync_jobs`, status `queued`, 0 forsøk) — 12 fra i dag og 7 eldre (mars/april).
-- Ingen av dem er behandlet ennå. Det er **ingen rader** for i dag i «til behandling»-listen (`pending_dji_logs`) og ingen feil.
-- Årsak: bakgrunnsjobben som faktisk laster ned og behandler køen (`dji-sync-worker-drain`) kjører kun i **nattvinduet 21:00–03:59 UTC** (hvert 2. minutt). «Sync nå» legger altså bare loggene i kø — de blir ikke hentet før kl. 23:00 norsk tid i kveld.
-- I mellomtiden viser DJI-listen loggene som grået ut med merkelappen «Auto-sync», fordi listen markerer alle logger som ligger i køen som «håndtert». Manuell import er dermed sperret, og loggene finnes ikke noe annet sted. Det er akkurat det Elvis opplever.
-- I tillegg sier «Sync nå»-knappen «Sync fullført: 0 nye logger hentet» selv om 19 ble lagt i kø, siden svaret fra køleggingen ikke inneholder feltet knappen leser.
+## Slik skal det fungere
 
-Loggene er altså ikke borte — de ligger trygt i kø og ville dukket opp i «til behandling» i morgen tidlig.
+1. Du trykker «Sync nå».
+2. Systemet henter listen fra DJI-kontoen og finner de nyeste loggene som ikke allerede er hentet — nøyaktig samme dobbeltsjekk som i dag (samme logg-ID, samme fil-signatur, allerede ferdigbehandlede flyturer og logger som ligger til behandling hoppes over).
+3. De nyeste **20** loggene som mangler behandles fortløpende, én etter én, med en teller i dialogen: «Henter logg 4 av 12 …».
+4. Ferdige logger dukker opp i listen «til behandling» underveis — du trenger ikke vente til alt er ferdig.
+5. Er det flere enn 20 igjen, avsluttes kjøringen med «12 logger hentet – 7 gjenstår» og en knapp «Hent flere», som kjører neste pulje.
+6. Nattkjøringen beholdes som sikkerhetsnett for alt som ikke ble tatt manuelt.
 
-## Fiks
+**Hvorfor 20 og ikke alt?** Hver logg må lastes ned og tolkes (typisk 3–10 sekunder). 20 logger tar rundt 1–3 minutter, som er greit å vente på. Å ta «alt» kan bety hundrevis av logger første gang en konto kobles til, og da ville dialogen stått og malt i en halvtime. Grensen gjelder per trykk, og «Hent flere» gjør resten tilgjengelig.
 
-1. **Behandle Elverums 19 logger nå** (engangs): kjør køarbeideren manuelt til køen er tom, slik at loggene havner i «til behandling» i dag og Elvis kan knytte dem til oppdrag.
-2. **«Sync nå» skal faktisk hente loggene med en gang**: etter kølegging kaller `dji-auto-sync` køarbeideren i en løkke (kun for denne brukerens jobber, med tak på f.eks. 20 jobber / 50 sek) før den svarer. Svaret får `synced` = antall behandlede logger og `queued` = eventuelle gjenværende, og knappen viser riktig melding («12 logger hentet, 7 legges i kø til i natt»).
-3. **Ikke sperr manuell import for logger som bare venter i kø**: logger med status «Auto-sync (venter)» skal fortsatt kunne velges i DJI-listen; velger man en slik logg, kanselleres køjobben og loggen importeres direkte. Merkelappen endres til «I kø – hentes i natt» så det er tydelig hva som skjer.
-4. **Dagvindu for køen**: legg til en ekstra cron som tømmer køen hvert 10. minutt på dagtid (04:00–20:59 UTC) med lav batch, slik at manuelt utløste synker aldri blir liggende mer enn noen minutter selv om punkt 2 skulle feile.
+## Feil og grensetilfeller
+
+- Blir DJI-kontoen midlertidig sperret (for mange forsøk), stopper kjøringen pent med en tydelig melding, og de gjenværende loggene blir liggende i kø til natten.
+- Enkeltlogger som ikke lar seg tolke merkes som før («kan ikke leses automatisk») og stopper ikke resten.
+- Lukker du dialogen midt i, fortsetter ikke kjøringen — men ingenting går tapt; resten ligger fortsatt i kø.
+- Logger som ligger i kø skal ikke lenger blokkere manuell opplasting av samme fil.
 
 ## Teknisk
 
-- `supabase/functions/dji-auto-sync/index.ts`: etter videresending til `dji-sync-enqueue`, kall `dji-sync-worker` gjentatte ganger (med `x-cron-secret` fra env, filtrert på `user_id`) til `processed = 0` eller tidsbudsjett brukt opp; returner `{ synced, queued, errors }`.
-- `supabase/functions/dji-sync-worker/index.ts`: ny valgfri body `{ userId }` som sendes til `claim_dji_sync_jobs` (ny parameter `_user_id` i RPC-en, migrasjon) slik at «Sync nå» bare drenerer egne jobber.
-- `supabase/functions/process-dronelog/index.ts`: `state = "queued"` beholdes, men frontend (`UploadDroneLogDialog.tsx`, `isDjiLogKnown`) unntar `queued` fra sperren; ved import av en `queued`-logg slettes tilhørende rad i `dji_sync_jobs` (status `queued`) via eksisterende RLS/edge-kall.
-- `UploadDroneLogDialog.tsx` linje ~3799–3815: bruk `data.synced`/`data.queued` fra nytt svar, i18n-nøkler i både `no.json` og `en.json` (`dronelog.syncNowResult`, `dronelog.queuedWaitingBadge`).
-- Migrasjon: `cron.schedule('dji-sync-worker-daytime', '*/10 4-20 * * *', ...)` + utvidet `claim_dji_sync_jobs(_limit int, _user_id uuid default null)`.
-- Ingen endringer i tabellstruktur, grants eller RLS på eksisterende tabeller.
-
-## Verifisering
-
-- Etter punkt 1: `pending_dji_logs` for Elverum har 12 rader med `flight_date` = i dag, og DJI-listen viser dem som «Til behandling» i stedet for grået «Auto-sync».
-- Trykk «Sync nå» på en testkonto med nye logger: loggene ligger i «til behandling» innen ett minutt, og meldingen viser riktig antall.
+- Ny edge-funksjon `dji-sync-now` (JWT, kun for egen bruker; ingen cron-secret):
+  - Steg 1: kaller samme kø-logikk som `dji-sync-enqueue` for innlogget bruker (uendret dedupe: `dji_log_id`, signatur mot `pending_dji_logs` og `flight_logs`, `dji_sync_from_date`).
+  - Steg 2: klaimer og prosesserer **inntil 2 jobber per kall** for denne brukeren ved å gjenbruke `processJob`-logikken fra `dji-sync-worker`. Denne flyttes til `supabase/functions/_shared/dji-sync-job.ts` slik at worker og «Sync nå» deler nøyaktig samme kode.
+  - Returnerer `{ processed, done, failed, remaining, rate_limited }`.
+- `claim_dji_sync_jobs` brukes ikke direkte (den er global). Legger til RPC `claim_dji_sync_jobs_for_user(_user_id uuid, _limit int)` med samme `FOR UPDATE SKIP LOCKED`-mønster, slik at nattkjøringen og manuell kjøring ikke kolliderer. Dette er eneste databaseendring (en ny funksjon, ingen tabellendring).
+- Frontend `UploadDroneLogDialog.tsx`: «Sync nå» bytter fra `dji-auto-sync` til en løkke mot `dji-sync-now` — maks 10 runder (20 logger), avbrytes ved `rate_limited` eller `remaining === 0`. Progresjonstekst og korrekt toast basert på faktiske tall (dagens toast leser `data.synced`, som køleggingen aldri returnerer). `pendingLogsRef.current?.refresh()` kalles etter hver runde.
+- `process-dronelog`: logger med status `queued`/`pending` i `dji_sync_jobs` skal ikke lenger gråes ut som «allerede behandlet» — kun logger som faktisk finnes i `pending_dji_logs` eller `flight_logs` merkes.
+- Alle nye brukertekster legges i `no.json` og `en.json`.
