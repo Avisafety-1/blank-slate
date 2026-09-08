@@ -367,7 +367,10 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [showAllDjiLogs, setShowAllDjiLogs] = useState(false);
   const [currentDjiLogId, setCurrentDjiLogId] = useState<string | null>(null);
   const [currentDjiFileName, setCurrentDjiFileName] = useState<string | null>(null);
-  const isDjiLogKnown = (log: DjiLog) => log.importState !== undefined && log.importState !== 'importable';
+  // 'queued' = ligger i synkekøen, men er ennå ikke hentet ned. Den skal fortsatt
+  // kunne importeres manuelt, så den regnes ikke som "kjent"/ferdigbehandlet.
+  const isDjiLogKnown = (log: DjiLog) =>
+    log.importState !== undefined && log.importState !== 'importable' && log.importState !== 'queued';
   const visibleDjiLogs = useMemo(() => showAllDjiLogs ? djiLogs : djiLogs.filter(l => !isDjiLogKnown(l)), [djiLogs, showAllDjiLogs]);
   const hiddenCount = useMemo(() => djiLogs.filter(l => isDjiLogKnown(l)).length, [djiLogs]);
   const visibleImportableLogs = useMemo(() => visibleDjiLogs.filter(l => !isDjiLogKnown(l)), [visibleDjiLogs]);
@@ -388,6 +391,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
   const [isAutoSyncSaving, setIsAutoSyncSaving] = useState(false);
   const [syncJustTriggered, setSyncJustTriggered] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number } | null>(null);
+  const [syncRemaining, setSyncRemaining] = useState(0);
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
   const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
