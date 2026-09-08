@@ -389,6 +389,27 @@ const Status = () => {
       .gte("hendelsestidspunkt", startDate.toISOString())
       .lte("hendelsestidspunkt", endDate.toISOString());
 
+    // Imported flight logs (DJI / ArduPilot) and how many were never planned in advance
+    const { data: importedLogs } = await (supabase as any)
+      .from("flight_logs")
+      .select("id, flight_date, start_time_utc, source, mission_id, missions(opprettet_dato)")
+      .not("source", "is", null)
+      .neq("source", "manual")
+      .gte("flight_date", startDate.toISOString())
+      .lte("flight_date", endDate.toISOString());
+
+    const monthsToShow = getMonthsToShow();
+    const monthOrder: string[] = [];
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: nb }));
+    }
+    const unplannedSummary = summarizeUnplanned(
+      (importedLogs || []) as any[],
+      (d) => format(d, "MMM yyyy", { locale: nb }),
+      monthOrder
+    );
+    setUnplannedByMonth(unplannedSummary.byMonth);
+
     const totalMissions = missions?.length || 0;
     const completedMissions = missions?.filter((m) => m.status === "Fullført").length || 0;
     const totalFlightHours = drones?.reduce((sum, d) => sum + (d.flyvetimer || 0), 0) || 0;
@@ -400,6 +421,9 @@ const Status = () => {
       totalMissions,
       completedMissions,
       totalFlightHours,
+      importedFlights: unplannedSummary.total,
+      unplannedFlights: unplannedSummary.unplanned,
+
       incidentRate,
       activeResources: activeDrones + activeEquipment,
     });
