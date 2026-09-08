@@ -287,6 +287,14 @@ export function useFlightLogsList(active: boolean) {
         q = ids.length ? q.in("id", ids) : q.eq("id", "00000000-0000-0000-0000-000000000000");
       }
 
+      if (filters.unplannedOnly) {
+        q = unplannedIds && unplannedIds.length
+          ? q.in("id", unplannedIds)
+          : q.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+
+
+
 
       if (skip !== "source" && filters.source !== "alle") {
         // Stored values vary ("dronelogapi", "dji", ...), so the DJI bucket is
