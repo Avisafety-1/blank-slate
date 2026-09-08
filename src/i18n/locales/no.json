@@ -1509,7 +1509,13 @@
       "noFlightsInPeriod": "Ingen flyturer i valgt periode",
       "hoursPerOperationType": "Flytimer per operasjonstype",
       "totalHoursSummary": "Totalt {{hours}} timer fordelt på {{flights}} flyturer.",
-      "operationTypeByMonth": "Operasjonstype per måned"
+      "operationTypeByMonth": "Operasjonstype per måned",
+      "unplannedFlights": "Ikke planlagte flyturer",
+      "unplannedOfImported": "{{count}} av {{total}} importerte ({{pct}} %)",
+      "unplannedExplainer": "Flyturer der oppdraget først ble opprettet etter at flyturen startet, eller helt uten oppdrag.",
+      "unplannedByMonth": "Planlagte vs. ikke planlagte flyturer",
+      "plannedLegend": "Planlagt",
+      "unplannedLegend": "Ikke planlagt"
     },
     "services": {
       "droneStatusDistribution": "Drone statusfordeling",
@@ -8648,7 +8654,8 @@
     "empty": "Ingen loggfiler funnet",
     "loadMore": "Last flere",
     "unknownDrone": "Ukjent drone",
-    "loadError": "Kunne ikke laste flyanalysen"
+    "loadError": "Kunne ikke laste flyanalysen",
+    "onlyUnplanned": "Kun ikke planlagte"
   },
   "maintenance": {
     "title": "Vedlikeholdsoversikt",
