@@ -262,9 +262,9 @@ const App = () => {
                   </Route>
                   
                   {/* Admin has its own header */}
-                  <Route path="/admin" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Admin /></Suspense></DomainGuard>} />
-                  <Route path="/statistikk" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Statistikk /></Suspense></DomainGuard>} />
-                  <Route path="/marketing" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Marketing /></Suspense></DomainGuard>} />
+                  <Route path="/admin" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Admin /></Suspense></DomainGuard></RequireAuth>} />
+                  <Route path="/statistikk" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Statistikk /></Suspense></DomainGuard></RequireAuth>} />
+                  <Route path="/marketing" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Marketing /></Suspense></DomainGuard></RequireAuth>} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
