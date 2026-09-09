@@ -339,6 +339,12 @@ const Auth = () => {
         }
 
         sessionStorage.setItem('avisafe_redirecting_to_app', String(now));
+        // Honor ?next= (deep link the user originally tried to open)
+        const nextTarget = getNextTarget();
+        if (nextTarget) {
+          window.location.assign(nextTarget);
+          return;
+        }
         console.log('Redirecting to app domain');
         redirectToApp('/');
       };
