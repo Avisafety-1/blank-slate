@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase, ensureFreshSession } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { redirectToApp, isDevelopment } from "@/config/domains";
+import { redirectToApp, isDevelopment, getAppUrl } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,7 +138,9 @@ const Auth = () => {
     if (authLoading || !user) return;
     const next = getNextTarget();
     if (next) {
-      window.location.assign(next);
+      // getAppUrl keeps relative paths in dev, but forces the app domain in
+      // production so a deep link opened on login.avisafe.no lands correctly.
+      window.location.assign(getAppUrl(next));
     }
   }, [authLoading, user]);
 

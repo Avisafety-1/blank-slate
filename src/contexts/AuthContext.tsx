@@ -222,6 +222,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const resetAuthState = () => {
     setSession(null);
     setUser(null);
+    // Never leave a hanging "refreshing" flag behind — RequireAuth would show
+    // an endless spinner instead of sending the user to the login page.
+    setAuthRefreshing(false);
     setCompanyId(null);
     setCompanyName(null);
     setParentCompanyId(null);
