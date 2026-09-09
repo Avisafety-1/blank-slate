@@ -288,7 +288,7 @@ const Auth = () => {
             setTimeout(() => {
               console.log('Google user approved, executing redirect to app');
               if (nextTarget) {
-                window.location.assign(nextTarget);
+                window.location.assign(getAppUrl(nextTarget));
                 return;
               }
               redirectToApp('/');
@@ -351,7 +351,7 @@ const Auth = () => {
         // Honor ?next= (deep link the user originally tried to open)
         const nextTarget = getNextTarget();
         if (nextTarget) {
-          window.location.assign(nextTarget);
+          window.location.assign(getAppUrl(nextTarget));
           return;
         }
         console.log('Redirecting to app domain');

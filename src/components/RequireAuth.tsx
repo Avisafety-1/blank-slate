@@ -1,6 +1,10 @@
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingSpinner from "@/components/LoadingSpinner";
+
+/** Safety valve: never show the spinner longer than this without a user. */
+const MAX_WAIT_MS = 6000;
 
 /**
  * Route-level auth guard.
@@ -11,14 +15,28 @@ import LoadingSpinner from "@/components/LoadingSpinner";
  *
  * Never redirects while auth is still initialising/refreshing, or while
  * offline with a cached session — that would kick users out on a refresh.
+ * If auth state gets stuck (e.g. a hanging refresh flag), the timeout below
+ * falls through to the login page rather than leaving an endless spinner.
  */
 export const RequireAuth = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, authInitialized, authRefreshing } = useAuth();
   const location = useLocation();
+  const [waitedTooLong, setWaitedTooLong] = useState(false);
+
+  const pending = !user && (loading || !authInitialized || authRefreshing);
+
+  useEffect(() => {
+    if (!pending) {
+      setWaitedTooLong(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setWaitedTooLong(true), MAX_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
 
   if (user) return <>{children}</>;
 
-  if (loading || !authInitialized || authRefreshing) {
+  if (pending && !waitedTooLong) {
     return <LoadingSpinner />;
   }
 
