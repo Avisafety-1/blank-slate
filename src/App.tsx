@@ -22,6 +22,7 @@ import { GuidedTourProvider } from "@/components/guided-tour/GuidedTourProvider"
 import { useForceReload } from "@/hooks/useForceReload";
 import { recordAuthRouteVisit } from "@/lib/authLoopGuard";
 import { PlanRestricted } from "@/components/PlanRestricted";
+import { RequireAuth } from "@/components/RequireAuth";
 import { TrainingModuleRestricted } from "@/components/TrainingModuleRestricted";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -79,7 +80,7 @@ try {
 }
 
 // Layout wrapper that renders Header once for all authenticated routes
-const AuthenticatedLayout = () => {
+const AuthenticatedLayoutInner = () => {
   const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
@@ -110,13 +111,13 @@ const AuthenticatedLayout = () => {
   // A transient null user during token refresh should NOT hide the UI.
   const isOfflineWithSession = !navigator.onLine && user && !isApproved;
   if (loading || (!user && !authRefreshing)) {
-    return <Outlet />;
+    return <Suspense fallback={<LoadingSpinner />}><Outlet /></Suspense>;
   }
   if (!profileLoaded && !everLoaded) {
-    return <Outlet />;
+    return <Suspense fallback={<LoadingSpinner />}><Outlet /></Suspense>;
   }
   if (!isApproved && !isOfflineWithSession) {
-    return <Outlet />;
+    return <Suspense fallback={<LoadingSpinner />}><Outlet /></Suspense>;
   }
   
   // Map page needs fixed layout for proper rendering
@@ -159,6 +160,14 @@ const AuthenticatedLayout = () => {
     </div>
   );
 };
+
+// Public wrapper: no page content (and no plan-gating screen) renders for
+// anonymous visitors — they are redirected to /auth?next=<path>.
+const AuthenticatedLayout = () => (
+  <RequireAuth>
+    <AuthenticatedLayoutInner />
+  </RequireAuth>
+);
 
 // FIX: Refactored to explicit function body to avoid render2 error with provider nesting
 const QueryWrapper = persister
@@ -253,9 +262,9 @@ const App = () => {
                   </Route>
                   
                   {/* Admin has its own header */}
-                  <Route path="/admin" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Admin /></Suspense></DomainGuard>} />
-                  <Route path="/statistikk" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Statistikk /></Suspense></DomainGuard>} />
-                  <Route path="/marketing" element={<DomainGuard><Suspense fallback={<LoadingSpinner />}><Marketing /></Suspense></DomainGuard>} />
+                  <Route path="/admin" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Admin /></Suspense></DomainGuard></RequireAuth>} />
+                  <Route path="/statistikk" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Statistikk /></Suspense></DomainGuard></RequireAuth>} />
+                  <Route path="/marketing" element={<RequireAuth><DomainGuard><Suspense fallback={<LoadingSpinner />}><Marketing /></Suspense></DomainGuard></RequireAuth>} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

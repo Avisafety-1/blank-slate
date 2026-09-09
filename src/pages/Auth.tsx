@@ -276,12 +276,19 @@ const Auth = () => {
             const redirectDelay = isMobile ? 600 : 300;
             console.log(`Google user approved, preparing redirect to app (delay: ${redirectDelay}ms, mobile: ${isMobile})`);
             
+            // Capture ?next= before we strip the hash (replaceState drops search)
+            const nextTarget = getNextTarget();
+
             if (window.location.hash) {
-              window.history.replaceState(null, '', window.location.pathname);
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
             }
             
             setTimeout(() => {
               console.log('Google user approved, executing redirect to app');
+              if (nextTarget) {
+                window.location.assign(nextTarget);
+                return;
+              }
               redirectToApp('/');
             }, redirectDelay);
           } else {
@@ -339,6 +346,12 @@ const Auth = () => {
         }
 
         sessionStorage.setItem('avisafe_redirecting_to_app', String(now));
+        // Honor ?next= (deep link the user originally tried to open)
+        const nextTarget = getNextTarget();
+        if (nextTarget) {
+          window.location.assign(nextTarget);
+          return;
+        }
         console.log('Redirecting to app domain');
         redirectToApp('/');
       };
