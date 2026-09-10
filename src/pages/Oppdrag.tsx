@@ -664,6 +664,7 @@ const Oppdrag = () => {
           setExecutingChecklistMissionId={setExecutingChecklistMissionId}
           activeMissions={data.activeMissions}
           completedMissions={data.completedMissions}
+          missions={data.missions}
           onMissionChecklistComplete={handleMissionChecklistComplete}
           riskPromptOpen={riskPromptOpen}
           setRiskPromptOpen={setRiskPromptOpen}
