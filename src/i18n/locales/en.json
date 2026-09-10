@@ -2435,6 +2435,8 @@
       "removeDocument": "Remove document",
       "unknownDocument": "Unknown document",
       "attachDocument": "Attach document",
+      "addDocument": "Add document",
+      "done": "Done",
       "attachDocumentShort": "Doc.",
       "active": "Active",
       "otherFixed": "Other (fixed option – cannot be removed)",
