@@ -389,9 +389,10 @@ export const AddMissionDialog = ({
     prevOppdragstypeRef.current = current;
     if (!current) return;
     const matchType = missionTypes.find((t) => t.label === current);
-    const defaultDocId = (matchType as any)?.default_document_id as string | null | undefined;
-    if (!defaultDocId) return;
-    setSelectedDocuments((prev) => (prev.includes(defaultDocId) ? prev : [...prev, defaultDocId]));
+    const ids = ((matchType as any)?.default_document_ids as string[] | null | undefined) ?? [];
+    const defaultDocIds = ids.length > 0 ? ids : (matchType?.default_document_id ? [matchType.default_document_id] : []);
+    if (defaultDocIds.length === 0) return;
+    setSelectedDocuments((prev) => [...prev, ...defaultDocIds.filter((id) => !prev.includes(id))]);
   }, [formData.oppdragstype, missionTypes, mission]);
 
 
@@ -963,9 +964,11 @@ export const AddMissionDialog = ({
         let effectiveSelectedDocs = selectedDocuments;
         if (formData.oppdragstype) {
           const matchType = missionTypes.find((t) => t.label === formData.oppdragstype);
-          const defaultDocId = matchType?.default_document_id;
-          if (defaultDocId && !effectiveSelectedDocs.includes(defaultDocId)) {
-            effectiveSelectedDocs = [...effectiveSelectedDocs, defaultDocId];
+          const ids = ((matchType as any)?.default_document_ids as string[] | null | undefined) ?? [];
+          const defaultDocIds = ids.length > 0 ? ids : (matchType?.default_document_id ? [matchType.default_document_id] : []);
+          const missing = defaultDocIds.filter((id) => !effectiveSelectedDocs.includes(id));
+          if (missing.length > 0) {
+            effectiveSelectedDocs = [...effectiveSelectedDocs, ...missing];
           }
         }
 

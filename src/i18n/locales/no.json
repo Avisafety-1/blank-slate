@@ -2437,6 +2437,8 @@
       "removeDocument": "Fjern dokument",
       "unknownDocument": "Ukjent dokument",
       "attachDocument": "Tilknytt dokument",
+      "addDocument": "Legg til dokument",
+      "done": "Ferdig",
       "attachDocumentShort": "Dok.",
       "active": "Aktiv",
       "otherFixed": "Annet (fast valg – kan ikke fjernes)",

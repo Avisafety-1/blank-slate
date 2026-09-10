@@ -45,7 +45,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
   // Document picker state
   const [docs, setDocs] = useState<DocOption[]>([]);
-  const [pickerOpenFor, setPickerOpenFor] = useState<CompanyMissionType | null>(null);
+  const [pickerOpenForId, setPickerOpenForId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
 
   const isReadOnly = !!disabled || isInherited;
@@ -177,13 +177,16 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     toast({ title: checked ? t("admin.missionTypes.toastPropagateOn") : t("admin.missionTypes.toastPropagateOff") });
   };
 
-  const setDefaultDocument = async (typeId: string, docId: string | null, isEvaluation = false) => {
-    const payload = isEvaluation
-      ? { default_document_id: null, default_evaluation_template_id: docId }
-      : { default_document_id: docId, default_evaluation_template_id: null };
+  const getDocIds = (mt: CompanyMissionType): string[] => {
+    const list = (mt as any).default_document_ids as string[] | null | undefined;
+    if (list && list.length > 0) return list;
+    return mt.default_document_id ? [mt.default_document_id] : [];
+  };
+
+  const saveDocuments = async (typeId: string, docIds: string[]) => {
     const { error } = await (supabase
       .from("company_mission_types")
-      .update(payload as any)
+      .update({ default_document_ids: docIds, default_document_id: docIds[0] ?? null } as any)
       .eq("id", typeId) as any);
     if (error) {
       toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
@@ -192,11 +195,44 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     await reload();
   };
 
+  const setEvaluationTemplate = async (typeId: string, templateId: string | null) => {
+    const { error } = await (supabase
+      .from("company_mission_types")
+      .update({ default_evaluation_template_id: templateId } as any)
+      .eq("id", typeId) as any);
+    if (error) {
+      toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
+      return;
+    }
+    await reload();
+  };
+
+  const toggleDocument = async (mt: CompanyMissionType, docId: string, isEvaluation: boolean) => {
+    if (isEvaluation) {
+      await setEvaluationTemplate(mt.id, mt.default_evaluation_template_id === docId ? null : docId);
+      return;
+    }
+    const current = getDocIds(mt);
+    const next = current.includes(docId) ? current.filter((id) => id !== docId) : [...current, docId];
+    await saveDocuments(mt.id, next);
+  };
+
+  const clearLinks = async (mt: CompanyMissionType) => {
+    await saveDocuments(mt.id, []);
+    if (mt.default_evaluation_template_id) await setEvaluationTemplate(mt.id, null);
+  };
+
   const filteredDocs = useMemo(() => {
     const q = pickerSearch.trim().toLowerCase();
     if (!q) return docs;
     return docs.filter((d) => d.tittel.toLowerCase().includes(q) || d.kategori.toLowerCase().includes(q));
   }, [docs, pickerSearch]);
+
+  const pickerOpenFor = useMemo(
+    () => types.find((mt) => mt.id === pickerOpenForId) || null,
+    [types, pickerOpenForId]
+  );
+  const pickerDocIds = pickerOpenFor ? getDocIds(pickerOpenFor) : [];
 
   return (
     <div className="space-y-4">
@@ -215,8 +251,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
       <div className="space-y-2">
         {types.map((mt, i) => {
-          const linkedId = mt.default_document_id || mt.default_evaluation_template_id;
-          const linkedDoc = linkedId ? docsById.get(linkedId) : null;
+          const linkedIds = [...getDocIds(mt), ...(mt.default_evaluation_template_id ? [mt.default_evaluation_template_id] : [])];
           return (
             <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
               <div className="flex flex-col">
@@ -241,49 +276,59 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
               </div>
               <div className="flex-1 text-sm min-w-[100px]">{t(`missions.missionTypes.${mt.label}`, mt.label)}</div>
 
-              {/* Document link */}
-              {linkedDoc ? (
-                <Badge
-                  variant="secondary"
-                  className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
-                  onClick={() => !isReadOnly && setPickerOpenFor(mt)}
-                  title={linkedDoc.tittel}
-                >
-                  <FileText className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{linkedDoc.tittel}</span>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      className="ml-1 hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDefaultDocument(mt.id, null);
-                      }}
-                      aria-label={t("admin.missionTypes.removeDocument")}
+              {/* Document links */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {linkedIds.map((id) => {
+                  const doc = docsById.get(id);
+                  return doc ? (
+                    <Badge
+                      key={id}
+                      variant="secondary"
+                      className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
+                      onClick={() => !isReadOnly && setPickerOpenForId(mt.id)}
+                      title={doc.tittel}
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </Badge>
-              ) : linkedId ? (
-                // Dokument-ID lagret, men ikke funnet i listen (kanskje slettet eller annet selskap)
-                <Badge variant="outline" className="gap-1 text-muted-foreground">
-                  <FileText className="h-3 w-3" />
-                  <span className="text-xs">{t("admin.missionTypes.unknownDocument")}</span>
-                </Badge>
-              ) : (
+                      <FileText className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{doc.tittel}</span>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          className="ml-1 hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (id === mt.default_evaluation_template_id) {
+                              setEvaluationTemplate(mt.id, null);
+                            } else {
+                              saveDocuments(mt.id, getDocIds(mt).filter((x) => x !== id));
+                            }
+                          }}
+                          aria-label={t("admin.missionTypes.removeDocument")}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </Badge>
+                  ) : (
+                    <Badge key={id} variant="outline" className="gap-1 text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      <span className="text-xs">{t("admin.missionTypes.unknownDocument")}</span>
+                    </Badge>
+                  );
+                })}
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-7 text-xs gap-1"
-                  onClick={() => setPickerOpenFor(mt)}
+                  onClick={() => setPickerOpenForId(mt.id)}
                   disabled={isReadOnly}
                 >
                   <Paperclip className="h-3 w-3" />
-                  <span className="hidden sm:inline">{t("admin.missionTypes.attachDocument")}</span>
+                  <span className="hidden sm:inline">
+                    {linkedIds.length > 0 ? t("admin.missionTypes.addDocument") : t("admin.missionTypes.attachDocument")}
+                  </span>
                   <span className="sm:hidden">{t("admin.missionTypes.attachDocumentShort")}</span>
                 </Button>
-              )}
+              </div>
 
               <div className="flex items-center gap-2">
                 <Label htmlFor={`active-${mt.id}`} className="text-xs text-muted-foreground">
@@ -355,10 +400,10 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
       {/* Document picker dialog */}
       <Dialog
-        open={!!pickerOpenFor}
+        open={!!pickerOpenForId}
         onOpenChange={(open) => {
           if (!open) {
-            setPickerOpenFor(null);
+            setPickerOpenForId(null);
             setPickerSearch("");
           }
         }}
@@ -390,18 +435,16 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             ) : (
               <div className="p-2 space-y-1">
                 {filteredDocs.map((doc) => {
-                  const isSelected =
-                    pickerOpenFor?.default_document_id === doc.id ||
-                    pickerOpenFor?.default_evaluation_template_id === doc.id;
+                  const isSelected = doc.isEvaluation
+                    ? pickerOpenFor?.default_evaluation_template_id === doc.id
+                    : pickerDocIds.includes(doc.id);
                   return (
                     <button
                       key={doc.id}
                       type="button"
                       onClick={async () => {
                         if (!pickerOpenFor) return;
-                        await setDefaultDocument(pickerOpenFor.id, doc.id, !!doc.isEvaluation);
-                        setPickerOpenFor(null);
-                        setPickerSearch("");
+                        await toggleDocument(pickerOpenFor, doc.id, !!doc.isEvaluation);
                       }}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
                         isSelected
@@ -422,27 +465,24 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2">
-            {(pickerOpenFor?.default_document_id || pickerOpenFor?.default_evaluation_template_id) && (
+            {(pickerDocIds.length > 0 || pickerOpenFor?.default_evaluation_template_id) && (
               <Button
                 variant="outline"
                 onClick={async () => {
                   if (!pickerOpenFor) return;
-                  await setDefaultDocument(pickerOpenFor.id, null);
-                  setPickerOpenFor(null);
-                  setPickerSearch("");
+                  await clearLinks(pickerOpenFor);
                 }}
               >
                 {t("admin.missionTypes.removeLink")}
               </Button>
             )}
             <Button
-              variant="ghost"
               onClick={() => {
-                setPickerOpenFor(null);
+                setPickerOpenForId(null);
                 setPickerSearch("");
               }}
             >
-              {t("admin.missionTypes.cancel")}
+              {t("admin.missionTypes.done")}
             </Button>
           </DialogFooter>
         </DialogContent>
