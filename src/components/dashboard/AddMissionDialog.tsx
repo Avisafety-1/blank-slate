@@ -823,7 +823,7 @@ export const AddMissionDialog = ({
 
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
-          const checklistDocIds = selectedDocuments.filter(id => {
+          const checklistDocIds = effectiveSelectedDocs.filter(id => {
             const doc = documents.find(d => d.id === id);
             return doc?.kategori === "sjekklister";
           });
@@ -1007,10 +1007,15 @@ export const AddMissionDialog = ({
           const allChecklistIds = [...new Set([...checklistDocIds, ...droneOpsChecklistIds])];
 
           if (allChecklistIds.length > 0) {
-            await (supabase as any)
+            const { data: updatedMission, error: checklistError } = await (supabase as any)
               .from("missions")
               .update({ checklist_ids: allChecklistIds })
-              .eq("id", createdMission.id);
+              .eq("id", createdMission.id)
+              .select()
+              .single();
+
+            if (checklistError) throw checklistError;
+            if (updatedMission) Object.assign(createdMission, updatedMission);
           }
         }
 

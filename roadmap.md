@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Pågående
-- (ingen)
+- [ ] Rett fastlåste sjekklister på nye oppdrag og verifiser flyten
 
 ## Ferdig
 - [x] Batterikort-dialog mobiloptimalisert (offsets i stedet for breddeverdi)
