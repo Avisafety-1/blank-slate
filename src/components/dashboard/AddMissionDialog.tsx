@@ -823,7 +823,7 @@ export const AddMissionDialog = ({
 
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
-          const checklistDocIds = effectiveSelectedDocs.filter(id => {
+          const checklistDocIds = selectedDocuments.filter(id => {
             const doc = documents.find(d => d.id === id);
             return doc?.kategori === "sjekklister";
           });
@@ -988,7 +988,7 @@ export const AddMissionDialog = ({
 
         // Auto-sync checklist_ids based on attached checklist documents + drone operations checklists
         {
-          const checklistDocIds = selectedDocuments.filter(id => {
+          const checklistDocIds = effectiveSelectedDocs.filter(id => {
             const doc = documents.find(d => d.id === id);
             return doc?.kategori === "sjekklister";
           });
