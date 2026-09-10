@@ -104,19 +104,28 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
 
   const prevOpenRef = useRef(false);
   useEffect(() => {
-    if (open && !prevOpenRef.current && checklistIds.length > 0) {
-      const firstIncomplete =
-        checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
-      setActiveChecklistId(firstIncomplete);
+    const justOpened = open && !prevOpenRef.current;
+
+    if (justOpened) {
       setCheckedByTab({});
       setPdfNumPages(0);
       autoOpenedPdfKeyRef.current = null;
+    }
+
+    if (open && checklistIds.length > 0 && !checklistIds.includes(activeChecklistId)) {
+      const firstIncomplete =
+        checklistIds.find((id) => !completedChecklistIds.has(id)) ?? checklistIds[0];
+      setActiveChecklistId(firstIncomplete);
+    } else if (open && checklistIds.length === 0) {
+      setActiveChecklistId("");
+      setItems([]);
+      setIsLoading(false);
     }
     if (!open) {
       autoOpenedPdfKeyRef.current = null;
     }
     prevOpenRef.current = open;
-  }, [open]);
+  }, [open, checklistIds.join(","), activeChecklistId, completedIds.join(",")]);
 
   // Fetch titles
   useEffect(() => {
