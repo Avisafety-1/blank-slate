@@ -106,6 +106,7 @@ export interface OppdragDialogsProps {
   setExecutingChecklistMissionId: (id: string | null) => void;
   activeMissions: Mission[];
   completedMissions: Mission[];
+  missions?: Mission[];
   onMissionChecklistComplete: (checklistId: string) => void;
 
   // Risk prompt after creation
@@ -475,7 +476,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
 
       {/* ChecklistExecutionDialog for oppdrag */}
       {props.executingChecklistMissionId && (() => {
-        const execMission = [...props.activeMissions, ...props.completedMissions].find(m => m.id === props.executingChecklistMissionId);
+        const execMission = [...(props.missions || []), ...props.activeMissions, ...props.completedMissions].find(m => m.id === props.executingChecklistMissionId);
         return (
           <ChecklistExecutionDialog
             open={!!props.executingChecklistMissionId}
