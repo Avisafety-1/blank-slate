@@ -6,6 +6,7 @@ import {
   isKeyCoolingDown,
   setKeyCooldown,
 } from "../_shared/dronelog-auth.ts";
+import { addDjiDistanceSample, createDjiDistanceTracker, resolveDjiTotalDistance } from "../_shared/dji-distance.ts";
 
 
 const corsHeaders = {
@@ -197,6 +198,7 @@ function parseCsvMinimal(csvText: string) {
   let maxSpeed = 0;
   let minBattery = batteryIdx >= 0 ? 100 : -1;
   let maxFlyTimeMs = 0;
+  const distanceTracker = createDjiDistanceTracker();
   const sampleRate = Math.max(1, Math.floor((lines.length - 1) / 500));
 
   for (let i = 1; i < lines.length; i++) {
@@ -212,6 +214,13 @@ function parseCsvMinimal(csvText: string) {
     if (!isNaN(speed) && speed > maxSpeed) maxSpeed = speed;
     if (!isNaN(battery) && battery < minBattery) minBattery = battery;
     if (!isNaN(flyTimeMs) && flyTimeMs > maxFlyTimeMs) maxFlyTimeMs = flyTimeMs;
+    addDjiDistanceSample(
+      distanceTracker,
+      lat,
+      lon,
+      isNaN(flyTimeMs) ? null : flyTimeMs,
+      isNaN(speed) ? null : speed,
+    );
 
     if ((i - 1) % sampleRate === 0 && !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
       const ts = dateTimeIdx >= 0 && cols[dateTimeIdx] ? cols[dateTimeIdx] :
@@ -268,7 +277,7 @@ function parseCsvMinimal(csvText: string) {
     startTime: startTime || null,
     aircraftName: get("DETAILS.aircraftName") || null,
     droneType: get("DETAILS.droneType") || null,
-    totalDistance: getNum("DETAILS.totalDistance [m]"),
+    totalDistance: resolveDjiTotalDistance(getNum("DETAILS.totalDistance [m]"), distanceTracker.totalMeters),
     maxAltitude: getNum("DETAILS.maxAltitude [m]"),
     maxSpeed: Math.round(maxSpeed * 10) / 10,
     minBattery,
@@ -699,7 +708,7 @@ Deno.serve(async (req) => {
         matched_drone_id: matchedDroneId,
         matched_battery_id: matchedBatteryId,
         max_height_m: parsed.maxAltitude || null,
-        total_distance_m: parsed.totalDistance || null,
+        total_distance_m: parsed.totalDistance ?? null,
         sn_mismatch_suggestion: snMismatchSuggestion,
       } as any)
       .eq("id", pending_log_id);
