@@ -366,7 +366,7 @@ export const BatchLogPanel = ({
       dronelog_sha256: parsed.sha256Hash || null,
       start_time_utc: startDate ? startDate.toISOString() : null,
       end_time_utc: endDate ? endDate.toISOString() : null,
-      total_distance_m: parsed.totalDistance || null,
+      total_distance_m: parsed.totalDistance ?? null,
       max_height_m: parsed.maxAltitude || null,
       max_horiz_speed_ms: parsed.detailsMaxSpeed || null,
       max_vert_speed_ms: parsed.maxVSpeed || null,

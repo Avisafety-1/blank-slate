@@ -163,7 +163,7 @@ export async function processJob(
       flight_date: parsed.startTime || job.payload?.log_date || null,
       duration_seconds: Math.round(parsed.durationSeconds),
       max_height_m: parsed.maxAltitude || null,
-      total_distance_m: parsed.totalDistance || null,
+      total_distance_m: parsed.totalDistance ?? null,
       parsed_result: parsed as any,
       matched_drone_id: matchedDroneId,
       matched_battery_id: matchedBatteryId,

@@ -152,12 +152,10 @@ const num = (v: any): number | null => {
   return isNaN(n) ? null : n;
 };
 
-/** Derived metrics computed from the sampled telemetry points. */
-function deriveFromPositions(positions: any[]) {
+/** Derived telemetry metrics. Average speed uses full flight duration, not sampled speed points. */
+function deriveFromPositions(positions: any[], totalDistanceM: number | null, durationMinutes: number | null) {
   let maxWindMs: number | null = null;
   let maxMslM: number | null = null;
-  let speedSum = 0;
-  let speedCount = 0;
   const modes = new Set<string>();
   let lastMode: string | null = null;
   let modeChanges = 0;
@@ -167,8 +165,6 @@ function deriveFromPositions(positions: any[]) {
     if (w != null && (maxWindMs == null || w > maxWindMs)) maxWindMs = w;
     const alt = num(p?.alt);
     if (alt != null && (maxMslM == null || alt > maxMslM)) maxMslM = alt;
-    const s = num(p?.speed);
-    if (s != null) { speedSum += s; speedCount++; }
     const mode = typeof p?.flycState === "string" && p.flycState ? p.flycState : null;
     if (mode) {
       modes.add(mode);
@@ -178,7 +174,9 @@ function deriveFromPositions(positions: any[]) {
   }
 
   return {
-    avgSpeedMs: speedCount > 0 ? Math.round((speedSum / speedCount) * 10) / 10 : null,
+    avgSpeedMs: totalDistanceM != null && durationMinutes != null && durationMinutes > 0
+      ? Math.round((totalDistanceM / (durationMinutes * 60)) * 10) / 10
+      : null,
     maxWindMs: maxWindMs != null ? Math.round(maxWindMs * 10) / 10 : null,
     maxMslM: maxMslM != null ? Math.round(maxMslM) : null,
     modeChanges: modes.size > 1 ? modeChanges : null,
@@ -188,7 +186,9 @@ function deriveFromPositions(positions: any[]) {
 export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?: FlightLogContext) {
   const positions = log?.flight_track?.positions || [];
   const identifiers = (log?.log_identifiers as any) || {};
-  const derived = deriveFromPositions(positions);
+  const totalDistanceM = num(log?.total_distance_m);
+  const durationMinutes = num(log?.flight_duration_minutes);
+  const derived = deriveFromPositions(positions, totalDistanceM, durationMinutes);
 
   const warnings = log?.dronelog_warnings;
   const warningCount = Array.isArray(warnings)
@@ -209,12 +209,12 @@ export function buildFlightAnalysisTrack(log: any, events: any[] = [], context?:
       cellDeviationV: num(log?.battery_cell_deviation_max_v),
     },
     summary: {
-      durationMinutes: log?.flight_duration_minutes ?? null,
+      durationMinutes,
       maxSpeedMs: num(log?.max_horiz_speed_ms),
       minBatteryPct: log?.min_battery_pct ?? null,
       minBatteryV: num(log?.battery_voltage_min_v),
       totalRows: positions.length || null,
-      totalDistanceM: num(log?.total_distance_m),
+      totalDistanceM,
       maxAltitudeM: num(log?.max_height_m),
       minGpsSat: log?.gps_sat_min ?? null,
       maxGpsSat: log?.gps_sat_max ?? null,

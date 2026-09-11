@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Pågående
-- (ingen)
+- [ ] Korrigere DJI-distanse og gjennomsnittsfart, inkludert sikre historiske avvik
 
 ## Ferdig
 - [x] Batterikort-dialog mobiloptimalisert (offsets i stedet for breddeverdi)
