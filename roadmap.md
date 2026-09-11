@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Pågående
-- [ ] Riktig distanse og snittfart på nye DJI-logger (ingen historisk retting)
+- [x] Riktig distanse og snittfart på nye DJI-logger (ingen historisk retting)
 
 ## Ferdig
 - [x] Batterikort-dialog mobiloptimalisert (offsets i stedet for breddeverdi)
