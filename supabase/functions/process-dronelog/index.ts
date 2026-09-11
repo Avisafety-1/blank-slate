@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { addDjiDistanceSample, createDjiDistanceTracker, resolveDjiTotalDistance } from "../_shared/dji-distance.ts";
 import JSZip from "npm:jszip@3.10.1";
 import {
   resolveDronelogKey,
@@ -706,6 +707,7 @@ function parseCsvToResult(csvText: string) {
   let maxSpeed = 0;
   let minBattery = batteryIdx >= 0 ? 100 : -1;
   let maxFlyTimeMs = 0;
+  const distanceTracker = createDjiDistanceTracker();
   let maxBattTemp = -999;
   let minBattTemp = 999;
   let minBattVolt = 999;
@@ -769,6 +771,13 @@ function parseCsvToResult(csvText: string) {
       batteryReadings.push(battery);
     }
     if (!isNaN(flyTimeMs) && flyTimeMs > maxFlyTimeMs) maxFlyTimeMs = flyTimeMs;
+    addDjiDistanceSample(
+      distanceTracker,
+      lat,
+      lon,
+      isNaN(flyTimeMs) ? null : flyTimeMs,
+      isNaN(speed) ? null : speed,
+    );
     if (!isNaN(battTemp)) {
       if (battTemp > maxBattTemp) maxBattTemp = battTemp;
       if (battTemp < minBattTemp) minBattTemp = battTemp;
@@ -1028,7 +1037,7 @@ function parseCsvToResult(csvText: string) {
     cameraSN: cameraSN || null,
     gimbalSN: gimbalSN || null,
     serialAircraftSN: serialAircraftSN || null,
-    totalDistance: !isNaN(totalDistance) ? Math.round(totalDistance) : null,
+    totalDistance: resolveDjiTotalDistance(!isNaN(totalDistance) ? totalDistance : null, distanceTracker.totalMeters),
     maxAltitude: !isNaN(detailsMaxAlt) ? Math.round(detailsMaxAlt * 10) / 10 : null,
     detailsMaxSpeed: !isNaN(detailsMaxSpeed) ? Math.round(detailsMaxSpeed * 10) / 10 : null,
     // Battery temp: prefer BATTERY.maxTemperature summary field, fallback to row-scanned max
