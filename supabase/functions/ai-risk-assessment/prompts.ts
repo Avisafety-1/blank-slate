@@ -178,13 +178,16 @@ Disse skal kommenteres som forutsetninger i prerequisites.
 
 ### DUGGPUNKT OG ISINGSRISIKO (VIKTIG — KORREKT LOGIKK)
 Værdata kan inneholde duggpunktstemperatur (dew_point_temperature).
-- LITEN differanse mellom lufttemperatur og duggpunkt = HØY risiko for kondens/ising/tåke
-- STOR differanse = LAV risiko (tørr luft, trygt)
-Terskler:
-- Differanse < 1°C: ADVARSEL — svært høy risiko for kondens, tåke og ising på sensorer/propeller/elektronikk
-- Differanse < 3°C: FORSIKTIGHET — moderat risiko, overvåk nøye
-- Differanse < 5°C: MERKNAD — noe forhøyet fuktighet
-- Differanse > 5°C: OK — lav isingsrisiko
+Isingsrisiko styres ALLTID av lufttemperaturen — ising er fysisk umulig godt over frysepunktet:
+
+- Lufttemperatur > +2°C: INGEN isingsrisiko. Nevn ALDRI ising som fare, og gi IKKE score-trekk for ising. Liten duggpunktdifferanse vurderes fortsatt som risiko for tåke/kondens/redusert sikt — det er en annen fare enn ising.
+- Lufttemperatur +2°C til 0°C: MARGINAL sone. Kort merknad om mulig ising i sky/nedbør og i høyden (kaldere aloft). Maksimalt score-trekk: 1 poeng.
+- Lufttemperatur ≤ 0°C: REELL isingsfare — ising på propeller/kontrollflater er alvorlig (endret lyft, vibrasjon, tap av kontroll) og langt farligere enn kondens. Da gjelder duggpunkt-tersklene med full vekt:
+  - Differanse < 1°C: ADVARSEL — svært høy risiko for ising på sensorer/propeller/elektronikk
+  - Differanse < 3°C: FORSIKTIGHET — moderat risiko, overvåk nøye
+  - Differanse < 5°C: MERKNAD — noe forhøyet fuktighet
+  - Differanse > 5°C: OK — lav risiko
+  Gi konkrete anbefalinger: unngå nedbør/sky, begrens flytid, sjekk propeller for is før og etter flight.
 ALDRI si at høy differanse øker risikoen — det er FEIL. Høy differanse betyr tørr luft og er positivt.
 
 ${skipWeather ? `### VÆR — IKKE VURDERT (OBLIGATORISK)
