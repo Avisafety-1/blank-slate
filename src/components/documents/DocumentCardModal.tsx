@@ -335,6 +335,8 @@ const DocumentCardModal = ({
         varsel_dager_for_utløp: document.varsel_dager_for_utløp || undefined,
         nettside_url: document.nettside_url || "",
       });
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } else if (isCreating && isOpen) {
       form.reset({
         tittel: "",
