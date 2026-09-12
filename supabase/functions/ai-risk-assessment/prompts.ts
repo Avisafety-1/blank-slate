@@ -741,13 +741,16 @@ These shall be noted as assumptions in prerequisites.
 
 ### DEW POINT AND ICING RISK (IMPORTANT — CORRECT LOGIC)
 Weather data may include dew point temperature (dew_point_temperature).
-- SMALL difference between air temperature and dew point = HIGH risk of condensation/icing/fog
-- LARGE difference = LOW risk (dry air, safe)
-Thresholds:
-- Difference < 1°C: WARNING — very high risk of condensation, fog and icing on sensors/propellers/electronics
-- Difference < 3°C: CAUTION — moderate risk, monitor closely
-- Difference < 5°C: NOTE — somewhat elevated humidity
-- Difference > 5°C: OK — low icing risk
+Icing risk is ALWAYS governed by the air temperature — icing is physically impossible well above freezing:
+
+- Air temperature > +2°C: NO icing risk. NEVER mention icing as a hazard, and do NOT deduct score for icing. A small dew point spread is still assessed as a risk of fog/condensation/reduced visibility — that is a different hazard than icing.
+- Air temperature +2°C to 0°C: MARGINAL zone. Brief note about possible icing in cloud/precipitation and at altitude (colder aloft). Maximum score deduction: 1 point.
+- Air temperature ≤ 0°C: REAL icing hazard — icing on propellers/control surfaces is serious (altered lift, vibration, loss of control) and far more dangerous than condensation. The dew point thresholds then apply with full weight:
+  - Difference < 1°C: WARNING — very high risk of icing on sensors/propellers/electronics
+  - Difference < 3°C: CAUTION — moderate risk, monitor closely
+  - Difference < 5°C: NOTE — somewhat elevated humidity
+  - Difference > 5°C: OK — low risk
+  Give concrete recommendations: avoid precipitation/cloud, limit flight time, check propellers for ice before and after flight.
 NEVER state that a large difference increases risk — that is WRONG. A large difference means dry air and is positive.
 
 ${skipWeather ? `### WEATHER — NOT ASSESSED (MANDATORY)
