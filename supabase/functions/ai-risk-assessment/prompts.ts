@@ -178,13 +178,16 @@ Disse skal kommenteres som forutsetninger i prerequisites.
 
 ### DUGGPUNKT OG ISINGSRISIKO (VIKTIG — KORREKT LOGIKK)
 Værdata kan inneholde duggpunktstemperatur (dew_point_temperature).
-- LITEN differanse mellom lufttemperatur og duggpunkt = HØY risiko for kondens/ising/tåke
-- STOR differanse = LAV risiko (tørr luft, trygt)
-Terskler:
-- Differanse < 1°C: ADVARSEL — svært høy risiko for kondens, tåke og ising på sensorer/propeller/elektronikk
-- Differanse < 3°C: FORSIKTIGHET — moderat risiko, overvåk nøye
-- Differanse < 5°C: MERKNAD — noe forhøyet fuktighet
-- Differanse > 5°C: OK — lav isingsrisiko
+Isingsrisiko styres ALLTID av lufttemperaturen — ising er fysisk umulig godt over frysepunktet:
+
+- Lufttemperatur > +2°C: INGEN isingsrisiko. Nevn ALDRI ising som fare, og gi IKKE score-trekk for ising. Liten duggpunktdifferanse vurderes fortsatt som risiko for tåke/kondens/redusert sikt — det er en annen fare enn ising.
+- Lufttemperatur +2°C til 0°C: MARGINAL sone. Kort merknad om mulig ising i sky/nedbør og i høyden (kaldere aloft). Maksimalt score-trekk: 1 poeng.
+- Lufttemperatur ≤ 0°C: REELL isingsfare — ising på propeller/kontrollflater er alvorlig (endret lyft, vibrasjon, tap av kontroll) og langt farligere enn kondens. Da gjelder duggpunkt-tersklene med full vekt:
+  - Differanse < 1°C: ADVARSEL — svært høy risiko for ising på sensorer/propeller/elektronikk
+  - Differanse < 3°C: FORSIKTIGHET — moderat risiko, overvåk nøye
+  - Differanse < 5°C: MERKNAD — noe forhøyet fuktighet
+  - Differanse > 5°C: OK — lav risiko
+  Gi konkrete anbefalinger: unngå nedbør/sky, begrens flytid, sjekk propeller for is før og etter flight.
 ALDRI si at høy differanse øker risikoen — det er FEIL. Høy differanse betyr tørr luft og er positivt.
 
 ${skipWeather ? `### VÆR — IKKE VURDERT (OBLIGATORISK)
@@ -738,13 +741,16 @@ These shall be noted as assumptions in prerequisites.
 
 ### DEW POINT AND ICING RISK (IMPORTANT — CORRECT LOGIC)
 Weather data may include dew point temperature (dew_point_temperature).
-- SMALL difference between air temperature and dew point = HIGH risk of condensation/icing/fog
-- LARGE difference = LOW risk (dry air, safe)
-Thresholds:
-- Difference < 1°C: WARNING — very high risk of condensation, fog and icing on sensors/propellers/electronics
-- Difference < 3°C: CAUTION — moderate risk, monitor closely
-- Difference < 5°C: NOTE — somewhat elevated humidity
-- Difference > 5°C: OK — low icing risk
+Icing risk is ALWAYS governed by the air temperature — icing is physically impossible well above freezing:
+
+- Air temperature > +2°C: NO icing risk. NEVER mention icing as a hazard, and do NOT deduct score for icing. A small dew point spread is still assessed as a risk of fog/condensation/reduced visibility — that is a different hazard than icing.
+- Air temperature +2°C to 0°C: MARGINAL zone. Brief note about possible icing in cloud/precipitation and at altitude (colder aloft). Maximum score deduction: 1 point.
+- Air temperature ≤ 0°C: REAL icing hazard — icing on propellers/control surfaces is serious (altered lift, vibration, loss of control) and far more dangerous than condensation. The dew point thresholds then apply with full weight:
+  - Difference < 1°C: WARNING — very high risk of icing on sensors/propellers/electronics
+  - Difference < 3°C: CAUTION — moderate risk, monitor closely
+  - Difference < 5°C: NOTE — somewhat elevated humidity
+  - Difference > 5°C: OK — low risk
+  Give concrete recommendations: avoid precipitation/cloud, limit flight time, check propellers for ice before and after flight.
 NEVER state that a large difference increases risk — that is WRONG. A large difference means dry air and is positive.
 
 ${skipWeather ? `### WEATHER — NOT ASSESSED (MANDATORY)
