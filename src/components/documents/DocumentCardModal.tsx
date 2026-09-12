@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -47,7 +47,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
-import { CalendarIcon, Upload, Trash2, Plus, ChevronUp, ChevronDown, Building2 } from "lucide-react";
+import { CalendarIcon, ExternalLink, Download, UploadCloud, FileCheck2, X, Trash2, Plus, ChevronUp, ChevronDown, Building2 } from "lucide-react";
 
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -134,6 +134,7 @@ const DocumentCardModal = ({
   const [otherCompanies, setOtherCompanies] = useState<{ id: string; navn: string }[]>([]);
   const [sharedDeptIds, setSharedDeptIds] = useState<string[]>([]);
   const [initialSharedDeptIds, setInitialSharedDeptIds] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Detect if current company is a parent company
   useEffect(() => {
@@ -288,6 +289,31 @@ const DocumentCardModal = ({
     }
   };
 
+  const handleDownloadFile = async (filUrl: string) => {
+    try {
+      let downloadUrl = filUrl;
+      if (!filUrl.startsWith('http://') && !filUrl.startsWith('https://')) {
+        const { data, error } = await supabase.storage
+          .from('documents')
+          .createSignedUrl(filUrl, 3600, { download: document?.fil_navn || true });
+        if (error) throw error;
+        if (!data?.signedUrl) throw new Error('Missing signed download URL');
+        downloadUrl = data.signedUrl;
+      }
+
+      const link = window.document.createElement('a');
+      link.href = downloadUrl;
+      link.download = document?.fil_navn || '';
+      link.rel = 'noopener noreferrer';
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error(t('documents.toasts.accessErrorOpen'));
+    }
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -325,6 +351,11 @@ const DocumentCardModal = ({
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
     }
+  };
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -478,25 +509,104 @@ const DocumentCardModal = ({
   const canManageDocument = isAdmin && (isCreating || isOwnerCompany || isSuperAdmin);
   const readOnly = !canManageDocument;
   const isSharedDocument = !!document && !isCreating && !isOwnerCompany && !isSuperAdmin;
+  const currentVersion = document?.versjon || "1.0";
+  const nextVersion = incrementVersion(currentVersion);
+  const hasDocumentFile = !!document?.fil_url;
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl w-[calc(100vw-2rem)] sm:w-full max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] overflow-y-auto p-0 gap-0">
           <DialogHeader>
-            <DialogTitle>
-              {isCreating ? t("documents.cardModal.newTitle") : readOnly ? t("documents.cardModal.viewTitle") : t("documents.cardModal.editTitle")}
-            </DialogTitle>
-            {document && !isCreating && (
-              <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4">
-                {document.opprettet_av && <span>{t("documents.cardModal.createdBy", { name: document.opprettet_av })}</span>}
-                {document.opprettet_dato && <span>{t("documents.cardModal.createdOn", { date: format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb }) })}</span>}
-              </div>
-            )}
+            <div className="border-b px-4 py-4 pr-10 sm:px-6">
+              <DialogTitle>
+                {isCreating ? t("documents.cardModal.newTitle") : readOnly ? t("documents.cardModal.viewTitle") : t("documents.cardModal.editTitle")}
+              </DialogTitle>
+              {document && !isCreating && (
+                <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+                  {document.opprettet_av && <span>{t("documents.cardModal.createdBy", { name: document.opprettet_av })}</span>}
+                  {document.opprettet_dato && <span>{t("documents.cardModal.createdOn", { date: format(new Date(document.opprettet_dato), "dd.MM.yyyy", { locale: nb }) })}</span>}
+                </div>
+              )}
+            </div>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-5 px-4 py-5 sm:px-6">
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+                className="sr-only"
+                tabIndex={-1}
+              />
+
+              {!isCreating && (
+                <div className={cn("grid gap-2 sm:gap-3", readOnly ? "grid-cols-2" : "grid-cols-3")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasDocumentFile}
+                    onClick={() => document?.fil_url && handleOpenFile(document.fil_url)}
+                    className="h-20 min-w-0 flex-col gap-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 sm:h-24"
+                  >
+                    <ExternalLink className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-xs font-semibold">{t("documents.cardModal.openAction")}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasDocumentFile}
+                    onClick={() => document?.fil_url && handleDownloadFile(document.fil_url)}
+                    className="h-20 min-w-0 flex-col gap-1.5 sm:h-24"
+                  >
+                    <Download className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-xs font-semibold">{t("documents.cardModal.downloadAction")}</span>
+                  </Button>
+                  {!readOnly && (
+                    <Button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-20 min-w-0 flex-col gap-1.5 sm:h-24"
+                    >
+                      <UploadCloud className="h-5 w-5 sm:h-6 sm:w-6" />
+                      <span className="text-xs font-semibold">{t("documents.cardModal.updateAction")}</span>
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {isCreating && !readOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-20 w-full flex-col gap-1.5 border-dashed border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                >
+                  <UploadCloud className="h-6 w-6" />
+                  <span className="text-sm font-semibold">{t("documents.cardModal.uploadDocument")}</span>
+                </Button>
+              )}
+
+              {selectedFile && (
+                <div className="flex min-w-0 items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-3">
+                  <FileCheck2 className="h-5 w-5 flex-shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{selectedFile.name}</p>
+                    {!isCreating && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("documents.cardModal.versionUpdateNotice", { from: currentVersion, to: nextVersion })}
+                      </p>
+                    )}
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={clearSelectedFile} aria-label={t("documents.cardModal.removeSelectedFile")}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
               {isSharedDocument && (
                 <Alert>
                   <Building2 className="h-4 w-4" />
@@ -700,7 +810,7 @@ const DocumentCardModal = ({
                     <FormControl>
                       <Input {...field} disabled={readOnly} placeholder="https://..." />
                     </FormControl>
-                    {!readOnly && document?.nettside_url && (
+                    {document?.nettside_url && (
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span className="break-all min-w-0">{t("documents.cardModal.existingUrl")}</span>
                         <Button
@@ -718,89 +828,6 @@ const DocumentCardModal = ({
                   </FormItem>
                 )}
               />
-
-              {!readOnly && (
-                <div className="space-y-2">
-                  <FormLabel>
-                    {isCreating ? t("documents.cardModal.uploadDocument") : t("documents.cardModal.updateDocument")}
-                  </FormLabel>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-                      className="flex-1"
-                    />
-                    {selectedFile && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setSelectedFile(null)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {!isCreating && selectedFile && document?.versjon && (
-                    <p className="text-sm text-muted-foreground">
-                      {t("documents.cardModal.versionUpdateNotice", { from: document.versjon, to: (() => {
-                        const parts = document.versjon.split('.');
-                        if (parts.length === 2) {
-                          const major = parseInt(parts[0]) || 1;
-                          const minor = parseInt(parts[1]) || 0;
-                          return `${major}.${minor + 1}`;
-                        }
-                        return "1.1";
-                      })() })}
-                    </p>
-                  )}
-                  {document?.fil_url && !selectedFile && (
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                      <span className="break-all min-w-0">{t("documents.cardModal.existingFile", { fileName: document.fil_navn || t("documents.cardModal.existingFileFallback") })}</span>
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0"
-                        onClick={() => handleOpenFile(document.fil_url!)}
-                      >
-                        {t("documents.cardModal.openExistingFile")}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {document?.fil_url && readOnly && (
-                <div className="space-y-2">
-                  <FormLabel>{t("documents.cardModal.documentLabel")}</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOpenFile(document.fil_url!)}
-                    className="w-full"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t("documents.cardModal.openDocument")}
-                  </Button>
-                </div>
-              )}
-
-              {document?.nettside_url && readOnly && (
-                <div className="space-y-2">
-                  <FormLabel>{t("documents.cardModal.websiteLabel")}</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => openUrl(document.nettside_url!)}
-                    className="w-full"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {t("documents.cardModal.openWebsite")}
-                  </Button>
-                </div>
-              )}
 
               {!readOnly && (
                 <Collapsible open={visibilityOpen} onOpenChange={setVisibilityOpen} className="rounded-lg border bg-muted/30">
@@ -866,7 +893,9 @@ const DocumentCardModal = ({
               )}
 
 
-              <DialogFooter className="gap-2 flex-col sm:flex-row">
+              </div>
+
+              <DialogFooter className="gap-2 border-t bg-muted/20 px-4 py-4 sm:px-6">
                 {canManageDocument && !isCreating && (
                   <Button
                     type="button"
