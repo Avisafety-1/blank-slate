@@ -1794,44 +1794,6 @@ const Status = () => {
           </GlassCard>
         </div>
 
-        {/* Planned vs unplanned imported flights */}
-        <GlassCard className="p-6">
-          <h2 className="text-xl font-semibold mb-1 text-foreground">
-            {t("status.metrics.unplannedByMonth")}
-          </h2>
-          <p className="text-xs text-muted-foreground mb-4">{t("status.metrics.unplannedExplainer")}</p>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={unplannedByMonth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="planned"
-                stackId="a"
-                name={t("status.metrics.plannedLegend")}
-                fill={COLORS.success}
-              />
-              <Bar
-                dataKey="unplanned"
-                stackId="a"
-                name={t("status.metrics.unplannedLegend")}
-                fill={COLORS.warning}
-                radius={[8, 8, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </GlassCard>
-
-
-
         {/* Mission Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">
@@ -2034,6 +1996,42 @@ const Status = () => {
             </ResponsiveContainer>
           </GlassCard>
         </div>
+
+        {/* Planned vs unplanned imported flights */}
+        <GlassCard className="p-6">
+          <h2 className="text-xl font-semibold mb-1 text-foreground">
+            {t("status.metrics.unplannedByMonth")}
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("status.metrics.unplannedExplainer")}</p>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={unplannedByMonth}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                }}
+              />
+              <Legend />
+              <Bar
+                dataKey="planned"
+                stackId="a"
+                name={t("status.metrics.plannedLegend")}
+                fill={COLORS.success}
+              />
+              <Bar
+                dataKey="unplanned"
+                stackId="a"
+                name={t("status.metrics.unplannedLegend")}
+                fill={COLORS.warning}
+                radius={[8, 8, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
 
         {/* Incident Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
