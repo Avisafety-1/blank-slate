@@ -1482,6 +1482,7 @@
       "aiPanelTitle": "AI analysis for management",
       "regenerate": "Regenerate",
       "aiGenerating": "Generating analysis...",
+      "tabOperations": "Operations",
       "tabIncidents": "Incidents",
       "tabDeviations": "Deviations",
       "loading": "Loading statistics..."
