@@ -110,10 +110,6 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                   <p className="text-muted-foreground text-xs">{t("resources.cards.flightHours")}</p>
                   <p className="font-medium">{drone.flyvetimer}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">{t("resources.cards.available")}</p>
-                  <p className="font-medium">{drone.tilgjengelig ? t("resources.cards.yes") : t("resources.cards.no")}</p>
-                </div>
                 {drone.neste_inspeksjon && (
                   <div>
                     <p className="text-muted-foreground text-xs">{t("resources.cards.nextInspection")}</p>
