@@ -1484,6 +1484,7 @@
       "aiPanelTitle": "AI-analyse for ledelsen",
       "regenerate": "Generer på nytt",
       "aiGenerating": "Genererer analyse...",
+      "tabOperations": "Operasjoner",
       "tabIncidents": "Hendelser",
       "tabDeviations": "Avvik",
       "loading": "Laster statistikk..."

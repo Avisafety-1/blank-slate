@@ -129,7 +129,7 @@ const Status = () => {
   });
 
   // Deviation reports view state
-  const [activeView, setActiveView] = useState<"operational" | "deviation">("operational");
+  const [activeView, setActiveView] = useState<"operations" | "incidents" | "deviation">("operations");
   const [deviationReports, setDeviationReports] = useState<Array<{
     id: string;
     mission_id: string | null;
@@ -1691,10 +1691,13 @@ const Status = () => {
           <ToggleGroup
             type="single"
             value={activeView}
-            onValueChange={(v) => v && setActiveView(v as "operational" | "deviation")}
+            onValueChange={(v) => v && setActiveView(v as "operations" | "incidents" | "deviation")}
             className="justify-start"
           >
-            <ToggleGroupItem value="operational" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+            <ToggleGroupItem value="operations" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
+              {t("status.page.tabOperations")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="incidents" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
               {t("status.page.tabIncidents")}
             </ToggleGroupItem>
             <ToggleGroupItem value="deviation" className="bg-muted text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground border border-border">
@@ -1703,7 +1706,7 @@ const Status = () => {
           </ToggleGroup>
 
 
-        {activeView === "operational" && (<>
+        {activeView === "operations" && (<>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1728,19 +1731,6 @@ const Status = () => {
                 <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.hoursUnit")}</p>
               </div>
               <Clock className="w-10 h-10 text-primary opacity-70" />
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{t("status.metrics.incidentRate")}</p>
-                <p className="text-3xl font-bold text-foreground">
-                  {kpiData.incidentRate.toFixed(2)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.perHundredHours")}</p>
-              </div>
-              <AlertTriangle className="w-10 h-10 text-destructive opacity-70" />
             </div>
           </GlassCard>
 
@@ -2033,7 +2023,25 @@ const Status = () => {
           </ResponsiveContainer>
         </GlassCard>
 
+        </>)}
+
         {/* Incident Statistics */}
+        {activeView === "incidents" && (<>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">{t("status.metrics.incidentRate")}</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {kpiData.incidentRate.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{t("status.metrics.perHundredHours")}</p>
+              </div>
+              <AlertTriangle className="w-10 h-10 text-destructive opacity-70" />
+            </div>
+          </GlassCard>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
@@ -2148,7 +2156,10 @@ const Status = () => {
           </ResponsiveContainer>
         </GlassCard>
 
+        </>)}
+
         {/* Resource & Document Overview */}
+        {activeView === "operations" && (<>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">
             <h2 className="text-xl font-semibold mb-4 text-foreground">
