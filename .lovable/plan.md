@@ -23,6 +23,13 @@ En frittstående HTML-side og en ny Edge Function som lar DJI Pilot 2 (Cloud Ser
   1. `window.djiBridge.platformVerifyLicense(appId, appKey, license)`
   2. `window.djiBridge.platformLoadComponent("thing", JSON.stringify({ host, connectCallback: "reg_callback", username, password }))`
   3. `window.djiBridge.thingConnect(mqttUsername, mqttPassword, "reg_callback")`
+- Felt-mapping fra config-JSON til djiBridge-parametere gjøres eksplisitt i connect-handleren, ikke implisitt:
+  ```js
+  var host = config.mqttHost;       // -> "host"
+  var username = config.mqttUsername; // -> "username"
+  var password = config.mqttPassword; // -> "password"
+  ```
+  slik at det er synlig at `mqttHost -> host`, `mqttUsername -> username`, `mqttPassword -> password`.
 - Global `reg_callback`-funksjon mottar tilkoblingsresultatet fra DJI Pilot 2.
 - All status (config hentet, lisens OK, component lastet, tilkoblingsresultat, feil) logges linje for linje i en enkel `<ul>` på siden.
 - Guard: hvis `window.djiBridge` mangler, vises en tydelig melding om at siden må åpnes i DJI Pilot 2.
