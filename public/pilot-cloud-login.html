@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AviSafe — DJI Pilot 2 Cloud Login</title>
+<style>
+  body { font-family: sans-serif; margin: 16px; background: #0f172a; color: #e2e8f0; }
+  h1 { font-size: 18px; }
+  #status { margin: 12px 0; font-size: 14px; }
+  #connect {
+    font-size: 18px; padding: 14px 28px; border: 0; border-radius: 8px;
+    background: #3b82f6; color: #fff; width: 100%;
+  }
+  #connect:disabled { background: #475569; }
+  #log { margin-top: 16px; padding-left: 20px; font-size: 13px; line-height: 1.5; }
+  #log li.err { color: #f87171; }
+  #log li.ok { color: #4ade80; }
+</style>
+</head>
+<body>
+<h1>AviSafe Cloud Login (DJI Pilot 2)</h1>
+<div id="status">Loading config…</div>
+<button id="connect" disabled>Connect</button>
+<ul id="log"></ul>
+
+<script>
+// Runs inside DJI Pilot 2's embedded webview (Chromium 70) — keep syntax ES2017-safe.
+var CONFIG_URL =
+  "https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/pilot-cloud-config";
+
+var config = null;
+var statusEl = document.getElementById("status");
+var connectBtn = document.getElementById("connect");
+var logEl = document.getElementById("log");
+
+function log(msg, cls) {
+  var li = document.createElement("li");
+  if (cls) li.className = cls;
+  li.textContent = new Date().toISOString().substr(11, 8) + "  " + msg;
+  logEl.appendChild(li);
+}
+
+function setStatus(msg) {
+  statusEl.textContent = msg;
+  log(msg);
+}
+
+// Callback invoked by DJI Pilot 2 with the MQTT connection result.
+window.reg_callback = function (result) {
+  log("reg_callback: " + JSON.stringify(result), "ok");
+  setStatus("Connection result received — see log below.");
+};
+
+function getToken() {
+  var m = /[?&]token=([^&]+)/.exec(window.location.search);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function loadConfig() {
+  var token = getToken();
+  if (!token) {
+    setStatus("Missing ?token= in page URL.");
+    log("Open this page with ?token=<PILOT_CLOUD_TOKEN>", "err");
+    return;
+  }
+  fetch(CONFIG_URL + "?token=" + encodeURIComponent(token))
+    .then(function (res) {
+      if (!res.ok) throw new Error("Config request failed: HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (data) {
+      config = data;
+      setStatus("Config loaded. Ready to connect.");
+      connectBtn.disabled = false;
+    })
+    .catch(function (err) {
+      setStatus("Could not load config.");
+      log(String(err), "err");
+    });
+}
+
+connectBtn.addEventListener("click", function () {
+  if (!config) return;
+  if (!window.djiBridge) {
+    setStatus("djiBridge not available.");
+    log("window.djiBridge is missing — this page must be opened inside DJI Pilot 2 (Cloud Service > Other platforms).", "err");
+    return;
+  }
+
+  // Explicit mapping: config JSON fields -> djiBridge parameter names
+  var appId = config.appId;
+  var appKey = config.appKey;
+  var license = config.license;
+  var host = config.mqttHost;         // mqttHost -> host (full URI incl. scheme + port)
+  var username = config.mqttUsername; // mqttUsername -> username
+  var password = config.mqttPassword; // mqttPassword -> password
+
+  try {
+    log("platformVerifyLicense…");
+    window.djiBridge.platformVerifyLicense(appId, appKey, license);
+    log("platformVerifyLicense called", "ok");
+
+    var thingConfig = JSON.stringify({
+      host: host,
+      connectCallback: "reg_callback",
+      username: username,
+      password: password,
+    });
+    log('platformLoadComponent("thing", …)');
+    window.djiBridge.platformLoadComponent("thing", thingConfig);
+    log("platformLoadComponent called", "ok");
+
+    log("thingConnect…");
+    window.djiBridge.thingConnect(username, password, "reg_callback");
+    log("thingConnect called — waiting for reg_callback", "ok");
+    setStatus("Connecting… waiting for DJI Pilot 2 callback.");
+  } catch (err) {
+    setStatus("Connect failed.");
+    log(String(err && err.message ? err.message : err), "err");
+  }
+});
+
+loadConfig();
+</script>
+</body>
+</html>

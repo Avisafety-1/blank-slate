@@ -254,6 +254,9 @@ verify_jwt = false
 [functions.eurostat-population]
 verify_jwt = false
 
+[functions.pilot-cloud-config]
+verify_jwt = false
+
 
 [functions.fetch-osm-power-lines]
 verify_jwt = false
