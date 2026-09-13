@@ -9,8 +9,10 @@ En frittstående HTML-side og en ny Edge Function som lar DJI Pilot 2 (Cloud Ser
 - `GET` uten innlogging, men med obligatorisk `?token=`-parameter.
 - Token sammenlignes med en hemmelighet `PILOT_CLOUD_TOKEN` i funksjonens miljøvariabler; feil eller manglende token gir `403`.
 - Returnerer JSON `{ appId, appKey, license, mqttHost, mqttUsername, mqttPassword }`, der alle verdier leses fra Supabase-hemmeligheter: `DJI_APP_ID`, `DJI_APP_KEY`, `DJI_LICENSE`, `MQTT_HOST`, `MQTT_USERNAME`, `MQTT_PASSWORD`.
+- `MQTT_HOST` inneholder hele tilkoblings-URI-en inkludert scheme og port (f.eks. `ssl://mqtt-broker-avisafe.fly.dev:8883`). Scheme/port konstrueres ikke i funksjonen eller på klienten — verdien sendes videre som den er.
 - Ingen verdier hardkodes i funksjonskroppen; manglende hemmelighet gir `500` med navnet på den manglende variabelen.
-- Standard CORS-headere, `OPTIONS` håndteres, `verify_jwt = false` registreres i `supabase/config.toml`.
+- `Access-Control-Allow-Origin: *` (wildcard) på alle svar, inkludert feil — DJI RC Plus' webview kan sende uvanlig eller tom `Origin`-header som en domenebegrenset CORS-policy ville avvist. `OPTIONS` håndteres, `verify_jwt = false` registreres i `supabase/config.toml`.
+- Én linjes kommentar i funksjonen (ikke runtime-sjekk): `MQTT_USERNAME`/`MQTT_PASSWORD` må holdes i sync med credentialene som er hashet inn i mosquitto-brokerens passordfil på den separate Fly.io-appen `mqtt-broker-avisafe` — de lever i to ulike repoer og synkes ikke automatisk.
 
 ### 2. Statisk side `public/pilot-cloud-login.html` (ny)
 
