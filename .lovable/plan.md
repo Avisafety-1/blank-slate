@@ -56,7 +56,7 @@ og `[[services]]` bundet til `processes = ["mosquitto"]` slik at bare brokeren e
 | company_id (uuid) | `drones.company_id` via sn | nei |
 | order_id (text) | `"dji-cloud"` | nei |
 | sn (text) | OSD `gateway` | nei |
-| flight_status (text) | `"flying"` | nei |
+| flight_status (text) | `"inflight"` hvis height > 0, ellers `"ground"` | nei |
 | time_stamp (timestamptz) | OSD-tid eller nå | nei |
 | lat / lng (float8) | `latitude` / `longitude` | nei |
 | height_m (float8) | `height` | ja |
