@@ -256,6 +256,12 @@ const DjiCloudLogin = () => {
         {status && <p className="text-sm">{status}</p>}
 
         {log.length > 0 && (
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLog()}>
+            {t("djiCloud.copyLog")}
+          </Button>
+        )}
+
+        {log.length > 0 && (
           <ul className="space-y-1 text-xs font-mono">
             {log.map((line) => (
               <li
