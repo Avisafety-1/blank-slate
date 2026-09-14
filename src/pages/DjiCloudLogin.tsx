@@ -72,6 +72,46 @@ const DjiCloudLogin = () => {
     };
   }, []);
 
+  // Log running build version and make sure this page never runs from an old
+  // service-worker cache (DJI Pilot 2's webview caches aggressively).
+  useEffect(() => {
+    const version = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "unknown";
+    addLog(`AviSafe /dji build: ${version}`);
+    void (async () => {
+      try {
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) await reg.unregister();
+          if (regs.length > 0) addLog(`Unregistered ${regs.length} service worker(s)`);
+        }
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          for (const key of keys) await caches.delete(key);
+          if (keys.length > 0) addLog(`Cleared ${keys.length} cache(s)`);
+        }
+      } catch {
+        /* ignore — cache cleanup is best effort */
+      }
+    })();
+  }, [addLog]);
+
+  const handleClearCache = async () => {
+    try {
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) await reg.unregister();
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        for (const key of keys) await caches.delete(key);
+      }
+    } catch {
+      /* ignore */
+    }
+    setStatus(t("djiCloud.cacheCleared"));
+    window.location.replace(`/dji?v=${Date.now()}`);
+  };
+
   // DJI Pilot 2 invokes this global with the MQTT connection result
   useEffect(() => {
     window.reg_callback = (result: unknown) => {
