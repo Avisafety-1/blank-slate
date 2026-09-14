@@ -2,7 +2,7 @@
 
 ## Pågående
 - [x] /dji cache-fiks: versjonslinje i logg, SW/cache-tømming ved åpning, "Tøm buffer"-knapp (publish avbrutt — må publiseres på nytt)
-- [ ] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/ — entrypoint.sh og mosquitto.conf mangler (innlimingen ble blandet), trenger riktig innhold fra bruker
+- [x] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/
 
 ## Ferdig
 - [x] Redesignet «Rediger dokument» med åpne, last ned og oppdater øverst
