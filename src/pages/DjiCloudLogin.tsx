@@ -116,6 +116,32 @@ const DjiCloudLogin = () => {
     say(t("djiCloud.signedIn"), "ok");
   };
 
+  // DJI bridge calls return a JSON string like {"code":0,"message":"","data":...}
+  const parseBridge = (raw: unknown): { code: number | null; text: string } => {
+    if (raw === undefined || raw === null) return { code: null, text: "(no return value)" };
+    const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object" && "code" in (parsed as Record<string, unknown>)) {
+        const code = Number((parsed as Record<string, unknown>).code);
+        return { code: Number.isNaN(code) ? null : code, text };
+      }
+    } catch {
+      /* not JSON — log raw */
+    }
+    return { code: null, text };
+  };
+
+  const handleCopyLog = async () => {
+    const text = log.map((l) => l.text).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(t("djiCloud.logCopied"));
+    } catch {
+      setStatus(text);
+    }
+  };
+
   const handleConnect = () => {
     if (!config) return;
     if (!window.djiBridge) {
@@ -132,20 +158,37 @@ const DjiCloudLogin = () => {
     const password = config.mqttPassword; // mqttPassword -> password
 
     try {
+      addLog(`appId=${appId} host=${host} username=${username}`);
+      addLog(`page origin=${window.location.origin}`);
+
       addLog("platformVerifyLicense…");
-      window.djiBridge.platformVerifyLicense(appId, appKey, license);
-      addLog("platformVerifyLicense called", "ok");
+      const verify = parseBridge(window.djiBridge.platformVerifyLicense(appId, appKey, license));
+      addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
+      if (verify.code !== null && verify.code !== 0) {
+        say(t("djiCloud.licenseFailed"), "err");
+        return;
+      }
 
       addLog('platformLoadComponent("thing", …)');
-      window.djiBridge.platformLoadComponent(
-        "thing",
-        JSON.stringify({ host, connectCallback: "reg_callback", username, password }),
+      const loaded = parseBridge(
+        window.djiBridge.platformLoadComponent(
+          "thing",
+          JSON.stringify({ host, connectCallback: "reg_callback", username, password }),
+        ),
       );
-      addLog("platformLoadComponent called", "ok");
+      addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
+      if (loaded.code !== null && loaded.code !== 0) {
+        say(t("djiCloud.componentFailed"), "err");
+        return;
+      }
 
       addLog("thingConnect…");
-      window.djiBridge.thingConnect(username, password, "reg_callback");
-      addLog("thingConnect called — waiting for reg_callback", "ok");
+      const connected = parseBridge(window.djiBridge.thingConnect(username, password, "reg_callback"));
+      addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
+      if (connected.code !== null && connected.code !== 0) {
+        say(t("djiCloud.connectFailed"), "err");
+        return;
+      }
       setStatus(t("djiCloud.connecting"));
     } catch (err) {
       say(t("djiCloud.connectFailed"), "err");
@@ -211,6 +254,12 @@ const DjiCloudLogin = () => {
         )}
 
         {status && <p className="text-sm">{status}</p>}
+
+        {log.length > 0 && (
+          <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLog()}>
+            {t("djiCloud.copyLog")}
+          </Button>
+        )}
 
         {log.length > 0 && (
           <ul className="space-y-1 text-xs font-mono">

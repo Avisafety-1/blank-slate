@@ -8814,6 +8814,10 @@
     "connecting": "Connecting… waiting for DJI Pilot 2 callback.",
     "connectFailed": "Connect failed.",
     "callbackReceived": "Connection result received — see log below.",
-    "bridgeMissing": "This page must be opened inside DJI Pilot 2 (Cloud Service > Other platforms)."
+    "bridgeMissing": "This page must be opened inside DJI Pilot 2 (Cloud Service > Other platforms).",
+    "licenseFailed": "License verification failed — the license is not valid for this address.",
+    "componentFailed": "Could not load the \"thing\" component.",
+    "copyLog": "Copy log",
+    "logCopied": "Log copied."
   }
 }
