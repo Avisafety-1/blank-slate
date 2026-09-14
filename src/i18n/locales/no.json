@@ -8797,5 +8797,25 @@
     "notAuthorized": "Du har ikke rettigheter til å kvittere ut advarsler på denne ressursen.",
     "notFound": "Fant ikke ressursen. Last siden på nytt og prøv igjen.",
     "generic": "Noe gikk galt under kvitteringen. Prøv igjen, eller kontakt support hvis feilen vedvarer."
+  },
+  "djiCloud": {
+    "title": "AviSafe Cloud-innlogging (DJI Pilot 2)",
+    "loading": "Laster…",
+    "signInHint": "Logg inn med AviSafe-kontoen din for å hente DJI-oppsettet.",
+    "email": "E-post",
+    "password": "Passord",
+    "signIn": "Logg inn",
+    "signingIn": "Logger inn…",
+    "signedIn": "Innlogget.",
+    "signInFailed": "Innlogging mislyktes.",
+    "loadingConfig": "Henter oppsett…",
+    "configLoaded": "Oppsett hentet. Klar til å koble til.",
+    "configFailed": "Kunne ikke hente oppsett.",
+    "retryConfig": "Prøv å hente oppsett på nytt",
+    "connect": "Koble til",
+    "connecting": "Kobler til… venter på svar fra DJI Pilot 2.",
+    "connectFailed": "Tilkobling mislyktes.",
+    "callbackReceived": "Svar mottatt – se loggen under.",
+    "bridgeMissing": "Denne siden må åpnes i DJI Pilot 2 (Cloud Service > Other platforms)."
   }
 }
