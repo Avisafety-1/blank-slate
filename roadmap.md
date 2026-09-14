@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Pågående
-- [x] Riktig distanse og snittfart på nye DJI-logger (ingen historisk retting)
+- [x] /dji cache-fiks: versjonslinje i logg, SW/cache-tømming ved åpning, "Tøm buffer"-knapp (publish avbrutt — må publiseres på nytt)
+- [ ] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/ — entrypoint.sh og mosquitto.conf mangler (innlimingen ble blandet), trenger riktig innhold fra bruker
 
 ## Ferdig
 - [x] Redesignet «Rediger dokument» med åpne, last ned og oppdater øverst
