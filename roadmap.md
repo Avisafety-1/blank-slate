@@ -3,6 +3,7 @@
 ## Pågående
 - [x] /dji cache-fiks: versjonslinje i logg, SW/cache-tømming ved åpning, "Tøm buffer"-knapp (publish avbrutt — må publiseres på nytt)
 - [x] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/
+- [x] DJI Cloud API-bridge (bridge.py) + Fly multi-process; venter på at bruker setter SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY og deployer
 
 ## Ferdig
 - [x] Redesignet «Rediger dokument» med åpne, last ned og oppdater øverst
