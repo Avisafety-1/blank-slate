@@ -8816,6 +8816,10 @@
     "connecting": "Kobler til… venter på svar fra DJI Pilot 2.",
     "connectFailed": "Tilkobling mislyktes.",
     "callbackReceived": "Svar mottatt – se loggen under.",
-    "bridgeMissing": "Denne siden må åpnes i DJI Pilot 2 (Cloud Service > Other platforms)."
+    "bridgeMissing": "Denne siden må åpnes i DJI Pilot 2 (Cloud Service > Other platforms).",
+    "licenseFailed": "Lisenskontrollen feilet – lisensen er ikke gyldig for denne adressen.",
+    "componentFailed": "Kunne ikke laste «thing»-komponenten.",
+    "copyLog": "Kopier logg",
+    "logCopied": "Loggen er kopiert."
   }
 }
