@@ -8795,5 +8795,25 @@
     "notAuthorized": "You do not have permission to acknowledge warnings on this resource.",
     "notFound": "The resource could not be found. Reload the page and try again.",
     "generic": "Something went wrong while acknowledging. Try again, or contact support if it persists."
+  },
+  "djiCloud": {
+    "title": "AviSafe Cloud Login (DJI Pilot 2)",
+    "loading": "Loading…",
+    "signInHint": "Sign in with your AviSafe account to fetch the DJI configuration.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "signedIn": "Signed in.",
+    "signInFailed": "Sign-in failed.",
+    "loadingConfig": "Loading config…",
+    "configLoaded": "Config loaded. Ready to connect.",
+    "configFailed": "Could not load config.",
+    "retryConfig": "Retry loading config",
+    "connect": "Connect",
+    "connecting": "Connecting… waiting for DJI Pilot 2 callback.",
+    "connectFailed": "Connect failed.",
+    "callbackReceived": "Connection result received — see log below.",
+    "bridgeMissing": "This page must be opened inside DJI Pilot 2 (Cloud Service > Other platforms)."
   }
 }

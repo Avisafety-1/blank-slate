@@ -1,4 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireUser, authErrorResponse } from "../_shared/auth.ts";
 
 // NOTE: MQTT_USERNAME / MQTT_PASSWORD must be kept in sync with the credentials
 // hashed into the mosquitto broker password file on the separate Fly.io app
@@ -10,6 +11,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 const headers = {
   ...corsHeaders,
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Content-Type": "application/json",
 };
 
@@ -22,26 +25,23 @@ const SECRET_MAP: Array<[string, string]> = [
   ["MQTT_PASSWORD", "mqttPassword"],
 ];
 
-Deno.serve((req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers });
   }
 
-  if (req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
       headers,
     });
   }
 
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token") ?? "";
-  const expected = Deno.env.get("PILOT_CLOUD_TOKEN") ?? "";
-  if (!expected || token !== expected) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers,
-    });
+  // Any authenticated Avisafe user may fetch the DJI cloud config.
+  try {
+    await requireUser(req);
+  } catch (err) {
+    return authErrorResponse(err, headers);
   }
 
   const body: Record<string, string> = {};

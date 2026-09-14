@@ -52,6 +52,9 @@ const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Marketing = React.lazy(() => import("./pages/Marketing"));
 const Priser = React.lazy(() => import("./pages/Priser"));
 const NewsletterSignup = React.lazy(() => import("./pages/NewsletterSignup"));
+// Standalone DJI Pilot 2 cloud login — own chunk so unrelated modern syntax
+// elsewhere in the app cannot break loading on the RC Plus (Chromium 70).
+const DjiCloudLogin = React.lazy(() => import("./pages/DjiCloudLogin"));
 
 // Initialize i18n - must be imported after React setup
 import "./i18n";
@@ -246,6 +249,7 @@ const App = () => {
                   <Route path="/sora-prosess" element={<Suspense fallback={<LoadingSpinner />}><SoraProcess /></Suspense>} />
                   <Route path="/bruksanvisning" element={<Suspense fallback={<LoadingSpinner />}><UserManualDownload /></Suspense>} />
                   <Route path="/nyhetsbrev" element={<Suspense fallback={<LoadingSpinner />}><NewsletterSignup /></Suspense>} />
+                  <Route path="/dji" element={<Suspense fallback={<LoadingSpinner />}><DjiCloudLogin /></Suspense>} />
                   
                   {/* Protected routes with shared Header - app domain */}
                   <Route element={<AuthenticatedLayout />}>
