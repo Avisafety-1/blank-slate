@@ -8820,6 +8820,8 @@
     "licenseFailed": "Lisenskontrollen feilet – lisensen er ikke gyldig for denne adressen.",
     "componentFailed": "Kunne ikke laste «thing»-komponenten.",
     "copyLog": "Kopier logg",
-    "logCopied": "Loggen er kopiert."
+    "logCopied": "Loggen er kopiert.",
+    "clearCache": "Tøm buffer og last på nytt",
+    "cacheCleared": "Buffer tømt – laster på nytt…"
   }
 }
