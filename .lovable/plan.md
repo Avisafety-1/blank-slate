@@ -9,6 +9,7 @@ Operatøren åpner `https://app.avisafe.no/dji` i DJI Pilot 2 (Cloud Service > A
 ### 1. Ny side `/dji` (erstatter den statiske HTML-filen)
 
 - Ny React-side `src/pages/DjiCloudLogin.tsx`, registrert i `App.tsx` som en frittstående rute utenfor `AuthenticatedLayout` — ingen meny, header eller plan-sperre.
+- Ruten registreres med `React.lazy()` + `Suspense`, slik at siden og dens avhengigheter havner i en egen kodepakke. Da kan ikke nyere JS-syntaks andre steder i appen hindre at siden laster i RC Plus' eldre nettleser.
 - Siden har tre tilstander:
   1. **Ikke innlogget**: e-post + passord-felt og «Logg inn»-knapp (bruker samme innlogging som resten av appen).
   2. **Innlogget, henter oppsett**: kaller `pilot-cloud-config` med brukerens sesjon.
