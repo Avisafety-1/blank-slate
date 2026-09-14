@@ -8818,6 +8818,8 @@
     "licenseFailed": "License verification failed — the license is not valid for this address.",
     "componentFailed": "Could not load the \"thing\" component.",
     "copyLog": "Copy log",
-    "logCopied": "Log copied."
+    "logCopied": "Log copied.",
+    "clearCache": "Clear cache and reload",
+    "cacheCleared": "Cache cleared — reloading…"
   }
 }
