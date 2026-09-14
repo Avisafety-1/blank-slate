@@ -14,9 +14,11 @@
 
 `flighthub2_positions` har `company_id`, `order_id`, `flight_status`, `time_stamp`, `lat`, `lng` som **NOT NULL**. Å skrive raden med `company_id = null` når serienummeret ikke finnes i `drones` er derfor umulig slik tabellen er i dag.
 
-Håndtering i planen: ved ukjent sn logges en tydelig advarsel per sn (én gang per sn, ikke per melding), og raden mellomlagres i minnet (ringbuffer, siste N) slik at den kan skrives så snart dronen registreres. Rader uten treff kastes ikke stille. Alternativt kan vi gjøre `company_id` nullable i en egen migrasjon – si ifra hvis du heller vil det.
+Håndtering i planen: ukjent sn → raden forkastes, og bridgen logger en tydelig flagget advarsel på stdout med prefikset `ALERT unresolved_sn` som inkluderer serienummeret og løpende antall forkastede meldinger for det serienummeret. Advarselen gjentas ved første treff og deretter hvert 50. forkast, slik at den fanges opp av Fly-logger og alarmer. Ingen mellomlagring – dette behandles som en konfigurasjonsfeil (dronen mangler i `drones`), ikke en tidsrace.
 
-For de andre NOT NULL-feltene bruker bridgen faste verdier: `order_id = "dji-cloud"`, `flight_status = "flying"`, `time_stamp` = OSD-tidsstempel hvis det finnes, ellers nå.
+For de andre NOT NULL-feltene bruker bridgen `order_id = "dji-cloud"` og `time_stamp` = OSD-tidsstempel hvis det finnes, ellers nå.
+
+**flight_status følger eksisterende konvensjon.** `flighthub2-airspace-webhook` tolker `"inflight" | "takeoff" | "flying"` som luftbåren og alt annet som på bakken. Bridgen bruker derfor `"inflight"` når OSD-`height` finnes og er > 0, ellers `"ground"`.
 
 ## Andre arkitektur-merknader
 
@@ -54,7 +56,7 @@ og `[[services]]` bundet til `processes = ["mosquitto"]` slik at bare brokeren e
 | company_id (uuid) | `drones.company_id` via sn | nei |
 | order_id (text) | `"dji-cloud"` | nei |
 | sn (text) | OSD `gateway` | nei |
-| flight_status (text) | `"flying"` | nei |
+| flight_status (text) | `"inflight"` hvis height > 0, ellers `"ground"` | nei |
 | time_stamp (timestamptz) | OSD-tid eller nå | nei |
 | lat / lng (float8) | `latitude` / `longitude` | nei |
 | height_m (float8) | `height` | ja |
