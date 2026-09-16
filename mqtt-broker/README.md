@@ -59,7 +59,16 @@ Kjører i bakgrunnen i mosquitto-maskinen (startes av `entrypoint.sh`):
 - Skriver `/mosquitto/data/passwd` (bridge-bruker + én bruker per selskapsgruppe)
   og `/mosquitto/data/acl`, der hver bruker kun får publisere på
   `sys/product/{sn}/#` og `thing/product/{sn}/#` for egne/autoriserte serienumre.
-- Sender SIGHUP til mosquitto ved endring. Tomt svar → filene beholdes uendret.
+- Setter begge filene til `mosquitto:mosquitto`, synkroniserer volumet og
+  verifiserer to ganger at de finnes og har innhold før SIGHUP sendes.
+- En mislykket filoppdatering gjenoppretter forrige fil og avbryter reload, slik
+  at Mosquitto fortsetter med credential-settet som allerede er lastet i minnet.
+- Sender SIGHUP til Mosquitto kun etter vellykket verifisering. Tomt svar →
+  filene beholdes uendret.
+
+Fly-oppsettet har ingen proxy health-check som restarter maskinen ved én
+mislykket MQTT-tilkobling. `PM07` under hendelsen kom av at Mosquitto-prosessen
+allerede terminerte og startet på nytt; det var ikke en konfigurert health-check.
 
 ## Deploy
 
