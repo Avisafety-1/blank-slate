@@ -702,7 +702,7 @@ Deno.serve(async (req) => {
     console.log(`Telemetry stored: ${telemetryStored} positions`);
 
     const advisorySuccessCount = advisoryResults.filter(r => r.success).length;
-    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${beaconsUpserted} beacons cached, ${telemetryStored} telemetry stored`);
+    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${livePublished} live beacons published, ${beaconsUpserted} beacons cached, ${telemetryStored} telemetry stored`);
 
     return new Response(
       JSON.stringify({ 
@@ -718,6 +718,9 @@ Deno.serve(async (req) => {
         },
         telemetry: {
           stored: telemetryStored
+        },
+        livePositions: {
+          published: livePublished
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
