@@ -10,6 +10,7 @@ const corsHeaders = {
 
 const SAFESKY_ADVISORY_URL = 'https://uav-api.safesky.app/v1/advisory';
 const SAFESKY_UAV_URL = 'https://sandbox-public-api.safesky.app/v1/uav';
+const SAFESKY_UAV_PROD_URL = 'https://public-api.safesky.app/v1/uav';
 
 // Norway bounding box for beacon fetching
 const NORWAY_BOUNDS = {
