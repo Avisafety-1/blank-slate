@@ -273,9 +273,21 @@ Deno.serve(async (req: Request) => {
 
     if (rows.length === 0) return ok();
 
+    // Only one row per drone is kept in flighthub2_positions (unique on sn),
+    // so reduce this batch to the newest position per serial number first.
+    const newestBySn = new Map<string, typeof rows[number]>();
+    for (const r of rows) {
+      const sn = r.sn as string;
+      const prev = newestBySn.get(sn);
+      if (!prev || (r.time_stamp as string) > (prev.time_stamp as string)) {
+        newestBySn.set(sn, r);
+      }
+    }
+    const upsertRows = Array.from(newestBySn.values());
+
     const { error: insErr } = await supabase
       .from("flighthub2_positions")
-      .insert(rows);
+      .upsert(upsertRows, { onConflict: "sn" });
     if (insErr) {
       console.error("Insert error", insErr);
       return fail("400", "persist_failed");

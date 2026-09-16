@@ -177,8 +177,10 @@ def handle_osd(sn_from_topic, payload):
 
     try:
         resp = session.post(
-            SUPABASE_URL + "/rest/v1/flighthub2_positions",
-            headers=supabase_headers({"Prefer": "return=minimal"}),
+            SUPABASE_URL + "/rest/v1/flighthub2_positions?on_conflict=sn",
+            headers=supabase_headers(
+                {"Prefer": "resolution=merge-duplicates,return=minimal"}
+            ),
             data=json.dumps(row),
             timeout=10,
         )
