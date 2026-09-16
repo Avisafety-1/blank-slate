@@ -1295,7 +1295,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 >
                   <RadioGroupItem value="live_uav" id="mode-live" disabled={!liveAvailable} className="mt-0.5" />
                   <div className="flex-1 space-y-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Navigation className="h-4 w-4 text-green-500" />
                       <span className="font-medium">{t('flight.safeskyLivePosition')}</span>
                       {fh2LiveEnabled && (
@@ -1306,6 +1306,57 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                       {dronetagEnabled && !fh2LiveEnabled && (
                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/15 text-primary">
                           DroneTag
+                        </span>
+                      )}
+                      {liveAvailable && (
+                        <span
+                          className="ml-auto flex items-center gap-1"
+                          role="group"
+                          aria-label={t('flight.liveTargetTitle')}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            aria-pressed={liveTarget === 'safesky'}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setLiveTarget('safesky');
+                              if (publishMode !== 'live_uav') {
+                                setUserPickedMode(true);
+                                setPublishMode('live_uav');
+                              }
+                            }}
+                            className={cn(
+                              'text-xs font-medium px-2.5 py-0.5 rounded-full transition-colors cursor-pointer',
+                              liveTarget === 'safesky'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'border border-border bg-background text-muted-foreground hover:bg-muted/50',
+                            )}
+                          >
+                            {t('flight.liveTargetSafesky')}
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={liveTarget === 'internal'}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setLiveTarget('internal');
+                              if (publishMode !== 'live_uav') {
+                                setUserPickedMode(true);
+                                setPublishMode('live_uav');
+                              }
+                            }}
+                            className={cn(
+                              'text-xs font-medium px-2.5 py-0.5 rounded-full transition-colors cursor-pointer',
+                              liveTarget === 'internal'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'border border-border bg-background text-muted-foreground hover:bg-muted/50',
+                            )}
+                          >
+                            {t('flight.liveTargetInternal')}
+                          </button>
                         </span>
                       )}
                     </div>
@@ -1379,44 +1430,6 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
             {publishMode === 'live_uav' && (
               <div className="space-y-4">
-                {/* Where the live position is published */}
-                <div className="space-y-2">
-                  <Label className="text-sm">{t('flight.liveTargetTitle')}</Label>
-                  <RadioGroup
-                    value={liveTarget}
-                    onValueChange={(v) => setLiveTarget(v as 'safesky' | 'internal')}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    <label
-                      htmlFor="live-target-safesky"
-                      className={cn(
-                        'flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50',
-                        liveTarget === 'safesky' ? 'border-primary bg-primary/5' : 'border-border',
-                      )}
-                    >
-                      <RadioGroupItem value="safesky" id="live-target-safesky" className="mt-0.5" />
-
-                      <div className="space-y-0.5">
-                        <span className="text-sm font-medium">{t('flight.liveTargetSafesky')}</span>
-                        <p className="text-xs text-muted-foreground">{t('flight.liveTargetSafeskyDesc')}</p>
-                      </div>
-                    </label>
-                    <label
-                      htmlFor="live-target-internal"
-                      className={cn(
-                        'flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50',
-                        liveTarget === 'internal' ? 'border-primary bg-primary/5' : 'border-border',
-                      )}
-                    >
-                      <RadioGroupItem value="internal" id="live-target-internal" className="mt-0.5" />
-                      <div className="space-y-0.5">
-                        <span className="text-sm font-medium">{t('flight.liveTargetInternal')}</span>
-                        <p className="text-xs text-muted-foreground">{t('flight.liveTargetInternalDesc')}</p>
-                      </div>
-                    </label>
-                  </RadioGroup>
-                </div>
-
                 {/* Live drones currently streaming position */}
                 <div data-tour="start-flight-dronetag" className="space-y-2">
                   <Label className="text-sm">{t('flight.liveDroneSection')} *</Label>
