@@ -164,6 +164,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   });
   const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
 
+  // Default publishing target follows the company setup
+  useEffect(() => {
+    setLiveTarget(safeskyLiveAvailable ? 'safesky' : 'internal');
+  }, [safeskyLiveAvailable]);
+
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
   const [includePhoneInRemarks, setIncludePhoneInRemarks] = useState<boolean>(false);
