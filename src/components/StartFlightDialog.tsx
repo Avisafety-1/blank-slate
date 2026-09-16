@@ -46,6 +46,8 @@ import { ChecklistExecutionDialog } from '@/components/resources/ChecklistExecut
 import { toast } from 'sonner';
 import { segmentsFromRouteData, routeColor } from '@/lib/routeSegments';
 import type { RouteData } from '@/types/map';
+import { useLiveDroneSources } from '@/hooks/useLiveDroneSources';
+import { LiveDroneList } from '@/components/flight/LiveDroneList';
 
 type PublishMode = 'none' | 'advisory' | 'live_uav';
 
@@ -59,13 +61,6 @@ interface Mission {
   ninox_approved?: boolean;
 }
 
-interface DronetagDevice {
-  id: string;
-  name: string | null;
-  callsign: string | null;
-  drone_id: string | null;
-}
-
 interface StartFlightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,7 +71,9 @@ interface StartFlightDialogProps {
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
     dronetagDeviceId?: string,
-    routeId?: string | null
+    routeId?: string | null,
+    droneId?: string | null,
+    liveTarget?: 'safesky' | 'internal'
   ) => void;
 }
 
@@ -124,10 +121,11 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [pilotName, setPilotName] = useState<string>('');
   
-  // DroneTag device selection for telemetry tracking
-  const [dronetagDevices, setDronetagDevices] = useState<DronetagDevice[]>([]);
-  const [selectedDronetagId, setSelectedDronetagId] = useState<string>('');
-  const [autoSelectedDronetag, setAutoSelectedDronetag] = useState(false);
+  // Live drone selection (DroneTag or FlightHub 2 / MQTT)
+  const [selectedLiveKey, setSelectedLiveKey] = useState<string | null>(null);
+  const [autoSelectedLive, setAutoSelectedLive] = useState(false);
+  const [missionDroneIds, setMissionDroneIds] = useState<string[]>([]);
+  const [liveTarget, setLiveTarget] = useState<'safesky' | 'internal'>('internal');
   
   // Nearest air traffic info
   const [nearestTraffic, setNearestTraffic] = useState<{
@@ -154,10 +152,22 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [fh2InternalOnly, setFh2InternalOnly] = useState(false);
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled || fh2InternalOnly;
+  // SafeSky broadcasting of the live position is only possible when the company has it enabled
+  const safeskyLiveAvailable = fh2LiveEnabled || dronetagEnabled;
 
-  // Live drone-position freshness ("mottar vi posisjon nå?")
-  // Polls latest FH2 / DroneTag position for the company while the live mode is active.
-  const [livePosFreshness, setLivePosFreshness] = useState<{ hasData: boolean; ageSec: number | null; source: 'fh2' | 'dronetag' | null }>({ hasData: false, ageSec: null, source: null });
+  // All drones currently streaming live position (DroneTag + FlightHub 2 / MQTT)
+  const { liveDrones, loading: liveDronesLoading } = useLiveDroneSources({
+    companyId,
+    enabled: open && publishMode === 'live_uav',
+    dronetagEnabled,
+    fh2Enabled: fh2LiveEnabled || fh2InternalOnly,
+  });
+  const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
+
+  // Default publishing target follows the company setup
+  useEffect(() => {
+    setLiveTarget(safeskyLiveAvailable ? 'safesky' : 'internal');
+  }, [safeskyLiveAvailable]);
 
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
@@ -244,98 +254,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchMissions();
   }, [companyId, open]);
 
-  // Fetch DroneTag devices for live_uav mode
-  useEffect(() => {
-    const fetchDronetagDevices = async () => {
-      if (!companyId || !open) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('dronetag_devices')
-          .select('id, name, callsign, drone_id')
-          .eq('company_id', companyId)
-          .not('callsign', 'is', null);
-
-        if (error) throw error;
-
-        if (data) {
-          setDronetagDevices(data);
-          setCachedData(`offline_startflight_dronetags_${companyId}`, data);
-        }
-      } catch (err) {
-        console.error('Error fetching dronetag devices:', err);
-        if (!navigator.onLine) {
-          const cached = getCachedData<DronetagDevice[]>(`offline_startflight_dronetags_${companyId}`);
-          if (cached) setDronetagDevices(cached);
-        }
-      }
-    };
-
-    fetchDronetagDevices();
-  }, [companyId, open]);
-
-  // Live position freshness poll — runs while dialog open + live_uav selected
-  useEffect(() => {
-    if (!open || !companyId || publishMode !== 'live_uav') {
-      setLivePosFreshness({ hasData: false, ageSec: null, source: null });
-      return;
-    }
-
-    let cancelled = false;
-    const checkPosition = async () => {
-      try {
-        // Try FH2 first if enabled
-        let latest: { ts: string; source: 'fh2' | 'dronetag' } | null = null;
-
-        if (fh2LiveEnabled) {
-          const { data } = await supabase
-            .from('flighthub2_positions')
-            .select('time_stamp')
-            .eq('company_id', companyId)
-            .order('time_stamp', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (data?.time_stamp) latest = { ts: data.time_stamp, source: 'fh2' };
-        }
-
-        // Fallback / supplement: DroneTag telemetry for company drones
-        if (!latest && dronetagEnabled) {
-          const { data: droneRows } = await supabase
-            .from('drones')
-            .select('id')
-            .eq('company_id', companyId);
-          const droneIds = (droneRows ?? []).map((d) => d.id);
-          if (droneIds.length > 0) {
-            const { data } = await supabase
-              .from('drone_telemetry')
-              .select('created_at')
-              .in('drone_id', droneIds)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (data?.created_at) latest = { ts: data.created_at, source: 'dronetag' };
-          }
-        }
-
-        if (cancelled) return;
-        if (latest) {
-          const ageSec = Math.round((Date.now() - new Date(latest.ts).getTime()) / 1000);
-          setLivePosFreshness({ hasData: true, ageSec, source: latest.source });
-        } else {
-          setLivePosFreshness({ hasData: false, ageSec: null, source: null });
-        }
-      } catch (err) {
-        if (!cancelled) setLivePosFreshness({ hasData: false, ageSec: null, source: null });
-      }
-    };
-
-    checkPosition();
-    const interval = setInterval(checkPosition, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [open, companyId, publishMode, fh2LiveEnabled, dronetagEnabled]);
+  // Live drones (DroneTag + FlightHub 2 / MQTT) are collected by useLiveDroneSources below.
   useEffect(() => {
     if (!selectedMissionId || selectedMissionId === 'none') {
       setMissionChecklistIds([]);
@@ -377,32 +296,39 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fetchChecklistState();
   }, [selectedMissionId]);
 
-  // Auto-select dronetag when a mission is selected (based on mission → drone → dronetag link)
+  // Drones linked to the selected mission (used for auto-selecting the live drone)
   useEffect(() => {
-    if (!selectedMissionId || selectedMissionId === 'none') return;
+    if (!selectedMissionId || selectedMissionId === 'none') {
+      setMissionDroneIds([]);
+      return;
+    }
 
-    const autoSelectDronetag = async () => {
-      const { data: missionDrones } = await supabase
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
         .from('mission_drones')
         .select('drone_id')
         .eq('mission_id', selectedMissionId);
+      if (cancelled) return;
+      setMissionDroneIds((data ?? []).map((md) => md.drone_id));
+    })();
 
-      if (!missionDrones || missionDrones.length === 0) return;
+    return () => { cancelled = true; };
+  }, [selectedMissionId]);
 
-      const droneIds = missionDrones.map(md => md.drone_id);
+  // Auto-select the live drone that matches the mission's drone
+  useEffect(() => {
+    if (publishMode !== 'live_uav') return;
+    if (missionDroneIds.length === 0 || liveDrones.length === 0) return;
+    // Only auto-select when the user has not picked a drone manually
+    if (selectedLiveKey && !autoSelectedLive) return;
 
-      const matchingDevice = dronetagDevices.find(
-        device => device.drone_id && droneIds.includes(device.drone_id)
-      );
-
-      if (matchingDevice) {
-        setSelectedDronetagId(matchingDevice.id);
-        setAutoSelectedDronetag(true);
-      }
-    };
-
-    autoSelectDronetag();
-  }, [selectedMissionId, dronetagDevices]);
+    const match = liveDrones.find((d) => d.droneId && missionDroneIds.includes(d.droneId));
+    if (match && match.key !== selectedLiveKey) {
+      setSelectedLiveKey(match.key);
+      setAutoSelectedLive(true);
+    }
+  }, [publishMode, missionDroneIds, liveDrones, selectedLiveKey, autoSelectedLive]);
 
   // Reset session state when dialog closes
   useEffect(() => {
@@ -417,8 +343,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       setGpsError(null);
       setGpsLoading(false);
       setPilotName('');
-      setSelectedDronetagId('');
-      setAutoSelectedDronetag(false);
+      setSelectedLiveKey(null);
+      setAutoSelectedLive(false);
       setShowLargeAdvisoryWarning(false);
       setShowAdvisoryTooLarge(false);
       setAdvisoryAreaKm2(null);
@@ -906,11 +832,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       const pilot = (publishMode === 'advisory' || publishMode === 'live_uav') && companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
-      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
-        ? selectedDronetagId 
-        : undefined;
-      
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
+      const dronetagId = publishMode === 'live_uav' ? selectedLiveDrone?.dronetagDeviceId ?? undefined : undefined;
+      const liveDroneId = publishMode === 'live_uav' ? selectedLiveDrone?.droneId ?? null : null;
+
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId, liveDroneId, publishMode === 'live_uav' ? liveTarget : undefined);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -945,11 +870,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       const pilot = companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
-      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none'
-        ? selectedDronetagId 
-        : undefined;
-      
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
+      const dronetagId = publishMode === 'live_uav' ? selectedLiveDrone?.dronetagDeviceId ?? undefined : undefined;
+      const liveDroneId = publishMode === 'live_uav' ? selectedLiveDrone?.droneId ?? null : null;
+
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId, liveDroneId, publishMode === 'live_uav' ? liveTarget : undefined);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -1460,118 +1384,67 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
 
             {publishMode === 'live_uav' && (
-              <div className="space-y-3">
-                {/* Drone live-position freshness indicator */}
-                {(() => {
-                  const fresh = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec <= 30;
-                  const stale = livePosFreshness.hasData && livePosFreshness.ageSec !== null && livePosFreshness.ageSec > 30;
-                  const sourceLabel = livePosFreshness.source === 'fh2' ? 'DJI FlightHub 2' : 'DroneTag';
-                  return (
-                    <div className={`flex items-center gap-2 rounded-lg border p-3 text-sm ${
-                      fresh ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
-                    }`}>
-                      <span className={`relative flex h-2.5 w-2.5 flex-shrink-0`}>
-                        {fresh && (
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                        )}
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fresh ? 'bg-green-500' : 'bg-red-500'}`} />
-                      </span>
-                      <div className="flex-1">
-                        {fresh && (
-                          <p className="text-green-700 dark:text-green-400 font-medium">
-                            Mottar droneposisjon · {sourceLabel} ({livePosFreshness.ageSec}s siden)
-                          </p>
-                        )}
-                        {stale && (
-                          <p className="text-red-700 dark:text-red-400 font-medium">
-                            Ingen fersk posisjon · siste {sourceLabel}-punkt for {livePosFreshness.ageSec}s siden
-                          </p>
-                        )}
-                        {!livePosFreshness.hasData && (
-                          <p className="text-red-700 dark:text-red-400 font-medium">
-                            Ingen droneposisjon mottatt enda – sjekk at drona er koblet til {fh2LiveEnabled ? 'DJI FlightHub 2' : 'DroneTag'}
-                          </p>
-                        )}
+              <div className="space-y-4">
+                {/* Where the live position is published */}
+                <div className="space-y-2">
+                  <Label className="text-sm">{t('flight.liveTargetTitle')}</Label>
+                  <RadioGroup
+                    value={liveTarget}
+                    onValueChange={(v) => setLiveTarget(v as 'safesky' | 'internal')}
+                    className="grid grid-cols-2 gap-2"
+                  >
+                    <label
+                      htmlFor="live-target-safesky"
+                      className={cn(
+                        'flex items-start gap-2 rounded-lg border p-3 transition-colors',
+                        safeskyLiveAvailable ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed',
+                        liveTarget === 'safesky' && safeskyLiveAvailable ? 'border-primary bg-primary/5' : 'border-border',
+                      )}
+                    >
+                      <RadioGroupItem
+                        value="safesky"
+                        id="live-target-safesky"
+                        disabled={!safeskyLiveAvailable}
+                        className="mt-0.5"
+                      />
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-medium">{t('flight.liveTargetSafesky')}</span>
+                        <p className="text-xs text-muted-foreground">{t('flight.liveTargetSafeskyDesc')}</p>
                       </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="flex items-start gap-2 rounded-lg bg-green-500/10 p-3 text-sm">
-                  <Navigation className="h-4 w-4 text-green-500 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-muted-foreground">
-                      {fh2LiveEnabled
-                        ? t('flight.safeskyLiveInfoFh2')
-                        : t('flight.safeskyLiveInfoDronetag')}
-                    </p>
-                    {fh2LiveEnabled && (
-                      <p className="text-xs text-green-700 dark:text-green-400">
-                        ✓ Drona deles til SafeSky så lenge denne flygingen er aktiv. Stopp deling ved å avslutte flyging.
-                      </p>
-                    )}
-                    {fh2InternalOnly && (
-                      <p className="text-xs text-muted-foreground">
-                        ℹ Live-modus brukes kun til intern sporing — selskapet deler ikke til SafeSky (slå på «Del posisjon med SafeSky» under Mitt selskap for å dele).
-                      </p>
-                    )}
-                    {gpsLoading && (
-                      <p className="text-xs text-muted-foreground">{t('flight.gpsAcquiring')}</p>
-                    )}
-                    {gpsError && (
-                      <p className="text-xs text-destructive">{gpsError}</p>
-                    )}
-                    {gpsPosition && (
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        ✓ {t('flight.gpsPositionOk', 'Posisjon OK')}
-                      </p>
-                    )}
-                  </div>
+                    </label>
+                    <label
+                      htmlFor="live-target-internal"
+                      className={cn(
+                        'flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50',
+                        liveTarget === 'internal' ? 'border-primary bg-primary/5' : 'border-border',
+                      )}
+                    >
+                      <RadioGroupItem value="internal" id="live-target-internal" className="mt-0.5" />
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-medium">{t('flight.liveTargetInternal')}</span>
+                        <p className="text-xs text-muted-foreground">{t('flight.liveTargetInternalDesc')}</p>
+                      </div>
+                    </label>
+                  </RadioGroup>
                 </div>
-                
-                {/* DroneTag device selector — only when DroneTag is the active live source */}
-                {dronetagEnabled && !fh2LiveEnabled && (
-                  <div data-tour="start-flight-dronetag" className="space-y-2 pl-1">
-                    <Label className="text-sm">{t('flight.dronetagDevice')} *</Label>
-                    {dronetagDevices.length > 0 ? (
-                      <>
-                        <Select
-                          value={selectedDronetagId}
-                          onValueChange={(val) => {
-                            setSelectedDronetagId(val);
-                            setAutoSelectedDronetag(false);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder={t('flight.selectDronetag')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {dronetagDevices.map((device) => (
-                              <SelectItem key={device.id} value={device.id}>
-                                {device.name || device.callsign} {device.callsign && `(${device.callsign})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {autoSelectedDronetag ? (
-                          <p className="flex items-center gap-1 text-xs text-primary">
-                            <Info className="h-3 w-3" />
-                            Automatisk valgt fra oppdragets drone
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            {t('flight.dronetagInfo')}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <span>Ingen Dronetag-enheter registrert. Legg til en under Ressurser.</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+
+                {/* Live drones currently streaming position */}
+                <div data-tour="start-flight-dronetag" className="space-y-2">
+                  <Label className="text-sm">{t('flight.liveDroneSection')} *</Label>
+                  <LiveDroneList
+                    drones={liveDrones}
+                    loading={liveDronesLoading}
+                    selectedKey={selectedLiveKey}
+                    onSelect={(drone) => {
+                      setSelectedLiveKey(drone.key);
+                      setAutoSelectedLive(false);
+                    }}
+                    autoSelected={autoSelectedLive}
+                    emptyHint={t('flight.liveDronesEmptyHint')}
+                  />
+                </div>
+
+                {gpsError && <p className="text-xs text-destructive">{gpsError}</p>}
               </div>
             )}
 
@@ -1633,7 +1506,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <Button 
               data-tour="start-flight-submit"
               onClick={handleStartFlightClick} 
-              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && dronetagEnabled && !fh2LiveEnabled && (!selectedDronetagId || selectedDronetagId === 'none'))}
+              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && !selectedLiveDrone)}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}

@@ -277,7 +277,9 @@ export const useFlightTimer = () => {
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
     dronetagDeviceId?: string,
-    routeId?: string | null
+    routeId?: string | null,
+    droneId?: string | null,
+    liveTarget?: 'safesky' | 'internal'
   ) => {
     if (!user || !companyId) return false;
 
@@ -334,6 +336,8 @@ export const useFlightTimer = () => {
       start_lng: startPosition?.lng || null,
       pilot_name: pilotName || null,
       dronetag_device_id: dronetagDeviceId || null,
+      drone_id: droneId || null,
+      safesky_published: publishMode === 'live_uav' ? liveTarget === 'safesky' : null,
     };
 
     if (navigator.onLine) {

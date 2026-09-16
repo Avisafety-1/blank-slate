@@ -226,7 +226,21 @@
     "advisoryPublishError": "Could not publish advisory",
     "prepareEndError": "Could not prepare flight ending. Please try again.",
     "endError": "Error ending flight. Please try again.",
-    "safeskyCallsignPreview": "Callsign published:"
+    "safeskyCallsignPreview": "Callsign published:",
+    "liveDroneSection": "Live drone",
+    "liveDronesSearching": "Searching for live drones …",
+    "liveDronesEmpty": "No drones are sending position right now.",
+    "liveDroneAutoSelected": "Auto-selected from the mission's drone",
+    "liveAgeAgo": "ago",
+    "liveAgeSecondsShort": "s",
+    "liveAgeMinutesShort": "min",
+    "liveTargetTitle": "Live position publishing",
+    "liveTargetSafesky": "SafeSky",
+    "liveTargetSafeskyDesc": "Shared to SafeSky and shown on the AviSafe map",
+    "liveTargetInternal": "Internal only",
+    "liveTargetInternalDesc": "Shown on the AviSafe map for your company only",
+    "liveDroneRequired": "Select a live drone to start the flight",
+    "liveDronesEmptyHint": "No drones are sending position now. Check that the aircraft is connected to DroneTag or DJI FlightHub 2."
   },
   "dronetag": {
     "addTitle": "Add DroneTag",

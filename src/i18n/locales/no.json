@@ -228,7 +228,21 @@
     "advisoryPublishError": "Kunne ikke publisere advisory",
     "prepareEndError": "Kunne ikkje førebu avslutting av flytur. Prøv igjen.",
     "endError": "Feil ved avslutting av flytur. Prøv igjen.",
-    "safeskyCallsignPreview": "Callsign som publiseres:"
+    "safeskyCallsignPreview": "Callsign som publiseres:",
+    "liveDroneSection": "Live drone",
+    "liveDronesSearching": "Søker etter live droner …",
+    "liveDronesEmpty": "Ingen droner sender posisjon akkurat nå.",
+    "liveDroneAutoSelected": "Automatisk valgt fra oppdragets drone",
+    "liveAgeAgo": "siden",
+    "liveAgeSecondsShort": "s",
+    "liveAgeMinutesShort": "min",
+    "liveTargetTitle": "Publisering av live posisjon",
+    "liveTargetSafesky": "SafeSky",
+    "liveTargetSafeskyDesc": "Deles til SafeSky og vises på AviSafe-kartet",
+    "liveTargetInternal": "Kun internt",
+    "liveTargetInternalDesc": "Vises kun på AviSafe-kartet for eget selskap",
+    "liveDroneRequired": "Velg en live drone for å starte flyging",
+    "liveDronesEmptyHint": "Ingen droner sender posisjon nå. Sjekk at drona er koblet til DroneTag eller DJI FlightHub 2."
   },
   "dronetag": {
     "addTitle": "Legg til DroneTag",

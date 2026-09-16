@@ -197,10 +197,12 @@ const Index = () => {
     startPosition?: { lat: number; lng: number },
     pilotName?: string,
     dronetagDeviceId?: string,
-    routeId?: string | null
+    routeId?: string | null,
+    droneId?: string | null,
+    liveTarget?: 'safesky' | 'internal'
   ) => {
     setStartFlightConfirmOpen(false);
-    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName, dronetagDeviceId, routeId);
+    const success = await startFlight(missionId, selectedPublishMode || 'none', checklistIds || [], startPosition, pilotName, dronetagDeviceId, routeId, droneId, liveTarget);
     if (success) {
       const modeMessages = {
         none: t('flight.flightStarted'),
