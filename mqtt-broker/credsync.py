@@ -49,14 +49,21 @@ def fetch():
 
 
 def write_passwd(creds):
-    # mosquitto_passwd -b creates/updates one user at a time; -c resets the file.
+    # The internal bridge user is always written first (-c resets the file),
+    # then one entry per company credential set.
+    entries = [
+        (os.environ.get("MQTT_USERNAME", ""), os.environ.get("MQTT_PASSWORD", "")),
+    ] + [(c["username"], c["password"]) for c in creds]
+
     first = True
-    for c in creds:
+    for username, password in entries:
+        if not username or not password:
+            continue
         args = ["mosquitto_passwd", "-b"]
         if first:
             args.append("-c")
             first = False
-        args += [PASSWD_FILE, c["username"], c["password"]]
+        args += [PASSWD_FILE, username, password]
         subprocess.run(args, check=True)
     os.chmod(PASSWD_FILE, 0o600)
 
