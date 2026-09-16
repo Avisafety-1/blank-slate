@@ -64,6 +64,7 @@ def write_passwd(creds):
     ] + [(c["username"], c["password"]) for c in creds]
 
     first = True
+    written = []
     for username, password in entries:
         if not username or not password:
             continue
@@ -73,7 +74,9 @@ def write_passwd(creds):
             first = False
         args += [PASSWD_FILE, username, password]
         subprocess.run(args, check=True)
+        written.append(username)
     os.chmod(PASSWD_FILE, 0o600)
+    log.info("passwd written with %d users: %s", len(written), ", ".join(written))
 
 
 def write_acl(creds):
@@ -115,11 +118,16 @@ def reload_mosquitto():
 def sync_once():
     global _last_hash
     creds = fetch()
+    log.info(
+        "sync attempt ok: fetched %d credential sets (%s)",
+        len(creds),
+        ", ".join(c.get("username", "?") for c in creds) or "none",
+    )
     digest = hashlib.sha256(
         json.dumps(creds, sort_keys=True).encode("utf-8")
     ).hexdigest()
     if digest == _last_hash:
-        log.debug("no credential changes (%d sets)", len(creds))
+        log.info("no credential changes (%d sets)", len(creds))
         return
     if not creds:
         log.warning("credential feed returned 0 active sets - keeping current files")
@@ -132,14 +140,27 @@ def sync_once():
 
 
 def main():
-    if not URL or not SECRET:
-        log.error("AVISAFE_CREDENTIALS_URL and MQTT_BROKER_API_SECRET are required")
-        sys.exit(1)
+    if URL and SECRET:
+        log.info(
+            "credential sync configured: url=%s interval=%ds", URL, INTERVAL
+        )
     while True:
-        try:
-            sync_once()
-        except Exception as exc:  # noqa: BLE001
-            log.error("sync failed: %s", exc)
+        if not URL or not SECRET:
+            # Repeated on every attempt on purpose - a single startup line
+            # drowns in mosquitto's own logging.
+            log.error(
+                "ADVARSEL: credential sync is NOT configured "
+                "(AVISAFE_CREDENTIALS_URL set=%s, MQTT_BROKER_API_SECRET set=%s). "
+                "Only the internal bridge user can connect; customer FH2 Sync "
+                "logins will be rejected as 'not authorised'.",
+                bool(URL),
+                bool(SECRET),
+            )
+        else:
+            try:
+                sync_once()
+            except Exception as exc:  # noqa: BLE001
+                log.error("sync failed: %s", exc)
         time.sleep(INTERVAL)
 
 
