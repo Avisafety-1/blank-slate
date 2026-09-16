@@ -326,6 +326,12 @@ def on_message(client, userdata, msg):
 
 
 def main():
+    log.info(
+        "bridge starting: connecting to %s:%s as user=%s",
+        MQTT_HOST,
+        MQTT_PORT,
+        MQTT_USERNAME or "(unset)",
+    )
     missing = [
         name
         for name, value in (
