@@ -288,279 +288,185 @@ Deno.serve(async (req) => {
     if (polygonFlights && polygonFlights.length > 0) {
       console.log(`Found ${polygonFlights.length} active polygon advisory flights to refresh`);
 
-      for (const flight of polygonFlights) {
-        const missionId = flight.mission_id;
-        if (!missionId) continue;
+      // Process advisories in parallel batches instead of one-by-one.
+      const ADVISORY_CHUNK = 10;
+      for (let ci = 0; ci < polygonFlights.length; ci += ADVISORY_CHUNK) {
+        const chunk = polygonFlights.slice(ci, ci + ADVISORY_CHUNK);
+        await Promise.all(chunk.map(async (flight) => {
+          const missionId = flight.mission_id;
+          if (!missionId) return;
 
-        try {
-          const { data: mission, error: missionError } = await supabase
-            .from('missions')
-            .select('id, tittel, route, company_id')
-            .eq('id', missionId)
-            .single();
-
-          if (missionError || !mission) {
-            console.error(`Mission ${missionId} not found:`, missionError);
-            advisoryResults.push({ flightId: flight.id, success: false, error: 'Mission not found' });
-            continue;
-          }
-
-          // Bruk ruten som ble valgt ved oppstart (lagret på flyturen) når den finnes.
-          const storedRoute = (flight as { route_data?: unknown }).route_data as MissionRoute | null;
-          const route = (storedRoute && Array.isArray(storedRoute.coordinates) && storedRoute.coordinates.length >= 3)
-            ? storedRoute
-            : (mission.route as MissionRoute | null);
-          if (!route || !route.coordinates || route.coordinates.length < 3) {
-            console.warn(`Mission ${missionId} has no valid route for advisory`);
-            advisoryResults.push({ flightId: flight.id, success: false, error: 'No valid route' });
-            continue;
-          }
-
-          const advisoryId = `AVS_${missionId.substring(0, 8)}`;
-          const polygonCoordinates = routeToPolygon(route);
-
-          // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
-          let callSign = 'avisafe01';
-          let testMode = false;
           try {
-            const { data: company } = await supabase
-              .from('companies')
-              .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
-              .eq('id', mission.company_id)
+            const { data: mission, error: missionError } = await supabase
+              .from('missions')
+              .select('id, tittel, route, company_id')
+              .eq('id', missionId)
               .single();
 
-            let companyName = company?.navn || 'avisafe';
-            let prefix = company?.safesky_callsign_prefix as string | null | undefined;
-            let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
-            testMode = !!(company as any)?.safesky_callsign_test_mode;
+            if (missionError || !mission) {
+              console.error(`Mission ${missionId} not found:`, missionError);
+              advisoryResults.push({ flightId: flight.id, success: false, error: 'Mission not found' });
+              return;
+            }
 
-            if (company?.parent_company_id) {
-              const { data: parentCompany } = await supabase
+            // Bruk ruten som ble valgt ved oppstart (lagret på flyturen) når den finnes.
+            const storedRoute = (flight as { route_data?: unknown }).route_data as MissionRoute | null;
+            const route = (storedRoute && Array.isArray(storedRoute.coordinates) && storedRoute.coordinates.length >= 3)
+              ? storedRoute
+              : (mission.route as MissionRoute | null);
+            if (!route || !route.coordinates || route.coordinates.length < 3) {
+              console.warn(`Mission ${missionId} has no valid route for advisory`);
+              advisoryResults.push({ flightId: flight.id, success: false, error: 'No valid route' });
+              return;
+            }
+
+            const advisoryId = `AVS_${missionId.substring(0, 8)}`;
+            const polygonCoordinates = routeToPolygon(route);
+
+            // Dynamic callsign: configurable prefix + variable suffix (counter or drone reg.nr)
+            let callSign = 'avisafe01';
+            let testMode = false;
+            try {
+              const { data: company } = await supabase
                 .from('companies')
-                .select('navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode, safesky_callsign_propagate')
-                .eq('id', company.parent_company_id)
+                .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode')
+                .eq('id', mission.company_id)
                 .single();
-              if (parentCompany?.navn) companyName = parentCompany.navn;
-              if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
-              if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
-                variable = parentCompany.safesky_callsign_variable;
-              }
-              if ((parentCompany as any)?.safesky_callsign_propagate) {
-                testMode = !!(parentCompany as any)?.safesky_callsign_test_mode;
-              }
-            }
 
-            // Preserve user-defined prefix casing and allow underscore/hyphen.
-            // Fall back to lowercased company name when no prefix is set.
-            const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-            const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+              let companyName = company?.navn || 'avisafe';
+              let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+              let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+              testMode = !!(company as any)?.safesky_callsign_test_mode;
 
-            let suffix = '01';
-            if (variable === 'none') {
-              suffix = '';
-            } else if (variable === 'drone_registration') {
-              const { data: missionDrone } = await supabase
-                .from('mission_drones')
-                .select('drone_id')
-                .eq('mission_id', missionId)
-                .limit(1)
-                .maybeSingle();
-              if (missionDrone?.drone_id) {
-                const { data: drone } = await supabase
-                  .from('drones')
-                  .select('registration_number, serienummer')
-                  .eq('id', missionDrone.drone_id)
+              if (company?.parent_company_id) {
+                const { data: parentCompany } = await supabase
+                  .from('companies')
+                  .select('navn, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_test_mode, safesky_callsign_propagate')
+                  .eq('id', company.parent_company_id)
                   .single();
-                const reg = drone?.registration_number || drone?.serienummer || '';
-                const cleaned = reg.replace(/[^a-zA-Z0-9_-]/g, '');
-                suffix = cleaned || '01';
+                if (parentCompany?.navn) companyName = parentCompany.navn;
+                if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+                if ((!company?.safesky_callsign_variable) && parentCompany?.safesky_callsign_variable) {
+                  variable = parentCompany.safesky_callsign_variable;
+                }
+                if ((parentCompany as any)?.safesky_callsign_propagate) {
+                  testMode = !!(parentCompany as any)?.safesky_callsign_test_mode;
+                }
               }
-            } else {
-              const { data: companyFlights } = await supabase
-                .from('active_flights')
-                .select('mission_id')
-                .eq('company_id', mission.company_id)
-                .eq('publish_mode', 'advisory')
-                .order('start_time', { ascending: true });
 
-              const index = companyFlights
-                ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
-                : 1;
-              suffix = String(index > 0 ? index : 1).padStart(2, '0');
+              // Preserve user-defined prefix casing and allow underscore/hyphen.
+              // Fall back to lowercased company name when no prefix is set.
+              const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
+              const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+
+              let suffix = '01';
+              if (variable === 'none') {
+                suffix = '';
+              } else if (variable === 'drone_registration') {
+                const { data: missionDrone } = await supabase
+                  .from('mission_drones')
+                  .select('drone_id')
+                  .eq('mission_id', missionId)
+                  .limit(1)
+                  .maybeSingle();
+                if (missionDrone?.drone_id) {
+                  const { data: drone } = await supabase
+                    .from('drones')
+                    .select('registration_number, serienummer')
+                    .eq('id', missionDrone.drone_id)
+                    .single();
+                  const reg = drone?.registration_number || drone?.serienummer || '';
+                  const cleaned = reg.replace(/[^a-zA-Z0-9_-]/g, '');
+                  suffix = cleaned || '01';
+                }
+              } else {
+                const { data: companyFlights } = await supabase
+                  .from('active_flights')
+                  .select('mission_id')
+                  .eq('company_id', mission.company_id)
+                  .eq('publish_mode', 'advisory')
+                  .order('start_time', { ascending: true });
+
+                const index = companyFlights
+                  ? companyFlights.findIndex(f => f.mission_id === missionId) + 1
+                  : 1;
+                suffix = String(index > 0 ? index : 1).padStart(2, '0');
+              }
+
+              callSign = sanitized + suffix;
+              console.log(`Cron callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
+            } catch (err) {
+              console.warn('Cron callsign generation failed, using fallback:', err);
             }
 
-            // Cap total to 10 chars (SafeSky callsign limit); trim prefix so prefix+suffix fits.
-            callSign = sanitized + suffix;
-            console.log(`Cron callsign: ${callSign} (prefix=${prefix || companyName}, variable=${variable}, suffix=${suffix})`);
-          } catch (err) {
-            console.warn('Cron callsign generation failed, using fallback:', err);
-          }
+            // AMSL calculation: terrain + SORA settings
+            const sora = route.soraSettings;
+            const flightAltitude = sora?.flightAltitude ?? DEFAULT_FLIGHT_ALTITUDE;
+            const contingencyHeight = sora?.contingencyHeight ?? DEFAULT_CONTINGENCY_HEIGHT;
 
-          // AMSL calculation: terrain + SORA settings
-          const sora = route.soraSettings;
-          const flightAltitude = sora?.flightAltitude ?? DEFAULT_FLIGHT_ALTITUDE;
-          const contingencyHeight = sora?.contingencyHeight ?? DEFAULT_CONTINGENCY_HEIGHT;
+            const maxTerrain = await fetchMaxTerrainElevation(route.coordinates);
+            const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
+            console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
 
-          const maxTerrain = await fetchMaxTerrainElevation(route.coordinates);
-          const maxAltitudeAmsl = Math.round(maxTerrain + flightAltitude + contingencyHeight);
-          console.log(`Cron AMSL: terrain=${maxTerrain}m + flight=${flightAltitude}m + contingency=${contingencyHeight}m = ${maxAltitudeAmsl}m`);
+            // ===== TEST MODE: publish advisory with max_altitude = 0 =====
+            const effectiveMaxAltitude = testMode ? 0 : maxAltitudeAmsl;
+            if (testMode) {
+              console.log(`[TEST MODE] Cron refreshing advisory for ${missionId} with max_altitude=0 (was ${maxAltitudeAmsl}m)`);
+            }
 
-          // ===== TEST MODE: publish advisory with max_altitude = 0 =====
-          const effectiveMaxAltitude = testMode ? 0 : maxAltitudeAmsl;
-          if (testMode) {
-            console.log(`[TEST MODE] Cron refreshing advisory for ${missionId} with max_altitude=0 (was ${maxAltitudeAmsl}m)`);
-          }
+            // ===== Refresh advisory polygon =====
+            const payload: GeoJSONFeatureCollection = {
+              type: "FeatureCollection",
+              features: [{
+                type: "Feature",
+                properties: {
+                  id: advisoryId,
+                  call_sign: callSign,
+                  last_update: Math.floor(Date.now() / 1000),
+                  max_altitude: effectiveMaxAltitude,
+                  remarks: testMode ? "TEST MODE - Drone operation (test, 0m)" : "Drone operation - planned route"
+                },
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [polygonCoordinates]
+                }
+              }]
+            };
 
-          // ===== Refresh advisory polygon =====
-          const payload: GeoJSONFeatureCollection = {
-            type: "FeatureCollection",
-            features: [{
-              type: "Feature",
-              properties: {
-                id: advisoryId,
-                call_sign: callSign,
-                last_update: Math.floor(Date.now() / 1000),
-                max_altitude: effectiveMaxAltitude,
-                remarks: testMode ? "TEST MODE - Drone operation (test, 0m)" : "Drone operation - planned route"
+            console.log(`Refreshing polygon advisory for mission ${missionId} (${mission.tittel})`);
 
-              },
-              geometry: {
-                type: "Polygon",
-                coordinates: [polygonCoordinates]
-              }
-            }]
-          };
-
-          console.log(`Refreshing polygon advisory for mission ${missionId} (${mission.tittel})`);
-
-          const cronAdvBody = JSON.stringify(payload);
-          const cronAdvHeaders = await generateAuthHeaders(ADVISORY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, cronAdvBody);
-          const response = await fetch(SAFESKY_ADVISORY_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...cronAdvHeaders,
-            },
-            body: cronAdvBody
-          });
-
-          const responseText = await response.text();
-          console.log(`SafeSky polygon advisory response for ${missionId}: ${response.status} - ${responseText}`);
-
-          if (!response.ok) {
-            advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
-          } else {
-            advisoryResults.push({ flightId: flight.id, success: true });
-          }
-
-        } catch (err) {
-          console.error(`Error refreshing polygon advisory for ${missionId}:`, err);
-          advisoryResults.push({ flightId: flight.id, success: false, error: String(err) });
-        }
-      }
-    }
-
-    // === PART 1B: Publish live drone positions (live_uav + SafeSky sharing) ===
-    // Flights started with "Live posisjon" + delingsvalg "SafeSky" push the latest
-    // known drone position as a SafeSky UAV beacon. DroneTag units broadcast on their
-    // own, so flights bound to a DroneTag device are skipped here to avoid duplicates.
-    let livePublished = 0;
-    try {
-      const { data: liveFlights, error: liveFlightsError } = await supabase
-        .from('active_flights')
-        .select('id, company_id, drone_id, dronetag_device_id, start_lat, start_lng')
-        .eq('publish_mode', 'live_uav')
-        .eq('safesky_published', true);
-
-      if (liveFlightsError) {
-        console.error('Error fetching live_uav flights for SafeSky publishing:', liveFlightsError);
-      }
-
-      const publishable = (liveFlights ?? []).filter(f => !f.dronetag_device_id && f.drone_id);
-      console.log(`Live SafeSky publishing: ${publishable.length} candidate flight(s)`);
-
-      for (const flight of publishable) {
-        try {
-          const sinceIso = new Date(Date.now() - 120_000).toISOString();
-          const { data: positions } = await supabase
-            .from('flighthub2_positions')
-            .select('sn, lat, lng, height_m, altitude_m, ground_speed_ms, course_deg, flight_status, time_stamp')
-            .eq('drone_id', flight.drone_id)
-            .gte('time_stamp', sinceIso)
-            .order('time_stamp', { ascending: false })
-            .limit(1);
-
-          const pos = positions?.[0];
-          if (!pos || pos.lat === null || pos.lng === null) {
-            console.log(`Flight ${flight.id}: no fresh drone position (last 120s), skipping SafeSky live publish`);
-            continue;
-          }
-
-          const fs = String(pos.flight_status ?? '').toLowerCase();
-          const gs = typeof pos.ground_speed_ms === 'number' ? pos.ground_speed_ms : 0;
-          const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
-          // Use the company-configured SafeSky callsign as beacon identity.
-          const callSign = await resolveCompanyCallsign(supabase, flight.company_id, flight.drone_id);
-          const beaconId = callSign;
-          // SafeSky wants AMSL. The MQTT feed only gives height above ground,
-          // so add terrain elevation for the current position when needed.
-          let altAmsl = (pos.altitude_m as number | null) ?? null;
-          if (altAmsl === null) {
-            const agl = (pos.height_m as number | null) ?? 0;
-            const terrain = await fetchMaxTerrainElevation([{ lat: Number(pos.lat), lng: Number(pos.lng) }]);
-            altAmsl = terrain + agl;
-          }
-          const payload = [{
-            id: beaconId,
-            call_sign: callSign,
-            latitude: Number(Number(pos.lat).toFixed(4)),
-            longitude: Number(Number(pos.lng).toFixed(4)),
-            altitude: Math.round(altAmsl),
-            status: isAirborne ? 'AIRBORNE' : 'GROUNDED',
-            last_update: Math.floor(new Date(pos.time_stamp as string).getTime() / 1000),
-            ground_speed: Math.round(gs),
-            course: Math.round((pos.course_deg as number | null) ?? 0),
-          }];
-
-          const liveBody = JSON.stringify(payload);
-          // Live UAV API (docs: /v1/uav) authenticates with x-api-key.
-          // Try production first, fall back to sandbox so publishing never stops.
-          const candidates: { label: string; url: string; key: string | undefined }[] = [
-            { label: 'PROD uav-api', url: 'https://uav-api.safesky.app/v1/uav', key: SAFESKY_PROD_API_KEY },
-            { label: 'PROD public-api', url: SAFESKY_UAV_PROD_URL, key: SAFESKY_PROD_API_KEY },
-            { label: 'SANDBOX', url: SAFESKY_UAV_URL, key: SAFESKY_API_KEY },
-          ].filter(c => !!c.key);
-
-          let published = false;
-          for (const c of candidates) {
-            const liveAuthHeaders = await generateAuthHeaders(c.key as string, 'POST', c.url, liveBody);
-            const liveResp = await fetch(c.url, {
+            const cronAdvBody = JSON.stringify(payload);
+            const cronAdvHeaders = await generateAuthHeaders(ADVISORY_API_KEY, 'POST', SAFESKY_ADVISORY_URL, cronAdvBody);
+            const response = await fetch(SAFESKY_ADVISORY_URL, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': c.key as string,
-                ...liveAuthHeaders,
+                ...cronAdvHeaders,
               },
-              body: liveBody,
+              body: cronAdvBody
             });
-            if (liveResp.ok) {
-              published = true;
-              livePublished++;
-              console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status}, ${c.label})`);
-              break;
+
+            const responseText = await response.text();
+            console.log(`SafeSky polygon advisory response for ${missionId}: ${response.status} - ${responseText}`);
+
+            if (!response.ok) {
+              advisoryResults.push({ flightId: flight.id, success: false, error: `API error: ${response.status}` });
+            } else {
+              advisoryResults.push({ flightId: flight.id, success: true });
             }
-            console.warn(`SafeSky live publish via ${c.label} failed for flight ${flight.id}: ${liveResp.status} - ${(await liveResp.text()).slice(0, 200)}`);
+          } catch (err) {
+            console.error(`Error refreshing polygon advisory for ${missionId}:`, err);
+            advisoryResults.push({ flightId: flight.id, success: false, error: String(err) });
           }
-          if (!published) {
-            console.error(`SafeSky live publish failed on all endpoints for flight ${flight.id}`);
-          }
-        } catch (err) {
-          console.error(`Error publishing live SafeSky beacon for flight ${flight.id}:`, err);
-        }
+        }));
       }
-    } catch (err) {
-      console.error('Live SafeSky publishing failed:', err);
     }
+
+    // === PART 1B: moved out ===
+    // Live drone positions (live_uav + SafeSky sharing) are published by the
+    // dedicated `safesky-live-publish` function, which runs every 5 seconds and
+    // sends all beacons in a single batched call.
+    const livePublished = 0;
 
     // === PART 2: Fetch and cache SafeSky beacons around active flights ===
     console.log('Fetching SafeSky beacons around active flights...');
@@ -583,91 +489,90 @@ Deno.serve(async (req) => {
     if (allActiveFlights && allActiveFlights.length > 0) {
       console.log(`Found ${allActiveFlights.length} active flights to fetch beacons around`);
 
-      for (const flight of allActiveFlights) {
-        let queryLat: number | null = null;
-        let queryLng: number | null = null;
+      const BEACON_CHUNK = 10;
+      for (let bi = 0; bi < allActiveFlights.length; bi += BEACON_CHUNK) {
+        const chunk = allActiveFlights.slice(bi, bi + BEACON_CHUNK);
+        await Promise.all(chunk.map(async (flight) => {
+          let queryLat: number | null = null;
+          let queryLng: number | null = null;
 
-        // For live_uav flights: ALWAYS prioritize actual GPS position (start_lat/start_lng)
-        // This is where the DroneTag is actually operating
-        if (flight.publish_mode === 'live_uav' && flight.start_lat && flight.start_lng) {
-          queryLat = flight.start_lat;
-          queryLng = flight.start_lng;
-          console.log(`Flight ${flight.id}: Using GPS position for live_uav beacon fetch`);
-        }
-        // For advisory flights: Use mission route/location coordinates
-        else if (flight.mission_id) {
-          const { data: mission } = await supabase
-            .from('missions')
-            .select('latitude, longitude, route')
-            .eq('id', flight.mission_id)
-            .single();
-
-          if (mission) {
-            const route = mission.route as MissionRoute | null;
-            if (route && route.coordinates && route.coordinates.length > 0) {
-              queryLat = route.coordinates[0].lat;
-              queryLng = route.coordinates[0].lng;
-            } else if (mission.latitude && mission.longitude) {
-              queryLat = mission.latitude;
-              queryLng = mission.longitude;
-            }
+          // For live_uav flights: ALWAYS prioritize actual GPS position (start_lat/start_lng)
+          if (flight.publish_mode === 'live_uav' && flight.start_lat && flight.start_lng) {
+            queryLat = flight.start_lat;
+            queryLng = flight.start_lng;
           }
-        }
+          // For advisory flights: Use mission route/location coordinates
+          else if (flight.mission_id) {
+            const { data: mission } = await supabase
+              .from('missions')
+              .select('latitude, longitude, route')
+              .eq('id', flight.mission_id)
+              .single();
 
-        // Fallback to start coordinates if still no coordinates found
-        if ((queryLat === null || queryLng === null) && flight.start_lat && flight.start_lng) {
-          queryLat = flight.start_lat;
-          queryLng = flight.start_lng;
-          console.log(`Flight ${flight.id}: Fallback to start coordinates`);
-        }
-
-        if (queryLat === null || queryLng === null) {
-          console.log(`Flight ${flight.id}: No valid coordinates, skipping beacon fetch`);
-          continue;
-        }
-
-        const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${queryLat.toFixed(4)}&lng=${queryLng.toFixed(4)}&rad=20000`;
-        console.log(`Fetching beacons for flight ${flight.id}: ${beaconsUrl}`);
-
-        try {
-          const beaconAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'GET', beaconsUrl);
-          const beaconsResponse = await fetch(beaconsUrl, {
-            method: 'GET',
-            headers: {
-              ...beaconAuthHeaders,
-            }
-          });
-
-          if (beaconsResponse.ok) {
-            const beaconsData = await beaconsResponse.json();
-            console.log(`Flight ${flight.id}: Received ${beaconsData?.length || 0} beacons`);
-
-            if (Array.isArray(beaconsData)) {
-              for (const beacon of beaconsData) {
-                const beaconId = beacon.id || `beacon_${beacon.latitude}_${beacon.longitude}`;
-                if (!seenBeaconIds.has(beaconId)) {
-                  seenBeaconIds.add(beaconId);
-                  allBeacons.push({
-                    id: beaconId,
-                    latitude: beacon.latitude,
-                    longitude: beacon.longitude,
-                    altitude: beacon.altitude || null,
-                    course: beacon.course || null,
-                    ground_speed: beacon.ground_speed || null,
-                    vertical_speed: beacon.vertical_speed || null,
-                    beacon_type: beacon.beacon_type || beacon.type || null,
-                    callsign: beacon.callsign || beacon.call_sign || null,
-                  });
-                }
+            if (mission) {
+              const route = mission.route as MissionRoute | null;
+              if (route && route.coordinates && route.coordinates.length > 0) {
+                queryLat = route.coordinates[0].lat;
+                queryLng = route.coordinates[0].lng;
+              } else if (mission.latitude && mission.longitude) {
+                queryLat = mission.latitude;
+                queryLng = mission.longitude;
               }
             }
-          } else {
-            const errorText = await beaconsResponse.text();
-            console.error(`SafeSky beacons API error for flight ${flight.id}: ${beaconsResponse.status} - ${errorText}`);
           }
-        } catch (err) {
-          console.error(`Error fetching beacons for flight ${flight.id}:`, err);
-        }
+
+          // Fallback to start coordinates if still no coordinates found
+          if ((queryLat === null || queryLng === null) && flight.start_lat && flight.start_lng) {
+            queryLat = flight.start_lat;
+            queryLng = flight.start_lng;
+          }
+
+          if (queryLat === null || queryLng === null) {
+            console.log(`Flight ${flight.id}: No valid coordinates, skipping beacon fetch`);
+            return;
+          }
+
+          const beaconsUrl = `${SAFESKY_UAV_URL}?lat=${queryLat.toFixed(4)}&lng=${queryLng.toFixed(4)}&rad=20000`;
+
+          try {
+            const beaconAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'GET', beaconsUrl);
+            const beaconsResponse = await fetch(beaconsUrl, {
+              method: 'GET',
+              headers: {
+                ...beaconAuthHeaders,
+              }
+            });
+
+            if (beaconsResponse.ok) {
+              const beaconsData = await beaconsResponse.json();
+
+              if (Array.isArray(beaconsData)) {
+                for (const beacon of beaconsData) {
+                  const beaconId = beacon.id || `beacon_${beacon.latitude}_${beacon.longitude}`;
+                  if (!seenBeaconIds.has(beaconId)) {
+                    seenBeaconIds.add(beaconId);
+                    allBeacons.push({
+                      id: beaconId,
+                      latitude: beacon.latitude,
+                      longitude: beacon.longitude,
+                      altitude: beacon.altitude || null,
+                      course: beacon.course || null,
+                      ground_speed: beacon.ground_speed || null,
+                      vertical_speed: beacon.vertical_speed || null,
+                      beacon_type: beacon.beacon_type || beacon.type || null,
+                      callsign: beacon.callsign || beacon.call_sign || null,
+                    });
+                  }
+                }
+              }
+            } else {
+              const errorText = await beaconsResponse.text();
+              console.error(`SafeSky beacons API error for flight ${flight.id}: ${beaconsResponse.status} - ${errorText}`);
+            }
+          } catch (err) {
+            console.error(`Error fetching beacons for flight ${flight.id}:`, err);
+          }
+        }));
       }
     } else {
       console.log('No active flights - skipping beacon fetch');
@@ -706,7 +611,10 @@ Deno.serve(async (req) => {
         .not('dronetag_device_id', 'is', null);
 
       if (flightsWithDronetag && flightsWithDronetag.length > 0) {
-        for (const flight of flightsWithDronetag) {
+        const TELEMETRY_CHUNK = 10;
+        for (let ti = 0; ti < flightsWithDronetag.length; ti += TELEMETRY_CHUNK) {
+          const chunk = flightsWithDronetag.slice(ti, ti + TELEMETRY_CHUNK);
+          await Promise.all(chunk.map(async (flight) => {
           // Get the dronetag device to find callsign
           const { data: device } = await supabase
             .from('dronetag_devices')
@@ -716,7 +624,7 @@ Deno.serve(async (req) => {
 
           if (!device?.callsign) {
             console.log(`Flight ${flight.id}: DroneTag device has no callsign`);
-            continue;
+            return;
           }
 
           // Look up matching beacon in safesky_beacons table (case-insensitive)
@@ -731,7 +639,7 @@ Deno.serve(async (req) => {
 
           if (beaconLookupError) {
             console.error(`Error looking up beacon for ${device.callsign}:`, beaconLookupError);
-            continue;
+            return;
           }
 
           if (matchingBeacon) {
@@ -761,6 +669,7 @@ Deno.serve(async (req) => {
           } else {
             console.log(`No beacon match found in safesky_beacons for callsign: ${device.callsign}`);
           }
+          }));
         }
       }
     }
