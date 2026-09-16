@@ -15,6 +15,7 @@ interface ActiveFlight {
   id: string;
   start_time: string;
   publish_mode: string | null;
+  safesky_published: boolean | null;
   pilot_name: string | null;
   mission_id: string | null;
   profile_id: string;
@@ -54,7 +55,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
 
     let query = (supabase as any)
       .from('active_flights')
-      .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
+      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
 
     if (!isSuperAdminAvisafe) {
       if (hasChildren) {
@@ -75,6 +76,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
       id: f.id,
       start_time: f.start_time,
       publish_mode: f.publish_mode,
+      safesky_published: f.safesky_published ?? null,
       pilot_name: f.pilot_name,
       mission_id: f.mission_id,
       profile_id: f.profile_id,
