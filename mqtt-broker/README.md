@@ -38,8 +38,9 @@ fly secrets set SUPABASE_SERVICE_ROLE_KEY=...
 fly secrets set AVISAFE_CREDENTIALS_URL=https://<ref>.functions.supabase.co/mqtt-broker-credentials
 fly secrets set MQTT_BROKER_API_SECRET=...                 # samme verdi som i Supabase
 # valgfritt
-fly secrets set MQTT_BRIDGE_HOST=mqtt-broker-avisafe.internal MQTT_BRIDGE_PORT=1883
-fly secrets set CRED_SYNC_INTERVAL=300 LOG_LEVEL=DEBUG
+# valgfritt (satt som default i fly.toml [env])
+fly secrets set MQTT_BRIDGE_HOST=mosquitto.process.mqtt-broker-avisafe.internal MQTT_BRIDGE_PORT=1883
+fly secrets set CRED_SYNC_INTERVAL=60 LOG_LEVEL=DEBUG
 ```
 
 MQTT_USERNAME / MQTT_PASSWORD brukes nå kun av brua internt – kundene har egne
@@ -51,7 +52,10 @@ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY peker på hoved-AviSafe-prosjektet.
 Kjører i bakgrunnen i mosquitto-maskinen (startes av `entrypoint.sh`):
 
 - Poller `mqtt-broker-credentials` (header `x-broker-secret`) hvert
-  `CRED_SYNC_INTERVAL`. sekund.
+  `CRED_SYNC_INTERVAL` sekund (default 60).
+- Logger ved oppstart om synk er konfigurert (URL, aldri hemmeligheten), og per
+  forsøk: antall sett, brukernavn skrevet til passwd, og HTTP-status ved feil.
+- Er URL/secret ikke satt, logges en `ADVARSEL:`-linje ved hvert forsøk.
 - Skriver `/mosquitto/data/passwd` (bridge-bruker + én bruker per selskapsgruppe)
   og `/mosquitto/data/acl`, der hver bruker kun får publisere på
   `sys/product/{sn}/#` og `thing/product/{sn}/#` for egne/autoriserte serienumre.
