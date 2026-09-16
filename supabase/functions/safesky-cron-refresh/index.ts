@@ -408,9 +408,78 @@ Deno.serve(async (req) => {
       }
     }
 
-    // NOTE: Part 1B (Point Advisory publishing for live_uav) has been removed.
-    // live_uav mode now only fetches beacons around pilot position for DroneTag tracking,
-    // and displays pilot position internally on /kart - no SafeSky advisory publishing.
+    // === PART 1B: Publish live drone positions (live_uav + SafeSky sharing) ===
+    // Flights started with "Live posisjon" + delingsvalg "SafeSky" push the latest
+    // known drone position as a SafeSky UAV beacon. DroneTag units broadcast on their
+    // own, so flights bound to a DroneTag device are skipped here to avoid duplicates.
+    let livePublished = 0;
+    try {
+      const { data: liveFlights, error: liveFlightsError } = await supabase
+        .from('active_flights')
+        .select('id, company_id, drone_id, dronetag_device_id, start_lat, start_lng')
+        .eq('publish_mode', 'live_uav')
+        .eq('safesky_published', true);
+
+      if (liveFlightsError) {
+        console.error('Error fetching live_uav flights for SafeSky publishing:', liveFlightsError);
+      }
+
+      const publishable = (liveFlights ?? []).filter(f => !f.dronetag_device_id && f.drone_id);
+      console.log(`Live SafeSky publishing: ${publishable.length} candidate flight(s)`);
+
+      for (const flight of publishable) {
+        try {
+          const sinceIso = new Date(Date.now() - 120_000).toISOString();
+          const { data: positions } = await supabase
+            .from('flighthub2_positions')
+            .select('sn, lat, lng, height_m, altitude_m, ground_speed_ms, course_deg, flight_status, time_stamp')
+            .eq('drone_id', flight.drone_id)
+            .gte('time_stamp', sinceIso)
+            .order('time_stamp', { ascending: false })
+            .limit(1);
+
+          const pos = positions?.[0];
+          if (!pos || pos.lat === null || pos.lng === null) {
+            console.log(`Flight ${flight.id}: no fresh drone position (last 120s), skipping SafeSky live publish`);
+            continue;
+          }
+
+          const fs = String(pos.flight_status ?? '').toLowerCase();
+          const gs = typeof pos.ground_speed_ms === 'number' ? pos.ground_speed_ms : 0;
+          const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
+          const beaconId = `AVS_LIVE_${String(pos.sn ?? flight.drone_id).slice(-8)}`;
+          const payload = [{
+            id: beaconId,
+            latitude: pos.lat,
+            longitude: pos.lng,
+            altitude: Math.round((pos.altitude_m as number | null) ?? (pos.height_m as number | null) ?? 0),
+            status: isAirborne ? 'AIRBORNE' : 'GROUNDED',
+            last_update: Math.floor(new Date(pos.time_stamp as string).getTime() / 1000),
+            ground_speed: Math.round(gs),
+            course: Math.round((pos.course_deg as number | null) ?? 0),
+          }];
+
+          const liveBody = JSON.stringify(payload);
+          const liveAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, liveBody);
+          const liveResp = await fetch(SAFESKY_UAV_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
+            body: liveBody,
+          });
+
+          if (!liveResp.ok) {
+            console.error(`SafeSky live publish failed for flight ${flight.id}: ${liveResp.status} - ${await liveResp.text()}`);
+          } else {
+            livePublished++;
+            console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status})`);
+          }
+        } catch (err) {
+          console.error(`Error publishing live SafeSky beacon for flight ${flight.id}:`, err);
+        }
+      }
+    } catch (err) {
+      console.error('Live SafeSky publishing failed:', err);
+    }
 
     // === PART 2: Fetch and cache SafeSky beacons around active flights ===
     console.log('Fetching SafeSky beacons around active flights...');
@@ -633,7 +702,7 @@ Deno.serve(async (req) => {
     console.log(`Telemetry stored: ${telemetryStored} positions`);
 
     const advisorySuccessCount = advisoryResults.filter(r => r.success).length;
-    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${beaconsUpserted} beacons cached, ${telemetryStored} telemetry stored`);
+    console.log(`Cron refresh complete: ${advisorySuccessCount}/${advisoryResults.length} advisories, ${livePublished} live beacons published, ${beaconsUpserted} beacons cached, ${telemetryStored} telemetry stored`);
 
     return new Response(
       JSON.stringify({ 
@@ -649,6 +718,9 @@ Deno.serve(async (req) => {
         },
         telemetry: {
           stored: telemetryStored
+        },
+        livePositions: {
+          published: livePublished
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
