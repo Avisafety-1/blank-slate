@@ -269,3 +269,9 @@ verify_jwt = true
 
 [functions.send-message]
 verify_jwt = true
+
+[functions.mqtt-credentials]
+verify_jwt = false
+
+[functions.mqtt-broker-credentials]
+verify_jwt = false
