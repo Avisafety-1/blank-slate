@@ -25,7 +25,7 @@ import paho.mqtt.client as mqtt
 import requests
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     stream=sys.stdout,
     format="%(asctime)s %(levelname)s %(message)s",
 )
@@ -40,12 +40,54 @@ SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or ""
 
 ORDER_ID = "dji-cloud"
-DRONE_CACHE_TTL = 300  # seconds
+# Negative lookups are cached only briefly so a newly registered drone starts
+# working within seconds instead of minutes.
+DRONE_CACHE_TTL = 300  # seconds (successful lookups)
+DRONE_NEGATIVE_CACHE_TTL = 30  # seconds (serial number not found)
+STATS_INTERVAL = 60  # seconds between summary lines
 
 # sn -> (expires_at, {"drone_id": ..., "company_id": ...} | None)
 _drone_cache = {}
 # sn -> number of dropped messages because the sn is unknown
 _dropped_counts = {}
+# sn -> counters, plus the last payload seen for unresolved serials
+_stats = {}
+_unresolved_samples = {}
+_stored_once = set()
+_last_stats_at = 0.0
+
+
+def _bump(sn, key):
+    row = _stats.setdefault(sn, {"received": 0, "stored": 0, "dropped": 0, "failed": 0})
+    row[key] += 1
+
+
+def maybe_print_stats():
+    """Print a short summary line per serial number every STATS_INTERVAL."""
+    global _last_stats_at
+    now = time.time()
+    if now - _last_stats_at < STATS_INTERVAL:
+        return
+    _last_stats_at = now
+    if not _stats:
+        log.info("status: no messages received in the last %ds", STATS_INTERVAL)
+        return
+    for sn, row in _stats.items():
+        log.info(
+            "status sn=%s received=%d stored=%d dropped_unknown_sn=%d write_failed=%d",
+            sn,
+            row["received"],
+            row["stored"],
+            row["dropped"],
+            row["failed"],
+        )
+    for sn, sample in _unresolved_samples.items():
+        log.warning(
+            "status unresolved_sn=%s sample_position=%s "
+            "(register this serial number on a drone in AviSafe)",
+            sn,
+            json.dumps(sample),
+        )
 
 session = requests.Session()
 
