@@ -10,6 +10,7 @@ const corsHeaders = {
 
 const SAFESKY_ADVISORY_URL = 'https://uav-api.safesky.app/v1/advisory';
 const SAFESKY_UAV_URL = 'https://sandbox-public-api.safesky.app/v1/uav';
+const SAFESKY_UAV_PROD_URL = 'https://public-api.safesky.app/v1/uav';
 
 // Norway bounding box for beacon fetching
 const NORWAY_BOUNDS = {
@@ -129,6 +130,56 @@ interface SafeSkyBeacon {
   vertical_speed?: number;
   beacon_type?: string;
   callsign?: string;
+}
+
+// Resolve the company-configured SafeSky callsign (same rules as advisory publishing).
+// deno-lint-ignore no-explicit-any
+async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?: string | null): Promise<string> {
+  try {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
+      .eq('id', companyId)
+      .single();
+
+    let companyName = company?.navn || 'avisafe';
+    let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+    let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+
+    if (company?.parent_company_id) {
+      const { data: parentCompany } = await supabase
+        .from('companies')
+        .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+        .eq('id', company.parent_company_id)
+        .single();
+      if (parentCompany?.navn) companyName = parentCompany.navn;
+      if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+      if (!company?.safesky_callsign_variable && parentCompany?.safesky_callsign_variable) {
+        variable = parentCompany.safesky_callsign_variable;
+      }
+    }
+
+    const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+
+    let suffix = '01';
+    if (variable === 'none') {
+      suffix = '';
+    } else if (variable === 'drone_registration' && droneId) {
+      const { data: drone } = await supabase
+        .from('drones')
+        .select('registration_number, serienummer')
+        .eq('id', droneId)
+        .single();
+      const reg = (drone?.registration_number || drone?.serienummer || '') as string;
+      suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
+    }
+
+    return (sanitized + suffix).slice(0, 10);
+  } catch (err) {
+    console.warn('Live callsign generation failed, using fallback:', err);
+    return 'avisafe01';
+  }
 }
 
 // Compute cross product of vectors OA and OB where O is origin
@@ -447,9 +498,13 @@ Deno.serve(async (req) => {
           const fs = String(pos.flight_status ?? '').toLowerCase();
           const gs = typeof pos.ground_speed_ms === 'number' ? pos.ground_speed_ms : 0;
           const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
-          const beaconId = `AVS_LIVE_${String(pos.sn ?? flight.drone_id).slice(-8)}`;
+          // Use the company-configured SafeSky callsign as beacon identity.
+          const callSign = await resolveCompanyCallsign(supabase, flight.company_id, flight.drone_id);
+          const beaconId = callSign;
           const payload = [{
             id: beaconId,
+            call_sign: callSign,
+            callsign: callSign,
             latitude: pos.lat,
             longitude: pos.lng,
             altitude: Math.round((pos.altitude_m as number | null) ?? (pos.height_m as number | null) ?? 0),
@@ -460,18 +515,32 @@ Deno.serve(async (req) => {
           }];
 
           const liveBody = JSON.stringify(payload);
-          const liveAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, liveBody);
-          const liveResp = await fetch(SAFESKY_UAV_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
-            body: liveBody,
-          });
+          // Try production endpoints first (visible in the public SafeSky app),
+          // fall back to sandbox so publishing never stops entirely.
+          const candidates: { label: string; url: string; key: string | undefined }[] = [
+            { label: 'PROD uav-api', url: 'https://uav-api.safesky.app/v1/uav', key: SAFESKY_PROD_API_KEY },
+            { label: 'PROD public-api', url: SAFESKY_UAV_PROD_URL, key: SAFESKY_PROD_API_KEY },
+            { label: 'SANDBOX', url: SAFESKY_UAV_URL, key: SAFESKY_API_KEY },
+          ].filter(c => !!c.key);
 
-          if (!liveResp.ok) {
-            console.error(`SafeSky live publish failed for flight ${flight.id}: ${liveResp.status} - ${await liveResp.text()}`);
-          } else {
-            livePublished++;
-            console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status})`);
+          let published = false;
+          for (const c of candidates) {
+            const liveAuthHeaders = await generateAuthHeaders(c.key as string, 'POST', c.url, liveBody);
+            const liveResp = await fetch(c.url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
+              body: liveBody,
+            });
+            if (liveResp.ok) {
+              published = true;
+              livePublished++;
+              console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status}, ${c.label})`);
+              break;
+            }
+            console.warn(`SafeSky live publish via ${c.label} failed for flight ${flight.id}: ${liveResp.status} - ${(await liveResp.text()).slice(0, 200)}`);
+          }
+          if (!published) {
+            console.error(`SafeSky live publish failed on all endpoints for flight ${flight.id}`);
           }
         } catch (err) {
           console.error(`Error publishing live SafeSky beacon for flight ${flight.id}:`, err);
