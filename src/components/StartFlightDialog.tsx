@@ -125,7 +125,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [selectedLiveKey, setSelectedLiveKey] = useState<string | null>(null);
   const [autoSelectedLive, setAutoSelectedLive] = useState(false);
   const [missionDroneIds, setMissionDroneIds] = useState<string[]>([]);
-  const [liveTarget, setLiveTarget] = useState<'safesky' | 'internal'>('internal');
+  const [liveTarget, setLiveTarget] = useState<'safesky' | 'internal'>('safesky');
   
   // Nearest air traffic info
   const [nearestTraffic, setNearestTraffic] = useState<{
