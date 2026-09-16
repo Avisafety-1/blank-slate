@@ -37,6 +37,7 @@ SECRET = os.environ.get("MQTT_BROKER_API_SECRET") or ""
 INTERVAL = int(os.environ.get("CRED_SYNC_INTERVAL", "60"))
 
 PASSWD_FILE = "/mosquitto/data/passwd"
+PASSWD_TMP = "/mosquitto/data/passwd.tmp"
 ACL_FILE = "/mosquitto/data/acl"
 
 _last_hash = None
