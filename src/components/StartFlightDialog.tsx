@@ -827,11 +827,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       const pilot = (publishMode === 'advisory' || publishMode === 'live_uav') && companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
-      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none' 
-        ? selectedDronetagId 
-        : undefined;
-      
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
+      const dronetagId = publishMode === 'live_uav' ? selectedLiveDrone?.dronetagDeviceId ?? undefined : undefined;
+      const liveDroneId = publishMode === 'live_uav' ? selectedLiveDrone?.droneId ?? null : null;
+
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId, liveDroneId, publishMode === 'live_uav' ? liveTarget : undefined);
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -866,11 +865,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       const pilot = companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
-      const dronetagId = publishMode === 'live_uav' && selectedDronetagId && selectedDronetagId !== 'none'
-        ? selectedDronetagId 
-        : undefined;
-      
-      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId);
+      const dronetagId = publishMode === 'live_uav' ? selectedLiveDrone?.dronetagDeviceId ?? undefined : undefined;
+      const liveDroneId = publishMode === 'live_uav' ? selectedLiveDrone?.droneId ?? null : null;
+
+      await onStartFlight(missionId, publishMode, completedChecklistIds, startPosition, pilot, dronetagId, selectedRouteId, liveDroneId, publishMode === 'live_uav' ? liveTarget : undefined);
       onOpenChange(false);
     } finally {
       setLoading(false);
