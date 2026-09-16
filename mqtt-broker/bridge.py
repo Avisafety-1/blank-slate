@@ -39,6 +39,14 @@ MQTT_HOST = os.environ.get(
     "MQTT_BRIDGE_HOST", "mosquitto.process.mqtt-broker-avisafe.internal"
 )
 MQTT_PORT = int(os.environ.get("MQTT_BRIDGE_PORT", "1883"))
+if MQTT_PORT == 8883:
+    # 8883 only exists as TLS termination at Fly's edge - nothing listens on it
+    # inside the private network, which shows up as "Connection refused".
+    log.warning(
+        "MQTT_BRIDGE_PORT=8883 is not reachable internally (TLS is terminated at "
+        "Fly's edge) - falling back to 1883 for the internal connection"
+    )
+    MQTT_PORT = 1883
 MQTT_USERNAME = os.environ.get("MQTT_USERNAME", "")
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
 
