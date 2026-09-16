@@ -125,7 +125,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [selectedLiveKey, setSelectedLiveKey] = useState<string | null>(null);
   const [autoSelectedLive, setAutoSelectedLive] = useState(false);
   const [missionDroneIds, setMissionDroneIds] = useState<string[]>([]);
-  const [liveTarget, setLiveTarget] = useState<'safesky' | 'internal'>('internal');
+  const [liveTarget, setLiveTarget] = useState<'safesky' | 'internal'>('safesky');
   
   // Nearest air traffic info
   const [nearestTraffic, setNearestTraffic] = useState<{
@@ -152,22 +152,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [fh2InternalOnly, setFh2InternalOnly] = useState(false);
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled || fh2InternalOnly;
-  // SafeSky broadcasting of the live position is only possible when the company has it enabled
-  const safeskyLiveAvailable = fh2LiveEnabled || dronetagEnabled;
 
-  // All drones currently streaming live position (DroneTag + FlightHub 2 / MQTT)
+  // All drones currently streaming live position (DroneTag + FlightHub 2 / MQTT).
+  // Position sources are always polled – they are not tied to any SafeSky setting.
   const { liveDrones, loading: liveDronesLoading } = useLiveDroneSources({
     companyId,
     enabled: open && publishMode === 'live_uav',
-    dronetagEnabled,
-    fh2Enabled: fh2LiveEnabled || fh2InternalOnly,
+    dronetagEnabled: true,
+    fh2Enabled: true,
   });
   const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
-
-  // Default publishing target follows the company setup
-  useEffect(() => {
-    setLiveTarget(safeskyLiveAvailable ? 'safesky' : 'internal');
-  }, [safeskyLiveAvailable]);
 
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
@@ -1396,17 +1390,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     <label
                       htmlFor="live-target-safesky"
                       className={cn(
-                        'flex items-start gap-2 rounded-lg border p-3 transition-colors',
-                        safeskyLiveAvailable ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed',
-                        liveTarget === 'safesky' && safeskyLiveAvailable ? 'border-primary bg-primary/5' : 'border-border',
+                        'flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50',
+                        liveTarget === 'safesky' ? 'border-primary bg-primary/5' : 'border-border',
                       )}
                     >
-                      <RadioGroupItem
-                        value="safesky"
-                        id="live-target-safesky"
-                        disabled={!safeskyLiveAvailable}
-                        className="mt-0.5"
-                      />
+                      <RadioGroupItem value="safesky" id="live-target-safesky" className="mt-0.5" />
+
                       <div className="space-y-0.5">
                         <span className="text-sm font-medium">{t('flight.liveTargetSafesky')}</span>
                         <p className="text-xs text-muted-foreground">{t('flight.liveTargetSafeskyDesc')}</p>
