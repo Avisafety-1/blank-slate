@@ -115,7 +115,8 @@ def resolve_drone(sn):
         resp = session.get(
             SUPABASE_URL + "/rest/v1/drones",
             params={
-                "serienummer": "eq." + sn,
+                # Match on either the external serial number or the internal one
+                "or": "(serienummer.eq.{0},internal_serial.eq.{0})".format(sn),
                 "select": "id,company_id",
                 "limit": "1",
             },

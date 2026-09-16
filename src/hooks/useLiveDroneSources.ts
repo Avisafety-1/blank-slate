@@ -77,13 +77,26 @@ export function useLiveDroneSources({
 
         if (latestBySn.size > 0) {
           const sns = Array.from(latestBySn.keys());
-          const { data: droneRows } = await supabase
-            .from('drones')
-            .select('id, modell, registration_number, serienummer')
-            .eq('company_id', companyId)
-            .in('serienummer', sns);
+          // Match on either the external serial number or the internal one
+          const droneSelect = 'id, modell, registration_number, serienummer, internal_serial';
+          const [serialRes, internalRes] = await Promise.all([
+            supabase
+              .from('drones')
+              .select(droneSelect)
+              .eq('company_id', companyId)
+              .in('serienummer', sns),
+            supabase
+              .from('drones')
+              .select(droneSelect)
+              .eq('company_id', companyId)
+              .in('internal_serial', sns),
+          ]);
 
-          const bySerial = new Map((droneRows ?? []).map((d) => [d.serienummer ?? '', d]));
+          const bySerial = new Map<string, NonNullable<typeof serialRes.data>[number]>();
+          [...(serialRes.data ?? []), ...(internalRes.data ?? [])].forEach((d) => {
+            if (d.serienummer && !bySerial.has(d.serienummer)) bySerial.set(d.serienummer, d);
+            if (d.internal_serial && !bySerial.has(d.internal_serial)) bySerial.set(d.internal_serial, d);
+          });
 
           latestBySn.forEach((p, sn) => {
             const drone = bySerial.get(sn);
