@@ -1710,6 +1710,44 @@ export type Database = {
           },
         ]
       }
+      company_mqtt_credentials: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          owner_company_id: string
+          password_encrypted: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_company_id: string
+          password_encrypted: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_company_id?: string
+          password_encrypted?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_mqtt_credentials_owner_company_id_fkey"
+            columns: ["owner_company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_sora_config: {
         Row: {
           allow_bvlos: boolean
@@ -9037,6 +9075,16 @@ export type Database = {
         }[]
       }
       get_ai_risk_eta_ms: { Args: never; Returns: number }
+      get_all_mqtt_broker_credentials: {
+        Args: { p_key: string }
+        Returns: {
+          company_ids: string[]
+          owner_company_id: string
+          password: string
+          serial_numbers: string[]
+          username: string
+        }[]
+      }
       get_caa_zones_geojson: {
         Args: { p_layer_id: string }
         Returns: {
@@ -9076,6 +9124,20 @@ export type Database = {
         Returns: {
           company_id: string
           company_name: string
+        }[]
+      }
+      get_company_mqtt_credentials: {
+        Args: { p_company_id: string; p_key: string }
+        Returns: {
+          created_at: string
+          enabled: boolean
+          owner_company_id: string
+          owner_company_name: string
+          password: string
+          shared_company_ids: string[]
+          shared_company_names: string[]
+          updated_at: string
+          username: string
         }[]
       }
       get_company_names: {
@@ -9233,6 +9295,10 @@ export type Database = {
             }
             Returns: Json
           }
+      get_mqtt_credential_owner: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
       get_naturvern_in_bounds: {
         Args: {
           max_lat: number
@@ -9544,6 +9610,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_company_mqtt_credentials: {
+        Args: {
+          p_company_id: string
+          p_key: string
+          p_password: string
+          p_username: string
+        }
+        Returns: string
       }
       save_fh2_feed_key: {
         Args: { p_company_id: string; p_enc_key: string; p_key: string }
