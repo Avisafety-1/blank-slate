@@ -197,13 +197,25 @@ def handle_osd(sn_from_topic, payload):
         log.warning("OSD message without gateway/sn, skipping")
         return
 
+    _bump(sn, "received")
+    log.debug("OSD sn=%s payload=%s", sn, json.dumps(payload))
+
     lat = num(data.get("latitude"))
     lng = num(data.get("longitude"))
     if lat is None or lng is None:
+        log.debug("OSD sn=%s has no position fields, skipping", sn)
         return  # no position in this OSD frame
 
     drone = resolve_drone(sn)
     if not drone:
+        _bump(sn, "dropped")
+        _unresolved_samples[sn] = {
+            "sn": sn,
+            "lat": lat,
+            "lng": lng,
+            "height": num(data.get("height")),
+            "battery_percent": num(data.get("capacity_percent")),
+        }
         note_unresolved(sn)
         return
 
@@ -235,9 +247,30 @@ def handle_osd(sn_from_topic, payload):
             timeout=10,
         )
         if resp.status_code >= 300:
-            log.error("insert failed for %s: %s %s", sn, resp.status_code, resp.text[:300])
+            _bump(sn, "failed")
+            log.error(
+                "write DATABASE_ERROR sn=%s status=%s body=%s row=%s",
+                sn,
+                resp.status_code,
+                resp.text[:300],
+                json.dumps({k: v for k, v in row.items() if k != "raw"}),
+            )
+        else:
+            _bump(sn, "stored")
+            _unresolved_samples.pop(sn, None)
+            if sn not in _stored_once:
+                _stored_once.add(sn)
+                log.info(
+                    "first position stored sn=%s lat=%s lng=%s height=%s",
+                    sn,
+                    lat,
+                    lng,
+                    height,
+                )
+            log.debug("stored sn=%s lat=%s lng=%s height=%s", sn, lat, lng, height)
     except Exception as exc:  # noqa: BLE001
-        log.error("insert error for %s: %s", sn, exc)
+        _bump(sn, "failed")
+        log.error("write NETWORK_ERROR sn=%s error=%s", sn, exc)
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
