@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import pwd
+import shutil
 import signal
 import subprocess
 import sys
@@ -39,8 +40,10 @@ INTERVAL = int(os.environ.get("CRED_SYNC_INTERVAL", "60"))
 
 PASSWD_FILE = "/mosquitto/data/passwd"
 PASSWD_TMP = "/mosquitto/data/passwd.tmp"
+PASSWD_BACKUP = "/mosquitto/data/passwd.previous"
 ACL_FILE = "/mosquitto/data/acl"
 ACL_TMP = "/mosquitto/data/acl.tmp"
+ACL_BACKUP = "/mosquitto/data/acl.previous"
 MOSQUITTO_UID = pwd.getpwnam("mosquitto").pw_uid
 MOSQUITTO_GID = pwd.getpwnam("mosquitto").pw_gid
 
@@ -101,13 +104,9 @@ def write_passwd(creds):
 
     # mosquitto drops privileges to its own user. A root-owned 0600 file looks
     # valid to credsync but cannot be reopened by mosquitto during SIGHUP.
-    os.chown(PASSWD_TMP, MOSQUITTO_UID, MOSQUITTO_GID)
-    os.replace(PASSWD_TMP, PASSWD_FILE)
-    os.chmod(PASSWD_FILE, 0o600)
-    os.chown(PASSWD_FILE, MOSQUITTO_UID, MOSQUITTO_GID)
-    _sync_directory(PASSWD_FILE)
-
-    live = _verify_file(PASSWD_FILE, "password file")
+    live = _install_verified_file(
+        PASSWD_TMP, PASSWD_FILE, PASSWD_BACKUP, "password file"
+    )
     log.info("passwd swapped in: %d lines now live", live)
 
 
@@ -138,13 +137,36 @@ def write_acl(creds):
         fh.write("\n".join(lines) + "\n")
         fh.flush()
         os.fsync(fh.fileno())
-    os.chmod(ACL_TMP, 0o600)
-    os.chown(ACL_TMP, MOSQUITTO_UID, MOSQUITTO_GID)
-    os.replace(ACL_TMP, ACL_FILE)
-    os.chmod(ACL_FILE, 0o600)
-    os.chown(ACL_FILE, MOSQUITTO_UID, MOSQUITTO_GID)
-    _sync_directory(ACL_FILE)
-    _verify_file(ACL_FILE, "ACL file")
+    _install_verified_file(ACL_TMP, ACL_FILE, ACL_BACKUP, "ACL file")
+
+
+def _install_verified_file(staged_path, live_path, backup_path, label):
+    """Install a staged auth file and restore the old one on any failure."""
+    had_live_file = os.path.isfile(live_path) and os.path.getsize(live_path) > 0
+    if had_live_file:
+        shutil.copy2(live_path, backup_path)
+        os.chown(backup_path, MOSQUITTO_UID, MOSQUITTO_GID)
+        os.chmod(backup_path, 0o600)
+
+    try:
+        os.chown(staged_path, MOSQUITTO_UID, MOSQUITTO_GID)
+        os.chmod(staged_path, 0o600)
+        os.replace(staged_path, live_path)
+        os.chown(live_path, MOSQUITTO_UID, MOSQUITTO_GID)
+        os.chmod(live_path, 0o600)
+        _sync_directory(live_path)
+        return _verify_file(live_path, label)
+    except Exception:
+        if had_live_file and os.path.isfile(backup_path):
+            os.replace(backup_path, live_path)
+            os.chown(live_path, MOSQUITTO_UID, MOSQUITTO_GID)
+            os.chmod(live_path, 0o600)
+            _sync_directory(live_path)
+            log.error("%s update failed; restored previous live file", label)
+        raise
+    finally:
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
 
 
 def _sync_directory(path):
