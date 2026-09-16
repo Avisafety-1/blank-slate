@@ -1390,17 +1390,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     <label
                       htmlFor="live-target-safesky"
                       className={cn(
-                        'flex items-start gap-2 rounded-lg border p-3 transition-colors',
-                        safeskyLiveAvailable ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed',
-                        liveTarget === 'safesky' && safeskyLiveAvailable ? 'border-primary bg-primary/5' : 'border-border',
+                        'flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50',
+                        liveTarget === 'safesky' ? 'border-primary bg-primary/5' : 'border-border',
                       )}
                     >
-                      <RadioGroupItem
-                        value="safesky"
-                        id="live-target-safesky"
-                        disabled={!safeskyLiveAvailable}
-                        className="mt-0.5"
-                      />
+                      <RadioGroupItem value="safesky" id="live-target-safesky" className="mt-0.5" />
+
                       <div className="space-y-0.5">
                         <span className="text-sm font-medium">{t('flight.liveTargetSafesky')}</span>
                         <p className="text-xs text-muted-foreground">{t('flight.liveTargetSafeskyDesc')}</p>
