@@ -175,9 +175,8 @@ async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?
       suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
     }
 
-    // Cap at 10 chars (SafeSky limit): trim the prefix so the suffix always fits.
-    const maxPrefix = Math.max(1, 10 - suffix.length);
-    return sanitized.slice(0, maxPrefix) + suffix;
+    // Same output as advisory publishing: prefix + suffix, no truncation.
+    return sanitized + suffix;
   } catch (err) {
     console.warn('Live callsign generation failed, using fallback:', err);
     return 'avisafe01';
