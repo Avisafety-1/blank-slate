@@ -1,41 +1,49 @@
-# Fikse tilkobling fra FlightHub 2 til MQTT-brokeren
+# Fikse MQTT-brokeren: bru-tilkobling, FH2-port og synlig tilgangssynk
 
-Skjermbildene viser to uavhengige feil på brokeren i Fly:
+Jeg har gått gjennom de tre punktene mot den faktiske konfigurasjonen. To stemmer, ett er allerede på plass.
 
-1. **FlightHub 2 får «Connection Failed».** Brokerloggen sier `disconnected: not authorised` for DJI-klienten. Brukernavnet Tensio bruker (`avisafe-50c5b8af63`) finnes i AviSafe-databasen med gyldig passord, men brokeren har det ikke i passordfila si. Ingen linjer fra tilgangssynkroniseringen vises i loggen, så den kjører ikke — enten mangler Fly-hemmelighetene (`AVISAFE_CREDENTIALS_URL`, `MQTT_BROKER_API_SECRET`), eller kallet feiler stille.
-2. **Brua får ikke kontakt med brokeren.** `broker connection error: [Errno 111] Connection refused – retrying in 5s` hvert 5. sekund. Årsak: brua kobler til `mqtt-broker-avisafe.internal`, som peker på *alle* maskiner i appen — også bruas egen maskin, der ingen broker lytter.
+## 1. Brua kobler til feil maskin (riktig – høyeste prioritet)
 
-Det er også en tredje, mindre ting: FH2s «Test Connection» kobler med tom klient-ID på MQTT v3.1, som brokeren avviser som protokollfeil. Det er ufarlig for selve driften, men gjør testknappen upålitelig.
+`bridge.py` bruker `mqtt-broker-avisafe.internal`, som Fly løser til alle maskiner i appen, inkludert bruas egen maskin der ingen broker lytter. Det gir «Connection refused» hvert 5. sekund, akkurat som i loggen.
 
-## Det jeg vil gjøre
+Endring:
+- Standardadressen i `bridge.py` blir `mosquitto.process.mqtt-broker-avisafe.internal`.
+- Samme verdi settes eksplisitt for bru-prosessen i `fly.toml`, så den ikke kan bomme.
 
-### 1. Brua peker på riktig maskin
-Endre standardadressen i `bridge.py` og `fly.toml` til prosessgruppens eget navn `mosquitto.process.mqtt-broker-avisafe.internal`, som bare treffer maskinen der brokeren faktisk kjører. Da forsvinner «Connection refused»-løkka.
+## 2. Klartekst-port 1883 for FlightHub 2 (allerede på plass – ingen endring nødvendig)
 
-### 2. Tilgangssynkroniseringen må være synlig og selvhelbredende
-- Logg tydelig ved oppstart om synkroniseringen er på eller av, og hvilken adresse den bruker (uten hemmeligheter).
-- Logg hvert forsøk: antall tilgangssett hentet, HTTP-statuskode ved feil, og hvilke brukernavn som ble skrevet.
-- Kort ned intervallet fra 5 minutter til 60 sekunder, så et nytt/regenerert passord virker raskt.
-- Hvis synkroniseringen ikke er konfigurert, skriv en tydelig ADVARSEL i loggen i stedet for én enkelt linje som drukner.
+`fly.toml` eksponerer allerede port 1883 utad uten TLS-handler på samme mosquitto-tjeneste, ved siden av 8883 med TLS. FH2 Sync kan altså allerede nå frem til autentiseringen på 1883.
 
-### 3. Verifiser at tilgangsfeeden svarer
-Test endepunktet `mqtt-broker-credentials` direkte med den delte hemmeligheten, og bekreft at det returnerer begge tilgangssettene med serienumre. Hvis serienummerlista er tom for Tensio, blir dronen blokkert av tilgangsreglene selv med riktig passord — da retter jeg det samtidig.
+Jeg legger derfor kun til:
+- En tydelig sikkerhetskommentar i `fly.toml` og `README.md` om at brukernavn, passord og posisjoner går i klartekst på 1883, at dette er en bevisst avveining fordi FH2 Sync ikke støtter TLS, og at kommentaren ikke skal fjernes.
+- Bekreftelse av at autentisering og tilgangsregler gjelder likt på begge porter – det gjør de, siden Mosquitto kun har én lytter (1883) med passordfil og ACL, og 8883 bare er TLS-terminering i Fly sin kant mot samme lytter.
 
-### 4. Gjør testknappen i FH2 brukbar
-Tillate tom klient-ID også for eldre MQTT-versjoner i brokeroppsettet, slik at «Test Connection» ikke feiler med protokollfeil.
+## 3. Tilgangssynkroniseringen må være synlig og raskere (riktig)
 
-## Etter endringen (du må gjøre dette)
+I `credsync.py`:
+- Oppstartslinje som sier om synk er konfigurert, og hvilken adresse som brukes (aldri hemmeligheten).
+- Per forsøk: tidspunkt, antall tilgangssett, HTTP-statuskode ved feil, og hvilke brukernavn som ble skrevet til passordfila.
+- Intervall ned fra 5 minutter til 60 sekunder.
+- Er synk ikke konfigurert: linje med prefiks `ADVARSEL:` ved hvert forsøk, ikke bare én gang ved oppstart. Dette flyttes inn i en løkke i `entrypoint.sh`/`credsync.py` slik at advarselen gjentas.
 
-- Sett hemmelighetene hvis de ikke er satt:
-  `AVISAFE_CREDENTIALS_URL` og `MQTT_BROKER_API_SECRET` (samme verdi som i AviSafe).
-- Kjør `fly deploy -a mqtt-broker-avisafe`.
-- I FH2: host `mqtt-broker-avisafe.fly.dev`, port `8883`, brukernavn `avisafe-50c5b8af63` og passordet fra «Live posisjonsdata fra FH2» i selskapsinnstillingene.
+Jeg rører ikke tom-klient-ID/MQTT v3.1-oppførselen, slik du ba om.
+
+## Forventet resultat
+
+- «Connection refused» forsvinner fra bruas logg; eventuelle gjenværende feil vises som «not authorised», altså et rent credential-problem.
+- FH2-tilkoblinger på 1883 når frem til autentisering i Mosquitto.
+- Loggen viser hvilke brukernavn brokeren faktisk kjenner til, så feil passord kan avgjøres på sekunder.
+
+## Etter endringen (du gjør dette)
+
+- Sett `AVISAFE_CREDENTIALS_URL` og `MQTT_BROKER_API_SECRET` på Fly hvis de ikke er satt.
+- `fly deploy -a mqtt-broker-avisafe`.
+- I FH2 Sync: host `mqtt-broker-avisafe.fly.dev`, port `1883` (TCP), brukernavn og passord fra «Live posisjonsdata fra FH2» i selskapsinnstillingene.
 
 ## Teknisk
 
-- `mqtt-broker/bridge.py`: `MQTT_BRIDGE_HOST` default → `mosquitto.process.mqtt-broker-avisafe.internal`.
-- `mqtt-broker/fly.toml`: sett `MQTT_BRIDGE_HOST` eksplisitt i `[env]` for bridge-prosessen.
-- `mqtt-broker/credsync.py`: oppstartslogg, per-forsøk-logg med statuskode og brukernavn, `CRED_SYNC_INTERVAL` default 60.
-- `mqtt-broker/entrypoint.sh`: ADVARSEL når synkroniseringen er deaktivert.
-- `mqtt-broker/mosquitto.conf`: `allow_zero_length_clientid true` gjelder allerede; legger til `max_keepalive`/protokolltoleranse slik at v3.1-probe ikke kastes ut.
-- Verifisering: kall `mqtt-broker-credentials` med `x-broker-secret` og sjekk `serial_numbers` per sett.
+- `mqtt-broker/bridge.py`: `MQTT_BRIDGE_HOST` default → `mosquitto.process.mqtt-broker-avisafe.internal`; docstring oppdatert.
+- `mqtt-broker/fly.toml`: `[env]` for bridge-prosessen med samme host; kommentarblokk over 1883-porten om klartekst-avveiningen.
+- `mqtt-broker/credsync.py`: `CRED_SYNC_INTERVAL` default 60; oppstartslogg med URL; per-forsøk-logg med antall sett, statuskode ved `requests`-feil og liste over skrevne brukernavn; gjentatt `ADVARSEL:`-linje når URL/secret mangler i stedet for `sys.exit`.
+- `mqtt-broker/entrypoint.sh`: starter credsync også uten konfigurasjon, slik at advarselen gjentas.
+- `mqtt-broker/README.md`: seksjon om portene 1883 (klartekst, FH2 Sync) og 8883 (TLS, Pilot 2).
