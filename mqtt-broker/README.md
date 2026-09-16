@@ -12,7 +12,22 @@ telemetri inn i AviSafe-databasen.
 | `bridge` | `python3 /app/bridge.py` | Kobler til brokeren over Flys interne nett, acker handshake, skriver posisjoner. |
 
 Fly kjører hver prosess i egen maskin, så bridgen kobler til
-`mqtt-broker-avisafe.internal:1883` (ikke `localhost`).
+`mosquitto.process.mqtt-broker-avisafe.internal:1883` (ikke `localhost`, og
+ikke `mqtt-broker-avisafe.internal` – app-DNS-navnet løser til *alle* maskiner,
+også bru-maskinen som ikke lytter, og gir «Connection refused» i loop).
+
+## Porter
+
+| Port | Transport | Brukes av |
+|---|---|---|
+| 1883 | ren TCP, **ingen TLS** | DJI FlightHub 2 «Configure Telemetry Data»/Sync |
+| 8883 | TLS (terminert i Fly sin edge) | Direkte Pilot 2 / `djiBridge` via `/dji` |
+
+**SIKKERHETSMERKNAD – ikke fjern:** på 1883 går brukernavn, passord og
+posisjonsdata i klartekst over åpent internett. Dette er en bevisst avveining
+fordi DJI FlightHub Sync ikke støtter TLS. Mosquitto krever fortsatt
+autentisering (passwd-fil) og håndhever ACL på denne porten akkurat som på
+8883 – kun transportkrypteringen droppes.
 
 ## Secrets
 
