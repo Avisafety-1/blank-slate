@@ -116,6 +116,30 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const getPublishTag = (flight: ActiveFlight) => {
+    if (flight.publish_mode === 'advisory') {
+      return {
+        label: t('dashboard.activeFlights.tagAdvisory'),
+        className: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      };
+    }
+    if (flight.publish_mode === 'live_uav') {
+      return flight.safesky_published
+        ? {
+            label: t('dashboard.activeFlights.tagLiveSafesky'),
+            className: 'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30',
+          }
+        : {
+            label: t('dashboard.activeFlights.tagLiveInternal'),
+            className: 'bg-muted text-muted-foreground border-border',
+          };
+    }
+    return {
+      label: t('dashboard.activeFlights.tagNone'),
+      className: 'bg-muted text-muted-foreground border-border',
+    };
+  };
+
   const handleFlightClick = async (flight: ActiveFlight) => {
     if (!flight.mission_id) {
       navigate('/kart', { state: { focusFlightId: flight.id } });
