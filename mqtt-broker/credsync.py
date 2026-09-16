@@ -11,7 +11,7 @@ company group (own drones + drones the group is authorised to fly).
 Environment / Fly secrets:
   AVISAFE_CREDENTIALS_URL   - https://<ref>.functions.supabase.co/mqtt-broker-credentials
   MQTT_BROKER_API_SECRET    - shared secret, sent as x-broker-secret
-  CRED_SYNC_INTERVAL        - seconds between polls (default 300)
+  CRED_SYNC_INTERVAL        - seconds between polls (default 60)
 """
 
 import hashlib
@@ -34,7 +34,7 @@ log = logging.getLogger("credsync")
 
 URL = (os.environ.get("AVISAFE_CREDENTIALS_URL") or "").strip()
 SECRET = os.environ.get("MQTT_BROKER_API_SECRET") or ""
-INTERVAL = int(os.environ.get("CRED_SYNC_INTERVAL", "300"))
+INTERVAL = int(os.environ.get("CRED_SYNC_INTERVAL", "60"))
 
 PASSWD_FILE = "/mosquitto/data/passwd"
 ACL_FILE = "/mosquitto/data/acl"
@@ -44,7 +44,15 @@ _last_hash = None
 
 def fetch():
     resp = requests.get(URL, headers={"x-broker-secret": SECRET}, timeout=15)
-    resp.raise_for_status()
+    if resp.status_code >= 300:
+        # The secret itself is never logged - only the status and a short body.
+        log.error(
+            "credential feed HTTP %s from %s body=%s",
+            resp.status_code,
+            URL,
+            resp.text[:200],
+        )
+        resp.raise_for_status()
     return resp.json().get("credentials", [])
 
 
