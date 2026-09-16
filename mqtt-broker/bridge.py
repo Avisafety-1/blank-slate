@@ -307,6 +307,8 @@ def on_message(client, userdata, msg):
     except Exception as exc:  # noqa: BLE001
         log.exception("error handling message on %s: %s", msg.topic, exc)
 
+    maybe_print_stats()
+
 
 def main():
     missing = [
