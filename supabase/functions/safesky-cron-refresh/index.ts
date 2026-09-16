@@ -501,13 +501,13 @@ Deno.serve(async (req) => {
           // Use the company-configured SafeSky callsign as beacon identity.
           const callSign = await resolveCompanyCallsign(supabase, flight.company_id, flight.drone_id);
           const beaconId = callSign;
+          const altAmsl = (pos.altitude_m as number | null) ?? null;
           const payload = [{
             id: beaconId,
             call_sign: callSign,
-            callsign: callSign,
-            latitude: pos.lat,
-            longitude: pos.lng,
-            altitude: Math.round((pos.altitude_m as number | null) ?? (pos.height_m as number | null) ?? 0),
+            latitude: Number(Number(pos.lat).toFixed(4)),
+            longitude: Number(Number(pos.lng).toFixed(4)),
+            altitude: altAmsl !== null ? Math.round(altAmsl) : -9999,
             status: isAirborne ? 'AIRBORNE' : 'GROUNDED',
             last_update: Math.floor(new Date(pos.time_stamp as string).getTime() / 1000),
             ground_speed: Math.round(gs),
@@ -515,8 +515,8 @@ Deno.serve(async (req) => {
           }];
 
           const liveBody = JSON.stringify(payload);
-          // Try production endpoints first (visible in the public SafeSky app),
-          // fall back to sandbox so publishing never stops entirely.
+          // Live UAV API (docs: /v1/uav) authenticates with x-api-key.
+          // Try production first, fall back to sandbox so publishing never stops.
           const candidates: { label: string; url: string; key: string | undefined }[] = [
             { label: 'PROD uav-api', url: 'https://uav-api.safesky.app/v1/uav', key: SAFESKY_PROD_API_KEY },
             { label: 'PROD public-api', url: SAFESKY_UAV_PROD_URL, key: SAFESKY_PROD_API_KEY },
@@ -528,7 +528,11 @@ Deno.serve(async (req) => {
             const liveAuthHeaders = await generateAuthHeaders(c.key as string, 'POST', c.url, liveBody);
             const liveResp = await fetch(c.url, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': c.key as string,
+                ...liveAuthHeaders,
+              },
               body: liveBody,
             });
             if (liveResp.ok) {
