@@ -202,7 +202,10 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                     {flight.missionTitle || t('dashboard.activeFlights.freeFlight')}
                   </h3>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-medium ${getPublishTag(flight).className}`}>
+                    {getPublishTag(flight).label}
+                  </Badge>
                   {flight.publish_mode && flight.publish_mode !== 'none' && (
                     <Radio className="w-3 h-3 text-primary animate-pulse" />
                   )}
