@@ -152,22 +152,16 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   const [fh2InternalOnly, setFh2InternalOnly] = useState(false);
   // Combined: any live position source available
   const liveAvailable = dronetagEnabled || fh2LiveEnabled || fh2InternalOnly;
-  // SafeSky broadcasting of the live position is only possible when the company has it enabled
-  const safeskyLiveAvailable = fh2LiveEnabled || dronetagEnabled;
 
-  // All drones currently streaming live position (DroneTag + FlightHub 2 / MQTT)
+  // All drones currently streaming live position (DroneTag + FlightHub 2 / MQTT).
+  // Position sources are always polled – they are not tied to any SafeSky setting.
   const { liveDrones, loading: liveDronesLoading } = useLiveDroneSources({
     companyId,
     enabled: open && publishMode === 'live_uav',
-    dronetagEnabled,
-    fh2Enabled: fh2LiveEnabled || fh2InternalOnly,
+    dronetagEnabled: true,
+    fh2Enabled: true,
   });
   const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
-
-  // Default publishing target follows the company setup
-  useEffect(() => {
-    setLiveTarget(safeskyLiveAvailable ? 'safesky' : 'internal');
-  }, [safeskyLiveAvailable]);
 
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
