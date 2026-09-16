@@ -2873,7 +2873,29 @@
     "userDeactivated": "User deactivated",
     "userActivated": "User activated",
     "errorUpdatingActiveStatus": "Could not change active status",
-    "deactivatedBadge": "Deactivated"
+    "deactivatedBadge": "Deactivated",
+    "fh2LivePosition": {
+      "title": "Live position data from FH2",
+      "description": "Username and password to paste into DJI FlightHub 2 so it sends live positions to Avisafe.",
+      "howToTitle": "How to use this",
+      "howToDesc": "Open DJI FlightHub 2 → Organisation → \"Configure Telemetry Data\" / Sync and paste the address, username and password below. Positions then appear in Avisafe automatically.",
+      "hostLabel": "Address (server)",
+      "usernameLabel": "Username",
+      "passwordLabel": "Password",
+      "show": "Show password",
+      "hide": "Hide password",
+      "regenerate": "Generate new password",
+      "regenerated": "New password generated — remember to update FlightHub 2",
+      "confirmTitle": "Generate a new password?",
+      "confirmDesc": "The old password stops working immediately. You must paste the new password into FlightHub 2 manually, otherwise positions stop arriving.",
+      "confirmSharedDesc": "This also affects: {{companies}}.",
+      "sharedTitle": "Shared with several companies",
+      "sharedDesc": "This username and password is shared with: {{companies}}. If you change the password, everyone must update their setup.",
+      "lastChanged": "Last changed {{date}}",
+      "noCredentials": "No credentials have been created yet.",
+      "errorLoading": "Could not load credentials: {{message}}",
+      "errorRegenerating": "Could not generate a new password: {{message}}"
+    }
   },
   "riskAssessment": {
     "flightMode": "Flight mode",

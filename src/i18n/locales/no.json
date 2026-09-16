@@ -2875,7 +2875,29 @@
     "userDeactivated": "Brukeren er deaktivert",
     "userActivated": "Brukeren er aktivert",
     "errorUpdatingActiveStatus": "Kunne ikke endre aktiv-status",
-    "deactivatedBadge": "Deaktivert"
+    "deactivatedBadge": "Deaktivert",
+    "fh2LivePosition": {
+      "title": "Live posisjonsdata fra FH2",
+      "description": "Brukernavn og passord som limes inn i DJI FlightHub 2 for å sende live posisjoner til Avisafe.",
+      "howToTitle": "Slik bruker du dette",
+      "howToDesc": "Åpne DJI FlightHub 2 → Organisasjon → «Configure Telemetry Data» / Sync, og lim inn adressen, brukernavnet og passordet under. Posisjonene dukker deretter opp i Avisafe automatisk.",
+      "hostLabel": "Adresse (server)",
+      "usernameLabel": "Brukernavn",
+      "passwordLabel": "Passord",
+      "show": "Vis passord",
+      "hide": "Skjul passord",
+      "regenerate": "Lag nytt passord",
+      "regenerated": "Nytt passord laget — husk å oppdatere FlightHub 2",
+      "confirmTitle": "Lage nytt passord?",
+      "confirmDesc": "Det gamle passordet slutter å virke med en gang. Du må lime inn det nye passordet i FlightHub 2 manuelt, ellers stopper posisjonene.",
+      "confirmSharedDesc": "Dette påvirker også: {{companies}}.",
+      "sharedTitle": "Delt med flere selskaper",
+      "sharedDesc": "Dette brukernavnet og passordet deles med: {{companies}}. Endrer du passordet, må alle oppdatere oppsettet sitt.",
+      "lastChanged": "Sist endret {{date}}",
+      "noCredentials": "Ingen tilgang er opprettet ennå.",
+      "errorLoading": "Kunne ikke hente tilgangen: {{message}}",
+      "errorRegenerating": "Kunne ikke lage nytt passord: {{message}}"
+    }
   },
   "riskAssessment": {
     "flightMode": "Flygemodus",
