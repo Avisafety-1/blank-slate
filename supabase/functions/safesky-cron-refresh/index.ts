@@ -611,7 +611,10 @@ Deno.serve(async (req) => {
         .not('dronetag_device_id', 'is', null);
 
       if (flightsWithDronetag && flightsWithDronetag.length > 0) {
-        for (const flight of flightsWithDronetag) {
+        const TELEMETRY_CHUNK = 10;
+        for (let ti = 0; ti < flightsWithDronetag.length; ti += TELEMETRY_CHUNK) {
+          const chunk = flightsWithDronetag.slice(ti, ti + TELEMETRY_CHUNK);
+          await Promise.all(chunk.map(async (flight) => {
           // Get the dronetag device to find callsign
           const { data: device } = await supabase
             .from('dronetag_devices')
@@ -621,7 +624,7 @@ Deno.serve(async (req) => {
 
           if (!device?.callsign) {
             console.log(`Flight ${flight.id}: DroneTag device has no callsign`);
-            continue;
+            return;
           }
 
           // Look up matching beacon in safesky_beacons table (case-insensitive)
