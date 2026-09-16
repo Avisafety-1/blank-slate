@@ -89,6 +89,9 @@ def write_passwd(creds):
         )
         written.append(username)
 
+    with open(PASSWD_TMP, "rb") as fh:
+        os.fsync(fh.fileno())
+
     log.info(
         "passwd rebuild: %d users staged in %s: %s",
         len(written),
