@@ -79,7 +79,7 @@ export function useLiveDroneSources({
           const sns = Array.from(latestBySn.keys());
           const { data: droneRows } = await supabase
             .from('drones')
-            .select('id, navn, serienummer')
+            .select('id, modell, registration_number, serienummer')
             .eq('company_id', companyId)
             .in('serienummer', sns);
 
@@ -98,7 +98,7 @@ export function useLiveDroneSources({
               key: `fh2:${sn}`,
               source: 'fh2',
               droneId: (p.drone_id as string | null) ?? drone?.id ?? null,
-              name: drone?.navn ?? sn,
+              name: drone?.registration_number || drone?.modell || sn,
               identifier: sn,
               dronetagDeviceId: null,
               lastSeen: p.time_stamp as string,
