@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.get_mqtt_credential_owner(uuid) FROM anon, authenticated;
