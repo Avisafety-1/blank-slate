@@ -639,7 +639,7 @@ Deno.serve(async (req) => {
 
           if (beaconLookupError) {
             console.error(`Error looking up beacon for ${device.callsign}:`, beaconLookupError);
-            continue;
+            return;
           }
 
           if (matchingBeacon) {
@@ -669,6 +669,7 @@ Deno.serve(async (req) => {
           } else {
             console.log(`No beacon match found in safesky_beacons for callsign: ${device.callsign}`);
           }
+          }));
         }
       }
     }
