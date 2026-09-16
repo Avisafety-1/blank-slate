@@ -411,7 +411,11 @@
       "title": "Active flights",
       "noFlights": "No active flights",
       "viewOnMap": "View on map",
-      "freeFlight": "Free flight"
+      "freeFlight": "Free flight",
+      "tagAdvisory": "SafeSky advisory",
+      "tagLiveSafesky": "SafeSky live",
+      "tagLiveInternal": "Internal only",
+      "tagNone": "No sharing"
     },
     "status": {
       "title": "Resource status",

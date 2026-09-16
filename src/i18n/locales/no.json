@@ -413,7 +413,11 @@
       "title": "Aktive flyturer",
       "noFlights": "Ingen aktive flyturer",
       "viewOnMap": "Vis på kart",
-      "freeFlight": "Fri flytur"
+      "freeFlight": "Fri flytur",
+      "tagAdvisory": "SafeSky advisory",
+      "tagLiveSafesky": "SafeSky live",
+      "tagLiveInternal": "Kun internt",
+      "tagNone": "Ingen deling"
     },
     "status": {
       "title": "Ressursstatus",

@@ -15,6 +15,7 @@ interface ActiveFlight {
   id: string;
   start_time: string;
   publish_mode: string | null;
+  safesky_published: boolean | null;
   pilot_name: string | null;
   mission_id: string | null;
   profile_id: string;
@@ -54,7 +55,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
 
     let query = (supabase as any)
       .from('active_flights')
-      .select('id, start_time, publish_mode, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
+      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
 
     if (!isSuperAdminAvisafe) {
       if (hasChildren) {
@@ -75,6 +76,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
       id: f.id,
       start_time: f.start_time,
       publish_mode: f.publish_mode,
+      safesky_published: f.safesky_published ?? null,
       pilot_name: f.pilot_name,
       mission_id: f.mission_id,
       profile_id: f.profile_id,
@@ -112,6 +114,30 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getPublishTag = (flight: ActiveFlight) => {
+    if (flight.publish_mode === 'advisory') {
+      return {
+        label: t('dashboard.activeFlights.tagAdvisory'),
+        className: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      };
+    }
+    if (flight.publish_mode === 'live_uav') {
+      return flight.safesky_published
+        ? {
+            label: t('dashboard.activeFlights.tagLiveSafesky'),
+            className: 'bg-green-500/15 text-green-700 dark:text-green-300 border-green-500/30',
+          }
+        : {
+            label: t('dashboard.activeFlights.tagLiveInternal'),
+            className: 'bg-muted text-muted-foreground border-border',
+          };
+    }
+    return {
+      label: t('dashboard.activeFlights.tagNone'),
+      className: 'bg-muted text-muted-foreground border-border',
+    };
   };
 
   const handleFlightClick = async (flight: ActiveFlight) => {
@@ -176,7 +202,10 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                     {flight.missionTitle || t('dashboard.activeFlights.freeFlight')}
                   </h3>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-medium ${getPublishTag(flight).className}`}>
+                    {getPublishTag(flight).label}
+                  </Badge>
                   {flight.publish_mode && flight.publish_mode !== 'none' && (
                     <Radio className="w-3 h-3 text-primary animate-pulse" />
                   )}
