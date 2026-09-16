@@ -175,9 +175,8 @@ async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?
       suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
     }
 
-    // Cap at 10 chars (SafeSky limit): trim the prefix so the suffix always fits.
-    const maxPrefix = Math.max(1, 10 - suffix.length);
-    return sanitized.slice(0, maxPrefix) + suffix;
+    // Same output as advisory publishing: prefix + suffix, no truncation.
+    return sanitized + suffix;
   } catch (err) {
     console.warn('Live callsign generation failed, using fallback:', err);
     return 'avisafe01';
@@ -503,13 +502,20 @@ Deno.serve(async (req) => {
           // Use the company-configured SafeSky callsign as beacon identity.
           const callSign = await resolveCompanyCallsign(supabase, flight.company_id, flight.drone_id);
           const beaconId = callSign;
-          const altAmsl = (pos.altitude_m as number | null) ?? null;
+          // SafeSky wants AMSL. The MQTT feed only gives height above ground,
+          // so add terrain elevation for the current position when needed.
+          let altAmsl = (pos.altitude_m as number | null) ?? null;
+          if (altAmsl === null) {
+            const agl = (pos.height_m as number | null) ?? 0;
+            const terrain = await fetchMaxTerrainElevation([{ lat: Number(pos.lat), lng: Number(pos.lng) }]);
+            altAmsl = terrain + agl;
+          }
           const payload = [{
             id: beaconId,
             call_sign: callSign,
             latitude: Number(Number(pos.lat).toFixed(4)),
             longitude: Number(Number(pos.lng).toFixed(4)),
-            altitude: altAmsl !== null ? Math.round(altAmsl) : -9999,
+            altitude: Math.round(altAmsl),
             status: isAirborne ? 'AIRBORNE' : 'GROUNDED',
             last_update: Math.floor(new Date(pos.time_stamp as string).getTime() / 1000),
             ground_speed: Math.round(gs),
