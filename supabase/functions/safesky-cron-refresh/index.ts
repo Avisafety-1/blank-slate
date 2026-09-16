@@ -498,9 +498,13 @@ Deno.serve(async (req) => {
           const fs = String(pos.flight_status ?? '').toLowerCase();
           const gs = typeof pos.ground_speed_ms === 'number' ? pos.ground_speed_ms : 0;
           const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
-          const beaconId = `AVS_LIVE_${String(pos.sn ?? flight.drone_id).slice(-8)}`;
+          // Use the company-configured SafeSky callsign as beacon identity.
+          const callSign = await resolveCompanyCallsign(supabase, flight.company_id, flight.drone_id);
+          const beaconId = callSign;
           const payload = [{
             id: beaconId,
+            call_sign: callSign,
+            callsign: callSign,
             latitude: pos.lat,
             longitude: pos.lng,
             altitude: Math.round((pos.altitude_m as number | null) ?? (pos.height_m as number | null) ?? 0),
@@ -510,9 +514,11 @@ Deno.serve(async (req) => {
             course: Math.round((pos.course_deg as number | null) ?? 0),
           }];
 
+          const liveUrl = SAFESKY_PROD_API_KEY ? SAFESKY_UAV_PROD_URL : SAFESKY_UAV_URL;
+          const liveKey = SAFESKY_PROD_API_KEY || SAFESKY_API_KEY;
           const liveBody = JSON.stringify(payload);
-          const liveAuthHeaders = await generateAuthHeaders(SAFESKY_API_KEY, 'POST', SAFESKY_UAV_URL, liveBody);
-          const liveResp = await fetch(SAFESKY_UAV_URL, {
+          const liveAuthHeaders = await generateAuthHeaders(liveKey, 'POST', liveUrl, liveBody);
+          const liveResp = await fetch(liveUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...liveAuthHeaders },
             body: liveBody,
@@ -522,7 +528,7 @@ Deno.serve(async (req) => {
             console.error(`SafeSky live publish failed for flight ${flight.id}: ${liveResp.status} - ${await liveResp.text()}`);
           } else {
             livePublished++;
-            console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status})`);
+            console.log(`SafeSky live beacon published for flight ${flight.id} (${beaconId}, ${payload[0].status}, ${SAFESKY_PROD_API_KEY ? 'PROD' : 'SANDBOX'})`);
           }
         } catch (err) {
           console.error(`Error publishing live SafeSky beacon for flight ${flight.id}:`, err);
