@@ -132,6 +132,56 @@ interface SafeSkyBeacon {
   callsign?: string;
 }
 
+// Resolve the company-configured SafeSky callsign (same rules as advisory publishing).
+// deno-lint-ignore no-explicit-any
+async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?: string | null): Promise<string> {
+  try {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('navn, parent_company_id, safesky_callsign_prefix, safesky_callsign_variable')
+      .eq('id', companyId)
+      .single();
+
+    let companyName = company?.navn || 'avisafe';
+    let prefix = company?.safesky_callsign_prefix as string | null | undefined;
+    let variable = (company?.safesky_callsign_variable as string | undefined) || 'counter';
+
+    if (company?.parent_company_id) {
+      const { data: parentCompany } = await supabase
+        .from('companies')
+        .select('navn, safesky_callsign_prefix, safesky_callsign_variable')
+        .eq('id', company.parent_company_id)
+        .single();
+      if (parentCompany?.navn) companyName = parentCompany.navn;
+      if (!prefix && parentCompany?.safesky_callsign_prefix) prefix = parentCompany.safesky_callsign_prefix;
+      if (!company?.safesky_callsign_variable && parentCompany?.safesky_callsign_variable) {
+        variable = parentCompany.safesky_callsign_variable;
+      }
+    }
+
+    const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+
+    let suffix = '01';
+    if (variable === 'none') {
+      suffix = '';
+    } else if (variable === 'drone_registration' && droneId) {
+      const { data: drone } = await supabase
+        .from('drones')
+        .select('registration_number, serienummer')
+        .eq('id', droneId)
+        .single();
+      const reg = (drone?.registration_number || drone?.serienummer || '') as string;
+      suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
+    }
+
+    return (sanitized + suffix).slice(0, 10);
+  } catch (err) {
+    console.warn('Live callsign generation failed, using fallback:', err);
+    return 'avisafe01';
+  }
+}
+
 // Compute cross product of vectors OA and OB where O is origin
 function cross(O: number[], A: number[], B: number[]): number {
   return (A[0] - O[0]) * (B[1] - O[1]) - (A[1] - O[1]) * (B[0] - O[0]);
