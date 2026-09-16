@@ -127,13 +127,21 @@ def resolve_drone(sn):
             if rows:
                 result = {"drone_id": rows[0]["id"], "company_id": rows[0]["company_id"]}
         else:
-            log.error("drone lookup failed for %s: %s %s", sn, resp.status_code, resp.text[:300])
+            log.error(
+                "drone lookup DATABASE_ERROR sn=%s status=%s body=%s",
+                sn,
+                resp.status_code,
+                resp.text[:300],
+            )
             return None  # transient failure: do not cache
     except Exception as exc:  # noqa: BLE001
-        log.error("drone lookup error for %s: %s", sn, exc)
+        log.error("drone lookup NETWORK_ERROR sn=%s error=%s", sn, exc)
         return None
 
-    _drone_cache[sn] = (now + DRONE_CACHE_TTL, result)
+    ttl = DRONE_CACHE_TTL if result else DRONE_NEGATIVE_CACHE_TTL
+    _drone_cache[sn] = (now + ttl, result)
+    if result:
+        log.info("resolved sn=%s drone_id=%s company_id=%s", sn, result["drone_id"], result["company_id"])
     return result
 
 
