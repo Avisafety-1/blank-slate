@@ -207,7 +207,9 @@ const Index = () => {
       const modeMessages = {
         none: t('flight.flightStarted'),
         advisory: t('flight.flightStartedAdvisory'),
-        live_uav: t('flight.flightStartedLiveUav'),
+        live_uav: liveTarget === 'internal'
+          ? t('flight.livePublishInternal')
+          : t('flight.livePublishSafesky'),
       };
       toast.success(modeMessages[selectedPublishMode || 'none']);
     }
