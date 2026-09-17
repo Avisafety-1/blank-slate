@@ -139,7 +139,7 @@ export function useLiveDroneSources({
         if (devices && devices.length > 0) {
           const { data: positions } = await supabase
             .from('dronetag_positions')
-            .select('device_id, timestamp, alt_agl, alt_msl, battery, speed, latitude, longitude')
+            .select('device_id, timestamp, alt_agl, alt_msl, battery, speed, lat, lng')
             .eq('company_id', companyId)
             .gte('timestamp', sinceIso)
             .order('timestamp', { ascending: false })
@@ -165,8 +165,8 @@ export function useLiveDroneSources({
               heightM: (pos.alt_agl as number | null) ?? (pos.alt_msl as number | null) ?? null,
               batteryPct: (pos.battery as number | null) ?? null,
               speedMs: (pos.speed as number | null) ?? null,
-              lat: (pos.latitude as number | null) ?? null,
-              lng: (pos.longitude as number | null) ?? null,
+              lat: (pos.lat as number | null) ?? null,
+              lng: (pos.lng as number | null) ?? null,
             });
           });
         }
