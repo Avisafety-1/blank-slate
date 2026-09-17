@@ -423,23 +423,30 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           suffix = '';
         } else if (variable === 'drone_registration') {
           suffix = '01';
-          if (selectedMissionId && selectedMissionId !== 'none') {
+          // Prefer the selected live drone (works with or without a mission);
+          // fall back to the mission's drone for advisory.
+          let droneId = selectedLiveDrone?.droneId ?? null;
+          if (!droneId && selectedMissionId && selectedMissionId !== 'none') {
             const { data: missionDrone } = await supabase
               .from('mission_drones')
               .select('drone_id')
               .eq('mission_id', selectedMissionId)
               .limit(1)
               .maybeSingle();
-            if (missionDrone?.drone_id) {
-              const { data: drone } = await supabase
-                .from('drones')
-                .select('registration_number, serienummer')
-                .eq('id', missionDrone.drone_id)
-                .maybeSingle();
-              const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
-              if (cleaned) suffix = cleaned;
-            }
+            droneId = missionDrone?.drone_id ?? null;
           }
+          if (droneId) {
+            const { data: drone } = await supabase
+              .from('drones')
+              .select('registration_number, serienummer')
+              .eq('id', droneId)
+              .maybeSingle();
+            const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            if (cleaned) suffix = cleaned;
+          }
+        } else if (publishMode === 'live_uav') {
+          // Mirrors safesky-live-publish: counter variable always publishes "01" for live
+          suffix = '01';
         } else {
           const parentId = company?.parent_company_id || companyId;
           const { data: siblingCompanies } = await supabase
