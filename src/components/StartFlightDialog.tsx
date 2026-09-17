@@ -162,6 +162,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fh2Enabled: true,
   });
   const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
+  // Departure point: device GPS if available, otherwise the live drone's last known position
+  const effectiveStartPosition: { lat: number; lng: number } | undefined =
+    gpsPosition ??
+    (selectedLiveDrone?.lat != null && selectedLiveDrone?.lng != null
+      ? { lat: selectedLiveDrone.lat, lng: selectedLiveDrone.lng }
+      : undefined);
 
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
@@ -822,7 +828,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
       
       // Always pass GPS position for departure auto-fill, pilot name and DroneTag for live_uav
-      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const startPosition = effectiveStartPosition;
       const pilot = (publishMode === 'advisory' || publishMode === 'live_uav') && companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
@@ -860,7 +866,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         }
       }
       
-      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const startPosition = effectiveStartPosition;
       const pilot = companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
@@ -1446,7 +1452,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   />
                 </div>
 
-                {gpsError && <p className="text-xs text-destructive">{gpsError}</p>}
+                {selectedLiveDrone && (
+                  <p className="text-xs text-muted-foreground">
+                    {liveTarget === 'safesky'
+                      ? t('flight.livePublishSafesky')
+                      : t('flight.livePublishInternal')}
+                  </p>
+                )}
               </div>
             )}
 
@@ -1508,10 +1520,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <Button 
               data-tour="start-flight-submit"
               onClick={handleStartFlightClick} 
-              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && !selectedLiveDrone)}
+              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && !selectedLiveDrone)}
               className="bg-green-600 hover:bg-green-700"
             >
-              {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
+              {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : t('flight.startFlight'))}
             </Button>
           </DialogFooter>
         </DialogContent>

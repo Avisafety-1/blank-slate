@@ -240,7 +240,9 @@
     "liveTargetInternal": "Internal only",
     "liveTargetInternalDesc": "Shown on the AviSafe map for your company only",
     "liveDroneRequired": "Select a live drone to start the flight",
-    "liveDronesEmptyHint": "No drones are sending position now. Check that the aircraft is connected to DroneTag or DJI FlightHub 2."
+    "liveDronesEmptyHint": "No drones are sending position now. Check that the aircraft is connected to DroneTag or DJI FlightHub 2.",
+    "livePublishSafesky": "Live position is now published to SafeSky.",
+    "livePublishInternal": "Live position is shared internally in your company."
   },
   "dronetag": {
     "addTitle": "Add DroneTag",
