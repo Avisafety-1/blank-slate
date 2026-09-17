@@ -822,7 +822,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
       
       // Always pass GPS position for departure auto-fill, pilot name and DroneTag for live_uav
-      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const startPosition = effectiveStartPosition;
       const pilot = (publishMode === 'advisory' || publishMode === 'live_uav') && companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
@@ -1446,7 +1446,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   />
                 </div>
 
-                {gpsError && <p className="text-xs text-destructive">{gpsError}</p>}
+                {selectedLiveDrone && (
+                  <p className="text-xs text-muted-foreground">
+                    {liveTarget === 'safesky'
+                      ? t('flight.livePublishSafesky')
+                      : t('flight.livePublishInternal')}
+                  </p>
+                )}
               </div>
             )}
 
