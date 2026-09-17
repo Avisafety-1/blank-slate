@@ -162,6 +162,12 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
     fh2Enabled: true,
   });
   const selectedLiveDrone = liveDrones.find((d) => d.key === selectedLiveKey) ?? null;
+  // Departure point: device GPS if available, otherwise the live drone's last known position
+  const effectiveStartPosition: { lat: number; lng: number } | undefined =
+    gpsPosition ??
+    (selectedLiveDrone?.lat != null && selectedLiveDrone?.lng != null
+      ? { lat: selectedLiveDrone.lat, lng: selectedLiveDrone.lng }
+      : undefined);
 
   // Phone in remarks for advisory mode (hidden until SafeSky supports it)
   const [profilePhone, setProfilePhone] = useState<string>('');
@@ -860,7 +866,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         }
       }
       
-      const startPosition = gpsPosition ? gpsPosition : undefined;
+      const startPosition = effectiveStartPosition;
       const pilot = companyName
         ? `Pilot – ${companyName}`
         : pilotName ? pilotName : undefined;
