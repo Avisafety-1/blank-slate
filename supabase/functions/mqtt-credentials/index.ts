@@ -113,6 +113,15 @@ Deno.serve(async (req: Request) => {
 
     if (!current) return json({ error: "not_found" }, 404);
 
+    // FlightHub 2 Sync expects host and port in separate fields, and only
+    // supports plain TCP (no TLS) — port 1883.
+    const rawHost = Deno.env.get("MQTT_HOST") ?? "mqtt-broker-avisafe.fly.dev";
+    const host = rawHost
+      .replace(/^[a-z]+:\/\//i, "")
+      .replace(/\/.*$/, "")
+      .replace(/:\d+$/, "");
+    const port = Number(Deno.env.get("MQTT_FH2_PORT") ?? "1883");
+
     return json({
       username: current.username,
       password: current.password,
@@ -122,7 +131,9 @@ Deno.serve(async (req: Request) => {
       owner_company_id: current.owner_company_id,
       owner_company_name: current.owner_company_name,
       shared_company_names: current.shared_company_names ?? [],
-      mqtt_host: Deno.env.get("MQTT_HOST") ?? null,
+      mqtt_host: host,
+      mqtt_port: port,
+      mqtt_protocol: "TCP",
     });
   } catch (e) {
     console.error("mqtt-credentials error", e);
