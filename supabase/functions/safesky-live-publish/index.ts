@@ -126,7 +126,7 @@ async function resolveCallsigns(
   if (allDroneIds.length > 0) {
     const { data: drones } = await supabase
       .from('drones')
-      .select('id, registration_number, serienummer')
+      .select('id, registration_number')
       .in('id', allDroneIds);
     for (const d of drones ?? []) droneById.set(d.id, d);
   }
@@ -158,7 +158,8 @@ async function resolveCallsigns(
         suffix = '';
       } else if (variable === 'drone_registration') {
         const drone = droneById.get(droneId);
-        const reg = (drone?.registration_number || drone?.serienummer || '') as string;
+        // Registration number only — never fall back to the serial number.
+        const reg = (drone?.registration_number || '') as string;
         suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
       }
       callsigns.set(`${companyId}:${droneId}`, sanitized + suffix);

@@ -438,10 +438,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           if (droneId) {
             const { data: drone } = await supabase
               .from('drones')
-              .select('registration_number, serienummer')
+              .select('registration_number')
               .eq('id', droneId)
               .maybeSingle();
-            const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            const cleaned = (drone?.registration_number || '').replace(/[^a-zA-Z0-9_-]/g, '');
             if (cleaned) suffix = cleaned;
           }
         } else if (publishMode === 'live_uav') {
