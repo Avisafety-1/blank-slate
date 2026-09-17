@@ -468,7 +468,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
     })();
     return () => { cancelled = true; };
-  }, [open, companyId, publishMode, selectedMissionId]);
+  }, [open, companyId, publishMode, selectedMissionId, selectedLiveDrone?.droneId, liveTarget]);
 
   // Check if selected mission is in a 5km zone
   useEffect(() => {
@@ -1465,6 +1465,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     {liveTarget === 'safesky'
                       ? t('flight.livePublishSafesky')
                       : t('flight.livePublishInternal')}
+                  </p>
+                )}
+
+                {selectedLiveDrone && liveTarget === 'safesky' && callsignPreview && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('flight.safeskyCallsignPreview')}{' '}
+                    <span className="font-mono font-semibold text-foreground">{callsignPreview}</span>
                   </p>
                 )}
               </div>
