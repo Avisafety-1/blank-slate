@@ -242,7 +242,9 @@
     "liveTargetInternal": "Kun internt",
     "liveTargetInternalDesc": "Vises kun på AviSafe-kartet for eget selskap",
     "liveDroneRequired": "Velg en live drone for å starte flyging",
-    "liveDronesEmptyHint": "Ingen droner sender posisjon nå. Sjekk at drona er koblet til DroneTag eller DJI FlightHub 2."
+    "liveDronesEmptyHint": "Ingen droner sender posisjon nå. Sjekk at drona er koblet til DroneTag eller DJI FlightHub 2.",
+    "livePublishSafesky": "Live posisjon publiseres nå til SafeSky.",
+    "livePublishInternal": "Live posisjon deles internt i selskapet."
   },
   "dronetag": {
     "addTitle": "Legg til DroneTag",
