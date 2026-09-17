@@ -384,7 +384,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // Preview of the SafeSky callsign that will be published (mirrors safesky-advisory logic)
   useEffect(() => {
-    if (!open || !companyId || publishMode !== 'advisory') {
+    const showForLive = publishMode === 'live_uav' && liveTarget === 'safesky';
+    if (!open || !companyId || (publishMode !== 'advisory' && !showForLive)) {
       setCallsignPreview(null);
       return;
     }
