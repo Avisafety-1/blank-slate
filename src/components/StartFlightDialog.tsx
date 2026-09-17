@@ -1520,10 +1520,10 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <Button 
               data-tour="start-flight-submit"
               onClick={handleStartFlightClick} 
-              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && (gpsLoading || !gpsPosition)) || (publishMode === 'live_uav' && !selectedLiveDrone)}
+              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && !selectedLiveDrone)}
               className="bg-green-600 hover:bg-green-700"
             >
-              {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : (publishMode === 'live_uav' && gpsLoading ? t('flight.gpsAcquiring') : t('flight.startFlight')))}
+              {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : t('flight.startFlight'))}
             </Button>
           </DialogFooter>
         </DialogContent>
