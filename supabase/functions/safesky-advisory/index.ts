@@ -518,10 +518,10 @@ Deno.serve(async (req) => {
           if (missionDrone?.drone_id) {
             const { data: drone } = await supabase
               .from('drones')
-              .select('registration_number, serienummer')
+              .select('registration_number')
               .eq('id', missionDrone.drone_id)
               .single();
-            const reg = drone?.registration_number || drone?.serienummer || '';
+            const reg = drone?.registration_number || '';
             const cleaned = reg.replace(/[^a-zA-Z0-9_-]/g, '');
             suffix = cleaned || '01';
           }
