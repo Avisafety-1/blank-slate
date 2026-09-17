@@ -384,7 +384,8 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
 
   // Preview of the SafeSky callsign that will be published (mirrors safesky-advisory logic)
   useEffect(() => {
-    if (!open || !companyId || publishMode !== 'advisory') {
+    const showForLive = publishMode === 'live_uav' && liveTarget === 'safesky';
+    if (!open || !companyId || (publishMode !== 'advisory' && !showForLive)) {
       setCallsignPreview(null);
       return;
     }
@@ -422,23 +423,30 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
           suffix = '';
         } else if (variable === 'drone_registration') {
           suffix = '01';
-          if (selectedMissionId && selectedMissionId !== 'none') {
+          // Prefer the selected live drone (works with or without a mission);
+          // fall back to the mission's drone for advisory.
+          let droneId = selectedLiveDrone?.droneId ?? null;
+          if (!droneId && selectedMissionId && selectedMissionId !== 'none') {
             const { data: missionDrone } = await supabase
               .from('mission_drones')
               .select('drone_id')
               .eq('mission_id', selectedMissionId)
               .limit(1)
               .maybeSingle();
-            if (missionDrone?.drone_id) {
-              const { data: drone } = await supabase
-                .from('drones')
-                .select('registration_number, serienummer')
-                .eq('id', missionDrone.drone_id)
-                .maybeSingle();
-              const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
-              if (cleaned) suffix = cleaned;
-            }
+            droneId = missionDrone?.drone_id ?? null;
           }
+          if (droneId) {
+            const { data: drone } = await supabase
+              .from('drones')
+              .select('registration_number, serienummer')
+              .eq('id', droneId)
+              .maybeSingle();
+            const cleaned = (drone?.registration_number || drone?.serienummer || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            if (cleaned) suffix = cleaned;
+          }
+        } else if (publishMode === 'live_uav') {
+          // Mirrors safesky-live-publish: counter variable always publishes "01" for live
+          suffix = '01';
         } else {
           const parentId = company?.parent_company_id || companyId;
           const { data: siblingCompanies } = await supabase
@@ -460,7 +468,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
       }
     })();
     return () => { cancelled = true; };
-  }, [open, companyId, publishMode, selectedMissionId]);
+  }, [open, companyId, publishMode, selectedMissionId, selectedLiveDrone?.droneId, liveTarget]);
 
   // Check if selected mission is in a 5km zone
   useEffect(() => {
@@ -1457,6 +1465,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                     {liveTarget === 'safesky'
                       ? t('flight.livePublishSafesky')
                       : t('flight.livePublishInternal')}
+                  </p>
+                )}
+
+                {selectedLiveDrone && liveTarget === 'safesky' && callsignPreview && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('flight.safeskyCallsignPreview')}{' '}
+                    <span className="font-mono font-semibold text-foreground">{callsignPreview}</span>
                   </p>
                 )}
               </div>
