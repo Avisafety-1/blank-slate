@@ -2896,7 +2896,10 @@
       "lastChanged": "Last changed {{date}}",
       "noCredentials": "No credentials have been created yet.",
       "errorLoading": "Could not load credentials: {{message}}",
-      "errorRegenerating": "Could not generate a new password: {{message}}"
+      "errorRegenerating": "Could not generate a new password: {{message}}",
+      "portLabel": "Port",
+      "protocolLabel": "Protocol",
+      "portHint": "FlightHub 2 Sync uses plain TCP on port 1883 (not 8883). Paste the address and port into their separate fields in FlightHub 2."
     }
   },
   "riskAssessment": {

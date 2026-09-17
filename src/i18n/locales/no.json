@@ -2898,7 +2898,10 @@
       "lastChanged": "Sist endret {{date}}",
       "noCredentials": "Ingen tilgang er opprettet ennå.",
       "errorLoading": "Kunne ikke hente tilgangen: {{message}}",
-      "errorRegenerating": "Kunne ikke lage nytt passord: {{message}}"
+      "errorRegenerating": "Kunne ikke lage nytt passord: {{message}}",
+      "portLabel": "Port",
+      "protocolLabel": "Protokoll",
+      "portHint": "FlightHub 2 Sync bruker vanlig TCP på port 1883 (ikke 8883). Lim inn adresse og port i hvert sitt felt i FlightHub 2."
     }
   },
   "riskAssessment": {
