@@ -67,7 +67,7 @@ export function useLiveDroneSources({
       if (fh2Enabled) {
         const { data: positions } = await supabase
           .from('flighthub2_positions')
-          .select('sn, drone_id, time_stamp, height_m, ground_speed_ms, raw')
+          .select('sn, drone_id, time_stamp, height_m, ground_speed_ms, lat, lng, raw')
           .eq('company_id', companyId)
           .gte('time_stamp', sinceIso)
           .order('time_stamp', { ascending: false })
@@ -122,6 +122,8 @@ export function useLiveDroneSources({
               heightM: (p.height_m as number | null) ?? null,
               batteryPct: battery,
               speedMs: (p.ground_speed_ms as number | null) ?? null,
+              lat: (p.lat as number | null) ?? null,
+              lng: (p.lng as number | null) ?? null,
             });
           });
         }
@@ -137,7 +139,7 @@ export function useLiveDroneSources({
         if (devices && devices.length > 0) {
           const { data: positions } = await supabase
             .from('dronetag_positions')
-            .select('device_id, timestamp, alt_agl, alt_msl, battery, speed')
+            .select('device_id, timestamp, alt_agl, alt_msl, battery, speed, latitude, longitude')
             .eq('company_id', companyId)
             .gte('timestamp', sinceIso)
             .order('timestamp', { ascending: false })
@@ -163,6 +165,8 @@ export function useLiveDroneSources({
               heightM: (pos.alt_agl as number | null) ?? (pos.alt_msl as number | null) ?? null,
               batteryPct: (pos.battery as number | null) ?? null,
               speedMs: (pos.speed as number | null) ?? null,
+              lat: (pos.latitude as number | null) ?? null,
+              lng: (pos.longitude as number | null) ?? null,
             });
           });
         }
