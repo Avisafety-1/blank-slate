@@ -29,6 +29,8 @@ interface MqttCredentials {
   owner_company_name: string | null;
   shared_company_names: string[];
   mqtt_host: string | null;
+  mqtt_port: number | null;
+  mqtt_protocol: string | null;
 }
 
 export const FH2LivePositionSection = () => {
