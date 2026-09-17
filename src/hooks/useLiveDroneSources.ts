@@ -19,6 +19,9 @@ export interface LiveDrone {
   heightM: number | null;
   batteryPct: number | null;
   speedMs: number | null;
+  /** Last known position, used as a fallback departure point */
+  lat: number | null;
+  lng: number | null;
 }
 
 /** Positions older than this are not considered "live" at all. */

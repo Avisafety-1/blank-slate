@@ -149,6 +149,9 @@ async function resolveCallsigns(
     const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
     const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
 
+    // Company-level fallback so we never fall back to the generic "avisafe01"
+    callsigns.set(`${companyId}:`, sanitized + (variable === 'none' ? '' : '01'));
+
     for (const droneId of droneIdsByCompany.get(companyId) ?? []) {
       let suffix = '01';
       if (variable === 'none') {
@@ -281,7 +284,16 @@ Deno.serve(async (req) => {
         altAmsl = (terrain.get(terrainKey(Number(p.lat), Number(p.lng))) ?? 0) + agl;
       }
 
-      const callSign = callsigns.get(`${f.company_id}:${f.drone_id}`) || 'avisafe01';
+      let callSign = callsigns.get(`${f.company_id}:${f.drone_id}`);
+      if (!callSign) {
+        callSign = callsigns.get(`${f.company_id}:`);
+        if (callSign) {
+          console.warn(`Live publish: no drone-specific callsign for flight ${f.id} (company ${f.company_id}, drone ${f.drone_id}); using company callsign ${callSign}`);
+        } else {
+          callSign = 'avisafe01';
+          console.warn(`Live publish: no company callsign settings for flight ${f.id} (company ${f.company_id}); falling back to ${callSign}`);
+        }
+      }
 
       beacons.push({
         id: callSign,
