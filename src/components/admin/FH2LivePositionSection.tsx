@@ -138,6 +138,43 @@ export const FH2LivePositionSection = () => {
             </div>
           )}
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t("admin.fh2LivePosition.portLabel")}</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={String(creds.mqtt_port ?? 1883)}
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    copy(String(creds.mqtt_port ?? 1883), t("admin.fh2LivePosition.portLabel"))
+                  }
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("admin.fh2LivePosition.protocolLabel")}</Label>
+              <Input
+                readOnly
+                value={creds.mqtt_protocol ?? "TCP"}
+                className="font-mono text-xs"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {t("admin.fh2LivePosition.portHint")}
+          </p>
+
+
           <div className="space-y-2">
             <Label>{t("admin.fh2LivePosition.usernameLabel")}</Label>
             <div className="flex gap-2">
