@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";

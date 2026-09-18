@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { openAipConfig } from "@/lib/openaip";
 import { resolveRootCompanyName } from "@/lib/companyHierarchy";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { MapLayerControl, LayerConfig } from "@/components/MapLayerControl";
 import { ArealbrukLegend } from "@/components/ArealbrukLegend";

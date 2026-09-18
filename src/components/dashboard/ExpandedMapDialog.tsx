@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import droneAnimatedIcon from "@/assets/drone-animated.gif";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import { toast } from "sonner";
 import {
   Dialog,
