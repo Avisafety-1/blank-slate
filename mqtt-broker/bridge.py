@@ -206,6 +206,18 @@ def num(value):
     return value if isinstance(value, (int, float)) else None
 
 
+def msl_or_none(source):
+    """True MSL altitude, or None when DJI reports 0/missing (no RTK fix)."""
+    for key in ("elevation", "altitude"):
+        value = num(source.get(key))
+        if value is not None and value != 0:
+            return value
+    return None
+
+
+
+
+
 def handle_update_topo(client, sn, payload):
     reply = {
         "tid": payload.get("tid"),
