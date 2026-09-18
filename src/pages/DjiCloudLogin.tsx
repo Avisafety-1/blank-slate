@@ -65,8 +65,10 @@ const DjiCloudLogin = () => {
   const logId = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const lastCallbackRef = useRef<number>(0);
-  const connectRef = useRef<() => void>(() => {});
+  const connectRef = useRef<(force?: boolean) => void>(() => {});
+  const connectingRef = useRef(false);
   const version = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "unknown";
+
 
   const addLog = useCallback((text: string, tone: LogLine["tone"] = "info") => {
     logId.current += 1;
