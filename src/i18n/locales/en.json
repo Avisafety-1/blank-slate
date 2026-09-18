@@ -8897,6 +8897,8 @@
     "lastCallback": "Last reply from DJI",
     "build": "Version",
     "workspace": "Workspace",
-    "platformDesc": "Live position to AviSafe"
+    "platformDesc": "Live position to AviSafe",
+    "alreadyConnected": "Already connected – keeping the existing connection.",
+    "checkingState": "Checking connection state with DJI"
   }
 }

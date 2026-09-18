@@ -8899,6 +8899,8 @@
     "lastCallback": "Siste svar fra DJI",
     "build": "Versjon",
     "workspace": "Arbeidsområde",
-    "platformDesc": "Live posisjon til AviSafe"
+    "platformDesc": "Live posisjon til AviSafe",
+    "alreadyConnected": "Allerede tilkoblet – beholder eksisterende tilkobling.",
+    "checkingState": "Sjekker tilkoblingsstatus hos DJI"
   }
 }
