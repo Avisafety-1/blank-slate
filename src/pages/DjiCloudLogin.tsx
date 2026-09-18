@@ -290,6 +290,16 @@ const DjiCloudLogin = () => {
     const onVisibility = () => {
       addLog(`visibilitychange -> ${document.visibilityState}`);
       if (document.visibilityState !== "visible") return;
+      // Ask DJI first: reconnecting on top of a live link is what caused the
+      // disconnect/connect cycle when returning to "Open Platforms".
+      const state = readConnectState();
+      addLog(`${t("djiCloud.checkingState")} -> ${state}`);
+      if (state === "connected") {
+        lastCallbackRef.current = Date.now();
+        setConnState("connected");
+        setStatus(t("djiCloud.alreadyConnected"));
+        return;
+      }
       if (lastCallbackRef.current === 0) {
         addLog("Ingen tilkoblingsbekreftelse mottatt – kobler til automatisk.");
         connectRef.current();
@@ -298,6 +308,7 @@ const DjiCloudLogin = () => {
         connectRef.current();
       }
     };
+
     const onPageHide = () => addLog("pagehide");
 
     document.addEventListener("visibilitychange", onVisibility);
