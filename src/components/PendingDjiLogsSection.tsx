@@ -65,6 +65,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const [hasMore, setHasMore] = useState(false);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [onlyMine, setOnlyMine] = useState(true);
+  const [backlog, setBacklog] = useState<{ count: number; oldest: string | null } | null>(null);
   const djiEnabled = hasAddon('dji');
   const isMobile = useIsMobile();
 
