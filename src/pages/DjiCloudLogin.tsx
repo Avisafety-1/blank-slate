@@ -29,6 +29,9 @@ declare global {
       platformSetWorkspaceId?: (uuid: string) => unknown;
       platformSetInformation?: (platformName: string, workspaceName: string, desc: string) => unknown;
       platformIsVerified?: () => unknown;
+      platformIsComponentLoaded?: (name: string) => unknown;
+      thingGetConnectState?: () => unknown;
+
     };
     reg_callback?: (result: unknown) => void;
     onStopPlatform?: () => unknown;
