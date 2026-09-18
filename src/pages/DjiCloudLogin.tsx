@@ -390,7 +390,23 @@ const DjiCloudLogin = () => {
       setConnState("failed");
       addLog(String(err instanceof Error ? err.message : err), "err");
     }
-  }, [addLog, config, say, t]);
+  }, [addLog, config, say, t, workspace.id, workspace.name]);
+
+  // DJI exit hooks: onStopPlatform fires right before Pilot 2 tears the
+  // platform down, onBackClick when the in-page back arrow is used. Returning
+  // true from onBackClick keeps the platform (and the MQTT link) alive.
+  useEffect(() => {
+    window.onStopPlatform = () => {
+      addLog("onStopPlatform – DJI Pilot 2 avslutter plattformen", "err");
+      setConnState("idle");
+      return true;
+    };
+    window.onBackClick = () => {
+      addLog("onBackClick – beholder plattformen tilkoblet");
+      return true;
+    };
+  }, [addLog]);
+
 
   useEffect(() => {
     connectRef.current = handleConnect;
