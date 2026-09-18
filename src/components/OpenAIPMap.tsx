@@ -1052,7 +1052,9 @@ export function OpenAIPMap({
     baseLayerRef.current = osmLayer;
 
     const layerConfigs: LayerConfig[] = [];
-    let tensioLuftnettLayer: L.TileLayer.WMS | null = null;
+    // Tensio-laget håndteres i en egen effekt (se `isTensioHierarchy`-effekten
+    // lenger ned) slik at kartet aldri bygges på nytt når statusen endrer seg.
+
 
     // ============================================================
     // LUFTROM
@@ -1153,18 +1155,6 @@ export function OpenAIPMap({
       attribution: 'Tettsteder © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
 
-    // Tensio luftnett
-    if (isTensioHierarchy) {
-      tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
-        layers: "0,1,2,3,4,5,6,7,8,9",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.75,
-        attribution: "Tensio luftnett",
-        version: "1.3.0",
-        pane: "tensioPowerPane",
-      } as any).addTo(map);
-    }
 
     // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
@@ -1241,9 +1231,6 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
     layerConfigs.push({ id: "mobildekning_4g", name: t('pages.map.layers.mobileCoverage4g'), layer: mobildekning4gLayer, enabled: false, icon: "radio", group: gInf });
     layerConfigs.push({ id: "mobildekning_5g", name: t('pages.map.layers.mobileCoverage5g'), layer: mobildekning5gLayer, enabled: false, icon: "radio", group: gInf });
-    if (tensioLuftnettLayer) {
-      layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
-    }
     layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer, unifiedAirportLayer], enabled: true, icon: "planeLanding", group: gInf });
 
     // Geolocation
@@ -1401,7 +1388,12 @@ export function OpenAIPMap({
       } else if (weatherEnabledRef.current) {
 
         showWeatherPopup(map, lat, lng);
-      } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
+      } else if (
+        isTensioHierarchyRef.current &&
+        tensioLuftnettLayerRef.current &&
+        map.hasLayer(tensioLuftnettLayerRef.current)
+      ) {
+
         try {
           const response = await fetch(buildTensioFeatureInfoUrl(map, e.latlng));
           if (!response.ok) return;
