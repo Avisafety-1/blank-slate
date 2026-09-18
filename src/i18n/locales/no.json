@@ -159,7 +159,15 @@
       "resetTitle": "Tilbakestill passord",
       "resetDesc": "Klikk knappen under for å verifisere lenken og sette nytt passord.",
       "verifyAndSet": "Verifiser og sett nytt passord",
-      "linkNotWorking": "Fungerte ikke lenken? Send ny link"
+      "linkNotWorking": "Fungerte ikke lenken? Send ny link",
+      "errors": {
+        "samePassword": "Du kan ikke gjenbruke ditt forrige passord. Velg et nytt passord.",
+        "weakPassword": "Passordet er for svakt. Følg kravene i listen over.",
+        "pwnedPassword": "Dette passordet er for vanlig eller funnet i kjente passordlekkasjer. Velg et annet.",
+        "rateLimited": "For mange forsøk. Vent litt og prøv igjen.",
+        "linkExpired": "Lenken er utløpt eller allerede brukt. Be om en ny tilbakestillingslenke.",
+        "generic": "Kunne ikke oppdatere passordet. Prøv igjen."
+      }
     },
     "accountDeactivated": "Kontoen din er deaktivert. Kontakt administrator for å få tilgang igjen."
   },
