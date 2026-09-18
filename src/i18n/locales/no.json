@@ -8893,7 +8893,7 @@
     "statusFailed": "Tilkobling mislyktes",
     "liveSharingOn": "Live posisjon deles nå til AviSafe. Dronen vises på kartet så lenge tilkoblingen er aktiv.",
     "liveSharingOff": "Live posisjon deles ikke ennå. Trykk «Koble til» for å starte deling.",
-    "keepOpenHint": "La denne siden stå åpen under flyging. Hvis du forlater menyen, kobles den til på nytt automatisk når du kommer tilbake.",
+    "keepOpenHint": "Du kan trygt forlate denne siden – posisjonen deles videre i bakgrunnen så lenge kontrolleren er på.",
     "account": "Konto",
     "host": "Server",
     "lastCallback": "Siste svar fra DJI",

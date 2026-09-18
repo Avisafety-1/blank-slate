@@ -8891,7 +8891,7 @@
     "statusFailed": "Connection failed",
     "liveSharingOn": "Live position is now shared with AviSafe. The drone shows on the map while the connection is active.",
     "liveSharingOff": "Live position is not shared yet. Tap “Connect” to start sharing.",
-    "keepOpenHint": "Keep this page open while flying. If you leave the menu, it reconnects automatically when you return.",
+    "keepOpenHint": "You can safely leave this page – the position keeps sharing in the background while the controller is on.",
     "account": "Account",
     "host": "Server",
     "lastCallback": "Last reply from DJI",
