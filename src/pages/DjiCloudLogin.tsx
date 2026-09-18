@@ -103,6 +103,43 @@ const DjiCloudLogin = () => {
     };
   }, []);
 
+  // Workspace identity for DJI Pilot 2. Registering the platform with a
+  // workspace id + name is what makes Pilot 2 treat this as a real cloud
+  // platform (home screen shows the workspace instead of "Not Logged In")
+  // instead of a loose web page it tears down when leaving the menu.
+  useEffect(() => {
+    if (!signedIn) return;
+    let active = true;
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const companyId = (profile as { company_id?: string | null } | null)?.company_id ?? null;
+      let companyName: string | null = null;
+      if (companyId) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", companyId)
+          .maybeSingle();
+        companyName = (company as { name?: string | null } | null)?.name ?? null;
+      }
+      if (!active) return;
+      setWorkspace({ id: companyId, name: companyName });
+      addLog(`workspace: ${companyName ?? "(ukjent)"} / ${companyId ?? "(mangler id)"}`);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [addLog, signedIn]);
+
+
+
   // Log running build version and make sure this page never runs from an old
   // service-worker cache (DJI Pilot 2's webview caches aggressively).
   useEffect(() => {
