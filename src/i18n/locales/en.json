@@ -851,7 +851,12 @@
       "equipmentTitle": "Equipment",
       "droneName": "Name"
     },
-    "deactivated": "Deactivated"
+    "deactivated": "Deactivated",
+    "live": {
+      "live": "Live",
+      "recent": "Recent",
+      "offline": "Offline"
+    }
   },
   "logFlight": {
     "title": "Log flight time",

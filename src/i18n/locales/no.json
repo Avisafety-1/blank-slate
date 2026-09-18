@@ -853,7 +853,12 @@
       "equipmentTitle": "Utstyr",
       "droneName": "Navn"
     },
-    "deactivated": "Deaktivert"
+    "deactivated": "Deaktivert",
+    "live": {
+      "live": "Live",
+      "recent": "Nylig",
+      "offline": "Offline"
+    }
   },
   "logFlight": {
     "title": "Logg flytid",
