@@ -177,8 +177,10 @@ const DjiCloudLogin = () => {
     const onVisibility = () => {
       addLog(`visibilitychange -> ${document.visibilityState}`);
       if (document.visibilityState !== "visible") return;
-      if (lastCallbackRef.current === 0) return;
-      if (Date.now() - lastCallbackRef.current > STALE_MS) {
+      if (lastCallbackRef.current === 0) {
+        addLog("Ingen tilkoblingsbekreftelse mottatt – kobler til automatisk.");
+        connectRef.current();
+      } else if (Date.now() - lastCallbackRef.current > STALE_MS) {
         addLog("Tilkoblingen virker inaktiv – kobler til på nytt automatisk.");
         connectRef.current();
       }
@@ -314,6 +316,16 @@ const DjiCloudLogin = () => {
     connectRef.current = handleConnect;
   }, [handleConnect]);
 
+  // DJI Pilot 2 expects the third-party platform to establish its native
+  // cloud connection after the page has authenticated. Requiring a second
+  // manual click leaves Pilot 2's home screen at "Not Logged In" and no
+  // telemetry is sent after leaving the platform menu.
+  useEffect(() => {
+    if (!signedIn || !config || connState !== "idle") return;
+    const timer = window.setTimeout(() => handleConnect(), 300);
+    return () => window.clearTimeout(timer);
+  }, [config, connState, handleConnect, signedIn]);
+
   const connectLabel =
     connState === "connected"
       ? t("djiCloud.connected")
@@ -418,17 +430,17 @@ const DjiCloudLogin = () => {
                 {connectLabel}
               </Button>
               {!config && !loadingConfig && (
-                <Button type="button" variant="outline" className="w-full text-white" onClick={() => void loadConfig()}>
+                <Button type="button" variant="secondary" className="w-full" onClick={() => void loadConfig()}>
                   {t("djiCloud.retryConfig")}
                 </Button>
               )}
               <div className="flex gap-2">
                 {log.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" className="text-white" onClick={() => void handleCopyLog()}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => void handleCopyLog()}>
                     {t("djiCloud.copyLog")}
                   </Button>
                 )}
-                <Button type="button" variant="outline" size="sm" className="text-white" onClick={() => void handleClearCache()}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => void handleClearCache()}>
                   {t("djiCloud.clearCache")}
                 </Button>
               </div>
