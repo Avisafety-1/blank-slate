@@ -1823,7 +1823,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {t("admin.childCompanies.preview")}: <span className="font-mono text-foreground">
-                          {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe')
+                          {((csPrefix.trim() || parentCompanyName || 'avisafe').replace(/[^a-zA-Z0-9._-]/g, '') || 'avisafe')
                             + (csVariable === 'drone_registration' ? 'LNABCD' : csVariable === 'none' ? '' : '01')}
                         </span>
                       </div>

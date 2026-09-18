@@ -416,7 +416,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
         }
 
         const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-        const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+        const sanitized = rawPrefix.replace(/[^a-zA-Z0-9._-]/g, '') || 'avisafe';
 
         let suffix = '01';
         if (variable === 'none') {
@@ -441,7 +441,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               .select('registration_number')
               .eq('id', droneId)
               .maybeSingle();
-            const cleaned = (drone?.registration_number || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            const cleaned = (drone?.registration_number || '').replace(/[^a-zA-Z0-9._-]/g, '');
             if (cleaned) suffix = cleaned;
           }
         } else if (publishMode === 'live_uav') {
