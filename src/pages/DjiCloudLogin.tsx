@@ -54,6 +54,11 @@ const DjiCloudLogin = () => {
   const [log, setLog] = useState<LogLine[]>([]);
   const [connState, setConnState] = useState<ConnState>("idle");
   const [lastCallbackAt, setLastCallbackAt] = useState<Date | null>(null);
+  const [workspace, setWorkspace] = useState<{ id: string | null; name: string | null }>({
+    id: null,
+    name: null,
+  });
+
   const logId = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const lastCallbackRef = useRef<number>(0);
