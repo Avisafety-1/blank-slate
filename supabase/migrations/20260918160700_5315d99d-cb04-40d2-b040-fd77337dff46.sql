@@ -1,0 +1,2 @@
+ALTER TABLE public.drone_telemetry REPLICA IDENTITY DEFAULT;
+ALTER TABLE public.dronetag_positions REPLICA IDENTITY DEFAULT;
