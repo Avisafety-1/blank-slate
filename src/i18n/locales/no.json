@@ -2739,6 +2739,7 @@
       "testMode": "Test-modus",
       "appliesForAllSub": "Gjelder for alle underavdelinger",
       "alertRecipientsLabel": "Mottakere av varsler:",
+      "alertRecipientsManagedByParent": "Varslene sendes til mottakerne som er satt opp hos {{name}}.",
       "loading": "Laster...",
       "colName": "Navn",
       "colOrgNr": "Org.nr",

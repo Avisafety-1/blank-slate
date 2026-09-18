@@ -2737,6 +2737,7 @@
       "testMode": "Test mode",
       "appliesForAllSub": "Applies to all sub-departments",
       "alertRecipientsLabel": "Alert recipients:",
+      "alertRecipientsManagedByParent": "Alerts are sent to the recipients configured at {{name}}.",
       "loading": "Loading...",
       "colName": "Name",
       "colOrgNr": "Org. no.",
