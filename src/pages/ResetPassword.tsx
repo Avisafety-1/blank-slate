@@ -92,20 +92,11 @@ const ResetPassword = () => {
       return;
     }
     setLoading(true);
-    let updateSucceeded = false;
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      updateSucceeded = true;
-    } catch (error: any) {
-      console.error("Reset password error:", error);
-      toast.error(
-        error?.message
-          ? t('auth.resetPassword2.couldNotUpdateWithMsg', { message: error.message })
-          : t('auth.resetPassword2.couldNotUpdate')
-      );
-    } finally {
-      // Always tear down the transient recovery session so the user is NOT auto-logged in.
+
+      // Tear down the transient recovery session so the user is NOT auto-logged in.
       try {
         await supabase.auth.signOut({ scope: "local" });
       } catch (signOutErr) {
@@ -113,13 +104,24 @@ const ResetPassword = () => {
       }
       clearResetFlag();
       setLoading(false);
+      toast.success(t('auth.resetPassword2.passwordUpdated'));
+      navigate("/auth");
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      const info = resetPasswordErrorInfo(error);
+      toast.error(info.message);
+      setPassword("");
+      setConfirmPassword("");
+      setLoading(false);
 
-      if (updateSucceeded) {
-        toast.success(t('auth.resetPassword2.passwordUpdated'));
-        navigate("/auth");
-      } else {
-        setPassword("");
-        setConfirmPassword("");
+      if (!info.recoverable) {
+        // Link is dead — drop the session and let the user request a new one.
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch (signOutErr) {
+          console.warn("signOut after failed password reset failed:", signOutErr);
+        }
+        clearResetFlag();
         setStage("resend");
       }
     }
