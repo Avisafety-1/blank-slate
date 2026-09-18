@@ -115,6 +115,7 @@ const DjiCloudLogin = () => {
   }, [addLog, version]);
 
   const handleClearCache = async () => {
+    const refreshPath = `/dji/refresh-${Date.now()}`;
     try {
       if ("serviceWorker" in navigator) {
         const regs = await navigator.serviceWorker.getRegistrations();
@@ -124,11 +125,20 @@ const DjiCloudLogin = () => {
         const keys = await caches.keys();
         for (const key of keys) await caches.delete(key);
       }
+      // Warm a completely new navigation URL from the network. DJI Pilot 2's
+      // Android WebView may keep its ordinary HTTP cache even after Cache
+      // Storage and service workers have been cleared, and may also ignore a
+      // query-only cache buster. A unique path forces a fresh document load.
+      await fetch(refreshPath, {
+        cache: "no-store",
+        credentials: "include",
+        headers: { "Cache-Control": "no-cache" },
+      });
     } catch {
       /* ignore */
     }
     setStatus(t("djiCloud.cacheCleared"));
-    window.location.replace(`/dji?v=${Date.now()}`);
+    window.location.replace(refreshPath);
   };
 
   // DJI Pilot 2 invokes this global with the MQTT connection result.
