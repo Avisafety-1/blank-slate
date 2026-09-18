@@ -34,6 +34,18 @@ function terrainKey(lat: number, lng: number): string {
 }
 
 /**
+ * True MSL altitude from the position, or null when unavailable.
+ * DJI reports elevation = 0 when there is no RTK fix, so 0 is not a usable MSL
+ * value for an airborne drone — in that case we fall back to terrain + AGL.
+ */
+// deno-lint-ignore no-explicit-any
+function usableAmsl(p: any): number | null {
+  const amsl = p?.altitude_m;
+  if (typeof amsl !== 'number' || !Number.isFinite(amsl) || amsl === 0) return null;
+  return amsl;
+}
+
+/**
  * Terrain elevation for a set of grid keys.
  * Reads the shared terrain_elevation_cache table first, then fetches only
  * the missing cells in ONE Open-Meteo request and writes them back.
