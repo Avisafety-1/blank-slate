@@ -318,7 +318,8 @@ const DjiCloudLogin = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
     };
-  }, [addLog]);
+  }, [addLog, readConnectState, t]);
+
 
   const loadConfig = useCallback(async () => {
     setLoadingConfig(true);
