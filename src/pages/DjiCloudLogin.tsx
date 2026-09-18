@@ -597,7 +597,7 @@ const DjiCloudLogin = () => {
             className="mx-auto w-full max-w-3xl space-y-4 rounded-xl border border-white/15 bg-black/40 p-4 backdrop-blur-md"
           >
             <p className="text-sm text-white/75">{t("djiCloud.signInHint")}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
               <div className="space-y-1">
                 <Label htmlFor="dji-email" className="text-white/80">
                   {t("djiCloud.email")}
@@ -606,6 +606,7 @@ const DjiCloudLogin = () => {
                   id="dji-email"
                   type="email"
                   autoComplete="username"
+                  enterKeyHint="next"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
@@ -621,6 +622,7 @@ const DjiCloudLogin = () => {
                   id="dji-password"
                   type="password"
                   autoComplete="current-password"
+                  enterKeyHint="go"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
@@ -628,10 +630,10 @@ const DjiCloudLogin = () => {
                   required
                 />
               </div>
+              <Button type="submit" className="w-full sm:w-auto sm:min-w-[8rem]" disabled={signingIn}>
+                {signingIn ? t("djiCloud.signingIn") : t("djiCloud.signIn")}
+              </Button>
             </div>
-            <Button type="submit" className="w-full" disabled={signingIn}>
-              {signingIn ? t("djiCloud.signingIn") : t("djiCloud.signIn")}
-            </Button>
             {status && <p className="text-sm text-white/80">{status}</p>}
           </form>
         )}
