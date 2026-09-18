@@ -646,7 +646,7 @@ const Resources = () => {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-col items-start gap-1 shrink-0">
                         <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
                         <LiveStatusBadge status={getLiveStatus(drone.serienummer, drone.internal_serial)} />
                       </div>
