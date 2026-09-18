@@ -70,6 +70,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mcpPlugin(),
+    djiVersionGuard(),
     mode === "development" && componentTagger(),
     VitePWA({
       strategies: "injectManifest",

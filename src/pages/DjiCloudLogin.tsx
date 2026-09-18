@@ -125,6 +125,12 @@ const DjiCloudLogin = () => {
         const keys = await caches.keys();
         for (const key of keys) await caches.delete(key);
       }
+      // Allow the /dji version guard (injected into index.html) to run again.
+      try {
+        sessionStorage.removeItem("dji_version_reload");
+      } catch {
+        /* ignore */
+      }
       // Warm a completely new navigation URL from the network. DJI Pilot 2's
       // Android WebView may keep its ordinary HTTP cache even after Cache
       // Storage and service workers have been cleared, and may also ignore a
