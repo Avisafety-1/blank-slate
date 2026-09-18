@@ -571,6 +571,11 @@ const DjiCloudLogin = () => {
                   <dd className="truncate">{accountEmail ?? "–"}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.workspace")}</dt>
+                  <dd className="truncate">{workspace.name ?? "–"}</dd>
+                </div>
+
+                <div className="flex justify-between gap-2">
                   <dt>{t("djiCloud.host")}</dt>
                   <dd className="truncate">{config?.mqttHost ?? "–"}</dd>
                 </div>
