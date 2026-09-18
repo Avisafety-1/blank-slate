@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
-import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
+import { MAP_LAYER_CATALOG, resolveLayerDefault } from "@/config/mapLayers";
 
 // Re-export types for backward compatibility
 export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
