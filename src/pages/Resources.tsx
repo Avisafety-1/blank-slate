@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LiveStatusBadge } from "@/components/LiveStatusBadge";
+import { useLiveDroneStatus } from "@/hooks/useLiveDroneStatus";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
@@ -37,6 +39,7 @@ const Resources = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, loading, companyId, isAdmin } = useAuth();
+  const { getLiveStatus } = useLiveDroneStatus({ companyId });
   const terminology = useTerminology();
   const { isOnline } = usePresence();
   const { personnel: personnelWithStatus } = useStatusData();
@@ -643,7 +646,10 @@ const Resources = () => {
                           </Badge>
                         )}
                       </div>
-                      <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusBadge status={(drone._aggregatedStatus || calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14)) as Status} />
+                        <LiveStatusBadge status={getLiveStatus(drone.serienummer, drone.internal_serial)} />
+                      </div>
                     </div>
                     <div className="text-sm space-y-1">
                       <p>{t('resources.cards.lastFlown')}: {drone.last_flown ? format(new Date(drone.last_flown), "dd.MM.yyyy") : "–"}</p>
