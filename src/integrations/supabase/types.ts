@@ -9385,6 +9385,10 @@ export type Database = {
         Args: { p_exclude_company_id?: string }
         Returns: Json
       }
+      get_propagating_parent_company_id: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       get_root_company_id: { Args: { _company_id: string }; Returns: string }
       get_root_public_company_name: {
         Args: { _company_id: string }
