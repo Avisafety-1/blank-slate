@@ -84,6 +84,60 @@ const DjiCloudLogin = () => {
     [addLog],
   );
 
+  // DJI bridge calls return a JSON string like {"code":0,"message":"","data":...}
+  const parseBridge = useCallback((raw: unknown): { code: number | null; text: string } => {
+    if (raw === undefined || raw === null) return { code: null, text: "(no return value)" };
+    const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object" && "code" in (parsed as Record<string, unknown>)) {
+        const code = Number((parsed as Record<string, unknown>).code);
+        return { code: Number.isNaN(code) ? null : code, text };
+      }
+    } catch {
+      /* not JSON — log raw */
+    }
+    return { code: null, text };
+  }, []);
+
+  /**
+   * Ask DJI Pilot 2 whether the "thing" module is already connected, so we
+   * never tear down a live MQTT link just because the webview was shown again.
+   * Returns "unknown" on older bridges that lack the API — then we keep the
+   * previous behaviour and connect.
+   */
+  const readConnectState = useCallback((): "connected" | "disconnected" | "unknown" => {
+    const bridge = window.djiBridge;
+    if (!bridge?.thingGetConnectState) return "unknown";
+    let raw: unknown;
+    try {
+      raw = bridge.thingGetConnectState();
+    } catch {
+      return "unknown";
+    }
+    const { text } = parseBridge(raw);
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const value =
+        parsed && typeof parsed === "object"
+          ? ((parsed as Record<string, unknown>).data ?? (parsed as Record<string, unknown>).result)
+          : parsed;
+      if (typeof value === "boolean") return value ? "connected" : "disconnected";
+      if (value && typeof value === "object") {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.connectState === "boolean") return obj.connectState ? "connected" : "disconnected";
+        if (typeof obj.state === "boolean") return obj.state ? "connected" : "disconnected";
+      }
+    } catch {
+      /* fall through to text matching */
+    }
+    if (/true/i.test(text)) return "connected";
+    if (/false/i.test(text)) return "disconnected";
+    return "unknown";
+  }, [parseBridge]);
+
+
+
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ block: "end" });
   }, [log]);
