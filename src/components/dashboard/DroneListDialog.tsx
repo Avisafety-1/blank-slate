@@ -101,7 +101,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-start gap-1 shrink-0">
                   <StatusBadge status={drone.status as Status} />
                   <LiveStatusBadge status={getLiveStatus(drone.serienummer, drone.internal_serial)} />
                 </div>
