@@ -501,15 +501,38 @@ const DjiCloudLogin = () => {
     connectRef.current = handleConnect;
   }, [handleConnect]);
 
+  // The webview may be re-shown with an MQTT link still alive. Read DJI's own
+  // state on mount so the button shows "Tilkoblet" instead of starting a new
+  // connection that would drop the existing one.
+  useEffect(() => {
+    if (!window.djiBridge) return;
+    const state = readConnectState();
+    addLog(`${t("djiCloud.checkingState")} -> ${state}`);
+    if (state === "connected") {
+      lastCallbackRef.current = Date.now();
+      setConnState("connected");
+      setStatus(t("djiCloud.statusConnected"));
+    }
+  }, [addLog, readConnectState, t]);
+
   // DJI Pilot 2 expects the third-party platform to establish its native
   // cloud connection after the page has authenticated. Requiring a second
   // manual click leaves Pilot 2's home screen at "Not Logged In" and no
   // telemetry is sent after leaving the platform menu.
   useEffect(() => {
     if (!signedIn || !config || connState !== "idle") return;
-    const timer = window.setTimeout(() => handleConnect(), 300);
+    const timer = window.setTimeout(() => {
+      if (readConnectState() === "connected") {
+        setConnState("connected");
+        lastCallbackRef.current = Date.now();
+        addLog(t("djiCloud.alreadyConnected"), "ok");
+        return;
+      }
+      handleConnect();
+    }, 300);
     return () => window.clearTimeout(timer);
-  }, [config, connState, handleConnect, signedIn]);
+  }, [addLog, config, connState, handleConnect, readConnectState, signedIn, t]);
+
 
   const connectLabel =
     connState === "connected"
