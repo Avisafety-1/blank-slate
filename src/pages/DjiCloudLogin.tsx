@@ -610,7 +610,7 @@ const DjiCloudLogin = () => {
                 size="lg"
                 className={cn("h-14 w-full text-base", connState === "connected" && "bg-status-green hover:bg-status-green")}
                 disabled={!config || connState === "connected" || connState === "connecting"}
-                onClick={handleConnect}
+                onClick={() => handleConnect(true)}
               >
                 {connectLabel}
               </Button>
