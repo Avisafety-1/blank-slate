@@ -342,22 +342,6 @@ const DjiCloudLogin = () => {
     say(t("djiCloud.signedIn"), "ok");
   };
 
-  // DJI bridge calls return a JSON string like {"code":0,"message":"","data":...}
-  const parseBridge = (raw: unknown): { code: number | null; text: string } => {
-    if (raw === undefined || raw === null) return { code: null, text: "(no return value)" };
-    const text = typeof raw === "string" ? raw : JSON.stringify(raw);
-    try {
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (parsed && typeof parsed === "object" && "code" in (parsed as Record<string, unknown>)) {
-        const code = Number((parsed as Record<string, unknown>).code);
-        return { code: Number.isNaN(code) ? null : code, text };
-      }
-    } catch {
-      /* not JSON — log raw */
-    }
-    return { code: null, text };
-  };
-
   const handleCopyLog = async () => {
     const text = log.map((l) => l.text).join("\n");
     try {
