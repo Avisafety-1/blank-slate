@@ -272,7 +272,9 @@ def handle_osd(sn_from_topic, payload):
         "lat": lat,
         "lng": lng,
         "height_m": height,
-        "altitude_m": num(source.get("elevation")) if num(source.get("elevation")) is not None else num(source.get("altitude")),
+        # DJI sends elevation=0 when true MSL is unavailable (no RTK fix); store NULL so
+        # consumers fall back to terrain + AGL instead of publishing a bogus 0 m MSL.
+        "altitude_m": msl_or_none(source),
         "vert_speed_ms": num(source.get("vertical_speed")),
         "ground_speed_ms": num(source.get("horizontal_speed")),
         "course_deg": num(source.get("attitude_head")),
