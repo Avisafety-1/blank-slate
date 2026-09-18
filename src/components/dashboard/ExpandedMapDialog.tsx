@@ -103,19 +103,24 @@ export const ExpandedMapDialog = ({
   useEffect(() => {
     if (route?.soraSettings) return; // Don't override saved settings
     if (!companyId) return;
-    (supabase as any)
-      .from("company_sora_config")
-      .select("default_flight_geography_m, default_flight_altitude_m")
-      .eq("company_id", companyId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (data?.default_flight_geography_m > 0) {
-          setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
-        }
-        if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
-          setSoraSettings(prev => prev.flightAltitude === 0 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
-        }
-      });
+    let cancelled = false;
+    (async () => {
+      // Fall tilbake til morselskapets SORA-standarder når bryteren er på
+      const source = await resolveEffectiveCompanyId(companyId, "sora_buffer_mode");
+      const { data } = await (supabase as any)
+        .from("company_sora_config")
+        .select("default_flight_geography_m, default_flight_altitude_m")
+        .eq("company_id", source || companyId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.default_flight_geography_m > 0) {
+        setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
+      }
+      if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
+        setSoraSettings(prev => prev.flightAltitude === 0 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [companyId, route?.soraSettings]);
   const [soraDirty, setSoraDirty] = useState(false);
   const [soraSaving, setSoraSaving] = useState(false);

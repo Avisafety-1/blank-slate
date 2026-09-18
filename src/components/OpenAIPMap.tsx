@@ -256,18 +256,20 @@ export function OpenAIPMap({
       setCompanyDefaultLayersLoaded(true);
       return;
     }
-    supabase
-      .from("companies")
-      .select("default_map_layers")
-      .eq("id", companyId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const raw = (data as any)?.default_map_layers;
-        companyDefaultLayersRef.current =
-          raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, boolean>) : {};
-        setCompanyDefaultLayersLoaded(true);
-      });
+    (async () => {
+      // Avdelinger bruker morselskapets standardlag når bryteren er på
+      const source = await resolveEffectiveCompanyId(companyId, "default_map_layers");
+      const { data } = await supabase
+        .from("companies")
+        .select("default_map_layers")
+        .eq("id", source || companyId)
+        .maybeSingle();
+      if (cancelled) return;
+      const raw = (data as any)?.default_map_layers;
+      companyDefaultLayersRef.current =
+        raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, boolean>) : {};
+      setCompanyDefaultLayersLoaded(true);
+    })();
     return () => {
       cancelled = true;
     };
