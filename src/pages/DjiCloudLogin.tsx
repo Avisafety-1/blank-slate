@@ -336,7 +336,33 @@ const DjiCloudLogin = () => {
         return;
       }
 
+      if (window.djiBridge.platformIsVerified) {
+        addLog(`platformIsVerified -> ${parseBridge(window.djiBridge.platformIsVerified()).text}`);
+      }
+
+      // Register the platform BEFORE loading the thing module. Without a
+      // workspace id + platform information Pilot 2 treats the page as a
+      // plain web page and drops the MQTT link when the pilot returns to the
+      // home screen.
+      if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
+        const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
+        addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
+      } else if (!workspace.id) {
+        addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
+      }
+      if (window.djiBridge.platformSetInformation) {
+        const info = parseBridge(
+          window.djiBridge.platformSetInformation(
+            "AviSafe",
+            workspace.name ?? "AviSafe",
+            t("djiCloud.platformDesc"),
+          ),
+        );
+        addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
+      }
+
       addLog('platformLoadComponent("thing", …)');
+
       const loaded = parseBridge(
         window.djiBridge.platformLoadComponent(
           "thing",
