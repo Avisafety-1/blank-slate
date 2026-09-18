@@ -472,7 +472,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       let parentPropagatesFh2 = false;
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
+        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }] = await Promise.all([
           (supabase as any)
             .from("companies")
             .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement, propagate_default_map_layers")
@@ -492,26 +492,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             .from("company_flight_alerts")
             .select("alert_type, enabled, threshold_value")
             .eq("company_id", parentId),
-          (supabase as any)
-            .from("company_flight_alert_recipients")
-            .select("id, profile_id")
-            .eq("company_id", parentId),
         ]);
 
         // Build alert map
         const alertMap: Record<string, { enabled: boolean; threshold_value: number | null }> = {};
         (parentAlerts || []).forEach((a: any) => { alertMap[a.alert_type] = { enabled: a.enabled, threshold_value: a.threshold_value }; });
 
-        // Recipients with names
-        const recProfileIds = (parentRecipients || []).map((r: any) => r.profile_id);
-        let recProfileMap: Record<string, string | null> = {};
-        if (recProfileIds.length > 0) {
-          const { data: recProfiles } = await supabase.from("profiles").select("id, full_name").in("id", recProfileIds);
-          (recProfiles || []).forEach((p: any) => { recProfileMap[p.id] = p.full_name; });
-        }
-        const recList = (parentRecipients || []).map((r: any) => ({
-          id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
-        }));
+        // Mottakerlisten tilhører morselskapet og deles bevisst IKKE med avdelingene
+        const recList: { id: string; profile_id: string; full_name: string | null }[] = [];
 
         if (parent) {
           parentPropagatesFh2 = !!parent.propagate_fh2_credentials;
