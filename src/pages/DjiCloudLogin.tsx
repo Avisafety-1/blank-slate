@@ -352,88 +352,134 @@ const DjiCloudLogin = () => {
     }
   };
 
-  const handleConnect = useCallback(() => {
-    if (!config) return;
-    if (!window.djiBridge) {
-      say(t("djiCloud.bridgeMissing"), "err");
-      setConnState("failed");
-      return;
-    }
-
-    const { appId, appKey, license } = config;
-    const host = config.mqttHost;
-    const username = config.mqttUsername;
-    const mqttPassword = config.mqttPassword;
-
-    setConnState("connecting");
-    try {
-      addLog(`appId=${appId} host=${host} username=${username}`);
-      addLog(`page origin=${window.location.origin}`);
-
-      addLog("platformVerifyLicense…");
-      const verify = parseBridge(window.djiBridge.platformVerifyLicense(appId, appKey, license));
-      addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
-      if (verify.code !== null && verify.code !== 0) {
-        say(t("djiCloud.licenseFailed"), "err");
+  const handleConnect = useCallback(
+    (force = false) => {
+      if (!config) return;
+      if (!window.djiBridge) {
+        say(t("djiCloud.bridgeMissing"), "err");
         setConnState("failed");
         return;
       }
-
-      if (window.djiBridge.platformIsVerified) {
-        addLog(`platformIsVerified -> ${parseBridge(window.djiBridge.platformIsVerified()).text}`);
-      }
-
-      // Register the platform BEFORE loading the thing module. Without a
-      // workspace id + platform information Pilot 2 treats the page as a
-      // plain web page and drops the MQTT link when the pilot returns to the
-      // home screen.
-      if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
-        const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
-        addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
-      } else if (!workspace.id) {
-        addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
-      }
-      if (window.djiBridge.platformSetInformation) {
-        const info = parseBridge(
-          window.djiBridge.platformSetInformation(
-            "AviSafe",
-            workspace.name ?? "AviSafe",
-            t("djiCloud.platformDesc"),
-          ),
-        );
-        addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
-      }
-
-      addLog('platformLoadComponent("thing", …)');
-
-      const loaded = parseBridge(
-        window.djiBridge.platformLoadComponent(
-          "thing",
-          JSON.stringify({ host, connectCallback: "reg_callback", username, password: mqttPassword }),
-        ),
-      );
-      addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
-      if (loaded.code !== null && loaded.code !== 0) {
-        say(t("djiCloud.componentFailed"), "err");
-        setConnState("failed");
+      if (connectingRef.current && !force) {
+        addLog("Tilkobling pågår allerede – hopper over nytt forsøk.");
         return;
       }
 
-      addLog("thingConnect…");
-      const connected = parseBridge(window.djiBridge.thingConnect(username, mqttPassword, "reg_callback"));
-      addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
-      if (connected.code !== null && connected.code !== 0) {
+      // Never tear down a live link just because the webview was shown again.
+      const existing = readConnectState();
+      addLog(`thingGetConnectState -> ${existing}`);
+      if (existing === "connected" && !force) {
+        setConnState("connected");
+        lastCallbackRef.current = Date.now();
+        say(t("djiCloud.alreadyConnected"), "ok");
+        return;
+      }
+
+      const { appId, appKey, license } = config;
+      const host = config.mqttHost;
+      const username = config.mqttUsername;
+      const mqttPassword = config.mqttPassword;
+
+      connectingRef.current = true;
+      setConnState("connecting");
+      try {
+        addLog(`appId=${appId} host=${host} username=${username}`);
+        addLog(`page origin=${window.location.origin}`);
+
+        // Only register the platform once. Re-verifying and re-setting the
+        // workspace on every return to the menu resets Pilot 2's platform
+        // registration.
+        let alreadyVerified = false;
+        if (window.djiBridge.platformIsVerified) {
+          const verified = parseBridge(window.djiBridge.platformIsVerified());
+          addLog(`platformIsVerified -> ${verified.text}`);
+          alreadyVerified = /true/i.test(verified.text);
+        }
+
+        if (!alreadyVerified || force) {
+          addLog("platformVerifyLicense…");
+          const verify = parseBridge(window.djiBridge.platformVerifyLicense(appId, appKey, license));
+          addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
+          if (verify.code !== null && verify.code !== 0) {
+            say(t("djiCloud.licenseFailed"), "err");
+            setConnState("failed");
+            connectingRef.current = false;
+            return;
+          }
+
+          // Register the platform BEFORE loading the thing module. Without a
+          // workspace id + platform information Pilot 2 treats the page as a
+          // plain web page and drops the MQTT link when the pilot returns to
+          // the home screen.
+          if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
+            const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
+            addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
+          } else if (!workspace.id) {
+            addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
+          }
+          if (window.djiBridge.platformSetInformation) {
+            const info = parseBridge(
+              window.djiBridge.platformSetInformation(
+                "AviSafe",
+                workspace.name ?? "AviSafe",
+                t("djiCloud.platformDesc"),
+              ),
+            );
+            addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
+          }
+        } else {
+          addLog("Plattformen er allerede registrert – hopper over lisens og arbeidsområde.");
+        }
+
+        let componentLoaded = false;
+        if (window.djiBridge.platformIsComponentLoaded) {
+          const loadedState = parseBridge(window.djiBridge.platformIsComponentLoaded("thing"));
+          addLog(`platformIsComponentLoaded("thing") -> ${loadedState.text}`);
+          componentLoaded = /true/i.test(loadedState.text);
+        }
+
+        if (!componentLoaded || force) {
+          addLog('platformLoadComponent("thing", …)');
+          const loaded = parseBridge(
+            window.djiBridge.platformLoadComponent(
+              "thing",
+              JSON.stringify({ host, connectCallback: "reg_callback", username, password: mqttPassword }),
+            ),
+          );
+          addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
+          if (loaded.code !== null && loaded.code !== 0) {
+            say(t("djiCloud.componentFailed"), "err");
+            setConnState("failed");
+            connectingRef.current = false;
+            return;
+          }
+        } else {
+          addLog("«thing»-modulen er allerede lastet – beholder den.");
+        }
+
+        addLog("thingConnect…");
+        const connected = parseBridge(window.djiBridge.thingConnect(username, mqttPassword, "reg_callback"));
+        addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
+        if (connected.code !== null && connected.code !== 0) {
+          say(t("djiCloud.connectFailed"), "err");
+          setConnState("failed");
+          connectingRef.current = false;
+          return;
+        }
+        setStatus(t("djiCloud.connecting"));
+      } catch (err) {
         say(t("djiCloud.connectFailed"), "err");
         setConnState("failed");
-        return;
+        addLog(String(err instanceof Error ? err.message : err), "err");
+      } finally {
+        window.setTimeout(() => {
+          connectingRef.current = false;
+        }, 5000);
       }
-      setStatus(t("djiCloud.connecting"));
-    } catch (err) {
-      say(t("djiCloud.connectFailed"), "err");
-      setConnState("failed");
-      addLog(String(err instanceof Error ? err.message : err), "err");
-    }
-  }, [addLog, config, say, t, workspace.id, workspace.name]);
+    },
+    [addLog, config, parseBridge, readConnectState, say, t, workspace.id, workspace.name],
+  );
+
 
   // DJI exit hooks: onStopPlatform fires right before Pilot 2 tears the
   // platform down, onBackClick when the in-page back arrow is used. Returning
