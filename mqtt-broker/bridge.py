@@ -206,6 +206,18 @@ def num(value):
     return value if isinstance(value, (int, float)) else None
 
 
+def msl_or_none(source):
+    """True MSL altitude, or None when DJI reports 0/missing (no RTK fix)."""
+    for key in ("elevation", "altitude"):
+        value = num(source.get(key))
+        if value is not None and value != 0:
+            return value
+    return None
+
+
+
+
+
 def handle_update_topo(client, sn, payload):
     reply = {
         "tid": payload.get("tid"),
@@ -272,7 +284,9 @@ def handle_osd(sn_from_topic, payload):
         "lat": lat,
         "lng": lng,
         "height_m": height,
-        "altitude_m": num(source.get("elevation")) if num(source.get("elevation")) is not None else num(source.get("altitude")),
+        # DJI sends elevation=0 when true MSL is unavailable (no RTK fix); store NULL so
+        # consumers fall back to terrain + AGL instead of publishing a bogus 0 m MSL.
+        "altitude_m": msl_or_none(source),
         "vert_speed_ms": num(source.get("vertical_speed")),
         "ground_speed_ms": num(source.get("horizontal_speed")),
         "course_deg": num(source.get("attitude_head")),

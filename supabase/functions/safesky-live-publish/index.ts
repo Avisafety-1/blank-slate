@@ -34,6 +34,18 @@ function terrainKey(lat: number, lng: number): string {
 }
 
 /**
+ * True MSL altitude from the position, or null when unavailable.
+ * DJI reports elevation = 0 when there is no RTK fix, so 0 is not a usable MSL
+ * value for an airborne drone — in that case we fall back to terrain + AGL.
+ */
+// deno-lint-ignore no-explicit-any
+function usableAmsl(p: any): number | null {
+  const amsl = p?.altitude_m;
+  if (typeof amsl !== 'number' || !Number.isFinite(amsl) || amsl === 0) return null;
+  return amsl;
+}
+
+/**
  * Terrain elevation for a set of grid keys.
  * Reads the shared terrain_elevation_cache table first, then fetches only
  * the missing cells in ONE Open-Meteo request and writes them back.
@@ -257,7 +269,7 @@ Deno.serve(async (req) => {
     const terrainKeys: string[] = [];
     for (const f of withPosition) {
       const p = latestByDrone.get(f.drone_id);
-      if (p.altitude_m === null || p.altitude_m === undefined) {
+      if (usableAmsl(p) === null) {
         terrainKeys.push(terrainKey(Number(p.lat), Number(p.lng)));
       }
     }
@@ -279,7 +291,7 @@ Deno.serve(async (req) => {
       const gs = typeof p.ground_speed_ms === 'number' ? p.ground_speed_ms : 0;
       const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
 
-      let altAmsl = (p.altitude_m as number | null) ?? null;
+      let altAmsl = usableAmsl(p);
       if (altAmsl === null) {
         const agl = (p.height_m as number | null) ?? 0;
         altAmsl = (terrain.get(terrainKey(Number(p.lat), Number(p.lng))) ?? 0) + agl;
