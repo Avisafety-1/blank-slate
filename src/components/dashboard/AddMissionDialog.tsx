@@ -20,6 +20,7 @@ function toLocalDatetimeString(date: Date): string {
 }
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import { toast } from "sonner";
 import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText, AlertTriangle, Map, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -510,10 +511,12 @@ export const AddMissionDialog = ({
     if (!user) return;
     const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
     if (!profile?.company_id) return;
+    // Avdelinger leser morselskapets roller når "gjelder for alle avdelinger" er på
+    const source = await resolveEffectiveCompanyId(profile.company_id, "mission_roles");
     const { data } = await (supabase as any)
       .from("company_mission_roles")
       .select("id, name")
-      .eq("company_id", profile.company_id)
+      .eq("company_id", source)
       .order("name");
     setCompanyMissionRoles(data || []);
   };

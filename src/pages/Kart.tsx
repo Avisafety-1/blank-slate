@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import safeskyLogo from "@/assets/safesky-logo.png";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
@@ -158,26 +159,28 @@ export default function KartPage() {
   // Fetch company default buffer mode + FH2 token status
   useEffect(() => {
     if (!companyId) return;
-    (supabase as any)
-      .from("company_sora_config")
-      .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
-      .eq("company_id", companyId)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (data?.default_buffer_mode) {
-          const mode = data.default_buffer_mode as "corridor" | "convexHull";
-          setCompanyBufferMode(mode);
-          setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
-        }
-        if (data?.default_flight_geography_m != null && data.default_flight_geography_m > 0) {
-          setCompanyFlightGeography(data.default_flight_geography_m);
-          setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
-        }
-        if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
-          setCompanyFlightAltitude(data.default_flight_altitude_m);
-          setSoraSettings(prev => prev.flightAltitude === 120 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
-        }
-      });
+    (async () => {
+      // Fall tilbake til morselskapets SORA-standarder når bryteren er på
+      const source = await resolveEffectiveCompanyId(companyId, "sora_buffer_mode");
+      const { data } = await (supabase as any)
+        .from("company_sora_config")
+        .select("default_buffer_mode, default_flight_geography_m, default_flight_altitude_m")
+        .eq("company_id", source || companyId)
+        .maybeSingle();
+      if (data?.default_buffer_mode) {
+        const mode = data.default_buffer_mode as "corridor" | "convexHull";
+        setCompanyBufferMode(mode);
+        setSoraSettings(prev => prev.bufferMode === "corridor" ? { ...prev, bufferMode: mode } : prev);
+      }
+      if (data?.default_flight_geography_m != null && data.default_flight_geography_m > 0) {
+        setCompanyFlightGeography(data.default_flight_geography_m);
+        setSoraSettings(prev => prev.flightGeographyDistance === 0 ? { ...prev, flightGeographyDistance: data.default_flight_geography_m } : prev);
+      }
+      if (data?.default_flight_altitude_m != null && data.default_flight_altitude_m > 0) {
+        setCompanyFlightAltitude(data.default_flight_altitude_m);
+        setSoraSettings(prev => prev.flightAltitude === 120 ? { ...prev, flightAltitude: data.default_flight_altitude_m } : prev);
+      }
+    })();
     // Check if FlightHub 2 is configured (edge function handles parent fallback)
     (async () => {
       const { data: cred } = await supabase

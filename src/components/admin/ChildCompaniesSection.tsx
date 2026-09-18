@@ -472,7 +472,7 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
       let parentPropagatesFh2 = false;
       // Load parent inheritance data (propagation flags + values)
       if (parentId) {
-        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }, { data: parentRecipients }] = await Promise.all([
+        const [{ data: parent }, { data: parentSora }, { data: parentRoles }, { data: parentAlerts }] = await Promise.all([
           (supabase as any)
             .from("companies")
             .select("navn, show_all_airspace_warnings, hide_reporter_identity, incident_reports_visible_to_all_companies, require_mission_approval, prevent_self_approval, all_users_can_acknowledge_maintenance, require_sora_on_missions, require_sora_steps, deviation_report_enabled, propagate_airspace_warnings, propagate_hide_reporter, propagate_mission_approval, propagate_prevent_self_approval, propagate_all_users_can_acknowledge_maintenance, propagate_sora_required, propagate_deviation_report, propagate_sora_buffer_mode, propagate_mission_roles, propagate_flight_alerts, propagate_fh2_credentials, safesky_callsign_prefix, safesky_callsign_variable, safesky_callsign_propagate, safesky_callsign_test_mode, currency_requirement_enabled, currency_requirement_hours, currency_requirement_days, currency_requirement_2_enabled, currency_requirement_2_hours, currency_requirement_2_days, propagate_currency_requirement, propagate_default_map_layers")
@@ -492,26 +492,14 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
             .from("company_flight_alerts")
             .select("alert_type, enabled, threshold_value")
             .eq("company_id", parentId),
-          (supabase as any)
-            .from("company_flight_alert_recipients")
-            .select("id, profile_id")
-            .eq("company_id", parentId),
         ]);
 
         // Build alert map
         const alertMap: Record<string, { enabled: boolean; threshold_value: number | null }> = {};
         (parentAlerts || []).forEach((a: any) => { alertMap[a.alert_type] = { enabled: a.enabled, threshold_value: a.threshold_value }; });
 
-        // Recipients with names
-        const recProfileIds = (parentRecipients || []).map((r: any) => r.profile_id);
-        let recProfileMap: Record<string, string | null> = {};
-        if (recProfileIds.length > 0) {
-          const { data: recProfiles } = await supabase.from("profiles").select("id, full_name").in("id", recProfileIds);
-          (recProfiles || []).forEach((p: any) => { recProfileMap[p.id] = p.full_name; });
-        }
-        const recList = (parentRecipients || []).map((r: any) => ({
-          id: r.id, profile_id: r.profile_id, full_name: recProfileMap[r.profile_id] || null,
-        }));
+        // Mottakerlisten tilhører morselskapet og deles bevisst IKKE med avdelingene
+        const recList: { id: string; profile_id: string; full_name: string | null }[] = [];
 
         if (parent) {
           parentPropagatesFh2 = !!parent.propagate_fh2_credentials;
@@ -1156,14 +1144,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               }, { onConflict: 'company_id,alert_type' });
             }
           }
+          // Varselmottakere tilhører morselskapet og kopieres bevisst ikke til avdelingene
           await (supabase as any).from("company_flight_alert_recipients").delete().eq("company_id", child.id);
-          if (alertRecipients.length > 0) {
-            const recipientInserts = alertRecipients.map(r => ({
-              company_id: child.id,
-              profile_id: r.profile_id,
-            }));
-            await (supabase as any).from("company_flight_alert_recipients").insert(recipientInserts);
-          }
         }
       }
       toast.success(t("admin.childCompanies.toastAlertsAppliedLocked"));
@@ -1996,33 +1978,37 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       </div>
                       <div className="border-t pt-2 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.alertRecipientsLabel")}</p>
-                        {!alertsLocked && (
-                          <SearchablePersonSelect
-                            persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
-                            value={null}
-                            onValueChange={handleAddRecipient}
-                            placeholder={t("admin.childCompanies.addRecipientPlaceholder")}
-                            searchPlaceholder={t("admin.childCompanies.searchPerson")}
-                            emptyText={t("admin.childCompanies.noAvailablePersons")}
-                          />
-                        )}
-                        {displayRecipients.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {displayRecipients.map((r) => (
-                              <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
-                                <span>{r.full_name || t("admin.childCompanies.unknownUser")}</span>
-                                {!alertsLocked && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveRecipient(r.id)}
-                                    className="hover:bg-destructive/20 rounded-full p-0.5"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                )}
+                        {alertsLocked ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t("admin.childCompanies.alertRecipientsManagedByParent", { name: parentNavn })}
+                          </p>
+                        ) : (
+                          <>
+                            <SearchablePersonSelect
+                              persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
+                              value={null}
+                              onValueChange={handleAddRecipient}
+                              placeholder={t("admin.childCompanies.addRecipientPlaceholder")}
+                              searchPlaceholder={t("admin.childCompanies.searchPerson")}
+                              emptyText={t("admin.childCompanies.noAvailablePersons")}
+                            />
+                            {displayRecipients.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {displayRecipients.map((r) => (
+                                  <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                                    <span>{r.full_name || t("admin.childCompanies.unknownUser")}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveRecipient(r.id)}
+                                      className="hover:bg-destructive/20 rounded-full p-0.5"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </>
