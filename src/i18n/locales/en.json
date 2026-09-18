@@ -8895,6 +8895,8 @@
     "account": "Account",
     "host": "Server",
     "lastCallback": "Last reply from DJI",
-    "build": "Version"
+    "build": "Version",
+    "workspace": "Workspace",
+    "platformDesc": "Live position to AviSafe"
   }
 }
