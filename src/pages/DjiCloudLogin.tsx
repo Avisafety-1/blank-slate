@@ -26,10 +26,16 @@ declare global {
       platformVerifyLicense: (appId: string, appKey: string, license: string) => unknown;
       platformLoadComponent: (name: string, config: string) => unknown;
       thingConnect: (username: string, password: string, callback: string) => unknown;
+      platformSetWorkspaceId?: (uuid: string) => unknown;
+      platformSetInformation?: (platformName: string, workspaceName: string, desc: string) => unknown;
+      platformIsVerified?: () => unknown;
     };
     reg_callback?: (result: unknown) => void;
+    onStopPlatform?: () => unknown;
+    onBackClick?: () => boolean;
   }
 }
+
 
 /** Auto-reconnect when the last callback is older than this (ms). */
 const STALE_MS = 30000;
@@ -48,6 +54,11 @@ const DjiCloudLogin = () => {
   const [log, setLog] = useState<LogLine[]>([]);
   const [connState, setConnState] = useState<ConnState>("idle");
   const [lastCallbackAt, setLastCallbackAt] = useState<Date | null>(null);
+  const [workspace, setWorkspace] = useState<{ id: string | null; name: string | null }>({
+    id: null,
+    name: null,
+  });
+
   const logId = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const lastCallbackRef = useRef<number>(0);
@@ -91,6 +102,43 @@ const DjiCloudLogin = () => {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Workspace identity for DJI Pilot 2. Registering the platform with a
+  // workspace id + name is what makes Pilot 2 treat this as a real cloud
+  // platform (home screen shows the workspace instead of "Not Logged In")
+  // instead of a loose web page it tears down when leaving the menu.
+  useEffect(() => {
+    if (!signedIn) return;
+    let active = true;
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_id")
+        .eq("id", userId)
+        .maybeSingle();
+      const companyId = (profile as { company_id?: string | null } | null)?.company_id ?? null;
+      let companyName: string | null = null;
+      if (companyId) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", companyId)
+          .maybeSingle();
+        companyName = (company as { name?: string | null } | null)?.name ?? null;
+      }
+      if (!active) return;
+      setWorkspace({ id: companyId, name: companyName });
+      addLog(`workspace: ${companyName ?? "(ukjent)"} / ${companyId ?? "(mangler id)"}`);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [addLog, signedIn]);
+
+
 
   // Log running build version and make sure this page never runs from an old
   // service-worker cache (DJI Pilot 2's webview caches aggressively).
@@ -288,7 +336,33 @@ const DjiCloudLogin = () => {
         return;
       }
 
+      if (window.djiBridge.platformIsVerified) {
+        addLog(`platformIsVerified -> ${parseBridge(window.djiBridge.platformIsVerified()).text}`);
+      }
+
+      // Register the platform BEFORE loading the thing module. Without a
+      // workspace id + platform information Pilot 2 treats the page as a
+      // plain web page and drops the MQTT link when the pilot returns to the
+      // home screen.
+      if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
+        const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
+        addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
+      } else if (!workspace.id) {
+        addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
+      }
+      if (window.djiBridge.platformSetInformation) {
+        const info = parseBridge(
+          window.djiBridge.platformSetInformation(
+            "AviSafe",
+            workspace.name ?? "AviSafe",
+            t("djiCloud.platformDesc"),
+          ),
+        );
+        addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
+      }
+
       addLog('platformLoadComponent("thing", …)');
+
       const loaded = parseBridge(
         window.djiBridge.platformLoadComponent(
           "thing",
@@ -316,7 +390,23 @@ const DjiCloudLogin = () => {
       setConnState("failed");
       addLog(String(err instanceof Error ? err.message : err), "err");
     }
-  }, [addLog, config, say, t]);
+  }, [addLog, config, say, t, workspace.id, workspace.name]);
+
+  // DJI exit hooks: onStopPlatform fires right before Pilot 2 tears the
+  // platform down, onBackClick when the in-page back arrow is used. Returning
+  // true from onBackClick keeps the platform (and the MQTT link) alive.
+  useEffect(() => {
+    window.onStopPlatform = () => {
+      addLog("onStopPlatform – DJI Pilot 2 avslutter plattformen", "err");
+      setConnState("idle");
+      return true;
+    };
+    window.onBackClick = () => {
+      addLog("onBackClick – beholder plattformen tilkoblet");
+      return true;
+    };
+  }, [addLog]);
+
 
   useEffect(() => {
     connectRef.current = handleConnect;
@@ -480,6 +570,11 @@ const DjiCloudLogin = () => {
                   <dt>{t("djiCloud.account")}</dt>
                   <dd className="truncate">{accountEmail ?? "–"}</dd>
                 </div>
+                <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.workspace")}</dt>
+                  <dd className="truncate">{workspace.name ?? "–"}</dd>
+                </div>
+
                 <div className="flex justify-between gap-2">
                   <dt>{t("djiCloud.host")}</dt>
                   <dd className="truncate">{config?.mqttHost ?? "–"}</dd>

@@ -8897,6 +8897,8 @@
     "account": "Konto",
     "host": "Server",
     "lastCallback": "Siste svar fra DJI",
-    "build": "Versjon"
+    "build": "Versjon",
+    "workspace": "Arbeidsområde",
+    "platformDesc": "Live posisjon til AviSafe"
   }
 }
