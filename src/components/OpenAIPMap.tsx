@@ -420,6 +420,8 @@ export function OpenAIPMap({
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
+  const tensioLuftnettLayerRef = useRef<L.TileLayer.WMS | null>(null);
+
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
