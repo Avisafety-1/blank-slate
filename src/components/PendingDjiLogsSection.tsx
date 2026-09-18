@@ -65,6 +65,7 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
   const [hasMore, setHasMore] = useState(false);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [onlyMine, setOnlyMine] = useState(true);
+  const [backlog, setBacklog] = useState<{ count: number; oldest: string | null } | null>(null);
   const djiEnabled = hasAddon('dji');
   const isMobile = useIsMobile();
 
@@ -129,6 +130,32 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     setLogs(prev => replace ? rawLogs : [...prev, ...rawLogs]);
     setLoading(false);
     setLoadingMore(false);
+
+    if (replace) fetchBacklog();
+  };
+
+  // Company-wide backlog of unprocessed logs (independent of the "only mine" filter)
+  const fetchBacklog = async () => {
+    if (!companyId) return;
+    const { count } = await supabase
+      .from("pending_dji_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("status", "pending");
+
+    const { data: oldestRow } = await supabase
+      .from("pending_dji_logs")
+      .select("flight_date, created_at")
+      .eq("company_id", companyId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    setBacklog({
+      count: count ?? 0,
+      oldest: (oldestRow?.flight_date || oldestRow?.created_at) ?? null,
+    });
   };
 
   const handleDismiss = async (e: React.MouseEvent, logId: string) => {
@@ -200,6 +227,15 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
           <Label htmlFor="only-mine" className="text-xs text-muted-foreground cursor-pointer">{t('dronelog.onlyMine')}</Label>
         </div>
       </div>
+      {backlog && backlog.count > 0 && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400 -mt-1 break-words flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          <span>
+            {t('dronelog.backlogTotal', { count: backlog.count })}
+            {backlog.oldest ? ` – ${t('dronelog.backlogOldest', { date: format(new Date(backlog.oldest), "d. MMM yyyy", { locale: dateLocale }) })}` : ''}
+          </span>
+        </p>
+      )}
       <p className="text-[11px] text-muted-foreground -mt-1 break-words">
         {t('dronelog.cantFindLog')}
       </p>

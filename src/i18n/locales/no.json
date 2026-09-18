@@ -3270,6 +3270,8 @@
     "cantFindLog": "Finner du ikke riktig logg? Enkelte loggtyper støttes ikke av auto-sync og må lastes opp manuelt.",
     "noPendingMine": "Ingen ventende logger på deg. Skru av «Kun mine» for å se andres.",
     "noPending": "Ingen logger til behandling",
+    "backlogTotal": "{{count}} logger i selskapet venter på behandling",
+    "backlogOldest": "eldste fra {{date}}",
     "back": "Tilbake",
     "djiLoginDesc": "Logg inn med din DJI-konto for å hente flylogger fra skyen.",
     "djiEmail": "DJI e-post",

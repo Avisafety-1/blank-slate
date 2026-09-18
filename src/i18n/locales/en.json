@@ -3268,6 +3268,8 @@
     "cantFindLog": "Can't find the right log? Some log types aren't supported by auto-sync and must be uploaded manually.",
     "noPendingMine": "No pending logs for you. Turn off \"Only mine\" to see others.",
     "noPending": "No logs to process",
+    "backlogTotal": "{{count}} logs in the company are waiting to be processed",
+    "backlogOldest": "oldest from {{date}}",
     "back": "Back",
     "djiLoginDesc": "Sign in with your DJI account to fetch flight logs from the cloud.",
     "djiEmail": "DJI email",
