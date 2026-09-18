@@ -1889,7 +1889,58 @@ export function OpenAIPMap({
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };
-  }, [profileLoaded, isTensioHierarchy, companyDefaultLayersLoaded]);
+    // Merk: `isTensioHierarchy` er bevisst IKKE en avhengighet her. Statusen
+    // kan endre seg etter en auth-oppfriskning, og en re-init ville rive ned
+    // kartet og nullstille zoom/utsnitt midt i arbeidet.
+  }, [profileLoaded, companyDefaultLayersLoaded]);
+
+  // Tensio luftnett — legges til/fjernes uten å bygge kartet på nytt.
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    if (!isTensioHierarchy) {
+      if (tensioLuftnettLayerRef.current) {
+        try { map.removeLayer(tensioLuftnettLayerRef.current); } catch {}
+        tensioLuftnettLayerRef.current = null;
+        setLayers((prev) => prev.filter((l) => l.id !== "tensio_luftnett"));
+      }
+      return;
+    }
+
+    if (tensioLuftnettLayerRef.current) return;
+
+    const layer = L.tileLayer.wms(TENSIO_WMS_URL, {
+      layers: "0,1,2,3,4,5,6,7,8,9",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.75,
+      attribution: "Tensio luftnett",
+      version: "1.3.0",
+      pane: "tensioPowerPane",
+    } as any) as L.TileLayer.WMS;
+    tensioLuftnettLayerRef.current = layer;
+
+    const enabled = resolveLayerDefault("tensio_luftnett", companyDefaultLayersRef.current, true);
+    if (enabled) layer.addTo(map);
+
+    setLayers((prev) => {
+      if (prev.some((l) => l.id === "tensio_luftnett")) return prev;
+      const cfg: LayerConfig = {
+        id: "tensio_luftnett",
+        name: t('pages.map.layers.tensioPowerGrid'),
+        layer,
+        enabled,
+        icon: "zap",
+        group: t('pages.map.layers.groups.infrastructure'),
+      };
+      // Plasser rett før "flyplasser" slik at rekkefølgen i menyen er som før.
+      const idx = prev.findIndex((l) => l.id === "flyplasser");
+      if (idx === -1) return [...prev, cfg];
+      return [...prev.slice(0, idx), cfg, ...prev.slice(idx)];
+    });
+  }, [isTensioHierarchy, profileLoaded, companyDefaultLayersLoaded, layers.length, t]);
+
 
   // Recenter map when initialCenter changes — guard with tolerance so a parent
   // that mirrors moveend back into this prop does not snap the user back.
