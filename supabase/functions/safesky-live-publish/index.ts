@@ -147,7 +147,7 @@ async function resolveCallsigns(
     }
 
     const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9._-]/g, '') || 'avisafe';
 
     // Company-level fallback so we never fall back to the generic "avisafe01"
     callsigns.set(`${companyId}:`, sanitized + (variable === 'none' ? '' : '01'));
@@ -160,7 +160,7 @@ async function resolveCallsigns(
         const drone = droneById.get(droneId);
         // Registration number only — never fall back to the serial number.
         const reg = (drone?.registration_number || '') as string;
-        suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
+        suffix = reg.replace(/[^a-zA-Z0-9._-]/g, '') || '01';
       }
       callsigns.set(`${companyId}:${droneId}`, sanitized + suffix);
     }
