@@ -130,6 +130,32 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
     setLogs(prev => replace ? rawLogs : [...prev, ...rawLogs]);
     setLoading(false);
     setLoadingMore(false);
+
+    if (replace) fetchBacklog();
+  };
+
+  // Company-wide backlog of unprocessed logs (independent of the "only mine" filter)
+  const fetchBacklog = async () => {
+    if (!companyId) return;
+    const { count } = await supabase
+      .from("pending_dji_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("status", "pending");
+
+    const { data: oldestRow } = await supabase
+      .from("pending_dji_logs")
+      .select("flight_date, created_at")
+      .eq("company_id", companyId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    setBacklog({
+      count: count ?? 0,
+      oldest: (oldestRow?.flight_date || oldestRow?.created_at) ?? null,
+    });
   };
 
   const handleDismiss = async (e: React.MouseEvent, logId: string) => {
