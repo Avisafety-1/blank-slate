@@ -26,10 +26,16 @@ declare global {
       platformVerifyLicense: (appId: string, appKey: string, license: string) => unknown;
       platformLoadComponent: (name: string, config: string) => unknown;
       thingConnect: (username: string, password: string, callback: string) => unknown;
+      platformSetWorkspaceId?: (uuid: string) => unknown;
+      platformSetInformation?: (platformName: string, workspaceName: string, desc: string) => unknown;
+      platformIsVerified?: () => unknown;
     };
     reg_callback?: (result: unknown) => void;
+    onStopPlatform?: () => unknown;
+    onBackClick?: () => boolean;
   }
 }
+
 
 /** Auto-reconnect when the last callback is older than this (ms). */
 const STALE_MS = 30000;
