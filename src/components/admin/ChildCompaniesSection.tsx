@@ -1144,14 +1144,8 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
               }, { onConflict: 'company_id,alert_type' });
             }
           }
+          // Varselmottakere tilhører morselskapet og kopieres bevisst ikke til avdelingene
           await (supabase as any).from("company_flight_alert_recipients").delete().eq("company_id", child.id);
-          if (alertRecipients.length > 0) {
-            const recipientInserts = alertRecipients.map(r => ({
-              company_id: child.id,
-              profile_id: r.profile_id,
-            }));
-            await (supabase as any).from("company_flight_alert_recipients").insert(recipientInserts);
-          }
         }
       }
       toast.success(t("admin.childCompanies.toastAlertsAppliedLocked"));
@@ -1984,33 +1978,37 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
                       </div>
                       <div className="border-t pt-2 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">{t("admin.childCompanies.alertRecipientsLabel")}</p>
-                        {!alertsLocked && (
-                          <SearchablePersonSelect
-                            persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
-                            value={null}
-                            onValueChange={handleAddRecipient}
-                            placeholder={t("admin.childCompanies.addRecipientPlaceholder")}
-                            searchPlaceholder={t("admin.childCompanies.searchPerson")}
-                            emptyText={t("admin.childCompanies.noAvailablePersons")}
-                          />
-                        )}
-                        {displayRecipients.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {displayRecipients.map((r) => (
-                              <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
-                                <span>{r.full_name || t("admin.childCompanies.unknownUser")}</span>
-                                {!alertsLocked && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveRecipient(r.id)}
-                                    className="hover:bg-destructive/20 rounded-full p-0.5"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                )}
+                        {alertsLocked ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t("admin.childCompanies.alertRecipientsManagedByParent", { name: parentNavn })}
+                          </p>
+                        ) : (
+                          <>
+                            <SearchablePersonSelect
+                              persons={companyProfiles.filter(p => !alertRecipients.some(r => r.profile_id === p.id))}
+                              value={null}
+                              onValueChange={handleAddRecipient}
+                              placeholder={t("admin.childCompanies.addRecipientPlaceholder")}
+                              searchPlaceholder={t("admin.childCompanies.searchPerson")}
+                              emptyText={t("admin.childCompanies.noAvailablePersons")}
+                            />
+                            {displayRecipients.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {displayRecipients.map((r) => (
+                                  <div key={r.id} className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md text-xs">
+                                    <span>{r.full_name || t("admin.childCompanies.unknownUser")}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveRecipient(r.id)}
+                                      className="hover:bg-destructive/20 rounded-full p-0.5"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </>
