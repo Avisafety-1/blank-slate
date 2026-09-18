@@ -8905,6 +8905,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_pending_dji_logs: {
+        Args: { p_batch_size?: number; p_max_batches?: number }
+        Returns: Json
+      }
       deactivate_stale_airspace_zones: {
         Args: {
           p_country_code: string
