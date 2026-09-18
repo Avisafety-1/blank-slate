@@ -281,20 +281,25 @@ export function OpenAIPMap({
   const [isTensioHierarchy, setIsTensioHierarchy] = useState<boolean>(
     isTensioName(companyName) || isTensioName(parentCompanyName),
   );
+  const isTensioHierarchyRef = useRef(isTensioHierarchy);
+  useEffect(() => {
+    isTensioHierarchyRef.current = isTensioHierarchy;
+  }, [isTensioHierarchy]);
   useEffect(() => {
     let cancelled = false;
-    if (!companyId) {
-      setIsTensioHierarchy(false);
-      return;
-    }
+    if (!companyId) return;
     resolveRootCompanyName(companyId).then((rootName) => {
       if (cancelled) return;
+      // `null` betyr "vet ikke" (nettverks-/RLS-feil) — behold forrige kjente
+      // verdi. Ellers ville et forbigående feilsvar slå av Tensio-laget.
+      if (rootName == null) return;
       setIsTensioHierarchy(isTensioName(rootName));
     });
     return () => {
       cancelled = true;
     };
-  }, [companyId, companyName, parentCompanyName]);
+  }, [companyId]);
+
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
