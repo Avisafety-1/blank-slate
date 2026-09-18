@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 
 import { renderSoraZones, renderAdjacentAreaZone } from "@/lib/soraGeometry";
 import { useAuth } from "@/contexts/AuthContext";
-import { MAP_LAYER_CATALOG } from "@/config/mapLayers";
+import { MAP_LAYER_CATALOG, resolveLayerDefault } from "@/config/mapLayers";
 
 // Re-export types for backward compatibility
 export type { RoutePoint, RouteData, SoraSettings } from "@/types/map";
@@ -281,20 +281,25 @@ export function OpenAIPMap({
   const [isTensioHierarchy, setIsTensioHierarchy] = useState<boolean>(
     isTensioName(companyName) || isTensioName(parentCompanyName),
   );
+  const isTensioHierarchyRef = useRef(isTensioHierarchy);
+  useEffect(() => {
+    isTensioHierarchyRef.current = isTensioHierarchy;
+  }, [isTensioHierarchy]);
   useEffect(() => {
     let cancelled = false;
-    if (!companyId) {
-      setIsTensioHierarchy(false);
-      return;
-    }
+    if (!companyId) return;
     resolveRootCompanyName(companyId).then((rootName) => {
       if (cancelled) return;
+      // `null` betyr "vet ikke" (nettverks-/RLS-feil) — behold forrige kjente
+      // verdi. Ellers ville et forbigående feilsvar slå av Tensio-laget.
+      if (rootName == null) return;
       setIsTensioHierarchy(isTensioName(rootName));
     });
     return () => {
       cancelled = true;
     };
-  }, [companyId, companyName, parentCompanyName]);
+  }, [companyId]);
+
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
@@ -415,6 +420,8 @@ export function OpenAIPMap({
   const populationDensityCellsRef = useRef<SsbPopulationCell[] | undefined>(populationDensityCells);
   const populationDensityCoverageRef = useRef<RouteMultiPolygon | undefined>(populationDensityCoveragePolygons);
   const [layers, setLayers] = useState<LayerConfig[]>([]);
+  const tensioLuftnettLayerRef = useRef<L.TileLayer.WMS | null>(null);
+
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [baseLayerType, setBaseLayerType] = useState<'osm' | 'satellite' | 'topo'>('osm');
   const [befolkningSource, setBefolkningSource] = useState<'ssb' | 'eurostat'>('ssb');
@@ -1047,7 +1054,9 @@ export function OpenAIPMap({
     baseLayerRef.current = osmLayer;
 
     const layerConfigs: LayerConfig[] = [];
-    let tensioLuftnettLayer: L.TileLayer.WMS | null = null;
+    // Tensio-laget håndteres i en egen effekt (se `isTensioHierarchy`-effekten
+    // lenger ned) slik at kartet aldri bygges på nytt når statusen endrer seg.
+
 
     // ============================================================
     // LUFTROM
@@ -1148,18 +1157,6 @@ export function OpenAIPMap({
       attribution: 'Tettsteder © <a href="https://www.ssb.no">SSB</a>', minZoom: 0, maxZoom: 20, tiled: true, version: "1.3.0",
     } as any);
 
-    // Tensio luftnett
-    if (isTensioHierarchy) {
-      tensioLuftnettLayer = L.tileLayer.wms(TENSIO_WMS_URL, {
-        layers: "0,1,2,3,4,5,6,7,8,9",
-        format: "image/png",
-        transparent: true,
-        opacity: 0.75,
-        attribution: "Tensio luftnett",
-        version: "1.3.0",
-        pane: "tensioPowerPane",
-      } as any).addTo(map);
-    }
 
     // NVE Kraftledninger
     const kraftledningerLayer = L.layerGroup();
@@ -1236,9 +1233,6 @@ export function OpenAIPMap({
     layerConfigs.push({ id: "eiendomsgrenser", name: t('pages.map.layers.propertyBoundaries'), layer: eiendomsgrenserLayer, enabled: false, icon: "mapPin", group: gInf });
     layerConfigs.push({ id: "mobildekning_4g", name: t('pages.map.layers.mobileCoverage4g'), layer: mobildekning4gLayer, enabled: false, icon: "radio", group: gInf });
     layerConfigs.push({ id: "mobildekning_5g", name: t('pages.map.layers.mobileCoverage5g'), layer: mobildekning5gLayer, enabled: false, icon: "radio", group: gInf });
-    if (tensioLuftnettLayer) {
-      layerConfigs.push({ id: "tensio_luftnett", name: t('pages.map.layers.tensioPowerGrid'), layer: tensioLuftnettLayer, enabled: true, icon: "zap", group: gInf });
-    }
     layerConfigs.push({ id: "flyplasser", name: t('pages.map.layers.airports'), layer: [airportsLayer, caaFlyplasserLayer, unifiedAirportLayer], enabled: true, icon: "planeLanding", group: gInf });
 
     // Geolocation
@@ -1396,7 +1390,12 @@ export function OpenAIPMap({
       } else if (weatherEnabledRef.current) {
 
         showWeatherPopup(map, lat, lng);
-      } else if (isTensioHierarchy && tensioLuftnettLayer && map.hasLayer(tensioLuftnettLayer)) {
+      } else if (
+        isTensioHierarchyRef.current &&
+        tensioLuftnettLayerRef.current &&
+        map.hasLayer(tensioLuftnettLayerRef.current)
+      ) {
+
         try {
           const response = await fetch(buildTensioFeatureInfoUrl(map, e.latlng));
           if (!response.ok) return;
@@ -1890,7 +1889,58 @@ export function OpenAIPMap({
       try { map.stop(); } catch {}
       try { map.remove(); } catch {}
     };
-  }, [profileLoaded, isTensioHierarchy, companyDefaultLayersLoaded]);
+    // Merk: `isTensioHierarchy` er bevisst IKKE en avhengighet her. Statusen
+    // kan endre seg etter en auth-oppfriskning, og en re-init ville rive ned
+    // kartet og nullstille zoom/utsnitt midt i arbeidet.
+  }, [profileLoaded, companyDefaultLayersLoaded]);
+
+  // Tensio luftnett — legges til/fjernes uten å bygge kartet på nytt.
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    if (!isTensioHierarchy) {
+      if (tensioLuftnettLayerRef.current) {
+        try { map.removeLayer(tensioLuftnettLayerRef.current); } catch {}
+        tensioLuftnettLayerRef.current = null;
+        setLayers((prev) => prev.filter((l) => l.id !== "tensio_luftnett"));
+      }
+      return;
+    }
+
+    if (tensioLuftnettLayerRef.current) return;
+
+    const layer = L.tileLayer.wms(TENSIO_WMS_URL, {
+      layers: "0,1,2,3,4,5,6,7,8,9",
+      format: "image/png",
+      transparent: true,
+      opacity: 0.75,
+      attribution: "Tensio luftnett",
+      version: "1.3.0",
+      pane: "tensioPowerPane",
+    } as any) as L.TileLayer.WMS;
+    tensioLuftnettLayerRef.current = layer;
+
+    const enabled = resolveLayerDefault("tensio_luftnett", companyDefaultLayersRef.current, true);
+    if (enabled) layer.addTo(map);
+
+    setLayers((prev) => {
+      if (prev.some((l) => l.id === "tensio_luftnett")) return prev;
+      const cfg: LayerConfig = {
+        id: "tensio_luftnett",
+        name: t('pages.map.layers.tensioPowerGrid'),
+        layer,
+        enabled,
+        icon: "zap",
+        group: t('pages.map.layers.groups.infrastructure'),
+      };
+      // Plasser rett før "flyplasser" slik at rekkefølgen i menyen er som før.
+      const idx = prev.findIndex((l) => l.id === "flyplasser");
+      if (idx === -1) return [...prev, cfg];
+      return [...prev.slice(0, idx), cfg, ...prev.slice(idx)];
+    });
+  }, [isTensioHierarchy, profileLoaded, companyDefaultLayersLoaded, layers.length, t]);
+
 
   // Recenter map when initialCenter changes — guard with tolerance so a parent
   // that mirrors moveend back into this prop does not snap the user back.
