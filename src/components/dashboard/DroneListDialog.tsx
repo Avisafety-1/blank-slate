@@ -1,5 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LiveStatusBadge } from "@/components/LiveStatusBadge";
+import { useLiveDroneStatus } from "@/hooks/useLiveDroneStatus";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
@@ -28,6 +30,7 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
   const { companyId } = useAuth();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language === "en" ? enUS : nb;
+  const { getLiveStatus } = useLiveDroneStatus({ companyId, enabled: open });
 
   const filteredDrones = useMemo(() => {
     if (!statusFilter) return drones;
@@ -98,7 +101,10 @@ export const DroneListDialog = ({ open, onOpenChange, drones, onDronesUpdated, s
                     </Badge>
                   )}
                 </div>
-                <StatusBadge status={drone.status as Status} />
+                <div className="flex flex-col items-end gap-1">
+                  <StatusBadge status={drone.status as Status} />
+                  <LiveStatusBadge status={getLiveStatus(drone.serienummer, drone.internal_serial)} />
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
