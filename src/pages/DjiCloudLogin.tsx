@@ -29,6 +29,9 @@ declare global {
       platformSetWorkspaceId?: (uuid: string) => unknown;
       platformSetInformation?: (platformName: string, workspaceName: string, desc: string) => unknown;
       platformIsVerified?: () => unknown;
+      platformIsComponentLoaded?: (name: string) => unknown;
+      thingGetConnectState?: () => unknown;
+
     };
     reg_callback?: (result: unknown) => void;
     onStopPlatform?: () => unknown;
@@ -62,8 +65,10 @@ const DjiCloudLogin = () => {
   const logId = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const lastCallbackRef = useRef<number>(0);
-  const connectRef = useRef<() => void>(() => {});
+  const connectRef = useRef<(force?: boolean) => void>(() => {});
+  const connectingRef = useRef(false);
   const version = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "unknown";
+
 
   const addLog = useCallback((text: string, tone: LogLine["tone"] = "info") => {
     logId.current += 1;
@@ -78,6 +83,60 @@ const DjiCloudLogin = () => {
     },
     [addLog],
   );
+
+  // DJI bridge calls return a JSON string like {"code":0,"message":"","data":...}
+  const parseBridge = useCallback((raw: unknown): { code: number | null; text: string } => {
+    if (raw === undefined || raw === null) return { code: null, text: "(no return value)" };
+    const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed === "object" && "code" in (parsed as Record<string, unknown>)) {
+        const code = Number((parsed as Record<string, unknown>).code);
+        return { code: Number.isNaN(code) ? null : code, text };
+      }
+    } catch {
+      /* not JSON — log raw */
+    }
+    return { code: null, text };
+  }, []);
+
+  /**
+   * Ask DJI Pilot 2 whether the "thing" module is already connected, so we
+   * never tear down a live MQTT link just because the webview was shown again.
+   * Returns "unknown" on older bridges that lack the API — then we keep the
+   * previous behaviour and connect.
+   */
+  const readConnectState = useCallback((): "connected" | "disconnected" | "unknown" => {
+    const bridge = window.djiBridge;
+    if (!bridge?.thingGetConnectState) return "unknown";
+    let raw: unknown;
+    try {
+      raw = bridge.thingGetConnectState();
+    } catch {
+      return "unknown";
+    }
+    const { text } = parseBridge(raw);
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const value =
+        parsed && typeof parsed === "object"
+          ? ((parsed as Record<string, unknown>).data ?? (parsed as Record<string, unknown>).result)
+          : parsed;
+      if (typeof value === "boolean") return value ? "connected" : "disconnected";
+      if (value && typeof value === "object") {
+        const obj = value as Record<string, unknown>;
+        if (typeof obj.connectState === "boolean") return obj.connectState ? "connected" : "disconnected";
+        if (typeof obj.state === "boolean") return obj.state ? "connected" : "disconnected";
+      }
+    } catch {
+      /* fall through to text matching */
+    }
+    if (/true/i.test(text)) return "connected";
+    if (/false/i.test(text)) return "disconnected";
+    return "unknown";
+  }, [parseBridge]);
+
+
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ block: "end" });
@@ -231,6 +290,16 @@ const DjiCloudLogin = () => {
     const onVisibility = () => {
       addLog(`visibilitychange -> ${document.visibilityState}`);
       if (document.visibilityState !== "visible") return;
+      // Ask DJI first: reconnecting on top of a live link is what caused the
+      // disconnect/connect cycle when returning to "Open Platforms".
+      const state = readConnectState();
+      addLog(`${t("djiCloud.checkingState")} -> ${state}`);
+      if (state === "connected") {
+        lastCallbackRef.current = Date.now();
+        setConnState("connected");
+        setStatus(t("djiCloud.alreadyConnected"));
+        return;
+      }
       if (lastCallbackRef.current === 0) {
         addLog("Ingen tilkoblingsbekreftelse mottatt – kobler til automatisk.");
         connectRef.current();
@@ -239,6 +308,7 @@ const DjiCloudLogin = () => {
         connectRef.current();
       }
     };
+
     const onPageHide = () => addLog("pagehide");
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -248,7 +318,8 @@ const DjiCloudLogin = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
     };
-  }, [addLog]);
+  }, [addLog, readConnectState, t]);
+
 
   const loadConfig = useCallback(async () => {
     setLoadingConfig(true);
@@ -283,22 +354,6 @@ const DjiCloudLogin = () => {
     say(t("djiCloud.signedIn"), "ok");
   };
 
-  // DJI bridge calls return a JSON string like {"code":0,"message":"","data":...}
-  const parseBridge = (raw: unknown): { code: number | null; text: string } => {
-    if (raw === undefined || raw === null) return { code: null, text: "(no return value)" };
-    const text = typeof raw === "string" ? raw : JSON.stringify(raw);
-    try {
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (parsed && typeof parsed === "object" && "code" in (parsed as Record<string, unknown>)) {
-        const code = Number((parsed as Record<string, unknown>).code);
-        return { code: Number.isNaN(code) ? null : code, text };
-      }
-    } catch {
-      /* not JSON — log raw */
-    }
-    return { code: null, text };
-  };
-
   const handleCopyLog = async () => {
     const text = log.map((l) => l.text).join("\n");
     try {
@@ -309,88 +364,134 @@ const DjiCloudLogin = () => {
     }
   };
 
-  const handleConnect = useCallback(() => {
-    if (!config) return;
-    if (!window.djiBridge) {
-      say(t("djiCloud.bridgeMissing"), "err");
-      setConnState("failed");
-      return;
-    }
-
-    const { appId, appKey, license } = config;
-    const host = config.mqttHost;
-    const username = config.mqttUsername;
-    const mqttPassword = config.mqttPassword;
-
-    setConnState("connecting");
-    try {
-      addLog(`appId=${appId} host=${host} username=${username}`);
-      addLog(`page origin=${window.location.origin}`);
-
-      addLog("platformVerifyLicense…");
-      const verify = parseBridge(window.djiBridge.platformVerifyLicense(appId, appKey, license));
-      addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
-      if (verify.code !== null && verify.code !== 0) {
-        say(t("djiCloud.licenseFailed"), "err");
+  const handleConnect = useCallback(
+    (force = false) => {
+      if (!config) return;
+      if (!window.djiBridge) {
+        say(t("djiCloud.bridgeMissing"), "err");
         setConnState("failed");
         return;
       }
-
-      if (window.djiBridge.platformIsVerified) {
-        addLog(`platformIsVerified -> ${parseBridge(window.djiBridge.platformIsVerified()).text}`);
-      }
-
-      // Register the platform BEFORE loading the thing module. Without a
-      // workspace id + platform information Pilot 2 treats the page as a
-      // plain web page and drops the MQTT link when the pilot returns to the
-      // home screen.
-      if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
-        const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
-        addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
-      } else if (!workspace.id) {
-        addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
-      }
-      if (window.djiBridge.platformSetInformation) {
-        const info = parseBridge(
-          window.djiBridge.platformSetInformation(
-            "AviSafe",
-            workspace.name ?? "AviSafe",
-            t("djiCloud.platformDesc"),
-          ),
-        );
-        addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
-      }
-
-      addLog('platformLoadComponent("thing", …)');
-
-      const loaded = parseBridge(
-        window.djiBridge.platformLoadComponent(
-          "thing",
-          JSON.stringify({ host, connectCallback: "reg_callback", username, password: mqttPassword }),
-        ),
-      );
-      addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
-      if (loaded.code !== null && loaded.code !== 0) {
-        say(t("djiCloud.componentFailed"), "err");
-        setConnState("failed");
+      if (connectingRef.current && !force) {
+        addLog("Tilkobling pågår allerede – hopper over nytt forsøk.");
         return;
       }
 
-      addLog("thingConnect…");
-      const connected = parseBridge(window.djiBridge.thingConnect(username, mqttPassword, "reg_callback"));
-      addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
-      if (connected.code !== null && connected.code !== 0) {
+      // Never tear down a live link just because the webview was shown again.
+      const existing = readConnectState();
+      addLog(`thingGetConnectState -> ${existing}`);
+      if (existing === "connected" && !force) {
+        setConnState("connected");
+        lastCallbackRef.current = Date.now();
+        say(t("djiCloud.alreadyConnected"), "ok");
+        return;
+      }
+
+      const { appId, appKey, license } = config;
+      const host = config.mqttHost;
+      const username = config.mqttUsername;
+      const mqttPassword = config.mqttPassword;
+
+      connectingRef.current = true;
+      setConnState("connecting");
+      try {
+        addLog(`appId=${appId} host=${host} username=${username}`);
+        addLog(`page origin=${window.location.origin}`);
+
+        // Only register the platform once. Re-verifying and re-setting the
+        // workspace on every return to the menu resets Pilot 2's platform
+        // registration.
+        let alreadyVerified = false;
+        if (window.djiBridge.platformIsVerified) {
+          const verified = parseBridge(window.djiBridge.platformIsVerified());
+          addLog(`platformIsVerified -> ${verified.text}`);
+          alreadyVerified = /true/i.test(verified.text);
+        }
+
+        if (!alreadyVerified || force) {
+          addLog("platformVerifyLicense…");
+          const verify = parseBridge(window.djiBridge.platformVerifyLicense(appId, appKey, license));
+          addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
+          if (verify.code !== null && verify.code !== 0) {
+            say(t("djiCloud.licenseFailed"), "err");
+            setConnState("failed");
+            connectingRef.current = false;
+            return;
+          }
+
+          // Register the platform BEFORE loading the thing module. Without a
+          // workspace id + platform information Pilot 2 treats the page as a
+          // plain web page and drops the MQTT link when the pilot returns to
+          // the home screen.
+          if (workspace.id && window.djiBridge.platformSetWorkspaceId) {
+            const ws = parseBridge(window.djiBridge.platformSetWorkspaceId(workspace.id));
+            addLog(`platformSetWorkspaceId -> ${ws.text}`, ws.code === 0 || ws.code === null ? "ok" : "err");
+          } else if (!workspace.id) {
+            addLog("platformSetWorkspaceId hoppet over – mangler selskaps-id", "err");
+          }
+          if (window.djiBridge.platformSetInformation) {
+            const info = parseBridge(
+              window.djiBridge.platformSetInformation(
+                "AviSafe",
+                workspace.name ?? "AviSafe",
+                t("djiCloud.platformDesc"),
+              ),
+            );
+            addLog(`platformSetInformation -> ${info.text}`, info.code === 0 || info.code === null ? "ok" : "err");
+          }
+        } else {
+          addLog("Plattformen er allerede registrert – hopper over lisens og arbeidsområde.");
+        }
+
+        let componentLoaded = false;
+        if (window.djiBridge.platformIsComponentLoaded) {
+          const loadedState = parseBridge(window.djiBridge.platformIsComponentLoaded("thing"));
+          addLog(`platformIsComponentLoaded("thing") -> ${loadedState.text}`);
+          componentLoaded = /true/i.test(loadedState.text);
+        }
+
+        if (!componentLoaded || force) {
+          addLog('platformLoadComponent("thing", …)');
+          const loaded = parseBridge(
+            window.djiBridge.platformLoadComponent(
+              "thing",
+              JSON.stringify({ host, connectCallback: "reg_callback", username, password: mqttPassword }),
+            ),
+          );
+          addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
+          if (loaded.code !== null && loaded.code !== 0) {
+            say(t("djiCloud.componentFailed"), "err");
+            setConnState("failed");
+            connectingRef.current = false;
+            return;
+          }
+        } else {
+          addLog("«thing»-modulen er allerede lastet – beholder den.");
+        }
+
+        addLog("thingConnect…");
+        const connected = parseBridge(window.djiBridge.thingConnect(username, mqttPassword, "reg_callback"));
+        addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
+        if (connected.code !== null && connected.code !== 0) {
+          say(t("djiCloud.connectFailed"), "err");
+          setConnState("failed");
+          connectingRef.current = false;
+          return;
+        }
+        setStatus(t("djiCloud.connecting"));
+      } catch (err) {
         say(t("djiCloud.connectFailed"), "err");
         setConnState("failed");
-        return;
+        addLog(String(err instanceof Error ? err.message : err), "err");
+      } finally {
+        window.setTimeout(() => {
+          connectingRef.current = false;
+        }, 5000);
       }
-      setStatus(t("djiCloud.connecting"));
-    } catch (err) {
-      say(t("djiCloud.connectFailed"), "err");
-      setConnState("failed");
-      addLog(String(err instanceof Error ? err.message : err), "err");
-    }
-  }, [addLog, config, say, t, workspace.id, workspace.name]);
+    },
+    [addLog, config, parseBridge, readConnectState, say, t, workspace.id, workspace.name],
+  );
+
 
   // DJI exit hooks: onStopPlatform fires right before Pilot 2 tears the
   // platform down, onBackClick when the in-page back arrow is used. Returning
@@ -412,15 +513,38 @@ const DjiCloudLogin = () => {
     connectRef.current = handleConnect;
   }, [handleConnect]);
 
+  // The webview may be re-shown with an MQTT link still alive. Read DJI's own
+  // state on mount so the button shows "Tilkoblet" instead of starting a new
+  // connection that would drop the existing one.
+  useEffect(() => {
+    if (!window.djiBridge) return;
+    const state = readConnectState();
+    addLog(`${t("djiCloud.checkingState")} -> ${state}`);
+    if (state === "connected") {
+      lastCallbackRef.current = Date.now();
+      setConnState("connected");
+      setStatus(t("djiCloud.statusConnected"));
+    }
+  }, [addLog, readConnectState, t]);
+
   // DJI Pilot 2 expects the third-party platform to establish its native
   // cloud connection after the page has authenticated. Requiring a second
   // manual click leaves Pilot 2's home screen at "Not Logged In" and no
   // telemetry is sent after leaving the platform menu.
   useEffect(() => {
     if (!signedIn || !config || connState !== "idle") return;
-    const timer = window.setTimeout(() => handleConnect(), 300);
+    const timer = window.setTimeout(() => {
+      if (readConnectState() === "connected") {
+        setConnState("connected");
+        lastCallbackRef.current = Date.now();
+        addLog(t("djiCloud.alreadyConnected"), "ok");
+        return;
+      }
+      handleConnect();
+    }, 300);
     return () => window.clearTimeout(timer);
-  }, [config, connState, handleConnect, signedIn]);
+  }, [addLog, config, connState, handleConnect, readConnectState, signedIn, t]);
+
 
   const connectLabel =
     connState === "connected"
@@ -521,7 +645,7 @@ const DjiCloudLogin = () => {
                 size="lg"
                 className={cn("h-14 w-full text-base", connState === "connected" && "bg-status-green hover:bg-status-green")}
                 disabled={!config || connState === "connected" || connState === "connecting"}
-                onClick={handleConnect}
+                onClick={() => handleConnect(true)}
               >
                 {connectLabel}
               </Button>
