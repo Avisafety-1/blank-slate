@@ -160,7 +160,7 @@ async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?
     }
 
     const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+    const sanitized = rawPrefix.replace(/[^a-zA-Z0-9._-]/g, '') || 'avisafe';
 
     let suffix = '01';
     if (variable === 'none') {
@@ -172,7 +172,7 @@ async function resolveCompanyCallsign(supabase: any, companyId: string, droneId?
         .eq('id', droneId)
         .single();
       const reg = (drone?.registration_number || '') as string;
-      suffix = reg.replace(/[^a-zA-Z0-9_-]/g, '') || '01';
+      suffix = reg.replace(/[^a-zA-Z0-9._-]/g, '') || '01';
     }
 
     // Same output as advisory publishing: prefix + suffix, no truncation.
@@ -357,7 +357,7 @@ Deno.serve(async (req) => {
               // Preserve user-defined prefix casing and allow underscore/hyphen.
               // Fall back to lowercased company name when no prefix is set.
               const rawPrefix = (prefix && prefix.trim()) ? prefix.trim() : companyName.toLowerCase();
-              const sanitized = rawPrefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'avisafe';
+              const sanitized = rawPrefix.replace(/[^a-zA-Z0-9._-]/g, '') || 'avisafe';
 
               let suffix = '01';
               if (variable === 'none') {
@@ -376,7 +376,7 @@ Deno.serve(async (req) => {
                     .eq('id', missionDrone.drone_id)
                     .single();
                   const reg = drone?.registration_number || '';
-                  const cleaned = reg.replace(/[^a-zA-Z0-9_-]/g, '');
+                  const cleaned = reg.replace(/[^a-zA-Z0-9._-]/g, '');
                   suffix = cleaned || '01';
                 }
               } else {
