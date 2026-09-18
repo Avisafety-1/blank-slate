@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { execSync } from "node:child_process";
@@ -36,10 +36,10 @@ const APP_RELEASE = computeRelease();
 // The inline script fetches the manifest with no-store (network, bypassing
 // the HTTP cache) and hard-navigates to a unique path when versions differ.
 // Chrome 70 compatible — this file is not transpiled by Vite.
-const djiVersionGuard = () => ({
+const djiVersionGuard = (): Plugin => ({
   name: "dji-version-guard",
-  apply: "build" as const,
-  generateBundle(this: { emitFile: (f: unknown) => void }) {
+  apply: "build",
+  generateBundle() {
     this.emitFile({
       type: "asset",
       fileName: "dji-version.json",
