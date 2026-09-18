@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import droneBackground from "@/assets/drone-background.webp";
+import avisafeLogo from "@/assets/avisafe-logo-text.png";
 
 type PilotCloudConfig = {
   appId: string;
@@ -15,6 +18,7 @@ type PilotCloudConfig = {
 };
 
 type LogLine = { id: number; text: string; tone: "info" | "ok" | "err" };
+type ConnState = "idle" | "connecting" | "connected" | "failed";
 
 declare global {
   interface Window {
@@ -27,10 +31,14 @@ declare global {
   }
 }
 
+/** Auto-reconnect when the last callback is older than this (ms). */
+const STALE_MS = 30000;
+
 const DjiCloudLogin = () => {
   const { t } = useTranslation();
   const [sessionReady, setSessionReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
@@ -38,12 +46,18 @@ const DjiCloudLogin = () => {
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [status, setStatus] = useState("");
   const [log, setLog] = useState<LogLine[]>([]);
+  const [connState, setConnState] = useState<ConnState>("idle");
+  const [lastCallbackAt, setLastCallbackAt] = useState<Date | null>(null);
   const logId = useRef(0);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
+  const lastCallbackRef = useRef<number>(0);
+  const connectRef = useRef<() => void>(() => {});
+  const version = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "unknown";
 
   const addLog = useCallback((text: string, tone: LogLine["tone"] = "info") => {
     logId.current += 1;
     const stamp = new Date().toISOString().substr(11, 8);
-    setLog((prev) => [...prev, { id: logId.current, text: `${stamp}  ${text}`, tone }]);
+    setLog((prev) => [...prev.slice(-300), { id: logId.current, text: `${stamp}  ${text}`, tone }]);
   }, []);
 
   const say = useCallback(
@@ -54,16 +68,22 @@ const DjiCloudLogin = () => {
     [addLog],
   );
 
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ block: "end" });
+  }, [log]);
+
   // Track auth state
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSignedIn(!!data.session);
+      setAccountEmail(data.session?.user?.email ?? null);
       setSessionReady(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedIn(!!session);
+      setAccountEmail(session?.user?.email ?? null);
       setSessionReady(true);
     });
     return () => {
@@ -75,7 +95,6 @@ const DjiCloudLogin = () => {
   // Log running build version and make sure this page never runs from an old
   // service-worker cache (DJI Pilot 2's webview caches aggressively).
   useEffect(() => {
-    const version = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "unknown";
     addLog(`AviSafe /dji build: ${version}`);
     void (async () => {
       try {
@@ -93,7 +112,7 @@ const DjiCloudLogin = () => {
         /* ignore — cache cleanup is best effort */
       }
     })();
-  }, [addLog]);
+  }, [addLog, version]);
 
   const handleClearCache = async () => {
     try {
@@ -112,16 +131,58 @@ const DjiCloudLogin = () => {
     window.location.replace(`/dji?v=${Date.now()}`);
   };
 
-  // DJI Pilot 2 invokes this global with the MQTT connection result
+  // DJI Pilot 2 invokes this global with the MQTT connection result.
+  // Registered once and deliberately NOT removed on unmount, so a late
+  // callback from the bridge still lands somewhere.
   useEffect(() => {
     window.reg_callback = (result: unknown) => {
       addLog(`reg_callback: ${JSON.stringify(result)}`, "ok");
-      setStatus(t("djiCloud.callbackReceived"));
-    };
-    return () => {
-      delete window.reg_callback;
+      lastCallbackRef.current = Date.now();
+      setLastCallbackAt(new Date());
+      let ok = false;
+      try {
+        const parsed = typeof result === "string" ? JSON.parse(result) : result;
+        if (typeof parsed === "boolean") ok = parsed;
+        else if (parsed && typeof parsed === "object") {
+          const obj = parsed as Record<string, unknown>;
+          ok = obj.code === 0 || obj.data === true || obj.result === true;
+        }
+      } catch {
+        ok = String(result).toLowerCase() === "true";
+      }
+      setConnState(ok ? "connected" : "failed");
+      setStatus(t(ok ? "djiCloud.statusConnected" : "djiCloud.statusFailed"));
     };
   }, [addLog, t]);
+
+  // Heartbeat + visibility logging: tells us whether the webview or the MQTT
+  // link is what goes away when the pilot leaves the cloud-service menu.
+  useEffect(() => {
+    const beat = window.setInterval(() => {
+      if (lastCallbackRef.current === 0) return;
+      const ageSec = Math.round((Date.now() - lastCallbackRef.current) / 1000);
+      addLog(`heartbeat: siste reg_callback ${ageSec}s siden (visibility=${document.visibilityState})`);
+    }, 10000);
+
+    const onVisibility = () => {
+      addLog(`visibilitychange -> ${document.visibilityState}`);
+      if (document.visibilityState !== "visible") return;
+      if (lastCallbackRef.current === 0) return;
+      if (Date.now() - lastCallbackRef.current > STALE_MS) {
+        addLog("Tilkoblingen virker inaktiv – kobler til på nytt automatisk.");
+        connectRef.current();
+      }
+    };
+    const onPageHide = () => addLog("pagehide");
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.clearInterval(beat);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [addLog]);
 
   const loadConfig = useCallback(async () => {
     setLoadingConfig(true);
@@ -182,21 +243,20 @@ const DjiCloudLogin = () => {
     }
   };
 
-  const handleConnect = () => {
+  const handleConnect = useCallback(() => {
     if (!config) return;
     if (!window.djiBridge) {
       say(t("djiCloud.bridgeMissing"), "err");
+      setConnState("failed");
       return;
     }
 
-    // Explicit mapping: config fields -> djiBridge parameter names
-    const appId = config.appId;
-    const appKey = config.appKey;
-    const license = config.license;
-    const host = config.mqttHost; // mqttHost -> host (full URI incl. scheme + port)
-    const username = config.mqttUsername; // mqttUsername -> username
-    const password = config.mqttPassword; // mqttPassword -> password
+    const { appId, appKey, license } = config;
+    const host = config.mqttHost;
+    const username = config.mqttUsername;
+    const mqttPassword = config.mqttPassword;
 
+    setConnState("connecting");
     try {
       addLog(`appId=${appId} host=${host} username=${username}`);
       addLog(`page origin=${window.location.origin}`);
@@ -206,6 +266,7 @@ const DjiCloudLogin = () => {
       addLog(`platformVerifyLicense -> ${verify.text}`, verify.code === 0 ? "ok" : "err");
       if (verify.code !== null && verify.code !== 0) {
         say(t("djiCloud.licenseFailed"), "err");
+        setConnState("failed");
         return;
       }
 
@@ -213,116 +274,200 @@ const DjiCloudLogin = () => {
       const loaded = parseBridge(
         window.djiBridge.platformLoadComponent(
           "thing",
-          JSON.stringify({ host, connectCallback: "reg_callback", username, password }),
+          JSON.stringify({ host, connectCallback: "reg_callback", username, password: mqttPassword }),
         ),
       );
       addLog(`platformLoadComponent -> ${loaded.text}`, loaded.code === 0 ? "ok" : "err");
       if (loaded.code !== null && loaded.code !== 0) {
         say(t("djiCloud.componentFailed"), "err");
+        setConnState("failed");
         return;
       }
 
       addLog("thingConnect…");
-      const connected = parseBridge(window.djiBridge.thingConnect(username, password, "reg_callback"));
+      const connected = parseBridge(window.djiBridge.thingConnect(username, mqttPassword, "reg_callback"));
       addLog(`thingConnect -> ${connected.text}`, connected.code === 0 ? "ok" : "err");
       if (connected.code !== null && connected.code !== 0) {
         say(t("djiCloud.connectFailed"), "err");
+        setConnState("failed");
         return;
       }
       setStatus(t("djiCloud.connecting"));
     } catch (err) {
       say(t("djiCloud.connectFailed"), "err");
+      setConnState("failed");
       addLog(String(err instanceof Error ? err.message : err), "err");
     }
-  };
+  }, [addLog, config, say, t]);
+
+  useEffect(() => {
+    connectRef.current = handleConnect;
+  }, [handleConnect]);
+
+  const connectLabel =
+    connState === "connected"
+      ? t("djiCloud.connected")
+      : connState === "connecting"
+        ? t("djiCloud.connectingShort")
+        : connState === "failed"
+          ? t("djiCloud.reconnect")
+          : t("djiCloud.connect");
+
+  const statusDot =
+    connState === "connected"
+      ? "bg-status-green"
+      : connState === "connecting"
+        ? "bg-status-yellow"
+        : connState === "failed"
+          ? "bg-status-red"
+          : "bg-muted-foreground";
+
+  const statusText =
+    connState === "connected"
+      ? t("djiCloud.statusConnected")
+      : connState === "connecting"
+        ? t("djiCloud.statusConnecting")
+        : connState === "failed"
+          ? t("djiCloud.statusFailed")
+          : t("djiCloud.statusIdle");
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4">
-      <div className="mx-auto w-full max-w-md space-y-4">
-        <h1 className="text-lg font-semibold">{t("djiCloud.title")}</h1>
+    <div
+      className="min-h-[100dvh] text-white"
+      style={{
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)), url(${droneBackground})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="mx-auto w-full max-w-6xl px-4 py-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <img src={avisafeLogo} alt="AviSafe" className="h-6 w-auto brightness-0 invert" />
+          <span className="text-xs text-white/60">{t("djiCloud.title")}</span>
+        </div>
 
-        {!sessionReady && <p className="text-sm text-muted-foreground">{t("djiCloud.loading")}</p>}
+        {!sessionReady && <p className="text-sm text-white/70">{t("djiCloud.loading")}</p>}
 
         {sessionReady && !signedIn && (
-          <form onSubmit={handleSignIn} className="space-y-3 rounded-lg border p-4">
-            <p className="text-sm text-muted-foreground">{t("djiCloud.signInHint")}</p>
-            <div className="space-y-1">
-              <Label htmlFor="dji-email">{t("djiCloud.email")}</Label>
-              <Input
-                id="dji-email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="dji-password">{t("djiCloud.password")}</Label>
-              <Input
-                id="dji-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+          <form
+            onSubmit={handleSignIn}
+            className="mx-auto w-full max-w-3xl space-y-4 rounded-xl border border-white/15 bg-black/40 p-4 backdrop-blur-md"
+          >
+            <p className="text-sm text-white/75">{t("djiCloud.signInHint")}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="dji-email" className="text-white/80">
+                  {t("djiCloud.email")}
+                </Label>
+                <Input
+                  id="dji-email"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+                  className="bg-white/10 text-white placeholder:text-white/40"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="dji-password" className="text-white/80">
+                  {t("djiCloud.password")}
+                </Label>
+                <Input
+                  id="dji-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+                  className="bg-white/10 text-white placeholder:text-white/40"
+                  required
+                />
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={signingIn}>
               {signingIn ? t("djiCloud.signingIn") : t("djiCloud.signIn")}
             </Button>
+            {status && <p className="text-sm text-white/80">{status}</p>}
           </form>
         )}
 
         {sessionReady && signedIn && (
-          <div className="space-y-3">
-            <Button
-              type="button"
-              size="lg"
-              className="w-full h-14 text-base"
-              disabled={!config}
-              onClick={handleConnect}
-            >
-              {t("djiCloud.connect")}
-            </Button>
-            {!config && !loadingConfig && (
-              <Button type="button" variant="outline" className="w-full" onClick={() => void loadConfig()}>
-                {t("djiCloud.retryConfig")}
-              </Button>
-            )}
-          </div>
-        )}
-
-        {status && <p className="text-sm">{status}</p>}
-
-        <div className="flex gap-2">
-          {log.length > 0 && (
-            <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyLog()}>
-              {t("djiCloud.copyLog")}
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="sm" onClick={() => void handleClearCache()}>
-            {t("djiCloud.clearCache")}
-          </Button>
-        </div>
-
-        {log.length > 0 && (
-          <ul className="space-y-1 text-xs font-mono">
-            {log.map((line) => (
-              <li
-                key={line.id}
-                className={
-                  line.tone === "err"
-                    ? "text-destructive"
-                    : line.tone === "ok"
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                }
+          <div className="grid gap-3 lg:grid-cols-2">
+            {/* Venstre: handling + logg */}
+            <div className="flex min-h-0 flex-col gap-2 rounded-xl border border-white/15 bg-black/40 p-3 backdrop-blur-md">
+              <Button
+                type="button"
+                size="lg"
+                className={cn("h-14 w-full text-base", connState === "connected" && "bg-status-green hover:bg-status-green")}
+                disabled={!config || connState === "connected" || connState === "connecting"}
+                onClick={handleConnect}
               >
-                {line.text}
-              </li>
-            ))}
-          </ul>
+                {connectLabel}
+              </Button>
+              {!config && !loadingConfig && (
+                <Button type="button" variant="outline" className="w-full text-white" onClick={() => void loadConfig()}>
+                  {t("djiCloud.retryConfig")}
+                </Button>
+              )}
+              <div className="flex gap-2">
+                {log.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" className="text-white" onClick={() => void handleCopyLog()}>
+                    {t("djiCloud.copyLog")}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" size="sm" className="text-white" onClick={() => void handleClearCache()}>
+                  {t("djiCloud.clearCache")}
+                </Button>
+              </div>
+              <div className="h-[38vh] min-h-[160px] overflow-y-auto rounded-lg bg-black/40 p-2 font-mono text-[11px] leading-5">
+                {log.map((line) => (
+                  <div
+                    key={line.id}
+                    className={
+                      line.tone === "err" ? "text-status-red" : line.tone === "ok" ? "text-status-green" : "text-white/70"
+                    }
+                  >
+                    {line.text}
+                  </div>
+                ))}
+                <div ref={logEndRef} />
+              </div>
+            </div>
+
+            {/* Høyre: status */}
+            <div className="space-y-3 rounded-xl border border-white/15 bg-black/40 p-4 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <span className={cn("h-4 w-4 rounded-full", statusDot)} />
+                <span className="text-lg font-semibold">{statusText}</span>
+              </div>
+              <p className="text-sm text-white/80">
+                {connState === "connected" ? t("djiCloud.liveSharingOn") : t("djiCloud.liveSharingOff")}
+              </p>
+              <p className="text-xs text-white/60">{t("djiCloud.keepOpenHint")}</p>
+              <dl className="space-y-1 text-xs text-white/70">
+                <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.account")}</dt>
+                  <dd className="truncate">{accountEmail ?? "–"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.host")}</dt>
+                  <dd className="truncate">{config?.mqttHost ?? "–"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.lastCallback")}</dt>
+                  <dd>{lastCallbackAt ? lastCallbackAt.toLocaleTimeString() : "–"}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>{t("djiCloud.build")}</dt>
+                  <dd className="truncate">{version}</dd>
+                </div>
+              </dl>
+              {status && <p className="text-sm text-white/80">{status}</p>}
+            </div>
+          </div>
         )}
       </div>
     </div>
