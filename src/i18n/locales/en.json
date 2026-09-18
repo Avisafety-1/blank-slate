@@ -159,7 +159,15 @@
       "resetTitle": "Reset password",
       "resetDesc": "Click the button below to verify the link and set a new password.",
       "verifyAndSet": "Verify and set new password",
-      "linkNotWorking": "Link didn't work? Send new link"
+      "linkNotWorking": "Link didn't work? Send new link",
+      "errors": {
+        "samePassword": "You cannot reuse your previous password. Choose a new one.",
+        "weakPassword": "The password is too weak. Follow the requirements listed above.",
+        "pwnedPassword": "This password is too common or found in known data breaches. Choose another one.",
+        "rateLimited": "Too many attempts. Wait a moment and try again.",
+        "linkExpired": "The link has expired or was already used. Request a new reset link.",
+        "generic": "Could not update the password. Please try again."
+      }
     },
     "accountDeactivated": "Your account has been deactivated. Contact an administrator to regain access."
   },

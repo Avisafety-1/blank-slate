@@ -11,6 +11,7 @@ import { ShieldCheck, Send, ArrowLeft } from "lucide-react";
 
 import droneBackground from "@/assets/drone-background.png";
 import { PasswordRequirements, isPasswordValid, passwordErrorMessage } from "@/components/PasswordRequirements";
+import { resetPasswordErrorInfo } from "@/lib/resetPasswordError";
 
 const avisafeLogoText = "/avisafe-logo-text.png";
 
