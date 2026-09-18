@@ -8873,6 +8873,20 @@
     "copyLog": "Copy log",
     "logCopied": "Log copied.",
     "clearCache": "Clear cache and reload",
-    "cacheCleared": "Cache cleared — reloading…"
+    "cacheCleared": "Cache cleared — reloading…",
+    "connected": "Connected",
+    "connectingShort": "Connecting…",
+    "reconnect": "Reconnect",
+    "statusIdle": "Not connected",
+    "statusConnecting": "Connecting…",
+    "statusConnected": "Connected",
+    "statusFailed": "Connection failed",
+    "liveSharingOn": "Live position is now shared with AviSafe. The drone shows on the map while the connection is active.",
+    "liveSharingOff": "Live position is not shared yet. Tap “Connect” to start sharing.",
+    "keepOpenHint": "Keep this page open while flying. If you leave the menu, it reconnects automatically when you return.",
+    "account": "Account",
+    "host": "Server",
+    "lastCallback": "Last reply from DJI",
+    "build": "Version"
   }
 }
