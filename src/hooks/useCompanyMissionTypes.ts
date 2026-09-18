@@ -75,7 +75,10 @@ export function useCompanyMissionTypes() {
   }, [load]);
 
   const activeLabels = (types.filter((t) => t.is_active).map((t) => t.label));
-  const labels = activeLabels.length > 0 ? activeLabels : DEFAULT_MISSION_TYPES;
+  // Når listen er arvet fra morselskapet er en tom liste et reelt svar — da skal
+  // vi ikke skjule det med den hardkodede standardlisten.
+  const labels =
+    activeLabels.length > 0 ? activeLabels : isInherited ? [] : DEFAULT_MISSION_TYPES;
 
   return {
     types,
