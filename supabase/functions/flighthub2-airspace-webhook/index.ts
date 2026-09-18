@@ -7,6 +7,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { generateAuthHeaders } from "../_shared/safesky-hmac.ts";
 
+/** True MSL altitude, or null when it is missing or reported as 0 (no RTK fix). */
+// deno-lint-ignore no-explicit-any
+function usableAmsl(r: any): number | null {
+  const amsl = r?.altitude_m;
+  if (typeof amsl !== "number" || !Number.isFinite(amsl) || amsl === 0) return null;
+  return amsl;
+}
+
+
 const SAFESKY_UAV_URL = "https://sandbox-public-api.safesky.app/v1/uav";
 
 const ENC = new TextEncoder();
@@ -257,7 +266,8 @@ Deno.serve(async (req: Request) => {
         lng: p.longitude / 1e7,
         height_m: typeof p.height === "number" ? p.height / 10 : null,
         height_type: typeof p.height_type === "number" ? p.height_type : null,
-        altitude_m: typeof p.altitude === "number" ? p.altitude / 10 : null,
+        // 0 means "no MSL available" (no RTK fix) — store NULL so consumers use terrain + AGL.
+        altitude_m: typeof p.altitude === "number" && p.altitude !== 0 ? p.altitude / 10 : null,
         vert_speed_ms: typeof p.vs === "number" ? p.vs / 10 : null,
         ground_speed_ms: typeof p.gs === "number" ? p.gs / 10 : null,
         course_deg: course,
@@ -321,7 +331,7 @@ Deno.serve(async (req: Request) => {
         drone_id: droneIdBySn.get(r.sn as string) ?? null,
         lat: r.lat as number,
         lon: r.lng as number,
-        alt: (r.altitude_m as number | null) ?? (r.height_m as number | null),
+        alt: usableAmsl(r) ?? (r.height_m as number | null),
         raw: { source: "flighthub2", sn: r.sn, order_id: r.order_id, time_stamp: r.time_stamp },
       }));
       if (telemetryRows.length > 0) {
@@ -361,7 +371,7 @@ Deno.serve(async (req: Request) => {
             id: beaconId,
             latitude: r.lat,
             longitude: r.lng,
-            altitude: Math.round((r.altitude_m as number | null) ?? (r.height_m as number | null) ?? 50),
+            altitude: Math.round(usableAmsl(r) ?? (r.height_m as number | null) ?? 50),
             status,
             last_update: Math.floor(new Date(r.time_stamp as string).getTime() / 1000),
             ground_speed: Math.round((r.ground_speed_ms as number | null) ?? 0),

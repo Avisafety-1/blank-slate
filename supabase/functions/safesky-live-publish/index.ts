@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
     const terrainKeys: string[] = [];
     for (const f of withPosition) {
       const p = latestByDrone.get(f.drone_id);
-      if (p.altitude_m === null || p.altitude_m === undefined) {
+      if (usableAmsl(p) === null) {
         terrainKeys.push(terrainKey(Number(p.lat), Number(p.lng)));
       }
     }
@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
       const gs = typeof p.ground_speed_ms === 'number' ? p.ground_speed_ms : 0;
       const isAirborne = fs === 'inflight' || fs === 'takeoff' || fs === 'flying' || gs > 1;
 
-      let altAmsl = (p.altitude_m as number | null) ?? null;
+      let altAmsl = usableAmsl(p);
       if (altAmsl === null) {
         const agl = (p.height_m as number | null) ?? 0;
         altAmsl = (terrain.get(terrainKey(Number(p.lat), Number(p.lng))) ?? 0) + agl;
