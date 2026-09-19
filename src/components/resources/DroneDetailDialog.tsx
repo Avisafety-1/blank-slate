@@ -963,7 +963,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-sm:left-2 max-sm:right-2 max-sm:translate-x-0 max-sm:w-auto w-[calc(100vw-1rem)] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-3 sm:p-6 [&>*]:min-w-0`}>
+      <DialogContent className={`w-[95vw] ${isEditing ? "max-w-5xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto p-3 sm:p-6 [&>*]:min-w-0`}>
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Plane className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
