@@ -666,7 +666,7 @@ export const MaintenanceSchedulesSection = ({ kind, resourceId, companyId, disab
           }
         }}
       >
-        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>
               {editAllOpen

@@ -573,7 +573,7 @@ export const EquipmentLogbookDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl h-[90dvh] max-h-[90dvh] flex flex-col overflow-hidden">
+        <DialogContent className="w-[95vw] max-w-2xl h-[90vh] h-[90dvh] max-h-[90vh] max-h-[90dvh] flex flex-col overflow-hidden">
           <span data-tour="equipment-logbook-add" className="hidden" /><DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Book className="w-5 h-5 text-primary shrink-0" />

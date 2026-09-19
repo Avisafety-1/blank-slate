@@ -319,7 +319,7 @@ export const BatteryHealthSettingsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full h-[100dvh] max-w-none rounded-none sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-lg flex flex-col p-4 sm:p-6 gap-3">
+      <DialogContent className="w-full h-[100vh] h-[100dvh] max-w-none rounded-none sm:h-auto sm:max-h-[90vh] sm:max-h-[90dvh] sm:max-w-lg sm:rounded-lg flex flex-col p-4 sm:p-6 gap-3">
         <DialogHeader>
           <DialogTitle>{t("resourceDialogs.batteryHealthSettings.title")}</DialogTitle>
           <DialogDescription className="break-words">{equipmentNavn}</DialogDescription>
