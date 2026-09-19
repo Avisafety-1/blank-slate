@@ -3,8 +3,20 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { isDjiController } from "@/lib/deviceDetection";
 
-const Dialog = DialogPrimitive.Root;
+// På DJI-kontrollere (gammel Chromium WebView) blokkerer Radix' scroll-lås
+// (react-remove-scroll) touch-scrolling inne i dialoger. Derfor kjøres
+// dialoger ikke-modalt der: scroll-låsen fjernes, overlegg og Esc-lukking
+// beholdes, og utenfor-klikk er likevel blokkert via onPointerDownOutside.
+const djiNonModal = isDjiController();
+
+const Dialog = ({
+  modal,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>) => (
+  <DialogPrimitive.Root modal={djiNonModal ? false : modal} {...props} />
+);
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
