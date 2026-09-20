@@ -227,16 +227,29 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                   <span className="truncate">{flight.companyName}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-3 text-xs"
-                  onClick={(e) => handleViewOnMap(e, flight.id)}
-                >
-                  <MapPin className="w-3 h-3 mr-1" />
-                  {t('dashboard.activeFlights.viewOnMap')}
-                </Button>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs"
+                    onClick={(e) => handleViewOnMap(e, flight.id)}
+                  >
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {t('dashboard.activeFlights.viewOnMap')}
+                  </Button>
+                  {flight.drone_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-3 text-xs"
+                      onClick={(e) => { e.stopPropagation(); setVideoFlight(flight); }}
+                    >
+                      <Video className="w-3 h-3 mr-1" />
+                      {t('liveVideo.button')}
+                    </Button>
+                  )}
+                </div>
                 <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-xs sm:text-sm font-mono px-2.5 py-1">
                   <Clock className="w-3.5 h-3.5 mr-1.5" />
                   {formatElapsed(flight.start_time)}
@@ -252,6 +265,16 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
         onOpenChange={setMissionDialogOpen}
         mission={selectedMission}
       />
+
+      {videoFlight?.drone_id && (
+        <LiveVideoDialog
+          open={!!videoFlight}
+          onOpenChange={(o) => !o && setVideoFlight(null)}
+          droneId={videoFlight.drone_id}
+          droneName={videoFlight.droneName || t('dashboard.activeFlights.freeFlight')}
+          canManage={isAdmin}
+        />
+      )}
     </>
   );
 };
