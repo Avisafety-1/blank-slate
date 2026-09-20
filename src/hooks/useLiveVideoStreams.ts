@@ -6,12 +6,13 @@ const POLL_MS = 10000;
 const TICK_MS = 5000;
 
 /** Tikker jevnlig slik at "foreldet" strøm blir rød uten nye databasehendelser. */
-function useStaleTick() {
-  const [, setTick] = useState(0);
+function useStaleTick(): number {
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), TICK_MS);
     return () => window.clearInterval(id);
   }, []);
+  return tick;
 }
 
 /**
@@ -64,7 +65,7 @@ export function useLiveVideoStreams(companyId?: string | null) {
     };
   }, [companyId]);
 
-  useStaleTick();
+  const tick = useStaleTick();
 
   const liveDroneIds = useMemo(() => {
     const now = Date.now();
@@ -73,7 +74,7 @@ export function useLiveVideoStreams(companyId?: string | null) {
         .filter((r) => now - new Date(r.last_seen_at).getTime() < STALE_MS)
         .map((r) => r.drone_id),
     );
-  }, [rows]);
+  }, [rows, tick]);
 
   return { liveDroneIds, hasLiveVideo: (droneId: string) => liveDroneIds.has(droneId) };
 }
@@ -129,7 +130,7 @@ export function useLiveVideoByDroneIds(droneIds: string[]) {
     };
   }, [key]);
 
-  useStaleTick();
+  const tick = useStaleTick();
 
   const liveDroneIds = useMemo(() => {
     const now = Date.now();
@@ -138,7 +139,7 @@ export function useLiveVideoByDroneIds(droneIds: string[]) {
         .filter((r) => now - new Date(r.last_seen_at).getTime() < STALE_MS)
         .map((r) => r.drone_id),
     );
-  }, [rows]);
+  }, [rows, tick]);
 
   return { liveDroneIds, hasLiveVideo: (droneId: string) => liveDroneIds.has(droneId) };
 }
