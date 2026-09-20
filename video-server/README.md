@@ -16,7 +16,7 @@ Pilot 2 / FlightHub 2 --RTMPS 1936--> MediaMTX --WebRTC/WHEP 443--> AviSafe
 
 ```bash
 cd video-server
-fly launch --no-deploy --name live-video-avisafe --region ams   # kun første gang
+fly launch --no-deploy --name video-server-app --region ams   # kun første gang
 fly secrets set \
   MTX_AUTHHTTPADDRESS="https://<prosjekt>.supabase.co/functions/v1/live-video-auth" \
   MTX_WEBRTCALLOWORIGIN="https://app.avisafe.no"
@@ -61,4 +61,4 @@ det inn en relay-/edge-løsning foran.
   eller peker på feil IP.
 - **Pilot 2 nekter `rtmps://`:** bruk `rtmp://<host>:1935/live/<nøkkel>` som
   reserve. Da er strømmen ukryptert på veien – kun for test.
-- Logger: `fly logs -a live-video-avisafe`.
+- Logger: `fly logs -a video-server-app`.
