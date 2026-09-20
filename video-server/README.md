@@ -37,7 +37,7 @@ videoen kommer aldri – ICE finner ingen brukbar kandidat.
 Verdiene i `mediamtx.yml` er standardverdier. MediaMTX utvider **ikke**
 `${...}` i yml-filen – står det en plassholder der, avviser den oppsettet og
 maskinen krasjer under deploy. Bruk i stedet miljøvariabler med prefiks `MTX_`
-(f.eks. `MTX_AUTHHTTPADDRESS`, `MTX_WEBRTCALLOWORIGIN`), som overstyrer
+(f.eks. `MTX_AUTHHTTPADDRESS`, `MTX_WEBRTCALLOWORIGINS`), som overstyrer
 tilsvarende nøkkel i filen.
 
 ## Porter
