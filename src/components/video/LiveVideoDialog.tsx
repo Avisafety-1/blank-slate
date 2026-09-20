@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { WhepPlayer, type WhepStatus } from "./WhepPlayer";
+import { WhepPlayer } from "./WhepPlayer";
 import { StreamSetupCard } from "./StreamSetupCard";
 
 interface LiveVideoDialogProps {
@@ -55,7 +55,6 @@ export function LiveVideoDialog({
               {open && (
                 <WhepPlayer
                   getWhepUrl={getWhepUrl}
-                  onStatusChange={handleStatus}
                   className="aspect-video"
                 />
               )}
@@ -68,7 +67,6 @@ export function LiveVideoDialog({
           open && (
             <WhepPlayer
               getWhepUrl={getWhepUrl}
-              onStatusChange={handleStatus}
               className="aspect-video"
             />
           )
