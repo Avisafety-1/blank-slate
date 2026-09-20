@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const STALE_MS = 2 * 60 * 1000;
+const STALE_MS = 45 * 1000;
+const POLL_MS = 10000;
+const TICK_MS = 5000;
+
+/** Tikker jevnlig slik at "foreldet" strøm blir rød uten nye databasehendelser. */
+function useStaleTick(): number {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), TICK_MS);
+    return () => window.clearInterval(id);
+  }, []);
+  return tick;
+}
 
 /**
  * Hvilke droner sender live video akkurat nå?
@@ -28,7 +40,7 @@ export function useLiveVideoStreams(companyId?: string | null) {
     };
 
     void load();
-    const interval = window.setInterval(load, 30000);
+    const interval = window.setInterval(load, POLL_MS);
 
     // Unikt kanalnavn per instans – supabase deduper kanaler på navn, og
     // en gjenbrukt kanal kaster "cannot add callbacks after subscribe()".
@@ -53,6 +65,8 @@ export function useLiveVideoStreams(companyId?: string | null) {
     };
   }, [companyId]);
 
+  const tick = useStaleTick();
+
   const liveDroneIds = useMemo(() => {
     const now = Date.now();
     return new Set(
@@ -60,7 +74,7 @@ export function useLiveVideoStreams(companyId?: string | null) {
         .filter((r) => now - new Date(r.last_seen_at).getTime() < STALE_MS)
         .map((r) => r.drone_id),
     );
-  }, [rows]);
+  }, [rows, tick]);
 
   return { liveDroneIds, hasLiveVideo: (droneId: string) => liveDroneIds.has(droneId) };
 }
@@ -93,7 +107,7 @@ export function useLiveVideoByDroneIds(droneIds: string[]) {
     };
 
     void load();
-    const interval = window.setInterval(load, 30000);
+    const interval = window.setInterval(load, POLL_MS);
 
     const channel = supabase
       .channel(`live-video-drones-${Math.random().toString(36).slice(2)}`)
@@ -116,6 +130,8 @@ export function useLiveVideoByDroneIds(droneIds: string[]) {
     };
   }, [key]);
 
+  const tick = useStaleTick();
+
   const liveDroneIds = useMemo(() => {
     const now = Date.now();
     return new Set(
@@ -123,7 +139,7 @@ export function useLiveVideoByDroneIds(droneIds: string[]) {
         .filter((r) => now - new Date(r.last_seen_at).getTime() < STALE_MS)
         .map((r) => r.drone_id),
     );
-  }, [rows]);
+  }, [rows, tick]);
 
   return { liveDroneIds, hasLiveVideo: (droneId: string) => liveDroneIds.has(droneId) };
 }
