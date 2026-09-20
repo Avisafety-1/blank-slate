@@ -2859,6 +2859,60 @@ export type Database = {
           },
         ]
       }
+      drone_live_streams: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          drone_id: string
+          id: string
+          label: string | null
+          last_seen_at: string
+          started_at: string
+          stream_path: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          drone_id: string
+          id?: string
+          label?: string | null
+          last_seen_at?: string
+          started_at?: string
+          stream_path: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          drone_id?: string
+          id?: string
+          label?: string | null
+          last_seen_at?: string
+          started_at?: string
+          stream_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_live_streams_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_live_streams_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: false
+            referencedRelation: "drones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drone_log_entries: {
         Row: {
           company_id: string
@@ -2999,6 +3053,54 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drone_stream_keys: {
+        Row: {
+          company_id: string
+          created_at: string
+          drone_id: string
+          enabled: boolean
+          id: string
+          key_hash: string
+          key_prefix: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          drone_id: string
+          enabled?: boolean
+          id?: string
+          key_hash: string
+          key_prefix: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          drone_id?: string
+          enabled?: boolean
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drone_stream_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drone_stream_keys_drone_id_fkey"
+            columns: ["drone_id"]
+            isOneToOne: true
+            referencedRelation: "drones"
             referencedColumns: ["id"]
           },
         ]
@@ -8770,6 +8872,10 @@ export type Database = {
       }
       can_user_access_company: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_drone_video: {
+        Args: { _drone_id: string; _user_id: string }
         Returns: boolean
       }
       check_mission_airspace: {

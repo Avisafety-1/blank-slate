@@ -8902,5 +8902,25 @@
     "platformDesc": "Live posisjon til AviSafe",
     "alreadyConnected": "Allerede tilkoblet – beholder eksisterende tilkobling.",
     "checkingState": "Sjekker tilkoblingsstatus hos DJI"
+  },
+  "liveVideo": {
+    "button": "Live video",
+    "title": "Live video – {{drone}}",
+    "tabWatch": "Se live",
+    "tabSetup": "Oppsett",
+    "connecting": "Kobler til …",
+    "reconnecting": "Mistet forbindelsen – prøver igjen …",
+    "noStream": "Ingen videostrøm akkurat nå",
+    "serverAddress": "Serveradresse (RTMP)",
+    "copied": "Kopiert",
+    "copyFailed": "Kunne ikke kopiere",
+    "setupError": "Kunne ikke hente oppsettet",
+    "keyOnceWarning": "Adressen vises kun nå. Lim den inn i dronen, eller fornye den senere for å få en ny.",
+    "keyHidden": "Adressen finnes allerede, men kan ikke vises igjen. Velg «Forny nøkkel» for å få en ny adresse.",
+    "rotateKey": "Forny nøkkel",
+    "howToPilot2Title": "DJI Pilot 2",
+    "howToPilot2": "Hjem-skjerm → Cloud Service → Custom Livestream → RTMP → lim inn adressen → Save.",
+    "howToFh2Title": "FlightHub 2",
+    "howToFh2": "Live Streaming → New Forwarding Channel → RTMP → lim inn adressen i Server Address → velg drone og kamerakilde → Confirm."
   }
 }

@@ -1,0 +1,64 @@
+app = "live-video-avisafe"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Settes til riktige verdier ved deploy (se README)
+  MTX_WEBRTCADDITIONALHOSTS = ""
+
+# WebRTC / WHEP (HTTPS)
+[[services]]
+  internal_port = 8889
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 200
+    soft_limit = 150
+
+# RTMPS inn fra Pilot 2 / FlightHub 2 (Fly terminerer TLS)
+[[services]]
+  internal_port = 1935
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 1936
+    handlers = ["tls"]
+
+  [[services.ports]]
+    port = 1935
+    handlers = []
+
+# WebRTC over TCP (ICE) – nødvendig bak Fly sin proxy
+[[services]]
+  internal_port = 8189
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port = 8189
+    handlers = []
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1
