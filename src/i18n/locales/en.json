@@ -8900,5 +8900,25 @@
     "platformDesc": "Live position to AviSafe",
     "alreadyConnected": "Already connected – keeping the existing connection.",
     "checkingState": "Checking connection state with DJI"
+  },
+  "liveVideo": {
+    "button": "Live video",
+    "title": "Live video – {{drone}}",
+    "tabWatch": "Watch live",
+    "tabSetup": "Setup",
+    "connecting": "Connecting …",
+    "reconnecting": "Connection lost – retrying …",
+    "noStream": "No video stream right now",
+    "serverAddress": "Server address (RTMP)",
+    "copied": "Copied",
+    "copyFailed": "Could not copy",
+    "setupError": "Could not load the setup",
+    "keyOnceWarning": "The address is only shown now. Paste it into the drone, or renew it later to get a new one.",
+    "keyHidden": "An address already exists but cannot be shown again. Choose «Renew key» to get a new one.",
+    "rotateKey": "Renew key",
+    "howToPilot2Title": "DJI Pilot 2",
+    "howToPilot2": "Home screen → Cloud Service → Custom Livestream → RTMP → paste the address → Save.",
+    "howToFh2Title": "FlightHub 2",
+    "howToFh2": "Live Streaming → New Forwarding Channel → RTMP → paste the address in Server Address → pick device and stream source → Confirm."
   }
 }
