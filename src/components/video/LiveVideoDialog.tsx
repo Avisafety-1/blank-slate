@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { WhepPlayer, type WhepStatus } from "./WhepPlayer";
+import { WhepPlayer } from "./WhepPlayer";
 import { StreamSetupCard } from "./StreamSetupCard";
 
 interface LiveVideoDialogProps {
@@ -28,27 +28,15 @@ export function LiveVideoDialog({
   canManage = false,
 }: LiveVideoDialogProps) {
   const { t } = useTranslation();
-  const [streamPath, setStreamPath] = useState<string | null>(null);
 
   const getWhepUrl = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke("live-video-access", {
       body: { action: "watch", drone_id: droneId },
     });
     if (error || !data?.whep_url) return null;
-    setStreamPath(data.stream_path ?? null);
     return data.whep_url as string;
   }, [droneId]);
 
-  const handleStatus = useCallback(
-    (status: WhepStatus) => {
-      if (status === "gone" && streamPath) {
-        void supabase.functions.invoke("live-video-access", {
-          body: { action: "ended", stream_path: streamPath },
-        });
-      }
-    },
-    [streamPath],
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -67,7 +55,6 @@ export function LiveVideoDialog({
               {open && (
                 <WhepPlayer
                   getWhepUrl={getWhepUrl}
-                  onStatusChange={handleStatus}
                   className="aspect-video"
                 />
               )}
@@ -80,7 +67,6 @@ export function LiveVideoDialog({
           open && (
             <WhepPlayer
               getWhepUrl={getWhepUrl}
-              onStatusChange={handleStatus}
               className="aspect-video"
             />
           )
