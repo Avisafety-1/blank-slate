@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const scheme = Deno.env.get("LIVE_VIDEO_RTMP_SCHEME") ?? "rtmps";
-  const host = (Deno.env.get("LIVE_VIDEO_RTMP_HOST") ?? "live-video-avisafe.fly.dev")
+  const host = (Deno.env.get("LIVE_VIDEO_RTMP_HOST") ?? "video-server-app.fly.dev")
     .replace(/^[a-z]+:\/\//i, "")
     .replace(/\/.*$/, "")
     .replace(/:\d+$/, "");
