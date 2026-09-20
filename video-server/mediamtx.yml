@@ -4,6 +4,10 @@
 # RTMP(S) inn fra DJI Pilot 2 / FlightHub 2, WebRTC (WHEP) ut til nettleseren.
 # Ingen omkoding, ingen opptak. All tilgangskontroll skjer i AviSafe via
 # HTTP-authhook (live-video-auth).
+#
+# MERK: MediaMTX utvider IKKE ${...} i denne filen. Verdiene under er
+# standardverdier. På Fly overstyres de med secrets som har prefiks MTX_,
+# f.eks. MTX_AUTHHTTPADDRESS og MTX_WEBRTCALLOWORIGIN (se README).
 ###############################################
 
 logLevel: info
@@ -21,14 +25,12 @@ srt: no
 readTimeout: 20s
 writeTimeout: 20s
 writeQueueSize: 512
-udpMaxPayloadSize: 1472
 
 ###############################################
 # Autentisering – hver publisering og avspilling spør AviSafe
 ###############################################
 authMethod: http
-authHTTPAddress: ${AUTH_URL}
-authHTTPExclude: []
+authHTTPAddress: https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/live-video-auth
 
 ###############################################
 # RTMP inn (Fly terminerer TLS på 1936 -> 1935)
@@ -43,14 +45,13 @@ rtmpEncryption: "no"
 webrtc: yes
 webrtcAddress: :8889
 webrtcEncryption: "no"
-webrtcAllowOrigin: ${WEBRTC_ALLOW_ORIGIN}
+webrtcAllowOrigin: "*"
 webrtcLocalUDPAddress: ""
 webrtcLocalTCPAddress: :8189
 webrtcIPsFromInterfaces: no
-# MÅ settes til Fly-appens offentlige IP, ellers feiler avspilling stille
-# etter signalering. Hent med: fly ips list
+# MÅ settes til Fly-appens offentlige IP via MTX_WEBRTCADDITIONALHOSTS,
+# ellers feiler avspilling stille etter signalering. Hent med: fly ips list
 webrtcAdditionalHosts: []
-webrtcICEServers2: []
 
 ###############################################
 # Stier
@@ -58,7 +59,6 @@ webrtcICEServers2: []
 pathDefaults:
   source: publisher
   record: no
-  # Rydd opp raskt når publisereren forsvinner
   sourceOnDemand: no
 
 paths:
