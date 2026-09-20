@@ -44,8 +44,8 @@ rtmpEncryption: "no"
 ###############################################
 webrtc: yes
 webrtcAddress: :8889
-webrtcEncryption: "no"
-webrtcAllowOrigin: "*"
+webrtcEncryption: false
+webrtcAllowOrigins: ["*"]
 webrtcLocalUDPAddress: ""
 webrtcLocalTCPAddress: :8189
 webrtcIPsFromInterfaces: no
