@@ -28,27 +28,15 @@ export function LiveVideoDialog({
   canManage = false,
 }: LiveVideoDialogProps) {
   const { t } = useTranslation();
-  const [streamPath, setStreamPath] = useState<string | null>(null);
 
   const getWhepUrl = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke("live-video-access", {
       body: { action: "watch", drone_id: droneId },
     });
     if (error || !data?.whep_url) return null;
-    setStreamPath(data.stream_path ?? null);
     return data.whep_url as string;
   }, [droneId]);
 
-  const handleStatus = useCallback(
-    (status: WhepStatus) => {
-      if (status === "gone" && streamPath) {
-        void supabase.functions.invoke("live-video-access", {
-          body: { action: "ended", stream_path: streamPath },
-        });
-      }
-    },
-    [streamPath],
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -87,7 +87,9 @@ Deno.serve(async (req: Request) => {
     .limit(1)
     .maybeSingle();
 
-  if (!stream) return json({ error: "no_stream" }, 404);
+  // Ingen aktiv strøm er en normal tilstand, ikke en feil – svar 200 slik at
+  // klienten bare viser "ingen videostrøm" i stedet for å kaste en runtime-feil.
+  if (!stream) return json({ status: "no_stream" }, 200);
 
   const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
   const token = await signPlaybackToken(stream.stream_path, expiresAt, secret);
