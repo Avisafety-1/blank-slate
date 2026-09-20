@@ -1,0 +1,65 @@
+###############################################
+# AviSafe live video – MediaMTX
+#
+# RTMP(S) inn fra DJI Pilot 2 / FlightHub 2, WebRTC (WHEP) ut til nettleseren.
+# Ingen omkoding, ingen opptak. All tilgangskontroll skjer i AviSafe via
+# HTTP-authhook (live-video-auth).
+###############################################
+
+logLevel: info
+logDestinations: [stdout]
+
+# Slår av alt vi ikke bruker
+api: no
+metrics: no
+pprof: no
+playback: no
+hls: no
+rtsp: no
+srt: no
+
+readTimeout: 20s
+writeTimeout: 20s
+writeQueueSize: 512
+udpMaxPayloadSize: 1472
+
+###############################################
+# Autentisering – hver publisering og avspilling spør AviSafe
+###############################################
+authMethod: http
+authHTTPAddress: ${AUTH_URL}
+authHTTPExclude: []
+
+###############################################
+# RTMP inn (Fly terminerer TLS på 1936 -> 1935)
+###############################################
+rtmp: yes
+rtmpAddress: :1935
+rtmpEncryption: "no"
+
+###############################################
+# WebRTC / WHEP ut
+###############################################
+webrtc: yes
+webrtcAddress: :8889
+webrtcEncryption: "no"
+webrtcAllowOrigin: ${WEBRTC_ALLOW_ORIGIN}
+webrtcLocalUDPAddress: ""
+webrtcLocalTCPAddress: :8189
+webrtcIPsFromInterfaces: no
+# MÅ settes til Fly-appens offentlige IP, ellers feiler avspilling stille
+# etter signalering. Hent med: fly ips list
+webrtcAdditionalHosts: [${WEBRTC_ADDITIONAL_HOSTS}]
+webrtcICEServers2: []
+
+###############################################
+# Stier
+###############################################
+pathDefaults:
+  source: publisher
+  record: no
+  # Rydd opp raskt når publisereren forsvinner
+  sourceOnDemand: no
+
+paths:
+  all_others:
