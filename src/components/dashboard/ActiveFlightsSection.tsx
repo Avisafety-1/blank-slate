@@ -1,7 +1,8 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User, Building2 } from "lucide-react";
+import { Plane, Clock, MapPin, Radio, User, Building2, Video } from "lucide-react";
+import { LiveVideoDialog } from "@/components/video/LiveVideoDialog";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,8 @@ interface ActiveFlight {
   pilot_name: string | null;
   mission_id: string | null;
   profile_id: string;
+  drone_id: string | null;
+  droneName?: string | null;
   profileName?: string;
   missionTitle?: string;
   companyName?: string;
@@ -27,7 +30,7 @@ interface ActiveFlight {
 export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChange?: (has: boolean) => void }) => {
   const { t } = useTranslation();
   const { companyId, companyName } = useAuth();
-  const { isSuperAdmin } = useRoleCheck();
+  const { isSuperAdmin, isAdmin } = useRoleCheck();
   const { registerFlights } = useDashboardRealtimeContext();
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
@@ -35,6 +38,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [isParentCompany, setIsParentCompany] = useState(false);
+  const [videoFlight, setVideoFlight] = useState<ActiveFlight | null>(null);
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
@@ -55,7 +59,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
 
     let query = (supabase as any)
       .from('active_flights')
-      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
+      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, drone_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn), drones:drone_id(modell)');
 
     if (!isSuperAdminAvisafe) {
       if (hasChildren) {
@@ -80,6 +84,8 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
       pilot_name: f.pilot_name,
       mission_id: f.mission_id,
       profile_id: f.profile_id,
+      drone_id: f.drone_id ?? null,
+      droneName: f.drones?.modell ?? null,
       profileName: f.profiles?.full_name || null,
       missionTitle: f.missions?.tittel || null,
       companyName: f.companies?.navn || null,
@@ -221,16 +227,29 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                   <span className="truncate">{flight.companyName}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-3 text-xs"
-                  onClick={(e) => handleViewOnMap(e, flight.id)}
-                >
-                  <MapPin className="w-3 h-3 mr-1" />
-                  {t('dashboard.activeFlights.viewOnMap')}
-                </Button>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-3 text-xs"
+                    onClick={(e) => handleViewOnMap(e, flight.id)}
+                  >
+                    <MapPin className="w-3 h-3 mr-1" />
+                    {t('dashboard.activeFlights.viewOnMap')}
+                  </Button>
+                  {flight.drone_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-3 text-xs"
+                      onClick={(e) => { e.stopPropagation(); setVideoFlight(flight); }}
+                    >
+                      <Video className="w-3 h-3 mr-1" />
+                      {t('liveVideo.button')}
+                    </Button>
+                  )}
+                </div>
                 <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-xs sm:text-sm font-mono px-2.5 py-1">
                   <Clock className="w-3.5 h-3.5 mr-1.5" />
                   {formatElapsed(flight.start_time)}
@@ -246,6 +265,16 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
         onOpenChange={setMissionDialogOpen}
         mission={selectedMission}
       />
+
+      {videoFlight?.drone_id && (
+        <LiveVideoDialog
+          open={!!videoFlight}
+          onOpenChange={(o) => !o && setVideoFlight(null)}
+          droneId={videoFlight.drone_id}
+          droneName={videoFlight.droneName || t('dashboard.activeFlights.freeFlight')}
+          canManage={isAdmin}
+        />
+      )}
     </>
   );
 };
