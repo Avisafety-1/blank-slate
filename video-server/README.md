@@ -19,7 +19,7 @@ cd video-server
 fly launch --no-deploy --name video-server-app --region ams   # kun første gang
 fly secrets set \
   MTX_AUTHHTTPADDRESS="https://<prosjekt>.supabase.co/functions/v1/live-video-auth" \
-  MTX_WEBRTCALLOWORIGIN="https://app.avisafe.no"
+  MTX_WEBRTCALLOWORIGINS="https://app.avisafe.no"
 fly deploy
 ```
 
