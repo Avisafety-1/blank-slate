@@ -74,3 +74,19 @@ det inn en relay-/edge-løsning foran.
   `fly logs -a video-server-app` – siste linje sier hvilken innstilling
   MediaMTX ikke godtar.
 - Logger: `fly logs -a video-server-app`.
+
+## Statusprikk (live/offline) i AviSafe
+
+MediaMTX melder nå fra til AviSafe når en strøm starter og stopper
+(`runOnPublish` / `runOnUnpublish` i `mediamtx.yml`), slik at statusprikken
+blir rød umiddelbart når videoen forsvinner.
+
+Krever én ny secret med samme verdi som Supabase-hemmeligheten
+`LIVE_VIDEO_TOKEN_SECRET`:
+
+```bash
+fly secrets set LIVE_VIDEO_EVENT_SECRET=<samme verdi som LIVE_VIDEO_TOKEN_SECRET> -a video-server-app
+fly deploy -a video-server-app
+```
+
+Dockerfile er endret til alpine + `curl` (og CA-sertifikater), som kreves av hookene.
