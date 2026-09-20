@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plane, Clock, MapPin, Radio, User, Building2, Video } from "lucide-react";
 import { LiveVideoDialog } from "@/components/video/LiveVideoDialog";
+import { useLiveVideoByDroneIds } from "@/hooks/useLiveVideoStreams";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,9 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [isParentCompany, setIsParentCompany] = useState(false);
   const [videoFlight, setVideoFlight] = useState<ActiveFlight | null>(null);
+  const { hasLiveVideo } = useLiveVideoByDroneIds(
+    flights.map((f) => f.drone_id).filter((id): id is string => !!id),
+  );
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
@@ -247,6 +251,10 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                     >
                       <Video className="w-3 h-3 mr-1" />
                       {t('liveVideo.button')}
+                      <span
+                        className={`ml-1.5 h-2 w-2 rounded-full ${hasLiveVideo(flight.drone_id!) ? "bg-status-green" : "bg-status-red"}`}
+                        title={hasLiveVideo(flight.drone_id!) ? t('liveVideo.statusLive') : t('liveVideo.statusOffline')}
+                      />
                     </Button>
                   )}
                 </div>

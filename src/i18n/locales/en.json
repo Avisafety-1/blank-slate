@@ -8903,6 +8903,8 @@
   },
   "liveVideo": {
     "button": "Live video",
+    "statusLive": "Video is streaming right now",
+    "statusOffline": "No video stream",
     "title": "Live video – {{drone}}",
     "tabWatch": "Watch live",
     "tabSetup": "Setup",

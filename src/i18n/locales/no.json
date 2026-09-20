@@ -8911,6 +8911,8 @@
     "connecting": "Kobler til …",
     "reconnecting": "Mistet forbindelsen – prøver igjen …",
     "noStream": "Ingen videostrøm akkurat nå",
+    "statusLive": "Video sendes akkurat nå",
+    "statusOffline": "Ingen videostrøm",
     "serverAddress": "Serveradresse (RTMP)",
     "copied": "Kopiert",
     "copyFailed": "Kunne ikke kopiere",
