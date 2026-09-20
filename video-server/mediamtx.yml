@@ -60,6 +60,21 @@ pathDefaults:
   source: publisher
   record: no
   sourceOnDemand: no
+  # Melder fra til AviSafe med én gang en strøm starter/stopper, slik at
+  # statusprikken blir rød umiddelbart. Krever secret LIVE_VIDEO_EVENT_SECRET
+  # (samme verdi som i Supabase).
+  runOnPublish: >
+    curl -m 5 -s -o /dev/null -X POST
+    https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/live-video-event
+    -H "content-type: application/json"
+    -H "x-event-secret: $LIVE_VIDEO_EVENT_SECRET"
+    -d "{\"event\":\"publish\",\"path\":\"$MTX_PATH\"}"
+  runOnUnpublish: >
+    curl -m 5 -s -o /dev/null -X POST
+    https://pmucsvrypogtttrajqxq.supabase.co/functions/v1/live-video-event
+    -H "content-type: application/json"
+    -H "x-event-secret: $LIVE_VIDEO_EVENT_SECRET"
+    -d "{\"event\":\"unpublish\",\"path\":\"$MTX_PATH\"}"
 
 paths:
   all_others:
