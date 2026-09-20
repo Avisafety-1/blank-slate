@@ -59,6 +59,9 @@ det inn en relay-/edge-løsning foran.
 
 - **«Not authorized» ved publisering:** strømnøkkelen er ukjent eller sperret.
   Hent ny adresse i AviSafe (drone → Live video → Oppsett).
+- **`x509: certificate signed by unknown authority`:** containeren mangler
+  rotsertifikater. Dockerfile-en i denne mappen kopierer nå inn den offisielle
+  CA-pakken fra Alpine. Bygg og deploy imaget på nytt med `fly deploy`.
 - **Avspilling henger på «kobler til»:** `MTX_WEBRTCADDITIONALHOSTS` mangler
   eller peker på feil IP.
 - **Pilot 2 nekter `rtmps://`:** bruk `rtmp://<host>:1935/live/<nøkkel>` som
