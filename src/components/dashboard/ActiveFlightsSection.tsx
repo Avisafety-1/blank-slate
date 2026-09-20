@@ -1,7 +1,8 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User, Building2 } from "lucide-react";
+import { Plane, Clock, MapPin, Radio, User, Building2, Video } from "lucide-react";
+import { LiveVideoDialog } from "@/components/video/LiveVideoDialog";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,8 @@ interface ActiveFlight {
   pilot_name: string | null;
   mission_id: string | null;
   profile_id: string;
+  drone_id: string | null;
+  droneName?: string | null;
   profileName?: string;
   missionTitle?: string;
   companyName?: string;
