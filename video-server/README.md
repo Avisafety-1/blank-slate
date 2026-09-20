@@ -19,9 +19,12 @@ cd video-server
 fly launch --no-deploy --name video-server-app --region ams   # kun første gang
 fly secrets set \
   MTX_AUTHHTTPADDRESS="https://<prosjekt>.supabase.co/functions/v1/live-video-auth" \
-  MTX_WEBRTCALLOWORIGINS="https://app.avisafe.no"
+  MTX_WEBRTCALLOWORIGINS="https://app.avisafe.no,https://id-preview--d5204389-1e73-493a-85e2-7981b39460ee.lovable.app,https://d5204389-1e73-493a-85e2-7981b39460ee.lovableproject.com"
 fly deploy
 ```
+
+Den siste adressen er Lovable-editorens innebygde forhåndsvisning. Den må være
+med under testing selv om den offentlige preview-lenken allerede er tillatt.
 
 Etter første deploy:
 
