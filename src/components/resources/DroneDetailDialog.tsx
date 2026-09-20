@@ -982,6 +982,18 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 <Book className="w-4 h-4 mr-2" />
                 {tt("logbook")}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLiveVideoOpen(true)}
+                className="flex-1"
+              >
+                <Video className="w-4 h-4 mr-2" />
+                {t("liveVideo.button")}
+                {hasLiveVideo(drone.id) && (
+                  <span className="ml-2 h-2 w-2 rounded-full bg-status-green" />
+                )}
+              </Button>
             </div>
           )}
           {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
