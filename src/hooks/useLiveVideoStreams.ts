@@ -30,8 +30,10 @@ export function useLiveVideoStreams(companyId?: string | null) {
     void load();
     const interval = window.setInterval(load, 30000);
 
+    // Unikt kanalnavn per instans – supabase deduper kanaler på navn, og
+    // en gjenbrukt kanal kaster "cannot add callbacks after subscribe()".
     const channel = supabase
-      .channel(`live-video-${companyId}`)
+      .channel(`live-video-${companyId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
