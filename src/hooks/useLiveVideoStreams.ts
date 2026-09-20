@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const STALE_MS = 45 * 1000;
-const POLL_MS = 10000;
+const STALE_MS = 10 * 1000;
+const POLL_MS = 5000;
 const TICK_MS = 5000;
 
 /** Tikker jevnlig slik at "foreldet" strøm blir rød uten nye databasehendelser. */
