@@ -30,7 +30,7 @@ interface ActiveFlight {
 export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChange?: (has: boolean) => void }) => {
   const { t } = useTranslation();
   const { companyId, companyName } = useAuth();
-  const { isSuperAdmin } = useRoleCheck();
+  const { isSuperAdmin, isAdmin } = useRoleCheck();
   const { registerFlights } = useDashboardRealtimeContext();
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
@@ -38,6 +38,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [isParentCompany, setIsParentCompany] = useState(false);
+  const [videoFlight, setVideoFlight] = useState<ActiveFlight | null>(null);
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
@@ -58,7 +59,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
 
     let query = (supabase as any)
       .from('active_flights')
-      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn)');
+      .select('id, start_time, publish_mode, safesky_published, pilot_name, mission_id, profile_id, drone_id, profiles:profile_id(full_name), missions:mission_id(tittel), companies:company_id(navn), drones:drone_id(modell)');
 
     if (!isSuperAdminAvisafe) {
       if (hasChildren) {
@@ -83,6 +84,8 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
       pilot_name: f.pilot_name,
       mission_id: f.mission_id,
       profile_id: f.profile_id,
+      drone_id: f.drone_id ?? null,
+      droneName: f.drones?.modell ?? null,
       profileName: f.profiles?.full_name || null,
       missionTitle: f.missions?.tittel || null,
       companyName: f.companies?.navn || null,
