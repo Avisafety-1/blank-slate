@@ -34,9 +34,11 @@ fly deploy
 **Viktig:** uten `MTX_WEBRTCADDITIONALHOSTS` fullføres signaleringen, men
 videoen kommer aldri – ICE finner ingen brukbar kandidat.
 
-MediaMTX leser alle innstillinger i `mediamtx.yml` som kan overstyres av
-miljøvariabler med prefiks `MTX_`. Secrets over er derfor nok; `${...}`-verdiene
-i yml-filen er kun dokumentasjon av hvilke variabler som brukes.
+Verdiene i `mediamtx.yml` er standardverdier. MediaMTX utvider **ikke**
+`${...}` i yml-filen – står det en plassholder der, avviser den oppsettet og
+maskinen krasjer under deploy. Bruk i stedet miljøvariabler med prefiks `MTX_`
+(f.eks. `MTX_AUTHHTTPADDRESS`, `MTX_WEBRTCALLOWORIGIN`), som overstyrer
+tilsvarende nøkkel i filen.
 
 ## Porter
 
@@ -61,4 +63,8 @@ det inn en relay-/edge-løsning foran.
   eller peker på feil IP.
 - **Pilot 2 nekter `rtmps://`:** bruk `rtmp://<host>:1935/live/<nøkkel>` som
   reserve. Da er strømmen ukryptert på veien – kun for test.
+- **Maskinen krasjer under deploy («smoke checks failed»):** nesten alltid en
+  ugyldig verdi eller ukjent nøkkel i `mediamtx.yml`. Kjør
+  `fly logs -a video-server-app` – siste linje sier hvilken innstilling
+  MediaMTX ikke godtar.
 - Logger: `fly logs -a video-server-app`.
