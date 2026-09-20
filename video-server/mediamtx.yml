@@ -49,7 +49,7 @@ webrtcLocalTCPAddress: :8189
 webrtcIPsFromInterfaces: no
 # MÅ settes til Fly-appens offentlige IP, ellers feiler avspilling stille
 # etter signalering. Hent med: fly ips list
-webrtcAdditionalHosts: [${WEBRTC_ADDITIONAL_HOSTS}]
+webrtcAdditionalHosts: []
 webrtcICEServers2: []
 
 ###############################################
