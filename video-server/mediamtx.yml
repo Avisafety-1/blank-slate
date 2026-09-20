@@ -7,7 +7,7 @@
 #
 # MERK: MediaMTX utvider IKKE ${...} i denne filen. Verdiene under er
 # standardverdier. På Fly overstyres de med secrets som har prefiks MTX_,
-# f.eks. MTX_AUTHHTTPADDRESS og MTX_WEBRTCALLOWORIGIN (se README).
+# f.eks. MTX_AUTHHTTPADDRESS og MTX_WEBRTCALLOWORIGINS (se README).
 ###############################################
 
 logLevel: info
@@ -44,8 +44,8 @@ rtmpEncryption: "no"
 ###############################################
 webrtc: yes
 webrtcAddress: :8889
-webrtcEncryption: "no"
-webrtcAllowOrigin: "*"
+webrtcEncryption: false
+webrtcAllowOrigins: ["*"]
 webrtcLocalUDPAddress: ""
 webrtcLocalTCPAddress: :8189
 webrtcIPsFromInterfaces: no
