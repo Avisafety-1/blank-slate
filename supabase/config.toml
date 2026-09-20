@@ -275,3 +275,6 @@ verify_jwt = false
 
 [functions.mqtt-broker-credentials]
 verify_jwt = false
+
+[functions.live-video-event]
+verify_jwt = false
