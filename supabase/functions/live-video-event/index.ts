@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
   if (event === "unpublish") {
     const { error } = await service
       .from("drone_live_streams")
-      .update({ active: false, last_seen_at: now, ended_at: now })
+      .update({ active: false, last_seen_at: now })
       .eq("stream_path", path);
     if (error) {
       console.error("kunne ikke avslutte strøm", error.message);
