@@ -1913,6 +1913,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         flyvetimer={drone?.flyvetimer || 0}
       />
 
+      {drone?.id && (
+        <LiveVideoDialog
+          open={liveVideoOpen}
+          onOpenChange={setLiveVideoOpen}
+          droneId={drone.id}
+          droneName={drone.modell}
+          canManage={isAdmin}
+        />
+      )}
+
       {drone && (
         <MoveDroneDialog
           open={moveOpen}
