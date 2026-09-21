@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
+import { deriveHardStops, joinHardStopReasons, removeHardStopClaims } from "./hardStops.ts";
 
 import {
   calculateDroneAggregatedStatus,
@@ -1798,7 +1799,7 @@ serve(async (req) => {
     let civilTwilightViolation = false;
     let civilTwilightMissionTime = '';
     let civilTwilightNoTime = false;
-    if (companySoraConfig?.require_civil_twilight && lat && lng) {
+    if ((companySoraConfig?.require_civil_twilight || companySoraConfig?.allow_night_flight === false) && lat && lng) {
       try {
         const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
         const DEG_TO_RAD = Math.PI / 180;
@@ -2793,14 +2794,8 @@ serve(async (req) => {
           );
           aiAnalysis.summary = (aiAnalysis.summary ? aiAnalysis.summary + ' ' : '') + `(Korrigert: ${sum.text})`;
         } else if (reasonMentionsAirspace && otherHardStop) {
-          // Reassign the hardstop reason to the actual triggering category so the UI doesn't lie.
-          const trigger =
-            aiAnalysis.categories?.weather?.go_decision === 'NO-GO' ? 'vær' :
-            aiAnalysis.categories?.equipment?.go_decision === 'NO-GO' ? 'utstyr' :
-            aiAnalysis.categories?.pilot_experience?.go_decision === 'NO-GO' ? 'pilotkompetanse' : null;
-          if (trigger) {
-            aiAnalysis.hard_stop_reason = `Hard stop pga. ${trigger}. (Luftromsbegrunnelse fjernet — ${sum.text})`;
-          }
+          console.log('Discarding airspace-based hard-stop reason; authoritative reasons are derived after all guards:', sum.text);
+          aiAnalysis.hard_stop_reason = null;
         }
       }
     } catch (guardErr) {
@@ -2810,6 +2805,7 @@ serve(async (req) => {
     // ===== DETERMINISTIC AEC / ARC (SORA Annex C, Table 1 + 2) =====
     // AI models frequently pick the wrong AEC (e.g. AEC 11, which is >FL600).
     // Derive AEC and initial ARC from server-known facts instead.
+    let deterministicEquipmentHardStopReason: string | null = null;
     try {
       const sum = airspaceFacts?.summary ?? {};
       const arLang = resolveLang(language);
@@ -2976,6 +2972,7 @@ serve(async (req) => {
           shortReason = 'Forfalt vedlikehold på oppdragsutstyr';
         }
         console.log('Equipment hard-stop triggered:', reasonText);
+        deterministicEquipmentHardStopReason = shortReason;
 
         aiAnalysis.categories = aiAnalysis.categories || {};
         aiAnalysis.categories.equipment = {
@@ -3027,7 +3024,54 @@ serve(async (req) => {
     }
 
 
-    // Recompute recommendation after guards
+    // Final authority: derive hard stops only from measured data and explicit
+    // company limits after every category guard has completed. AI prose and
+    // category labels cannot create, preserve or remove a hard stop here.
+    const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
+    const authoritativeHardStops = deriveHardStops({
+      lang: assessmentLang,
+      skipWeather,
+      weatherCurrent: weatherData?.current ?? null,
+      weatherLimits: {
+        maxWindSpeedMs: Number(companySoraConfig?.max_wind_speed_ms ?? 10),
+        maxWindGustMs: Number(companySoraConfig?.max_wind_gust_ms ?? 15),
+        minTempC: Number(companySoraConfig?.min_temp_c ?? -10),
+        maxTempC: Number(companySoraConfig?.max_temp_c ?? 40),
+      },
+      equipmentReason: deterministicEquipmentHardStopReason,
+      assignedPilotCount: assignedPilots.length,
+      validCompetencyCount: validCompetencies.length,
+      daysSinceLastFlight,
+      maxPilotInactivityDays: companySoraConfig?.max_pilot_inactivity_days == null
+        ? null
+        : Number(companySoraConfig.max_pilot_inactivity_days),
+      flightHeightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
+      maxFlightAltitudeM: companySoraConfig?.max_flight_altitude_m == null
+        ? null
+        : Number(companySoraConfig.max_flight_altitude_m),
+      isVlos: pilotInputs?.isVlos !== false,
+      allowBvlos: companySoraConfig?.allow_bvlos ?? null,
+      allowNightFlight: companySoraConfig?.allow_night_flight ?? null,
+      requireCivilTwilight: companySoraConfig?.require_civil_twilight === true,
+      civilTwilightViolation,
+      populationDensity: populationData ? deterministicPopulationDensityValue : null,
+      maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
+        ? null
+        : Number(companySoraConfig.max_population_density_per_km2),
+      observerCount: Number(pilotInputs?.observerCount ?? 0),
+      requireObserver: companySoraConfig?.require_observer === true,
+    });
+    const categoriesWithHardStops = new Set(authoritativeHardStops.map((reason) => reason.category));
+    aiAnalysis.hard_stop_triggered = authoritativeHardStops.length > 0;
+    aiAnalysis.hard_stop_reason = joinHardStopReasons(authoritativeHardStops);
+    aiAnalysis.summary = removeHardStopClaims(aiAnalysis.summary);
+    if (aiAnalysis.categories) {
+      for (const category of categoriesWithHardStops) {
+        if (aiAnalysis.categories[category]) aiAnalysis.categories[category].go_decision = 'NO-GO';
+      }
+    }
+
+    // Recompute recommendation after authoritative hard-stop derivation.
     aiAnalysis.recommendation = deriveRiskRecommendation(
       aiAnalysis.overall_score,
       aiAnalysis.hard_stop_triggered === true,
