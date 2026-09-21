@@ -143,6 +143,7 @@ ${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER 
 ${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør. Kravet er oppfylt så lenge pilotInputs.observerCount >= 1 — uavhengig av om noen er tildelt rollen "Observatør" i mission_personnel. HARD STOP utløses KUN dersom pilotInputs.observerCount === 0. Hvis hard stop utløses, bruk teksten: "Antall observatører oppgitt i risikovurderingen er 0 — selskapet krever minst én." Ikke skriv at observatør "ikke er tildelt oppdraget" hvis observerCount >= 1.' : ''}
 ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `SIVIL SKUMRING — HARD STOP: Oppdraget er planlagt kl. ${civilTwilightMissionTime} som er UTENFOR sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Dette er et BRUDD og SKAL gi recommendation='no-go' og hard_stop_triggered=true. Forklar i rapporten at tidspunktet bryter selskapets krav om flyging innenfor sivil skumring.` : civilTwilightNoTime ? `SIVIL SKUMRING — ADVARSEL: Selskapet krever flyging innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), men oppdraget har ingen planlagt tid. Gi advarsel i rapporten om at tidspunkt MÅ bekreftes innenfor skumringstidene før flyging.` : `SIVIL SKUMRING: OK — Oppdraget kl. ${civilTwilightMissionTime} er innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Bekreft kort i rapporten at skumringstid er overholdt.`) : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
+HARD STOP-TEKST: hard_stop_reason skal KUN inneholde korte årsaker til vilkår som faktisk er brutt i datagrunnlaget. Ikke ta med bekreftelser på at noe er i orden, at tillatelse ikke kreves, at oppdraget er utenfor en sone, manglende datagrunnlag eller interne korreksjoner/diagnostikk. Ikke skriv «Luftromsbegrunnelse fjernet». Flere faktiske brudd oppgis som separate, korte setninger.
 
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
 Feltet "companyConfig" inneholder selskapets egne krav som ALLTID gjelder:
@@ -512,7 +513,7 @@ Returner en JSON-respons med denne strukturen:
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
   "hard_stop_triggered": <boolean>,
-  "hard_stop_reason": "<årsak hvis hard_stop_triggered er true, ellers null>",
+  "hard_stop_reason": "<kun faktisk brutte hard-stop-vilkår som korte setninger hvis true, ellers null>",
   "summary": "<kort oppsummering på norsk>",
   "categories": {
     "weather": {
@@ -706,6 +707,7 @@ ${companySoraConfig?.require_backup_battery ? 'BACKUP BATTERY: The company REQUI
 ${companySoraConfig?.require_observer ? 'OBSERVER: The company REQUIRES a dedicated observer. The requirement is satisfied as long as pilotInputs.observerCount >= 1 — regardless of whether anyone is assigned the "Observer" role in mission_personnel. HARD STOP is triggered ONLY if pilotInputs.observerCount === 0. If hard stop is triggered, use the text: "Number of observers entered in the risk assessment is 0 — the company requires at least one." Do not write that an observer is "not assigned to the mission" if observerCount >= 1.' : ''}
 ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `CIVIL TWILIGHT — HARD STOP: The mission is scheduled at ${civilTwilightMissionTime} which is OUTSIDE civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). This is a BREACH and SHALL result in recommendation='no-go' and hard_stop_triggered=true. Explain in the report that the time violates the company's requirement to fly within civil twilight.` : civilTwilightNoTime ? `CIVIL TWILIGHT — WARNING: The company requires flight within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), but the mission has no scheduled time. Warn in the report that the time MUST be confirmed within the twilight window before flight.` : `CIVIL TWILIGHT: OK — The mission at ${civilTwilightMissionTime} is within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Briefly confirm in the report that the twilight requirement is met.`) : ''}
 IMPORTANT: High pilot experience CANNOT compensate for technical or meteorological exceedances. HARD STOP shall be triggered regardless of other scores.
+HARD STOP TEXT: hard_stop_reason shall contain ONLY concise reasons for conditions actually breached in the supplied data. Do not include confirmations that conditions are acceptable, that approval is not required, that the mission is outside a zone, missing data, or internal corrections/diagnostics. Never write “airspace reason removed”. State multiple actual breaches as separate short sentences.
 
 ${companySoraConfig ? `### COMPANY SETTINGS (MANDATORY — OVERRIDES SYSTEM DEFAULTS)
 The "companyConfig" field contains the company's own requirements which ALWAYS apply:
@@ -1075,7 +1077,7 @@ Return a JSON response with this structure:
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
   "hard_stop_triggered": <boolean>,
-  "hard_stop_reason": "<reason if hard_stop_triggered is true, otherwise null>",
+  "hard_stop_reason": "<only actually breached hard-stop conditions as short sentences if true, otherwise null>",
   "summary": "<short summary in English>",
   "categories": {
     "weather": {
