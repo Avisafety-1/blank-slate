@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { deriveHardStops, joinHardStopReasons, removeHardStopClaims } from './hardStops.ts';
+import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from './hardStops.ts';
 
 const base = {
   lang: 'no' as const,
@@ -78,5 +78,19 @@ Deno.test('removes model hard-stop claims from the narrative summary', () => {
   assertEquals(
     removeHardStopClaims('Oppdraget har flere tiltak. Ingen 5 km-soner. HARD STOP fordi luftrommet er kontrollert. Resten må verifiseres.'),
     'Oppdraget har flere tiltak. Ingen 5 km-soner. Resten må verifiseres.',
+  );
+});
+
+Deno.test('SORA reassessment preserves the authoritative initial hard stop', () => {
+  assertEquals(
+    preserveAuthoritativeHardStop(true, 'Tildelt pilot mangler gyldig registrert kompetanse.'),
+    { hard_stop_triggered: true, hard_stop_reason: 'Tildelt pilot mangler gyldig registrert kompetanse.' },
+  );
+});
+
+Deno.test('SORA reassessment cannot invent a hard stop', () => {
+  assertEquals(
+    preserveAuthoritativeHardStop(false, 'AI hevdet et nytt stopp'),
+    { hard_stop_triggered: false, hard_stop_reason: null },
   );
 });

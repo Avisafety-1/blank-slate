@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
-import { deriveHardStops, joinHardStopReasons, removeHardStopClaims } from "./hardStops.ts";
+import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 
 import {
   calculateDroneAggregatedStatus,
@@ -1009,6 +1009,17 @@ serve(async (req) => {
       } catch (e) {
         console.error('Anti-hallucination guard failed (non-blocking):', e);
       }
+
+      // A SORA re-assessment refines SORA fields and narrative; it does not
+      // fetch a new operational data set. Preserve the initial assessment's
+      // deterministic hard-stop result rather than trusting new AI prose.
+      const preservedHardStop = preserveAuthoritativeHardStop(
+        (previousAnalysis as any)?.hard_stop_triggered,
+        (previousAnalysis as any)?.hard_stop_reason,
+      );
+      soraAnalysis.hard_stop_triggered = preservedHardStop.hard_stop_triggered;
+      soraAnalysis.hard_stop_reason = preservedHardStop.hard_stop_reason;
+      soraAnalysis.summary = removeHardStopClaims(soraAnalysis.summary);
 
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 

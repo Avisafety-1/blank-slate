@@ -143,3 +143,14 @@ export const removeHardStopClaims = (value: unknown): string => {
     .join(' ')
     .trim();
 };
+
+export const preserveAuthoritativeHardStop = (
+  previousTriggered: unknown,
+  previousReason: unknown,
+): { hard_stop_triggered: boolean; hard_stop_reason: string | null } => {
+  const triggered = previousTriggered === true;
+  const reason = triggered && typeof previousReason === 'string' && previousReason.trim()
+    ? previousReason.trim()
+    : null;
+  return { hard_stop_triggered: triggered, hard_stop_reason: reason };
+};
