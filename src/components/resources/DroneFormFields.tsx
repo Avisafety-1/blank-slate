@@ -349,7 +349,7 @@ export const DroneFormFields = ({
           />
         </div>
 
-        {checklists.length > 0 && (
+        {(checklists.length > 0 || unavailableOps.length > 0 || postFlightUnavailable) && (
           <>
             <div className="border-t pt-4">
               <Label>{tt("checklists.operationsLabel")}</Label>
