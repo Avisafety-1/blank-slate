@@ -171,7 +171,10 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
             .neq("drone_id", drone.id);
           const crossEq = new Set((otherEq || []).map((r: any) => r.equipment_id));
           for (const it of items) {
-            if (it.type === "equipment" && crossEq.has(it.id)) it.crossLinked = true;
+            if (it.type === "equipment" && crossEq.has(it.id)) {
+              it.crossLinked = true;
+              it.crossReason = "resourceDialogs.moveDrone.crossLinked";
+            }
           }
         }
         // Cross-link detection for documents: other drones (link table + checklist fields),
