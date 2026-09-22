@@ -120,16 +120,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const isServiceRole = !!serviceKey && authHeader.includes(serviceKey);
 
-    const { data: secretRow } = await admin
-      .schema("private")
-      .from("app_settings")
-      .select("value")
-      .eq("key", "resend_audience_sync_secret")
-      .maybeSingle();
-    const syncSecret = (secretRow?.value as string | undefined) ?? Deno.env.get("SYNC_WEBHOOK_SECRET");
-    const hasSyncSecret = !!syncSecret && req.headers.get("x-sync-secret") === syncSecret;
-
-    if (!isServiceRole && !hasSyncSecret) {
+    if (!isServiceRole) {
       const userClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_ANON_KEY")!,
