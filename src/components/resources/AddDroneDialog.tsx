@@ -30,6 +30,9 @@ interface DroneModel {
   max_wind_mps: number | null;
   sensor_type: string | null;
   comment: string | null;
+  ip_rating: string | null;
+  ip_source_status: string;
+  ip_source_url: string | null;
 }
 
 export interface DroneDefaultValues {

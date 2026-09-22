@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, Info } from "lucide-react";
+import { ChevronDown, ExternalLink, Info } from "lucide-react";
 
 export interface DroneFormValues {
   modell: string;
@@ -70,6 +70,9 @@ interface CatalogModel {
   id: string;
   name: string;
   eu_class: string;
+  ip_rating?: string | null;
+  ip_source_status?: string | null;
+  ip_source_url?: string | null;
 }
 
 interface ChecklistOption {
@@ -117,6 +120,7 @@ export const DroneFormFields = ({
   const isTouch = useIsTouchDevice();
 
   const selectedOps = values.operations_checklist_ids || [];
+  const selectedCatalogModel = droneModels.find((model) => model.id === selectedModelId);
 
   const opsList = (
     <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -163,6 +167,16 @@ export const DroneFormFields = ({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">{tt("catalogSelector.autofillHint")}</p>
+          {selectedCatalogModel && selectedModelId !== "manual" && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{tt("catalog.ipRating")} {selectedCatalogModel.ip_rating || tt("catalog.notDocumented")}</span>
+              {selectedCatalogModel.ip_source_url && (
+                <a className="inline-flex items-center gap-1 text-primary hover:underline" href={selectedCatalogModel.ip_source_url} target="_blank" rel="noreferrer">
+                  {tt("catalog.source")}<ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("resourceEditLayout.general")}</p>

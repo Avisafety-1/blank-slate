@@ -131,7 +131,7 @@ Disse navnene tilhører dataformatet og skal kun forekomme i selve JSON-nøklene
 
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
-1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km ELLER kraftig nedbør
+1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km. Nedbør eller IP-rating utløser ALDRI hard stop alene.
 2. VÆR - TEMPERATUR: Temperatur < ${companySoraConfig?.min_temp_c ?? -10}°C ELLER > ${companySoraConfig?.max_temp_c ?? 40}°C (kritisk for LiPo-batterier)
 3. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet). VIKTIG: Feltet primaryDrone.status (og assignedDrones[].status / assignedEquipment[].status) er ALLEREDE beregnet aggregert status som tar hensyn til forfalt inspeksjonsdato, overskredet timeintervall, oppdragsintervall, tilbehør og koblet utstyr. primaryDrone.statusReasons forklarer hvorfor. Du SKAL bruke dette feltet som fasit — IKKE overstyr det basert på lastInspection/nextInspection-datoer og IKKE bortforklar at "siste inspeksjon ble nylig utført". Hvis status er "Rød", skriv begrunnelsen fra statusReasons direkte i rapporten.
 4. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
@@ -176,6 +176,12 @@ Anta alltid at piloten vil:
 - Programmere RTH (Return to Home)
 - Gjennomføre visuell inspeksjon av dronen
 Disse skal kommenteres som forutsetninger i prerequisites.
+
+### NEDBØR OG DRONENS IP-RATING
+- Bruk bare primaryDrone.ipRating og primaryDrone.ipManufacturerLimitation. Ikke gjett eller utled IP-rating.
+- «Ikke dokumentert» er informasjon, ikke en automatisk begrensning.
+- Nedbør skal vurderes under Vær og kan gi advarsel/scoretrekk etter eksisterende nedbørsnivå, men nedbør eller IP-rating skal ALDRI alene utløse hard stop.
+- Ikke oversett IP-koden til en grense i mm/t. Gjengi produsentbegrensningen når den finnes.
 
 ### DUGGPUNKT OG ISINGSRISIKO (VIKTIG — KORREKT LOGIKK)
 Værdata kan inneholde duggpunktstemperatur (dew_point_temperature).
@@ -695,7 +701,7 @@ These names belong to the data format and shall only appear in the JSON keys of 
 
 ### HARD STOP LOGIC
 You SHALL return recommendation="no-go" and hard_stop_triggered=true if:
-1. WEATHER: Wind speed (mean wind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s OR wind gusts > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s OR visibility < ${companySoraConfig?.max_visibility_km ?? 1} km OR heavy precipitation
+1. WEATHER: Wind speed (mean wind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s OR wind gusts > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s OR visibility < ${companySoraConfig?.max_visibility_km ?? 1} km. Precipitation or an IP rating NEVER creates a hard stop by itself.
 2. WEATHER - TEMPERATURE: Temperature < ${companySoraConfig?.min_temp_c ?? -10}°C OR > ${companySoraConfig?.max_temp_c ?? 40}°C (critical for LiPo batteries)
 3. EQUIPMENT: Drone or critical equipment has status "Red" (NOTE: "Yellow" status does NOT trigger hard stop, but shall result in a lower score and a recommendation to exercise caution). IMPORTANT: The primaryDrone.status field (and assignedDrones[].status / assignedEquipment[].status) is ALREADY a pre-computed aggregated status that accounts for overdue inspection dates, exceeded hour intervals, mission intervals, accessories and linked equipment. primaryDrone.statusReasons explains why. Treat that field as ground truth — do NOT override it based on lastInspection/nextInspection dates and do NOT explain it away as "recent inspection". If status is "Red", quote the reasons from statusReasons directly in the report.
 4. PILOT: No valid competencies or all required certificates have expired
@@ -740,6 +746,12 @@ Always assume the pilot will:
 - Program RTH (Return to Home)
 - Conduct a visual inspection of the drone
 These shall be noted as assumptions in prerequisites.
+
+### PRECIPITATION AND AIRCRAFT IP RATING
+- Use only primaryDrone.ipRating and primaryDrone.ipManufacturerLimitation. Never guess or derive an IP rating.
+- “Not documented” is information, not an automatic limitation.
+- Assess precipitation under Weather. It may create a warning or score deduction under the existing precipitation severity, but precipitation or an IP rating must NEVER create a hard stop by itself.
+- Never convert an IP code into a made-up mm/h threshold. State the manufacturer limitation when supplied.
 
 ### DEW POINT AND ICING RISK (IMPORTANT — CORRECT LOGIC)
 Weather data may include dew point temperature (dew_point_temperature).

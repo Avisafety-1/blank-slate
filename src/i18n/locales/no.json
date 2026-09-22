@@ -5160,7 +5160,10 @@
         "maxWind": "Maks vind:",
         "maxWindUnit": "m/s",
         "sensor": "Sensor:",
-        "category": "Kategori:"
+        "category": "Kategori:",
+        "ipRating": "IP-rating:",
+        "notDocumented": "Ikke dokumentert",
+        "source": "Produsentkilde"
       },
       "statusHints": {
         "maintenanceDue": "🔧 Vedlikehold forfalt",
