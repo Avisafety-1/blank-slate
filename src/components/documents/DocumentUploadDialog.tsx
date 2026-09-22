@@ -44,7 +44,10 @@ export const DocumentUploadDialog = ({
         .select('id')
         .eq('parent_company_id', companyId)
         .limit(1);
-      setIsParentCompany((data?.length ?? 0) > 0);
+      const isParent = (data?.length ?? 0) > 0;
+      setIsParentCompany(isParent);
+      // Default: share new documents with subdepartments when in a parent company
+      setVisibleToChildren(isParent);
     };
     check();
   }, [companyId]);
@@ -144,7 +147,7 @@ export const DocumentUploadDialog = ({
       // Reset form
       setSelectedFile(null);
       setGlobalVisibility(false);
-      setVisibleToChildren(false);
+      setVisibleToChildren(isParentCompany);
       setFormData({
         title: "",
         description: "",

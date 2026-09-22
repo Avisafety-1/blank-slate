@@ -48,7 +48,10 @@ export const CreateChecklistDialog = ({ open, onOpenChange, onSuccess }: CreateC
         .select("id")
         .eq("parent_company_id", companyId)
         .limit(1);
-      setIsParentCompany((data?.length ?? 0) > 0);
+      const isParent = (data?.length ?? 0) > 0;
+      setIsParentCompany(isParent);
+      // Default: share new checklists with subdepartments when in a parent company
+      setVisibleToChildren(isParent);
     };
     check();
   }, [companyId, open]);
