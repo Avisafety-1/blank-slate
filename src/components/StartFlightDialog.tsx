@@ -752,12 +752,24 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   };
 
   const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
-  const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
+  // Checklists linked to the company/mission that the current user has no access to.
+  // They can never be completed, so they must not block the flight.
+  const unavailableCompanyChecklistIds = companyChecklistIds.filter(id => !checklists.some(c => c.id === id));
+  const unavailableMissionChecklistIds = isFetchingMissionChecklists
+    ? []
+    : missionChecklistIds.filter(id => !missionChecklistTitles[id]);
+  const hasUnavailableChecklists =
+    unavailableCompanyChecklistIds.length > 0 || unavailableMissionChecklistIds.length > 0;
+  const hasIncompleteChecklists = companyChecklistIds.some(
+    id => !completedChecklistIds.includes(id) && !unavailableCompanyChecklistIds.includes(id)
+  );
+  const hasIncompleteMissionChecklists = missionChecklistIds.some(
+    id => !missionCompletedChecklistIds.includes(id) && !unavailableMissionChecklistIds.includes(id)
+  );
 
   const validateMissionChecklists = (): boolean => {
     if (!selectedMissionId || selectedMissionId === 'none') return true;
-    const hasIncomplete = missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
-    if (hasIncomplete) {
+    if (hasIncompleteMissionChecklists) {
       setShowMissionChecklistWarning(true);
       return false;
     }
