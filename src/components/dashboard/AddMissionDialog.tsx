@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveEffectiveCompanyId } from "@/lib/companyInheritance";
 import { toast } from "sonner";
-import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText, AlertTriangle, Map, ChevronDown } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, X, Route, MapPin, Ruler, Navigation, FileText, AlertTriangle, Map as MapIcon, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useResourceConflicts } from "@/hooks/useResourceConflicts";
 import { ResourceConflictWarning, ResourceConflictIndicator } from "@/components/dashboard/ResourceConflictWarning";
@@ -1938,7 +1938,7 @@ export const AddMissionDialog = ({
             <div className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden">
               <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
                 <div className="flex items-center gap-2 font-medium text-sm">
-                  <Map className="h-4 w-4 text-muted-foreground" />
+                  <MapIcon className="h-4 w-4 text-muted-foreground" />
                   <span>{t('missions.mapPublishing')}</span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
