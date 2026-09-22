@@ -4576,7 +4576,12 @@
       "unknownEquipment": "Utstyr",
       "unknownDocument": "Dokument",
       "unknownDronetag": "DroneTag",
-      "unknownChecklist": "Sjekkliste"
+      "unknownChecklist": "Sjekkliste",
+      "crossLinkedChecklist": "Brukes også som sjekkliste på andre droner i avdelingen — «Flytt med» deaktivert.",
+      "crossLinkedMission": "Brukes også på oppdrag — «Flytt med» deaktivert.",
+      "ownedByOther": "Eies av {{owner}} — eierskapet endres ikke.",
+      "shareOwnedByOther": "Gi mottaker tilgang (eies av {{owner}})",
+      "otherDepartment": "en annen avdeling"
     },
     "personnelFlightKpi": {
       "flightTime": "Flytid",

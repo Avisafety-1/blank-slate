@@ -4574,7 +4574,12 @@
       "unknownEquipment": "Equipment",
       "unknownDocument": "Document",
       "unknownDronetag": "DroneTag",
-      "unknownChecklist": "Checklist"
+      "unknownChecklist": "Checklist",
+      "crossLinkedChecklist": "Also used as a checklist on other drones in the department — «Move with» disabled.",
+      "crossLinkedMission": "Also used on missions — «Move with» disabled.",
+      "ownedByOther": "Owned by {{owner}} — ownership does not change.",
+      "shareOwnedByOther": "Give receiver access (owned by {{owner}})",
+      "otherDepartment": "another department"
     },
     "personnelFlightKpi": {
       "flightTime": "Flight time",
