@@ -259,7 +259,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
         const defaults: Record<string, Action> = {};
         for (const it of items) {
           const key = `${it.type}:${it.id}`;
-          if (it.crossLinked && SUPPORTS_SHARE[it.type]) defaults[key] = "share";
+          if ((it.crossLinked || it.ownedByOther) && SUPPORTS_SHARE[it.type]) defaults[key] = "share";
           else defaults[key] = "move";
         }
         setActions(defaults);
