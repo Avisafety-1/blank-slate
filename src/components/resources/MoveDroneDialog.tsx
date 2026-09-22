@@ -355,7 +355,11 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
       >
         <label className={`flex items-center gap-1.5 ${moveDisabled ? "opacity-50" : ""}`}>
           <RadioGroupItem value="move" id={`${key}-move`} disabled={moveDisabled} />
-          {t('resourceDialogs.moveDrone.moveWith')}
+          {item.ownedByOther
+            ? t('resourceDialogs.moveDrone.shareOwnedByOther', {
+                owner: item.ownerName || t('resourceDialogs.moveDrone.otherDepartment'),
+              })
+            : t('resourceDialogs.moveDrone.moveWith')}
         </label>
         {supportsShare && (
           <label className="flex items-center gap-1.5">
