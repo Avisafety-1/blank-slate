@@ -752,12 +752,24 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
   };
 
   const availableChecklists = checklists.filter(c => !companyChecklistIds.includes(c.id));
-  const hasIncompleteChecklists = companyChecklistIds.some(id => !completedChecklistIds.includes(id));
+  // Checklists linked to the company/mission that the current user has no access to.
+  // They can never be completed, so they must not block the flight.
+  const unavailableCompanyChecklistIds = companyChecklistIds.filter(id => !checklists.some(c => c.id === id));
+  const unavailableMissionChecklistIds = isFetchingMissionChecklists
+    ? []
+    : missionChecklistIds.filter(id => !missionChecklistTitles[id]);
+  const hasUnavailableChecklists =
+    unavailableCompanyChecklistIds.length > 0 || unavailableMissionChecklistIds.length > 0;
+  const hasIncompleteChecklists = companyChecklistIds.some(
+    id => !completedChecklistIds.includes(id) && !unavailableCompanyChecklistIds.includes(id)
+  );
+  const hasIncompleteMissionChecklists = missionChecklistIds.some(
+    id => !missionCompletedChecklistIds.includes(id) && !unavailableMissionChecklistIds.includes(id)
+  );
 
   const validateMissionChecklists = (): boolean => {
     if (!selectedMissionId || selectedMissionId === 'none') return true;
-    const hasIncomplete = missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id));
-    if (hasIncomplete) {
+    if (hasIncompleteMissionChecklists) {
       setShowMissionChecklistWarning(true);
       return false;
     }
@@ -981,7 +993,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   <div className="space-y-2">
                     {companyChecklistIds.map((checklistId) => {
                       const checklist = checklists.find(c => c.id === checklistId);
-                      if (!checklist) return null;
+                      const unavailable = !checklist;
                       const isCompleted = completedChecklistIds.includes(checklistId);
                       
                       return (
@@ -990,10 +1002,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                           className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3"
                         >
                           <span className="text-sm font-medium truncate flex-1">
-                            {checklist.tittel}
+                            {unavailable ? t('flight.checklistUnavailable') : checklist!.tittel}
                           </span>
                           <div className="flex items-center gap-2">
-                            {isCompleted ? (
+                            {unavailable ? (
+                              <span className="text-xs text-amber-600 dark:text-amber-400">
+                                {t('flight.checklistUnavailableShort')}
+                              </span>
+                            ) : isCompleted ? (
                               <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                 <Check className="h-3 w-3" />
                                 {t('common.completed')}
@@ -1235,12 +1251,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </Label>
                 {missionChecklistIds.map(id => {
                   const done = missionCompletedChecklistIds.includes(id);
+                  const unavailable = unavailableMissionChecklistIds.includes(id);
                   return (
                     <div key={id} className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3">
                       <span className="text-sm font-medium truncate flex-1">
-                        {missionChecklistTitles[id] || '…'}
+                        {unavailable ? t('flight.checklistUnavailable') : (missionChecklistTitles[id] || '…')}
                       </span>
-                      {done ? (
+                      {unavailable ? (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          {t('flight.checklistUnavailableShort')}
+                        </span>
+                      ) : done ? (
                         <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                           <Check className="h-3 w-3" />
                           {t('common.completed')}
@@ -1486,6 +1507,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
               </div>
             )}
 
+            {hasUnavailableChecklists && (
+              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
+                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
+                <p className="text-amber-600 dark:text-amber-400">
+                  {t('flight.checklistUnavailableHint')}
+                </p>
+              </div>
+            )}
+
             {/* SORA requirement warning */}
             {missingSora && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
@@ -1535,7 +1565,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             <Button 
               data-tour="start-flight-submit"
               onClick={handleStartFlightClick} 
-              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || (missionChecklistIds.length > 0 && missionChecklistIds.some(id => !missionCompletedChecklistIds.includes(id))) || (publishMode === 'live_uav' && !selectedLiveDrone)}
+              disabled={loading || missingSora || isFetchingMissionChecklists || ninoxChecking || (missionIn5kmZone && !ninoxApproved) || hasIncompleteMissionChecklists || (publishMode === 'live_uav' && !selectedLiveDrone)}
               className="bg-green-600 hover:bg-green-700"
             >
               {isFetchingMissionChecklists ? 'Laster...' : (loading ? t('flight.starting') : t('flight.startFlight'))}

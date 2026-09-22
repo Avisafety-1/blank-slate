@@ -211,6 +211,9 @@
     "openChecklist": "Åpne sjekkliste",
     "changeChecklist": "Endre",
     "checklistNotCompleted": "Sjekkliste er ikke fullført",
+    "checklistUnavailable": "Utilgjengelig sjekkliste",
+    "checklistUnavailableShort": "Ingen tilgang",
+    "checklistUnavailableHint": "En eller flere sjekklister tilhører en annen avdeling og kan ikke åpnes her. De blokkerer ikke flyturen – be en administrator fjerne dem fra dronen.",
     "checklistWarningTitle": "Sjekkliste ikke fullført",
     "checklistWarningDesc": "Du har tilknyttede sjekklister som ikke er fullført. Er du sikker på at du vil starte flyturen?",
     "startAnyway": "Start likevel",
@@ -5315,7 +5318,10 @@
         "operationsHint": "Kobles automatisk til oppdrag når dronen legges til",
         "postFlightLabel": "Post flight sjekkliste",
         "postFlightPlaceholder": "Velg post flight sjekkliste (valgfritt)",
-        "postFlightHint": "Vises som bekreftelsesdialog når oppdrag fullføres"
+        "postFlightHint": "Vises som bekreftelsesdialog når oppdrag fullføres",
+        "unavailable": "Utilgjengelig sjekkliste (annen avdeling)",
+        "unavailableHint": "Denne sjekklisten tilhører en avdeling du ikke har tilgang til. Fjern den for å rydde opp.",
+        "removeUnavailable": "Fjern"
       },
       "techResponsible": {
         "label": "Teknisk ansvarlig",
