@@ -1,9 +1,7 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User, Building2, Video } from "lucide-react";
-import { LiveVideoDialog } from "@/components/video/LiveVideoDialog";
-import { useLiveVideoByDroneIds } from "@/hooks/useLiveVideoStreams";
+import { Plane, Clock, MapPin, Radio, User, Building2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,10 +37,6 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [isParentCompany, setIsParentCompany] = useState(false);
-  const [videoFlight, setVideoFlight] = useState<ActiveFlight | null>(null);
-  const { hasLiveVideo } = useLiveVideoByDroneIds(
-    flights.map((f) => f.drone_id).filter((id): id is string => !!id),
-  );
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
@@ -242,21 +236,6 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
                     <MapPin className="w-3 h-3 mr-1" />
                     {t('dashboard.activeFlights.viewOnMap')}
                   </Button>
-                  {flight.drone_id && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-3 text-xs"
-                      onClick={(e) => { e.stopPropagation(); setVideoFlight(flight); }}
-                    >
-                      <Video className="w-3 h-3 mr-1" />
-                      {t('liveVideo.button')}
-                      <span
-                        className={`ml-1.5 h-2 w-2 rounded-full ${hasLiveVideo(flight.drone_id!) ? "bg-status-green" : "bg-status-red"}`}
-                        title={hasLiveVideo(flight.drone_id!) ? t('liveVideo.statusLive') : t('liveVideo.statusOffline')}
-                      />
-                    </Button>
-                  )}
                 </div>
                 <Badge className="bg-green-500/20 text-green-700 dark:text-green-300 text-xs sm:text-sm font-mono px-2.5 py-1">
                   <Clock className="w-3.5 h-3.5 mr-1.5" />
@@ -274,15 +253,7 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
         mission={selectedMission}
       />
 
-      {videoFlight?.drone_id && (
-        <LiveVideoDialog
-          open={!!videoFlight}
-          onOpenChange={(o) => !o && setVideoFlight(null)}
-          droneId={videoFlight.drone_id}
-          droneName={videoFlight.droneName || t('dashboard.activeFlights.freeFlight')}
-          canManage={isAdmin}
-        />
-      )}
     </>
   );
 };
+
