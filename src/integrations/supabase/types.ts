@@ -2976,6 +2976,12 @@ export type Database = {
           endurance_min: number | null
           eu_class: string
           id: string
+          ip_manufacturer_limitation_en: string | null
+          ip_manufacturer_limitation_no: string | null
+          ip_rating: string | null
+          ip_source_checked_at: string | null
+          ip_source_status: string
+          ip_source_url: string | null
           max_speed_mps: number | null
           max_wind_mps: number | null
           name: string
@@ -2993,6 +2999,12 @@ export type Database = {
           endurance_min?: number | null
           eu_class: string
           id?: string
+          ip_manufacturer_limitation_en?: string | null
+          ip_manufacturer_limitation_no?: string | null
+          ip_rating?: string | null
+          ip_source_checked_at?: string | null
+          ip_source_status?: string
+          ip_source_url?: string | null
           max_speed_mps?: number | null
           max_wind_mps?: number | null
           name: string
@@ -3010,6 +3022,12 @@ export type Database = {
           endurance_min?: number | null
           eu_class?: string
           id?: string
+          ip_manufacturer_limitation_en?: string | null
+          ip_manufacturer_limitation_no?: string | null
+          ip_rating?: string | null
+          ip_source_checked_at?: string | null
+          ip_source_status?: string
+          ip_source_url?: string | null
           max_speed_mps?: number | null
           max_wind_mps?: number | null
           name?: string
