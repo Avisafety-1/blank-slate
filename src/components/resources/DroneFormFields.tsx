@@ -121,6 +121,11 @@ export const DroneFormFields = ({
 
   const selectedOps = values.operations_checklist_ids || [];
   const selectedCatalogModel = droneModels.find((model) => model.id === selectedModelId);
+  const unavailableOps = selectedOps.filter((id) => !checklists.some((c) => c.id === id));
+  const postFlightUnavailable =
+    !!values.post_flight_checklist_id &&
+    values.post_flight_checklist_id !== "none" &&
+    !checklists.some((c) => c.id === values.post_flight_checklist_id);
 
   const opsList = (
     <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -139,6 +144,27 @@ export const DroneFormFields = ({
           <span className="min-w-0 flex-1 break-words">{checklist.tittel}</span>
         </label>
       ))}
+    </div>
+  );
+
+  const unavailableOpsList = unavailableOps.length > 0 && (
+    <div className="mt-2 space-y-1">
+      {unavailableOps.map((id) => (
+        <div key={id} className="flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm">
+          <span className="min-w-0 flex-1 break-words text-amber-700 dark:text-amber-400">
+            {tt("checklists.unavailable")}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange({ operations_checklist_ids: selectedOps.filter((x) => x !== id) })}
+          >
+            {tt("checklists.removeUnavailable")}
+          </Button>
+        </div>
+      ))}
+      <p className="text-xs text-muted-foreground">{tt("checklists.unavailableHint")}</p>
     </div>
   );
 
