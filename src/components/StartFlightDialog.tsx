@@ -1247,12 +1247,17 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                 </Label>
                 {missionChecklistIds.map(id => {
                   const done = missionCompletedChecklistIds.includes(id);
+                  const unavailable = unavailableMissionChecklistIds.includes(id);
                   return (
                     <div key={id} className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3">
                       <span className="text-sm font-medium truncate flex-1">
-                        {missionChecklistTitles[id] || '…'}
+                        {unavailable ? t('flight.checklistUnavailable') : (missionChecklistTitles[id] || '…')}
                       </span>
-                      {done ? (
+                      {unavailable ? (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                          {t('flight.checklistUnavailableShort')}
+                        </span>
+                      ) : done ? (
                         <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                           <Check className="h-3 w-3" />
                           {t('common.completed')}
