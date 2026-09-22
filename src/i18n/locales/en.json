@@ -4775,7 +4775,9 @@
       "completing": "Completing...",
       "complete": "Complete",
       "markAsCompleted": "Mark the checklist as completed",
-      "checkAll": "Check all items ({{done}}/{{total}})"
+      "checkAll": "Check all items ({{done}}/{{total}})",
+      "fileAccessError": "Could not open the checklist file – you do not have access to it. Contact an admin.",
+      "checklistLoadError": "Could not load the checklist. Contact an admin."
     },
     "equipmentDetail": {
       "editTitle": "Edit equipment",
