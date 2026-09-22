@@ -229,7 +229,18 @@ Deno.serve(async (req) => {
       await new Promise((r) => setTimeout(r, 150));
     }
 
-    return new Response(JSON.stringify({ total, skipped, audiences: stats }), {
+    // Always finish with a clean-up pass: former users are removed from the
+    // user audience, and pure newsletter signups are preserved in their own list.
+    const { data: nlCfg } = await admin
+      .from("app_config")
+      .select("value")
+      .eq("key", "resend_newsletter_audience_id")
+      .maybeSingle();
+    const newsletterAudienceId =
+      Deno.env.get("RESEND_NEWSLETTER_AUDIENCE_ID") ?? (nlCfg?.value as string | undefined) ?? null;
+    const cleanup = await splitAndPrune(admin, globalAudienceId, newsletterAudienceId);
+
+    return new Response(JSON.stringify({ total, skipped, audiences: stats, cleanup }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
