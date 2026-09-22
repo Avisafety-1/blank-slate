@@ -8900,6 +8900,7 @@ export type Database = {
         Args: { _drone_id: string; _user_id: string }
         Returns: boolean
       }
+      can_write_document_folder: { Args: { _folder: string }; Returns: boolean }
       check_mission_airspace: {
         Args: { p_lat: number; p_lng: number; p_route?: Json }
         Returns: {
