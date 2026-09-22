@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
-    const audienceId = getAudienceId();
+    const audienceId = await getAudienceId();
 
     // Public action — no auth required
     if (action === "public-subscribe") {
