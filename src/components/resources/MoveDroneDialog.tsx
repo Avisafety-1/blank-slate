@@ -174,16 +174,77 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
             if (it.type === "equipment" && crossEq.has(it.id)) it.crossLinked = true;
           }
         }
-        // Cross-link detection: documents also linked to other drones via drone_documents
+        // Cross-link detection for documents: other drones (link table + checklist fields),
+        // missions, and ownership by another department.
         if (docIds.size > 0) {
-          const { data: otherDocs } = await supabase
-            .from("drone_documents")
-            .select("document_id, drone_id")
-            .in("document_id", Array.from(docIds))
-            .neq("drone_id", drone.id);
-          const crossDocs = new Set((otherDocs || []).map((r: any) => r.document_id));
+          const docIdList = Array.from(docIds);
+          const [otherDocs, otherDrones, missionDocs, missionChecklists, docRows] = await Promise.all([
+            supabase
+              .from("drone_documents")
+              .select("document_id, drone_id")
+              .in("document_id", docIdList)
+              .neq("drone_id", drone.id),
+            supabase
+              .from("drones")
+              .select("id, operations_checklist_ids, post_flight_checklist_id, sjekkliste_id")
+              .eq("company_id", drone.company_id!)
+              .neq("id", drone.id),
+            supabase.from("mission_documents").select("document_id").in("document_id", docIdList),
+            supabase.from("missions").select("id, checklist_ids").overlaps("checklist_ids", docIdList),
+            supabase.from("documents").select("id, company_id").in("id", docIdList),
+          ]);
+
+          const crossDocs = new Set((otherDocs.data || []).map((r: any) => r.document_id));
+
+          const checklistOnOtherDrones = new Set<string>();
+          for (const d of (otherDrones.data || []) as any[]) {
+            for (const cid of d.operations_checklist_ids || []) if (cid) checklistOnOtherDrones.add(cid);
+            if (d.post_flight_checklist_id) checklistOnOtherDrones.add(d.post_flight_checklist_id);
+            if (d.sjekkliste_id) checklistOnOtherDrones.add(d.sjekkliste_id);
+          }
+
+          const usedInMissions = new Set<string>();
+          for (const r of (missionDocs.data || []) as any[]) usedInMissions.add(r.document_id);
+          for (const m of (missionChecklists.data || []) as any[]) {
+            for (const cid of m.checklist_ids || []) if (docIds.has(cid)) usedInMissions.add(cid);
+          }
+
+          const ownerById = new Map<string, string | null>();
+          for (const d of (docRows.data || []) as any[]) ownerById.set(d.id, d.company_id ?? null);
+
+          const otherOwnerIds = Array.from(
+            new Set(
+              Array.from(ownerById.values()).filter(
+                (cid): cid is string => !!cid && cid !== drone.company_id
+              )
+            )
+          );
+          const ownerNames = new Map<string, string>();
+          if (otherOwnerIds.length > 0) {
+            const { data: ownerRows } = await supabase
+              .from("companies")
+              .select("id, navn")
+              .in("id", otherOwnerIds);
+            for (const c of (ownerRows || []) as any[]) ownerNames.set(c.id, c.navn);
+          }
+
           for (const it of items) {
-            if (it.type === "document" && crossDocs.has(it.id)) it.crossLinked = true;
+            if (it.type !== "document") continue;
+            const owner = ownerById.get(it.id) ?? null;
+            if (owner && owner !== drone.company_id) {
+              it.ownedByOther = true;
+              it.ownerName = ownerNames.get(owner);
+            }
+            if (crossDocs.has(it.id)) {
+              it.crossLinked = true;
+              it.crossReason = "resourceDialogs.moveDrone.crossLinked";
+            } else if (checklistOnOtherDrones.has(it.id)) {
+              it.crossLinked = true;
+              it.crossReason = "resourceDialogs.moveDrone.crossLinkedChecklist";
+            } else if (usedInMissions.has(it.id)) {
+              it.crossLinked = true;
+              it.crossReason = "resourceDialogs.moveDrone.crossLinkedMission";
+            }
           }
         }
 
