@@ -5622,6 +5622,9 @@
       "noDocumentsInFolder": "No documents in this folder",
       "visibleToChildren": "Visible to all departments",
       "deleteFolder": "Delete folder",
+      "deleteTab": "Delete tab",
+      "deleteTabTitle": "Delete this tab?",
+      "deleteTabConfirm": "Are you sure you want to delete the tab \"{{name}}\"? The documents in it are kept, but are moved out of the tab.",
       "addDocuments": "Add documents",
       "toasts": {
         "contentUpdated": "Folder content updated",

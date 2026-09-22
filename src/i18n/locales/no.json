@@ -5624,6 +5624,9 @@
       "noDocumentsInFolder": "Ingen dokumenter i denne mappen",
       "visibleToChildren": "Synlig for alle avdelinger",
       "deleteFolder": "Slett mappe",
+      "deleteTab": "Slett fane",
+      "deleteTabTitle": "Slette fanen?",
+      "deleteTabConfirm": "Er du sikker på at du vil slette fanen «{{name}}»? Dokumentene i fanen beholdes, men flyttes ut av fanen.",
       "addDocuments": "Legg til dokumenter",
       "toasts": {
         "contentUpdated": "Mappeinnhold oppdatert",

@@ -1,4 +1,14 @@
 import { useState, useEffect } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +68,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
   const [docDetailOpen, setDocDetailOpen] = useState(false);
+  const [tabPendingDelete, setTabPendingDelete] = useState<FolderTab | null>(null);
   const [newTabName, setNewTabName] = useState("");
   const [showNewTab, setShowNewTab] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
@@ -320,6 +331,12 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     loadFolderDocs();
   };
 
+  const confirmDeleteTab = async () => {
+    if (!tabPendingDelete) return;
+    setTabPendingDelete(null);
+    await deleteTab(tabPendingDelete.id);
+  };
+
   const filteredPickerTemplates = evaluationTemplates.filter(
     (tpl) => !searchPicker || tpl.title.toLowerCase().includes(searchPicker.toLowerCase())
   );
@@ -398,7 +415,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                         <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => { setEditingTabId(tab.id); setEditingTabName(tab.name); }}>
                           <Pencil className="h-2.5 w-2.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => deleteTab(tab.id)}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => setTabPendingDelete(tab)}>
                           <X className="h-2.5 w-2.5" />
                         </Button>
                       </div>
@@ -517,6 +534,26 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={tabPendingDelete !== null} onOpenChange={(open) => !open && setTabPendingDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("documents.folderDetail.deleteTabTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("documents.folderDetail.deleteTabConfirm", { name: tabPendingDelete?.name ?? "" })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setTabPendingDelete(null)}>
+            {t("documents.folderDetail.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDeleteTab} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {t("documents.folderDetail.deleteTab")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
 
     <EvaluationFormDialog
       open={templateDialogOpen}
