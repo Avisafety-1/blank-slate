@@ -219,10 +219,10 @@ Deno.serve(async (req) => {
 
     let total = 0, skipped = 0;
 
-    for (const p of profiles ?? []) {
+    await runPool(profiles ?? [], 6, async (p) => {
       total++;
       const email = (p.email || "").trim().toLowerCase();
-      if (!email || !email.includes("@")) { skipped++; continue; }
+      if (!email || !email.includes("@")) { skipped++; return; }
       const fullName = (p.full_name || "").trim();
       const [first_name, ...rest] = fullName.split(" ");
       const last_name = rest.join(" ");
@@ -244,9 +244,7 @@ Deno.serve(async (req) => {
           stats[ca.audienceName][k]++;
         } catch { stats[ca.audienceName].failed++; }
       }
-
-      await new Promise((r) => setTimeout(r, 150));
-    }
+    });
 
     // Always finish with a clean-up pass: former users are removed from the
     // user audience, and pure newsletter signups are preserved in their own list.
