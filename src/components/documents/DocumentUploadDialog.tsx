@@ -147,7 +147,7 @@ export const DocumentUploadDialog = ({
       // Reset form
       setSelectedFile(null);
       setGlobalVisibility(false);
-      setVisibleToChildren(false);
+      setVisibleToChildren(isParentCompany);
       setFormData({
         title: "",
         description: "",
