@@ -22,6 +22,11 @@ interface ResourceItem {
   name: string;
   /** True when the resource is also linked to other drones that will remain in the source dept. */
   crossLinked?: boolean;
+  /** i18n key explaining why "move with" is blocked. */
+  crossReason?: string;
+  /** Document is owned by another department (typically the parent) — ownership never moves. */
+  ownedByOther?: boolean;
+  ownerName?: string;
 }
 
 interface Department {
