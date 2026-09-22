@@ -535,6 +535,26 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
       </DialogContent>
     </Dialog>
 
+    <AlertDialog open={tabPendingDelete !== null} onOpenChange={(open) => !open && setTabPendingDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("documents.folderDetail.deleteTabTitle")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("documents.folderDetail.deleteTabConfirm", { name: tabPendingDelete?.name ?? "" })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setTabPendingDelete(null)}>
+            {t("documents.folderDetail.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDeleteTab} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {t("documents.folderDetail.deleteTab")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+
     <EvaluationFormDialog
       open={templateDialogOpen}
       onOpenChange={setTemplateDialogOpen}
