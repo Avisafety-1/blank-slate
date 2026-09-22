@@ -8883,6 +8883,10 @@ export type Database = {
         Args: { _path: string; _user: string }
         Returns: boolean
       }
+      can_read_document_file: {
+        Args: { _object_name: string }
+        Returns: boolean
+      }
       can_read_folder: { Args: { _folder_id: string }; Returns: boolean }
       can_see_message_recipients: {
         Args: { _message_id: string; _user: string }
