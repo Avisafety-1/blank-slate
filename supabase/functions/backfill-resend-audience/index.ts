@@ -54,6 +54,18 @@ async function syncOne(audienceId: string, email: string, first_name: string, la
   return "failed";
 }
 
+/** Run an async worker over items with bounded concurrency. */
+async function runPool<T>(items: T[], limit: number, worker: (item: T) => Promise<void>) {
+  let i = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const item = items[i++];
+      try { await worker(item); } catch { /* collected by caller */ }
+    }
+  });
+  await Promise.all(runners);
+}
+
 async function listAllContacts(audienceId: string) {
   const r = await resendFetch(`/audiences/${audienceId}/contacts`);
   if (!r.ok) return [];
@@ -87,21 +99,23 @@ async function splitAndPrune(
   const removedFromUsers: string[] = [];
   const failed: string[] = [];
 
-  for (const c of contacts) {
+  const targets = contacts.filter((c) => {
     const email = (c.email || "").trim().toLowerCase();
-    if (!email || profileEmails.has(email)) continue;
+    return !!email && !profileEmails.has(email);
+  });
 
+  await runPool(targets, 6, async (c) => {
+    const email = (c.email || "").trim().toLowerCase();
     const isFormerUser = deletedEmails.has(email);
     if (!isFormerUser && newsletterAudienceId) {
       const r = await syncOne(newsletterAudienceId, email, c.first_name || "", c.last_name || "");
-      if (r === "failed") { failed.push(email); continue; }
+      if (r === "failed") { failed.push(email); return; }
       movedToNewsletter.push(email);
     }
 
     const del = await resendFetch(`/audiences/${userAudienceId}/contacts/${encodeURIComponent(email)}`, { method: "DELETE" });
     if (del.ok) removedFromUsers.push(email); else failed.push(email);
-    await new Promise((r) => setTimeout(r, 120));
-  }
+  });
 
   return { movedToNewsletter, removedFromUsers, failed };
 }
@@ -164,12 +178,17 @@ Deno.serve(async (req) => {
       .not("email", "is", null);
     if (error) throw error;
 
-    // Pre-resolve root company for each profile
+    // Pre-resolve root company once per distinct company (not per profile)
+    const rootByCompany = new Map<string, string>();
+    const companyIds = [...new Set((profiles ?? []).map((p) => p.company_id).filter(Boolean) as string[])];
+    await runPool(companyIds, 8, async (cid) => {
+      const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: cid });
+      if (rootRes) rootByCompany.set(cid, rootRes as string);
+    });
     const rootByProfile = new Map<string, string>();
     for (const p of profiles ?? []) {
-      if (!p.company_id) continue;
-      const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: p.company_id });
-      if (rootRes) rootByProfile.set(p.id, rootRes as string);
+      const root = p.company_id ? rootByCompany.get(p.company_id) : undefined;
+      if (root) rootByProfile.set(p.id, root);
     }
 
     // Load company audiences and lazily create on Resend if missing
@@ -200,10 +219,10 @@ Deno.serve(async (req) => {
 
     let total = 0, skipped = 0;
 
-    for (const p of profiles ?? []) {
+    await runPool(profiles ?? [], 6, async (p) => {
       total++;
       const email = (p.email || "").trim().toLowerCase();
-      if (!email || !email.includes("@")) { skipped++; continue; }
+      if (!email || !email.includes("@")) { skipped++; return; }
       const fullName = (p.full_name || "").trim();
       const [first_name, ...rest] = fullName.split(" ");
       const last_name = rest.join(" ");
@@ -225,9 +244,7 @@ Deno.serve(async (req) => {
           stats[ca.audienceName][k]++;
         } catch { stats[ca.audienceName].failed++; }
       }
-
-      await new Promise((r) => setTimeout(r, 150));
-    }
+    });
 
     // Always finish with a clean-up pass: former users are removed from the
     // user audience, and pure newsletter signups are preserved in their own list.
