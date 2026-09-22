@@ -54,6 +54,18 @@ async function syncOne(audienceId: string, email: string, first_name: string, la
   return "failed";
 }
 
+/** Run an async worker over items with bounded concurrency. */
+async function runPool<T>(items: T[], limit: number, worker: (item: T) => Promise<void>) {
+  let i = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const item = items[i++];
+      try { await worker(item); } catch { /* collected by caller */ }
+    }
+  });
+  await Promise.all(runners);
+}
+
 async function listAllContacts(audienceId: string) {
   const r = await resendFetch(`/audiences/${audienceId}/contacts`);
   if (!r.ok) return [];
@@ -87,21 +99,23 @@ async function splitAndPrune(
   const removedFromUsers: string[] = [];
   const failed: string[] = [];
 
-  for (const c of contacts) {
+  const targets = contacts.filter((c) => {
     const email = (c.email || "").trim().toLowerCase();
-    if (!email || profileEmails.has(email)) continue;
+    return !!email && !profileEmails.has(email);
+  });
 
+  await runPool(targets, 6, async (c) => {
+    const email = (c.email || "").trim().toLowerCase();
     const isFormerUser = deletedEmails.has(email);
     if (!isFormerUser && newsletterAudienceId) {
       const r = await syncOne(newsletterAudienceId, email, c.first_name || "", c.last_name || "");
-      if (r === "failed") { failed.push(email); continue; }
+      if (r === "failed") { failed.push(email); return; }
       movedToNewsletter.push(email);
     }
 
     const del = await resendFetch(`/audiences/${userAudienceId}/contacts/${encodeURIComponent(email)}`, { method: "DELETE" });
     if (del.ok) removedFromUsers.push(email); else failed.push(email);
-    await new Promise((r) => setTimeout(r, 120));
-  }
+  });
 
   return { movedToNewsletter, removedFromUsers, failed };
 }
