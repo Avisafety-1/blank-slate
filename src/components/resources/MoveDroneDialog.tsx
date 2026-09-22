@@ -403,7 +403,14 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
                   <div className="text-sm font-medium truncate">{item.name}</div>
                   {item.crossLinked && (
                     <div className="text-[11px] text-amber-600 dark:text-amber-400">
-                      {t('resourceDialogs.moveDrone.crossLinked')}
+                      {t(item.crossReason || 'resourceDialogs.moveDrone.crossLinked')}
+                    </div>
+                  )}
+                  {item.ownedByOther && (
+                    <div className="text-[11px] text-muted-foreground">
+                      {t('resourceDialogs.moveDrone.ownedByOther', {
+                        owner: item.ownerName || t('resourceDialogs.moveDrone.otherDepartment'),
+                      })}
                     </div>
                   )}
                 </div>
