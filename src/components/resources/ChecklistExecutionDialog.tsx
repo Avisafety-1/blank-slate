@@ -181,7 +181,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
               .createSignedUrl(data.fil_url, 3600);
             if (signedError) {
               console.error("[ChecklistExecutionDialog] createSignedUrl failed:", signedError, "path:", data.fil_url);
-              setLoadError("Kunne ikke laste sjekklistefilen. Sjekk at den er delt riktig, eller kontakt admin.");
+              setLoadError(t('resourceDialogs.checklistExecution.fileAccessError'));
             } else {
               setFileUrl(signedData?.signedUrl ?? null);
             }
