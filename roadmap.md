@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [x] IP-rating i dronekatalog og nedbørsvurdering under Vær, uten nye hard stops
 - [x] Risikovurdering: én autoritativ kilde for faktiske hard-stop-årsaker; diagnostikk fjernet fra visning
 - [x] /dji cache-fiks: versjonslinje i logg, SW/cache-tømming ved åpning, "Tøm buffer"-knapp (publish avbrutt — må publiseres på nytt)
 - [x] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/

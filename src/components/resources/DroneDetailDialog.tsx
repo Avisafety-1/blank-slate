@@ -120,7 +120,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [catalogModel, setCatalogModel] = useState<any>(null);
-  const [droneModels, setDroneModels] = useState<{id: string; name: string; eu_class: string; weight_kg: number; payload_kg: number; comment: string | null}[]>([]);
+  const [droneModels, setDroneModels] = useState<{id: string; name: string; eu_class: string; weight_kg: number; payload_kg: number; comment: string | null; ip_rating: string | null; ip_source_status: string; ip_source_url: string | null}[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
@@ -327,7 +327,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const fetchDroneModels = async () => {
       const { data } = await supabase
         .from("drone_models")
-        .select("id, name, eu_class, weight_kg, payload_kg, comment")
+        .select("id, name, eu_class, weight_kg, payload_kg, comment, ip_rating, ip_source_status, ip_source_url")
         .order("name");
       if (data) setDroneModels(data);
     };
@@ -1071,8 +1071,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               </div>
 
-              {catalogModel && (catalogModel.endurance_min || catalogModel.max_wind_mps || catalogModel.sensor_type || catalogModel.category || catalogModel.weight_without_payload_kg || catalogModel.standard_takeoff_weight_kg) && (
+              {catalogModel && (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+                  <div>
+                    <span className="font-medium">{tt("catalog.ipRating")}</span> {catalogModel.ip_rating || tt("catalog.notDocumented")}
+                    {catalogModel.ip_source_url && (
+                      <a className="ml-2 inline-flex items-center gap-1 text-primary hover:underline" href={catalogModel.ip_source_url} target="_blank" rel="noreferrer">
+                        {tt("catalog.source")}<ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
                   {catalogModel.weight_without_payload_kg != null && (
                     <div>
                       <span className="font-medium">{tt("catalog.weightNoPayload")}</span> {catalogModel.weight_without_payload_kg} {tt("kgSuffix")}

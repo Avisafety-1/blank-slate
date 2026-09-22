@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
+import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 
 import {
   calculateDroneAggregatedStatus,
@@ -1290,7 +1291,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${supabaseKey}`,
             },
-            body: JSON.stringify({ lat, lon: lng }),
+            body: JSON.stringify({ lat, lon: lng, targetTime: mission.tidspunkt }),
           });
           if (weatherResponse.ok) {
             weatherData = await weatherResponse.json();
@@ -1866,7 +1867,7 @@ serve(async (req) => {
       try {
         const { data: droneModels } = await supabase
           .from('drone_models' as any)
-          .select('name, characteristic_dimension_m, max_speed_mps, max_wind_mps, weight_kg, category')
+          .select('name, characteristic_dimension_m, max_speed_mps, max_wind_mps, weight_kg, category, ip_rating, ip_source_status, ip_source_url, ip_manufacturer_limitation_no, ip_manufacturer_limitation_en')
           .or(`name.ilike.%${droneData.modell}%,name.ilike.%${String(droneData.modell).replace(/^DJI\s+/i, '')}%`)
           .limit(20);
 
@@ -2327,6 +2328,12 @@ serve(async (req) => {
         maxSpeedMps: droneCatalogMatch?.max_speed_mps ?? null,
         maxWindMps: droneCatalogMatch?.max_wind_mps ?? null,
         weightKg: droneCatalogMatch?.weight_kg ?? droneData.vekt ?? null,
+        ipRating: droneCatalogMatch?.ip_rating ?? null,
+        ipSourceStatus: droneCatalogMatch?.ip_source_status ?? 'not_documented',
+        ipSourceUrl: droneCatalogMatch?.ip_source_url ?? null,
+        ipManufacturerLimitation: resolveLang(language) === 'en'
+          ? droneCatalogMatch?.ip_manufacturer_limitation_en ?? null
+          : droneCatalogMatch?.ip_manufacturer_limitation_no ?? null,
         alos: deterministicAlos,
       } : null,
       pilotInputs: pilotInputs || {},
@@ -2524,6 +2531,34 @@ serve(async (req) => {
       aiAnalysis.categories.weather.actual_conditions = 'Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.';
       aiAnalysis.categories.weather.factors = [];
       aiAnalysis.categories.weather.concerns = [];
+    }
+    if (!skipWeather) {
+      const ipPrecipitation = deriveIpPrecipitationObservation({
+        lang: resolveLang(language),
+        skipped: false,
+        precipitation: weatherData?.current?.precipitation,
+        precipitationMin: weatherData?.current?.precipitation_min,
+        precipitationMax: weatherData?.current?.precipitation_max,
+        periodHours: weatherData?.current?.precipitation_period_hours,
+        ipRating: droneCatalogMatch?.ip_rating,
+        sourceStatus: droneCatalogMatch?.ip_source_status,
+        manufacturerLimitation: resolveLang(language) === 'en'
+          ? droneCatalogMatch?.ip_manufacturer_limitation_en
+          : droneCatalogMatch?.ip_manufacturer_limitation_no,
+      });
+      if (ipPrecipitation) {
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        const weatherCategory = aiAnalysis.categories.weather || {};
+        const existingConditions = String(weatherCategory.actual_conditions || '').trim();
+        weatherCategory.actual_conditions = [existingConditions, ipPrecipitation.actualCondition].filter(Boolean).join(' ');
+        if (ipPrecipitation.concern) {
+          weatherCategory.concerns = [
+            ...(Array.isArray(weatherCategory.concerns) ? weatherCategory.concerns : []),
+            ipPrecipitation.concern,
+          ];
+        }
+        aiAnalysis.categories.weather = weatherCategory;
+      }
     }
     if (skipWeather && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
       const otherScores = ['airspace', 'equipment', 'pilot_experience', 'mission_complexity']

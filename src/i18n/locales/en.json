@@ -5158,7 +5158,10 @@
         "maxWind": "Max wind:",
         "maxWindUnit": "m/s",
         "sensor": "Sensor:",
-        "category": "Category:"
+        "category": "Category:",
+        "ipRating": "IP rating:",
+        "notDocumented": "Not documented",
+        "source": "Manufacturer source"
       },
       "statusHints": {
         "maintenanceDue": "🔧 Maintenance overdue",
