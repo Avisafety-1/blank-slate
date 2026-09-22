@@ -192,7 +192,7 @@ export const ChecklistExecutionDialog = (props: ChecklistExecutionDialogProps) =
       } catch (err) {
         console.error("[ChecklistExecutionDialog] fetch failed:", err);
         setItems([]);
-        setLoadError("Kunne ikke laste sjekklisten. Kontakt admin.");
+        setLoadError(t('resourceDialogs.checklistExecution.checklistLoadError'));
       } finally {
         setIsLoading(false);
       }
