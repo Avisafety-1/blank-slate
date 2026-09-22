@@ -380,14 +380,14 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
           <div className="flex shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden pb-1 border-b border-border min-h-[38px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setActiveTab(null)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
                 activeTab === null ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
               }`}
             >
               {t("documents.folderDetail.all")}
             </button>
             {tabs.map((tab) => (
-              <div key={tab.id} className="flex items-center group">
+              <div key={tab.id} className="flex shrink-0 items-center group">
                 {editingTabId === tab.id ? (
                   <div className="flex items-center gap-1">
                     <Input
@@ -404,7 +404,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                   <>
                     <button
                       onClick={() => setActiveTab(tab.id)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
+                      className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
                         activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
                       }`}
                     >
