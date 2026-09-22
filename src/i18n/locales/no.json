@@ -2492,6 +2492,11 @@
       "toastDeleteError": "Kunne ikke slette",
       "toastGenericError": "Feil",
       "toastDocumentSaveError": "Kunne ikke lagre dokument",
+      "toastDocumentShareError": "Kunne ikke dele dokumentet",
+      "shareDialogTitle": "Gjør dokumentet synlig for avdelinger",
+      "shareDialogDescription": "Velg hvilke avdelinger som skal få tilgang til dokumentet sammen med den arvede oppdragstypen.",
+      "shareAllDepartments": "Alle avdelinger",
+      "shareAndAttach": "Del og tilknytt",
       "toastPropagateOn": "Gjelder nå for alle avdelinger",
       "toastPropagateOff": "Avdelinger bruker egen liste"
     },

@@ -2490,6 +2490,11 @@
       "toastDeleteError": "Could not delete",
       "toastGenericError": "Error",
       "toastDocumentSaveError": "Could not save document",
+      "toastDocumentShareError": "Could not share the document",
+      "shareDialogTitle": "Make document visible to departments",
+      "shareDialogDescription": "Choose which departments should receive access to the document with the inherited mission type.",
+      "shareAllDepartments": "All departments",
+      "shareAndAttach": "Share and attach",
       "toastPropagateOn": "Now applies to all departments",
       "toastPropagateOff": "Departments use their own list"
     },

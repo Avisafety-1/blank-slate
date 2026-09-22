@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const [newLabel, setNewLabel] = useState("");
   const [propagate, setPropagate] = useState(false);
   const [hasChildren, setHasChildren] = useState(false);
+  const [departments, setDepartments] = useState<{ id: string; navn: string }[]>([]);
   const [parentName, setParentName] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -47,6 +49,9 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const [docs, setDocs] = useState<DocOption[]>([]);
   const [pickerOpenForId, setPickerOpenForId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareDepartmentIds, setShareDepartmentIds] = useState<string[]>([]);
+  const [pendingDocumentLink, setPendingDocumentLink] = useState<{ typeId: string; documentId: string; nextIds: string[] } | null>(null);
 
   const isReadOnly = !!disabled || isInherited;
   const ownsList = effectiveCompanyId === companyId;
@@ -55,8 +60,12 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     if (!companyId) return;
     (supabase.from("companies").select("propagate_mission_types").eq("id", companyId).maybeSingle() as any)
       .then(({ data }: any) => setPropagate(!!data?.propagate_mission_types));
-    (supabase.from("companies").select("id", { count: "exact", head: true }).eq("parent_company_id", companyId) as any)
-      .then(({ count }: any) => setHasChildren((count ?? 0) > 0));
+    (supabase.from("companies").select("id, navn").eq("parent_company_id", companyId).order("navn") as any)
+      .then(({ data }: any) => {
+        const childDepartments = data || [];
+        setDepartments(childDepartments);
+        setHasChildren(childDepartments.length > 0);
+      });
     if (parentCompanyId && isInherited) {
       (supabase.from("companies").select("name").eq("id", parentCompanyId).maybeSingle() as any)
         .then(({ data }: any) => setParentName(data?.name || ""));
@@ -214,7 +223,59 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     }
     const current = getDocIds(mt);
     const next = current.includes(docId) ? current.filter((id) => id !== docId) : [...current, docId];
+    if (!current.includes(docId) && propagate && departments.length > 0) {
+      const { data } = await supabase
+        .from("document_department_visibility")
+        .select("company_id")
+        .eq("document_id", docId)
+        .in("company_id", departments.map((department) => department.id));
+      const existingIds = (data || []).map((row) => row.company_id);
+      setShareDepartmentIds(existingIds.length > 0 ? existingIds : departments.map((department) => department.id));
+      setPendingDocumentLink({ typeId: mt.id, documentId: docId, nextIds: next });
+      setShareDialogOpen(true);
+      return;
+    }
     await saveDocuments(mt.id, next);
+  };
+
+  const confirmDocumentSharing = async () => {
+    if (!pendingDocumentLink) return;
+    setSaving(true);
+    const childIds = departments.map((department) => department.id);
+    const { data: existingRows, error: loadError } = await supabase
+      .from("document_department_visibility")
+      .select("company_id")
+      .eq("document_id", pendingDocumentLink.documentId)
+      .in("company_id", childIds);
+    if (loadError) {
+      setSaving(false);
+      toast({ title: t("admin.missionTypes.toastDocumentShareError"), description: loadError.message, variant: "destructive" });
+      return;
+    }
+    const existingIds = (existingRows || []).map((row) => row.company_id);
+    const toAdd = shareDepartmentIds.filter((id) => !existingIds.includes(id));
+    const toRemove = existingIds.filter((id) => !shareDepartmentIds.includes(id));
+    const results = await Promise.all([
+      toAdd.length > 0
+        ? supabase.from("document_department_visibility").upsert(
+            toAdd.map((companyId) => ({ document_id: pendingDocumentLink.documentId, company_id: companyId })),
+            { onConflict: "document_id,company_id" },
+          )
+        : Promise.resolve({ error: null }),
+      toRemove.length > 0
+        ? supabase.from("document_department_visibility").delete().eq("document_id", pendingDocumentLink.documentId).in("company_id", toRemove)
+        : Promise.resolve({ error: null }),
+    ]);
+    const shareError = results.find((result) => result.error)?.error;
+    if (shareError) {
+      setSaving(false);
+      toast({ title: t("admin.missionTypes.toastDocumentShareError"), description: shareError.message, variant: "destructive" });
+      return;
+    }
+    await saveDocuments(pendingDocumentLink.typeId, pendingDocumentLink.nextIds);
+    setSaving(false);
+    setShareDialogOpen(false);
+    setPendingDocumentLink(null);
   };
 
   const clearLinks = async (mt: CompanyMissionType) => {
@@ -483,6 +544,42 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
               }}
             >
               {t("admin.missionTypes.done")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={shareDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !saving) {
+            setShareDialogOpen(false);
+            setPendingDocumentLink(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("admin.missionTypes.shareDialogTitle")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t("admin.missionTypes.shareDialogDescription")}</p>
+          <DepartmentChecklist
+            departments={departments}
+            selectedIds={shareDepartmentIds}
+            onToggle={(id, checked) => setShareDepartmentIds((current) => checked ? [...current, id] : current.filter((item) => item !== id))}
+            allSelected={departments.length > 0 && shareDepartmentIds.length === departments.length}
+            onToggleAll={(checked) => setShareDepartmentIds(checked ? departments.map((department) => department.id) : [])}
+            allLabel={t("admin.missionTypes.shareAllDepartments")}
+          />
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => {
+              setShareDialogOpen(false);
+              setPendingDocumentLink(null);
+            }}>
+              {t("admin.missionTypes.cancel")}
+            </Button>
+            <Button disabled={saving} onClick={confirmDocumentSharing}>
+              {t("admin.missionTypes.shareAndAttach")}
             </Button>
           </DialogFooter>
         </DialogContent>

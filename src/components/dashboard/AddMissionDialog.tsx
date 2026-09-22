@@ -151,7 +151,16 @@ export const AddMissionDialog = ({
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const terminology = useTerminology();
   const { labels: missionTypeLabels, types: missionTypes } = useCompanyMissionTypes();
-  const prevOppdragstypeRef = useRef<string | null>(null);
+  const manualDocumentIdsRef = useRef<Set<string>>(new Set(initialSelectedDocuments || []));
+  const droneDocumentIdsRef = useRef<Map<string, Set<string>>>(new Map());
+  const missionTypeDocumentIdsRef = useRef<Set<string>>(new Set());
+
+  const syncSelectedDocuments = () => {
+    const ids = new Set(manualDocumentIdsRef.current);
+    droneDocumentIdsRef.current.forEach((documentIds) => documentIds.forEach((id) => ids.add(id)));
+    missionTypeDocumentIdsRef.current.forEach((id) => ids.add(id));
+    setSelectedDocuments(Array.from(ids));
+  };
   
   
   const [formData, setFormData] = useState({
@@ -205,12 +214,27 @@ export const AddMissionDialog = ({
       .slice(0, 6);
   }, [mentionQuery, profiles]);
 
+  const loadDocumentsForDrones = async (droneIds: string[]) => {
+    if (droneIds.length === 0) return;
+    const { data, error } = await (supabase as any)
+      .from("drone_documents")
+      .select("drone_id, document_id")
+      .in("drone_id", droneIds);
+    if (error) throw error;
+    droneIds.forEach((id) => droneDocumentIdsRef.current.set(id, new Set()));
+    (data || []).forEach((row: any) => {
+      if (row.drone_id && row.document_id) {
+        droneDocumentIdsRef.current.get(row.drone_id)?.add(row.document_id);
+      }
+    });
+    syncSelectedDocuments();
+  };
+
   // Autofyll pilot + drone-ressurser fra innlogget bruker (kun ved oppretting)
   const autofillFromCurrentUser = async (fields: {
     personnel: boolean;
     drones: boolean;
     equipment: boolean;
-    documents: boolean;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -220,7 +244,7 @@ export const AddMissionDialog = ({
         setSelectedPersonnel((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
       }
 
-      if (!fields.drones && !fields.equipment && !fields.documents) return;
+      if (!fields.drones && !fields.equipment) return;
 
       const { data: dpRows } = await (supabase as any)
         .from("drone_personnel")
@@ -229,28 +253,20 @@ export const AddMissionDialog = ({
       const droneIds = Array.from(new Set((dpRows || []).map((r: any) => r.drone_id).filter(Boolean)));
       if (droneIds.length === 0) return;
 
-      const [eqRes, docRes] = await Promise.all([
+      const [eqRes] = await Promise.all([
         fields.equipment
           ? (supabase as any).from("drone_equipment").select("equipment_id").in("drone_id", droneIds)
-          : Promise.resolve({ data: [] }),
-        fields.documents
-          ? (supabase as any).from("drone_documents").select("document_id").in("drone_id", droneIds)
           : Promise.resolve({ data: [] }),
       ]);
 
       if (fields.drones) {
         setSelectedDrones((prev) => Array.from(new Set([...prev, ...droneIds])) as string[]);
+        await loadDocumentsForDrones(droneIds as string[]);
       }
       if (fields.equipment) {
         const eqIds = (eqRes.data || []).map((r: any) => r.equipment_id).filter(Boolean);
         if (eqIds.length > 0) {
           setSelectedEquipment((prev) => Array.from(new Set([...prev, ...eqIds])) as string[]);
-        }
-      }
-      if (fields.documents) {
-        const docIds = (docRes.data || []).map((r: any) => r.document_id).filter(Boolean);
-        if (docIds.length > 0) {
-          setSelectedDocuments((prev) => Array.from(new Set([...prev, ...docIds])) as string[]);
         }
       }
     } catch (e) {
@@ -328,14 +344,17 @@ export const AddMissionDialog = ({
         if (initialSelectedDrones) setSelectedDrones(initialSelectedDrones);
         if (initialSelectedCustomer) setSelectedCustomer(initialSelectedCustomer);
         if (initialSelectedDocuments) setSelectedDocuments(initialSelectedDocuments);
+        manualDocumentIdsRef.current = new Set(initialSelectedDocuments || []);
+        droneDocumentIdsRef.current.clear();
+        missionTypeDocumentIdsRef.current.clear();
 
         // Autofyll pilot + drone-ressurser for felter som ikke kom via initial-props
         autofillFromCurrentUser({
           personnel: !initialSelectedPersonnel || initialSelectedPersonnel.length === 0,
           drones: !initialSelectedDrones || initialSelectedDrones.length === 0,
           equipment: !initialSelectedEquipment || initialSelectedEquipment.length === 0,
-          documents: !initialSelectedDocuments || initialSelectedDocuments.length === 0,
         });
+        if (initialSelectedDrones?.length) loadDocumentsForDrones(initialSelectedDrones);
 
         // Auto-fill location from first route point via reverse geocoding
         if (!autoLokasjon && firstCoord) {
@@ -374,10 +393,13 @@ export const AddMissionDialog = ({
         setSelectedEquipment([]);
         setSelectedDrones([]);
         setSelectedDocuments([]);
+        manualDocumentIdsRef.current.clear();
+        droneDocumentIdsRef.current.clear();
+        missionTypeDocumentIdsRef.current.clear();
         setSelectedCustomer("");
         setRouteData(null);
         // Autofyll pilot + drone-ressurser for blanke nye oppdrag
-        autofillFromCurrentUser({ personnel: true, drones: true, equipment: true, documents: true });
+        autofillFromCurrentUser({ personnel: true, drones: true, equipment: true });
       }
     }
   }, [open, mission, initialFormData, initialRouteData, initialSelectedPersonnel, initialSelectedEquipment, initialSelectedDrones, initialSelectedCustomer]);
@@ -386,15 +408,18 @@ export const AddMissionDialog = ({
   useEffect(() => {
     if (mission) return; // edit mode: don't auto-add
     const current = formData.oppdragstype || "";
-    if (prevOppdragstypeRef.current === current) return;
-    prevOppdragstypeRef.current = current;
-    if (!current) return;
+    if (!current) {
+      missionTypeDocumentIdsRef.current.clear();
+      syncSelectedDocuments();
+      return;
+    }
     const matchType = missionTypes.find((t) => t.label === current);
     const ids = ((matchType as any)?.default_document_ids as string[] | null | undefined) ?? [];
     const defaultDocIds = ids.length > 0 ? ids : (matchType?.default_document_id ? [matchType.default_document_id] : []);
-    if (defaultDocIds.length === 0) return;
-    setSelectedDocuments((prev) => [...prev, ...defaultDocIds.filter((id) => !prev.includes(id))]);
-  }, [formData.oppdragstype, missionTypes, mission]);
+    const visibleDocumentIds = new Set(documents.map((document) => document.id));
+    missionTypeDocumentIdsRef.current = new Set(defaultDocIds.filter((id) => visibleDocumentIds.has(id)));
+    syncSelectedDocuments();
+  }, [formData.oppdragstype, missionTypes, mission, documents]);
 
 
 
@@ -1154,10 +1179,10 @@ export const AddMissionDialog = ({
     );
     if (isAdding) {
       try {
-        const { data, error } = await (supabase as any)
-          .from("drone_equipment")
-          .select("equipment_id")
-          .eq("drone_id", droneId);
+        const [{ data, error }] = await Promise.all([
+          (supabase as any).from("drone_equipment").select("equipment_id").eq("drone_id", droneId),
+          loadDocumentsForDrones([droneId]),
+        ]);
         if (error) throw error;
         const eqIds = (data || []).map((r: any) => r.equipment_id).filter(Boolean);
         if (eqIds.length > 0) {
@@ -1166,23 +1191,34 @@ export const AddMissionDialog = ({
       } catch (err) {
         console.error("Auto-add linked equipment failed:", err);
       }
+    } else {
+      droneDocumentIdsRef.current.delete(droneId);
+      syncSelectedDocuments();
     }
   };
 
   const removeDrone = (droneId: string) => {
     setSelectedDrones(prev => prev.filter(id => id !== droneId));
+    droneDocumentIdsRef.current.delete(droneId);
+    syncSelectedDocuments();
   };
 
   const toggleDocument = (documentId: string) => {
-    setSelectedDocuments(prev =>
-      prev.includes(documentId)
-        ? prev.filter(id => id !== documentId)
-        : [...prev, documentId]
-    );
+    if (selectedDocuments.includes(documentId)) {
+      manualDocumentIdsRef.current.delete(documentId);
+      droneDocumentIdsRef.current.forEach((ids) => ids.delete(documentId));
+      missionTypeDocumentIdsRef.current.delete(documentId);
+    } else {
+      manualDocumentIdsRef.current.add(documentId);
+    }
+    syncSelectedDocuments();
   };
 
   const removeDocument = (documentId: string) => {
-    setSelectedDocuments(prev => prev.filter(id => id !== documentId));
+    manualDocumentIdsRef.current.delete(documentId);
+    droneDocumentIdsRef.current.forEach((ids) => ids.delete(documentId));
+    missionTypeDocumentIdsRef.current.delete(documentId);
+    syncSelectedDocuments();
   };
 
   return (
@@ -1875,7 +1911,7 @@ export const AddMissionDialog = ({
             
             {selectedDocuments.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {selectedDocuments.map((id) => {
+                {selectedDocuments.filter((id) => documents.some((doc) => doc.id === id)).map((id) => {
                   const doc = documents.find((d) => d.id === id);
                   return (
                     <div
