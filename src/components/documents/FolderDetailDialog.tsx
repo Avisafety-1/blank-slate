@@ -377,7 +377,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
 
         {/* Tabs bar */}
         {(tabs.length > 0 || canManageFolder) && !showPicker && (
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-border">
+          <div className="flex shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden pb-1 border-b border-border min-h-[38px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setActiveTab(null)}
               className={`px-3 py-1.5 text-xs font-medium rounded-t-md whitespace-nowrap transition-colors ${
