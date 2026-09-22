@@ -178,12 +178,17 @@ Deno.serve(async (req) => {
       .not("email", "is", null);
     if (error) throw error;
 
-    // Pre-resolve root company for each profile
+    // Pre-resolve root company once per distinct company (not per profile)
+    const rootByCompany = new Map<string, string>();
+    const companyIds = [...new Set((profiles ?? []).map((p) => p.company_id).filter(Boolean) as string[])];
+    await runPool(companyIds, 8, async (cid) => {
+      const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: cid });
+      if (rootRes) rootByCompany.set(cid, rootRes as string);
+    });
     const rootByProfile = new Map<string, string>();
     for (const p of profiles ?? []) {
-      if (!p.company_id) continue;
-      const { data: rootRes } = await admin.rpc("get_root_company_id", { _company_id: p.company_id });
-      if (rootRes) rootByProfile.set(p.id, rootRes as string);
+      const root = p.company_id ? rootByCompany.get(p.company_id) : undefined;
+      if (root) rootByProfile.set(p.id, root);
     }
 
     // Load company audiences and lazily create on Resend if missing
