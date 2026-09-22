@@ -363,7 +363,25 @@ const DocumentCardModal = ({
   const uploadFile = async (file: File): Promise<string> => {
     const fileExt = file.name.split(".").pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${fileName}`;
+
+    // Store the file in the document's owning company folder so the storage
+    // path always matches the document row's company_id. When replacing an
+    // existing file, reuse the folder of the original file; legacy root files
+    // and external URLs fall back to the document's company (or the company
+    // the user is currently in, for new documents).
+    let folder: string | null = null;
+    const originalUrl = document?.fil_url;
+    if (!isCreating && originalUrl && !originalUrl.startsWith("http") && originalUrl.includes("/")) {
+      folder = originalUrl.split("/")[0] || null;
+    }
+    if (!folder) {
+      folder = (document?.company_id as string | undefined) ?? companyId ?? null;
+    }
+    if (!folder) {
+      throw new Error(t("documents.toasts.saveFailed"));
+    }
+
+    const filePath = `${folder}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("documents")
