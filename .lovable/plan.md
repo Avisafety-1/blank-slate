@@ -1,32 +1,27 @@
-# Hvorfor filer havner i feil mappe – og hvordan vi retter det
+# Lagre dokumentfiler i riktig mappe fremover
 
-## Hva jeg fant
+## Bakgrunn (avklart med bruker)
 
-Hver fil lagres i en mappe oppkalt etter et selskap. Det er to steder man kan laste opp en fil, og de velger mappe på hver sin måte:
-
-1. Dialogen for å laste opp nytt dokument legger filen i mappen til **selskapet du står i akkurat nå** – ikke i mappen til avdelingen dokumentet tilhører. Står en Tensio-administrator og legger inn et dokument som eies av Tensio Nord, havner filen i Tensio sin mappe.
-2. Dialogen for å redigere/erstatte fil på et eksisterende dokument legger filen **helt uten mappe**, rett i «roten» av arkivet.
-
-Begge deler gjør at mappen ikke samsvarer med dokumentets eier. Det er akkurat de 16 tilfellene vi så: 9 Tensio Nord-dokumenter i Tensio sin mappe, 6 Avisafe-dokumenter i andre mapper, og 1 fil helt uten mappe.
-
-Tilgangsregelen som ble lagt inn i går gjør at disse likevel kan åpnes, så ingen er blokkert nå. Men så lenge opplastingen fortsetter å velge feil mappe, vokser rotet videre.
+- Dokumentet tilhører selskapet/avdelingen det lastes opp fra — dokumentradens `company_id` og filens mappe skal samsvare.
+- De 16 eksisterende dokumentene med fil i feil mappe røres IKKE. Tilgangsregelen fra i går (`can_read_document_file` + oppdatert lesepolicy) sikrer at alle kan åpne det de skal — feilen brukerne så er rettet opp.
+- Delingsfunksjonen (oppover/nedover i hierarkiet) endres ikke.
 
 ## Hva som skal gjøres
 
-### 1. Opplasting velger riktig mappe
-- Ved nytt dokument: bruk mappen til avdelingen dokumentet registreres på, ikke selskapet brukeren står i.
-- Ved redigering/erstatning av fil: bruk mappen til avdelingen som eier dokumentet, i stedet for å lagre uten mappe.
-- Filnavnet holdes unikt som i dag.
+### 1. Nye dokumenter: fil lagres i mappen til avdelingen opplastingen skjer fra
+- `DocumentUploadDialog.tsx` bruker allerede kontekstens `companyId` som mappe — beholdes, men valider at `companyId` alltid er satt før opplasting (avvis opplasting uten selskap i stedet for å risikere rot-mappe).
 
-### 2. Rydde opp i de 16 eksisterende
-Flytte hver fil til riktig avdelings mappe og oppdatere dokumentets filhenvisning i samme operasjon, slik at ingenting blir liggende uten kobling. Gjøres kontrollert, ett dokument av gangen, med kontroll av at filen kan åpnes etterpå.
+### 2. Redigering/erstatt fil: lagre i samme mappe som originalfilen
+- `DocumentCardModal.tsx` laster i dag opp uten mappe (rett i roten av arkivet) — det er kilden til filer uten mappenavn.
+- Ved erstatting: bruk mappen fra dokumentets eksisterende `fil_url` når den har et mappenavn; ellers dokumentets `company_id`.
+- Ved nytt dokument i samme dialog: bruk kontekstens `companyId`, som DocumentUploadDialog.
 
-### 3. Ikke endret
-Nivåene for deling nedover beholdes som i dag (morselskap til direkte underavdelinger). Tilgangsregelen fra i går beholdes uendret – den fungerer også som sikkerhetsnett mot eldre feilplasserte filer.
+### 3. Ingen databaseendring, ingen flytting av eksisterende filer
+- `can_read_document_file` og SELECT-policyen på `storage.objects` beholdes uendret som sikkerhetsnett for historiske feilplasserte filer.
 
 ## Teknisk
 
-- `src/components/documents/DocumentUploadDialog.tsx`: `filePath` bygges av `companyId` fra kontekst; skal bruke valgt eier-avdeling for dokumentraden.
-- `src/components/documents/DocumentCardModal.tsx`: `uploadFile()` returnerer `${fileName}` uten prefiks; skal prefikses med dokumentets `company_id` (eksisterende dokument) eller `companyId` (nytt).
-- Opprydding: kopier objekt i `documents`-bucket til `<company_id>/<filnavn>`, oppdater `documents.fil_url`, slett gammelt objekt. Kjøres som skript/edge-kall med service role, ikke som SQL-migrasjon (storage-objekter kan ikke flyttes i SQL).
-- `public.can_read_document_file(text)` og SELECT-policyen på `storage.objects` røres ikke.
+- `src/components/documents/DocumentCardModal.tsx`: `uploadFile(file, folderPrefix)` — mappes prefiks utledes fra original `fil_url` (del før første `/`) eller dokumentets `company_id` ved opprettelse.
+- `src/components/documents/DocumentUploadDialog.tsx`: guard mot manglende `companyId` før `upload()`.
+- i18n: ingen nye bruker synlige strenger forventet; eventuelle feiltekster i både `no.json` og `en.json`.
+- Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`, og opplasting/erstatning testet i forhåndsvisningen.
