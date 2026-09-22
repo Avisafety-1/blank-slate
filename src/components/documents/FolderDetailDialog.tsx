@@ -68,6 +68,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
   const [docDetailOpen, setDocDetailOpen] = useState(false);
+  const [tabPendingDelete, setTabPendingDelete] = useState<FolderTab | null>(null);
   const [newTabName, setNewTabName] = useState("");
   const [showNewTab, setShowNewTab] = useState(false);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
@@ -330,6 +331,12 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
     loadFolderDocs();
   };
 
+  const confirmDeleteTab = async () => {
+    if (!tabPendingDelete) return;
+    setTabPendingDelete(null);
+    await deleteTab(tabPendingDelete.id);
+  };
+
   const filteredPickerTemplates = evaluationTemplates.filter(
     (tpl) => !searchPicker || tpl.title.toLowerCase().includes(searchPicker.toLowerCase())
   );
@@ -408,7 +415,7 @@ export const FolderDetailDialog = ({ folder, open, onOpenChange, onRefresh, isAd
                         <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => { setEditingTabId(tab.id); setEditingTabName(tab.name); }}>
                           <Pencil className="h-2.5 w-2.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => deleteTab(tab.id)}>
+                        <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => setTabPendingDelete(tab)}>
                           <X className="h-2.5 w-2.5" />
                         </Button>
                       </div>
