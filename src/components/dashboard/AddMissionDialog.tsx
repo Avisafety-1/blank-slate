@@ -511,7 +511,11 @@ export const AddMissionDialog = ({
     if (error) {
       console.error("Error fetching mission documents:", error);
     } else {
-      setSelectedDocuments(data?.map(d => d.document_id) || []);
+      const documentIds = data?.map(d => d.document_id) || [];
+      manualDocumentIdsRef.current = new Set(documentIds);
+      droneDocumentIdsRef.current.clear();
+      missionTypeDocumentIdsRef.current.clear();
+      setSelectedDocuments(documentIds);
     }
   };
 
@@ -988,17 +992,8 @@ export const AddMissionDialog = ({
           if (dronesError) throw dronesError;
         }
 
-        // Auto-attach default document for the selected mission type (only on create)
-        let effectiveSelectedDocs = selectedDocuments;
-        if (formData.oppdragstype) {
-          const matchType = missionTypes.find((t) => t.label === formData.oppdragstype);
-          const ids = ((matchType as any)?.default_document_ids as string[] | null | undefined) ?? [];
-          const defaultDocIds = ids.length > 0 ? ids : (matchType?.default_document_id ? [matchType.default_document_id] : []);
-          const missing = defaultDocIds.filter((id) => !effectiveSelectedDocs.includes(id));
-          if (missing.length > 0) {
-            effectiveSelectedDocs = [...effectiveSelectedDocs, ...missing];
-          }
-        }
+        // selectedDocuments already contains only visible manual, drone and mission-type documents.
+        const effectiveSelectedDocs = selectedDocuments.filter((id) => documents.some((document) => document.id === id));
 
         // Insert mission documents
         if (effectiveSelectedDocs.length > 0) {
@@ -1135,6 +1130,9 @@ export const AddMissionDialog = ({
       setSelectedEquipment([]);
       setSelectedDrones([]);
       setSelectedDocuments([]);
+      manualDocumentIdsRef.current.clear();
+      droneDocumentIdsRef.current.clear();
+      missionTypeDocumentIdsRef.current.clear();
       setSelectedCustomer("");
       setNewCustomerName("");
       setShowNewCustomerInput(false);
