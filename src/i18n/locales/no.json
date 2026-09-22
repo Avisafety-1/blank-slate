@@ -4777,7 +4777,9 @@
       "completing": "Fullfører...",
       "complete": "Fullfør",
       "markAsCompleted": "Marker sjekklisten som utført",
-      "checkAll": "Kryss av alle punkter ({{done}}/{{total}})"
+      "checkAll": "Kryss av alle punkter ({{done}}/{{total}})",
+      "fileAccessError": "Kunne ikke åpne sjekklistefilen – du mangler tilgang til den. Kontakt admin.",
+      "checklistLoadError": "Kunne ikke laste sjekklisten. Kontakt admin."
     },
     "equipmentDetail": {
       "editTitle": "Rediger utstyr",
