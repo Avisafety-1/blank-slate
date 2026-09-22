@@ -5316,7 +5316,10 @@
         "operationsHint": "Linked automatically to missions when the drone is added",
         "postFlightLabel": "Post-flight checklist",
         "postFlightPlaceholder": "Select post-flight checklist (optional)",
-        "postFlightHint": "Shown as a confirmation dialog when missions are completed"
+        "postFlightHint": "Shown as a confirmation dialog when missions are completed",
+        "unavailable": "Unavailable checklist (other department)",
+        "unavailableHint": "This checklist belongs to a department you do not have access to. Remove it to clean up.",
+        "removeUnavailable": "Remove"
       },
       "techResponsible": {
         "label": "Technical responsible",

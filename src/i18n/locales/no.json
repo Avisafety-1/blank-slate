@@ -5318,7 +5318,10 @@
         "operationsHint": "Kobles automatisk til oppdrag når dronen legges til",
         "postFlightLabel": "Post flight sjekkliste",
         "postFlightPlaceholder": "Velg post flight sjekkliste (valgfritt)",
-        "postFlightHint": "Vises som bekreftelsesdialog når oppdrag fullføres"
+        "postFlightHint": "Vises som bekreftelsesdialog når oppdrag fullføres",
+        "unavailable": "Utilgjengelig sjekkliste (annen avdeling)",
+        "unavailableHint": "Denne sjekklisten tilhører en avdeling du ikke har tilgang til. Fjern den for å rydde opp.",
+        "removeUnavailable": "Fjern"
       },
       "techResponsible": {
         "label": "Teknisk ansvarlig",
