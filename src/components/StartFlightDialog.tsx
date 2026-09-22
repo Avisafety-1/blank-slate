@@ -993,7 +993,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                   <div className="space-y-2">
                     {companyChecklistIds.map((checklistId) => {
                       const checklist = checklists.find(c => c.id === checklistId);
-                      if (!checklist) return null;
+                      const unavailable = !checklist;
                       const isCompleted = completedChecklistIds.includes(checklistId);
                       
                       return (
@@ -1002,10 +1002,14 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                           className="flex items-center justify-between gap-2 rounded-lg border bg-card p-3"
                         >
                           <span className="text-sm font-medium truncate flex-1">
-                            {checklist.tittel}
+                            {unavailable ? t('flight.checklistUnavailable') : checklist!.tittel}
                           </span>
                           <div className="flex items-center gap-2">
-                            {isCompleted ? (
+                            {unavailable ? (
+                              <span className="text-xs text-amber-600 dark:text-amber-400">
+                                {t('flight.checklistUnavailableShort')}
+                              </span>
+                            ) : isCompleted ? (
                               <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                                 <Check className="h-3 w-3" />
                                 {t('common.completed')}
