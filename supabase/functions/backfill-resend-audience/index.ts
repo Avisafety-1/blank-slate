@@ -54,6 +54,58 @@ async function syncOne(audienceId: string, email: string, first_name: string, la
   return "failed";
 }
 
+async function listAllContacts(audienceId: string) {
+  const r = await resendFetch(`/audiences/${audienceId}/contacts`);
+  if (!r.ok) return [];
+  return ((r.body as { data?: Array<{ id: string; email: string; first_name?: string; last_name?: string; unsubscribed?: boolean }> })?.data) ?? [];
+}
+
+/**
+ * Split + prune:
+ *  - Contacts in the user audience with no profile and no deletion record are
+ *    treated as pure newsletter signups → copied to the newsletter audience.
+ *  - Contacts with no profile are then removed from the user audience.
+ * The newsletter audience itself is never pruned.
+ */
+async function splitAndPrune(
+  admin: ReturnType<typeof getAdminClient>,
+  userAudienceId: string,
+  newsletterAudienceId: string | null,
+) {
+  const { data: profileRows } = await admin.from("profiles").select("email").not("email", "is", null);
+  const profileEmails = new Set((profileRows ?? []).map((p) => (p.email as string).trim().toLowerCase()));
+
+  const { data: deletedRows } = await admin.rpc("get_deleted_user_emails");
+  const deletedEmails = new Set(
+    (deletedRows ?? []).map((r: unknown) =>
+      String(typeof r === "string" ? r : (r as { email?: string }).email ?? "").trim().toLowerCase(),
+    ),
+  );
+
+  const contacts = await listAllContacts(userAudienceId);
+  const movedToNewsletter: string[] = [];
+  const removedFromUsers: string[] = [];
+  const failed: string[] = [];
+
+  for (const c of contacts) {
+    const email = (c.email || "").trim().toLowerCase();
+    if (!email || profileEmails.has(email)) continue;
+
+    const isFormerUser = deletedEmails.has(email);
+    if (!isFormerUser && newsletterAudienceId) {
+      const r = await syncOne(newsletterAudienceId, email, c.first_name || "", c.last_name || "");
+      if (r === "failed") { failed.push(email); continue; }
+      movedToNewsletter.push(email);
+    }
+
+    const del = await resendFetch(`/audiences/${userAudienceId}/contacts/${encodeURIComponent(email)}`, { method: "DELETE" });
+    if (del.ok) removedFromUsers.push(email); else failed.push(email);
+    await new Promise((r) => setTimeout(r, 120));
+  }
+
+  return { movedToNewsletter, removedFromUsers, failed };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -61,24 +113,49 @@ Deno.serve(async (req) => {
     const globalAudienceId = Deno.env.get("RESEND_AUDIENCE_ID");
     if (!globalAudienceId) throw new Error("RESEND_AUDIENCE_ID not configured");
 
-    // Auth: superadmin only
-    const authHeader = req.headers.get("authorization") ?? "";
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
-
     const admin = getAdminClient();
-    const { data: roleRow } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "superadmin")
-      .maybeSingle();
-    if (!roleRow) throw new Error("Forbidden: superadmin required");
+
+    // Auth: superadmin, service-role bearer, or the shared maintenance secret
+    const authHeader = req.headers.get("authorization") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceRole = !!serviceKey && authHeader.includes(serviceKey);
+
+    if (!isServiceRole) {
+      const userClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (!user) throw new Error("Unauthorized");
+
+      const { data: roleRow } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "superadmin")
+        .maybeSingle();
+      if (!roleRow) throw new Error("Forbidden: superadmin required");
+    }
+
+    const reqBody = await req.json().catch(() => ({}));
+    const mode = (reqBody as { mode?: string }).mode ?? "backfill";
+
+    if (mode === "split") {
+      const { data: cfg } = await admin
+        .from("app_config")
+        .select("value")
+        .eq("key", "resend_newsletter_audience_id")
+        .maybeSingle();
+      const newsletterAudienceId =
+        Deno.env.get("RESEND_NEWSLETTER_AUDIENCE_ID") ?? (cfg?.value as string | undefined) ?? null;
+
+      const result = await splitAndPrune(admin, globalAudienceId, newsletterAudienceId);
+      return new Response(JSON.stringify({ mode, newsletterAudienceId, ...result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     // Load all profiles with email + company_id
     const { data: profiles, error } = await admin
@@ -152,7 +229,18 @@ Deno.serve(async (req) => {
       await new Promise((r) => setTimeout(r, 150));
     }
 
-    return new Response(JSON.stringify({ total, skipped, audiences: stats }), {
+    // Always finish with a clean-up pass: former users are removed from the
+    // user audience, and pure newsletter signups are preserved in their own list.
+    const { data: nlCfg } = await admin
+      .from("app_config")
+      .select("value")
+      .eq("key", "resend_newsletter_audience_id")
+      .maybeSingle();
+    const newsletterAudienceId =
+      Deno.env.get("RESEND_NEWSLETTER_AUDIENCE_ID") ?? (nlCfg?.value as string | undefined) ?? null;
+    const cleanup = await splitAndPrune(admin, globalAudienceId, newsletterAudienceId);
+
+    return new Response(JSON.stringify({ total, skipped, audiences: stats, cleanup }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

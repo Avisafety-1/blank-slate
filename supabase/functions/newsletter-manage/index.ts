@@ -27,17 +27,52 @@ async function resendFetch(path: string, opts: RequestInit = {}) {
   return res.json();
 }
 
-function getAudienceId(): string {
-  const id = Deno.env.get("RESEND_AUDIENCE_ID");
-  if (!id) throw new Error("RESEND_AUDIENCE_ID not configured");
-  return id;
-}
-
 function getAdminClient() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+}
+
+const NEWSLETTER_AUDIENCE_NAME = "AviSafe Nyhetsbrev";
+const NEWSLETTER_CONFIG_KEY = "resend_newsletter_audience_id";
+
+/**
+ * Newsletter subscribers live in their OWN Resend audience, separate from the
+ * app-user audience (RESEND_AUDIENCE_ID). This keeps external signups safe when
+ * we prune deleted users from the user audience.
+ */
+async function getAudienceId(): Promise<string> {
+  const fromEnv = Deno.env.get("RESEND_NEWSLETTER_AUDIENCE_ID");
+  if (fromEnv) return fromEnv;
+
+  const admin = getAdminClient();
+  const { data: cfg } = await admin
+    .from("app_config")
+    .select("value")
+    .eq("key", NEWSLETTER_CONFIG_KEY)
+    .maybeSingle();
+  if (cfg?.value) return cfg.value as string;
+
+  // Find existing audience by name, otherwise create it.
+  let audienceId: string | undefined;
+  const list = await resendFetch("/audiences");
+  const match = (list?.data ?? []).find(
+    (a: { id: string; name: string }) => a.name === NEWSLETTER_AUDIENCE_NAME,
+  );
+  if (match?.id) {
+    audienceId = match.id;
+  } else {
+    const created = await resendFetch("/audiences", {
+      method: "POST",
+      body: JSON.stringify({ name: NEWSLETTER_AUDIENCE_NAME }),
+    });
+    audienceId = created?.id;
+  }
+  if (!audienceId) throw new Error("Could not resolve newsletter audience");
+
+  await admin.from("app_config").upsert({ key: NEWSLETTER_CONFIG_KEY, value: audienceId });
+  return audienceId;
 }
 
 Deno.serve(async (req) => {
@@ -48,7 +83,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
-    const audienceId = getAudienceId();
+    const audienceId = await getAudienceId();
 
     // Public action — no auth required
     if (action === "public-subscribe") {
