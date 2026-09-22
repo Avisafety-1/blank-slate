@@ -74,6 +74,10 @@ export const DocumentUploadDialog = ({
   };
 
   const handleUpload = async () => {
+    if (!companyId) {
+      toast.error(t("documents.uploadDialog.errors.notLoggedIn"));
+      return;
+    }
     if (!formData.title) {
       toast.error(t("documents.uploadDialog.errors.titleRequired"));
       return;
