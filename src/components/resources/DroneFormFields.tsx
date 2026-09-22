@@ -384,6 +384,7 @@ export const DroneFormFields = ({
                 </Popover>
               )}
               <p className="text-xs text-muted-foreground mt-1">{tt("checklists.operationsHint")}</p>
+              {unavailableOpsList}
             </div>
             <div className="border-t pt-4">
               <Label htmlFor="post_flight_checklist">{tt("checklists.postFlightLabel")}</Label>
@@ -393,6 +394,9 @@ export const DroneFormFields = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{tt("checklists.none")}</SelectItem>
+                  {postFlightUnavailable && (
+                    <SelectItem value={values.post_flight_checklist_id}>{tt("checklists.unavailable")}</SelectItem>
+                  )}
                   {checklists.map((checklist) => (
                     <SelectItem key={checklist.id} value={checklist.id}>
                       {checklist.tittel}
@@ -401,6 +405,16 @@ export const DroneFormFields = ({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">{tt("checklists.postFlightHint")}</p>
+              {postFlightUnavailable && (
+                <div className="mt-2 flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm">
+                  <span className="min-w-0 flex-1 break-words text-amber-700 dark:text-amber-400">
+                    {tt("checklists.unavailableHint")}
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ post_flight_checklist_id: "none" })}>
+                    {tt("checklists.removeUnavailable")}
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
