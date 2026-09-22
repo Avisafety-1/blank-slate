@@ -134,11 +134,20 @@ export const MarketingSettings = () => {
     try {
       const { data, error } = await supabase.functions.invoke("backfill-resend-audience", { body: {} });
       if (error) throw error;
-      const d = data as { total?: number; skipped?: number; audiences?: Record<string, { added: number; updated: number; failed: number }> };
+      const d = data as {
+        total?: number;
+        skipped?: number;
+        audiences?: Record<string, { added: number; updated: number; failed: number }>;
+        cleanup?: { movedToNewsletter?: string[]; removedFromUsers?: string[]; failed?: string[] };
+      };
       const lines = Object.entries(d.audiences ?? {}).map(([name, s]) =>
         `${name}: +${s.added}/~${s.updated}/!${s.failed}`
       ).join(" · ");
-      toast.success(`Synk fullført (${d.total ?? 0} brukere) – ${lines || "ingen audiences"}`);
+      const removed = d.cleanup?.removedFromUsers?.length ?? 0;
+      const moved = d.cleanup?.movedToNewsletter?.length ?? 0;
+      toast.success(
+        `Synk fullført (${d.total ?? 0} brukere) – ${lines || "ingen audiences"} · fjernet ${removed} tidligere brukere · flyttet ${moved} til nyhetsbrevlisten`,
+      );
       refetchCompanyAudiences();
     } catch (e: any) {
       toast.error(e.message || "Kunne ikke synkronisere brukere");
