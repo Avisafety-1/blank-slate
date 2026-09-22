@@ -16,9 +16,7 @@ import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
-import { Info, Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ArrowRightLeft, Video } from "lucide-react";
-import { useLiveVideoStreams } from "@/hooks/useLiveVideoStreams";
-import { LiveVideoDialog } from "@/components/video/LiveVideoDialog";
+import { Info, Plane, Calendar, AlertTriangle, Trash2, Plus, X, Package, User, Weight, Wrench, Book, Radio, ChevronDown, FileText, ExternalLink, ShieldCheck, ArrowRightLeft } from "lucide-react";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AddEquipmentToDroneDialog } from "./AddEquipmentToDroneDialog";
@@ -107,8 +105,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const terminology = useTerminology();
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("drone", initialDrone?.id, companyId || undefined, open);
-  const { hasLiveVideo } = useLiveVideoStreams(companyId);
-  const [liveVideoOpen, setLiveVideoOpen] = useState(false);
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -985,19 +981,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
               >
                 <Book className="w-4 h-4 mr-2" />
                 {tt("logbook")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLiveVideoOpen(true)}
-                className="flex-1"
-              >
-                <Video className="w-4 h-4 mr-2" />
-                {t("liveVideo.button")}
-                <span
-                  className={`ml-2 h-2 w-2 rounded-full ${hasLiveVideo(drone.id) ? "bg-status-green" : "bg-status-red"}`}
-                  title={hasLiveVideo(drone.id) ? t("liveVideo.statusLive") : t("liveVideo.statusOffline")}
-                />
               </Button>
             </div>
           )}
@@ -1921,16 +1904,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         droneModell={drone?.modell || ""}
         flyvetimer={drone?.flyvetimer || 0}
       />
-
-      {drone?.id && (
-        <LiveVideoDialog
-          open={liveVideoOpen}
-          onOpenChange={setLiveVideoOpen}
-          droneId={drone.id}
-          droneName={drone.modell}
-          canManage={isAdmin}
-        />
-      )}
 
       {drone && (
         <MoveDroneDialog
