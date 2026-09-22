@@ -105,7 +105,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const terminology = useTerminology();
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("drone", initialDrone?.id, companyId || undefined, open);
-  const [liveVideoOpen, setLiveVideoOpen] = useState(false);
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1905,16 +1904,6 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
         droneModell={drone?.modell || ""}
         flyvetimer={drone?.flyvetimer || 0}
       />
-
-      {drone?.id && (
-        <LiveVideoDialog
-          open={liveVideoOpen}
-          onOpenChange={setLiveVideoOpen}
-          droneId={drone.id}
-          droneName={drone.modell}
-          canManage={isAdmin}
-        />
-      )}
 
       {drone && (
         <MoveDroneDialog
