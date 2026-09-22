@@ -9280,6 +9280,12 @@ export type Database = {
           navn: string
         }[]
       }
+      get_deleted_user_emails: {
+        Args: never
+        Returns: {
+          email: string
+        }[]
+      }
       get_dk_drone_zones_in_bounds: {
         Args: {
           max_lat: number
