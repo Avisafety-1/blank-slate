@@ -1,57 +1,53 @@
-# Rydde opp i koblinger til slettede dokumenter
+# Gjennomgang: flytting av drone med dokumenter og sjekklister
 
-## Hva jeg fant
+## Slik fungerer det i dag
 
-Jeg skilte mellom to ting du spurte om.
+Når du flytter en drone velger du per dokument/sjekkliste: **flytt med**, **del** eller **la bli**. Selve flyttingen gjøres av én operasjon i databasen (`transfer_drone`), som i tillegg flytter dronens loggbok, inspeksjoner, utstyrshistorikk og dokumentkoblinger, fjerner dronens avdelingsdeling og skriver en loggpost om flyttingen.
 
-**1. Koblinger som peker på dokumenter som ikke finnes**
+Dokumentlogikken er delvis god allerede:
 
-| Sted | Tensio | Hele systemet |
-|---|---|---|
-| Sjekklister på oppdrag | 21 | 22 |
-| Sjekklister på droner (drift, etterflyging, inspeksjon) | 0 | 0 |
-| Sjekkliste på utstyr/batteri | 0 | 0 |
-| Sjekkliste på vedlikeholdsplan | 0 | 0 |
-| Standarddokumenter på oppdragstyper | 0 | 0 |
-| Sjekkliste før avgang på selskap | 0 | 0 |
+- **Flytt med**, når avdelingen faktisk eier dokumentet: eierskapet følger dronen.
+- **Flytt med**, når en annen avdeling (typisk morselskapet) eier dokumentet: eierskapet røres ikke, mottakeravdelingen får kun lesetilgang. Dette er riktig.
+- **Del**: mottakeravdelingen får lesetilgang, eierskapet står.
 
-De 22 oppdragskoblingene peker på fire slettede dokumenter (ett av dem brukt på 16 oppdrag). Dronene er rene fordi vi ryddet dem manuelt tidligere — ikke fordi systemet fjerner koblingene selv.
+## Tre reelle problemer jeg fant
 
-Koblingstabellene (dokumenter på droner, oppdrag, mapper, e-postmaler) er derimot helt rene, fordi de rydder seg selv når et dokument slettes.
+**1. «La bli» fjerner ikke sjekklisten fra dronen** (viktigst)
 
-**2. Tomme dokumentrader (dokument uten fil)**
+Sjekklister ligger to steder: som en vanlig dokumentkobling, og som en ID direkte i dronens felt for driftssjekklister / etterflyging / inspeksjon. Når du velger «la bli», slettes bare dokumentkoblingen — ID-en i dronens sjekklistefelt blir stående. Dronen ankommer da den nye avdelingen med en sjekkliste som ingen der har tilgang til: den vises ikke i droneskjemaet, kan ikke åpnes og kan ikke fjernes.
 
-Tensio har 2: «Sjekkliste - Before takeoff» og «Rapportering - Feilsøking med drone». I hele systemet finnes 57.
+Dette er nøyaktig situasjonen vi ryddet opp i manuelt på LN.0510.CE og 14 andre Tensio-droner. Flytteflyten er altså en av kildene til problemet.
 
-Dette skjer fordi et dokument kan opprettes som en ren rad uten at en fil lastes opp — blant annet når man lager en sjekkliste der punktene skrives direkte i systemet, når opplastingen feiler underveis, eller når filen erstattes og lagringen avvises. Raden blir stående og ser ut som et vanlig dokument i listen, men kan ikke åpnes.
+**2. «Flytt med» kan ta dokumentet fra droner som blir igjen**
+
+Dialogen advarer om kryssbruk kun når dokumentet er koblet til andre droner via dokumentkoblingen. Den ser ikke at dokumentet også brukes som sjekkliste direkte på andre droner, eller er knyttet til oppdrag, i avgivende avdeling. Flytter du eierskapet i et slikt tilfelle, mister de gjenværende dronene og oppdragene tilgang uten varsel.
+
+**3. «Flytt med» sier «flytt» selv når systemet bare deler**
+
+Når morselskapet eier dokumentet gjør systemet det trygge valget (deling), men brukeren har valgt og fått bekreftet «flytt med». Resultatet stemmer ikke med det som står i grensesnittet.
 
 ## Hva jeg foreslår
 
-**A. Automatisk opprydding når et dokument slettes**
+**A. Rydd sjekklistefeltene ved flytting**
+`transfer_drone` oppdaterer dronens sjekklistefelt i takt med valget:
+- «la bli» → ID-en fjernes fra dronens driftssjekklister, etterflyging og inspeksjonssjekkliste.
+- «flytt med» / «del» → ID-en beholdes, siden tilgangen følger med.
+Etter flytting kan ingen drone sitte igjen med en sjekkliste den nye avdelingen ikke ser.
 
-En databaseregel som kjører ved sletting og fjerner dokumentets ID fra alle steder som ikke rydder seg selv i dag:
+**B. Full kryssbruk-sjekk i dialogen**
+Utvid varselet til også å dekke dokumenter som brukes som sjekkliste på andre droner eller er knyttet til oppdrag i avgivende avdeling. For disse er «flytt med» sperret, og «del» er forhåndsvalgt — samme prinsipp som i dag for utstyr.
 
-- sjekklister på droner: drift, etterflyging og inspeksjon
-- sjekkliste på utstyr/batteri
-- sjekkliste på vedlikeholdsplan
-- sjekklister på oppdrag
-- standarddokumenter på oppdragstyper
-- sjekkliste før avgang på selskap
+**C. Sikkerhetsnett ved eierskifte**
+Når et dokument faktisk bytter eier fordi det følger dronen, gis avgivende avdeling automatisk lesetilgang til det, slik at gjenværende bruk ikke brytes.
 
-Da kan ingen drone, batteri eller oppdrag bli hengende igjen med et dokument som ikke finnes.
-
-**B. Engangsopprydding av dagens 22 oppdragskoblinger**
-
-Fjerner de fire slettede dokument-ID-ene fra oppdragene. Ingen dokumenter slettes, kun koblinger som peker i tomme luften.
-
-**C. Tydeligere merking av tomme dokumentrader**
-
-I dokumentlisten merkes rader uten fil med «Mangler fil», slik at de synes før noen prøver å åpne dem. Vi sletter dem ikke automatisk — flere av dem er sjekklister med punkter lagret i selve raden.
+**D. Riktig ordlyd**
+Der dokumentet eies av en annen avdeling, vises valget som «del med mottaker (eies av X)» i stedet for «flytt med», slik at valget stemmer med det som faktisk skjer.
 
 ## Teknisk
 
-- Ny `AFTER DELETE`-trigger-funksjon `public.cleanup_document_references()` på `public.documents` (SECURITY DEFINER, `search_path = public`, `REVOKE EXECUTE ... FROM anon, authenticated, PUBLIC`).
-- Rydder: `drones.operations_checklist_ids` (text[]), `drones.post_flight_checklist_id`, `drones.sjekkliste_id`, `drones.operations_checklist_id`, `equipment.sjekkliste_id`, `maintenance_schedules.sjekkliste_id`, `missions.checklist_ids` (uuid[]), `missions.checklist_completed_ids`, `company_mission_types.default_document_ids`/`default_document_id`, `companies.before_takeoff_checklist_ids`/`before_takeoff_checklist_id`.
-- Engangs-SQL fjerner `50094778-…`, `a29dc8b4-…`, `82f6e702-…`, `6f36d5b7-…` fra `missions.checklist_ids` og `checklist_completed_ids`.
-- Frontend: «Mangler fil»-merke i dokumentlisten der `fil_url` er tom, med nye i18n-nøkler i `no.json` og `en.json`.
+- `public.transfer_drone(uuid, uuid, text, jsonb)` oppdateres (SECURITY DEFINER, `search_path = public`, eksisterende rettigheter beholdes):
+  - i `leave`-grenen for `document`: `array_remove(operations_checklist_ids, _resource_id::text)`, samt nullstilling av `post_flight_checklist_id` og `sjekkliste_id` når de peker på dokumentet.
+  - i `move`-grenen ved reelt eierskifte: `INSERT INTO document_department_visibility (document_id, company_id) VALUES (_resource_id, _from_company_id) ON CONFLICT DO NOTHING`.
+- `MoveDroneDialog.tsx`: utvid kryssbruk-deteksjon med oppslag mot `drones.operations_checklist_ids`/`post_flight_checklist_id`/`sjekkliste_id` (andre droner i avgivende avdeling) og `mission_documents`/`missions.checklist_ids`; sett `crossLinked` og deaktiver «flytt med». Hent `documents.company_id` for de aktuelle dokumentene og bytt etikett når eier ≠ avgivende avdeling.
+- Nye i18n-nøkler under `resourceDialogs.moveDrone` i `no.json` og `en.json` (eid av annen avdeling, brukt på andre droner, brukt på oppdrag).
 - Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
