@@ -670,9 +670,10 @@ function buildMergedBufferClip(
     return bufferRingRoundClip(hull, dist, refPoint, avgLat);
   }
 
+  const segs = capSegmentsForDistance(dist);
   const clipPolygons: ClipPolygon[] = [];
   if (validCoords.length === 1) {
-    const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+    const circle = bufferPolyline([validCoords[0]], dist, segs, refPoint, avgLat);
     if (circle.length >= 3) clipPolygons.push([closeClipRing(circle)]);
   } else {
     for (let i = 0; i < validCoords.length - 1; i++) {
