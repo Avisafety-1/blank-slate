@@ -415,16 +415,17 @@ export function renderSoraZones(
     }
 
     const mode = sora.bufferMode ?? "corridor";
+    const segs = capSegmentsForDistance(dist);
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      const latLngs = safeLatLngs(bufferPolygon(hull, dist, refPoint, avgLat));
-      return latLngs.length >= 3 ? [[latLngs]] : [];
+      const merged = bufferRingRoundClip(hull, dist, refPoint, avgLat);
+      return merged ? toMergedLeafletLatLngs(merged) : [];
     }
 
     const clipPolygons: ClipPolygon[] = [];
 
     if (validCoords.length === 1) {
-      const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+      const circle = bufferPolyline([validCoords[0]], dist, segs, refPoint, avgLat);
       if (circle.length >= 3) {
         clipPolygons.push([closeClipRing(circle)]);
       }
@@ -434,7 +435,7 @@ export function renderSoraZones(
         const end = validCoords[i + 1];
         if (start.lat === end.lat && start.lng === end.lng) continue;
 
-        const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+        const segmentBuffer = bufferPolyline([start, end], dist, segs, refPoint, avgLat);
         if (segmentBuffer.length >= 3) {
           clipPolygons.push([closeClipRing(segmentBuffer)]);
         }
