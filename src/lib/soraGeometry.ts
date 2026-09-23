@@ -165,31 +165,49 @@ export function bufferPolyline(
 
 export function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
   if (points.length < 3) return points;
-  let start = points[0];
+
+  // Fjern duplikater — like punkter gir ustabil vinkelsortering
+  const seen = new Set<string>();
+  const unique: RoutePoint[] = [];
   for (const p of points) {
-    if (p.lat < start.lat || (p.lat === start.lat && p.lng < start.lng)) {
-      start = p;
-    }
+    const key = `${p.lat},${p.lng}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(p);
   }
-  const sorted = points.slice().sort((a, b) => {
-    if (a === start) return -1;
-    if (b === start) return 1;
-    const angleA = Math.atan2(a.lng - start.lng, a.lat - start.lat);
-    const angleB = Math.atan2(b.lng - start.lng, b.lat - start.lat);
-    return angleA - angleB;
-  });
-  const hull: RoutePoint[] = [];
+  if (unique.length < 3) return unique;
+
+  // Monotone chain (Andrew) — stabil og alltid konveks
+  const sorted = unique
+    .slice()
+    .sort((a, b) => (a.lng === b.lng ? a.lat - b.lat : a.lng - b.lng));
+
+  const cross = (o: RoutePoint, a: RoutePoint, b: RoutePoint) =>
+    (a.lng - o.lng) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lng - o.lng);
+
+  const lower: RoutePoint[] = [];
   for (const p of sorted) {
-    while (hull.length >= 2) {
-      const a = hull[hull.length - 2];
-      const b = hull[hull.length - 1];
-      const cross = (b.lat - a.lat) * (p.lng - b.lng) - (b.lng - a.lng) * (p.lat - b.lat);
-      if (cross <= 0) hull.pop();
-      else break;
-    }
-    hull.push(p);
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
   }
-  return hull;
+  const upper: RoutePoint[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  const hull = lower.concat(upper);
+  return hull.length >= 3 ? hull : unique;
+}
+
+/**
+ * Antall segmenter i buerundinger, skalert med bufferavstanden slik at
+ * store soner (f.eks. 5 km tilstøtende område) får jevn kant.
+ */
+export function capSegmentsForDistance(distanceMeters: number): number {
+  return Math.max(16, Math.min(72, Math.round(distanceMeters / 100)));
 }
 
 function intersectLines(
@@ -322,6 +340,61 @@ export function mergeBufferedCorridorPolygons(
 }
 
 /**
+ * Buffer rundt en lukket ring (konveks innhylling eller lukket rute) med runde
+ * hjørner. Bruker polygon-clipping til å slå sammen selve flaten, sirkler i
+ * hvert hjørne og korridorer langs hver kant. Unngår de lange spissene
+ * (miter-artefaktene) som oppstår ved store bufferavstander.
+ */
+export function bufferRingRoundClip(
+  ring: RoutePoint[],
+  distanceMeters: number,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
+): ClipMultiPolygon | null {
+  const valid = ring.filter(p => p && isFinite(p.lat) && isFinite(p.lng));
+  if (valid.length < 3 || distanceMeters <= 0) return null;
+
+  const refPoint = refPointOverride ?? valid[0];
+  const avgLat = avgLatOverride ?? valid.reduce((s, p) => s + p.lat, 0) / valid.length;
+  const segs = capSegmentsForDistance(distanceMeters);
+
+  const clipPolygons: ClipPolygon[] = [[closeClipRing(valid)]];
+
+  for (const point of valid) {
+    const circle = bufferPolyline([point], distanceMeters, segs, refPoint, avgLat);
+    if (circle.length >= 3) clipPolygons.push([closeClipRing(circle)]);
+  }
+
+  for (let i = 0; i < valid.length; i++) {
+    const start = valid[i];
+    const end = valid[(i + 1) % valid.length];
+    if (start.lat === end.lat && start.lng === end.lng) continue;
+    const segmentBuffer = bufferPolyline([start, end], distanceMeters, segs, refPoint, avgLat);
+    if (segmentBuffer.length >= 3) clipPolygons.push([closeClipRing(segmentBuffer)]);
+  }
+
+  try {
+    return clipPolygons.slice(1).reduce<ClipMultiPolygon>(
+      (acc, polygon) => polygonClipping.union(acc, polygon),
+      [clipPolygons[0]]
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Som `bufferRingRoundClip`, men returnerer ytre ringer som lat/lng-punkter. */
+export function bufferRingRound(
+  ring: RoutePoint[],
+  distanceMeters: number,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
+): RoutePoint[][] {
+  const merged = bufferRingRoundClip(ring, distanceMeters, refPointOverride, avgLatOverride);
+  return merged ? fromClipMultiPolygon(merged) : [];
+}
+
+/**
  * Normalize an arbitrary polygon ring by running it through polygon-clipping
  * (union with itself). Removes self-intersections and enforces canonical
  * orientation. Returns one or more clean polygons.
@@ -397,16 +470,17 @@ export function renderSoraZones(
     }
 
     const mode = sora.bufferMode ?? "corridor";
+    const segs = capSegmentsForDistance(dist);
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      const latLngs = safeLatLngs(bufferPolygon(hull, dist, refPoint, avgLat));
-      return latLngs.length >= 3 ? [[latLngs]] : [];
+      const merged = bufferRingRoundClip(hull, dist, refPoint, avgLat);
+      return merged ? toMergedLeafletLatLngs(merged) : [];
     }
 
     const clipPolygons: ClipPolygon[] = [];
 
     if (validCoords.length === 1) {
-      const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+      const circle = bufferPolyline([validCoords[0]], dist, segs, refPoint, avgLat);
       if (circle.length >= 3) {
         clipPolygons.push([closeClipRing(circle)]);
       }
@@ -416,7 +490,7 @@ export function renderSoraZones(
         const end = validCoords[i + 1];
         if (start.lat === end.lat && start.lng === end.lng) continue;
 
-        const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+        const segmentBuffer = bufferPolyline([start, end], dist, segs, refPoint, avgLat);
         if (segmentBuffer.length >= 3) {
           clipPolygons.push([closeClipRing(segmentBuffer)]);
         }
@@ -503,9 +577,9 @@ export function renderAdjacentAreaZone(
     const mode = sora?.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return [bufferPolygon(hull, dist, refPoint, avgLat)];
+      return bufferRingRound(hull, dist, refPoint, avgLat);
     }
-    return mergeBufferedCorridorPolygons(validCoords, dist, 16, refPoint, avgLat);
+    return mergeBufferedCorridorPolygons(validCoords, dist, capSegmentsForDistance(dist), refPoint, avgLat);
   }
 
   function safeLatLngs(zone: RoutePoint[]): [number, number][] {
@@ -593,21 +667,20 @@ function buildMergedBufferClip(
   const mode = sora.bufferMode ?? "corridor";
   if (mode === "convexHull" || isClosedRoute) {
     const hull = computeConvexHull(validCoords);
-    const buffered = bufferPolygon(hull, dist, refPoint, avgLat);
-    if (buffered.length < 3) return null;
-    return [[closeClipRing(buffered)]];
+    return bufferRingRoundClip(hull, dist, refPoint, avgLat);
   }
 
+  const segs = capSegmentsForDistance(dist);
   const clipPolygons: ClipPolygon[] = [];
   if (validCoords.length === 1) {
-    const circle = bufferPolyline([validCoords[0]], dist, 16, refPoint, avgLat);
+    const circle = bufferPolyline([validCoords[0]], dist, segs, refPoint, avgLat);
     if (circle.length >= 3) clipPolygons.push([closeClipRing(circle)]);
   } else {
     for (let i = 0; i < validCoords.length - 1; i++) {
       const start = validCoords[i];
       const end = validCoords[i + 1];
       if (start.lat === end.lat && start.lng === end.lng) continue;
-      const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+      const segmentBuffer = bufferPolyline([start, end], dist, segs, refPoint, avgLat);
       if (segmentBuffer.length >= 3) clipPolygons.push([closeClipRing(segmentBuffer)]);
     }
   }

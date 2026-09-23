@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RouteData, SoraSettings } from "@/types/map";
 import { generateDJIKMZ, type DJIExportOptions, DJI_DRONE_MODELS, matchDjiDroneModel } from "@/lib/kmzExport";
-import { bufferPolygon, computeConvexHull, mergeBufferedCorridorPolygons, normalizePolygon } from "@/lib/soraGeometry";
+import { bufferRingRound, capSegmentsForDistance, computeConvexHull, mergeBufferedCorridorPolygons } from "@/lib/soraGeometry";
 import { useTranslation } from "react-i18next";
 
 interface FlightHub2SendDialogProps {
@@ -93,10 +93,9 @@ export const FlightHub2SendDialog = ({
       if (dist <= 0) return [];
       if (mode === "convexHull" || isClosedRoute) {
         const hull = computeConvexHull(coords);
-        const ring = bufferPolygon(hull, dist, refPoint, avgLat);
-        return normalizePolygon(ring);
+        return bufferRingRound(hull, dist, refPoint, avgLat);
       }
-      return mergeBufferedCorridorPolygons(coords, dist, 16, refPoint, avgLat);
+      return mergeBufferedCorridorPolygons(coords, dist, capSegmentsForDistance(dist), refPoint, avgLat);
     };
 
     const fgDist = soraSettings.flightGeographyDistance;

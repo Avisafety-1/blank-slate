@@ -1,4 +1,4 @@
-import { bufferPolyline, bufferPolygon, computeConvexHull } from "./soraGeometry";
+import { bufferPolyline, bufferRingRound, computeConvexHull } from "./soraGeometry";
 import { supabase } from "@/integrations/supabase/client";
 import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
@@ -310,7 +310,7 @@ export async function generateMissionMapSnapshot(
             coords[0].lat === coords[coords.length - 1].lat &&
             coords[0].lng === coords[coords.length - 1].lng;
           if (mode === "convexHull" || isClosedRoute) {
-            return bufferPolygon(computeConvexHull(coords), dist);
+            return bufferRingRound(computeConvexHull(coords), dist)[0] ?? coords;
           }
           return bufferPolyline(coords, dist);
         };
