@@ -1,38 +1,48 @@
-# Datovelgeren lukker seg i oppdragsdialogen (iPad PWA)
+# Egendefinert drone: manuelle spesifikasjoner
 
-## Hva du opplever
-Når du kommer fra ruteplanleggeren i kartet og skal sette tidspunkt på et nytt oppdrag, lukker iPadens dato-/klokkeslettvelger seg av seg selv etter ca. ett sekund. I inkognito fungerer det, som betyr at noe i den installerte app-versjonen (lagret versjon på iPaden) eller i selve oppstartsflyten fra kartet utløser det.
+## Hva du får
+Når du velger «Angi manuelt» i dronekatalogen, dukker det opp en egen seksjon «Spesifikasjoner» der du selv kan fylle inn:
 
-## Hva jeg har bekreftet i koden
-- Begge tidsfeltene bruker iPadens innebygde dato-/klokkeslettvelger. Den beholdes, slik du ba om.
-- Når dialogen åpnes fra ruteplanleggeren, starter den et adresseoppslag mot Geonorge for å fylle inn stedsnavn. Svaret kommer typisk etter rundt ett sekund og skriver da inn i det samme skjemaet som tidspunktet ligger i.
-- Dialogen kjører også en oppstartsrutine som kan gå flere ganger mens den er åpen, avhengig av hva som sendes med fra kartet.
-- Appen reagerer i tillegg når den går fra bakgrunn til forgrunn. På iPad kan åpning av systemvelgeren gi et slikt signal.
+- Karakteristisk dimensjon (CD) i meter
+- Maks hastighet (m/s)
+- Maks vind (m/s)
+- Flytid / batteritid (minutter)
+- IP-rating (f.eks. IP54) — med «Ikke dokumentert» som standard
+- Type: multirotor eller fastvinge
+- MTOM (vekt) og nyttelast — disse finnes allerede, men blir nå redigerbare også i manuell modus
 
-Årsaken er ikke endelig bevist ennå (jeg kan ikke logge inn på iPaden din), så første steg er å bekrefte den.
+Verdiene lagres på dronen og brukes videre på samme måte som katalogdata:
+- CD og hastighet brukes i SORA-beregning av buffere og ALOS
+- IP-rating vurderes mot nedbør i risikovurderingen (advarsel, aldri hard stop)
+- Maks vind og type inngår i SORA-forslag og værvurdering
 
-## Slik går vi frem
+Velger du en modell fra katalogen, er det fortsatt katalogens verdier som gjelder — seksjonen vises da som lesbar info, ikke som redigerbare felt.
 
-1. **Bekreft årsaken**
-   Legge inn midlertidig logging som viser nøyaktig hva som skjer i sekundet før velgeren lukker seg: adresseoppslaget, ny oppstart av skjemaet, eller forgrunns-oppdateringen. Du åpner dialogen fra kartet én gang på iPaden, og vi leser loggen.
+## Slik bygges det
 
-2. **Rett årsaken (mest sannsynlige tiltak)**
-   - Skjemaet skal ikke skrives til mens du står i et tidsfelt: adresseoppslaget legger seg i kø og fyller inn stedsnavnet først når du er ferdig med tidspunktet.
-   - Oppstartsrutinen skal kjøre kun én gang per åpning av dialogen, ikke på nytt mens den står åpen.
-   - Forgrunns-oppdateringen skal ikke tvinge fram en ny oppbygging av dialogen når den allerede står åpen.
+1. **Lagringsplass på dronen**
+   Nye felt på dronen for CD, maks hastighet, maks vind, flytid, IP-rating og type, samt en markering av om dronen er katalogbasert eller egendefinert. Databaseendringen legges fram for godkjenning før den kjøres.
 
-3. **Rydd bort gammel lagret app-versjon**
-   Siden det fungerer i inkognito, sjekker vi at iPaden faktisk får siste versjon av appen, og at den installerte appen oppdaterer seg som den skal.
+2. **Skjemaet**
+   Ny «Spesifikasjoner»-seksjon i dronedialogene (både ny drone og redigering). Feltene er redigerbare kun når «Angi manuelt» er valgt; ved katalogmodell vises katalogens verdier med kilde-lenke som i dag.
 
-4. **Verifisering**
-   Du tester på iPaden: kart → ruteplanlegger → nytt oppdrag → sett dato og tid. Velgeren skal bli stående til du bekrefter, og både start- og sluttidspunkt skal lagres riktig.
+3. **Bruk i beregninger**
+   SORA-panelet og risikovurderingen slår først opp katalogen som i dag. For egendefinerte droner uten katalogtreff brukes dronens egne verdier i stedet, både for CD/hastighet, type og IP-rating mot nedbør.
+
+4. **Tekster**
+   Alle nye etiketter og hjelpetekster legges inn på norsk og engelsk.
 
 ## Teknisk
 
-- Fil: `src/components/dashboard/AddMissionDialog.tsx`
-  - Reverse-geocoding-kallet (linje ~360-375) skriver `setFormData` asynkront ~1 s etter åpning. Gate skrivingen bak en `activeTimeFieldRef` (satt i `onFocus`/`onBlur` på `#tidspunkt` og `#slutt_tidspunkt`) og flush den utestående lokasjonsverdien ved blur.
-  - Init-effekten (linje 277-405) har `initialFormData`, `initialRouteData` og fire `initialSelected*`-props i dependency-arrayet. Latch den med en `initializedForOpenRef` slik at den kun kjører ved overgangen `open: false → true`.
-  - Tidsfeltene beholdes som `type="datetime-local"`; ingen bytte til egen velger.
-- Kontroller at ingenting i `AuthContext` sin `visibilitychange`-håndtering (linje ~840-860) fører til remount av åpne dialoger; ved behov hopp over `refreshAuthState` når en dialog er åpen og sesjonen fortsatt er gyldig.
-- Ingen databaseendringer, ingen nye tekststrenger utover eventuell i18n hvis UI-tekst endres.
-- Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
+- Migrasjon på `public.drones` (krever din godkjenning):
+  `spec_source text not null default 'catalog'` ('catalog' | 'manual'),
+  `characteristic_dimension_m numeric`, `max_speed_mps numeric`, `max_wind_mps numeric`,
+  `endurance_min integer`, `ip_rating text`, `airframe_category text` ('multirotor' | 'fixed_wing').
+  Ingen nye tabeller, ingen RLS-endringer (eksisterende `drones`-policyer dekker feltene).
+- `src/components/resources/DroneFormFields.tsx`: utvid `DroneFormValues` og `emptyDroneFormValues` med feltene; ny seksjon rendres når `selectedModelId === "manual"` eller `values.spec_source === "manual"`; katalogmodus viser skrivebeskyttet oppsummering (CD, V0, IP, maks vind, flytid).
+- `AddDroneDialog.tsx`: `handleModelSelect` setter `spec_source` til `manual`/`catalog` og nullstiller manuelle spesifikasjoner ved katalogvalg; insert sender de nye kolonnene.
+- `DroneDetailDialog.tsx`: samme felt i update-payloadet, og seksjonen forblir redigerbar for droner med `spec_source = 'manual'`.
+- `src/components/SoraSettingsPanel.tsx`: legg dronens egne felt i `drones`-select og bruk dem som fallback etter `pickBestDroneCatalogMatch` (CD, V0, maks vind, MTOM, `categoryToAircraftType` via `airframe_category`).
+- `supabase/functions/ai-risk-assessment/index.ts`: samme fallback for `primaryDroneCharacteristicDimensionM`, `calculateAlos` og IP-/nedbørsvurderingen (`ipPrecipitation.ts`) når katalogtreff mangler; kilde merkes som «operatøroppgitt» i stedet for produsentkilde. Funksjonen deployes p\u00e5 nytt.
+- i18n: nye nøkler under `resourceDialogs.droneDetail.*` i `no.json` og `en.json`.
+- Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`, samt `deno test` for risikovurderingsfunksjonen.
