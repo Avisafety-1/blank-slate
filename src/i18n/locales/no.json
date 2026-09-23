@@ -5270,7 +5270,28 @@
         "label": "Velg fra katalog (valgfritt)",
         "placeholder": "Velg dronemodell eller angi manuelt",
         "manual": "Angi manuelt",
-        "autofillHint": "Velg en modell for å auto-fylle vekt, payload og klasse"
+        "autofillHint": "Velg en modell for å auto-fylle vekt, payload og klasse",
+        "ownModels": "Egne droner",
+        "globalModels": "Katalog"
+      },
+      "specs": {
+        "characteristicDimension": "Karakteristisk dimensjon (m)",
+        "characteristicDimensionPlaceholder": "f.eks. 1.2",
+        "characteristicDimensionShort": "CD:",
+        "maxSpeed": "Maks hastighet (m/s)",
+        "maxSpeedPlaceholder": "f.eks. 20",
+        "maxSpeedShort": "Maks hastighet:",
+        "maxWind": "Maks vind (m/s)",
+        "maxWindPlaceholder": "f.eks. 12",
+        "endurance": "Flytid (min)",
+        "endurancePlaceholder": "f.eks. 40",
+        "ipRating": "IP-rating",
+        "ipRatingPlaceholder": "f.eks. IP54",
+        "airframeCategory": "Type",
+        "airframeCategoryPlaceholder": "Velg type",
+        "multirotor": "Multirotor",
+        "fixedWing": "Fastvinge",
+        "catalogLocked": "Spesifikasjonene kommer fra katalogmodellen. Velg «Angi manuelt» for å sette egne verdier."
       },
       "form": {
         "internalSerialPlaceholder": "Valgfritt",

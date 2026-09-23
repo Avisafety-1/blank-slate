@@ -5268,7 +5268,28 @@
         "label": "Select from catalog (optional)",
         "placeholder": "Select drone model or enter manually",
         "manual": "Enter manually",
-        "autofillHint": "Select a model to auto-fill weight, payload and class"
+        "autofillHint": "Select a model to auto-fill weight, payload and class",
+        "ownModels": "Own drones",
+        "globalModels": "Catalog"
+      },
+      "specs": {
+        "characteristicDimension": "Characteristic dimension (m)",
+        "characteristicDimensionPlaceholder": "e.g. 1.2",
+        "characteristicDimensionShort": "CD:",
+        "maxSpeed": "Max speed (m/s)",
+        "maxSpeedPlaceholder": "e.g. 20",
+        "maxSpeedShort": "Max speed:",
+        "maxWind": "Max wind (m/s)",
+        "maxWindPlaceholder": "e.g. 12",
+        "endurance": "Endurance (min)",
+        "endurancePlaceholder": "e.g. 40",
+        "ipRating": "IP rating",
+        "ipRatingPlaceholder": "e.g. IP54",
+        "airframeCategory": "Type",
+        "airframeCategoryPlaceholder": "Select type",
+        "multirotor": "Multirotor",
+        "fixedWing": "Fixed wing",
+        "catalogLocked": "Specifications come from the catalog model. Choose \"Enter manually\" to set your own values."
       },
       "form": {
         "internalSerialPlaceholder": "Optional",

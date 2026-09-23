@@ -16,11 +16,16 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { DroneFormFields, DroneFormValues, emptyDroneFormValues } from "./DroneFormFields";
 import { MaintenanceSchedulesSection, StandardEntry } from "./MaintenanceSchedulesSection";
 import { MaintenanceSchedule, nextDueFromInterval } from "@/lib/maintenanceSchedules";
+import { upsertCompanyDroneModel } from "@/lib/customDroneModels";
 
 interface DroneModel {
   id: string;
   name: string;
   eu_class: string;
+  company_id: string | null;
+  characteristic_dimension_m: number | null;
+  max_speed_mps: number | null;
+  airframe_category: string | null;
   weight_kg: number;
   payload_kg: number;
   weight_without_payload_kg: number | null;
@@ -204,10 +209,28 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           vekt: model.weight_kg?.toString() ?? "",
           payload: model.payload_kg?.toString() ?? "",
           merknader: model.comment || "",
+          characteristic_dimension_m: model.characteristic_dimension_m?.toString() ?? "",
+          max_speed_mps: model.max_speed_mps?.toString() ?? "",
+          max_wind_mps: model.max_wind_mps?.toString() ?? "",
+          endurance_min: model.endurance_min?.toString() ?? "",
+          ip_rating: model.ip_rating ?? "",
+          airframe_category: model.airframe_category ?? "",
         });
       }
     } else {
-      onChange({ modell: "", klasse: "", vekt: "", payload: "", merknader: "" });
+      onChange({
+        modell: "",
+        klasse: "",
+        vekt: "",
+        payload: "",
+        merknader: "",
+        characteristic_dimension_m: "",
+        max_speed_mps: "",
+        max_wind_mps: "",
+        endurance_min: "",
+        ip_rating: "",
+        airframe_category: "",
+      });
     }
   };
 
@@ -229,8 +252,26 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     setIsSubmitting(true);
 
     const num = (v: string) => (v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+    const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
 
     try {
+      // Store manually entered models as a company-owned catalog entry
+      if (isManualSpecs && values.modell.trim()) {
+        await upsertCompanyDroneModel(companyId, userId, {
+          modell: values.modell,
+          klasse: values.klasse,
+          vekt: values.vekt,
+          payload: values.payload,
+          merknader: values.merknader,
+          characteristic_dimension_m: values.characteristic_dimension_m,
+          max_speed_mps: values.max_speed_mps,
+          max_wind_mps: values.max_wind_mps,
+          endurance_min: values.endurance_min,
+          ip_rating: values.ip_rating,
+          airframe_category: values.airframe_category,
+        });
+      }
+
       const { data: droneData, error } = await (supabase as any).from("drones").insert([{
         user_id: userId,
         company_id: companyId,

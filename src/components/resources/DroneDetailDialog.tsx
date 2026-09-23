@@ -36,6 +36,7 @@ import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { DroneFormFields } from "./DroneFormFields";
+import { fetchCatalogModelByName, upsertCompanyDroneModel } from "@/lib/customDroneModels";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
 import { InspectionOverview } from "./InspectionOverview";
 
@@ -116,7 +117,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [catalogModel, setCatalogModel] = useState<any>(null);
-  const [droneModels, setDroneModels] = useState<{id: string; name: string; eu_class: string; weight_kg: number; payload_kg: number; comment: string | null; ip_rating: string | null; ip_source_status: string; ip_source_url: string | null}[]>([]);
+  const [droneModels, setDroneModels] = useState<any[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
@@ -171,6 +172,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sjekkliste_id: "",
     operations_checklist_ids: [] as string[],
     post_flight_checklist_id: "",
+    characteristic_dimension_m: "",
+    max_speed_mps: "",
+    max_wind_mps: "",
+    endurance_min: "",
+    ip_rating: "",
+    airframe_category: "",
   });
 
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
@@ -298,6 +305,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sjekkliste_id: drone.sjekkliste_id || "",
     operations_checklist_ids: (drone as any).operations_checklist_ids || [],
     post_flight_checklist_id: (drone as any).post_flight_checklist_id || "",
+    characteristic_dimension_m: "",
+    max_speed_mps: "",
+    max_wind_mps: "",
+    endurance_min: "",
+    ip_rating: "",
+    airframe_category: "",
   });
   setFormTechnicalResponsibleId(drone.technical_responsible_id || null);
       setSelectedChecklistId(drone.sjekkliste_id || "");
@@ -323,7 +336,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const fetchDroneModels = async () => {
       const { data } = await supabase
         .from("drone_models")
-        .select("id, name, eu_class, weight_kg, payload_kg, comment, ip_rating, ip_source_status, ip_source_url")
+        .select("id, name, eu_class, weight_kg, payload_kg, comment, ip_rating, ip_source_status, ip_source_url, company_id, characteristic_dimension_m, max_speed_mps, max_wind_mps, endurance_min, airframe_category")
         .order("name");
       if (data) setDroneModels(data);
     };
@@ -342,6 +355,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           vekt: model.weight_kg.toString(),
           payload: model.payload_kg.toString(),
           merknader: model.comment || prev.merknader,
+          characteristic_dimension_m: model.characteristic_dimension_m != null ? String(model.characteristic_dimension_m) : "",
+          max_speed_mps: model.max_speed_mps != null ? String(model.max_speed_mps) : "",
+          max_wind_mps: model.max_wind_mps != null ? String(model.max_wind_mps) : "",
+          endurance_min: model.endurance_min != null ? String(model.endurance_min) : "",
+          ip_rating: model.ip_rating ?? "",
+          airframe_category: model.airframe_category ?? "",
         }));
       }
     }
@@ -423,15 +442,33 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   useEffect(() => {
     if (!drone?.modell) { setCatalogModel(null); return; }
     const fetchCatalogModel = async () => {
-      const { data } = await supabase
-        .from("drone_models")
-        .select("*")
-        .ilike("name", drone.modell)
-        .maybeSingle();
-      setCatalogModel(data);
+      // Prefer the company's own model over a global one with the same name
+      const model = await fetchCatalogModelByName(drone.modell);
+      setCatalogModel(model);
     };
     fetchCatalogModel();
   }, [drone?.modell]);
+
+  // Mirror catalog specifications into the edit form
+  useEffect(() => {
+    if (!catalogModel) return;
+    setFormData((prev) => ({
+      ...prev,
+      characteristic_dimension_m: catalogModel.characteristic_dimension_m != null ? String(catalogModel.characteristic_dimension_m) : "",
+      max_speed_mps: catalogModel.max_speed_mps != null ? String(catalogModel.max_speed_mps) : "",
+      max_wind_mps: catalogModel.max_wind_mps != null ? String(catalogModel.max_wind_mps) : "",
+      endurance_min: catalogModel.endurance_min != null ? String(catalogModel.endurance_min) : "",
+      ip_rating: catalogModel.ip_rating ?? "",
+      airframe_category: catalogModel.airframe_category ?? "",
+    }));
+  }, [catalogModel]);
+
+  // When editing a drone that matches a global catalog model, lock the spec fields to that model
+  useEffect(() => {
+    if (!isEditing || !catalogModel?.id) return;
+    if (catalogModel.company_id) return; // company-owned models stay editable
+    setSelectedModelId((prev) => (prev === "" ? catalogModel.id : prev));
+  }, [isEditing, catalogModel]);
 
   const fetchMissionsSinceInspection = async () => {
     if (!drone) return;
@@ -806,6 +843,24 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     
     setIsSubmitting(true);
     try {
+      // Manually entered specifications are stored as the company's own catalog model
+      const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
+      if (isManualSpecs && companyId && formData.modell.trim()) {
+        await upsertCompanyDroneModel(companyId, user?.id ?? null, {
+          modell: formData.modell,
+          klasse: formData.klasse,
+          vekt: formData.vekt,
+          payload: formData.payload,
+          merknader: formData.merknader,
+          characteristic_dimension_m: formData.characteristic_dimension_m,
+          max_speed_mps: formData.max_speed_mps,
+          max_wind_mps: formData.max_wind_mps,
+          endurance_min: formData.endurance_min,
+          ip_rating: formData.ip_rating,
+          airframe_category: formData.airframe_category,
+        });
+      }
+
       const { error } = await supabase
         .from("drones")
         .update({
@@ -1077,6 +1132,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   {catalogModel.endurance_min != null && (
                     <div>
                       <span className="font-medium">{tt("catalog.endurance")}</span> {catalogModel.endurance_min} {tt("catalog.enduranceUnit")}
+                    </div>
+                  )}
+                  {catalogModel.characteristic_dimension_m != null && (
+                    <div>
+                      <span className="font-medium">{tt("specs.characteristicDimensionShort")}</span> {catalogModel.characteristic_dimension_m} m
+                    </div>
+                  )}
+                  {catalogModel.max_speed_mps != null && (
+                    <div>
+                      <span className="font-medium">{tt("specs.maxSpeedShort")}</span> {catalogModel.max_speed_mps} {tt("catalog.maxWindUnit")}
                     </div>
                   )}
                   {catalogModel.max_wind_mps != null && (
@@ -1653,6 +1718,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   varsel_dager: formData.varsel_dager ?? "",
                   varsel_timer: formData.varsel_timer ?? "",
                   varsel_oppdrag: formData.varsel_oppdrag ?? "",
+                  characteristic_dimension_m: formData.characteristic_dimension_m ?? "",
+                  max_speed_mps: formData.max_speed_mps ?? "",
+                  max_wind_mps: formData.max_wind_mps ?? "",
+                  endurance_min: formData.endurance_min ?? "",
+                  ip_rating: formData.ip_rating ?? "",
+                  airframe_category: formData.airframe_category ?? "",
                 }}
                 onChange={(patch) => setFormData((prev: any) => ({ ...prev, ...patch }))}
                 mode="edit"

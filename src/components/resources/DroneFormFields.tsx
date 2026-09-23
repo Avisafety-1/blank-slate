@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,6 +37,12 @@ export interface DroneFormValues {
   varsel_dager: string;
   varsel_timer: string;
   varsel_oppdrag: string;
+  characteristic_dimension_m: string;
+  max_speed_mps: string;
+  max_wind_mps: string;
+  endurance_min: string;
+  ip_rating: string;
+  airframe_category: string;
 }
 
 export const emptyDroneFormValues: DroneFormValues = {
@@ -64,6 +70,12 @@ export const emptyDroneFormValues: DroneFormValues = {
   varsel_dager: "",
   varsel_timer: "",
   varsel_oppdrag: "",
+  characteristic_dimension_m: "",
+  max_speed_mps: "",
+  max_wind_mps: "",
+  endurance_min: "",
+  ip_rating: "",
+  airframe_category: "",
 };
 
 interface CatalogModel {
@@ -73,6 +85,7 @@ interface CatalogModel {
   ip_rating?: string | null;
   ip_source_status?: string | null;
   ip_source_url?: string | null;
+  company_id?: string | null;
 }
 
 interface ChecklistOption {
@@ -121,6 +134,9 @@ export const DroneFormFields = ({
 
   const selectedOps = values.operations_checklist_ids || [];
   const selectedCatalogModel = droneModels.find((model) => model.id === selectedModelId);
+  const companyModels = droneModels.filter((model) => !!model.company_id);
+  const globalModels = droneModels.filter((model) => !model.company_id);
+  const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
   const unavailableOps = selectedOps.filter((id) => !checklists.some((c) => c.id === id));
   const postFlightUnavailable =
     !!values.post_flight_checklist_id &&
@@ -185,11 +201,24 @@ export const DroneFormFields = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="manual">{tt("catalogSelector.manual")}</SelectItem>
-              {droneModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name} ({model.eu_class})
-                </SelectItem>
-              ))}
+              {companyModels.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tt("catalogSelector.ownModels")}</SelectLabel>
+                  {companyModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}{model.eu_class ? ` (${model.eu_class})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              <SelectGroup>
+                <SelectLabel>{tt("catalogSelector.globalModels")}</SelectLabel>
+                {globalModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}{model.eu_class ? ` (${model.eu_class})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">{tt("catalogSelector.autofillHint")}</p>
@@ -338,6 +367,86 @@ export const DroneFormFields = ({
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="characteristic_dimension_m">{tt("specs.characteristicDimension")}</Label>
+            <Input
+              id="characteristic_dimension_m"
+              type="number"
+              step="0.01"
+              disabled={!isManualSpecs}
+              value={values.characteristic_dimension_m}
+              onChange={(e) => onChange({ characteristic_dimension_m: e.target.value })}
+              placeholder={tt("specs.characteristicDimensionPlaceholder")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="max_speed_mps">{tt("specs.maxSpeed")}</Label>
+            <Input
+              id="max_speed_mps"
+              type="number"
+              step="0.1"
+              disabled={!isManualSpecs}
+              value={values.max_speed_mps}
+              onChange={(e) => onChange({ max_speed_mps: e.target.value })}
+              placeholder={tt("specs.maxSpeedPlaceholder")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="max_wind_mps">{tt("specs.maxWind")}</Label>
+            <Input
+              id="max_wind_mps"
+              type="number"
+              step="0.1"
+              disabled={!isManualSpecs}
+              value={values.max_wind_mps}
+              onChange={(e) => onChange({ max_wind_mps: e.target.value })}
+              placeholder={tt("specs.maxWindPlaceholder")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="endurance_min">{tt("specs.endurance")}</Label>
+            <Input
+              id="endurance_min"
+              type="number"
+              step="1"
+              disabled={!isManualSpecs}
+              value={values.endurance_min}
+              onChange={(e) => onChange({ endurance_min: e.target.value })}
+              placeholder={tt("specs.endurancePlaceholder")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="ip_rating">{tt("specs.ipRating")}</Label>
+            <Input
+              id="ip_rating"
+              disabled={!isManualSpecs}
+              value={values.ip_rating}
+              onChange={(e) => onChange({ ip_rating: e.target.value })}
+              placeholder={tt("specs.ipRatingPlaceholder")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="airframe_category">{tt("specs.airframeCategory")}</Label>
+            <Select
+              value={values.airframe_category || ""}
+              onValueChange={(value) => onChange({ airframe_category: value })}
+              disabled={!isManualSpecs}
+            >
+              <SelectTrigger id="airframe_category">
+                <SelectValue placeholder={tt("specs.airframeCategoryPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="multirotor">{tt("specs.multirotor")}</SelectItem>
+                <SelectItem value="fixed_wing">{tt("specs.fixedWing")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {!isManualSpecs && (
+          <p className="text-xs text-muted-foreground">{tt("specs.catalogLocked")}</p>
+        )}
 
         <div>
           <Label htmlFor="merknader">{tt("labels.notes")}</Label>
