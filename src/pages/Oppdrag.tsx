@@ -12,6 +12,8 @@ import droneBackground from "@/assets/drone-background.png";
 import { exportToKMZ } from "@/lib/oppdragKmzExport";
 import type { SoraSettings } from "@/types/map";
 import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
+import type { MapBasemap } from "@/lib/mapSnapshotUtils";
+import { segmentsFromRouteData } from "@/lib/routeSegments";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
@@ -62,6 +64,8 @@ const Oppdrag = () => {
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [pdfSections, setPdfSections] = useState<PdfSections>(DEFAULT_PDF_SECTIONS);
+  const [pdfBasemap, setPdfBasemap] = useState<MapBasemap>("standard");
+  const [pdfSelectedRouteIds, setPdfSelectedRouteIds] = useState<string[]>([]);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
@@ -406,13 +410,22 @@ const Oppdrag = () => {
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
     setPdfSections(DEFAULT_PDF_SECTIONS);
+    setPdfBasemap("standard");
+    setPdfSelectedRouteIds(
+      segmentsFromRouteData((mission as any)?.route ?? null)
+        .filter((s) => s.coordinates.length > 0)
+        .map((s) => s.id)
+    );
     setExportPdfDialogOpen(true);
   };
 
   const handleConfirmExportPdf = async () => {
     if (!exportPdfMission) return;
     setExportPdfDialogOpen(false);
-    await exportToPDF(exportPdfMission, pdfSections, data.user?.id, data.companyId);
+    await exportToPDF(exportPdfMission, pdfSections, data.user?.id, data.companyId, {
+      selectedRouteIds: pdfSelectedRouteIds,
+      basemap: pdfBasemap,
+    });
   };
 
   const handleDeleteMission = async () => {
@@ -649,6 +662,10 @@ const Oppdrag = () => {
           exportPdfMission={exportPdfMission}
           pdfSections={pdfSections}
           setPdfSections={setPdfSections}
+          pdfBasemap={pdfBasemap}
+          setPdfBasemap={setPdfBasemap}
+          pdfSelectedRouteIds={pdfSelectedRouteIds}
+          setPdfSelectedRouteIds={setPdfSelectedRouteIds}
           onConfirmExportPdf={handleConfirmExportPdf}
           reportIncidentDialogOpen={reportIncidentDialogOpen}
           setReportIncidentDialogOpen={setReportIncidentDialogOpen}

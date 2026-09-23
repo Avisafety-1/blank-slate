@@ -74,7 +74,9 @@
         "point": "Punkt",
         "lat": "Breddegrad",
         "lng": "Lengdegrad"
-      }
+      },
+      "routeHeading": "Rute {{n}}",
+      "allRoutesTotal": "Totalt {{routes}} ruter · {{points}} punkter · {{km}} km"
     },
     "basicInfo": {
       "title": "Grunnleggende informasjon",

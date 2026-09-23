@@ -74,7 +74,9 @@
         "point": "Point",
         "lat": "Latitude",
         "lng": "Longitude"
-      }
+      },
+      "routeHeading": "Route {{n}}",
+      "allRoutesTotal": "Total {{routes}} routes · {{points}} points · {{km}} km"
     },
     "basicInfo": {
       "title": "Basic information",

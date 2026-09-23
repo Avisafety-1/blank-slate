@@ -4234,7 +4234,13 @@
     "riskTitle": "Risk assessment",
     "riskDesc": "The mission has been created. Do you want to perform a risk assessment now, or continue without?",
     "skipRisk": "Continue without risk assessment",
-    "performRisk": "Perform risk assessment"
+    "performRisk": "Perform risk assessment",
+    "mapBasemap": "Map background",
+    "basemapStandard": "Standard map",
+    "basemapSatellite": "Satellite",
+    "routesToInclude": "Routes to include",
+    "routeLabelN": "Route {{n}}",
+    "routeSummary": "{{points}} points · {{km}} km"
   },
   "soraPanel": {
     "bufferMode": "Buffer method",

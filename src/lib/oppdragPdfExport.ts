@@ -1,11 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import { segmentsFromRouteData } from "@/lib/routeSegments";
+import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
 import autoTable from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
 import { getIntlLocale } from "@/lib/i18nHelpers";
-import { generateMissionMapSnapshot } from "@/lib/mapSnapshotUtils";
+import { generateMissionMapSnapshot, type MapBasemap } from "@/lib/mapSnapshotUtils";
 import { format } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { toast } from "sonner";
@@ -85,11 +85,19 @@ export const DEFAULT_PDF_SECTIONS = {
 
 export type PdfSections = typeof DEFAULT_PDF_SECTIONS;
 
+export interface PdfExportOptions {
+  /** Ids of the routes to include. Undefined = all routes. */
+  selectedRouteIds?: string[];
+  /** Basemap used for the map snapshot. */
+  basemap?: MapBasemap;
+}
+
 export const exportToPDF = async (
   mission: Mission,
   sections: PdfSections,
   userId: string | undefined,
-  companyId: string | undefined
+  companyId: string | undefined,
+  options: PdfExportOptions = {}
 ) => {
   try {
     // Fetch user's full name for opprettet_av
@@ -114,20 +122,33 @@ export const exportToPDF = async (
     const pdf = await createPdfDocument();
     const pageWidth = pdf.internal.pageSize.getWidth();
     
+    // Selected routes (undefined selection = all routes)
+    const allSegments = segmentsFromRouteData((mission.route as any) ?? null)
+      .filter((s) => s.coordinates.length > 0);
+    const selectedSegments = allSegments
+      .map((segment, index) => ({ segment, index }))
+      .filter(({ segment }) =>
+        !options.selectedRouteIds || options.selectedRouteIds.includes(segment.id)
+      );
+    const selectedRouteIds = options.selectedRouteIds
+      ? selectedSegments.map(({ segment }) => segment.id)
+      : undefined;
+
     // Fetch airspace warnings if coordinates exist
     let airspaceWarnings: any[] = [];
-    const routeCoords = (mission.route as any)?.coordinates || null;
+    const routeCoords = selectedSegments[0]?.segment.coordinates
+      ?? (mission.route as any)?.coordinates ?? null;
     const effectiveLat = mission.latitude ?? routeCoords?.[0]?.lat;
     const effectiveLng = mission.longitude ?? routeCoords?.[0]?.lng;
     
     if (effectiveLat && effectiveLng) {
-      // Worst case across all routes on the mission.
-      const segments = segmentsFromRouteData((mission.route as any) ?? null)
-        .filter((s) => s.coordinates.length > 0);
-      const runs: { label: string | null; points: any }[] = segments.length > 0
-        ? segments.map((s, i) => ({
-            label: segments.length > 1 ? (s.name || `Rute ${i + 1}`) : null,
-            points: JSON.parse(JSON.stringify(s.coordinates)),
+      // Worst case across the selected routes on the mission.
+      const runs: { label: string | null; points: any }[] = selectedSegments.length > 0
+        ? selectedSegments.map(({ segment, index }) => ({
+            label: allSegments.length > 1
+              ? (segment.name || i18n.t('mission.route.routeHeading', { ns: 'pdf', n: index + 1 }))
+              : null,
+            points: JSON.parse(JSON.stringify(segment.coordinates)),
           }))
         : [{ label: null, points: routeCoords }];
 
@@ -198,6 +219,8 @@ export const exportToPDF = async (
           longitude: effectiveLng,
           route: mission.route as any,
           flightTracks: flightTracks.length > 0 ? flightTracks : undefined,
+          selectedRouteIds,
+          basemap: options.basemap ?? "standard",
         });
 
         if (mapDataUrl) {
@@ -216,9 +239,21 @@ export const exportToPDF = async (
           pdf.setTextColor(60);
 
           type RGB = [number, number, number];
-          const legendItems: Array<{ color: RGB; dash?: boolean; label: string }> = [
-            { color: [29, 78, 216], dash: true, label: i18n.t('mission.map.legend.plannedRoute', { ns: 'pdf' }) },
+          const hexToRgb = (hex: string): RGB => [
+            parseInt(hex.slice(1, 3), 16),
+            parseInt(hex.slice(3, 5), 16),
+            parseInt(hex.slice(5, 7), 16),
           ];
+          const legendItems: Array<{ color: RGB; dash?: boolean; label: string }> =
+            selectedSegments.length > 1
+              ? selectedSegments.map(({ segment, index }) => ({
+                  color: hexToRgb(routeColor(index)),
+                  dash: true,
+                  label: segment.name || i18n.t('mission.route.routeHeading', { ns: 'pdf', n: index + 1 }),
+                }))
+              : [
+                  { color: [29, 78, 216], dash: true, label: i18n.t('mission.map.legend.plannedRoute', { ns: 'pdf' }) },
+                ];
           if (flightTracks.length > 0) {
             legendItems.push({ color: [249, 115, 22], label: i18n.t('mission.map.legend.actualRoute', { ns: 'pdf' }) });
           }
@@ -306,50 +341,94 @@ export const exportToPDF = async (
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
     
-    // Route info
-    if (sections.routeCoordinates && mission.route && (mission.route as any).coordinates?.length > 0) {
+    // Route info – one block per selected route
+    if (sections.routeCoordinates && selectedSegments.length > 0) {
+      const pageHeight = pdf.internal.pageSize.getHeight();
       pdf.setFontSize(12);
       setFontStyle(pdf, "bold");
+      pdf.setTextColor(0);
       pdf.text(i18n.t('mission.route.title', { ns: 'pdf' }), 15, yPos);
       yPos += 7;
-      
-      const routeData = mission.route as any;
-      const routeInfo = [
-        [i18n.t('mission.route.pointCount', { ns: 'pdf' }), String(routeData.coordinates.length)],
-        [i18n.t('mission.route.totalDistance', { ns: 'pdf' }), `${(routeData.totalDistance || 0).toFixed(2)} km`],
-      ];
-      
-      autoTable(pdf, {
-        startY: yPos,
-        head: [],
-        body: routeInfo,
-        theme: "grid",
-        styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
-      });
-      
-      yPos = (pdf as any).lastAutoTable.finalY + 5;
-      
-      const coordData = routeData.coordinates.map((coord: any, index: number) => [
-        String(index + 1),
-        coord.lat.toFixed(6),
-        coord.lng.toFixed(6)
-      ]);
-      
-      autoTable(pdf, {
-        startY: yPos,
-        head: [[i18n.t('mission.route.headers.point', { ns: 'pdf' }), i18n.t('mission.route.headers.lat', { ns: 'pdf' }), i18n.t('mission.route.headers.lng', { ns: 'pdf' })]],
-        body: coordData,
-        theme: "grid",
-        styles: { fontSize: 8, font: getPdfFontName() },
-        columnStyles: { 
-          0: { cellWidth: 20 },
-          1: { cellWidth: 50 },
-          2: { cellWidth: 50 }
+
+      const multiRoutes = selectedSegments.length > 1;
+
+      for (const { segment, index } of selectedSegments) {
+        if (yPos > pageHeight - 45) {
+          pdf.addPage();
+          yPos = 20;
         }
-      });
-      
-      yPos = (pdf as any).lastAutoTable.finalY + 10;
+
+        if (multiRoutes) {
+          pdf.setFontSize(10);
+          setFontStyle(pdf, "bold");
+          pdf.setTextColor(0);
+          pdf.text(
+            sanitizeForPdf(segment.name || i18n.t('mission.route.routeHeading', { ns: 'pdf', n: index + 1 })),
+            15,
+            yPos
+          );
+          yPos += 5;
+          setFontStyle(pdf, "normal");
+        }
+
+        const routeInfo = [
+          [i18n.t('mission.route.pointCount', { ns: 'pdf' }), String(segment.coordinates.length)],
+          [i18n.t('mission.route.totalDistance', { ns: 'pdf' }), `${(segment.totalDistance || 0).toFixed(2)} km`],
+        ];
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [],
+          body: routeInfo,
+          theme: "grid",
+          styles: { fontSize: 9, font: getPdfFontName() },
+          columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        });
+
+        yPos = (pdf as any).lastAutoTable.finalY + 5;
+
+        const coordData = segment.coordinates.map((coord: any, i: number) => [
+          String(i + 1),
+          coord.lat.toFixed(6),
+          coord.lng.toFixed(6)
+        ]);
+
+        autoTable(pdf, {
+          startY: yPos,
+          head: [[i18n.t('mission.route.headers.point', { ns: 'pdf' }), i18n.t('mission.route.headers.lat', { ns: 'pdf' }), i18n.t('mission.route.headers.lng', { ns: 'pdf' })]],
+          body: coordData,
+          theme: "grid",
+          styles: { fontSize: 8, font: getPdfFontName() },
+          columnStyles: { 
+            0: { cellWidth: 20 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 50 }
+          }
+        });
+
+        yPos = (pdf as any).lastAutoTable.finalY + (multiRoutes ? 6 : 10);
+      }
+
+      if (multiRoutes) {
+        const totalPoints = selectedSegments.reduce((sum, { segment }) => sum + segment.coordinates.length, 0);
+        const totalKm = selectedSegments.reduce((sum, { segment }) => sum + (segment.totalDistance || 0), 0);
+        pdf.setFontSize(9);
+        setFontStyle(pdf, "bold");
+        pdf.setTextColor(60);
+        pdf.text(
+          sanitizeForPdf(i18n.t('mission.route.allRoutesTotal', {
+            ns: 'pdf',
+            routes: selectedSegments.length,
+            points: totalPoints,
+            km: totalKm.toFixed(2),
+          })),
+          15,
+          yPos
+        );
+        pdf.setTextColor(0);
+        setFontStyle(pdf, "normal");
+        yPos += 10;
+      }
     }
     
     // Basic info
