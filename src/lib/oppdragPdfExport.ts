@@ -25,6 +25,39 @@ const fmtRouteDocNumber = (value: unknown, decimals = 0, unit = "") => {
   return `${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
 };
 
+// Packs single label/value rows into two pairs per table row so long lists
+// use the full page width. Rows with an empty value are treated as section
+// headers and span the full table width.
+const buildTwoColumnRows = (rows: string[][]): any[] => {
+  const out: any[] = [];
+  let pending: string[][] = [];
+  const flush = () => {
+    for (let i = 0; i < pending.length; i += 2) {
+      const a = pending[i];
+      const b = pending[i + 1];
+      out.push([a[0], a[1], b ? b[0] : "", b ? b[1] : ""]);
+    }
+    pending = [];
+  };
+  for (const row of rows) {
+    if (row[1] === "") {
+      flush();
+      out.push([{ content: row[0], colSpan: 4, styles: { fontStyle: "bold" } }]);
+    } else {
+      pending.push(row);
+    }
+  }
+  flush();
+  return out;
+};
+
+const TWO_COL_STYLES = {
+  0: { fontStyle: "bold", cellWidth: 45 },
+  1: { cellWidth: 45 },
+  2: { fontStyle: "bold", cellWidth: 45 },
+  3: { cellWidth: 45 },
+};
+
 const getRouteSoraRows = (route: any): string[][] => {
   const rows: string[][] = [];
   const sora = route?.soraSettings;
