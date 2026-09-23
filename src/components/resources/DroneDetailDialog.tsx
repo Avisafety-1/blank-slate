@@ -116,7 +116,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const [linkedDronetags, setLinkedDronetags] = useState<any[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [catalogModel, setCatalogModel] = useState<any>(null);
-  const [droneModels, setDroneModels] = useState<{id: string; name: string; eu_class: string; weight_kg: number; payload_kg: number; comment: string | null; ip_rating: string | null; ip_source_status: string; ip_source_url: string | null}[]>([]);
+  const [droneModels, setDroneModels] = useState<any[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [addEquipmentDialogOpen, setAddEquipmentDialogOpen] = useState(false);
   const [addPersonnelDialogOpen, setAddPersonnelDialogOpen] = useState(false);
@@ -335,7 +335,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const fetchDroneModels = async () => {
       const { data } = await supabase
         .from("drone_models")
-        .select("id, name, eu_class, weight_kg, payload_kg, comment, ip_rating, ip_source_status, ip_source_url")
+        .select("id, name, eu_class, weight_kg, payload_kg, comment, ip_rating, ip_source_status, ip_source_url, company_id, characteristic_dimension_m, max_speed_mps, max_wind_mps, endurance_min, airframe_category")
         .order("name");
       if (data) setDroneModels(data);
     };
@@ -435,12 +435,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   useEffect(() => {
     if (!drone?.modell) { setCatalogModel(null); return; }
     const fetchCatalogModel = async () => {
-      const { data } = await supabase
-        .from("drone_models")
-        .select("*")
-        .ilike("name", drone.modell)
-        .maybeSingle();
-      setCatalogModel(data);
+      // Prefer the company's own model over a global one with the same name
+      const model = await fetchCatalogModelByName(drone.modell);
+      setCatalogModel(model);
     };
     fetchCatalogModel();
   }, [drone?.modell]);
