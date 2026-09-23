@@ -12,6 +12,8 @@ import droneBackground from "@/assets/drone-background.png";
 import { exportToKMZ } from "@/lib/oppdragKmzExport";
 import type { SoraSettings } from "@/types/map";
 import { exportToPDF, DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
+import type { MapBasemap } from "@/lib/mapSnapshotUtils";
+import { segmentsFromRouteData } from "@/lib/routeSegments";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
@@ -62,6 +64,8 @@ const Oppdrag = () => {
   const [exportPdfMission, setExportPdfMission] = useState<Mission | null>(null);
   const [exportPdfDialogOpen, setExportPdfDialogOpen] = useState(false);
   const [pdfSections, setPdfSections] = useState<PdfSections>(DEFAULT_PDF_SECTIONS);
+  const [pdfBasemap, setPdfBasemap] = useState<MapBasemap>("standard");
+  const [pdfSelectedRouteIds, setPdfSelectedRouteIds] = useState<string[]>([]);
   const [reportIncidentMission, setReportIncidentMission] = useState<Mission | null>(null);
   const [reportIncidentDialogOpen, setReportIncidentDialogOpen] = useState(false);
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
