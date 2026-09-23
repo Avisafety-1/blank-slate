@@ -252,8 +252,26 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     setIsSubmitting(true);
 
     const num = (v: string) => (v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+    const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
 
     try {
+      // Store manually entered models as a company-owned catalog entry
+      if (isManualSpecs && values.modell.trim()) {
+        await upsertCompanyDroneModel(companyId, userId, {
+          modell: values.modell,
+          klasse: values.klasse,
+          vekt: values.vekt,
+          payload: values.payload,
+          merknader: values.merknader,
+          characteristic_dimension_m: values.characteristic_dimension_m,
+          max_speed_mps: values.max_speed_mps,
+          max_wind_mps: values.max_wind_mps,
+          endurance_min: values.endurance_min,
+          ip_rating: values.ip_rating,
+          airframe_category: values.airframe_category,
+        });
+      }
+
       const { data: droneData, error } = await (supabase as any).from("drones").insert([{
         user_id: userId,
         company_id: companyId,
