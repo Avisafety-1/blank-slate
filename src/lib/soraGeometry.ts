@@ -680,7 +680,7 @@ function buildMergedBufferClip(
       const start = validCoords[i];
       const end = validCoords[i + 1];
       if (start.lat === end.lat && start.lng === end.lng) continue;
-      const segmentBuffer = bufferPolyline([start, end], dist, 16, refPoint, avgLat);
+      const segmentBuffer = bufferPolyline([start, end], dist, segs, refPoint, avgLat);
       if (segmentBuffer.length >= 3) clipPolygons.push([closeClipRing(segmentBuffer)]);
     }
   }
