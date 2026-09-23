@@ -4236,7 +4236,13 @@
     "riskTitle": "Risikovurdering",
     "riskDesc": "Oppdraget er opprettet. Ønsker du å utføre en risikovurdering nå, eller fortsette uten?",
     "skipRisk": "Fortsett uten risikovurdering",
-    "performRisk": "Utfør risikovurdering"
+    "performRisk": "Utfør risikovurdering",
+    "mapBasemap": "Kartbakgrunn",
+    "basemapStandard": "Standard kart",
+    "basemapSatellite": "Satellitt",
+    "routesToInclude": "Ruter som skal med",
+    "routeLabelN": "Rute {{n}}",
+    "routeSummary": "{{points}} punkter · {{km}} km"
   },
   "soraPanel": {
     "bufferMode": "Buffermetode",

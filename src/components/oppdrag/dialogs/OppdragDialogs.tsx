@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ClipboardCheck, CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_PDF_SECTIONS, PdfSections } from "@/lib/oppdragPdfExport";
+import type { MapBasemap } from "@/lib/mapSnapshotUtils";
+import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
 type Mission = any;
 
@@ -85,6 +87,10 @@ export interface OppdragDialogsProps {
   exportPdfMission: Mission | null;
   pdfSections: PdfSections;
   setPdfSections: (sections: PdfSections | ((s: PdfSections) => PdfSections)) => void;
+  pdfBasemap: MapBasemap;
+  setPdfBasemap: (basemap: MapBasemap) => void;
+  pdfSelectedRouteIds: string[];
+  setPdfSelectedRouteIds: (ids: string[] | ((ids: string[]) => string[])) => void;
   onConfirmExportPdf: () => void;
 
   // Report incident
@@ -302,8 +308,73 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                   <Checkbox checked={props.pdfSections.airspaceWarnings} onCheckedChange={v => props.setPdfSections(s => ({ ...s, airspaceWarnings: v === true }))} />
                   <span className="text-sm">{t("oppdragDialogs.airspaceWarnings")}</span>
                 </label>
+
+                {props.pdfSections.map && (
+                  <div className="pt-1">
+                    <p className="text-xs text-muted-foreground mb-1.5">{t("oppdragDialogs.mapBasemap")}</p>
+                    <div className="inline-flex rounded-md border border-border overflow-hidden">
+                      {(["standard", "satellite"] as MapBasemap[]).map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => props.setPdfBasemap(option)}
+                          className={`px-3 py-1.5 text-xs transition-colors ${
+                            props.pdfBasemap === option
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-transparent text-muted-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          {option === "standard"
+                            ? t("oppdragDialogs.basemapStandard")
+                            : t("oppdragDialogs.basemapSatellite")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Ruter (kun når oppdraget har flere) */}
+            {(() => {
+              const segments = segmentsFromRouteData((props.exportPdfMission?.route as any) ?? null)
+                .filter((s) => s.coordinates.length > 0);
+              if (segments.length < 2) return null;
+              return (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("oppdragDialogs.routesToInclude")}</p>
+                  <div className="space-y-2">
+                    {segments.map((segment, index) => (
+                      <label key={segment.id} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={props.pdfSelectedRouteIds.includes(segment.id)}
+                          onCheckedChange={(v) =>
+                            props.setPdfSelectedRouteIds((ids) =>
+                              v === true
+                                ? Array.from(new Set([...ids, segment.id]))
+                                : ids.filter((id) => id !== segment.id)
+                            )
+                          }
+                        />
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: routeColor(index) }}
+                        />
+                        <span className="text-sm">
+                          {segment.name || t("oppdragDialogs.routeLabelN", { n: index + 1 })}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {t("oppdragDialogs.routeSummary", {
+                            points: segment.coordinates.length,
+                            km: (segment.totalDistance || 0).toFixed(2),
+                          })}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Oppdragsdetaljer */}
             <div>

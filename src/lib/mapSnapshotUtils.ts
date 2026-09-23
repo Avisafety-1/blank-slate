@@ -1,5 +1,6 @@
 import { bufferPolyline, bufferPolygon, computeConvexHull } from "./soraGeometry";
 import { supabase } from "@/integrations/supabase/client";
+import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
 interface RoutePoint {
   lat: number;
@@ -22,11 +23,16 @@ interface FlightTrack {
   positions: Array<{ lat: number; lng: number }>;
 }
 
+export type MapBasemap = "standard" | "satellite";
+
 interface MapSnapshotInput {
   latitude?: number | null;
   longitude?: number | null;
   route?: RouteData | null;
   flightTracks?: FlightTrack[];
+  /** Ids of the routes to draw. Undefined = all routes. */
+  selectedRouteIds?: string[];
+  basemap?: MapBasemap;
 }
 
 // Web Mercator helpers
@@ -85,14 +91,23 @@ function chooseBestZoom(
   return 8;
 }
 
-// Load an OSM tile as an ImageBitmap
-function loadTile(x: number, y: number, zoom: number): Promise<HTMLImageElement | null> {
+// Load a basemap tile (OSM standard or Esri World Imagery satellite)
+function loadTile(
+  x: number,
+  y: number,
+  zoom: number,
+  basemap: MapBasemap = "standard"
+): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    // Cycle through a/b/c subdomains for load balancing
-    const sub = ["a", "b", "c"][(x + y) % 3];
-    img.src = `https://${sub}.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+    if (basemap === "satellite") {
+      img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`;
+    } else {
+      // Cycle through a/b/c subdomains for load balancing
+      const sub = ["a", "b", "c"][(x + y) % 3];
+      img.src = `https://${sub}.tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+    }
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     setTimeout(() => resolve(null), 5000);
@@ -199,13 +214,14 @@ function drawWaypoint(
   index: number,
   originX: number,
   originY: number,
-  zoom: number
+  zoom: number,
+  color: string = "#1d4ed8"
 ) {
   const p = worldToPixel(lat, lng, originX, originY, zoom);
   ctx.save();
   ctx.beginPath();
   ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#1d4ed8";
+  ctx.fillStyle = color;
   ctx.fill();
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 1.5;
@@ -259,39 +275,56 @@ export async function generateMissionMapSnapshot(
     const CANVAS_W = 800;
     const CANVAS_H = 400;
 
-    const routeCoords: RoutePoint[] =
-      (input.route as any)?.coordinates || [];
+    const basemap: MapBasemap = input.basemap ?? "standard";
     const sora: SoraSettings | undefined = (input.route as any)?.soraSettings;
 
-    // Collect all points to determine bounds (route + SORA polygons)
-    const allPoints: RoutePoint[] = [...routeCoords];
-
-    // Compute SORA polygons ahead of zoom calc
-    let soraFlightGeo: RoutePoint[] = [];
-    let soraContingency: RoutePoint[] = [];
-    let soraGroundRisk: RoutePoint[] = [];
-
-    if (sora?.enabled && routeCoords.length >= 1) {
-      const mode = sora.bufferMode ?? "corridor";
-      const makeBuffer = (dist: number) => {
-        if (dist <= 0) return routeCoords;
-        const isClosedRoute =
-          routeCoords.length >= 3 &&
-          routeCoords[0].lat === routeCoords[routeCoords.length - 1].lat &&
-          routeCoords[0].lng === routeCoords[routeCoords.length - 1].lng;
-        if (mode === "convexHull" || isClosedRoute) {
-          const hull = computeConvexHull(routeCoords);
-          return bufferPolygon(hull, dist);
-        }
-        return bufferPolyline(routeCoords, dist);
-      };
-
-      soraFlightGeo = bufferPolyline(routeCoords, 1);
-      soraContingency = makeBuffer(sora.contingencyDistance || 50);
-      soraGroundRisk = makeBuffer(
-        (sora.contingencyDistance || 50) + (sora.groundRiskDistance || 100)
+    // All routes on the mission (legacy data = one route), filtered by selection
+    const allSegments = segmentsFromRouteData((input.route as any) ?? null)
+      .filter((s) => s.coordinates.length > 0);
+    const drawnRoutes = allSegments
+      .map((segment, index) => ({ segment, index }))
+      .filter(({ segment }) =>
+        !input.selectedRouteIds || input.selectedRouteIds.includes(segment.id)
       );
-      allPoints.push(...soraGroundRisk);
+
+    // Collect all points to determine bounds (routes + SORA polygons)
+    const allPoints: RoutePoint[] = [];
+    for (const { segment } of drawnRoutes) allPoints.push(...segment.coordinates);
+
+    // Compute SORA polygons per route ahead of zoom calc
+    const soraShapes: Array<{
+      flightGeo: RoutePoint[];
+      contingency: RoutePoint[];
+      groundRisk: RoutePoint[];
+    }> = [];
+
+    if (sora?.enabled) {
+      const mode = sora.bufferMode ?? "corridor";
+      for (const { segment } of drawnRoutes) {
+        const coords = segment.coordinates;
+        if (coords.length < 1) continue;
+        const makeBuffer = (dist: number) => {
+          if (dist <= 0) return coords;
+          const isClosedRoute =
+            coords.length >= 3 &&
+            coords[0].lat === coords[coords.length - 1].lat &&
+            coords[0].lng === coords[coords.length - 1].lng;
+          if (mode === "convexHull" || isClosedRoute) {
+            return bufferPolygon(computeConvexHull(coords), dist);
+          }
+          return bufferPolyline(coords, dist);
+        };
+
+        const groundRisk = makeBuffer(
+          (sora.contingencyDistance || 50) + (sora.groundRiskDistance || 100)
+        );
+        soraShapes.push({
+          flightGeo: bufferPolyline(coords, 1),
+          contingency: makeBuffer(sora.contingencyDistance || 50),
+          groundRisk,
+        });
+        allPoints.push(...groundRisk);
+      }
     }
 
     // Include flight track points in bounds
@@ -344,7 +377,7 @@ export async function generateMissionMapSnapshot(
       for (let ty = tileY0; ty <= tileY1; ty++) {
         const clampedTx = ((tx % (maxTileIndex + 1)) + (maxTileIndex + 1)) % (maxTileIndex + 1);
         const clampedTy = Math.max(0, Math.min(ty, maxTileIndex));
-        tilePromises.push({ tx, ty, promise: loadTile(clampedTx, clampedTy, zoom) });
+        tilePromises.push({ tx, ty, promise: loadTile(clampedTx, clampedTy, zoom, basemap) });
       }
     }
     const tileResults = await Promise.all(tilePromises.map(t => t.promise));
@@ -391,26 +424,39 @@ export async function generateMissionMapSnapshot(
       // AIP zones are best-effort
     }
 
-    // Draw SORA zones (outermost first so inner zones draw on top)
-    if (sora?.enabled) {
-      if (soraGroundRisk.length >= 3) {
-        drawPolygon(ctx, soraGroundRisk, originX, originY, zoom,
+    // Draw SORA zones per route (outermost first so inner zones draw on top)
+    for (const shape of soraShapes) {
+      if (shape.groundRisk.length >= 3) {
+        drawPolygon(ctx, shape.groundRisk, originX, originY, zoom,
           "#ef4444", "#ef4444", 0.12, [6, 4]);
       }
-      if (soraContingency.length >= 3) {
-        drawPolygon(ctx, soraContingency, originX, originY, zoom,
+    }
+    for (const shape of soraShapes) {
+      if (shape.contingency.length >= 3) {
+        drawPolygon(ctx, shape.contingency, originX, originY, zoom,
           "#eab308", "#eab308", 0.15, [6, 4]);
       }
-      if (soraFlightGeo.length >= 3) {
-        drawPolygon(ctx, soraFlightGeo, originX, originY, zoom,
+    }
+    for (const shape of soraShapes) {
+      if (shape.flightGeo.length >= 3) {
+        drawPolygon(ctx, shape.flightGeo, originX, originY, zoom,
           "#22c55e", "#22c55e", 0.20);
       }
     }
 
-    // Draw route polyline
-    if (routeCoords.length >= 2) {
-      drawPolyline(ctx, routeCoords, originX, originY, zoom,
-        "#1d4ed8", 3, [8, 5]);
+    const multiRoute = drawnRoutes.length > 1;
+
+    // Draw route polylines (one colour per route)
+    for (const { segment, index } of drawnRoutes) {
+      if (segment.coordinates.length < 2) continue;
+      const color = multiRoute ? routeColor(index) : "#1d4ed8";
+      if (basemap === "satellite") {
+        // White halo for readability on imagery
+        drawPolyline(ctx, segment.coordinates, originX, originY, zoom,
+          "rgba(255,255,255,0.85)", 5.5);
+      }
+      drawPolyline(ctx, segment.coordinates, originX, originY, zoom,
+        color, 3, [8, 5]);
     }
 
     // Draw actual flight tracks (solid orange)
@@ -420,26 +466,34 @@ export async function generateMissionMapSnapshot(
           (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && !(p.lat === 0 && p.lng === 0)
         );
         if (pts.length >= 2) {
+          if (basemap === "satellite") {
+            drawPolyline(ctx, pts, originX, originY, zoom, "rgba(255,255,255,0.85)", 4.5);
+          }
           drawPolyline(ctx, pts, originX, originY, zoom, "#f97316", 2.5);
         }
       }
     }
 
-    // Draw waypoints (numbered)
-    if (routeCoords.length > 0) {
-      // Start marker (green)
-      drawMarker(ctx, routeCoords[0].lat, routeCoords[0].lng,
-        originX, originY, zoom, "#16a34a", "S");
-      // End marker (red) if more than 1 point
-      if (routeCoords.length > 1) {
-        drawMarker(ctx, routeCoords[routeCoords.length - 1].lat,
-          routeCoords[routeCoords.length - 1].lng,
-          originX, originY, zoom, "#dc2626", "E");
-      }
-      // Intermediate waypoints
-      for (let i = 1; i < routeCoords.length - 1; i++) {
-        drawWaypoint(ctx, routeCoords[i].lat, routeCoords[i].lng,
-          i, originX, originY, zoom);
+    // Draw waypoints (numbered) per route
+    if (drawnRoutes.length > 0) {
+      for (const { segment, index } of drawnRoutes) {
+        const coords = segment.coordinates;
+        const color = multiRoute ? routeColor(index) : "#1d4ed8";
+        if (coords.length === 0) continue;
+        // Start marker (green)
+        drawMarker(ctx, coords[0].lat, coords[0].lng,
+          originX, originY, zoom, "#16a34a", "S");
+        // End marker (red) if more than 1 point
+        if (coords.length > 1) {
+          drawMarker(ctx, coords[coords.length - 1].lat,
+            coords[coords.length - 1].lng,
+            originX, originY, zoom, "#dc2626", "E");
+        }
+        // Intermediate waypoints
+        for (let i = 1; i < coords.length - 1; i++) {
+          drawWaypoint(ctx, coords[i].lat, coords[i].lng,
+            i, originX, originY, zoom, color);
+        }
       }
     } else if (input.latitude && input.longitude) {
       // Single point fallback
@@ -448,14 +502,22 @@ export async function generateMissionMapSnapshot(
     }
 
     // Scale bar
-    drawScaleBar(ctx, zoom, centerLat, CANVAS_W, CANVAS_H);
+    drawScaleBar(ctx, zoom, centerLat, CANVAS_W, CANVAS_H, basemap);
 
     // Attribution
     ctx.save();
     ctx.font = "9px sans-serif";
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.textAlign = "right";
-    ctx.fillText("© OpenStreetMap contributors", CANVAS_W - 5, CANVAS_H - 5);
+    const attribution = basemap === "satellite"
+      ? "© Esri, Maxar, Earthstar Geographics"
+      : "© OpenStreetMap contributors";
+    if (basemap === "satellite") {
+      ctx.strokeStyle = "rgba(255,255,255,0.85)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(attribution, CANVAS_W - 5, CANVAS_H - 5);
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.75)";
+    ctx.fillText(attribution, CANVAS_W - 5, CANVAS_H - 5);
     ctx.restore();
 
     return canvas.toDataURL("image/png");
@@ -470,7 +532,8 @@ function drawScaleBar(
   zoom: number,
   centerLat: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  basemap: MapBasemap = "standard"
 ) {
   // meters per pixel at given zoom and latitude
   const metersPerPixel =
@@ -489,6 +552,10 @@ function drawScaleBar(
   const y = canvasHeight - 15;
 
   ctx.save();
+  if (basemap === "satellite") {
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillRect(x - 6, y - 18, barPx + 12, 26);
+  }
   ctx.strokeStyle = "#000";
   ctx.lineWidth = 2;
   ctx.fillStyle = "#000";

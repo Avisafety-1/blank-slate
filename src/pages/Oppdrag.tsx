@@ -406,13 +406,22 @@ const Oppdrag = () => {
   const handleExportPdfClick = (mission: Mission) => {
     setExportPdfMission(mission);
     setPdfSections(DEFAULT_PDF_SECTIONS);
+    setPdfBasemap("standard");
+    setPdfSelectedRouteIds(
+      segmentsFromRouteData((mission as any)?.route ?? null)
+        .filter((s) => s.coordinates.length > 0)
+        .map((s) => s.id)
+    );
     setExportPdfDialogOpen(true);
   };
 
   const handleConfirmExportPdf = async () => {
     if (!exportPdfMission) return;
     setExportPdfDialogOpen(false);
-    await exportToPDF(exportPdfMission, pdfSections, data.user?.id, data.companyId);
+    await exportToPDF(exportPdfMission, pdfSections, data.user?.id, data.companyId, {
+      selectedRouteIds: pdfSelectedRouteIds,
+      basemap: pdfBasemap,
+    });
   };
 
   const handleDeleteMission = async () => {
