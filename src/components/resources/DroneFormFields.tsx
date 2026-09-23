@@ -354,6 +354,9 @@ export const DroneFormFields = ({
               onChange={(e) => onChange({ vekt: e.target.value })}
               placeholder={tt("form.weightPlaceholder")}
             />
+            {isManualSpecs && !values.vekt && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{tt("specs.weightRequiredHint")}</p>
+            )}
           </div>
           <div>
             <Label htmlFor="payload">{tt("labels.payload")} ({tt("kgSuffix")})</Label>

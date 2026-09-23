@@ -846,7 +846,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
       // Manually entered specifications are stored as the company's own catalog model
       const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
       if (isManualSpecs && companyId && formData.modell.trim()) {
-        await upsertCompanyDroneModel(companyId, user?.id ?? null, {
+        const modelResult = await upsertCompanyDroneModel(companyId, user?.id ?? null, {
           modell: formData.modell,
           klasse: formData.klasse,
           vekt: formData.vekt,
@@ -859,6 +859,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           ip_rating: formData.ip_rating,
           airframe_category: formData.airframe_category,
         });
+        if (modelResult.error) {
+          toast.error(t("resourceDialogs.droneDetail.specs.saveModelFailed"));
+        }
       }
 
       const { error } = await supabase

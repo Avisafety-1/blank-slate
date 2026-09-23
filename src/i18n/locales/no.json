@@ -5297,7 +5297,9 @@
         "airframeCategoryPlaceholder": "Velg type",
         "multirotor": "Multirotor",
         "fixedWing": "Fastvinge",
-        "catalogLocked": "Spesifikasjonene kommer fra katalogmodellen. Velg «Angi manuelt» for å sette egne verdier."
+        "catalogLocked": "Spesifikasjonene kommer fra katalogmodellen. Velg «Angi manuelt» for å sette egne verdier.",
+        "weightRequiredHint": "Fyll inn vekt (MTOM) for at modellen skal lagres riktig i katalogen.",
+        "saveModelFailed": "Kunne ikke lagre den egendefinerte modellen i katalogen. Prøv igjen eller kontakt admin."
       },
       "form": {
         "internalSerialPlaceholder": "Valgfritt",
