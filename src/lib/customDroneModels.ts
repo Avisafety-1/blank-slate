@@ -22,24 +22,32 @@ const int = (v?: string) => {
 };
 const txt = (v?: string) => (v && v.trim() !== "" ? v.trim() : null);
 
+export interface UpsertCompanyDroneModelResult {
+  id: string | null;
+  error: string | null;
+}
+
+/** Escapes PostgREST ilike wildcards so model names match literally. */
+const escapeLike = (v: string) => v.replace(/[%_]/g, (c) => `\\${c}`);
+
 /**
  * Creates (or updates) a company-owned drone model in the catalog.
  * Company-owned models are only visible to the owning company and its departments (RLS).
- * Returns the model id, or null when the model could not be stored.
+ * `weight_kg`/`payload_kg` are NOT NULL in the catalog, so empty input falls back to 0.
  */
 export async function upsertCompanyDroneModel(
   companyId: string,
   userId: string | null,
   specs: CustomDroneModelSpecs,
-): Promise<string | null> {
+): Promise<UpsertCompanyDroneModelResult> {
   const name = specs.modell?.trim();
-  if (!companyId || !name) return null;
+  if (!companyId || !name) return { id: null, error: null };
 
   const payload = {
     name,
     eu_class: specs.klasse || "",
-    weight_kg: num(specs.vekt),
-    payload_kg: num(specs.payload),
+    weight_kg: num(specs.vekt) ?? 0,
+    payload_kg: num(specs.payload) ?? 0,
     comment: txt(specs.merknader),
     characteristic_dimension_m: num(specs.characteristic_dimension_m),
     max_speed_mps: num(specs.max_speed_mps),
