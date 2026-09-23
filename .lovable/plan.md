@@ -1,48 +1,43 @@
-# Egendefinert drone: manuelle spesifikasjoner
+# Egne dronemodeller i katalogen
 
 ## Hva du får
-Når du velger «Angi manuelt» i dronekatalogen, dukker det opp en egen seksjon «Spesifikasjoner» der du selv kan fylle inn:
+- I «Legg til drone» velger du fortsatt fra dronekatalogen eller «Angi manuelt». Velger du «Angi manuelt», får du fylle inn tekniske spesifikasjoner selv.
+- Når dronen lagres, opprettes modellen som en **egen dronemodell** i katalogen, i en egen gruppe «Egne droner» øverst i nedtrekkslisten — adskilt fra de globale modellene.
+- Egne modeller er kun synlige for selskapet de opprettes i, inkludert underavdelingene. Ingen andre selskaper ser dem.
+- Neste gang noen i selskapet legger til samme dronetype, velger de bare den egne modellen og får spesifikasjonene automatisk.
+
+## Felter under «Tekniske spesifikasjoner»
+I opprett-/rediger-dialogen utvides den eksisterende seksjonen «TEKNISKE SPESIFIKASJONER» (der Vekt MTOM og Payload ligger i dag) med:
 
 - Karakteristisk dimensjon (CD) i meter
 - Maks hastighet (m/s)
 - Maks vind (m/s)
-- Flytid / batteritid (minutter)
-- IP-rating (f.eks. IP54) — med «Ikke dokumentert» som standard
+- Flytid (minutter)
+- IP-rating (tom = «Ikke dokumentert»)
 - Type: multirotor eller fastvinge
-- MTOM (vekt) og nyttelast — disse finnes allerede, men blir nå redigerbare også i manuell modus
 
-Verdiene lagres på dronen og brukes videre på samme måte som katalogdata:
-- CD og hastighet brukes i SORA-beregning av buffere og ALOS
-- IP-rating vurderes mot nedbør i risikovurderingen (advarsel, aldri hard stop)
-- Maks vind og type inngår i SORA-forslag og værvurdering
+Feltene er redigerbare kun i «Angi manuelt»-modus. Velger du en katalogmodell, fylles feltene av katalogen og vises som i dag.
 
-Velger du en modell fra katalogen, er det fortsatt katalogens verdier som gjelder — seksjonen vises da som lesbar info, ikke som redigerbare felt.
+## Dronekortet
+Kortet henter allerede spesifikasjoner fra katalogen, så egne modeller vises der uten endringer. To verdier mangler i visningen i dag og legges til: **CD** og **maks hastighet**.
 
-## Slik bygges det
-
-1. **Lagringsplass på dronen**
-   Nye felt på dronen for CD, maks hastighet, maks vind, flytid, IP-rating og type, samt en markering av om dronen er katalogbasert eller egendefinert. Databaseendringen legges fram for godkjenning før den kjøres.
-
-2. **Skjemaet**
-   Ny «Spesifikasjoner»-seksjon i dronedialogene (både ny drone og redigering). Feltene er redigerbare kun når «Angi manuelt» er valgt; ved katalogmodell vises katalogens verdier med kilde-lenke som i dag.
-
-3. **Bruk i beregninger**
-   SORA-panelet og risikovurderingen slår først opp katalogen som i dag. For egendefinerte droner uten katalogtreff brukes dronens egne verdier i stedet, både for CD/hastighet, type og IP-rating mot nedbør.
-
-4. **Tekster**
-   Alle nye etiketter og hjelpetekster legges inn på norsk og engelsk.
+## Bruk i beregninger
+Egne modeller behandles nøyaktig som katalogmodeller: CD og hastighet inn i SORA-buffere og ALOS, IP-rating vurderes mot nedbør i risikovurderingen (advarsel, aldri hard stop), maks vind og type inn i SORA-forslag.
 
 ## Teknisk
 
-- Migrasjon på `public.drones` (krever din godkjenning):
-  `spec_source text not null default 'catalog'` ('catalog' | 'manual'),
-  `characteristic_dimension_m numeric`, `max_speed_mps numeric`, `max_wind_mps numeric`,
-  `endurance_min integer`, `ip_rating text`, `airframe_category text` ('multirotor' | 'fixed_wing').
-  Ingen nye tabeller, ingen RLS-endringer (eksisterende `drones`-policyer dekker feltene).
-- `src/components/resources/DroneFormFields.tsx`: utvid `DroneFormValues` og `emptyDroneFormValues` med feltene; ny seksjon rendres når `selectedModelId === "manual"` eller `values.spec_source === "manual"`; katalogmodus viser skrivebeskyttet oppsummering (CD, V0, IP, maks vind, flytid).
-- `AddDroneDialog.tsx`: `handleModelSelect` setter `spec_source` til `manual`/`catalog` og nullstiller manuelle spesifikasjoner ved katalogvalg; insert sender de nye kolonnene.
-- `DroneDetailDialog.tsx`: samme felt i update-payloadet, og seksjonen forblir redigerbar for droner med `spec_source = 'manual'`.
-- `src/components/SoraSettingsPanel.tsx`: legg dronens egne felt i `drones`-select og bruk dem som fallback etter `pickBestDroneCatalogMatch` (CD, V0, maks vind, MTOM, `categoryToAircraftType` via `airframe_category`).
-- `supabase/functions/ai-risk-assessment/index.ts`: samme fallback for `primaryDroneCharacteristicDimensionM`, `calculateAlos` og IP-/nedbørsvurderingen (`ipPrecipitation.ts`) når katalogtreff mangler; kilde merkes som «operatøroppgitt» i stedet for produsentkilde. Funksjonen deployes p\u00e5 nytt.
+Databaseendring (legges fram for din godkjenning før den kjøres):
+- `public.drone_models`: nye kolonner `company_id uuid references public.companies(id) on delete cascade` (NULL = global katalog), `created_by uuid`, `airframe_category text`. Indeks på `company_id`.
+- Erstatt dagens policy «Authenticated users can read drone models» (`USING (true)`) med:
+  - SELECT: `company_id IS NULL OR company_id = ANY (public.get_user_visible_company_ids(auth.uid()))` — bruker eksisterende hierarkifunksjon, så underavdelinger ser morselskapets egne modeller.
+  - INSERT/UPDATE/DELETE for `authenticated`: kun rader der `company_id` er blant brukerens synlige selskaper og `company_id IS NOT NULL` (globale modeller forblir skrivebeskyttet).
+  - `GRANT SELECT, INSERT, UPDATE, DELETE ON public.drone_models TO authenticated;` og `GRANT ALL ... TO service_role;`
+- Ingen endring i `public.drones` — spesifikasjonene bor i katalogen.
+
+Frontend:
+- `DroneFormFields.tsx`: utvid `DroneFormValues` med `characteristic_dimension_m`, `max_speed_mps`, `max_wind_mps`, `endurance_min`, `ip_rating`, `airframe_category`; legg feltene i «Tekniske spesifikasjoner»-blokken; disable dem når `selectedModelId !== "manual"`. Nedtrekkslisten grupperes med `SelectGroup`/`SelectLabel`: «Egne droner» (rader med `company_id`) og «Katalog».
+- `AddDroneDialog.tsx`: ved manuell modus opprettes først en rad i `drone_models` (`company_id` = brukerens selskap, `name` = `values.modell`, `eu_class` = valgt klasse, vekt/payload/spesifikasjoner fra skjemaet), deretter dronen. Duplikatnavn innen samme selskap gjenbruker eksisterende rad i stedet for å opprette ny.
+- `DroneDetailDialog.tsx`: samme felt i redigering for droner knyttet til en egen modell (oppdaterer modellraden); katalogoppslaget (linje ~423) filtrerer allerede via RLS. Legg til CD og maks hastighet i spesifikasjonsboksen.
+- `SoraSettingsPanel.tsx` og `supabase/functions/ai-risk-assessment/index.ts` trenger ingen logikkendring — de slår opp `drone_models` på navn og treffer nå også egne modeller. Kontrollerer at navneoppslaget (`ilike`) ikke gir kollisjon mellom egen og global modell; ved treff i begge prioriteres selskapets egen modell.
 - i18n: nye nøkler under `resourceDialogs.droneDetail.*` i `no.json` og `en.json`.
-- Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`, samt `deno test` for risikovurderingsfunksjonen.
+- Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
