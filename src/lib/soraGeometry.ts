@@ -577,9 +577,9 @@ export function renderAdjacentAreaZone(
     const mode = sora?.bufferMode ?? "corridor";
     if (mode === "convexHull" || isClosedRoute) {
       const hull = computeConvexHull(validCoords);
-      return [bufferPolygon(hull, dist, refPoint, avgLat)];
+      return bufferRingRound(hull, dist, refPoint, avgLat);
     }
-    return mergeBufferedCorridorPolygons(validCoords, dist, 16, refPoint, avgLat);
+    return mergeBufferedCorridorPolygons(validCoords, dist, capSegmentsForDistance(dist), refPoint, avgLat);
   }
 
   function safeLatLngs(zone: RoutePoint[]): [number, number][] {
@@ -667,9 +667,7 @@ function buildMergedBufferClip(
   const mode = sora.bufferMode ?? "corridor";
   if (mode === "convexHull" || isClosedRoute) {
     const hull = computeConvexHull(validCoords);
-    const buffered = bufferPolygon(hull, dist, refPoint, avgLat);
-    if (buffered.length < 3) return null;
-    return [[closeClipRing(buffered)]];
+    return bufferRingRoundClip(hull, dist, refPoint, avgLat);
   }
 
   const clipPolygons: ClipPolygon[] = [];
