@@ -1665,6 +1665,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   varsel_dager: formData.varsel_dager ?? "",
                   varsel_timer: formData.varsel_timer ?? "",
                   varsel_oppdrag: formData.varsel_oppdrag ?? "",
+                  characteristic_dimension_m: formData.characteristic_dimension_m ?? "",
+                  max_speed_mps: formData.max_speed_mps ?? "",
+                  max_wind_mps: formData.max_wind_mps ?? "",
+                  endurance_min: formData.endurance_min ?? "",
+                  ip_rating: formData.ip_rating ?? "",
+                  airframe_category: formData.airframe_category ?? "",
                 }}
                 onChange={(patch) => setFormData((prev: any) => ({ ...prev, ...patch }))}
                 mode="edit"
