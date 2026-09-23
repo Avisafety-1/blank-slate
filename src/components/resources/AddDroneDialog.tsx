@@ -16,11 +16,16 @@ import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { DroneFormFields, DroneFormValues, emptyDroneFormValues } from "./DroneFormFields";
 import { MaintenanceSchedulesSection, StandardEntry } from "./MaintenanceSchedulesSection";
 import { MaintenanceSchedule, nextDueFromInterval } from "@/lib/maintenanceSchedules";
+import { upsertCompanyDroneModel } from "@/lib/customDroneModels";
 
 interface DroneModel {
   id: string;
   name: string;
   eu_class: string;
+  company_id: string | null;
+  characteristic_dimension_m: number | null;
+  max_speed_mps: number | null;
+  airframe_category: string | null;
   weight_kg: number;
   payload_kg: number;
   weight_without_payload_kg: number | null;
