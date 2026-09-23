@@ -843,6 +843,24 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     
     setIsSubmitting(true);
     try {
+      // Manually entered specifications are stored as the company's own catalog model
+      const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
+      if (isManualSpecs && companyId && formData.modell.trim()) {
+        await upsertCompanyDroneModel(companyId, user?.id ?? null, {
+          modell: formData.modell,
+          klasse: formData.klasse,
+          vekt: formData.vekt,
+          payload: formData.payload,
+          merknader: formData.merknader,
+          characteristic_dimension_m: formData.characteristic_dimension_m,
+          max_speed_mps: formData.max_speed_mps,
+          max_wind_mps: formData.max_wind_mps,
+          endurance_min: formData.endurance_min,
+          ip_rating: formData.ip_rating,
+          airframe_category: formData.airframe_category,
+        });
+      }
+
       const { error } = await supabase
         .from("drones")
         .update({
