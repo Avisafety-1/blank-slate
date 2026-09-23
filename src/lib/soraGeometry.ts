@@ -340,6 +340,61 @@ export function mergeBufferedCorridorPolygons(
 }
 
 /**
+ * Buffer rundt en lukket ring (konveks innhylling eller lukket rute) med runde
+ * hjørner. Bruker polygon-clipping til å slå sammen selve flaten, sirkler i
+ * hvert hjørne og korridorer langs hver kant. Unngår de lange spissene
+ * (miter-artefaktene) som oppstår ved store bufferavstander.
+ */
+export function bufferRingRoundClip(
+  ring: RoutePoint[],
+  distanceMeters: number,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
+): ClipMultiPolygon | null {
+  const valid = ring.filter(p => p && isFinite(p.lat) && isFinite(p.lng));
+  if (valid.length < 3 || distanceMeters <= 0) return null;
+
+  const refPoint = refPointOverride ?? valid[0];
+  const avgLat = avgLatOverride ?? valid.reduce((s, p) => s + p.lat, 0) / valid.length;
+  const segs = capSegmentsForDistance(distanceMeters);
+
+  const clipPolygons: ClipPolygon[] = [[closeClipRing(valid)]];
+
+  for (const point of valid) {
+    const circle = bufferPolyline([point], distanceMeters, segs, refPoint, avgLat);
+    if (circle.length >= 3) clipPolygons.push([closeClipRing(circle)]);
+  }
+
+  for (let i = 0; i < valid.length; i++) {
+    const start = valid[i];
+    const end = valid[(i + 1) % valid.length];
+    if (start.lat === end.lat && start.lng === end.lng) continue;
+    const segmentBuffer = bufferPolyline([start, end], distanceMeters, segs, refPoint, avgLat);
+    if (segmentBuffer.length >= 3) clipPolygons.push([closeClipRing(segmentBuffer)]);
+  }
+
+  try {
+    return clipPolygons.slice(1).reduce<ClipMultiPolygon>(
+      (acc, polygon) => polygonClipping.union(acc, polygon),
+      [clipPolygons[0]]
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Som `bufferRingRoundClip`, men returnerer ytre ringer som lat/lng-punkter. */
+export function bufferRingRound(
+  ring: RoutePoint[],
+  distanceMeters: number,
+  refPointOverride?: RoutePoint,
+  avgLatOverride?: number
+): RoutePoint[][] {
+  const merged = bufferRingRoundClip(ring, distanceMeters, refPointOverride, avgLatOverride);
+  return merged ? fromClipMultiPolygon(merged) : [];
+}
+
+/**
  * Normalize an arbitrary polygon ring by running it through polygon-clipping
  * (union with itself). Removes self-intersections and enforces canonical
  * orientation. Returns one or more clean polygons.
