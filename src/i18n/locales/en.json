@@ -5295,7 +5295,9 @@
         "airframeCategoryPlaceholder": "Select type",
         "multirotor": "Multirotor",
         "fixedWing": "Fixed wing",
-        "catalogLocked": "Specifications come from the catalog model. Choose \"Enter manually\" to set your own values."
+        "catalogLocked": "Specifications come from the catalog model. Choose \"Enter manually\" to set your own values.",
+        "weightRequiredHint": "Enter the weight (MTOM) so the model is stored correctly in the catalog.",
+        "saveModelFailed": "Could not save the custom model to the catalog. Try again or contact an admin."
       },
       "form": {
         "internalSerialPlaceholder": "Optional",
