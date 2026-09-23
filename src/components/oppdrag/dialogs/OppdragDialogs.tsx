@@ -275,7 +275,11 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                 ...(mission?.flightLogs?.length > 0 ? ['flightLogs', 'flightLogsDetailed'] : []),
                 ...((mission?.beskrivelse || mission?.merknader) ? ['descriptionNotes'] : []),
               ] as (keyof typeof DEFAULT_PDF_SECTIONS)[];
-              const allOn = visibleKeys.every(k => props.pdfSections[k]);
+              const routeIds = segmentsFromRouteData((mission?.route as any) ?? null)
+                .filter((s) => s.coordinates.length > 0)
+                .map((s) => s.id);
+              const allOn = visibleKeys.every(k => props.pdfSections[k])
+                && routeIds.every((id) => props.pdfSelectedRouteIds.includes(id));
               return (
                 <button
                   type="button"
@@ -285,6 +289,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
                     const update = { ...props.pdfSections };
                     visibleKeys.forEach(k => { update[k] = val; });
                     props.setPdfSections(update);
+                    props.setPdfSelectedRouteIds(val ? routeIds : []);
                   }}
                 >
                   {allOn ? t("oppdragDialogs.deselectAll") : t("oppdragDialogs.selectAll")}
