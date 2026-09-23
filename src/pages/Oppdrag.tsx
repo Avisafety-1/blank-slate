@@ -662,6 +662,10 @@ const Oppdrag = () => {
           exportPdfMission={exportPdfMission}
           pdfSections={pdfSections}
           setPdfSections={setPdfSections}
+          pdfBasemap={pdfBasemap}
+          setPdfBasemap={setPdfBasemap}
+          pdfSelectedRouteIds={pdfSelectedRouteIds}
+          setPdfSelectedRouteIds={setPdfSelectedRouteIds}
           onConfirmExportPdf={handleConfirmExportPdf}
           reportIncidentDialogOpen={reportIncidentDialogOpen}
           setReportIncidentDialogOpen={setReportIncidentDialogOpen}
