@@ -1,4 +1,4 @@
-import { bufferPolyline, bufferPolygon, computeConvexHull } from "./soraGeometry";
+import { bufferPolyline, bufferRingRound, computeConvexHull } from "./soraGeometry";
 import { supabase } from "@/integrations/supabase/client";
 import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 

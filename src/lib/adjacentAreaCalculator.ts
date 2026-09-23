@@ -13,7 +13,8 @@
 import type { RoutePoint, SoraSettings } from "@/types/map";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  bufferPolygon,
+  bufferRingRound,
+  capSegmentsForDistance,
   computeConvexHull,
   mergeBufferedCorridorPolygons,
 } from "@/lib/soraGeometry";
