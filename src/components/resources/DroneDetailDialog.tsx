@@ -443,6 +443,27 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     fetchCatalogModel();
   }, [drone?.modell]);
 
+  // Mirror catalog specifications into the edit form
+  useEffect(() => {
+    if (!catalogModel) return;
+    setFormData((prev) => ({
+      ...prev,
+      characteristic_dimension_m: catalogModel.characteristic_dimension_m != null ? String(catalogModel.characteristic_dimension_m) : "",
+      max_speed_mps: catalogModel.max_speed_mps != null ? String(catalogModel.max_speed_mps) : "",
+      max_wind_mps: catalogModel.max_wind_mps != null ? String(catalogModel.max_wind_mps) : "",
+      endurance_min: catalogModel.endurance_min != null ? String(catalogModel.endurance_min) : "",
+      ip_rating: catalogModel.ip_rating ?? "",
+      airframe_category: catalogModel.airframe_category ?? "",
+    }));
+  }, [catalogModel]);
+
+  // When editing a drone that matches a global catalog model, lock the spec fields to that model
+  useEffect(() => {
+    if (!isEditing || !catalogModel?.id) return;
+    if (catalogModel.company_id) return; // company-owned models stay editable
+    setSelectedModelId((prev) => (prev === "" ? catalogModel.id : prev));
+  }, [isEditing, catalogModel]);
+
   const fetchMissionsSinceInspection = async () => {
     if (!drone) return;
     const { countUniqueMissionsSinceInspection } = await import("@/lib/droneInspection");
