@@ -65,4 +65,30 @@ export interface SoraSettings {
   droneName?: string;
   characteristicDimensionM?: number;
   groundSpeedMps?: number;
+  calculationBasis?: {
+    aircraftType: "multirotor" | "fixed_wing" | "vtol" | "helicopter";
+    reactionTimeS: number;
+    pitchBankAngleDeg: number;
+    altimetryErrorM: number;
+    gnssErrorM: number;
+    positionHoldErrorM: number;
+    mapErrorM: number;
+    contingencyMethod: "standard" | "parachute";
+    deploymentTimeS?: number;
+    groundRiskBufferMethod: "off" | "1to1" | "ballistic" | "glide" | "drift";
+    glideRatio?: number;
+    windSpeedMps?: number;
+    descentSpeedMps?: number;
+  };
+  calculationDetails?: {
+    reactionDistanceM: number;
+    maneuverDistanceM: number;
+    verticalReactionM: number;
+    verticalManeuverM: number;
+    contingencyBufferM: number;
+    contingencyHeightMarginM: number;
+    totalCeilingM: number;
+    groundRiskBufferM: number;
+  };
+  calculationMode?: "automatic" | "manual";
 }

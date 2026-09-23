@@ -31,6 +31,12 @@ const getRouteSoraRows = (route: any): string[][] => {
   const adjacent = route?.adjacentAreaDocumentation;
 
   if (sora?.enabled) {
+    const basis = sora.calculationBasis;
+    const details = sora.calculationDetails;
+    const methodLabel = (method: string | undefined) => {
+      if (!method) return "-";
+      return i18n.t(`mission.soraBuffer.methods.${method}`, { ns: 'pdf', defaultValue: method });
+    };
     rows.push(
       [i18n.t('mission.soraBuffer.rows.soraVolume', { ns: 'pdf' }), ""],
       [i18n.t('mission.soraBuffer.rows.flightGeography', { ns: 'pdf' }), fmtRouteDocNumber(sora.flightGeographyDistance, 0, " m")],
@@ -43,6 +49,43 @@ const getRouteSoraRows = (route: any): string[][] => {
       [i18n.t('mission.soraBuffer.rows.cd', { ns: 'pdf' }), fmtRouteDocNumber(sora.characteristicDimensionM, 2, " m")],
       [i18n.t('mission.soraBuffer.rows.groundSpeed', { ns: 'pdf' }), fmtRouteDocNumber(sora.groundSpeedMps, 1, " m/s")],
     );
+
+    if (basis) {
+      rows.push(
+        [i18n.t('mission.soraBuffer.rows.calculationBasis', { ns: 'pdf' }), ""],
+        [i18n.t('mission.soraBuffer.rows.calculationMode', { ns: 'pdf' }), methodLabel(sora.calculationMode ?? "automatic")],
+        [i18n.t('mission.soraBuffer.rows.aircraftType', { ns: 'pdf' }), methodLabel(basis.aircraftType)],
+        [i18n.t('mission.soraBuffer.rows.reactionTime', { ns: 'pdf' }), fmtRouteDocNumber(basis.reactionTimeS, 1, " s")],
+        [i18n.t('mission.soraBuffer.rows.contingencyMethod', { ns: 'pdf' }), methodLabel(basis.contingencyMethod)],
+        [i18n.t('mission.soraBuffer.rows.pitchBankAngle', { ns: 'pdf' }), basis.contingencyMethod === "standard" ? fmtRouteDocNumber(basis.pitchBankAngleDeg, 0, " deg") : i18n.t('mission.soraBuffer.rows.notApplicable', { ns: 'pdf' })],
+        ...(basis.contingencyMethod === "parachute" ? [[i18n.t('mission.soraBuffer.rows.deploymentTime', { ns: 'pdf' }), fmtRouteDocNumber(basis.deploymentTimeS, 1, " s")]] : []),
+        [i18n.t('mission.soraBuffer.rows.altimetryError', { ns: 'pdf' }), fmtRouteDocNumber(basis.altimetryErrorM, 1, " m")],
+        [i18n.t('mission.soraBuffer.rows.gnssError', { ns: 'pdf' }), fmtRouteDocNumber(basis.gnssErrorM, 1, " m")],
+        [i18n.t('mission.soraBuffer.rows.positionHoldError', { ns: 'pdf' }), fmtRouteDocNumber(basis.positionHoldErrorM, 1, " m")],
+        [i18n.t('mission.soraBuffer.rows.mapError', { ns: 'pdf' }), fmtRouteDocNumber(basis.mapErrorM, 1, " m")],
+        [i18n.t('mission.soraBuffer.rows.grbMethod', { ns: 'pdf' }), methodLabel(basis.groundRiskBufferMethod)],
+        ...(basis.groundRiskBufferMethod === "glide" ? [[i18n.t('mission.soraBuffer.rows.glideRatio', { ns: 'pdf' }), fmtRouteDocNumber(basis.glideRatio, 1)]] : []),
+        ...(basis.groundRiskBufferMethod === "drift" ? [
+          [i18n.t('mission.soraBuffer.rows.windSpeed', { ns: 'pdf' }), fmtRouteDocNumber(basis.windSpeedMps, 1, " m/s")],
+          [i18n.t('mission.soraBuffer.rows.descentSpeed', { ns: 'pdf' }), fmtRouteDocNumber(basis.descentSpeedMps, 1, " m/s")],
+        ] : []),
+      );
+
+      if (details) {
+        rows.push(
+          [i18n.t('mission.soraBuffer.rows.intermediateResults', { ns: 'pdf' }), ""],
+          [i18n.t('mission.soraBuffer.rows.reactionDistance', { ns: 'pdf' }), fmtRouteDocNumber(details.reactionDistanceM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.maneuverDistance', { ns: 'pdf' }), fmtRouteDocNumber(details.maneuverDistanceM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.verticalReaction', { ns: 'pdf' }), fmtRouteDocNumber(details.verticalReactionM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.verticalManeuver', { ns: 'pdf' }), fmtRouteDocNumber(details.verticalManeuverM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.contingencyHeightMargin', { ns: 'pdf' }), fmtRouteDocNumber(details.contingencyHeightMarginM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.totalCeiling', { ns: 'pdf' }), fmtRouteDocNumber(details.totalCeilingM, 1, " m")],
+          [i18n.t('mission.soraBuffer.rows.cdContribution', { ns: 'pdf' }), fmtRouteDocNumber((Number(sora.characteristicDimensionM) || 0) / 2, 2, " m")],
+        );
+      }
+    } else {
+      rows.push([i18n.t('mission.soraBuffer.rows.calculationBasis', { ns: 'pdf' }), i18n.t('mission.soraBuffer.rows.legacyBasisUnavailable', { ns: 'pdf' })]);
+    }
   }
 
   if (adjacent?.enabled) {
