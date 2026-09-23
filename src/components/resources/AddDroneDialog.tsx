@@ -257,7 +257,7 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
     try {
       // Store manually entered models as a company-owned catalog entry
       if (isManualSpecs && values.modell.trim()) {
-        await upsertCompanyDroneModel(companyId, userId, {
+        const modelResult = await upsertCompanyDroneModel(companyId, userId, {
           modell: values.modell,
           klasse: values.klasse,
           vekt: values.vekt,
