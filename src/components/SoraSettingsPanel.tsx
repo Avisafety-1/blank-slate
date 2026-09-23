@@ -160,10 +160,15 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     const fetchSpecs = async () => {
       const { data } = await (supabase as any)
         .from("drone_models")
-        .select("name, weight_kg, max_wind_mps, max_speed_mps, characteristic_dimension_m, category, endurance_min, standard_takeoff_weight_kg")
+        .select("name, weight_kg, max_wind_mps, max_speed_mps, characteristic_dimension_m, category, airframe_category, company_id, endurance_min, standard_takeoff_weight_kg")
         .or(`name.ilike.%${selectedDrone.modell}%,name.ilike.%${selectedDrone.modell.replace(/^DJI\s+/i, "")}%`)
+        .order("company_id", { ascending: false, nullsFirst: false })
         .limit(20);
-      setCatalogSpecs(pickBestDroneCatalogMatch((data ?? []) as CatalogSpecs[], selectedDrone.modell));
+      const rows = ((data ?? []) as any[]).map((row) => ({
+        ...row,
+        category: row.category ?? row.airframe_category ?? null,
+      }));
+      setCatalogSpecs(pickBestDroneCatalogMatch(rows as CatalogSpecs[], selectedDrone.modell));
     };
     fetchSpecs();
   }, [selectedDrone?.modell]);
