@@ -62,7 +62,7 @@ export async function upsertCompanyDroneModel(
     .from("drone_models")
     .select("id")
     .eq("company_id", companyId)
-    .ilike("name", name)
+    .ilike("name", escapeLike(name))
     .maybeSingle();
 
   if (existing?.id) {
@@ -72,9 +72,9 @@ export async function upsertCompanyDroneModel(
       .eq("id", existing.id);
     if (error) {
       console.error("Failed to update company drone model:", error);
-      return null;
+      return { id: null, error: error.message ?? "update failed" };
     }
-    return existing.id as string;
+    return { id: existing.id as string, error: null };
   }
 
   const { data, error } = await (supabase as any)
@@ -85,9 +85,9 @@ export async function upsertCompanyDroneModel(
 
   if (error) {
     console.error("Failed to create company drone model:", error);
-    return null;
+    return { id: null, error: error.message ?? "insert failed" };
   }
-  return (data?.id as string) ?? null;
+  return { id: (data?.id as string) ?? null, error: null };
 }
 
 /**
