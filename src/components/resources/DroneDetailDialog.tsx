@@ -355,6 +355,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           vekt: model.weight_kg.toString(),
           payload: model.payload_kg.toString(),
           merknader: model.comment || prev.merknader,
+          characteristic_dimension_m: model.characteristic_dimension_m != null ? String(model.characteristic_dimension_m) : "",
+          max_speed_mps: model.max_speed_mps != null ? String(model.max_speed_mps) : "",
+          max_wind_mps: model.max_wind_mps != null ? String(model.max_wind_mps) : "",
+          endurance_min: model.endurance_min != null ? String(model.endurance_min) : "",
+          ip_rating: model.ip_rating ?? "",
+          airframe_category: model.airframe_category ?? "",
         }));
       }
     }
