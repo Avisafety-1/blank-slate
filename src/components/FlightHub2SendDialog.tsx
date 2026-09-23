@@ -93,10 +93,9 @@ export const FlightHub2SendDialog = ({
       if (dist <= 0) return [];
       if (mode === "convexHull" || isClosedRoute) {
         const hull = computeConvexHull(coords);
-        const ring = bufferPolygon(hull, dist, refPoint, avgLat);
-        return normalizePolygon(ring);
+        return bufferRingRound(hull, dist, refPoint, avgLat);
       }
-      return mergeBufferedCorridorPolygons(coords, dist, 16, refPoint, avgLat);
+      return mergeBufferedCorridorPolygons(coords, dist, capSegmentsForDistance(dist), refPoint, avgLat);
     };
 
     const fgDist = soraSettings.flightGeographyDistance;

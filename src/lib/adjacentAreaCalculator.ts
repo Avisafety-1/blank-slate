@@ -1007,10 +1007,10 @@ function makeBuffer(
   const mode = sora.bufferMode ?? "corridor";
   if (mode === "convexHull" || isClosedRoute) {
     const hull = computeConvexHull(coords);
-    return [bufferPolygon(hull, dist, refPoint, avgLat)];
+    return bufferRingRound(hull, dist, refPoint, avgLat);
   }
 
-  return mergeBufferedCorridorPolygons(coords, dist, 16, refPoint, avgLat);
+  return mergeBufferedCorridorPolygons(coords, dist, capSegmentsForDistance(dist), refPoint, avgLat);
 }
 
 /* ------------------------------------------------------------------ */
