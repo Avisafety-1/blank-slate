@@ -209,10 +209,28 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           vekt: model.weight_kg?.toString() ?? "",
           payload: model.payload_kg?.toString() ?? "",
           merknader: model.comment || "",
+          characteristic_dimension_m: model.characteristic_dimension_m?.toString() ?? "",
+          max_speed_mps: model.max_speed_mps?.toString() ?? "",
+          max_wind_mps: model.max_wind_mps?.toString() ?? "",
+          endurance_min: model.endurance_min?.toString() ?? "",
+          ip_rating: model.ip_rating ?? "",
+          airframe_category: model.airframe_category ?? "",
         });
       }
     } else {
-      onChange({ modell: "", klasse: "", vekt: "", payload: "", merknader: "" });
+      onChange({
+        modell: "",
+        klasse: "",
+        vekt: "",
+        payload: "",
+        merknader: "",
+        characteristic_dimension_m: "",
+        max_speed_mps: "",
+        max_wind_mps: "",
+        endurance_min: "",
+        ip_rating: "",
+        airframe_category: "",
+      });
     }
   };
 
