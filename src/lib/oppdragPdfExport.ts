@@ -529,10 +529,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: basicInfo,
+        body: buildTwoColumnRows(basicInfo),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        columnStyles: TWO_COL_STYLES
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -558,10 +558,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: customerInfo,
+        body: buildTwoColumnRows(customerInfo),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        columnStyles: TWO_COL_STYLES
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -656,10 +656,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)]),
+        body: buildTwoColumnRows(routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)])),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 55 }, 1: { cellWidth: pageWidth - 85 } }
+        columnStyles: TWO_COL_STYLES
       });
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
