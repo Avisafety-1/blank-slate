@@ -859,6 +859,9 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
           ip_rating: formData.ip_rating,
           airframe_category: formData.airframe_category,
         });
+        if (modelResult.error) {
+          toast.error(t("resourceDialogs.droneDetail.specs.saveModelFailed"));
+        }
       }
 
       const { error } = await supabase
