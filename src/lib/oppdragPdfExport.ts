@@ -51,7 +51,7 @@ const buildTwoColumnRows = (rows: string[][]): any[] => {
   return out;
 };
 
-const TWO_COL_STYLES = {
+const TWO_COL_STYLES: { [key: string]: Partial<Styles> } = {
   0: { fontStyle: "bold", cellWidth: 45 },
   1: { cellWidth: 45 },
   2: { fontStyle: "bold", cellWidth: 45 },
