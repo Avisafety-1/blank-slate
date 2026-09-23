@@ -165,31 +165,49 @@ export function bufferPolyline(
 
 export function computeConvexHull(points: RoutePoint[]): RoutePoint[] {
   if (points.length < 3) return points;
-  let start = points[0];
+
+  // Fjern duplikater — like punkter gir ustabil vinkelsortering
+  const seen = new Set<string>();
+  const unique: RoutePoint[] = [];
   for (const p of points) {
-    if (p.lat < start.lat || (p.lat === start.lat && p.lng < start.lng)) {
-      start = p;
-    }
+    const key = `${p.lat},${p.lng}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(p);
   }
-  const sorted = points.slice().sort((a, b) => {
-    if (a === start) return -1;
-    if (b === start) return 1;
-    const angleA = Math.atan2(a.lng - start.lng, a.lat - start.lat);
-    const angleB = Math.atan2(b.lng - start.lng, b.lat - start.lat);
-    return angleA - angleB;
-  });
-  const hull: RoutePoint[] = [];
+  if (unique.length < 3) return unique;
+
+  // Monotone chain (Andrew) — stabil og alltid konveks
+  const sorted = unique
+    .slice()
+    .sort((a, b) => (a.lng === b.lng ? a.lat - b.lat : a.lng - b.lng));
+
+  const cross = (o: RoutePoint, a: RoutePoint, b: RoutePoint) =>
+    (a.lng - o.lng) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lng - o.lng);
+
+  const lower: RoutePoint[] = [];
   for (const p of sorted) {
-    while (hull.length >= 2) {
-      const a = hull[hull.length - 2];
-      const b = hull[hull.length - 1];
-      const cross = (b.lat - a.lat) * (p.lng - b.lng) - (b.lng - a.lng) * (p.lat - b.lat);
-      if (cross <= 0) hull.pop();
-      else break;
-    }
-    hull.push(p);
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
   }
-  return hull;
+  const upper: RoutePoint[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  const hull = lower.concat(upper);
+  return hull.length >= 3 ? hull : unique;
+}
+
+/**
+ * Antall segmenter i buerundinger, skalert med bufferavstanden slik at
+ * store soner (f.eks. 5 km tilstøtende område) får jevn kant.
+ */
+export function capSegmentsForDistance(distanceMeters: number): number {
+  return Math.max(16, Math.min(72, Math.round(distanceMeters / 100)));
 }
 
 function intersectLines(
