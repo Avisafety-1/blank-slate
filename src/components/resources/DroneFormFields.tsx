@@ -134,6 +134,9 @@ export const DroneFormFields = ({
 
   const selectedOps = values.operations_checklist_ids || [];
   const selectedCatalogModel = droneModels.find((model) => model.id === selectedModelId);
+  const companyModels = droneModels.filter((model) => !!model.company_id);
+  const globalModels = droneModels.filter((model) => !model.company_id);
+  const isManualSpecs = selectedModelId === "manual" || selectedModelId === "";
   const unavailableOps = selectedOps.filter((id) => !checklists.some((c) => c.id === id));
   const postFlightUnavailable =
     !!values.post_flight_checklist_id &&
@@ -198,11 +201,24 @@ export const DroneFormFields = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="manual">{tt("catalogSelector.manual")}</SelectItem>
-              {droneModels.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name} ({model.eu_class})
-                </SelectItem>
-              ))}
+              {companyModels.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tt("catalogSelector.ownModels")}</SelectLabel>
+                  {companyModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}{model.eu_class ? ` (${model.eu_class})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              <SelectGroup>
+                <SelectLabel>{tt("catalogSelector.globalModels")}</SelectLabel>
+                {globalModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}{model.eu_class ? ` (${model.eu_class})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground mt-1">{tt("catalogSelector.autofillHint")}</p>
