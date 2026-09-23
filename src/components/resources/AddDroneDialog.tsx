@@ -270,6 +270,12 @@ export const AddDroneDialog = ({ open, onOpenChange, onDroneAdded, userId, defau
           ip_rating: values.ip_rating,
           airframe_category: values.airframe_category,
         });
+        if (modelResult.error) {
+          toast.error(tt("specs.saveModelFailed"));
+        } else if (modelResult.id) {
+          const { data: refreshed } = await supabase.from("drone_models").select("*").order("name");
+          if (refreshed) setDroneModels(refreshed as DroneModel[]);
+        }
       }
 
       const { data: droneData, error } = await (supabase as any).from("drones").insert([{
