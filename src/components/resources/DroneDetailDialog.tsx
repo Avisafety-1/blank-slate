@@ -36,6 +36,7 @@ import { DepartmentChecklist } from "@/components/admin/DepartmentChecklist";
 import { calculateMaintenanceStatus, getStatusColorClasses, calculateDroneAggregatedStatus, calculateDroneInspectionStatus, calculateUsageStatus, worstStatus, STATUS_PRIORITY, getDroneStatusReasons, getItemDateHint } from "@/lib/maintenanceStatus";
 import { StatusReasonList } from "@/components/resources/StatusReasonList";
 import { DroneFormFields } from "./DroneFormFields";
+import { fetchCatalogModelByName, upsertCompanyDroneModel } from "@/lib/customDroneModels";
 import { MaintenanceSchedulesSection } from "./MaintenanceSchedulesSection";
 import { InspectionOverview } from "./InspectionOverview";
 
