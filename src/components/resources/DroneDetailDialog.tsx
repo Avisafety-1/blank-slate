@@ -171,6 +171,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     sjekkliste_id: "",
     operations_checklist_ids: [] as string[],
     post_flight_checklist_id: "",
+    characteristic_dimension_m: "",
+    max_speed_mps: "",
+    max_wind_mps: "",
+    endurance_min: "",
+    ip_rating: "",
+    airframe_category: "",
   });
 
   const [selectedChecklistId, setSelectedChecklistId] = useState<string>("");
