@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { segmentsFromRouteData, routeColor } from "@/lib/routeSegments";
 
-import autoTable from "jspdf-autotable";
+import autoTable, { type Styles } from "jspdf-autotable";
 import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, formatDurationForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import i18n from "@/i18n";
 import { getIntlLocale } from "@/lib/i18nHelpers";
@@ -23,6 +23,39 @@ const fmtRouteDocNumber = (value: unknown, decimals = 0, unit = "") => {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return "-";
   return `${n.toLocaleString(getIntlLocale(), { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}${unit}`;
+};
+
+// Packs single label/value rows into two pairs per table row so long lists
+// use the full page width. Rows with an empty value are treated as section
+// headers and span the full table width.
+const buildTwoColumnRows = (rows: string[][]): any[] => {
+  const out: any[] = [];
+  let pending: string[][] = [];
+  const flush = () => {
+    for (let i = 0; i < pending.length; i += 2) {
+      const a = pending[i];
+      const b = pending[i + 1];
+      out.push([a[0], a[1], b ? b[0] : "", b ? b[1] : ""]);
+    }
+    pending = [];
+  };
+  for (const row of rows) {
+    if (row[1] === "") {
+      flush();
+      out.push([{ content: row[0], colSpan: 4, styles: { fontStyle: "bold" } }]);
+    } else {
+      pending.push(row);
+    }
+  }
+  flush();
+  return out;
+};
+
+const TWO_COL_STYLES: { [key: string]: Partial<Styles> } = {
+  0: { fontStyle: "bold", cellWidth: 45 },
+  1: { cellWidth: 45 },
+  2: { fontStyle: "bold", cellWidth: 45 },
+  3: { cellWidth: 45 },
 };
 
 const getRouteSoraRows = (route: any): string[][] => {
@@ -496,10 +529,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: basicInfo,
+        body: buildTwoColumnRows(basicInfo),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        columnStyles: TWO_COL_STYLES
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -525,10 +558,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: customerInfo,
+        body: buildTwoColumnRows(customerInfo),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 40 } }
+        columnStyles: TWO_COL_STYLES
       });
       
       yPos = (pdf as any).lastAutoTable.finalY + 10;
@@ -623,10 +656,10 @@ export const exportToPDF = async (
       autoTable(pdf, {
         startY: yPos,
         head: [],
-        body: routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)]),
+        body: buildTwoColumnRows(routeSoraRows.map(([label, value]) => [sanitizeForPdf(label), sanitizeForPdf(value)])),
         theme: "grid",
         styles: { fontSize: 9, font: getPdfFontName() },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 55 }, 1: { cellWidth: pageWidth - 85 } }
+        columnStyles: TWO_COL_STYLES
       });
       yPos = (pdf as any).lastAutoTable.finalY + 10;
     }
