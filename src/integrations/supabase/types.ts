@@ -2969,10 +2969,13 @@ export type Database = {
       }
       drone_models: {
         Row: {
+          airframe_category: string | null
           category: string | null
           characteristic_dimension_m: number | null
           comment: string | null
+          company_id: string | null
           created_at: string | null
+          created_by: string | null
           endurance_min: number | null
           eu_class: string
           id: string
@@ -2992,10 +2995,13 @@ export type Database = {
           weight_without_payload_kg: number | null
         }
         Insert: {
+          airframe_category?: string | null
           category?: string | null
           characteristic_dimension_m?: number | null
           comment?: string | null
+          company_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           endurance_min?: number | null
           eu_class: string
           id?: string
@@ -3015,10 +3021,13 @@ export type Database = {
           weight_without_payload_kg?: number | null
         }
         Update: {
+          airframe_category?: string | null
           category?: string | null
           characteristic_dimension_m?: number | null
           comment?: string | null
+          company_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           endurance_min?: number | null
           eu_class?: string
           id?: string
@@ -3037,7 +3046,15 @@ export type Database = {
           weight_kg?: number
           weight_without_payload_kg?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "drone_models_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       drone_personnel: {
         Row: {
