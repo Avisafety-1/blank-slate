@@ -71,7 +71,7 @@ const getRouteSoraRows = (route: any): string[][] => {
         ] : []),
       );
 
-      if (details) {
+      if (details && sora.calculationMode !== "manual") {
         rows.push(
           [i18n.t('mission.soraBuffer.rows.intermediateResults', { ns: 'pdf' }), ""],
           [i18n.t('mission.soraBuffer.rows.reactionDistance', { ns: 'pdf' }), fmtRouteDocNumber(details.reactionDistanceM, 1, " m")],

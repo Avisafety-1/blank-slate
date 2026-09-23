@@ -255,7 +255,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       ? Number(windOverride)
       : (droneProfile.max_wind_mps ?? 0);
     const calculationBasis: NonNullable<SoraSettings["calculationBasis"]> = {
-      aircraftType: droneProfile.aircraft_type,
+      aircraftType: droneProfile.aircraft_type === "fixed_wing" ? "fixed_wing" : "multirotor",
       reactionTimeS: Number(reactionTime) || 1.5,
       pitchBankAngleDeg: Number(pitchBankAngle) || 30,
       altimetryErrorM: Number(altimetryError) || 1,
@@ -572,7 +572,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           max={200}
           step={1}
           value={[settings.flightGeographyDistance]}
-          onValueChange={([v]) => { update({ flightGeographyDistance: v }); }}
+          onValueChange={([v]) => { update({ flightGeographyDistance: v, calculationMode: "manual" }); setManualOverride(true); }}
           className="[&_[role=slider]]:bg-green-600"
         />
       </div>
