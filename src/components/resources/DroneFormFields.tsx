@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,6 +37,12 @@ export interface DroneFormValues {
   varsel_dager: string;
   varsel_timer: string;
   varsel_oppdrag: string;
+  characteristic_dimension_m: string;
+  max_speed_mps: string;
+  max_wind_mps: string;
+  endurance_min: string;
+  ip_rating: string;
+  airframe_category: string;
 }
 
 export const emptyDroneFormValues: DroneFormValues = {
@@ -64,6 +70,12 @@ export const emptyDroneFormValues: DroneFormValues = {
   varsel_dager: "",
   varsel_timer: "",
   varsel_oppdrag: "",
+  characteristic_dimension_m: "",
+  max_speed_mps: "",
+  max_wind_mps: "",
+  endurance_min: "",
+  ip_rating: "",
+  airframe_category: "",
 };
 
 interface CatalogModel {
@@ -73,6 +85,7 @@ interface CatalogModel {
   ip_rating?: string | null;
   ip_source_status?: string | null;
   ip_source_url?: string | null;
+  company_id?: string | null;
 }
 
 interface ChecklistOption {
