@@ -1134,6 +1134,16 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                       <span className="font-medium">{tt("catalog.endurance")}</span> {catalogModel.endurance_min} {tt("catalog.enduranceUnit")}
                     </div>
                   )}
+                  {catalogModel.characteristic_dimension_m != null && (
+                    <div>
+                      <span className="font-medium">{tt("specs.characteristicDimensionShort")}</span> {catalogModel.characteristic_dimension_m} m
+                    </div>
+                  )}
+                  {catalogModel.max_speed_mps != null && (
+                    <div>
+                      <span className="font-medium">{tt("specs.maxSpeedShort")}</span> {catalogModel.max_speed_mps} {tt("catalog.maxWindUnit")}
+                    </div>
+                  )}
                   {catalogModel.max_wind_mps != null && (
                     <div>
                       <span className="font-medium">{tt("catalog.maxWind")}</span> {catalogModel.max_wind_mps} {tt("catalog.maxWindUnit")}
