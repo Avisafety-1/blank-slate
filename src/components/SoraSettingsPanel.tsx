@@ -95,23 +95,24 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
   const [catalogSpecs, setCatalogSpecs] = useState<CatalogSpecs | null>(null);
 
   // Mission params state
-  const [windOverride, setWindOverride] = useState<string>("");
+  const storedBasis = settings.calculationBasis;
+  const [windOverride, setWindOverride] = useState<string>(storedBasis?.windSpeedMps != null ? String(storedBasis.windSpeedMps) : "");
   const [characteristicDimension, setCharacteristicDimension] = useState("1.0");
   const [groundSpeed, setGroundSpeed] = useState("15");
-  const [reactionTime, setReactionTime] = useState("1.5");
-  const [pitchBankAngle, setPitchBankAngle] = useState("30");
-  const [altimetryError, setAltimetryError] = useState("1");
-  const [gnssError, setGnssError] = useState("5");
-  const [positionHoldError, setPositionHoldError] = useState("2");
-  const [mapError, setMapError] = useState("0");
-  const [contingencyMethod, setContingencyMethod] = useState<ContingencyMethod>("standard");
-  const [deploymentTime, setDeploymentTime] = useState("3");
-  const [grbMethod, setGrbMethod] = useState<GroundRiskBufferMethod>("1to1");
-  const [glideRatio, setGlideRatio] = useState("15");
-  const [descentSpeed, setDescentSpeed] = useState("3.5");
+  const [reactionTime, setReactionTime] = useState(String(storedBasis?.reactionTimeS ?? 1.5));
+  const [pitchBankAngle, setPitchBankAngle] = useState(String(storedBasis?.pitchBankAngleDeg ?? 30));
+  const [altimetryError, setAltimetryError] = useState(String(storedBasis?.altimetryErrorM ?? 1));
+  const [gnssError, setGnssError] = useState(String(storedBasis?.gnssErrorM ?? 5));
+  const [positionHoldError, setPositionHoldError] = useState(String(storedBasis?.positionHoldErrorM ?? 2));
+  const [mapError, setMapError] = useState(String(storedBasis?.mapErrorM ?? 0));
+  const [contingencyMethod, setContingencyMethod] = useState<ContingencyMethod>(storedBasis?.contingencyMethod ?? "standard");
+  const [deploymentTime, setDeploymentTime] = useState(String(storedBasis?.deploymentTimeS ?? 3));
+  const [grbMethod, setGrbMethod] = useState<GroundRiskBufferMethod>(storedBasis?.groundRiskBufferMethod ?? "1to1");
+  const [glideRatio, setGlideRatio] = useState(String(storedBasis?.glideRatio ?? 15));
+  const [descentSpeed, setDescentSpeed] = useState(String(storedBasis?.descentSpeedMps ?? 3.5));
 
   // UI state
-  const [manualOverride, setManualOverride] = useState(false);
+  const [manualOverride, setManualOverride] = useState(settings.calculationMode === "manual");
   const [manualCdOverride, setManualCdOverride] = useState(false);
   const [manualSpeedOverride, setManualSpeedOverride] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -128,6 +129,24 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
     if (settings.characteristicDimensionM != null) setCharacteristicDimension(String(settings.characteristicDimensionM));
     if (settings.groundSpeedMps != null) setGroundSpeed(String(settings.groundSpeedMps));
   }, [settings.characteristicDimensionM, settings.groundSpeedMps]);
+
+  useEffect(() => {
+    const basis = settings.calculationBasis;
+    if (!basis) return;
+    setReactionTime(String(basis.reactionTimeS));
+    setPitchBankAngle(String(basis.pitchBankAngleDeg));
+    setAltimetryError(String(basis.altimetryErrorM));
+    setGnssError(String(basis.gnssErrorM));
+    setPositionHoldError(String(basis.positionHoldErrorM));
+    setMapError(String(basis.mapErrorM));
+    setContingencyMethod(basis.contingencyMethod);
+    setDeploymentTime(String(basis.deploymentTimeS ?? 3));
+    setGrbMethod(basis.groundRiskBufferMethod);
+    setGlideRatio(String(basis.glideRatio ?? 15));
+    setWindOverride(basis.windSpeedMps != null ? String(basis.windSpeedMps) : "");
+    setDescentSpeed(String(basis.descentSpeedMps ?? 3.5));
+    setManualOverride(settings.calculationMode === "manual");
+  }, [settings.calculationBasis, settings.calculationMode]);
 
   // Fetch company drones
   useEffect(() => {
@@ -229,29 +248,67 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
 
   // Auto-apply suggestion whenever it changes (unless user manually overrode)
   useEffect(() => {
-    if (!suggestion || manualOverride) return;
+    if (!suggestion || !droneProfile) return;
     const cdNum = Number(characteristicDimension) || undefined;
     const gsNum = Number(groundSpeed) || undefined;
+    const effectiveWind = windOverride
+      ? Number(windOverride)
+      : (droneProfile.max_wind_mps ?? 0);
+    const calculationBasis: NonNullable<SoraSettings["calculationBasis"]> = {
+      aircraftType: droneProfile.aircraft_type === "fixed_wing" ? "fixed_wing" : "multirotor",
+      reactionTimeS: Number(reactionTime) || 1.5,
+      pitchBankAngleDeg: Number(pitchBankAngle) || 30,
+      altimetryErrorM: Number(altimetryError) || 1,
+      gnssErrorM: Number(gnssError) || 5,
+      positionHoldErrorM: Number(positionHoldError) || 2,
+      mapErrorM: Number(mapError) || 0,
+      contingencyMethod,
+      ...(contingencyMethod === "parachute" ? { deploymentTimeS: Number(deploymentTime) || 3 } : {}),
+      groundRiskBufferMethod: grbMethod,
+      ...(grbMethod === "glide" ? { glideRatio: Number(glideRatio) || 15 } : {}),
+      ...(grbMethod === "drift" ? {
+        windSpeedMps: effectiveWind,
+        descentSpeedMps: Number(descentSpeed) || 3.5,
+      } : {}),
+    };
+    const calculationDetails: NonNullable<SoraSettings["calculationDetails"]> = {
+      reactionDistanceM: suggestion.details.reaction_distance_m,
+      maneuverDistanceM: suggestion.details.maneuver_distance_m,
+      verticalReactionM: suggestion.details.vertical_reaction_m,
+      verticalManeuverM: suggestion.details.vertical_maneuver_m,
+      contingencyBufferM: suggestion.details.cv_buffer_m,
+      contingencyHeightMarginM: suggestion.details.cv_height_margin_m,
+      totalCeilingM: suggestion.details.total_ceiling_m,
+      groundRiskBufferM: suggestion.details.ground_risk_buffer_m,
+    };
     const next = {
       droneId: selectedDroneId || undefined,
       droneName: selectedDrone ? droneLabel(selectedDrone) : undefined,
       characteristicDimensionM: cdNum,
       groundSpeedMps: gsNum,
-      contingencyDistance: suggestion.suggested_contingency_buffer_m,
-      contingencyHeight: suggestion.suggested_contingency_height_m,
-      groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
+      ...(!manualOverride ? {
+        contingencyDistance: suggestion.suggested_contingency_buffer_m,
+        contingencyHeight: suggestion.suggested_contingency_height_m,
+        groundRiskDistance: suggestion.suggested_ground_risk_buffer_m,
+      } : {}),
+      calculationBasis,
+      calculationDetails,
+      calculationMode: manualOverride ? "manual" as const : "automatic" as const,
     };
     const changed =
       settings.droneId !== next.droneId ||
       settings.droneName !== next.droneName ||
       settings.characteristicDimensionM !== next.characteristicDimensionM ||
       settings.groundSpeedMps !== next.groundSpeedMps ||
-      settings.contingencyDistance !== next.contingencyDistance ||
-      settings.contingencyHeight !== next.contingencyHeight ||
-      settings.groundRiskDistance !== next.groundRiskDistance;
+      (!manualOverride && settings.contingencyDistance !== next.contingencyDistance) ||
+      (!manualOverride && settings.contingencyHeight !== next.contingencyHeight) ||
+      (!manualOverride && settings.groundRiskDistance !== next.groundRiskDistance) ||
+      settings.calculationMode !== next.calculationMode ||
+      JSON.stringify(settings.calculationBasis) !== JSON.stringify(calculationBasis) ||
+      JSON.stringify(settings.calculationDetails) !== JSON.stringify(calculationDetails);
     if (changed) onChange({ ...settings, ...next });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestion, manualOverride, selectedDroneId]);
+  }, [suggestion, manualOverride, selectedDroneId, droneProfile]);
 
   const contentJsx = (
     <div className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-4">
@@ -515,7 +572,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           max={200}
           step={1}
           value={[settings.flightGeographyDistance]}
-          onValueChange={([v]) => { update({ flightGeographyDistance: v }); }}
+          onValueChange={([v]) => { update({ flightGeographyDistance: v, calculationMode: "manual" }); setManualOverride(true); }}
           className="[&_[role=slider]]:bg-green-600"
         />
       </div>
@@ -530,7 +587,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           max={200}
           step={1}
           value={[settings.contingencyDistance]}
-          onValueChange={([v]) => { update({ contingencyDistance: v }); setManualOverride(true); }}
+          onValueChange={([v]) => { update({ contingencyDistance: v, calculationMode: "manual" }); setManualOverride(true); }}
           className="[&_[role=slider]]:bg-amber-500"
         />
       </div>
@@ -545,7 +602,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           max={500}
           step={1}
           value={[settings.groundRiskDistance]}
-          onValueChange={([v]) => { update({ groundRiskDistance: v }); setManualOverride(true); }}
+          onValueChange={([v]) => { update({ groundRiskDistance: v, calculationMode: "manual" }); setManualOverride(true); }}
           className="[&_[role=slider]]:bg-red-500"
         />
       </div>
