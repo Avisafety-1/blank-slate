@@ -54,8 +54,8 @@ export const buildStatusExportSections = (
     },
     {
       name: t("status.hookMessages.export.missionsByRiskSheet"),
-      headers: [t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")],
-      rows: data.missionsByRisk.map((item) => [item.name, item.value]),
+      headers: [t("status.hookMessages.export.riskOutcomeHeader"), t("status.hookMessages.export.scoreRangeHeader"), t("status.hookMessages.export.countHeader")],
+      rows: data.missionsByRisk.map((item) => [item.name, item.scoreRange, item.value]),
     },
     {
       name: t("status.hookMessages.export.operationTypesSheet"),
