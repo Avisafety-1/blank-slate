@@ -68,6 +68,7 @@ const PDF_COLORS = {
   border: [215, 220, 226] as PdfColor,
   surface: [246, 248, 251] as PdfColor,
   text: [30, 36, 45] as PdfColor,
+  onPrimary: [255, 255, 255] as PdfColor,
 };
 
 const CHART_COLORS: PdfColor[] = [
@@ -316,7 +317,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
         lineColor: PDF_COLORS.border,
         lineWidth: 0.1,
       },
-      headStyles: { fillColor: PDF_COLORS.primary, fontStyle: "bold", fontSize: 5.5 },
+      headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary, fontStyle: "bold", fontSize: 5.5 },
       alternateRowStyles: { fillColor: PDF_COLORS.surface },
       columnStyles: Object.fromEntries((columnWidths || []).map((cellWidth, index) => [index, { cellWidth }])),
       pageBreak: "avoid",
@@ -390,13 +391,19 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     ...data.operationTypes.counts.map((item) => item.name),
     ...data.operationTypes.hours.map((item) => item.name),
   ]));
+  const operationRows: Array<Array<string | number>> = operationNames.map((name) => [
+    name,
+    data.operationTypes.counts.find((item) => item.name === name)?.value || 0,
+    (data.operationTypes.hours.find((item) => item.name === name)?.value || 0).toFixed(2),
+  ]);
+  operationRows.push([
+    t("status.hookMessages.export.totalForPeriod"),
+    data.operationTypes.counts.reduce((sum, item) => sum + item.value, 0),
+    data.operationTypes.hours.reduce((sum, item) => sum + item.value, 0).toFixed(2),
+  ]);
   drawCompactTable(
-    [t("status.hookMessages.export.operationTypeHeader"), t("status.hookMessages.export.countHeader"), t("status.hookMessages.export.flightHoursHeader")],
-    operationNames.map((name) => [
-      name,
-      data.operationTypes.counts.find((item) => item.name === name)?.value || 0,
-      (data.operationTypes.hours.find((item) => item.name === name)?.value || 0).toFixed(2),
-    ]),
+    [t("status.hookMessages.export.operationTypeHeader"), t("status.hookMessages.export.countHeader"), t("status.hookMessages.export.accumulatedFlightHoursHeader")],
+    operationRows,
     margin,
     74,
     contentWidth,
@@ -469,7 +476,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     ],
     theme: "grid",
     styles: { font: getPdfFontName(), fontSize: 8, cellPadding: 1.5 },
-    headStyles: { fillColor: PDF_COLORS.primary },
+    headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
   });
 
   // Optional page 5: deviations. AI analysis is intentionally excluded.
