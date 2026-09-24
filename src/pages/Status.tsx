@@ -28,7 +28,7 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, parseISO, isValid } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enUS, nb } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -50,9 +50,8 @@ import {
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
-import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { summarizeUnplanned } from "@/lib/unplannedFlights";
+import { generateStatusPdf } from "@/lib/statusPdfExport";
 
 
 interface KPIData {
@@ -85,7 +84,8 @@ const COLORS = {
 };
 
 const Status = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, companyId, companyName: authCompanyName, parentCompanyName } = useAuth();
@@ -401,11 +401,11 @@ const Status = () => {
     const monthsToShow = getMonthsToShow();
     const monthOrder: string[] = [];
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: nb }));
+      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }));
     }
     const unplannedSummary = summarizeUnplanned(
       (importedLogs || []) as any[],
-      (d) => format(d, "MMM yyyy", { locale: nb }),
+      (d) => format(d, "MMM yyyy", { locale: dateLocale }),
       monthOrder
     );
     setUnplannedByMonth(unplannedSummary.byMonth);
@@ -445,13 +445,13 @@ const Status = () => {
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthlyData[monthKey] = 0;
     }
 
     missions.forEach((mission: any) => {
       const missionDate = new Date(mission.tidspunkt);
-      const monthKey = format(missionDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(missionDate, "MMM yyyy", { locale: dateLocale });
       if (monthlyData[monthKey] !== undefined) {
         monthlyData[monthKey]++;
       }
@@ -497,13 +497,13 @@ const Status = () => {
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthlyData[monthKey] = 0;
     }
 
     incidents.forEach((incident) => {
       const incidentDate = new Date(incident.hendelsestidspunkt);
-      const monthKey = format(incidentDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(incidentDate, "MMM yyyy", { locale: dateLocale });
       if (monthlyData[monthKey] !== undefined) {
         monthlyData[monthKey]++;
       }
@@ -609,7 +609,7 @@ const Status = () => {
       else if (expiryDate > thirtyDays && expiryDate <= sixtyDays) sixtyCount++;
       else if (expiryDate > sixtyDays && expiryDate <= ninetyDays) ninetyCount++;
     });
-
+    setExpiringDocs({ thirtyDays: thirtyCount, sixtyDays: sixtyCount, ninetyDays: ninetyCount });
   };
 
   const fetchDeviationStatistics = async () => {
@@ -686,11 +686,11 @@ const Status = () => {
     const monthly: Record<string, { VLOS: number; BVLOS: number; EVLOS: number }> = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const key = format(monthDate, "MMM yyyy", { locale: nb });
+      const key = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthly[key] = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
     }
     rows.forEach((r) => {
-      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: nb });
+      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: dateLocale });
       if (!monthly[monthKey]) return;
       const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
       const safeType = types.includes(t) ? t : "VLOS";
