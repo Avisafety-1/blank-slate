@@ -1688,6 +1688,8 @@
         "missionsByRiskSheet": "Oppdrag per risiko",
         "operationTypesSheet": "Operasjonstyper",
         "operationTypeHeader": "Operasjonstype",
+        "accumulatedFlightHoursHeader": "Akkumulerte flytimer i perioden",
+        "totalForPeriod": "Totalt i perioden",
         "operationsByMonthSheet": "Operasjonstype per måned",
         "planningByMonthSheet": "Planlegging per måned",
         "incidentCountHeader": "Antall hendelser",

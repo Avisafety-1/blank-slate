@@ -1686,6 +1686,8 @@
         "missionsByRiskSheet": "Missions by risk",
         "operationTypesSheet": "Operation types",
         "operationTypeHeader": "Operation type",
+        "accumulatedFlightHoursHeader": "Accumulated flight hours in period",
+        "totalForPeriod": "Total for period",
         "operationsByMonthSheet": "Operation type by month",
         "planningByMonthSheet": "Planning by month",
         "incidentCountHeader": "Number of incidents",
