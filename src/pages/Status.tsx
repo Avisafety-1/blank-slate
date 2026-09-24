@@ -28,7 +28,7 @@ import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, parseISO, isValid } from "date-fns";
-import { nb } from "date-fns/locale";
+import { enUS, nb } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -50,9 +50,8 @@ import {
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
-import autoTable from "jspdf-autotable";
-import { createPdfDocument, setFontStyle, sanitizeForPdf, formatDateForPdf, getPdfFontName } from "@/lib/pdfUtils";
 import { summarizeUnplanned } from "@/lib/unplannedFlights";
+import { generateStatusPdf } from "@/lib/statusPdfExport";
 
 
 interface KPIData {
@@ -85,7 +84,8 @@ const COLORS = {
 };
 
 const Status = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, companyId, companyName: authCompanyName, parentCompanyName } = useAuth();
@@ -401,11 +401,11 @@ const Status = () => {
     const monthsToShow = getMonthsToShow();
     const monthOrder: string[] = [];
     for (let i = monthsToShow - 1; i >= 0; i--) {
-      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: nb }));
+      monthOrder.push(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }));
     }
     const unplannedSummary = summarizeUnplanned(
       (importedLogs || []) as any[],
-      (d) => format(d, "MMM yyyy", { locale: nb }),
+      (d) => format(d, "MMM yyyy", { locale: dateLocale }),
       monthOrder
     );
     setUnplannedByMonth(unplannedSummary.byMonth);
@@ -445,13 +445,13 @@ const Status = () => {
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthlyData[monthKey] = 0;
     }
 
     missions.forEach((mission: any) => {
       const missionDate = new Date(mission.tidspunkt);
-      const monthKey = format(missionDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(missionDate, "MMM yyyy", { locale: dateLocale });
       if (monthlyData[monthKey] !== undefined) {
         monthlyData[monthKey]++;
       }
@@ -497,13 +497,13 @@ const Status = () => {
     const monthlyData: { [key: string]: number } = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const monthKey = format(monthDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthlyData[monthKey] = 0;
     }
 
     incidents.forEach((incident) => {
       const incidentDate = new Date(incident.hendelsestidspunkt);
-      const monthKey = format(incidentDate, "MMM yyyy", { locale: nb });
+      const monthKey = format(incidentDate, "MMM yyyy", { locale: dateLocale });
       if (monthlyData[monthKey] !== undefined) {
         monthlyData[monthKey]++;
       }
@@ -609,7 +609,7 @@ const Status = () => {
       else if (expiryDate > thirtyDays && expiryDate <= sixtyDays) sixtyCount++;
       else if (expiryDate > sixtyDays && expiryDate <= ninetyDays) ninetyCount++;
     });
-
+    setExpiringDocs({ thirtyDays: thirtyCount, sixtyDays: sixtyCount, ninetyDays: ninetyCount });
   };
 
   const fetchDeviationStatistics = async () => {
@@ -686,11 +686,11 @@ const Status = () => {
     const monthly: Record<string, { VLOS: number; BVLOS: number; EVLOS: number }> = {};
     for (let i = monthsToShow - 1; i >= 0; i--) {
       const monthDate = subMonths(endDate, i);
-      const key = format(monthDate, "MMM yyyy", { locale: nb });
+      const key = format(monthDate, "MMM yyyy", { locale: dateLocale });
       monthly[key] = { VLOS: 0, BVLOS: 0, EVLOS: 0 };
     }
     rows.forEach((r) => {
-      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: nb });
+      const monthKey = format(new Date(r.flight_date), "MMM yyyy", { locale: dateLocale });
       if (!monthly[monthKey]) return;
       const t = (r.operation_type as "VLOS" | "BVLOS" | "EVLOS") || "VLOS";
       const safeType = types.includes(t) ? t : "VLOS";
@@ -1077,447 +1077,98 @@ const Status = () => {
 
   const handleExportPDF = async () => {
     try {
-      // Get company name and company_id from profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("company_id, full_name, companies(navn)")
         .eq("id", user?.id)
         .single();
 
-      const companyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
-      const companyId = profile?.company_id;
-      
-      if (!companyId) {
-        throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
+      const reportCompanyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
+      const reportCompanyId = profile?.company_id;
+      if (!reportCompanyId) throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
+
+      const periodLabel = timePeriod === "custom" && customDateFrom && customDateTo
+        ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
+        : timePeriod === "month"
+          ? t("status.page.periodMonth")
+          : timePeriod === "quarter"
+            ? t("status.page.periodQuarter")
+            : t("status.page.periodYear");
+
+      const monthsToShow = getMonthsToShow();
+      const { endDate } = getDateFilter();
+      const deviationMonthCounts = new Map<string, number>();
+      for (let i = monthsToShow - 1; i >= 0; i -= 1) {
+        deviationMonthCounts.set(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }), 0);
       }
-
-      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
-                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
-
-      // Create PDF document
-      const doc = await createPdfDocument();
-      const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
-      let yPos = 20;
-
-      // Color palette
-      const COLORS = {
-        primary: [59, 130, 246] as [number, number, number],
-        success: [34, 197, 94] as [number, number, number],
-        warning: [234, 179, 8] as [number, number, number],
-        destructive: [239, 68, 68] as [number, number, number],
-        muted: [156, 163, 175] as [number, number, number],
-      };
-
-      // Helper function: Draw bar chart
-      const drawBarChart = (data: { name: string; value: number }[], x: number, y: number, width: number, height: number, title: string) => {
-        doc.setFontSize(12);
-        setFontStyle(doc, 'bold');
-        doc.text(title, x, y);
-        y += 8;
-
-        if (data.length === 0 || data.every(d => d.value === 0)) {
-          doc.setFontSize(10);
-          setFontStyle(doc, 'normal');
-          doc.text(t("status.hookMessages.pdf.noData"), x, y + 20);
-          return;
-        }
-
-        const maxValue = Math.max(...data.map(d => d.value), 1);
-        const barWidth = Math.min((width - 10) / data.length - 5, 25);
-        const chartHeight = height - 25;
-
-        // Draw axes
-        doc.setDrawColor(200, 200, 200);
-        doc.line(x, y + chartHeight, x + width, y + chartHeight); // X-axis
-        doc.line(x, y, x, y + chartHeight); // Y-axis
-
-        // Draw bars
-        data.forEach((item, index) => {
-          const barHeight = (item.value / maxValue) * chartHeight;
-          const barX = x + 5 + index * (barWidth + 5);
-          const barY = y + chartHeight - barHeight;
-
-          doc.setFillColor(...COLORS.primary);
-          doc.rect(barX, barY, barWidth, barHeight, 'F');
-
-          // Value label on top
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 0, 0);
-          doc.text(item.value.toString(), barX + barWidth / 2, barY - 2, { align: 'center' });
-
-          // Name label below
-          doc.setFont('helvetica', 'normal');
-          doc.text(item.name, barX + barWidth / 2, y + chartHeight + 5, { 
-            align: 'center', 
-            maxWidth: barWidth + 3 
-          });
-        });
-        
-        doc.setTextColor(0, 0, 0);
-      };
-
-      // Helper function: Draw pie chart
-      const drawPieChart = (data: { name: string; value: number }[], x: number, y: number, radius: number, title: string) => {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, x - radius, y - radius - 5);
-
-        const total = data.reduce((sum, item) => sum + item.value, 0);
-        if (total === 0) {
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
-          doc.text(t("status.hookMessages.pdf.noData"), x, y, { align: 'center' });
-          return;
-        }
-
-        const colors = [COLORS.primary, COLORS.success, COLORS.warning, COLORS.destructive, COLORS.muted];
-        let currentAngle = -90; // Start at top
-
-        // Draw each slice
-        data.forEach((item, index) => {
-          const sliceAngle = (item.value / total) * 360;
-          const color = colors[index % colors.length];
-          const startAngle = (currentAngle * Math.PI) / 180;
-          const endAngle = ((currentAngle + sliceAngle) * Math.PI) / 180;
-          
-          doc.setFillColor(...color);
-          
-          // Draw slice as filled path
-          doc.setDrawColor(...color);
-          const segments = Math.max(2, Math.ceil(sliceAngle / 5));
-          
-          for (let i = 0; i <= segments; i++) {
-            const angle = startAngle + (i / segments) * (endAngle - startAngle);
-            const px = x + radius * Math.cos(angle);
-            const py = y + radius * Math.sin(angle);
-            
-            if (i === 0) {
-              doc.line(x, y, px, py);
-            } else {
-              const prevAngle = startAngle + ((i - 1) / segments) * (endAngle - startAngle);
-              const prevPx = x + radius * Math.cos(prevAngle);
-              const prevPy = y + radius * Math.sin(prevAngle);
-              
-              // Draw triangle for each segment
-              doc.setFillColor(...color);
-              doc.triangle(x, y, prevPx, prevPy, px, py, 'FD');
-            }
-          }
-
-          // Add percentage label
-          const labelAngle = currentAngle + sliceAngle / 2;
-          const labelRadius = radius * 0.65;
-          const labelX = x + labelRadius * Math.cos((labelAngle * Math.PI) / 180);
-          const labelY = y + labelRadius * Math.sin((labelAngle * Math.PI) / 180);
-          
-          const percentage = ((item.value / total) * 100).toFixed(0);
-          if (parseInt(percentage) >= 5) { // Only show label if slice is big enough
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(255, 255, 255);
-            doc.text(`${percentage}%`, labelX, labelY + 1, { align: 'center' });
-          }
-
-          currentAngle += sliceAngle;
-        });
-        
-        doc.setTextColor(0, 0, 0);
-
-        // Draw legend
-        let legendY = y + radius + 10;
-        doc.setFont('helvetica', 'normal');
-        data.forEach((item, index) => {
-          const color = colors[index % colors.length];
-          doc.setFillColor(...color);
-          doc.rect(x - radius, legendY, 4, 4, 'F');
-          doc.setFontSize(8);
-          doc.text(`${item.name} (${item.value})`, x - radius + 6, legendY + 3);
-          legendY += 6;
-        });
-      };
-
-      // Page 1: Header and KPIs
-      doc.setFontSize(20);
-      setFontStyle(doc, "bold");
-      doc.text(`${t("status.hookMessages.export.reportTitlePrefix")} - ${companyName}`, 20, yPos);
-      yPos += 10;
-
-      doc.setFontSize(12);
-      setFontStyle(doc, "normal");
-      doc.text(`${t("status.hookMessages.pdf.periodHeader")}: ${periodLabel}`, 20, yPos);
-      yPos += 7;
-      doc.text(`${t("status.hookMessages.pdf.generatedLabel")}: ${format(new Date(), "dd.MM.yyyy 'kl.' HH:mm", { locale: nb })}`, 20, yPos);
-      yPos += 15;
-
-      // KPI Table
-      doc.setFontSize(14);
-      setFontStyle(doc, "bold");
-      doc.text(t("status.hookMessages.pdf.kpiTitle"), 20, yPos);
-      yPos += 5;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [[t("status.hookMessages.pdf.kpiHeaderLabel"), t("status.hookMessages.pdf.kpiHeaderValue")]],
-        body: [
-          [t("status.hookMessages.pdf.totalMissions"), kpiData.totalMissions.toString()],
-          [t("status.hookMessages.pdf.completedMissions"), `${kpiData.completedMissions} (${kpiData.totalMissions > 0 ? Math.round((kpiData.completedMissions / kpiData.totalMissions) * 100) : 0}%)`],
-          [t("status.hookMessages.pdf.totalFlightHours"), kpiData.totalFlightHours.toString()],
-          [t("status.hookMessages.pdf.incidentRate"), `${kpiData.incidentRate.toFixed(1)}%`],
-          [t("status.hookMessages.pdf.activeResources"), kpiData.activeResources.toString()],
-          [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
-
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: COLORS.primary },
+      deviationReports.forEach((report) => {
+        const key = format(new Date(report.created_at), "MMM yyyy", { locale: dateLocale });
+        if (deviationMonthCounts.has(key)) deviationMonthCounts.set(key, (deviationMonthCounts.get(key) || 0) + 1);
       });
 
-      yPos = (doc as any).lastAutoTable.finalY + 15;
+      const pdfBlob = await generateStatusPdf({
+        companyName: reportCompanyName,
+        language: i18n.language?.startsWith("en") ? "en" : "no",
+        periodLabel,
+        generatedLabel: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }),
+        kpis: { ...kpiData, completionRate },
+        missionsByMonth,
+        missionsByStatus,
+        missionsByRisk,
+        operationTypes: operationTypeStats,
+        unplannedByMonth,
+        incidentsByMonth,
+        incidentsByMainCause,
+        incidentsByContributingCause,
+        incidentsBySeverity,
+        daysSinceLastSevere,
+        droneStatus,
+        equipmentStatus,
+        flightHoursByDrone,
+        expiringDocs,
+        deviationEnabled: companySettings.deviation_report_enabled,
+        flightLogsCount,
+        deviationsByMonth: Array.from(deviationMonthCounts, ([month, count]) => ({ month, count })),
+        deviationReports,
+      }, t);
 
-      // Missions by Month Bar Chart
-      if (missionsByMonth.length > 0) {
-        if (yPos > 200) {
-          doc.addPage();
-          yPos = 20;
-        }
-        drawBarChart(
-          missionsByMonth.map(m => ({ name: m.month, value: m.count })), 
-          20, 
-          yPos, 
-          170, 
-          60, 
-          t("status.hookMessages.pdf.missionsByMonth")
-        );
-        yPos += 70;
-      }
-
-      // Missions by Status Pie Chart
-      if (missionsByStatus.length > 0) {
-        if (yPos > 220) {
-          doc.addPage();
-          yPos = 20;
-        }
-        drawPieChart(missionsByStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.missionsByStatus"));
-        yPos += 100;
-      }
-
-      // Page 2: Incidents
-      doc.addPage();
-      yPos = 20;
-
-      doc.setFontSize(16);
-      setFontStyle(doc, "bold");
-      doc.text(t("status.hookMessages.pdf.incidentsHeading"), 20, yPos);
-      yPos += 15;
-
-      // Incidents by Month Bar Chart
-      if (incidentsByMonth.length > 0) {
-        drawBarChart(
-          incidentsByMonth.map(m => ({ name: m.month, value: m.count })), 
-          20, 
-          yPos, 
-          170, 
-          60, 
-          t("status.hookMessages.pdf.incidentsByMonth")
-        );
-        yPos += 70;
-      }
-
-      // Incidents by Main Cause Pie Chart
-      if (incidentsByMainCause.length > 0) {
-        if (yPos > 200) {
-          doc.addPage();
-          yPos = 20;
-        }
-        drawPieChart(incidentsByMainCause, 60, yPos + 35, 30, t("status.hookMessages.pdf.mainCauseDistribution"));
-        yPos += 100;
-      }
-
-      // Incidents by Contributing Cause Table
-      if (incidentsByContributingCause.length > 0) {
-        if (yPos > 200) {
-          doc.addPage();
-          yPos = 20;
-        }
-        doc.setFontSize(12);
-        setFontStyle(doc, 'bold');
-        doc.text(t("status.hookMessages.pdf.contributingCauses"), 20, yPos);
-        yPos += 5;
-
-        autoTable(doc, {
-          startY: yPos,
-          head: [[t("status.hookMessages.pdf.causeHeader"), t("status.hookMessages.pdf.countHeader")]],
-          body: incidentsByContributingCause.map(item => [item.name, item.value.toString()]),
-          theme: 'grid',
-          headStyles: { fillColor: COLORS.warning },
-        });
-        yPos = (doc as any).lastAutoTable.finalY + 15;
-      }
-
-      // Incidents by Severity Bar Chart
-      if (incidentsBySeverity.length > 0) {
-        if (yPos > 200) {
-          doc.addPage();
-          yPos = 20;
-        }
-        drawBarChart(incidentsBySeverity, 20, yPos, 170, 50, t("status.hookMessages.pdf.incidentsBySeverity"));
-        yPos += 60;
-      }
-
-      // HMS Box - Days since last severe incident
-      if (yPos > 240) {
-        doc.addPage();
-        yPos = 20;
-      }
-      doc.setFillColor(...COLORS.success);
-      doc.rect(20, yPos, 170, 20, 'F');
-      doc.setFontSize(12);
-      setFontStyle(doc, "bold");
-      doc.setTextColor(255, 255, 255);
-      const daysText = daysSinceLastSevere > 0 
-        ? t("status.hookMessages.pdf.daysSinceSevere", { days: daysSinceLastSevere })
-        : t("status.hookMessages.pdf.noSevereIncidents");
-      doc.text(daysText, 105, yPos + 12, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 30;
-
-      // Page 3: Resources
-      doc.addPage();
-      yPos = 20;
-
-      doc.setFontSize(16);
-      setFontStyle(doc, "bold");
-      doc.text(t("status.hookMessages.pdf.resourcesHeading"), 20, yPos);
-      yPos += 15;
-
-      // Drone Status Pie Chart
-      if (droneStatus.length > 0) {
-        drawPieChart(droneStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.droneStatus"));
-        yPos += 100;
-      }
-
-      // Equipment Status Pie Chart
-      if (equipmentStatus.length > 0) {
-        if (yPos > 200) {
-          doc.addPage();
-          yPos = 20;
-        }
-        drawPieChart(equipmentStatus, 60, yPos + 35, 30, t("status.hookMessages.pdf.equipmentStatus"));
-        yPos += 100;
-      }
-
-      // Expiring Documents
-      if (yPos > 220) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(14);
-      setFontStyle(doc, "bold");
-      doc.text(t("status.hookMessages.pdf.expiringDocuments"), 20, yPos);
-      yPos += 5;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [[t("status.hookMessages.pdf.periodHeader"), t("status.hookMessages.pdf.countHeader")]],
-        body: [
-          [t("status.hookMessages.export.within30"), expiringDocs.thirtyDays.toString()],
-          [t("status.hookMessages.export.within60"), expiringDocs.sixtyDays.toString()],
-          [t("status.hookMessages.export.within90"), expiringDocs.ninetyDays.toString()],
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: COLORS.primary },
-      });
-
-      // Deviation Reports section
-      if (deviationReports.length > 0) {
-        doc.addPage();
-        yPos = 20;
-        doc.setFontSize(16);
-        setFontStyle(doc, "bold");
-        doc.text(t("status.hookMessages.pdf.deviationsHeading"), 20, yPos);
-        yPos += 10;
-
-        const rootCounts: Record<string, number> = {};
-        deviationReports.forEach(r => {
-          const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
-          rootCounts[root] = (rootCounts[root] || 0) + 1;
-        });
-
-        autoTable(doc, {
-          startY: yPos,
-          head: [[t("status.hookMessages.pdf.mainCategoryHeader"), t("status.hookMessages.pdf.countHeader")]],
-          body: Object.entries(rootCounts).map(([k, v]) => [k, v.toString()]),
-          theme: 'grid',
-          headStyles: { fillColor: COLORS.warning },
-        });
-        yPos = (doc as any).lastAutoTable.finalY + 10;
-
-        autoTable(doc, {
-          startY: yPos,
-          head: [[t("status.hookMessages.pdf.dateHeader"), t("status.hookMessages.pdf.pilotHeader"), t("status.hookMessages.pdf.categoryHeader"), t("status.hookMessages.pdf.commentHeader")]],
-          body: deviationReports.map(r => [
-            format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-            sanitizeForPdf(r.reporter_name || t("status.hookMessages.pdf.unknown")),
-            sanitizeForPdf(r.category_path.join(" > ")),
-            sanitizeForPdf(r.comment || ""),
-          ]),
-          theme: 'striped',
-          headStyles: { fillColor: COLORS.warning },
-          styles: { fontSize: 8, cellPadding: 2 },
-          columnStyles: { 3: { cellWidth: 60 } },
-        });
-      }
-
-      // Generate PDF blob
-      const pdfBlob = doc.output('blob');
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.pdf`;
-
-      // Upload to Supabase Storage
-      const filePath = `${companyId}/${fileName}`;
+      const filePath = `${reportCompanyId}/${fileName}`;
       const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true
-        });
-
+        .from("documents")
+        .upload(filePath, pdfBlob, { contentType: "application/pdf", upsert: true });
       if (uploadError) throw uploadError;
 
-      // Create document entry in database
-      const { error: dbError } = await supabase
-        .from('documents')
-        .insert({
-          tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${periodLabel}`,
-          kategori: t("status.hookMessages.export.docCategory"),
-          beskrivelse: t("status.hookMessages.export.pdfDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
-          fil_navn: fileName,
-          fil_url: filePath,
-          fil_storrelse: pdfBlob.size,
-          company_id: companyId,
-          user_id: user?.id,
-        });
-
+      const { error: dbError } = await supabase.from("documents").insert({
+        tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${periodLabel}`,
+        kategori: t("status.hookMessages.export.docCategory"),
+        beskrivelse: t("status.hookMessages.export.pdfDescription", {
+          date: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }),
+        }),
+        fil_navn: fileName,
+        fil_url: filePath,
+        fil_storrelse: pdfBlob.size,
+        company_id: reportCompanyId,
+        user_id: user?.id,
+      });
       if (dbError) throw dbError;
 
-      // Also download the file for the user
       const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      document.body.removeChild(anchor);
 
       toast.success(t("status.hookMessages.pdfSavedTitle"), {
-        description: t("status.hookMessages.reportSavedDescription")
+        description: t("status.hookMessages.reportSavedDescription"),
       });
     } catch (error) {
       console.error("Error exporting to PDF:", error);
       toast.error(t("status.hookMessages.exportErrorTitle"), {
-        description: t("status.hookMessages.pdfExportErrorDescription")
+        description: t("status.hookMessages.pdfExportErrorDescription"),
       });
     }
   };

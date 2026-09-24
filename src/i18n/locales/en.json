@@ -1654,7 +1654,10 @@
         "categoryHeader": "Category",
         "commentHeader": "Comment",
         "unknown": "Unknown",
-        "generatedLabel": "Generated"
+        "generatedLabel": "Generated",
+        "operationsHeading": "Flight operations and planning",
+        "footerBrand": "AviSafe statistics report",
+        "pageNumber": "Page {{page}} of {{total}}"
       },
       "export": {
         "kpiSheet": "KPI",
