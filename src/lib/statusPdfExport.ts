@@ -45,6 +45,7 @@ export interface StatusPdfData {
   expiringDocs: { thirtyDays: number; sixtyDays: number; ninetyDays: number };
   deviationEnabled: boolean;
   flightLogsCount: number;
+  deviationsByMonth: MonthValue[];
   deviationReports: Array<{
     category_path: string[];
     comment: string | null;
@@ -433,22 +434,12 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       doc.text(safeText(value), x + 4, 38);
     });
 
-    const monthMap = new Map<string, number>();
-    data.missionsByMonth.forEach((item) => monthMap.set(item.month, 0));
-    data.deviationReports.forEach((row) => {
-      const date = new Date(row.created_at);
-      const matchingMonth = data.missionsByMonth.find((item) => {
-        const probe = new Date(item.month);
-        return !Number.isNaN(probe.getTime()) && probe.getMonth() === date.getMonth() && probe.getFullYear() === date.getFullYear();
-      });
-      if (matchingMonth) monthMap.set(matchingMonth.month, (monthMap.get(matchingMonth.month) || 0) + 1);
-    });
     const categoryCounts = new Map<string, number>();
     data.deviationReports.forEach((row) => {
       const path = row.category_path.length > 0 ? row.category_path.join(" > ") : t("status.common.unknownCategory");
       categoryCounts.set(path, (categoryCounts.get(path) || 0) + 1);
     });
-    drawBarChart(Array.from(monthMap, ([name, value]) => ({ name, value })), margin, 49, halfWidth, 57, t("status.incidents.deviation.perMonth"), PDF_COLORS.warning);
+    drawBarChart(data.deviationsByMonth.map((item) => ({ name: item.month, value: item.count })), margin, 49, halfWidth, 57, t("status.incidents.deviation.perMonth"), PDF_COLORS.warning);
     drawHorizontalBars(Array.from(categoryCounts, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), margin + halfWidth + gap, 49, halfWidth, 57, t("status.incidents.deviation.subcategoryDistribution"));
 
     autoTable(doc, {
