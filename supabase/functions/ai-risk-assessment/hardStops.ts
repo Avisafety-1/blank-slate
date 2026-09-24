@@ -18,7 +18,7 @@ interface HardStopInput {
   };
   equipmentReason?: string | null;
   assignedPilotCount: number;
-  validCompetencyCount: number;
+  competencyReason?: string | null;
   daysSinceLastFlight: number | null;
   maxPilotInactivityDays: number | null;
   flightHeightM: number | null;
@@ -81,8 +81,8 @@ export const deriveHardStops = (input: HardStopInput): HardStopReason[] => {
 
   if (input.assignedPilotCount === 0) {
     add('pilot_missing', 'pilot_experience', 'Ingen pilot er tildelt oppdraget', 'No pilot is assigned to the mission');
-  } else if (input.validCompetencyCount === 0) {
-    add('pilot_competency', 'pilot_experience', 'Tildelt pilot mangler gyldig registrert kompetanse', 'The assigned pilot has no valid registered competency');
+  } else if (input.competencyReason) {
+    reasons.push({ code: 'pilot_competency_rank', category: 'pilot_experience', text: input.competencyReason });
   }
 
   if (

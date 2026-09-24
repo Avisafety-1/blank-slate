@@ -8,7 +8,7 @@ const base = {
   weatherLimits: { maxWindSpeedMs: 10, maxWindGustMs: 15, minTempC: -10, maxTempC: 40 },
   equipmentReason: null,
   assignedPilotCount: 1,
-  validCompetencyCount: 1,
+  competencyReason: null,
   daysSinceLastFlight: 5,
   maxPilotInactivityDays: 30,
   flightHeightM: 120,
@@ -25,9 +25,9 @@ const base = {
 };
 
 Deno.test('returns only the active pilot stop', () => {
-  const reasons = deriveHardStops({ ...base, validCompetencyCount: 0 });
-  assertEquals(reasons.map((reason) => reason.code), ['pilot_competency']);
-  assertEquals(joinHardStopReasons(reasons), 'Tildelt pilot mangler gyldig registrert kompetanse.');
+  const reasons = deriveHardStops({ ...base, competencyReason: 'Dronen er C2 og flys nær uinvolverte, som krever A2' });
+  assertEquals(reasons.map((reason) => reason.code), ['pilot_competency_rank']);
+  assertEquals(joinHardStopReasons(reasons), 'Dronen er C2 og flys nær uinvolverte, som krever A2.');
 });
 
 Deno.test('keeps multiple active stops without airspace diagnostics', () => {
