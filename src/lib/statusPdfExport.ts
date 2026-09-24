@@ -458,7 +458,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
         safeText(row.comment || ""),
       ]),
       theme: "striped",
-      styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1.5, overflow: "linebreak" },
+      styles: { font: getPdfFontName(), fontSize: 6.5, cellPadding: 1, overflow: "linebreak", minCellHeight: 4 },
       headStyles: { fillColor: PDF_COLORS.warning },
       columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 42 }, 2: { cellWidth: 75 }, 3: { cellWidth: 120 } },
     });
