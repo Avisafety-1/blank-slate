@@ -420,7 +420,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     [halfWidth * 0.4, halfWidth * 0.2, halfWidth * 0.2, halfWidth * 0.2],
   );
   drawCompactTable(
-    [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.plannedFlights"), t("status.hookMessages.export.unplannedFlights")],
+    [t("status.hookMessages.export.monthHeader"), t("status.metrics.plannedLegend"), t("status.metrics.unplannedLegend")],
     data.unplannedByMonth.map((item) => [item.month, item.planned, item.unplanned]),
     margin + halfWidth + gap,
     143,
