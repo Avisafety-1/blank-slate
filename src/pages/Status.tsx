@@ -498,13 +498,17 @@ const Status = () => {
     }> = [];
     for (let offset = 0; offset < missionIds.length; offset += 200) {
       const chunk = missionIds.slice(offset, offset + 200);
-      const { data: rows, error } = await supabase
-        .from("mission_risk_assessments")
-        .select("mission_id, overall_score, recommendation, created_at")
-        .in("mission_id", chunk)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      assessments.push(...(rows || []));
+      for (let from = 0; ; from += pageSize) {
+        const { data: rows, error } = await supabase
+          .from("mission_risk_assessments")
+          .select("mission_id, overall_score, recommendation, created_at")
+          .in("mission_id", chunk)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        assessments.push(...(rows || []));
+        if (!rows || rows.length < pageSize) break;
+      }
     }
 
     setMissionsByRisk(buildFlownMissionRiskDistribution(missionIds, assessments, {

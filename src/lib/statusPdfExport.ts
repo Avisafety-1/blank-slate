@@ -175,6 +175,10 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     const chartY = y + 17;
     const chartWidth = width - 14;
     const chartHeight = height - 30;
+    if (values.length === 0 || values.every((item) => item.value === 0)) {
+      drawNoData(x, chartY, width, chartHeight);
+      return;
+    }
     const max = Math.max(...values.map((item) => item.value), 1);
     const slot = chartWidth / Math.max(values.length, 1);
     const barWidth = Math.max(5, Math.min(14, slot * 0.5));
