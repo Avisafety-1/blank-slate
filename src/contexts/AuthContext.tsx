@@ -201,16 +201,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [stripeExempt, setStripeExempt] = useState(false);
   const [hadPreviousSubscription, setHadPreviousSubscription] = useState(false);
   const [subscriptionPlan, setSubscriptionPlan] = useState<PlanId | null>(null);
-  const [subscriptionAddons, setSubscriptionAddons] = useState<AddonId[]>([]);
+  // List-valued state uses useStableState: background refreshes that return
+  // identical content keep the same reference, so open menus/dialogs are not
+  // re-rendered or reset after login.
+  const [subscriptionAddons, setSubscriptionAddons] = useStableState<AddonId[]>([]);
   const [isBillingOwner, setIsBillingOwner] = useState(false);
   const [seatCount, setSeatCount] = useState(1);
-  const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
+  const [accessibleCompanies, setAccessibleCompanies] = useStableState<AccessibleCompany[]>([]);
   const [underTraining, setUnderTraining] = useState(false);
-  const [trainingModuleAccess, setTrainingModuleAccess] = useState<TrainingModuleKey[]>([]);
+  const [trainingModuleAccess, setTrainingModuleAccess] = useStableState<TrainingModuleKey[]>([]);
   const [canApproveMissions, setCanApproveMissions] = useState(false);
   const [canBeIncidentResponsible, setCanBeIncidentResponsible] = useState(false);
-  const [approvalCompanyIds, setApprovalCompanyIds] = useState<string[] | null>(null);
-  const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useState<string[] | null>(null);
+  const [approvalCompanyIds, setApprovalCompanyIds] = useStableState<string[] | null>(null);
+  const [incidentResponsibleCompanyIds, setIncidentResponsibleCompanyIds] = useStableState<string[] | null>(null);
+  // Mirrors authInitialized for use inside async callbacks with stale closures
+  const authInitializedRef = useRef(false);
+  if (authInitialized) authInitializedRef.current = true;
 
   // Keep the current-token ref synced with session so the cross-tab handler
   // can cheaply detect pure echoes of the token it already holds.
@@ -430,7 +436,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
    */
   const refreshAuthState = async (userId: string, reason: string = 'unknown') => {
     const myVersion = ++refreshVersionRef.current;
-    setAuthRefreshing(true);
+    // Only signal "refreshing" before the first successful load. Afterwards,
+    // background refreshes keep the current (already verified) state visible
+    // and update silently — this is purely visual; access rules are unchanged.
+    if (!authInitializedRef.current) setAuthRefreshing(true);
     console.log(`AuthContext: refreshAuthState v${myVersion} (${reason})`);
 
     // Fire-and-forget background user validation (deleted user check)
