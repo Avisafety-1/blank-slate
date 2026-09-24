@@ -134,7 +134,7 @@ Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km. Nedbør eller IP-rating utløser ALDRI hard stop alene.
 2. VÆR - TEMPERATUR: Temperatur < ${companySoraConfig?.min_temp_c ?? -10}°C ELLER > ${companySoraConfig?.max_temp_c ?? 40}°C (kritisk for LiPo-batterier)
 3. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet). VIKTIG: Feltet primaryDrone.status (og assignedDrones[].status / assignedEquipment[].status) er ALLEREDE beregnet aggregert status som tar hensyn til forfalt inspeksjonsdato, overskredet timeintervall, oppdragsintervall, tilbehør og koblet utstyr. primaryDrone.statusReasons forklarer hvorfor. Du SKAL bruke dette feltet som fasit — IKKE overstyr det basert på lastInspection/nextInspection-datoer og IKKE bortforklar at "siste inspeksjon ble nylig utført". Hvis status er "Rød", skriv begrunnelsen fra statusReasons direkte i rapporten.
-4. PILOT: Ingen gyldige kompetanser eller alle påkrevde sertifikater er utløpt
+4. PILOT: Kompetansesjekken (pilotStats.competencyAssessment) er allerede avgjort av systemet. Ved status "ok" eller "missing": gjengi den, ikke overprøv den, og ikke lag egen kompetanse-hard stop. Ved "undetermined" kan du vurdere kompetansen selv, men ALDRI som hard stop. Rader i notFormalCompetency (kurs/veiledet tour) teller aldri som formell kompetanse.
 ${companySoraConfig?.max_pilot_inactivity_days ? `5. PILOT - INAKTIVITET: Pilot har ikke flydd på mer enn ${companySoraConfig.max_pilot_inactivity_days} dager → HARD STOP for å sikre recency.` : ''}
 ${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_inactivity_days ? '6' : '5'}. BVLOS FORBUDT: Selskapet tillater IKKE BVLOS-flyging — oppdrag utenfor visuell rekkevidde er HARD STOP.` : ''}
 ${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selskapet tillater IKKE nattflyging — oppdrag i mørket er HARD STOP.` : ''}
@@ -217,7 +217,7 @@ Hvis BVLOS (isVlos = false):
   - IKKE skriv at "manglende SORA er en betydelig bekymring" eller lignende vage bekymringer.
   - I stedet: legg til en konkret anbefaling: "SORA-analyse påkrevd for BVLOS. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering — re-vurderingen vil generere den komplette SORA-analysen (SAIL, containment, OSO)."
   - Reduser overall_score med 3 og legg til NO-GO-anbefaling med samme tekst.
-- Krev spesifikke BVLOS-kompetanser (STS-02, BVLOS-sertifisering e.l.). Reduser pilot_experience score med 2 hvis mangler.
+- Pilotkompetanse for BVLOS er avgjort i pilotStats.competencyAssessment — ikke trekk score ekstra for dette.
 - Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
 - Reduser mission_complexity score med 1-2 pga. økt operasjonell kompleksitet.
 - Legg til spesifikke BVLOS-anbefalinger i recommendations (kommunikasjonsplan, nødstopp-prosedyrer, lost-link-prosedyre).
@@ -704,7 +704,7 @@ You SHALL return recommendation="no-go" and hard_stop_triggered=true if:
 1. WEATHER: Wind speed (mean wind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s OR wind gusts > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s OR visibility < ${companySoraConfig?.max_visibility_km ?? 1} km. Precipitation or an IP rating NEVER creates a hard stop by itself.
 2. WEATHER - TEMPERATURE: Temperature < ${companySoraConfig?.min_temp_c ?? -10}°C OR > ${companySoraConfig?.max_temp_c ?? 40}°C (critical for LiPo batteries)
 3. EQUIPMENT: Drone or critical equipment has status "Red" (NOTE: "Yellow" status does NOT trigger hard stop, but shall result in a lower score and a recommendation to exercise caution). IMPORTANT: The primaryDrone.status field (and assignedDrones[].status / assignedEquipment[].status) is ALREADY a pre-computed aggregated status that accounts for overdue inspection dates, exceeded hour intervals, mission intervals, accessories and linked equipment. primaryDrone.statusReasons explains why. Treat that field as ground truth — do NOT override it based on lastInspection/nextInspection dates and do NOT explain it away as "recent inspection". If status is "Red", quote the reasons from statusReasons directly in the report.
-4. PILOT: No valid competencies or all required certificates have expired
+4. PILOT: The competency check (pilotStats.competencyAssessment) is already decided by the system. When status is "ok" or "missing": restate it, do not override it, and do not create your own competency hard stop. When "undetermined" you may assess competence yourself, but NEVER as a hard stop. Rows in notFormalCompetency (courses/guided tours) never count as formal competence.
 ${companySoraConfig?.max_pilot_inactivity_days ? `5. PILOT - INACTIVITY: Pilot has not flown for more than ${companySoraConfig.max_pilot_inactivity_days} days → HARD STOP to ensure recency.` : ''}
 ${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_inactivity_days ? '6' : '5'}. BVLOS FORBIDDEN: The company does NOT allow BVLOS flight — missions beyond visual line of sight are HARD STOP.` : ''}
 ${companySoraConfig?.allow_night_flight === false ? `NIGHT FLIGHT FORBIDDEN: The company does NOT allow night flight — missions in darkness are HARD STOP.` : ''}
@@ -787,7 +787,7 @@ If BVLOS (isVlos = false):
   - Do NOT write that "the missing SORA is a significant concern" or similar vague concerns.
   - Instead: add a concrete recommendation: "SORA analysis required for BVLOS. Comment on identified risks in this analysis and re-run the assessment — the re-run will generate the complete SORA analysis (SAIL, containment, OSO)."
   - Reduce overall_score by 3 and add a NO-GO recommendation with the same text.
-- Require specific BVLOS competencies (STS-02, BVLOS certification etc.). Reduce pilot_experience score by 2 if missing.
+- Pilot competence for BVLOS is decided in pilotStats.competencyAssessment — do not deduct extra score for it.
 - Assess the need for C2 link (command & control), DAA (detect and avoid), and redundant systems.
 - Reduce mission_complexity score by 1-2 due to increased operational complexity.
 - Add specific BVLOS recommendations to recommendations (communication plan, emergency stop procedures, lost-link procedure).
