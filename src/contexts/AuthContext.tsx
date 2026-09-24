@@ -7,6 +7,25 @@ import { forceFullSignOut, isPermanentAuthError } from "@/lib/forceSignOut";
 import type { PlanId, AddonId } from "@/config/subscriptionPlans";
 import { normalizeTrainingModules, type TrainingModuleKey } from "@/config/trainingModules";
 
+/**
+ * useState variant that keeps the previous reference when the new value has
+ * identical content (JSON-compare). Prevents needless re-renders when a
+ * background refresh returns the same lists as before.
+ */
+function useStableState<T>(initial: T) {
+  const [value, setValue] = useState<T>(initial);
+  const setStable = useRef((next: T) => {
+    setValue((prev) => {
+      if (prev === next) return prev;
+      try {
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+      } catch { /* fall through */ }
+      return next;
+    });
+  }).current;
+  return [value, setStable] as const;
+}
+
 export type CompanyType = 'droneoperator' | 'flyselskap' | null;
 
 const PROFILE_CACHE_KEY = (userId: string) => `avisafe_user_profile_${userId}`;
