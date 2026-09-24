@@ -66,7 +66,7 @@ function renderEmail(opts: {
   weekNum: number;
   activity: { missions: number; missionsPrev: number; flightHoursH: string; flightHoursPrevH: string; flights: number };
   departmentBreakdown?: Array<{ name: string; missions: number; flightHoursH: string; flights: number }>;
-  incidents: { newCount: number; openCount: number; bySeverity: Record<string, number> };
+  incidents: { newCount: number; openCount: number; bySeverity: Record<string, number>; deviationsNew: number; deviationsOpen: number };
   maintenance: { drones: Array<{ name: string; due: string; overdue: boolean }>; equipment: Array<{ name: string; due: string; overdue: boolean }> };
   documents: Array<{ name: string; user: string; due: string; overdue: boolean }>;
   competencies: Array<{ name: string; user: string; due: string; overdue: boolean }>;
@@ -118,16 +118,20 @@ function renderEmail(opts: {
       </div>`
     : "";
 
-  const hasIncidentData = opts.incidents.newCount > 0 || opts.incidents.openCount > 0;
+  const hasIncidentData = opts.incidents.newCount > 0 || opts.incidents.openCount > 0
+    || opts.incidents.deviationsNew > 0 || opts.incidents.deviationsOpen > 0;
   const severityRows = Object.entries(opts.incidents.bySeverity)
     .map(([k, v]) => row(`Alvorlighetsgrad: ${k.charAt(0).toUpperCase() + k.slice(1)}`, String(v), true))
     .join("");
   const incidentsBody = !hasIncidentData
     ? emptyOk("Ingen nye eller åpne avvik")
     : `<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-        ${row("Nye avvik forrige uke", String(opts.incidents.newCount), opts.incidents.newCount > 0)}
-        ${row("Åpne avvik totalt", String(opts.incidents.openCount), opts.incidents.openCount > 0)}
+        ${row("Nye hendelser forrige uke", String(opts.incidents.newCount), opts.incidents.newCount > 0)}
+        ${row("Åpne hendelser totalt", String(opts.incidents.openCount), opts.incidents.openCount > 0)}
         ${severityRows}
+        <tr><td colspan="2" style="padding:10px 0 2px;font-size:11px;color:#64748b;font-weight:500">AVVIKSRAPPORTER FRA OPPDRAG</td></tr>
+        ${row("Nye avvik forrige uke", String(opts.incidents.deviationsNew), opts.incidents.deviationsNew > 0)}
+        ${row("Åpne avvik totalt", String(opts.incidents.deviationsOpen), opts.incidents.deviationsOpen > 0)}
       </table>`;
 
   const listItems = (items: Array<{ name: string; due: string; overdue: boolean; user?: string }>) =>
@@ -277,16 +281,22 @@ serve(async (req) => {
         }
       }
 
-      // --- Incidents
-      const [newIncRes, openIncRes] = await Promise.all([
+      // --- Incidents + deviation reports
+      // Open incidents = status "Åpen" or "Under behandling" (excludes "Ferdigbehandlet" and "Lukket").
+      // Open deviation reports = status "new" or "in_progress" (excludes "closed").
+      const [newIncRes, openIncRes, newDevRes, openDevRes] = await Promise.all([
         supabase.from("incidents").select("alvorlighetsgrad").in("company_id", scopeIds).gte("opprettet_dato", startISO).lt("opprettet_dato", endISO),
-        supabase.from("incidents").select("id", { count: "exact", head: true }).in("company_id", scopeIds).neq("status", "lukket"),
+        supabase.from("incidents").select("id", { count: "exact", head: true }).in("company_id", scopeIds).in("status", ["Åpen", "Under behandling"]),
+        supabase.from("mission_deviation_reports").select("id", { count: "exact", head: true }).in("company_id", scopeIds).gte("created_at", startISO).lt("created_at", endISO),
+        supabase.from("mission_deviation_reports").select("id", { count: "exact", head: true }).in("company_id", scopeIds).in("status", ["new", "in_progress"]),
       ]);
       const bySeverity: Record<string, number> = {};
       for (const i of (newIncRes.data || []) as any[]) {
         const s = i.alvorlighetsgrad || "ukjent";
         bySeverity[s] = (bySeverity[s] || 0) + 1;
       }
+      const deviationsNew = newDevRes.count ?? 0;
+      const deviationsOpen = openDevRes.count ?? 0;
 
       // --- Maintenance horizon: now → +30 days. Include overdue.
       const horizon = new Date(Date.now() + 30 * 86400000).toISOString();
@@ -337,6 +347,7 @@ serve(async (req) => {
       const totallyEmpty =
         missionsCount === 0 && totalMinutes === 0 &&
         (newIncRes.data?.length ?? 0) === 0 && (openIncRes.count ?? 0) === 0 &&
+        deviationsNew === 0 && deviationsOpen === 0 &&
         droneItems.length === 0 && equipItems.length === 0 && docItems.length === 0 && compItems.length === 0;
 
       if (totallyEmpty && !overrideEmail) {
@@ -385,7 +396,7 @@ serve(async (req) => {
           flights: flights.length,
         },
         departmentBreakdown,
-        incidents: { newCount: newIncRes.data?.length ?? 0, openCount: openIncRes.count ?? 0, bySeverity },
+        incidents: { newCount: newIncRes.data?.length ?? 0, openCount: openIncRes.count ?? 0, bySeverity, deviationsNew, deviationsOpen },
         maintenance: { drones: droneItems, equipment: equipItems },
         documents: docItems,
         competencies: compItems,
