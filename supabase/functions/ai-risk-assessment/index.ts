@@ -2031,6 +2031,14 @@ serve(async (req) => {
     const expiredCompetencies = allCompetencies.filter((c: any) => 
       c.utloper_dato && new Date(c.utloper_dato) <= today
     );
+    const competencyAssessment = evaluateCompetency({
+      rows: allCompetencies,
+      pilotIds,
+      droneClass: droneData?.klasse ?? null,
+      proximityToPeople: pilotInputs?.proximityToPeople ?? null,
+      isVlos: pilotInputs?.isVlos !== false,
+      now: today,
+    });
 
     // Aggregate flight stats for all assigned pilots
     const aggregatedFlightStats = {
@@ -2271,6 +2279,19 @@ serve(async (req) => {
         flightsWithThisDrone: aggregatedFlightStats.flightsWithDrone,
         validCompetencies: validCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
         expiredCompetencies: expiredCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
+        competencyAssessment: {
+          status: competencyAssessment.status,
+          droneClass: competencyAssessment.droneClass,
+          nearUninvolvedPeople: competencyAssessment.nearPeople,
+          requiredLevel: competencyAssessment.requiredLabel,
+          pilotLevel: competencyAssessment.pilotLabel,
+          coveredBy: competencyAssessment.coveredBy,
+          operatorApproval: competencyAssessment.operatorApproval,
+          recognised: competencyAssessment.recognised,
+          notFormalCompetency: competencyAssessment.ignored,
+          unclassified: competencyAssessment.unclassified,
+          undeterminedWhy: competencyAssessment.undeterminedWhy,
+        },
       },
       assignedDrones: assignedDrones.map((d: any) => {
         const info = assignedDroneStatuses.get(d.id);
@@ -3086,7 +3107,7 @@ serve(async (req) => {
       },
       equipmentReason: deterministicEquipmentHardStopReason,
       assignedPilotCount: assignedPilots.length,
-      validCompetencyCount: validCompetencies.length,
+      competencyReason: buildCompetencyReason(competencyAssessment, assessmentLang),
       daysSinceLastFlight,
       maxPilotInactivityDays: companySoraConfig?.max_pilot_inactivity_days == null
         ? null
