@@ -1,6 +1,5 @@
 import autoTable from "jspdf-autotable";
 import type { TFunction } from "i18next";
-import type jsPDF from "jspdf";
 import avisafeLogoUrl from "@/assets/avisafe-logo-text.png";
 import { createPdfDocument, getPdfFontName, sanitizeForPdf, setFontStyle } from "@/lib/pdfUtils";
 
@@ -11,6 +10,7 @@ type UnplannedMonth = { month: string; planned: number; unplanned: number };
 
 export interface StatusPdfData {
   companyName: string;
+  language: "no" | "en";
   periodLabel: string;
   generatedLabel: string;
   kpis: {
@@ -88,7 +88,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> => new Promise((resol
 const safeText = (value: unknown) => sanitizeForPdf(String(value ?? ""));
 
 export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Promise<Blob> {
-  const doc = await createPdfDocument({ orientation: "landscape", format: "a4", unit: "mm" });
+  const doc = await createPdfDocument("landscape");
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 12;
@@ -452,7 +452,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
         t("status.hookMessages.pdf.commentHeader"),
       ]],
       body: data.deviationReports.map((row) => [
-        new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(row.created_at)),
+        new Intl.DateTimeFormat(data.language === "en" ? "en-GB" : "nb-NO", { dateStyle: "short", timeStyle: "short" }).format(new Date(row.created_at)),
         safeText(row.reporter_name || t("status.hookMessages.pdf.unknown")),
         safeText(row.category_path.join(" > ")),
         safeText(row.comment || ""),

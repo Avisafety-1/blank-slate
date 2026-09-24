@@ -1656,7 +1656,10 @@
         "categoryHeader": "Kategori",
         "commentHeader": "Kommentar",
         "unknown": "Ukjent",
-        "generatedLabel": "Generert"
+        "generatedLabel": "Generert",
+        "operationsHeading": "Flyoperasjoner og planlegging",
+        "footerBrand": "AviSafe statistikkrapport",
+        "pageNumber": "Side {{page}} av {{total}}"
       },
       "export": {
         "kpiSheet": "KPI",

@@ -1108,6 +1108,7 @@ const Status = () => {
 
       const pdfBlob = await generateStatusPdf({
         companyName: reportCompanyName,
+        language: i18n.language?.startsWith("en") ? "en" : "no",
         periodLabel,
         generatedLabel: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }),
         kpis: { ...kpiData, completionRate },
