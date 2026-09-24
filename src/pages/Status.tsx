@@ -51,7 +51,8 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import { summarizeUnplanned } from "@/lib/unplannedFlights";
-import { generateStatusPdf } from "@/lib/statusPdfExport";
+import { generateStatusPdf, type StatusPdfData } from "@/lib/statusPdfExport";
+import { buildStatusExportSections, createStatusCsv, createStatusWorkbook } from "@/lib/statusTabularExport";
 
 
 interface KPIData {
@@ -724,160 +725,70 @@ const Status = () => {
     ? (kpiData.unplannedFlights / kpiData.importedFlights) * 100
     : 0;
 
+  const getReportPeriodLabel = () => timePeriod === "custom" && customDateFrom && customDateTo
+    ? `${format(customDateFrom, "dd.MM.yyyy", { locale: dateLocale })} – ${format(customDateTo, "dd.MM.yyyy", { locale: dateLocale })}`
+    : timePeriod === "month"
+      ? t("status.page.periodMonth")
+      : timePeriod === "quarter"
+        ? t("status.page.periodQuarter")
+        : t("status.page.periodYear");
+
+  const getStatusReportData = (reportCompanyName: string): StatusPdfData => {
+    const monthsToShow = getMonthsToShow();
+    const { endDate } = getDateFilter();
+    const deviationMonthCounts = new Map<string, number>();
+    for (let i = monthsToShow - 1; i >= 0; i -= 1) {
+      deviationMonthCounts.set(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }), 0);
+    }
+    deviationReports.forEach((report) => {
+      const key = format(new Date(report.created_at), "MMM yyyy", { locale: dateLocale });
+      if (deviationMonthCounts.has(key)) deviationMonthCounts.set(key, (deviationMonthCounts.get(key) || 0) + 1);
+    });
+
+    return {
+      companyName: reportCompanyName,
+      language: i18n.language?.startsWith("en") ? "en" : "no",
+      periodLabel: getReportPeriodLabel(),
+      generatedLabel: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }),
+      kpis: { ...kpiData, completionRate },
+      missionsByMonth,
+      missionsByStatus,
+      missionsByRisk,
+      operationTypes: operationTypeStats,
+      unplannedByMonth,
+      incidentsByMonth,
+      incidentsByMainCause,
+      incidentsByContributingCause,
+      incidentsBySeverity,
+      daysSinceLastSevere,
+      droneStatus,
+      equipmentStatus,
+      flightHoursByDrone,
+      expiringDocs,
+      deviationEnabled: companySettings.deviation_report_enabled,
+      flightLogsCount,
+      deviationsByMonth: Array.from(deviationMonthCounts, ([month, count]) => ({ month, count })),
+      deviationReports,
+    };
+  };
 
   const handleExportExcel = async () => {
     try {
-      const wb = XLSX.utils.book_new();
-
-      // KPI Sheet
-      const kpiSheetData = [
-        [t("status.hookMessages.export.kpiHeading"), ""],
-        [t("status.hookMessages.export.totalMissions"), kpiData.totalMissions],
-        [t("status.hookMessages.export.completedMissions"), kpiData.completedMissions],
-        [t("status.hookMessages.export.completionRate"), `${completionRate}%`],
-        [t("status.hookMessages.export.totalFlightHours"), kpiData.totalFlightHours],
-        [t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)],
-        [t("status.hookMessages.export.activeResources"), kpiData.activeResources],
-        [t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`],
-
-      ];
-      const wsKPI = XLSX.utils.aoa_to_sheet(kpiSheetData);
-      XLSX.utils.book_append_sheet(wb, wsKPI, t("status.hookMessages.export.kpiSheet"));
-
-      // Missions by Month
-      const missionMonthData = [
-        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.missionCountHeader")],
-        ...missionsByMonth.map(item => [item.month, item.count])
-      ];
-      const wsMissionsMonth = XLSX.utils.aoa_to_sheet(missionMonthData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsMonth, t("status.hookMessages.export.missionsByMonthSheet"));
-
-      // Missions by Status
-      const missionStatusData = [
-        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
-        ...missionsByStatus.map(item => [item.name, item.value])
-      ];
-      const wsMissionsStatus = XLSX.utils.aoa_to_sheet(missionStatusData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsStatus, t("status.hookMessages.export.missionsByStatusSheet"));
-
-      // Missions by Risk
-      const missionRiskData = [
-        [t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")],
-        ...missionsByRisk.map(item => [item.name, item.value])
-      ];
-      const wsMissionsRisk = XLSX.utils.aoa_to_sheet(missionRiskData);
-      XLSX.utils.book_append_sheet(wb, wsMissionsRisk, t("status.hookMessages.export.missionsByRiskSheet"));
-
-      // Incidents by Month
-      const incidentMonthData = [
-        [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.incidentCountHeader")],
-        ...incidentsByMonth.map(item => [item.month, item.count])
-      ];
-      const wsIncidentsMonth = XLSX.utils.aoa_to_sheet(incidentMonthData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMonth, t("status.hookMessages.export.incidentsByMonthSheet"));
-
-      // Incidents by Main Cause
-      const incidentMainCauseData = [
-        [t("status.hookMessages.export.mainCauseHeader"), t("status.hookMessages.export.countHeader")],
-        ...incidentsByMainCause.map(item => [item.name, item.value])
-      ];
-      const wsIncidentsMainCause = XLSX.utils.aoa_to_sheet(incidentMainCauseData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsMainCause, t("status.hookMessages.export.mainCausesSheet"));
-
-      // Incidents by Contributing Cause
-      const incidentContributingData = [
-        [t("status.hookMessages.export.contributingCauseHeader"), t("status.hookMessages.export.countHeader")],
-        ...incidentsByContributingCause.map(item => [item.name, item.value])
-      ];
-      const wsIncidentsContributing = XLSX.utils.aoa_to_sheet(incidentContributingData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsContributing, t("status.hookMessages.export.contributingCausesSheet"));
-
-      // Incidents by Severity
-      const incidentSeverityData = [
-        [t("status.hookMessages.export.severityHeader"), t("status.hookMessages.export.countHeader")],
-        ...incidentsBySeverity.map(item => [item.name, item.value])
-      ];
-      const wsIncidentsSeverity = XLSX.utils.aoa_to_sheet(incidentSeverityData);
-      XLSX.utils.book_append_sheet(wb, wsIncidentsSeverity, t("status.hookMessages.export.incidentsBySeveritySheet"));
-
-      // Drone Status
-      const droneStatusData = [
-        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
-        ...droneStatus.map(item => [item.name, item.value])
-      ];
-      const wsDroneStatus = XLSX.utils.aoa_to_sheet(droneStatusData);
-      XLSX.utils.book_append_sheet(wb, wsDroneStatus, t("status.hookMessages.export.droneStatusSheet"));
-
-      // Equipment Status
-      const equipmentStatusData = [
-        [t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")],
-        ...equipmentStatus.map(item => [item.name, item.value])
-      ];
-      const wsEquipmentStatus = XLSX.utils.aoa_to_sheet(equipmentStatusData);
-      XLSX.utils.book_append_sheet(wb, wsEquipmentStatus, t("status.hookMessages.export.equipmentStatusSheet"));
-
-      // Flight Hours by Drone
-      const flightHoursData = [
-        [t("status.hookMessages.export.droneHeader"), t("status.hookMessages.export.flightHoursHeader")],
-        ...flightHoursByDrone.map(item => [item.name, item.hours])
-      ];
-      const wsFlightHours = XLSX.utils.aoa_to_sheet(flightHoursData);
-      XLSX.utils.book_append_sheet(wb, wsFlightHours, t("status.hookMessages.export.flightHoursSheet"));
-
-      // Expiring Documents
-      const expiringDocsData = [
-        [t("status.hookMessages.export.periodHeader"), t("status.hookMessages.export.docCountHeader")],
-        [t("status.hookMessages.export.within30"), expiringDocs.thirtyDays],
-        [t("status.hookMessages.export.within60"), expiringDocs.sixtyDays],
-        [t("status.hookMessages.export.within90"), expiringDocs.ninetyDays],
-      ];
-      const wsExpiringDocs = XLSX.utils.aoa_to_sheet(expiringDocsData);
-      XLSX.utils.book_append_sheet(wb, wsExpiringDocs, t("status.hookMessages.export.expiringDocsSheet"));
-
-      // Deviation Reports
-      const deviationSummary = [
-        [t("status.hookMessages.export.deviationSummaryHeading"), ""],
-        [t("status.hookMessages.export.totalDeviations"), deviationReports.length],
-        [t("status.hookMessages.export.uniqueFlightsWithDeviations"), new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size],
-        [t("status.hookMessages.export.uniquePilots"), new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size],
-        [],
-        [t("status.hookMessages.export.mainCategoryHeader"), t("status.hookMessages.export.countHeader")],
-        ...Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
-          const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
-          acc[root] = (acc[root] || 0) + 1;
-          return acc;
-        }, {})).map(([name, value]) => [name, value]),
-        [],
-        [t("status.hookMessages.export.dateHeader"), t("status.hookMessages.export.pilotHeader"), t("status.hookMessages.export.categoryHeader"), t("status.hookMessages.export.commentHeader")],
-        ...deviationReports.map(r => [
-          format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-          r.reporter_name || t("status.hookMessages.export.unknown"),
-          r.category_path.join(" > "),
-          r.comment || "",
-        ]),
-      ];
-      const wsDeviation = XLSX.utils.aoa_to_sheet(deviationSummary);
-      XLSX.utils.book_append_sheet(wb, wsDeviation, t("status.hookMessages.export.deviationSheet"));
-
-      // Generate filename with date
-      const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
-      
-      // Convert workbook to array buffer for upload
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-      // Get user's company_id
       const { data: profile } = await supabase
         .from("profiles")
-        .select("company_id, full_name")
+        .select("company_id, full_name, companies(navn)")
         .eq("id", user?.id)
         .single();
-
       if (!profile?.company_id) {
         throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
       }
 
-      // Upload to Supabase Storage
+      const reportCompanyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
+      const workbook = createStatusWorkbook(buildStatusExportSections(getStatusReportData(reportCompanyName), t));
+      const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.xlsx`;
+      const workbookOutput = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([workbookOutput], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
       const filePath = `${profile.company_id}/${fileName}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -888,16 +799,12 @@ const Status = () => {
 
       if (uploadError) throw uploadError;
 
-      // Create document entry in database
-      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") : 
-                         timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
-      
       const { error: dbError } = await supabase
         .from('documents')
         .insert({
-          tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${periodLabel}`,
+          tittel: `${t("status.hookMessages.export.reportTitlePrefix")} - ${getReportPeriodLabel()}`,
           kategori: t("status.hookMessages.export.docCategory"),
-          beskrivelse: t("status.hookMessages.export.excelDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
+          beskrivelse: t("status.hookMessages.export.excelDescription", { date: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }) }),
           fil_navn: fileName,
           fil_url: filePath,
           fil_storrelse: blob.size,
@@ -908,8 +815,7 @@ const Status = () => {
 
       if (dbError) throw dbError;
 
-      // Also download the file for the user
-      XLSX.writeFile(wb, fileName);
+      XLSX.writeFile(workbook, fileName);
       
       toast.success(t("status.hookMessages.excelSavedTitle"), {
         description: t("status.hookMessages.reportSavedDescription")
@@ -924,113 +830,18 @@ const Status = () => {
 
   const handleExportCSV = async () => {
     try {
-      const sep = ";";
-      const sections: string[][] = [];
-
-      // KPI
-      sections.push([t("status.hookMessages.export.kpiHeading"), ""]);
-      sections.push([t("status.hookMessages.export.totalMissions"), String(kpiData.totalMissions)]);
-      sections.push([t("status.hookMessages.export.completedMissions"), String(kpiData.completedMissions)]);
-      sections.push([t("status.hookMessages.export.completionRate"), `${completionRate}%`]);
-      sections.push([t("status.hookMessages.export.totalFlightHours"), String(kpiData.totalFlightHours)]);
-      sections.push([t("status.hookMessages.export.incidentRate"), kpiData.incidentRate.toFixed(2)]);
-      sections.push([t("status.hookMessages.export.activeResources"), String(kpiData.activeResources)]);
-      sections.push([t("status.metrics.unplannedFlights"), `${kpiData.unplannedFlights} / ${kpiData.importedFlights}`]);
-
-      sections.push([]);
-
-      // Missions by Month
-      sections.push([t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.missionCountHeader")]);
-      missionsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
-      sections.push([]);
-
-      // Missions by Status
-      sections.push([t("status.hookMessages.export.statusHeader"), t("status.hookMessages.export.countHeader")]);
-      missionsByStatus.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Missions by Risk
-      sections.push([t("status.hookMessages.export.riskLevelHeader"), t("status.hookMessages.export.countHeader")]);
-      missionsByRisk.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Incidents by Month
-      sections.push([t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.incidentCountHeader")]);
-      incidentsByMonth.forEach(item => sections.push([item.month, String(item.count)]));
-      sections.push([]);
-
-      // Incidents by Main Cause
-      sections.push([t("status.hookMessages.export.mainCauseHeader"), t("status.hookMessages.export.countHeader")]);
-      incidentsByMainCause.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Incidents by Contributing Cause
-      sections.push([t("status.hookMessages.export.contributingCauseHeader"), t("status.hookMessages.export.countHeader")]);
-      incidentsByContributingCause.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Incidents by Severity
-      sections.push([t("status.hookMessages.export.severityHeader"), t("status.hookMessages.export.countHeader")]);
-      incidentsBySeverity.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Drone Status
-      sections.push([t("status.hookMessages.export.droneStatusSheet"), t("status.hookMessages.export.countHeader")]);
-      droneStatus.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Equipment Status
-      sections.push([t("status.hookMessages.export.equipmentStatusSheet"), t("status.hookMessages.export.countHeader")]);
-      equipmentStatus.forEach(item => sections.push([item.name, String(item.value)]));
-      sections.push([]);
-
-      // Flight Hours by Drone
-      sections.push([t("status.hookMessages.export.droneHeader"), t("status.hookMessages.export.flightHoursHeader")]);
-      flightHoursByDrone.forEach(item => sections.push([item.name, String(item.hours)]));
-      sections.push([]);
-
-      // Expiring Documents
-      sections.push([t("status.hookMessages.export.expiringDocsSheet"), t("status.hookMessages.export.countHeader")]);
-      sections.push([t("status.hookMessages.export.within30"), String(expiringDocs.thirtyDays)]);
-      sections.push([t("status.hookMessages.export.within60"), String(expiringDocs.sixtyDays)]);
-      sections.push([t("status.hookMessages.export.within90"), String(expiringDocs.ninetyDays)]);
-      sections.push([]);
-
-      // Deviation Reports
-      sections.push([t("status.hookMessages.export.deviationSummaryHeading"), ""]);
-      sections.push([t("status.hookMessages.export.totalDeviations"), String(deviationReports.length)]);
-      sections.push([t("status.hookMessages.export.uniqueFlightsWithDeviations"), String(new Set(deviationReports.map(r => r.mission_id).filter(Boolean)).size)]);
-      sections.push([t("status.hookMessages.export.uniquePilots"), String(new Set(deviationReports.map(r => r.reported_by).filter(Boolean)).size)]);
-      sections.push([]);
-      sections.push([t("status.hookMessages.export.mainCategoryHeader"), t("status.hookMessages.export.countHeader")]);
-      Object.entries(deviationReports.reduce((acc: Record<string, number>, r) => {
-        const root = r.category_path[0] || t("status.hookMessages.export.unknownCategory");
-        acc[root] = (acc[root] || 0) + 1;
-        return acc;
-      }, {})).forEach(([name, value]) => sections.push([name, String(value)]));
-      sections.push([]);
-      sections.push([t("status.hookMessages.export.dateHeader"), t("status.hookMessages.export.pilotHeader"), t("status.hookMessages.export.categoryHeader"), t("status.hookMessages.export.commentHeader")]);
-      deviationReports.forEach(r => sections.push([
-        format(new Date(r.created_at), "dd.MM.yyyy HH:mm", { locale: nb }),
-        r.reporter_name || t("status.hookMessages.export.unknown"),
-        r.category_path.join(" > "),
-        r.comment || "",
-      ]));
-
-      const bom = "\uFEFF";
-      const csvContent = bom + sections.map(row => row.join(sep)).join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
-      const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`;
-
-      // Upload to Supabase Storage + documents table
       const { data: profile } = await supabase
         .from("profiles")
-        .select("company_id, full_name")
+        .select("company_id, full_name, companies(navn)")
         .eq("id", user?.id)
         .single();
 
       if (!profile?.company_id) throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
+
+      const reportCompanyName = (profile as any)?.companies?.navn || t("status.hookMessages.unknownCompany");
+      const csvContent = createStatusCsv(buildStatusExportSections(getStatusReportData(reportCompanyName), t));
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`;
 
       const filePath = `${profile.company_id}/${fileName}`;
       const { error: uploadError } = await supabase.storage
@@ -1039,13 +850,10 @@ const Status = () => {
 
       if (uploadError) throw uploadError;
 
-      const periodLabel = timePeriod === "month" ? t("status.page.periodMonth") :
-                          timePeriod === "quarter" ? t("status.page.periodQuarter") : t("status.page.periodYear");
-
       await supabase.from("documents").insert({
-        tittel: t("status.hookMessages.export.csvTitleSuffix", { period: periodLabel }),
+        tittel: t("status.hookMessages.export.csvTitleSuffix", { period: getReportPeriodLabel() }),
         kategori: t("status.hookMessages.export.docCategory"),
-        beskrivelse: t("status.hookMessages.export.csvDescription", { date: format(new Date(), "dd.MM.yyyy 'kl.' HH:mm") }),
+        beskrivelse: t("status.hookMessages.export.csvDescription", { date: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }) }),
         fil_navn: fileName,
         fil_url: filePath,
         fil_storrelse: blob.size,
@@ -1087,50 +895,8 @@ const Status = () => {
       const reportCompanyId = profile?.company_id;
       if (!reportCompanyId) throw new Error(t("status.hookMessages.couldNotFetchCompanyInfo"));
 
-      const periodLabel = timePeriod === "custom" && customDateFrom && customDateTo
-        ? `${format(customDateFrom, "dd.MM.yyyy")} – ${format(customDateTo, "dd.MM.yyyy")}`
-        : timePeriod === "month"
-          ? t("status.page.periodMonth")
-          : timePeriod === "quarter"
-            ? t("status.page.periodQuarter")
-            : t("status.page.periodYear");
-
-      const monthsToShow = getMonthsToShow();
-      const { endDate } = getDateFilter();
-      const deviationMonthCounts = new Map<string, number>();
-      for (let i = monthsToShow - 1; i >= 0; i -= 1) {
-        deviationMonthCounts.set(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }), 0);
-      }
-      deviationReports.forEach((report) => {
-        const key = format(new Date(report.created_at), "MMM yyyy", { locale: dateLocale });
-        if (deviationMonthCounts.has(key)) deviationMonthCounts.set(key, (deviationMonthCounts.get(key) || 0) + 1);
-      });
-
-      const pdfBlob = await generateStatusPdf({
-        companyName: reportCompanyName,
-        language: i18n.language?.startsWith("en") ? "en" : "no",
-        periodLabel,
-        generatedLabel: format(new Date(), i18n.language?.startsWith("en") ? "dd.MM.yyyy HH:mm" : "dd.MM.yyyy 'kl.' HH:mm", { locale: dateLocale }),
-        kpis: { ...kpiData, completionRate },
-        missionsByMonth,
-        missionsByStatus,
-        missionsByRisk,
-        operationTypes: operationTypeStats,
-        unplannedByMonth,
-        incidentsByMonth,
-        incidentsByMainCause,
-        incidentsByContributingCause,
-        incidentsBySeverity,
-        daysSinceLastSevere,
-        droneStatus,
-        equipmentStatus,
-        flightHoursByDrone,
-        expiringDocs,
-        deviationEnabled: companySettings.deviation_report_enabled,
-        flightLogsCount,
-        deviationsByMonth: Array.from(deviationMonthCounts, ([month, count]) => ({ month, count })),
-        deviationReports,
-      }, t);
+      const periodLabel = getReportPeriodLabel();
+      const pdfBlob = await generateStatusPdf(getStatusReportData(reportCompanyName), t);
 
       const fileName = `statistikk-rapport-${format(new Date(), "yyyy-MM-dd-HHmmss")}.pdf`;
       const filePath = `${reportCompanyId}/${fileName}`;
