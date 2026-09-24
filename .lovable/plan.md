@@ -1,50 +1,65 @@
-# Konsekvent bruk av pilotkompetanse i risikovurderingen
+# Enkel, godtroende pilotkompetanse-sjekk i risikovurderingen
 
-## Slik fungerer det i dag
+## Prinsipp
 
-- Risikovurderingen henter alle rader i kompetanselisten for tildelte piloter og deler dem kun i «gyldig» og «utløpt» (utløpsdato i fortiden).
-- Eneste harde regel er: null gyldige rader = no-go. Én hvilken som helst rad — også en fullført AviSafe-modul eller en veiledet tour — fjerner det kravet.
-- Hva kompetansen faktisk er (A2, STS, BVLOS) vurderes bare av AI-en ut fra fritekst i prompten, uten fast regel. Det gir tilfeldig vekting og ingen forutsigbar no-go.
-- Dataene er rotete i praksis: 45 «A1/A3», 22 «A2», 21 «STS», men også «A1A3», «A1/A3 A2 STS», «A1, A3 », kurs- og tour-rader i samme liste.
+Dagens skjønnsmessige AI-vurdering av pilotkompetanse byttes med en enkel, deterministisk sjekk: pilotens rang på en fast kompetansestige mot rangen som dronens C-klasse (og evt. BVLOS) krever. Målet er færrest mulig unødvendige no-go, samtidig som reelle lovpålagte krav håndheves.
 
-## Hva vi bygger
+Dagens situasjon (bekreftet): eneste harde regel er «null gyldige rader = no-go», der også kursmoduler og veiledet tour teller. Alt annet vurderes fritt av AI-en.
 
-En fast kompetansemodell i systemet (ingen ny database-tabell, ingen migrasjon) som består av to deler:
+## 1. Rangstige for personlig kompetanse
 
-**1. Gjenkjenning (normalisering)**
-Tekstgjenkjenning som oversetter fritekst i navn/beskrivelse til faste koder: A1/A3, A2, STS-01, STS-02, BVLOS, operatørgodkjenning (RO/LT), instruktør, bemannet flysertifikat. Håndterer skrivevarianter (A1A3, «A1/A3 drone», «A1/A3, A2», «A1/A3 A2 STS» gir tre koder).
+Høyere dekker automatisk lavere:
 
-Hva som teller:
-- Teller: type Sertifikat, Lisens, Godkjenning, Kompetanse, Utdanning — og type Kurs når navnet gjenkjennes som et ekte sertifikat (mange registrerer A2/STS som «Kurs»).
-- Teller ikke: veiledet tour og AviSafe-interne kursmoduler. De listes som tilleggsinformasjon i rapporten, men kan aldri oppfylle et krav.
-- Utløpt dato = ikke gyldig. Uten dato = gyldig (som i dag).
+| Rang | Kode |
+| --- | --- |
+| 1 | A1/A3 |
+| 2 | A2 |
+| 3 | STS-01 |
+| 4 | STS-02 |
 
-**2. Kravmatrise (fast for alle selskaper)**
-Kravene utledes deterministisk av operasjonen, ikke av AI-en:
+- Effektiv rang = høyeste gyldige kode piloten har. Utløpt teller ikke; uten dato regnes som gyldig.
+- Gjenkjenning av skrivevarianter: «A1A3», «A1, A3», «A1/A3 drone», «A1/A3, A2», «A1/A3 A2 STS» osv. Ren «STS» uten nummer tolkes som STS-01 (rang 3).
+- Teller: Sertifikat, Lisens, Godkjenning, Kompetanse, Utdanning, og Kurs når navnet gjenkjennes som en av kodene over.
+- Teller ikke: AviSafe-kursmoduler og veiledet tour — vises som «teller ikke som formell kompetanse».
+- Instruktør og bemannet flysertifikat: kun tilleggsinfo.
 
-| Operasjonens egenskap | Krav | Nivå |
-| --- | --- | --- |
-| Alle oppdrag | Minst ett gyldig droneførerbevis | Lovpålagt |
-| Nær uinvolverte / bebygd | A2 eller høyere (STS/spesifikk) | Lovpålagt |
-| Spesifikk kategori / SORA / over 120 m | STS eller operatørgodkjenning i spesifikk kategori | Lovpålagt |
-| BVLOS | STS-02 eller dokumentert BVLOS-kompetanse | Lovpålagt |
-| Nattflyging | Gyldig bevis + selskapets nattregel | Internt |
-| Utløpt kompetanse som ellers dekker kravet | — | Lovpålagt (regnes som manglende) |
+## 2. Krevd rang
 
-Nivå styrer utfallet: **lovpålagt mangler = hard stop (no-go)**, internt/anbefalt mangler = advarsel og scoretrekk under pilotkompetanse. Dette legges inn i den deterministiske hard stop-motoren, ikke i AI-prompten — på linje med vind, temperatur og utstyrsstatus.
+- C0, C1, C3, C4: rang 1.
+- C2: rang 2 kun når operasjonen er nær uinvolverte/bebygd (eksisterende valg «befolket» eller «folkemengde» i risikovurderingen), ellers rang 1.
+- BVLOS: rang 4, med mindre en gyldig operatørgodkjenning dekker operasjonen.
+- C3/C4 kobles aldri til A2-krav.
 
-## Hva brukeren ser
+## 3. Operatørgodkjenning (egen sjekk)
 
-- Rapportens pilotdel viser: hvilke krav operasjonen utløser, hvilke som er dekket (med kilde-rad og utløpsdato), og hvilke som mangler.
-- Ved manglende lovpålagt krav står no-go-begrunnelsen konkret: «Operasjonen er nær uinvolverte personer og krever A2; piloten har ingen gyldig A2.»
-- Rader som ikke teller (tour/interne moduler) vises som «teller ikke som formell kompetanse».
-- Piloten kan ikke «kompensere» manglende bevis med erfaring — samme prinsipp som for vær.
+Det finnes i dag ikke et eget felt for operatørgodkjenning på selskapet. Godkjenningen gjenkjennes derfor fra registrerte godkjenninger med tekst som RO1/RO2/RO3, LT, «operatørgodkjenning» eller «driftstillatelse» (finnes allerede i data, f.eks. «Operatør godkjenning LT», «RO2/RO3»). Gyldig (ikke utløpt) godkjenning oppfyller BVLOS-kravet uavhengig av pilotens personlige rang, og vises i rapporten som egen kilde.
+
+## 4. Godtroende-regel
+
+Krav oppfylt hvis pilotens rang ≥ krevd rang, eller gyldig operatørgodkjenning dekker operasjonstypen. Ingen andre kryssjekker.
+
+Regelmotoren gir aldri no-go på noe den ikke kan tolke. Da faller vurderingen tilbake til AI som i dag (uten hard stop):
+- Kompetanserader som ikke gjenkjennes.
+- Drone uten registrert C-klasse (29 droner) eller med C5/C6 (3 droner).
+
+## 5. Hva brukeren ser i rapporten
+
+- Krevd rang (C-klasse + evt. nærhet/BVLOS) mot pilotens effektive rang.
+- Om kravet dekkes av operatørgodkjenning, vises det som egen kilde.
+- Ved manglende dekning: konkret hard stop-tekst, f.eks. «Dronen er C2 og flys nær uinvolverte, som krever A2; piloten har kun A1/A3, og ingen operatørgodkjenning dekker operasjonen.»
+- Ved flere piloter: kravet må dekkes av minst én tildelt pilot.
+
+## 6. Ikke i denne omgang
+
+- Ingen selskapsspesifikk overstyring av kravene.
+- Ingen hard stop på uklassifisert eller usikker data.
+- Ingen databaseendringer.
 
 ## Teknisk
 
-- Ny `supabase/functions/ai-risk-assessment/competency.ts`: `normalizeCompetency()`, `deriveRequiredCompetencies(missionContext)`, `evaluateCompetencyCoverage()` — rene funksjoner med Deno-tester (`competency_test.ts`), etter samme mønster som `ipPrecipitation.ts` og `hardStops.ts`.
-- `hardStops.ts`: erstatt `validCompetencyCount === 0` med resultatet fra kompetansemotoren; nye koder `competency_missing_a2`, `competency_missing_sts`, `competency_missing_bvlos`, `competency_none`, alle i kategorien `pilot_experience`, NO/EN-tekster.
-- `index.ts`: send strukturert `competencyAssessment` (krav, dekket, mangler, ignorert) inn i modellens datasett i stedet for dagens flate lister.
-- `prompts.ts`: fjern de skjønnsmessige kompetansereglene (punkt 4 i hard stop-listen og STS-02-regelen) og erstatt med «kompetansekravene er allerede avgjort — gjengi dem, ikke overpr\u00f8v dem».
-- Ingen databaseendringer og ingen endring i hvordan kompetanse registreres. Validering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check` + Deno-tester.
-- i18n for nye rapporttekster i `no.json`/`en.json`.
+- Ny `supabase/functions/ai-risk-assessment/competency.ts` med rene funksjoner: `classifyCompetency()`, `effectivePilotRank()`, `detectOperatorApproval()`, `requiredRank({ droneClass, proximityToPeople, isVlos })`, `evaluateCompetency()` som returnerer `{ status: 'ok' | 'missing' | 'undetermined', required, pilotRank, coveredBy, ignored, unclassified }`.
+- `competency_test.ts` (Deno): C0–C4, C2 med/uten nærhet, BVLOS med/uten godkjenning, utløpt, uten dato, «STS» uten nummer, tour/kurs ignorert, ukjent C-klasse → undetermined.
+- `hardStops.ts`: erstatt `validCompetencyCount === 0`-regelen med `status === 'missing'` (kode `pilot_competency_rank`, NO/EN). `pilot_missing` (ingen pilot tildelt) beholdes.
+- `index.ts`: kall motoren med `drones.klasse`, `pilotInputs.proximityToPeople` og `isVlos`; send `competencyAssessment` til modellen i stedet for de flate listene.
+- `prompts.ts` (NO/EN): fjern punkt 4 i hard stop-listen og STS-02-regelen; ny regel «kompetansesjekken er avgjort når status er ok/missing — gjengi den; bare ved undetermined skal du vurdere selv, og aldri som hard stop».
+- Deploy `ai-risk-assessment`; validering med Deno-tester og `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
