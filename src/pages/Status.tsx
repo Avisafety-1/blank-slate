@@ -53,6 +53,7 @@ import * as XLSX from "xlsx";
 import { summarizeUnplanned } from "@/lib/unplannedFlights";
 import { generateStatusPdf, type StatusPdfData } from "@/lib/statusPdfExport";
 import { buildStatusExportSections, createStatusCsv, createStatusWorkbook } from "@/lib/statusTabularExport";
+import { buildFlownMissionRiskDistribution, type RiskDistributionItem } from "@/lib/statusRiskDistribution";
 
 
 interface KPIData {
@@ -107,7 +108,7 @@ const Status = () => {
 
   const [missionsByMonth, setMissionsByMonth] = useState<MonthData[]>([]);
   const [missionsByStatus, setMissionsByStatus] = useState<StatusData[]>([]);
-  const [missionsByRisk, setMissionsByRisk] = useState<StatusData[]>([]);
+  const [missionsByRisk, setMissionsByRisk] = useState<RiskDistributionItem[]>([]);
   const [incidentsByMonth, setIncidentsByMonth] = useState<MonthData[]>([]);
   const [incidentsByMainCause, setIncidentsByMainCause] = useState<StatusData[]>([]);
   const [incidentsByContributingCause, setIncidentsByContributingCause] = useState<StatusData[]>([]);
@@ -435,7 +436,7 @@ const Status = () => {
     
     const { data: missions } = await supabase
       .from("missions")
-      .select("tidspunkt, status, risk_nivå")
+      .select("tidspunkt, status")
       .gte("tidspunkt", startDate.toISOString())
       .lte("tidspunkt", endDate.toISOString()) as any;
 
@@ -471,14 +472,51 @@ const Status = () => {
       Object.entries(statusCounts).map(([name, value]) => ({ name, value }))
     );
 
-    // Missions by risk level
-    const riskCounts: { [key: string]: number } = {};
-    missions.forEach((m: any) => {
-      riskCounts[m.risk_nivå] = (riskCounts[m.risk_nivå] || 0) + 1;
-    });
-    setMissionsByRisk(
-      Object.entries(riskCounts).map(([name, value]) => ({ name, value }))
-    );
+    const flownMissionIds = new Set<string>();
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data: flightLogs, error } = await supabase
+        .from("flight_logs")
+        .select("mission_id")
+        .not("mission_id", "is", null)
+        .gte("flight_date", startDate.toISOString())
+        .lte("flight_date", endDate.toISOString())
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      (flightLogs || []).forEach((log) => {
+        if (log.mission_id) flownMissionIds.add(log.mission_id);
+      });
+      if (!flightLogs || flightLogs.length < pageSize) break;
+    }
+
+    const missionIds = Array.from(flownMissionIds);
+    const assessments: Array<{
+      mission_id: string;
+      overall_score: number | string | null;
+      recommendation: string | null;
+      created_at: string;
+    }> = [];
+    for (let offset = 0; offset < missionIds.length; offset += 200) {
+      const chunk = missionIds.slice(offset, offset + 200);
+      for (let from = 0; ; from += pageSize) {
+        const { data: rows, error } = await supabase
+          .from("mission_risk_assessments")
+          .select("mission_id, overall_score, recommendation, created_at")
+          .in("mission_id", chunk)
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        assessments.push(...(rows || []));
+        if (!rows || rows.length < pageSize) break;
+      }
+    }
+
+    setMissionsByRisk(buildFlownMissionRiskDistribution(missionIds, assessments, {
+      go: { name: t("status.metrics.riskGo"), scoreRange: t("status.metrics.riskGoRange") },
+      caution: { name: t("status.metrics.riskCaution"), scoreRange: t("status.metrics.riskCautionRange") },
+      "no-go": { name: t("status.metrics.riskNoGo"), scoreRange: t("status.metrics.riskNoGoRange") },
+      "not-assessed": { name: t("status.metrics.riskNotAssessed"), scoreRange: t("status.metrics.riskNotAssessedRange") },
+    }));
   };
 
   const fetchIncidentStatistics = async () => {
@@ -1267,6 +1305,7 @@ const Status = () => {
             <h2 className="text-xl font-semibold mb-4 text-foreground">
               {t("status.metrics.missionsByRisk")}
             </h2>
+            <p className="mb-3 text-sm text-muted-foreground">{t("status.metrics.missionsByRiskScale")}</p>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={missionsByRisk}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -1279,7 +1318,14 @@ const Status = () => {
                     borderRadius: "8px",
                   }}
                 />
-                <Bar dataKey="value" fill={COLORS.primary} name={t("status.metrics.countLegend")} />
+                <Bar dataKey="value" name={t("status.metrics.countLegend")}>
+                  {missionsByRisk.map((entry) => (
+                    <Cell
+                      key={entry.key}
+                      fill={entry.key === "go" ? COLORS.success : entry.key === "caution" ? COLORS.warning : entry.key === "no-go" ? COLORS.destructive : COLORS.muted}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </GlassCard>

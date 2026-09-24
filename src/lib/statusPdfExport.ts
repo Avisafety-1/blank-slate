@@ -2,6 +2,7 @@ import autoTable from "jspdf-autotable";
 import type { TFunction } from "i18next";
 import avisafeLogoUrl from "@/assets/avisafe-logo-text.png";
 import { createPdfDocument, getPdfFontName, sanitizeForPdf, setFontStyle } from "@/lib/pdfUtils";
+import type { RiskDistributionItem } from "@/lib/statusRiskDistribution";
 
 type NamedValue = { name: string; value: number };
 type MonthValue = { month: string; count: number };
@@ -25,7 +26,7 @@ export interface StatusPdfData {
   };
   missionsByMonth: MonthValue[];
   missionsByStatus: NamedValue[];
-  missionsByRisk: NamedValue[];
+  missionsByRisk: RiskDistributionItem[];
   operationTypes: {
     counts: NamedValue[];
     hours: NamedValue[];
@@ -157,6 +158,50 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       setFontStyle(doc, "normal");
       const label = doc.splitTextToSize(safeText(item.name), Math.max(slot - 1, 8)).slice(0, 2);
       doc.text(label, barX + barWidth / 2, chartY + chartHeight + 4, { align: "center" });
+    });
+  };
+
+  const drawRiskChart = (values: RiskDistributionItem[], x: number, y: number, width: number, height: number) => {
+    drawPanel(x, y, width, height);
+    doc.setTextColor(...PDF_COLORS.text);
+    doc.setFontSize(10);
+    setFontStyle(doc, "bold");
+    doc.text(safeText(t("status.metrics.missionsByRisk")), x + 5, y + 7);
+    doc.setFontSize(6.5);
+    setFontStyle(doc, "normal");
+    doc.setTextColor(...PDF_COLORS.muted);
+    doc.text(safeText(t("status.metrics.missionsByRiskScale")), x + 5, y + 12);
+    const chartX = x + 8;
+    const chartY = y + 17;
+    const chartWidth = width - 14;
+    const chartHeight = height - 30;
+    if (values.length === 0 || values.every((item) => item.value === 0)) {
+      drawNoData(x, chartY, width, chartHeight);
+      return;
+    }
+    const max = Math.max(...values.map((item) => item.value), 1);
+    const slot = chartWidth / Math.max(values.length, 1);
+    const barWidth = Math.max(5, Math.min(14, slot * 0.5));
+    const colors: Record<RiskDistributionItem["key"], PdfColor> = {
+      go: PDF_COLORS.success,
+      caution: PDF_COLORS.warning,
+      "no-go": PDF_COLORS.destructive,
+      "not-assessed": PDF_COLORS.muted,
+    };
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight);
+    values.forEach((item, index) => {
+      const barHeight = (item.value / max) * Math.max(1, chartHeight - 7);
+      const barX = chartX + slot * index + (slot - barWidth) / 2;
+      const barY = chartY + chartHeight - barHeight;
+      doc.setFillColor(...colors[item.key]);
+      doc.rect(barX, barY, barWidth, barHeight, "F");
+      doc.setTextColor(...PDF_COLORS.text);
+      doc.setFontSize(7);
+      setFontStyle(doc, "bold");
+      doc.text(String(item.value), barX + barWidth / 2, Math.max(chartY + 3, barY - 1.5), { align: "center" });
+      setFontStyle(doc, "normal");
+      doc.text(doc.splitTextToSize(safeText(item.name), Math.max(slot - 2, 15)).slice(0, 2), barX + barWidth / 2, chartY + chartHeight + 4, { align: "center" });
     });
   };
 
@@ -381,7 +426,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
 
   drawBarChart(data.missionsByMonth.map((item) => ({ name: item.month, value: item.count })), margin, 94, contentWidth, 43, t("status.hookMessages.pdf.missionsByMonth"));
   drawDonutChart(data.missionsByStatus, margin, 144, halfWidth, 52, t("status.hookMessages.pdf.missionsByStatus"));
-  drawBarChart(data.missionsByRisk, margin + halfWidth + gap, 144, halfWidth, 52, t("status.metrics.missionsByRisk"), PDF_COLORS.warning);
+  drawRiskChart(data.missionsByRisk, margin + halfWidth + gap, 144, halfWidth, 52);
 
   // Page 2: operation types and planning quality.
   addPageHeading(t("status.hookMessages.pdf.operationsHeading"));
