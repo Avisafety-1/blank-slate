@@ -291,6 +291,38 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     });
   };
 
+  const drawCompactTable = (
+    headers: string[],
+    rows: Array<Array<string | number>>,
+    x: number,
+    y: number,
+    width: number,
+    columnWidths?: number[],
+  ) => {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: x, right: pageWidth - x - width },
+      tableWidth: width,
+      head: [headers.map(safeText)],
+      body: rows.map((row) => row.map(safeText)),
+      theme: "grid",
+      styles: {
+        font: getPdfFontName(),
+        fontSize: 5.5,
+        cellPadding: 0.45,
+        minCellHeight: 2.5,
+        overflow: "ellipsize",
+        textColor: PDF_COLORS.text,
+        lineColor: PDF_COLORS.border,
+        lineWidth: 0.1,
+      },
+      headStyles: { fillColor: PDF_COLORS.primary, fontStyle: "bold", fontSize: 5.5 },
+      alternateRowStyles: { fillColor: PDF_COLORS.surface },
+      columnStyles: Object.fromEntries((columnWidths || []).map((cellWidth, index) => [index, { cellWidth }])),
+      pageBreak: "avoid",
+    });
+  };
+
   const addPageHeading = (title: string) => {
     doc.addPage();
     sectionTitle(title, 15);
@@ -352,21 +384,53 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
 
   // Page 2: operation types and planning quality.
   addPageHeading(t("status.hookMessages.pdf.operationsHeading"));
-  drawDonutChart(data.operationTypes.counts, margin, 23, halfWidth, 55, t("status.metrics.operationTypeDistribution"));
-  drawHorizontalBars(data.operationTypes.hours, margin + halfWidth + gap, 23, halfWidth, 55, t("status.metrics.hoursPerOperationType"), PDF_COLORS.success);
+  drawDonutChart(data.operationTypes.counts, margin, 23, halfWidth, 47, t("status.metrics.operationTypeDistribution"));
+  drawHorizontalBars(data.operationTypes.hours, margin + halfWidth + gap, 23, halfWidth, 47, t("status.metrics.hoursPerOperationType"), PDF_COLORS.success);
+  const operationNames = Array.from(new Set([
+    ...data.operationTypes.counts.map((item) => item.name),
+    ...data.operationTypes.hours.map((item) => item.name),
+  ]));
+  drawCompactTable(
+    [t("status.hookMessages.export.operationTypeHeader"), t("status.hookMessages.export.countHeader"), t("status.hookMessages.export.flightHoursHeader")],
+    operationNames.map((name) => [
+      name,
+      data.operationTypes.counts.find((item) => item.name === name)?.value || 0,
+      (data.operationTypes.hours.find((item) => item.name === name)?.value || 0).toFixed(2),
+    ]),
+    margin,
+    74,
+    contentWidth,
+    [contentWidth * 0.5, contentWidth * 0.25, contentWidth * 0.25],
+  );
   drawStackedChart(data.operationTypes.monthly as unknown as Array<Record<string, string | number>>, [
     { key: "VLOS", label: "VLOS", color: PDF_COLORS.success },
     { key: "BVLOS", label: "BVLOS", color: PDF_COLORS.destructive },
     { key: "EVLOS", label: "EVLOS", color: PDF_COLORS.warning },
-  ], margin, 85, contentWidth, 48, t("status.metrics.operationTypeByMonth"));
+  ], margin, 96, halfWidth, 43, t("status.metrics.operationTypeByMonth"));
   drawStackedChart(data.unplannedByMonth as unknown as Array<Record<string, string | number>>, [
     { key: "planned", label: t("status.metrics.plannedLegend"), color: PDF_COLORS.success },
     { key: "unplanned", label: t("status.metrics.unplannedLegend"), color: PDF_COLORS.warning },
-  ], margin, 140, contentWidth, 48, t("status.metrics.unplannedByMonth"));
+  ], margin + halfWidth + gap, 96, halfWidth, 43, t("status.metrics.unplannedByMonth"));
+  drawCompactTable(
+    [t("status.hookMessages.export.monthHeader"), "VLOS", "BVLOS", "EVLOS"],
+    data.operationTypes.monthly.map((item) => [item.month, item.VLOS, item.BVLOS, item.EVLOS]),
+    margin,
+    143,
+    halfWidth,
+    [halfWidth * 0.4, halfWidth * 0.2, halfWidth * 0.2, halfWidth * 0.2],
+  );
+  drawCompactTable(
+    [t("status.hookMessages.export.monthHeader"), t("status.hookMessages.export.plannedFlights"), t("status.hookMessages.export.unplannedFlights")],
+    data.unplannedByMonth.map((item) => [item.month, item.planned, item.unplanned]),
+    margin + halfWidth + gap,
+    143,
+    halfWidth,
+    [halfWidth * 0.46, halfWidth * 0.27, halfWidth * 0.27],
+  );
   doc.setFontSize(7.5);
   doc.setTextColor(...PDF_COLORS.muted);
   setFontStyle(doc, "normal");
-  doc.text(safeText(t("status.metrics.unplannedExplainer")), margin + 5, 193, { maxWidth: contentWidth - 10 });
+  doc.text(safeText(t("status.metrics.unplannedExplainer")), margin + 5, 194, { maxWidth: contentWidth - 10 });
 
   // Page 3: incidents.
   addPageHeading(t("status.hookMessages.pdf.incidentsHeading"));
