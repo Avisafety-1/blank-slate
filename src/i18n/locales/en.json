@@ -3598,6 +3598,7 @@
       "save": "Save",
       "saving": "Saving...",
       "noEventsThisDay": "No events this day",
+      "eventsForDate": "Events for {{date}}",
       "markAsCompleted": "Mark as completed",
       "missionCreated": "Mission created!",
       "documentSaved": "Document saved!",

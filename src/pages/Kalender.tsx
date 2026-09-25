@@ -400,7 +400,6 @@ export default function Kalender() {
 
   const handleDateClick = (clickedDate: Date) => {
     setSelectedDate(clickedDate);
-    setDialogOpen(true);
   };
 
   const handleMarkMaintenanceComplete = async (event: CalendarEvent, e: React.MouseEvent) => {
@@ -709,9 +708,10 @@ export default function Kalender() {
       <div className="relative z-10 w-full">
         {/* Main Content */}
         <main className="w-full px-3 sm:px-4 py-3 sm:py-5">
-          <Tabs defaultValue="month" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="bg-card/50 backdrop-blur-sm">
+          <Tabs defaultValue="month" className="w-full font-operational">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-timeline-grid bg-timeline-surface/90 p-2 shadow-sm backdrop-blur-sm">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <TabsList className="h-9 bg-timeline-surface-strong p-0.5">
                 <TabsTrigger value="month" className="gap-1.5">
                   <LayoutGrid className="w-4 h-4" />
                   <span className="hidden sm:inline">{t('pages.calendar.monthlyView')}</span>
@@ -720,87 +720,89 @@ export default function Kalender() {
                   <GanttChart className="w-4 h-4" />
                   <span className="hidden sm:inline">{t('pages.calendar.resourceCalendar')}</span>
                 </TabsTrigger>
-              </TabsList>
+                </TabsList>
+                <div className="hidden h-7 w-px bg-timeline-grid lg:block" />
+                <div className="flex h-9 max-w-full items-center gap-3 overflow-x-auto px-1 text-[11px] text-muted-foreground" aria-label={t('pages.calendar.colorLegend')}>
+                  {[
+                    { type: 'Oppdrag', label: t('pages.calendar.mission') },
+                    { type: 'Hendelse', label: t('pages.calendar.incident') },
+                    { type: 'Dokument', label: t('pages.calendar.document') },
+                    { type: 'Vedlikehold', label: t('pages.calendar.maintenance') },
+                    { type: 'Nyhet', label: t('pages.calendar.news') },
+                    { type: 'Annet', label: t('pages.calendar.other') },
+                  ].map((item) => (
+                    <span key={item.type} className="flex shrink-0 items-center gap-1.5">
+                      <span className={cn("h-2 w-2 rounded-full", getEventDotColor(item.type))} />
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex h-9 items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 gap-2" onClick={() => setExportDialogOpen(true)}>
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('pages.calendar.synchronize')}</span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="h-9 gap-2">
+                      <Plus className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t('pages.calendar.addEntry')}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>{t('pages.calendar.mission')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>{t('pages.calendar.incident')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>{t('pages.calendar.document')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>{t('pages.calendar.news')}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleAddEntry('annet')}>{t('pages.calendar.other')}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             <TabsContent value="month">
-              <div className="flex flex-col lg:flex-row gap-6">
-                {/* Calendar */}
-                <div className="flex-1 bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-6">
-                  <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-md border border-timeline-grid bg-timeline-surface shadow-sm">
+                  <div className="flex items-center justify-between gap-3 border-b border-timeline-grid bg-timeline-surface-strong/70 px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                      <h2 className="text-xl sm:text-2xl font-semibold">{t('pages.calendar.monthlyView')}</h2>
-                    </div>
-
-                    <div className="flex flex-row gap-2">
-                      <Button 
-                        variant="outline" 
-                        size={isMobile ? "sm" : "default"}
-                        className="gap-2"
-                        onClick={() => setExportDialogOpen(true)}
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">{t('pages.calendar.synchronize')}</span>
-                      </Button>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size={isMobile ? "sm" : "default"} className="gap-2">
-                            <Plus className="w-4 h-4" />
-                            <span className="hidden sm:inline">{t('pages.calendar.addEntry')}</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAddEntry('oppdrag')}>
-                            {t('pages.calendar.mission')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddEntry('hendelse')}>
-                            {t('pages.calendar.incident')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddEntry('dokument')}>
-                            {t('pages.calendar.document')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddEntry('nyhet')}>
-                            {t('pages.calendar.news')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAddEntry('annet')}>
-                            {t('pages.calendar.other')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <CalendarIcon className="h-5 w-5 text-primary" />
+                      <h2 className="font-display text-base font-semibold">{format(month, "MMMM yyyy", { locale: dateLocale })}</h2>
                     </div>
                   </div>
 
                   <Calendar
+                    mode="single"
+                    selected={selectedDate || undefined}
                     month={month}
                     onMonthChange={setMonth}
                     onDayClick={handleDateClick}
                     locale={dateLocale}
-                    className={cn("rounded-md border-0 pointer-events-auto w-full")}
+                    className="w-full rounded-none border-0 p-0 pointer-events-auto"
                     classNames={{
-                      months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full",
-                      month: "space-y-4 w-full",
-                      caption: "flex justify-center pt-1 relative items-center",
-                      caption_label: "text-lg font-medium",
-                      nav: "space-x-1 flex items-center",
+                      months: "flex w-full flex-col",
+                      month: "w-full space-y-0",
+                      caption: "flex h-11 justify-center relative items-center border-b border-timeline-grid",
+                      caption_label: "hidden",
+                      nav: "space-x-1 flex items-center absolute inset-x-3 top-1.5 justify-between",
                       nav_button: cn(
-                        "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100"
+                        "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100"
                       ),
-                      nav_button_previous: "absolute left-1",
-                      nav_button_next: "absolute right-1",
-                      table: "w-full border-collapse space-y-1",
-                      head_row: "flex w-full",
-                      head_cell: "text-muted-foreground rounded-md w-full font-normal text-sm",
-                      row: "flex w-full mt-2",
+                      nav_button_previous: "",
+                      nav_button_next: "",
+                      table: "w-full border-collapse",
+                      head_row: "flex w-full border-b border-timeline-grid bg-timeline-surface-strong/40",
+                      head_cell: "w-full py-2 text-center font-display text-[10px] font-bold uppercase text-muted-foreground",
+                      row: "flex w-full",
                       cell: cn(
-                        "relative p-0 text-center focus-within:relative focus-within:z-20 w-full min-h-[70px] sm:min-h-[120px]",
-                        "[&:has([aria-selected])]:bg-accent"
+                        "relative w-full border-b border-r border-timeline-grid/70 p-0 text-center last:border-r-0 focus-within:z-20",
+                        "[&:has([aria-selected])]:bg-primary/5"
                       ),
                       day: cn(
-                        "h-full w-full p-0 font-normal flex flex-col items-start justify-start rounded-md hover:bg-accent/50 transition-colors min-h-[70px] sm:min-h-[120px]"
+                        "flex h-full min-h-[76px] w-full flex-col items-start justify-start rounded-none p-0 font-normal transition-colors hover:bg-timeline-surface-strong/60 sm:min-h-[126px]"
                       ),
-                      day_selected: "bg-accent text-accent-foreground",
+                      day_selected: "bg-primary/5 text-foreground ring-2 ring-inset ring-primary",
                       day_today: "bg-primary/10 text-primary font-bold",
                       day_outside: "text-muted-foreground opacity-50",
                     }}
@@ -808,16 +810,16 @@ export default function Kalender() {
                       DayContent: ({ date: dayDate }) => {
                         const dayEvents = dayDate ? getEventsForDate(dayDate) : [];
                         return (
-                          <div className="flex flex-col items-start w-full h-full p-1 sm:p-2">
-                            <span className="text-xs sm:text-sm leading-none mb-1">
+                          <div className="flex h-full w-full flex-col items-start p-1.5 sm:p-2">
+                            <span className="mb-1 text-xs leading-none sm:text-sm">
                               {dayDate?.getDate()}
                             </span>
-                            <div className="flex flex-wrap gap-0.5 sm:gap-1 w-full">
+                            <div className="flex w-full flex-wrap gap-0.5 sm:gap-1">
                               {dayEvents.slice(0, isMobile ? 2 : 4).map((event, index) => (
                                 <div
                                   key={event.id || index}
                                   className={cn(
-                                    "w-full text-left text-[9px] sm:text-[10px] leading-tight truncate px-0.5 sm:px-1 py-0.5 rounded border",
+                                    "w-full truncate rounded-sm border border-l-2 px-1 py-0.5 text-left text-[9px] font-medium leading-tight sm:text-[10px]",
                                     getEventBackgroundColor(event.type)
                                   )}
                                   title={event.title}
@@ -841,41 +843,44 @@ export default function Kalender() {
                   />
                 </div>
 
-                {/* Sidebar */}
-                <div className="w-full lg:w-72 space-y-4">
-
-                  {/* Legend */}
-                  <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border p-3 sm:p-4">
-                    <h3 className="text-sm font-semibold mb-3">{t('pages.calendar.colorLegend')}</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.mission')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.incident')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.document')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.maintenance')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.news')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-sm">{t('pages.calendar.other')}</span>
-                      </div>
+                {selectedDate && (
+                  <section className="overflow-hidden rounded-md border border-timeline-grid bg-timeline-surface shadow-sm">
+                    <div className="flex items-center justify-between gap-3 border-b border-timeline-grid bg-timeline-surface-strong/70 px-4 py-3">
+                      <h3 className="font-display text-sm font-semibold capitalize">
+                        {t('pages.calendar.eventsForDate', { date: format(selectedDate, "EEEE d. MMMM", { locale: dateLocale }) })}
+                      </h3>
+                      <Badge variant="secondary" className="rounded-sm">{selectedEvents.length}</Badge>
                     </div>
-                  </div>
-                </div>
-
+                    {selectedEvents.length > 0 ? (
+                      <div className="divide-y divide-timeline-grid/70">
+                        {selectedEvents.map((event, index) => {
+                          const isMaintenanceEvent = event.sourceTable === 'drones' || event.sourceTable === 'equipment' || event.sourceTable === 'drone_accessories';
+                          return (
+                            <div key={event.id || index} className="flex min-h-16 cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-timeline-surface-strong/60" onClick={(e) => handleEventClick(event, e)}>
+                              <span className={cn("h-10 w-1 shrink-0 rounded-full", getEventDotColor(event.type))} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="truncate font-display text-sm font-semibold">{event.title}</h4>
+                                  <Badge variant="outline" className="rounded-sm text-[10px]">{t(`pages.calendar.eventTypes.${event.type}`, { defaultValue: event.type })}</Badge>
+                                </div>
+                                {event.description && <p className="mt-1 truncate text-xs text-muted-foreground">{event.description}</p>}
+                              </div>
+                              {isMaintenanceEvent && (
+                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                  <Switch id={`calendar-list-maintenance-${event.id}`} onCheckedChange={() => handleMarkMaintenanceComplete(event, { stopPropagation: () => {} } as React.MouseEvent)} />
+                                  <Label htmlFor={`calendar-list-maintenance-${event.id}`} className="hidden cursor-pointer text-xs text-muted-foreground sm:block">{t('pages.calendar.markAsCompleted')}</Label>
+                                </div>
+                              )}
+                              <time className="shrink-0 font-mono text-xs text-muted-foreground">{format(event.date, "HH:mm")}</time>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t('pages.calendar.noEventsThisDay')}</p>
+                    )}
+                  </section>
+                )}
               </div>
             </TabsContent>
 

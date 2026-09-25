@@ -3600,6 +3600,7 @@
       "save": "Lagre",
       "saving": "Lagrer...",
       "noEventsThisDay": "Ingen hendelser denne dagen",
+      "eventsForDate": "Hendelser for {{date}}",
       "markAsCompleted": "Marker som utført",
       "missionCreated": "Oppdrag opprettet!",
       "documentSaved": "Dokument lagret!",
