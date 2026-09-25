@@ -86,6 +86,8 @@ const COLORS = {
   muted: "hsl(var(--muted-foreground))",
 };
 
+const MISSION_TYPE_COLORS = ["#0EA5E9", "#22C55E", "#F59E0B", "#A855F7", "#EF4444", "#14B8A6", "#EC4899", "#84CC16", "#6366F1", "#F97316", "#64748B"];
+
 const Status = () => {
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
@@ -127,6 +129,7 @@ const Status = () => {
   }>({ counts: [], hours: [], monthly: [], totalFlights: 0, totalMinutes: 0 });
   const [flightTimeByPilot, setFlightTimeByPilot] = useState<Array<{ name: string; flights: number; minutes: number }>>([]);
   const [flownMissionsByType, setFlownMissionsByType] = useState<Array<{ name: string; value: number }>>([]);
+  const [flownMissionsTypeMonthly, setFlownMissionsTypeMonthly] = useState<Array<Record<string, string | number>>>([]);
   const [pilotsOpen, setPilotsOpen] = useState(false);
   const [expiringDocs, setExpiringDocs] = useState<{ thirtyDays: number; sixtyDays: number; ninetyDays: number }>({
     thirtyDays: 0,
@@ -704,11 +707,11 @@ const Status = () => {
     const { startDate, endDate } = getDateFilter();
     const from = startDate.toISOString().slice(0, 10);
     const to = endDate.toISOString().slice(0, 10);
-    const logs: Array<{ id: string; user_id: string | null; mission_id: string | null; flight_duration_minutes: number | null }> = [];
+    const logs: Array<{ id: string; user_id: string | null; mission_id: string | null; flight_duration_minutes: number | null; flight_date: string }> = [];
     for (let page = 0; ; page += 1) {
       const { data, error } = await supabase
         .from("flight_logs")
-        .select("id, user_id, mission_id, flight_duration_minutes")
+        .select("id, user_id, mission_id, flight_duration_minutes, flight_date")
         .gte("flight_date", from)
         .lte("flight_date", to)
         .order("id")
@@ -738,10 +741,19 @@ const Status = () => {
 
     // Flown missions per company mission type
     const missionIds = Array.from(new Set(logs.map((l) => l.mission_id).filter(Boolean))) as string[];
-    const missionTypes: Array<string | null> = [];
+    const firstFlight = new Map<string, string>();
+    logs.forEach((l) => {
+      if (!l.mission_id) return;
+      const cur = firstFlight.get(l.mission_id);
+      if (!cur || l.flight_date < cur) firstFlight.set(l.mission_id, l.flight_date);
+    });
+    const missionTypes: Array<{ type: string | null; month: string }> = [];
     for (const ids of chunk(missionIds)) {
       const { data } = await supabase.from("missions").select("id, oppdragstype").in("id", ids);
-      (data || []).forEach((m: any) => missionTypes.push(m.oppdragstype));
+      (data || []).forEach((m: any) => missionTypes.push({
+        type: m.oppdragstype,
+        month: format(new Date(firstFlight.get(m.id) || from), "MMM yyyy", { locale: dateLocale }),
+      }));
     }
     let typeSource = companyId;
     if (companyId) {
@@ -757,12 +769,23 @@ const Status = () => {
     const labels: string[] = (typeRows || []).map((r: any) => r.label);
     const counts = new Map<string, number>(labels.map((l) => [l, 0]));
     const other = t("status.missionTypes.other");
-    missionTypes.forEach((type) => {
+    const months: string[] = [];
+    for (let i = getMonthsToShow() - 1; i >= 0; i--) months.push(format(subMonths(endDate, i), "MMM yyyy", { locale: dateLocale }));
+    const monthly = new Map<string, Map<string, number>>(months.map((m) => [m, new Map()]));
+    missionTypes.forEach(({ type, month }) => {
       const key = type && counts.has(type) ? type : other;
       counts.set(key, (counts.get(key) || 0) + 1);
+      if (!monthly.has(month)) monthly.set(month, new Map());
+      const mm = monthly.get(month)!;
+      mm.set(key, (mm.get(key) || 0) + 1);
     });
     if (counts.get(other) === 0) counts.delete(other);
-    setFlownMissionsByType(Array.from(counts, ([name, value]) => ({ name, value })));
+    const typeList = Array.from(counts, ([name, value]) => ({ name, value }));
+    setFlownMissionsByType(typeList);
+    setFlownMissionsTypeMonthly(Array.from(monthly, ([month, mm]) => ({
+      month,
+      ...Object.fromEntries(typeList.map((tp, i) => [`t${i}`, mm.get(tp.name) || 0])),
+    })));
   };
 
   const fetchOperationTypeStatistics = async () => {
@@ -874,6 +897,7 @@ const Status = () => {
       flightHoursByDrone,
       flightTimeByPilot,
       flownMissionsByType,
+      flownMissionsTypeMonthly,
       expiringDocs,
       deviationEnabled: companySettings.deviation_report_enabled,
       flightLogsCount,
@@ -1311,21 +1335,6 @@ const Status = () => {
           </GlassCard>
         </div>
 
-        {/* Flown missions per mission type */}
-        {flownMissionsByType.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-2">{t("status.missionTypes.title")}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {flownMissionsByType.map((item) => (
-                <GlassCard key={item.name} className="p-4">
-                  <p className="text-xs text-muted-foreground truncate" title={item.name}>{item.name}</p>
-                  <p className="text-2xl font-bold text-foreground">{item.value}</p>
-                </GlassCard>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Flight time per pilot */}
         <GlassCard className="p-4">
           <Collapsible open={pilotsOpen} onOpenChange={setPilotsOpen}>
@@ -1617,6 +1626,35 @@ const Status = () => {
           </ResponsiveContainer>
         </GlassCard>
 
+
+        {/* Flown missions per mission type */}
+        <GlassCard className="p-6">
+          <h2 className="text-xl font-semibold mb-1 text-foreground">{t("status.missionTypes.title")}</h2>
+          <p className="text-xs text-muted-foreground mb-4">{t("status.missionTypes.explainer")}</p>
+          {flownMissionsByType.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("status.missionTypes.empty")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={flownMissionsTypeMonthly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                <Legend />
+                {flownMissionsByType.map((tp, i) => (
+                  <Bar
+                    key={tp.name}
+                    dataKey={`t${i}`}
+                    stackId="types"
+                    name={`${tp.name} (${tp.value})`}
+                    fill={MISSION_TYPE_COLORS[i % MISSION_TYPE_COLORS.length]}
+                    radius={i === flownMissionsByType.length - 1 ? [8, 8, 0, 0] : undefined}
+                  />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </GlassCard>
         </>)}
 
         {/* Incident Statistics */}
