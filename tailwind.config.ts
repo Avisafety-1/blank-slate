@@ -79,6 +79,18 @@ export default {
 			info: {
 				DEFAULT: 'hsl(var(--info))',
 				foreground: 'hsl(var(--info-foreground))'
+			},
+			timeline: {
+				surface: 'hsl(var(--timeline-surface))',
+				'surface-strong': 'hsl(var(--timeline-surface-strong))',
+				grid: 'hsl(var(--timeline-grid))',
+				mission: 'hsl(var(--timeline-mission))',
+				'mission-foreground': 'hsl(var(--timeline-mission-foreground))',
+				maintenance: 'hsl(var(--timeline-maintenance))',
+				'maintenance-foreground': 'hsl(var(--timeline-maintenance-foreground))',
+				calendar: 'hsl(var(--timeline-calendar))',
+				'calendar-foreground': 'hsl(var(--timeline-calendar-foreground))',
+				conflict: 'hsl(var(--timeline-conflict))'
 			}
   		},
   		backgroundColor: {
@@ -137,6 +149,8 @@ export default {
 			'collapsible-up': 'collapsible-up 0.2s ease-out'
 		},
   		fontFamily: {
+			operational: ['"DM Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+			display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
   			sans: [
   				'ui-sans-serif',
   				'system-ui',

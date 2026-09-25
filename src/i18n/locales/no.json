@@ -3615,6 +3615,15 @@
         "Annet": "Annet"
       },
       "resourceTimeline": {
+        "title": "Operativ tidslinje",
+        "resources": "Ressurser",
+        "zoom": "Zoom",
+        "previousWeek": "Forrige uke",
+        "nextWeek": "Neste uke",
+        "currentTime": "Nå",
+        "activeOperations": "{{count}} aktive oppdrag",
+        "pendingConflicts": "{{count}} konflikter",
+        "noConflicts": "Ingen konflikter",
         "today": "I dag",
         "week": "Uke {{num}}, {{year}}",
         "drones": "Droner",

@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [x] Ressurskalender: samlet operativ ukestidslinje med fast ressurskolonne, zoom og konfliktmarkering
 - [x] Status: risikovurdering for fløyne oppdrag fordelt på Go/Caution/No-Go/Ikke vurdert i skjerm og eksport
 - [x] Oppdragsdokumenter: kun valgte droner, robust oppdragstypearv og avdelingsdialog for deling
 - [x] IP-rating i dronekatalog og nedbørsvurdering under Vær, uten nye hard stops
