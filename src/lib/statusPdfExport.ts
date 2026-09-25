@@ -587,19 +587,40 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary, halign: "right" },
     columnStyles: { 0: { halign: "left", cellWidth: 26 } },
   });
-  const pilotRows: Array<Array<string | number>> = data.flightTimeByPilot.map((r) => [r.name, r.flights, hm(r.minutes)]);
-  pilotRows.push([t("status.pilotTime.total"), data.flightTimeByPilot.reduce((s, r) => s + r.flights, 0), hm(data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))]);
-  autoTable(doc, {
+  const pilotDataRows: Array<Array<string | number>> = data.flightTimeByPilot.map((r) => [r.name, r.flights, hm(r.minutes)]);
+  const pilotTotalRow: Array<string | number> = [t("status.pilotTime.total"), data.flightTimeByPilot.reduce((s, r) => s + r.flights, 0), hm(data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))];
+  const pilotHead = [[t("status.pilotTime.title"), t("status.pilotTime.flights"), t("status.pilotTime.flightTime")].map(safeText)];
+  const pilotTableBase = {
     startY: ((doc as any).lastAutoTable?.finalY || 120) + 6,
-    margin: { left: margin, right: pageWidth - margin - halfWidth, bottom: 14 },
+    margin: { bottom: 14 },
     tableWidth: halfWidth,
-    head: [[t("status.pilotTime.title"), t("status.pilotTime.flights"), t("status.pilotTime.flightTime")].map(safeText)],
-    body: data.flightTimeByPilot.length ? pilotRows.map((r) => r.map(safeText)) : [[safeText(t("status.pilotTime.empty")), "", ""]],
-    theme: "grid",
+    head: pilotHead,
+    theme: "grid" as const,
     styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
     headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
-    columnStyles: { 1: { halign: "right", cellWidth: 22 }, 2: { halign: "right", cellWidth: 28 } },
-  });
+    columnStyles: { 1: { halign: "right" as const, cellWidth: 22 }, 2: { halign: "right" as const, cellWidth: 28 } },
+  };
+  if (pilotDataRows.length <= 1) {
+    // Few or no pilots: single table including the total row.
+    autoTable(doc, {
+      ...pilotTableBase,
+      margin: { left: margin, right: pageWidth - margin - halfWidth, bottom: 14 },
+      body: (pilotDataRows.length ? [...pilotDataRows, pilotTotalRow] : [[safeText(t("status.pilotTime.empty")), "", ""]]).map((r) => r.map(safeText)),
+    });
+  } else {
+    // Two side-by-side columns; total row goes at the end of the second column.
+    const mid = Math.ceil(pilotDataRows.length / 2);
+    autoTable(doc, {
+      ...pilotTableBase,
+      margin: { left: margin, right: pageWidth - margin - halfWidth, bottom: 14 },
+      body: pilotDataRows.slice(0, mid).map((r) => r.map(safeText)),
+    });
+    autoTable(doc, {
+      ...pilotTableBase,
+      margin: { left: margin + halfWidth + gap, right: margin, bottom: 14 },
+      body: [...pilotDataRows.slice(mid), pilotTotalRow].map((r) => r.map(safeText)),
+    });
+  }
 
   // Optional page 5: deviations. AI analysis is intentionally excluded.
   if (data.deviationEnabled && data.deviationReports.length > 0) {
