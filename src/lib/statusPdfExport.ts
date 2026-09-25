@@ -598,7 +598,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     theme: "grid" as const,
     styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
     headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
-    columnStyles: { 1: { halign: "right", cellWidth: 22 }, 2: { halign: "right", cellWidth: 28 } },
+    columnStyles: { 1: { halign: "right" as const, cellWidth: 22 }, 2: { halign: "right" as const, cellWidth: 28 } },
   };
   if (pilotDataRows.length <= 1) {
     // Few or no pilots: single table including the total row.
