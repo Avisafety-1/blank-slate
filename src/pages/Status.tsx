@@ -764,9 +764,10 @@ const Status = () => {
       }
     }
     const { data: typeRows } = typeSource
-      ? await (supabase as any).from("company_mission_types").select("label, sort_order").eq("company_id", typeSource).order("sort_order").order("label")
+      ? await (supabase as any).from("company_mission_types").select("label, sort_order, is_active").eq("company_id", typeSource).order("sort_order").order("label")
       : { data: [] };
-    const labels: string[] = (typeRows || []).map((r: any) => r.label);
+    // Vis kun aktive oppdragstyper – inaktive typer med logget data havner under "Annet/uten type"
+    const labels: string[] = (typeRows || []).filter((r: any) => r.is_active !== false).map((r: any) => r.label);
     const counts = new Map<string, number>(labels.map((l) => [l, 0]));
     const other = t("status.missionTypes.other");
     const months: string[] = [];
