@@ -781,7 +781,8 @@ const Status = () => {
       mm.set(key, (mm.get(key) || 0) + 1);
     });
     if (counts.get(other) === 0) counts.delete(other);
-    const typeList = Array.from(counts, ([name, value]) => ({ name, value }));
+    // Fjern aktive typer uten loggede oppdrag i perioden
+    const typeList = Array.from(counts, ([name, value]) => ({ name, value })).filter((tp) => tp.value > 0);
     setFlownMissionsByType(typeList);
     setFlownMissionsTypeMonthly(Array.from(monthly, ([month, mm]) => ({
       month,
