@@ -307,10 +307,39 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       drawNoData(x, y + 10, width, height - 10);
       return;
     }
+    // Legend: flow items left-to-right under the title, wrapping to
+    // multiple lines when there are many series.
+    const legendMaxWidth = width - 10;
+    const legendLineHeight = 4.5;
+    doc.setFontSize(7);
+    setFontStyle(doc, "normal");
+    const legendLines: Series[][] = [[]];
+    let lineWidth = 0;
+    series.forEach((item) => {
+      const itemWidth = doc.getTextWidth(safeText(item.label)) + 9;
+      if (lineWidth > 0 && lineWidth + itemWidth > legendMaxWidth) {
+        legendLines.push([]);
+        lineWidth = 0;
+      }
+      legendLines[legendLines.length - 1].push(item);
+      lineWidth += itemWidth;
+    });
+    legendLines.forEach((line, lineIndex) => {
+      let legendX = x + 5;
+      const legendY = y + 12 + lineIndex * legendLineHeight;
+      line.forEach((item) => {
+        doc.setFillColor(...item.color);
+        doc.rect(legendX, legendY - 2.5, 3, 3, "F");
+        doc.setTextColor(...PDF_COLORS.muted);
+        doc.text(safeText(item.label), legendX + 4.5, legendY);
+        legendX += doc.getTextWidth(safeText(item.label)) + 9;
+      });
+    });
+    const legendHeight = legendLines.length * legendLineHeight;
     const chartX = x + 8;
-    const chartY = y + 14;
+    const chartY = y + 10 + legendHeight + 2;
     const chartWidth = width - 16;
-    const chartHeight = height - 28;
+    const chartHeight = y + height - 14 - chartY;
     const totals = rows.map((row) => series.reduce((sum, s) => sum + Number(row[s.key] || 0), 0));
     const max = Math.max(...totals, 1);
     const slot = chartWidth / rows.length;
