@@ -577,7 +577,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
   });
   typeTableRows.push([t("status.pilotTime.total"), ...data.flownMissionsByType.map((tp) => String(tp.value)), String(data.flownMissionsByType.reduce((a, b) => a + b.value, 0))]);
   autoTable(doc, {
-    startY: 99,
+    startY: 27 + typeChartHeight,
     margin: { left: margin, right: margin, bottom: 14 },
     tableWidth: contentWidth,
     head: [typeTableHead.map(safeText)],
