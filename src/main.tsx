@@ -7,6 +7,9 @@ import "./lib/sentry";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { installPublicApiDomain } from "./lib/publicApiDomain";
+
+installPublicApiDomain();
 
 // Auto-reload once when a new service worker takes control (post-deploy freshness).
 // Skip on first-time claim (no prior controller = SW just claimed an uncontrolled page,
