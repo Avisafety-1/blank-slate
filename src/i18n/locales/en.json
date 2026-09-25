@@ -1750,7 +1750,9 @@
       "other": "Other/no type",
       "typeHeader": "Mission type",
       "flownHeader": "Missions flown",
-      "empty": "No missions flown in the period"
+      "empty": "No missions flown in the period",
+      "explainer": "Missions flown per month, split by the company's mission types. A mission counts in the month of its first flight.",
+      "monthlySheet": "Mission type per month"
     },
     "pilotTime": {
       "title": "Flight time per pilot",

@@ -1752,7 +1752,9 @@
       "other": "Annet/uten type",
       "typeHeader": "Oppdragstype",
       "flownHeader": "Fløyne oppdrag",
-      "empty": "Ingen fløyne oppdrag i perioden"
+      "empty": "Ingen fløyne oppdrag i perioden",
+      "explainer": "Fløyne oppdrag per måned, fordelt på selskapets oppdragstyper. Et oppdrag telles i måneden for første flytur.",
+      "monthlySheet": "Oppdragstype per måned"
     },
     "pilotTime": {
       "title": "Flytid per pilot",

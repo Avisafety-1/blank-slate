@@ -137,6 +137,17 @@ export const buildStatusExportSections = (
       headers: [t("status.missionTypes.typeHeader"), t("status.missionTypes.flownHeader")],
       rows: data.flownMissionsByType.map((r) => [r.name, r.value]),
     },
+    {
+      name: t("status.missionTypes.monthlySheet"),
+      headers: [t("status.hookMessages.export.monthHeader"), ...data.flownMissionsByType.map((tp) => tp.name), t("status.pilotTime.total")],
+      rows: [
+        ...data.flownMissionsTypeMonthly.map((row) => {
+          const vals = data.flownMissionsByType.map((_, i) => Number(row[`t${i}`] || 0));
+          return [String(row.month), ...vals, vals.reduce((a, b) => a + b, 0)];
+        }),
+        [t("status.pilotTime.total"), ...data.flownMissionsByType.map((tp) => tp.value), data.flownMissionsByType.reduce((a, b) => a + b.value, 0)],
+      ],
+    },
   );
 
   if (data.deviationEnabled) {

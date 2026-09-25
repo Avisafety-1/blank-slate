@@ -45,6 +45,7 @@ export interface StatusPdfData {
   flightHoursByDrone: Array<{ name: string; hours: number }>;
   flightTimeByPilot: Array<{ name: string; flights: number; minutes: number }>;
   flownMissionsByType: NamedValue[];
+  flownMissionsTypeMonthly: Array<Record<string, string | number>>;
   expiringDocs: { thirtyDays: number; sixtyDays: number; ninetyDays: number };
   deviationEnabled: boolean;
   flightLogsCount: number;
@@ -295,6 +296,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     width: number,
     height: number,
     title: string,
+    showValues = false,
   ) => {
     drawPanel(x, y, width, height);
     doc.setTextColor(...PDF_COLORS.text);
@@ -321,7 +323,19 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
         bottom -= barHeight;
         doc.setFillColor(...item.color);
         doc.rect(chartX + slot * index + (slot - barWidth) / 2, bottom, barWidth, barHeight, "F");
+        if (showValues && value > 0 && barHeight >= 3) {
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(6);
+          setFontStyle(doc, "bold");
+          doc.text(String(value), chartX + slot * index + slot / 2, bottom + barHeight / 2 + 1, { align: "center" });
+        }
       });
+      if (showValues && totals[index] > 0) {
+        doc.setTextColor(...PDF_COLORS.text);
+        doc.setFontSize(6.5);
+        setFontStyle(doc, "bold");
+        doc.text(String(totals[index]), chartX + slot * index + slot / 2, bottom - 1.2, { align: "center" });
+      }
       doc.setTextColor(...PDF_COLORS.text);
       doc.setFontSize(6.5);
       setFontStyle(doc, "normal");
@@ -529,29 +543,38 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
   // Pilots and mission types
   addPageHeading(t("status.pilotTime.pdfHeading"));
   const hm = (m: number) => `${Math.floor(m / 60)}t ${Math.round(m % 60)}m`;
+  const typePalette: PdfColor[] = [[14, 165, 233], [34, 197, 94], [245, 158, 11], [168, 85, 247], [239, 68, 68], [20, 184, 166], [236, 72, 153], [132, 204, 22], [99, 102, 241], [249, 115, 22], [100, 116, 139]];
+  const typeSeries: Series[] = data.flownMissionsByType.map((tp, i) => ({ key: `t${i}`, label: `${tp.name} (${tp.value})`, color: typePalette[i % typePalette.length] }));
+  drawStackedChart(data.flownMissionsTypeMonthly, typeSeries, margin, 23, contentWidth, 72, t("status.missionTypes.title"), true);
+  const typeTableHead = [t("status.hookMessages.export.monthHeader"), ...data.flownMissionsByType.map((tp) => tp.name), t("status.pilotTime.total")];
+  const typeTableRows = data.flownMissionsTypeMonthly.map((row) => {
+    const vals = data.flownMissionsByType.map((_, i) => Number(row[`t${i}`] || 0));
+    return [String(row.month), ...vals.map(String), String(vals.reduce((a, b) => a + b, 0))];
+  });
+  typeTableRows.push([t("status.pilotTime.total"), ...data.flownMissionsByType.map((tp) => String(tp.value)), String(data.flownMissionsByType.reduce((a, b) => a + b.value, 0))]);
+  autoTable(doc, {
+    startY: 99,
+    margin: { left: margin, right: margin, bottom: 14 },
+    tableWidth: contentWidth,
+    head: [typeTableHead.map(safeText)],
+    body: data.flownMissionsByType.length ? typeTableRows.map((r) => r.map(safeText)) : [[safeText(t("status.missionTypes.empty"))]],
+    theme: "grid",
+    styles: { font: getPdfFontName(), fontSize: 6.5, cellPadding: 0.8, halign: "right" },
+    headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary, halign: "right" },
+    columnStyles: { 0: { halign: "left", cellWidth: 26 } },
+  });
   const pilotRows: Array<Array<string | number>> = data.flightTimeByPilot.map((r) => [r.name, r.flights, hm(r.minutes)]);
   pilotRows.push([t("status.pilotTime.total"), data.flightTimeByPilot.reduce((s, r) => s + r.flights, 0), hm(data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))]);
   autoTable(doc, {
-    startY: 23,
+    startY: ((doc as any).lastAutoTable?.finalY || 120) + 6,
     margin: { left: margin, right: pageWidth - margin - halfWidth, bottom: 14 },
     tableWidth: halfWidth,
-    head: [[t("status.pilotTime.pilot"), t("status.pilotTime.flights"), t("status.pilotTime.flightTime")].map(safeText)],
+    head: [[t("status.pilotTime.title"), t("status.pilotTime.flights"), t("status.pilotTime.flightTime")].map(safeText)],
     body: data.flightTimeByPilot.length ? pilotRows.map((r) => r.map(safeText)) : [[safeText(t("status.pilotTime.empty")), "", ""]],
     theme: "grid",
     styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
     headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
     columnStyles: { 1: { halign: "right", cellWidth: 22 }, 2: { halign: "right", cellWidth: 28 } },
-  });
-  autoTable(doc, {
-    startY: 23,
-    margin: { left: margin + halfWidth + gap, right: margin, bottom: 14 },
-    tableWidth: halfWidth,
-    head: [[t("status.missionTypes.typeHeader"), t("status.missionTypes.flownHeader")].map(safeText)],
-    body: data.flownMissionsByType.length ? data.flownMissionsByType.map((r) => [safeText(r.name), String(r.value)]) : [[safeText(t("status.missionTypes.empty")), ""]],
-    theme: "grid",
-    styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
-    headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
-    columnStyles: { 1: { halign: "right", cellWidth: 28 } },
   });
 
   // Optional page 5: deviations. AI analysis is intentionally excluded.
