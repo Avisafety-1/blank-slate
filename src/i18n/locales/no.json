@@ -3618,6 +3618,14 @@
         "title": "Operativ tidslinje",
         "resources": "Ressurser",
         "zoom": "Zoom",
+        "view": "Visning",
+        "views": {
+          "day": "Dag",
+          "week": "Uke",
+          "month": "Måned"
+        },
+        "previousPeriod": "Forrige periode",
+        "nextPeriod": "Neste periode",
         "previousWeek": "Forrige uke",
         "nextWeek": "Neste uke",
         "currentTime": "Nå",
@@ -3633,7 +3641,7 @@
         "missions": "Oppdrag",
         "maintenance": "Vedlikehold",
         "loading": "Laster ressurskalender…",
-        "empty": "Ingen ressurser med hendelser denne uken",
+        "empty": "Ingen ressurser med hendelser i valgt periode",
         "emptyHint": "Opprett oppdrag og tildel droner, utstyr eller personell for å se dem her",
         "resourceConflict": "Ressurskonflikt",
         "resource": "Ressurs",

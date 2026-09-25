@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { ChevronLeft, ChevronRight, AlertTriangle, Plane, Users, Wrench, Calendar, Clock3 } from "lucide-react";
-import { addWeeks, eachDayOfInterval, endOfWeek, format, getWeek, isSameDay, isWithinInterval, startOfWeek, subWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks, eachDayOfInterval, format, getWeek, isSameDay, isWithinInterval, startOfDay, startOfMonth, startOfWeek, subDays, subMonths, subWeeks } from "date-fns";
 import { nb, enUS } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 
 type TimelineEventType = "mission" | "maintenance" | "calendar";
 type ResourceType = "drone" | "equipment" | "personnel" | "calendar";
+type CalendarView = "day" | "week" | "month";
 
 interface TimelineEvent {
   id: string;
@@ -56,7 +57,8 @@ export function ResourceTimeline() {
   const isMobile = useIsMobile();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [resourceRows, setResourceRows] = useState<ResourceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(isMobile ? 150 : 100);
@@ -65,14 +67,25 @@ export function ResourceTimeline() {
   const [maintenanceDetailOpen, setMaintenanceDetailOpen] = useState(false);
   const [selectedMaintenanceEvent, setSelectedMaintenanceEvent] = useState<TimelineEvent | null>(null);
 
-  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-  const daysOfWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
-  const weekNumber = getWeek(weekStart, { weekStartsOn: 1 });
-  const weekStartMs = weekStart.getTime();
-  const weekEndMs = weekEnd.getTime();
-  const weekDurationMs = weekEndMs - weekStartMs;
+  const periodStart = calendarView === "day"
+    ? startOfDay(selectedDate)
+    : calendarView === "week"
+      ? startOfWeek(selectedDate, { weekStartsOn: 1 })
+      : startOfMonth(selectedDate);
+  const periodEnd = calendarView === "day"
+    ? addDays(periodStart, 1)
+    : calendarView === "week"
+      ? addWeeks(periodStart, 1)
+      : addMonths(periodStart, 1);
+  const periodLastDay = addDays(periodEnd, -1);
+  const periodDays = eachDayOfInterval({ start: periodStart, end: periodLastDay });
+  const weekNumber = getWeek(periodStart, { weekStartsOn: 1 });
+  const periodStartMs = periodStart.getTime();
+  const periodEndMs = periodEnd.getTime();
+  const periodDurationMs = periodEndMs - periodStartMs;
   const resourceColumnWidth = isMobile ? 132 : 184;
-  const timelineWidth = Math.round((isMobile ? 860 : 1040) * (zoom / 100));
+  const baseTimelineWidth = calendarView === "day" ? (isMobile ? 620 : 1040) : calendarView === "month" ? periodDays.length * (isMobile ? 72 : 92) : (isMobile ? 860 : 1040);
+  const timelineWidth = Math.round(baseTimelineWidth * (zoom / 100));
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -175,8 +188,8 @@ export function ResourceTimeline() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  const eventOverlapsWeek = useCallback((event: TimelineEvent) => event.end.getTime() > weekStartMs && event.start.getTime() < weekEndMs, [weekEndMs, weekStartMs]);
-  const visibleRows = useMemo(() => resourceRows.map((row) => ({ ...row, events: row.events.filter(eventOverlapsWeek) })).filter((row) => row.events.length > 0), [eventOverlapsWeek, resourceRows]);
+  const eventOverlapsPeriod = useCallback((event: TimelineEvent) => event.end.getTime() > periodStartMs && event.start.getTime() < periodEndMs, [periodEndMs, periodStartMs]);
+  const visibleRows = useMemo(() => resourceRows.map((row) => ({ ...row, events: row.events.filter(eventOverlapsPeriod) })).filter((row) => row.events.length > 0), [eventOverlapsPeriod, resourceRows]);
   const groups = useMemo<ResourceGroup[]>(() => {
     const allGroups: ResourceGroup[] = [
       { type: "drone", title: t("pages.calendar.resourceTimeline.drones"), icon: Plane, rows: visibleRows.filter((row) => row.type === "drone") },
@@ -190,8 +203,22 @@ export function ResourceTimeline() {
   const conflictCount = useMemo(() => visibleRows.reduce((count, row) => count + row.events.filter((event) => event.eventType === "mission" && row.events.some((other) => other.id !== event.id && other.eventType === "mission" && checkOverlap(event, other))).length, 0), [visibleRows]);
   const activeMissionCount = useMemo(() => new Set(visibleRows.flatMap((row) => row.events.filter((event) => event.eventType === "mission").map((event) => event.id))).size, [visibleRows]);
   const now = new Date();
-  const showNow = isWithinInterval(now, { start: weekStart, end: weekEnd });
-  const nowPosition = ((now.getTime() - weekStartMs) / weekDurationMs) * 100;
+  const showNow = isWithinInterval(now, { start: periodStart, end: periodEnd });
+  const nowPosition = ((now.getTime() - periodStartMs) / periodDurationMs) * 100;
+
+  const periodLabel = calendarView === "day"
+    ? format(periodStart, "EEEE d. MMMM yyyy", { locale: dateLocale })
+    : calendarView === "week"
+      ? `${t("pages.calendar.resourceTimeline.week", { num: weekNumber, year: format(periodStart, "yyyy") })} · ${format(periodStart, "d. MMM", { locale: dateLocale })}–${format(periodLastDay, "d. MMM", { locale: dateLocale })}`
+      : format(periodStart, "MMMM yyyy", { locale: dateLocale });
+
+  const navigatePeriod = (direction: -1 | 1) => {
+    setSelectedDate((value) => {
+      if (calendarView === "day") return direction < 0 ? subDays(value, 1) : addDays(value, 1);
+      if (calendarView === "week") return direction < 0 ? subWeeks(value, 1) : addWeeks(value, 1);
+      return direction < 0 ? subMonths(value, 1) : addMonths(value, 1);
+    });
+  };
 
   const openMission = async (missionId: string) => {
     const { data, error } = await supabase.from("missions").select("*").eq("id", missionId).single();
@@ -214,10 +241,10 @@ export function ResourceTimeline() {
   };
 
   const renderEvent = (event: TimelineEvent, row: ResourceRow, lane: number) => {
-    const start = Math.max(event.start.getTime(), weekStartMs);
-    const end = Math.min(event.end.getTime(), weekEndMs);
-    const left = ((start - weekStartMs) / weekDurationMs) * 100;
-    const width = ((end - start) / weekDurationMs) * 100;
+    const start = Math.max(event.start.getTime(), periodStartMs);
+    const end = Math.min(event.end.getTime(), periodEndMs);
+    const left = ((start - periodStartMs) / periodDurationMs) * 100;
+    const width = ((end - start) / periodDurationMs) * 100;
     const conflict = event.eventType === "mission" && row.events.some((other) => other.id !== event.id && other.eventType === "mission" && checkOverlap(event, other));
     const clickable = event.eventType !== "calendar";
     const onClick = event.eventType === "mission" ? () => void openMission(event.id) : event.eventType === "maintenance" ? () => { setSelectedMaintenanceEvent(event); setMaintenanceDetailOpen(true); } : undefined;
@@ -258,14 +285,21 @@ export function ResourceTimeline() {
           <div className="rounded-sm bg-foreground px-2 py-1 font-display text-[11px] font-bold text-background">AVISAFE</div>
           <div className="min-w-0">
             <h2 className="truncate font-display text-sm font-semibold text-foreground">{t("pages.calendar.resourceTimeline.title")}</h2>
-            <p className="truncate text-[11px] text-muted-foreground">{t("pages.calendar.resourceTimeline.week", { num: weekNumber, year: format(weekStart, "yyyy") })} · {format(weekStart, "d. MMM", { locale: dateLocale })}–{format(weekEnd, "d. MMM", { locale: dateLocale })}</p>
+            <p className="truncate text-[11px] capitalize text-muted-foreground">{periodLabel}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 lg:justify-end">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setWeekStart((value) => subWeeks(value, 1))} aria-label={t("pages.calendar.resourceTimeline.previousWeek")}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>{t("pages.calendar.resourceTimeline.today")}</Button>
-            <Button variant="outline" size="icon" onClick={() => setWeekStart((value) => addWeeks(value, 1))} aria-label={t("pages.calendar.resourceTimeline.nextWeek")}><ChevronRight className="h-4 w-4" /></Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-md border border-border bg-background/60 p-0.5" role="group" aria-label={t("pages.calendar.resourceTimeline.view") }>
+              {(["day", "week", "month"] as CalendarView[]).map((view) => (
+                <Button key={view} type="button" variant={calendarView === view ? "secondary" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={() => setCalendarView(view)} aria-pressed={calendarView === view}>
+                  {t(`pages.calendar.resourceTimeline.views.${view}`)}
+                </Button>
+              ))}
+            </div>
+            <Button variant="outline" size="icon" onClick={() => navigatePeriod(-1)} aria-label={t("pages.calendar.resourceTimeline.previousPeriod")}><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>{t("pages.calendar.resourceTimeline.today")}</Button>
+            <Button variant="outline" size="icon" onClick={() => navigatePeriod(1)} aria-label={t("pages.calendar.resourceTimeline.nextPeriod")}><ChevronRight className="h-4 w-4" /></Button>
           </div>
           <div className="flex min-w-44 items-center gap-3">
             <span className="text-[10px] font-semibold uppercase text-muted-foreground">{t("pages.calendar.resourceTimeline.zoom")}</span>
@@ -292,7 +326,7 @@ export function ResourceTimeline() {
                 <span className="font-display text-[10px] font-bold uppercase text-muted-foreground">{t("pages.calendar.resourceTimeline.resources")}</span>
               </div>
               <div className="relative flex" style={{ width: timelineWidth }}>
-                {daysOfWeek.map((day) => <div key={day.toISOString()} className={cn("flex-1 border-r border-timeline-grid px-2 py-2 text-center", isSameDay(day, now) && "bg-primary/10")}><span className={cn("font-display text-[11px] font-semibold", isSameDay(day, now) ? "text-primary" : "text-foreground")}>{format(day, isMobile ? "EEEEE d" : "EEE d. MMM", { locale: dateLocale })}</span></div>)}
+                {periodDays.map((day) => <div key={day.toISOString()} className={cn("flex-1 border-r border-timeline-grid px-1 py-2 text-center", isSameDay(day, now) && "bg-primary/10")}><span className={cn("font-display text-[11px] font-semibold", isSameDay(day, now) ? "text-primary" : "text-foreground")}>{format(day, calendarView === "month" ? (isMobile ? "d" : "EEEEE d") : isMobile ? "EEEEE d" : "EEE d. MMM", { locale: dateLocale })}</span></div>)}
               </div>
             </div>
 
@@ -315,7 +349,7 @@ export function ResourceTimeline() {
                           <span className="truncate font-display text-xs font-semibold text-foreground" title={row.name}>{row.name}</span>
                         </div>
                         <div className="relative" style={{ width: timelineWidth }}>
-                          <div className="absolute inset-0 flex">{daysOfWeek.map((day) => <div key={day.toISOString()} className={cn("flex-1 border-r border-timeline-grid/70", isSameDay(day, now) && "bg-primary/5")} />)}</div>
+                          <div className="absolute inset-0 flex">{periodDays.map((day) => <div key={day.toISOString()} className={cn("flex-1 border-r border-timeline-grid/70", isSameDay(day, now) && "bg-primary/5")} />)}</div>
                           {showNow && <div className="pointer-events-none absolute inset-y-0 z-10 w-px bg-timeline-conflict" style={{ left: `${nowPosition}%` }} />}
                           {lanes.map(({ event, lane }) => renderEvent(event, row, lane))}
                         </div>

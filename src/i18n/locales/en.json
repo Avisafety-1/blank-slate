@@ -3616,6 +3616,14 @@
         "title": "Operational timeline",
         "resources": "Resources",
         "zoom": "Zoom",
+        "view": "View",
+        "views": {
+          "day": "Day",
+          "week": "Week",
+          "month": "Month"
+        },
+        "previousPeriod": "Previous period",
+        "nextPeriod": "Next period",
         "previousWeek": "Previous week",
         "nextWeek": "Next week",
         "currentTime": "Now",
@@ -3631,7 +3639,7 @@
         "missions": "Missions",
         "maintenance": "Maintenance",
         "loading": "Loading resource calendar…",
-        "empty": "No resources with events this week",
+        "empty": "No resources with events in the selected period",
         "emptyHint": "Create missions and assign drones, equipment or personnel to see them here",
         "resourceConflict": "Resource conflict",
         "resource": "Resource",
