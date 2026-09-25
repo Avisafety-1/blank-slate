@@ -371,15 +371,6 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       const label = doc.splitTextToSize(safeText(row.month), Math.max(slot - 1, 8)).slice(0, 2);
       doc.text(label, chartX + slot * index + slot / 2, chartY + chartHeight + 4, { align: "center" });
     });
-    let legendX = x + width - 5;
-    [...series].reverse().forEach((item) => {
-      const labelWidth = doc.getTextWidth(safeText(item.label)) + 9;
-      legendX -= labelWidth;
-      doc.setFillColor(...item.color);
-      doc.rect(legendX, y + 4, 3, 3, "F");
-      doc.setFontSize(7);
-      doc.text(safeText(item.label), legendX + 4.5, y + 6.5);
-    });
   };
 
   const drawCompactTable = (
