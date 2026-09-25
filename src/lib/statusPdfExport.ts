@@ -339,7 +339,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     const chartX = x + 8;
     const chartY = y + 10 + legendHeight + 2;
     const chartWidth = width - 16;
-    const chartHeight = y + height - 14 - chartY;
+    const chartHeight = Math.max(10, y + height - 14 - chartY);
     const totals = rows.map((row) => series.reduce((sum, s) => sum + Number(row[s.key] || 0), 0));
     const max = Math.max(...totals, 1);
     const slot = chartWidth / rows.length;
