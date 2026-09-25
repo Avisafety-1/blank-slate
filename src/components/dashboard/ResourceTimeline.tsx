@@ -177,12 +177,15 @@ export function ResourceTimeline() {
 
   const eventOverlapsWeek = useCallback((event: TimelineEvent) => event.end.getTime() > weekStartMs && event.start.getTime() < weekEndMs, [weekEndMs, weekStartMs]);
   const visibleRows = useMemo(() => resourceRows.map((row) => ({ ...row, events: row.events.filter(eventOverlapsWeek) })).filter((row) => row.events.length > 0), [eventOverlapsWeek, resourceRows]);
-  const groups = useMemo<ResourceGroup[]>(() => [
-    { type: "drone", title: t("pages.calendar.resourceTimeline.drones"), icon: Plane, rows: visibleRows.filter((row) => row.type === "drone") },
-    { type: "personnel", title: t("pages.calendar.resourceTimeline.personnel"), icon: Users, rows: visibleRows.filter((row) => row.type === "personnel") },
-    { type: "equipment", title: t("pages.calendar.resourceTimeline.equipment"), icon: Wrench, rows: visibleRows.filter((row) => row.type === "equipment") },
-    { type: "calendar", title: t("pages.calendar.resourceTimeline.calendar"), icon: Calendar, rows: visibleRows.filter((row) => row.type === "calendar") },
-  ].filter((group) => group.rows.length > 0), [t, visibleRows]);
+  const groups = useMemo<ResourceGroup[]>(() => {
+    const allGroups: ResourceGroup[] = [
+      { type: "drone", title: t("pages.calendar.resourceTimeline.drones"), icon: Plane, rows: visibleRows.filter((row) => row.type === "drone") },
+      { type: "personnel", title: t("pages.calendar.resourceTimeline.personnel"), icon: Users, rows: visibleRows.filter((row) => row.type === "personnel") },
+      { type: "equipment", title: t("pages.calendar.resourceTimeline.equipment"), icon: Wrench, rows: visibleRows.filter((row) => row.type === "equipment") },
+      { type: "calendar", title: t("pages.calendar.resourceTimeline.calendar"), icon: Calendar, rows: visibleRows.filter((row) => row.type === "calendar") },
+    ];
+    return allGroups.filter((group) => group.rows.length > 0);
+  }, [t, visibleRows]);
 
   const conflictCount = useMemo(() => visibleRows.reduce((count, row) => count + row.events.filter((event) => event.eventType === "mission" && row.events.some((other) => other.id !== event.id && other.eventType === "mission" && checkOverlap(event, other))).length, 0), [visibleRows]);
   const activeMissionCount = useMemo(() => new Set(visibleRows.flatMap((row) => row.events.filter((event) => event.eventType === "mission").map((event) => event.id))).size, [visibleRows]);
