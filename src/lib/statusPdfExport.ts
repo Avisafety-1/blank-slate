@@ -307,10 +307,39 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       drawNoData(x, y + 10, width, height - 10);
       return;
     }
+    // Legend: flow items left-to-right under the title, wrapping to
+    // multiple lines when there are many series.
+    const legendMaxWidth = width - 10;
+    const legendLineHeight = 4.5;
+    doc.setFontSize(7);
+    setFontStyle(doc, "normal");
+    const legendLines: Series[][] = [[]];
+    let lineWidth = 0;
+    series.forEach((item) => {
+      const itemWidth = doc.getTextWidth(safeText(item.label)) + 9;
+      if (lineWidth > 0 && lineWidth + itemWidth > legendMaxWidth) {
+        legendLines.push([]);
+        lineWidth = 0;
+      }
+      legendLines[legendLines.length - 1].push(item);
+      lineWidth += itemWidth;
+    });
+    legendLines.forEach((line, lineIndex) => {
+      let legendX = x + 5;
+      const legendY = y + 12 + lineIndex * legendLineHeight;
+      line.forEach((item) => {
+        doc.setFillColor(...item.color);
+        doc.rect(legendX, legendY - 2.5, 3, 3, "F");
+        doc.setTextColor(...PDF_COLORS.muted);
+        doc.text(safeText(item.label), legendX + 4.5, legendY);
+        legendX += doc.getTextWidth(safeText(item.label)) + 9;
+      });
+    });
+    const legendHeight = legendLines.length * legendLineHeight;
     const chartX = x + 8;
-    const chartY = y + 14;
+    const chartY = y + 10 + legendHeight + 2;
     const chartWidth = width - 16;
-    const chartHeight = height - 28;
+    const chartHeight = Math.max(10, y + height - 14 - chartY);
     const totals = rows.map((row) => series.reduce((sum, s) => sum + Number(row[s.key] || 0), 0));
     const max = Math.max(...totals, 1);
     const slot = chartWidth / rows.length;
@@ -341,15 +370,6 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
       setFontStyle(doc, "normal");
       const label = doc.splitTextToSize(safeText(row.month), Math.max(slot - 1, 8)).slice(0, 2);
       doc.text(label, chartX + slot * index + slot / 2, chartY + chartHeight + 4, { align: "center" });
-    });
-    let legendX = x + width - 5;
-    [...series].reverse().forEach((item) => {
-      const labelWidth = doc.getTextWidth(safeText(item.label)) + 9;
-      legendX -= labelWidth;
-      doc.setFillColor(...item.color);
-      doc.rect(legendX, y + 4, 3, 3, "F");
-      doc.setFontSize(7);
-      doc.text(safeText(item.label), legendX + 4.5, y + 6.5);
     });
   };
 
@@ -545,7 +565,11 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
   const hm = (m: number) => `${Math.floor(m / 60)}t ${Math.round(m % 60)}m`;
   const typePalette: PdfColor[] = [[14, 165, 233], [34, 197, 94], [245, 158, 11], [168, 85, 247], [239, 68, 68], [20, 184, 166], [236, 72, 153], [132, 204, 22], [99, 102, 241], [249, 115, 22], [100, 116, 139]];
   const typeSeries: Series[] = data.flownMissionsByType.map((tp, i) => ({ key: `t${i}`, label: `${tp.name} (${tp.value})`, color: typePalette[i % typePalette.length] }));
-  drawStackedChart(data.flownMissionsTypeMonthly, typeSeries, margin, 23, contentWidth, 72, t("status.missionTypes.title"), true);
+  // Estimate legend lines (approx. 6 items per line) so the panel grows
+  // instead of the legend overlapping the chart when there are many types.
+  const typeLegendLines = Math.max(1, Math.ceil(typeSeries.length / 6));
+  const typeChartHeight = 60 + typeLegendLines * 5;
+  drawStackedChart(data.flownMissionsTypeMonthly, typeSeries, margin, 23, contentWidth, typeChartHeight, t("status.missionTypes.title"), true);
   const typeTableHead = [t("status.hookMessages.export.monthHeader"), ...data.flownMissionsByType.map((tp) => tp.name), t("status.pilotTime.total")];
   const typeTableRows = data.flownMissionsTypeMonthly.map((row) => {
     const vals = data.flownMissionsByType.map((_, i) => Number(row[`t${i}`] || 0));
@@ -553,7 +577,7 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
   });
   typeTableRows.push([t("status.pilotTime.total"), ...data.flownMissionsByType.map((tp) => String(tp.value)), String(data.flownMissionsByType.reduce((a, b) => a + b.value, 0))]);
   autoTable(doc, {
-    startY: 99,
+    startY: 27 + typeChartHeight,
     margin: { left: margin, right: margin, bottom: 14 },
     tableWidth: contentWidth,
     head: [typeTableHead.map(safeText)],
