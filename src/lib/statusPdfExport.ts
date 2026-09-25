@@ -565,7 +565,11 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
   const hm = (m: number) => `${Math.floor(m / 60)}t ${Math.round(m % 60)}m`;
   const typePalette: PdfColor[] = [[14, 165, 233], [34, 197, 94], [245, 158, 11], [168, 85, 247], [239, 68, 68], [20, 184, 166], [236, 72, 153], [132, 204, 22], [99, 102, 241], [249, 115, 22], [100, 116, 139]];
   const typeSeries: Series[] = data.flownMissionsByType.map((tp, i) => ({ key: `t${i}`, label: `${tp.name} (${tp.value})`, color: typePalette[i % typePalette.length] }));
-  drawStackedChart(data.flownMissionsTypeMonthly, typeSeries, margin, 23, contentWidth, 72, t("status.missionTypes.title"), true);
+  // Estimate legend lines (approx. 6 items per line) so the panel grows
+  // instead of the legend overlapping the chart when there are many types.
+  const typeLegendLines = Math.max(1, Math.ceil(typeSeries.length / 6));
+  const typeChartHeight = 60 + typeLegendLines * 5;
+  drawStackedChart(data.flownMissionsTypeMonthly, typeSeries, margin, 23, contentWidth, typeChartHeight, t("status.missionTypes.title"), true);
   const typeTableHead = [t("status.hookMessages.export.monthHeader"), ...data.flownMissionsByType.map((tp) => tp.name), t("status.pilotTime.total")];
   const typeTableRows = data.flownMissionsTypeMonthly.map((row) => {
     const vals = data.flownMissionsByType.map((_, i) => Number(row[`t${i}`] || 0));
