@@ -142,3 +142,32 @@ export async function getPilotFlightsForPeople(
   return result;
 }
 
+
+/**
+ * Ren aggregering av flytid per person for et sett flylogger, med samme regel
+ * som over: koblet personell, ellers eieren når loggen ikke har personkobling.
+ */
+export function aggregatePilotFlightTime(
+  logs: Array<{ id: string; user_id: string | null; flight_duration_minutes: number | null }>,
+  links: Array<{ flight_log_id: string; profile_id: string }>,
+): Map<string, { flights: number; minutes: number }> {
+  const byLog = new Map<string, Set<string>>();
+  links.forEach((l) => {
+    if (!l.profile_id) return;
+    if (!byLog.has(l.flight_log_id)) byLog.set(l.flight_log_id, new Set());
+    byLog.get(l.flight_log_id)!.add(l.profile_id);
+  });
+  const result = new Map<string, { flights: number; minutes: number }>();
+  logs.forEach((log) => {
+    const people = byLog.get(log.id) ?? (log.user_id ? new Set([log.user_id]) : new Set<string>());
+    people.forEach((pid) => {
+      const cur = result.get(pid) || { flights: 0, minutes: 0 };
+      cur.flights += 1;
+      cur.minutes += log.flight_duration_minutes || 0;
+      result.set(pid, cur);
+    });
+  });
+  return result;
+}
+
+export const formatMinutesHM = (minutes: number) => `${Math.floor(minutes / 60)}t ${Math.round(minutes % 60)}m`;

@@ -1647,7 +1647,7 @@
         "plannedFlights": "Planned flights",
         "unplannedFlights": "Unplanned flights",
         "unplannedPercent": "Unplanned share",
-        "daysSinceSevere": "Days since last severe incident",
+        "daysSinceSevere": "{{days}} days since last severe incident",
         "missionsByMonth": "Missions per month",
         "missionsByStatus": "Missions by status",
         "incidentsHeading": "Incidents",
@@ -1657,7 +1657,6 @@
         "causeHeader": "Cause",
         "countHeader": "Count",
         "incidentsBySeverity": "Incidents by severity",
-        "daysSinceSevere": "{{days}} days since last severe incident",
         "noSevereIncidents": "No severe incidents recorded",
         "resourcesHeading": "Resources",
         "droneStatus": "Drone status",
@@ -1745,6 +1744,24 @@
         "pdfDescription": "PDF report generated {{date}}",
         "csvTitleSuffix": "Statistics report CSV - {{period}}"
       }
+    },
+    "missionTypes": {
+      "title": "Missions flown per mission type",
+      "other": "Other/no type",
+      "typeHeader": "Mission type",
+      "flownHeader": "Missions flown",
+      "empty": "No missions flown in the period"
+    },
+    "pilotTime": {
+      "title": "Flight time per pilot",
+      "pdfHeading": "Pilots and mission types",
+      "pilot": "Pilot",
+      "flights": "Flights",
+      "minutes": "Minutes",
+      "flightTime": "Flight time",
+      "total": "Total",
+      "empty": "No flights in the period",
+      "note": "Same rule as the logbook: linked pilot/personnel, otherwise the owner when the flight has no linked person."
     }
   },
   "forms": {

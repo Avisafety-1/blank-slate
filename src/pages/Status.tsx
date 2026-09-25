@@ -1311,6 +1311,65 @@ const Status = () => {
           </GlassCard>
         </div>
 
+        {/* Flown missions per mission type */}
+        {flownMissionsByType.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">{t("status.missionTypes.title")}</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {flownMissionsByType.map((item) => (
+                <GlassCard key={item.name} className="p-4">
+                  <p className="text-xs text-muted-foreground truncate" title={item.name}>{item.name}</p>
+                  <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Flight time per pilot */}
+        <GlassCard className="p-4">
+          <Collapsible open={pilotsOpen} onOpenChange={setPilotsOpen}>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 font-semibold text-foreground text-left">
+              <Clock className="w-4 h-4" />
+              {t("status.pilotTime.title")}
+              <span className="text-xs font-normal text-muted-foreground">({flightTimeByPilot.length})</span>
+              <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${pilotsOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {flightTimeByPilot.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-3">{t("status.pilotTime.empty")}</p>
+              ) : (
+                <div className="overflow-x-auto mt-3">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-left">
+                        <th className="py-2 pr-4 font-medium">{t("status.pilotTime.pilot")}</th>
+                        <th className="py-2 pr-4 font-medium text-right">{t("status.pilotTime.flights")}</th>
+                        <th className="py-2 font-medium text-right">{t("status.pilotTime.flightTime")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flightTimeByPilot.map((row, i) => (
+                        <tr key={`${row.name}-${i}`} className="border-b border-border/50 hover:bg-muted/50">
+                          <td className="py-2 pr-4">{row.name}</td>
+                          <td className="py-2 pr-4 text-right">{row.flights}</td>
+                          <td className="py-2 text-right">{formatMinutesHM(row.minutes)}</td>
+                        </tr>
+                      ))}
+                      <tr className="font-semibold">
+                        <td className="py-2 pr-4">{t("status.pilotTime.total")}</td>
+                        <td className="py-2 pr-4 text-right">{flightTimeByPilot.reduce((s, r) => s + r.flights, 0)}</td>
+                        <td className="py-2 text-right">{formatMinutesHM(flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="text-[11px] text-muted-foreground mt-2">{t("status.pilotTime.note")}</p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </GlassCard>
+
         {/* Mission Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">

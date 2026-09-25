@@ -43,6 +43,8 @@ export interface StatusPdfData {
   droneStatus: NamedValue[];
   equipmentStatus: NamedValue[];
   flightHoursByDrone: Array<{ name: string; hours: number }>;
+  flightTimeByPilot: Array<{ name: string; flights: number; minutes: number }>;
+  flownMissionsByType: NamedValue[];
   expiringDocs: { thirtyDays: number; sixtyDays: number; ninetyDays: number };
   deviationEnabled: boolean;
   flightLogsCount: number;
@@ -522,6 +524,34 @@ export async function generateStatusPdf(data: StatusPdfData, t: TFunction): Prom
     theme: "grid",
     styles: { font: getPdfFontName(), fontSize: 8, cellPadding: 1.5 },
     headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
+  });
+
+  // Pilots and mission types
+  addPageHeading(t("status.pilotTime.pdfHeading"));
+  const hm = (m: number) => `${Math.floor(m / 60)}t ${Math.round(m % 60)}m`;
+  const pilotRows: Array<Array<string | number>> = data.flightTimeByPilot.map((r) => [r.name, r.flights, hm(r.minutes)]);
+  pilotRows.push([t("status.pilotTime.total"), data.flightTimeByPilot.reduce((s, r) => s + r.flights, 0), hm(data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))]);
+  autoTable(doc, {
+    startY: 23,
+    margin: { left: margin, right: pageWidth - margin - halfWidth, bottom: 14 },
+    tableWidth: halfWidth,
+    head: [[t("status.pilotTime.pilot"), t("status.pilotTime.flights"), t("status.pilotTime.flightTime")].map(safeText)],
+    body: data.flightTimeByPilot.length ? pilotRows.map((r) => r.map(safeText)) : [[safeText(t("status.pilotTime.empty")), "", ""]],
+    theme: "grid",
+    styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
+    headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
+    columnStyles: { 1: { halign: "right", cellWidth: 22 }, 2: { halign: "right", cellWidth: 28 } },
+  });
+  autoTable(doc, {
+    startY: 23,
+    margin: { left: margin + halfWidth + gap, right: margin, bottom: 14 },
+    tableWidth: halfWidth,
+    head: [[t("status.missionTypes.typeHeader"), t("status.missionTypes.flownHeader")].map(safeText)],
+    body: data.flownMissionsByType.length ? data.flownMissionsByType.map((r) => [safeText(r.name), String(r.value)]) : [[safeText(t("status.missionTypes.empty")), ""]],
+    theme: "grid",
+    styles: { font: getPdfFontName(), fontSize: 7, cellPadding: 1 },
+    headStyles: { fillColor: PDF_COLORS.primary, textColor: PDF_COLORS.onPrimary },
+    columnStyles: { 1: { halign: "right", cellWidth: 28 } },
   });
 
   // Optional page 5: deviations. AI analysis is intentionally excluded.
