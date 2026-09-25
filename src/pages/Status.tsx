@@ -51,6 +51,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import * as XLSX from "xlsx";
 import { summarizeUnplanned } from "@/lib/unplannedFlights";
+import { aggregatePilotFlightTime, formatMinutesHM } from "@/lib/pilotFlightLogs";
 import { generateStatusPdf, type StatusPdfData } from "@/lib/statusPdfExport";
 import { buildStatusExportSections, createStatusCsv, createStatusWorkbook } from "@/lib/statusTabularExport";
 import { buildFlownMissionRiskDistribution, type RiskDistributionItem } from "@/lib/statusRiskDistribution";
@@ -124,6 +125,9 @@ const Status = () => {
     totalFlights: number;
     totalMinutes: number;
   }>({ counts: [], hours: [], monthly: [], totalFlights: 0, totalMinutes: 0 });
+  const [flightTimeByPilot, setFlightTimeByPilot] = useState<Array<{ name: string; flights: number; minutes: number }>>([]);
+  const [flownMissionsByType, setFlownMissionsByType] = useState<Array<{ name: string; value: number }>>([]);
+  const [pilotsOpen, setPilotsOpen] = useState(false);
   const [expiringDocs, setExpiringDocs] = useState<{ thirtyDays: number; sixtyDays: number; ninetyDays: number }>({
     thirtyDays: 0,
     sixtyDays: 0,
@@ -331,6 +335,7 @@ const Status = () => {
         fetchDocumentStatistics(),
         fetchDeviationStatistics(),
         fetchOperationTypeStatistics(),
+        fetchPilotAndMissionTypeStatistics(),
       ]);
       // Cache all state after successful fetch
       if (companyId) {
@@ -695,6 +700,71 @@ const Status = () => {
     setFlightLogsCount(count || 0);
   };
 
+  const fetchPilotAndMissionTypeStatistics = async () => {
+    const { startDate, endDate } = getDateFilter();
+    const from = startDate.toISOString().slice(0, 10);
+    const to = endDate.toISOString().slice(0, 10);
+    const logs: Array<{ id: string; user_id: string | null; mission_id: string | null; flight_duration_minutes: number | null }> = [];
+    for (let page = 0; ; page += 1) {
+      const { data, error } = await supabase
+        .from("flight_logs")
+        .select("id, user_id, mission_id, flight_duration_minutes")
+        .gte("flight_date", from)
+        .lte("flight_date", to)
+        .order("id")
+        .range(page * 1000, page * 1000 + 999);
+      if (error || !data) break;
+      logs.push(...(data as any[]));
+      if (data.length < 1000) break;
+    }
+    const chunk = <T,>(arr: T[], size = 200) => Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, i * size + size));
+
+    const links: Array<{ flight_log_id: string; profile_id: string }> = [];
+    for (const ids of chunk(logs.map((l) => l.id))) {
+      const { data } = await (supabase as any).from("flight_log_personnel").select("flight_log_id, profile_id").in("flight_log_id", ids);
+      links.push(...((data || []) as any[]));
+    }
+    const pilotStats = aggregatePilotFlightTime(logs, links);
+    const profileIds = Array.from(pilotStats.keys());
+    const names: Record<string, string> = {};
+    for (const ids of chunk(profileIds)) {
+      const { data } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      (data || []).forEach((p: any) => { names[p.id] = p.full_name; });
+    }
+    setFlightTimeByPilot(
+      Array.from(pilotStats, ([id, v]) => ({ name: names[id] || t("status.hookMessages.export.unknown"), ...v }))
+        .sort((a, b) => b.minutes - a.minutes),
+    );
+
+    // Flown missions per company mission type
+    const missionIds = Array.from(new Set(logs.map((l) => l.mission_id).filter(Boolean))) as string[];
+    const missionTypes: Array<string | null> = [];
+    for (const ids of chunk(missionIds)) {
+      const { data } = await supabase.from("missions").select("id, oppdragstype").in("id", ids);
+      (data || []).forEach((m: any) => missionTypes.push(m.oppdragstype));
+    }
+    let typeSource = companyId;
+    if (companyId) {
+      const { data: comp } = await (supabase as any).from("companies").select("parent_company_id").eq("id", companyId).maybeSingle();
+      if (comp?.parent_company_id) {
+        const { data: parent } = await (supabase as any).from("companies").select("propagate_mission_types").eq("id", comp.parent_company_id).maybeSingle();
+        if (parent?.propagate_mission_types) typeSource = comp.parent_company_id;
+      }
+    }
+    const { data: typeRows } = typeSource
+      ? await (supabase as any).from("company_mission_types").select("label, sort_order").eq("company_id", typeSource).order("sort_order").order("label")
+      : { data: [] };
+    const labels: string[] = (typeRows || []).map((r: any) => r.label);
+    const counts = new Map<string, number>(labels.map((l) => [l, 0]));
+    const other = t("status.missionTypes.other");
+    missionTypes.forEach((type) => {
+      const key = type && counts.has(type) ? type : other;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    if (counts.get(other) === 0) counts.delete(other);
+    setFlownMissionsByType(Array.from(counts, ([name, value]) => ({ name, value })));
+  };
+
   const fetchOperationTypeStatistics = async () => {
     const { startDate, endDate } = getDateFilter();
 
@@ -802,6 +872,8 @@ const Status = () => {
       droneStatus,
       equipmentStatus,
       flightHoursByDrone,
+      flightTimeByPilot,
+      flownMissionsByType,
       expiringDocs,
       deviationEnabled: companySettings.deviation_report_enabled,
       flightLogsCount,
@@ -1238,6 +1310,65 @@ const Status = () => {
             </div>
           </GlassCard>
         </div>
+
+        {/* Flown missions per mission type */}
+        {flownMissionsByType.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">{t("status.missionTypes.title")}</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {flownMissionsByType.map((item) => (
+                <GlassCard key={item.name} className="p-4">
+                  <p className="text-xs text-muted-foreground truncate" title={item.name}>{item.name}</p>
+                  <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Flight time per pilot */}
+        <GlassCard className="p-4">
+          <Collapsible open={pilotsOpen} onOpenChange={setPilotsOpen}>
+            <CollapsibleTrigger className="flex w-full items-center gap-2 font-semibold text-foreground text-left">
+              <Clock className="w-4 h-4" />
+              {t("status.pilotTime.title")}
+              <span className="text-xs font-normal text-muted-foreground">({flightTimeByPilot.length})</span>
+              <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${pilotsOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {flightTimeByPilot.length === 0 ? (
+                <p className="text-sm text-muted-foreground mt-3">{t("status.pilotTime.empty")}</p>
+              ) : (
+                <div className="overflow-x-auto mt-3">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground text-left">
+                        <th className="py-2 pr-4 font-medium">{t("status.pilotTime.pilot")}</th>
+                        <th className="py-2 pr-4 font-medium text-right">{t("status.pilotTime.flights")}</th>
+                        <th className="py-2 font-medium text-right">{t("status.pilotTime.flightTime")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flightTimeByPilot.map((row, i) => (
+                        <tr key={`${row.name}-${i}`} className="border-b border-border/50 hover:bg-muted/50">
+                          <td className="py-2 pr-4">{row.name}</td>
+                          <td className="py-2 pr-4 text-right">{row.flights}</td>
+                          <td className="py-2 text-right">{formatMinutesHM(row.minutes)}</td>
+                        </tr>
+                      ))}
+                      <tr className="font-semibold">
+                        <td className="py-2 pr-4">{t("status.pilotTime.total")}</td>
+                        <td className="py-2 pr-4 text-right">{flightTimeByPilot.reduce((s, r) => s + r.flights, 0)}</td>
+                        <td className="py-2 text-right">{formatMinutesHM(flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="text-[11px] text-muted-foreground mt-2">{t("status.pilotTime.note")}</p>
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </GlassCard>
 
         {/* Mission Statistics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

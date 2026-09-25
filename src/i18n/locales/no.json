@@ -1649,7 +1649,7 @@
         "plannedFlights": "Planlagte flyturer",
         "unplannedFlights": "Ikke-planlagte flyturer",
         "unplannedPercent": "Andel ikke-planlagte",
-        "daysSinceSevere": "Dager siden siste alvorlige hendelse",
+        "daysSinceSevere": "{{days}} dager siden siste alvorlige hendelse",
         "missionsByMonth": "Oppdrag per måned",
         "missionsByStatus": "Oppdrag per status",
         "incidentsHeading": "Hendelser",
@@ -1659,7 +1659,6 @@
         "causeHeader": "Årsak",
         "countHeader": "Antall",
         "incidentsBySeverity": "Hendelser per alvorlighetsgrad",
-        "daysSinceSevere": "{{days}} dager siden siste alvorlige hendelse",
         "noSevereIncidents": "Ingen alvorlige hendelser registrert",
         "resourcesHeading": "Ressurser",
         "droneStatus": "Dronestatus",
@@ -1747,6 +1746,24 @@
         "pdfDescription": "PDF-rapport generert {{date}}",
         "csvTitleSuffix": "Statistikkrapport CSV - {{period}}"
       }
+    },
+    "missionTypes": {
+      "title": "Oppdrag fløyet per oppdragstype",
+      "other": "Annet/uten type",
+      "typeHeader": "Oppdragstype",
+      "flownHeader": "Fløyne oppdrag",
+      "empty": "Ingen fløyne oppdrag i perioden"
+    },
+    "pilotTime": {
+      "title": "Flytid per pilot",
+      "pdfHeading": "Piloter og oppdragstyper",
+      "pilot": "Pilot",
+      "flights": "Flyturer",
+      "minutes": "Minutter",
+      "flightTime": "Flytid",
+      "total": "Totalt",
+      "empty": "Ingen flyturer i perioden",
+      "note": "Samme regel som loggboka: koblet pilot/personell, ellers eieren når flyturen mangler personkobling."
     }
   },
   "forms": {

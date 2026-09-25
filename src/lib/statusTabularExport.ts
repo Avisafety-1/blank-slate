@@ -122,6 +122,23 @@ export const buildStatusExportSections = (
     },
   ];
 
+  const hm = (m: number) => `${Math.floor(m / 60)}t ${Math.round(m % 60)}m`;
+  sections.push(
+    {
+      name: t("status.pilotTime.title"),
+      headers: [t("status.pilotTime.pilot"), t("status.pilotTime.flights"), t("status.pilotTime.minutes"), t("status.pilotTime.flightTime")],
+      rows: [
+        ...data.flightTimeByPilot.map((r) => [r.name, r.flights, r.minutes, hm(r.minutes)]),
+        [t("status.pilotTime.total"), data.flightTimeByPilot.reduce((s, r) => s + r.flights, 0), data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0), hm(data.flightTimeByPilot.reduce((s, r) => s + r.minutes, 0))],
+      ],
+    },
+    {
+      name: t("status.missionTypes.title"),
+      headers: [t("status.missionTypes.typeHeader"), t("status.missionTypes.flownHeader")],
+      rows: data.flownMissionsByType.map((r) => [r.name, r.value]),
+    },
+  );
+
   if (data.deviationEnabled) {
     const fullCategories = data.deviationReports.map((report) => report.category_path.join(" > ") || t("status.hookMessages.export.unknownCategory"));
     const mainCategories = data.deviationReports.map((report) => report.category_path[0] || t("status.hookMessages.export.unknownCategory"));
