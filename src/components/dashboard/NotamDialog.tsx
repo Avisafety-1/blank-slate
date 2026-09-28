@@ -347,9 +347,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       return `${dd}-${mon}-${yyyy} ${hh}:${mm}`;
     };
     lines.push("");
-    if (startDate || endDate) {
-      const fromStr = startDate ? fmtFromTo(startDate) : "?";
-      const toStr = endDate ? fmtFromTo(endDate) : "?";
+    if (effectiveFrom || effectiveTo) {
+      const fromStr = effectiveFrom ? fmtFromTo(effectiveFrom) : "?";
+      const toStr = effectiveTo ? fmtFromTo(effectiveTo) : "?";
       lines.push(`FROM: ${fromStr} TO: ${toStr}`);
     }
     if (upperAmslFt != null) {
