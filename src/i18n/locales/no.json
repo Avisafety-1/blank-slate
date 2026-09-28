@@ -481,7 +481,8 @@
       "phoneCoverageDaily": "Telefonnummeret skal være bemannet {{days}} kl. {{from}}-{{to}}.",
       "allDays": "alle dager",
       "fetchingElevation": "(henter terrenghøyde…)",
-      "elevationUnavailable": "(terrenghøyde ikke tilgjengelig)"
+      "elevationUnavailable": "(terrenghøyde ikke tilgjengelig)",
+      "invalidTime": "Ugyldig klokkeslett – bruk formatet HHmm (f.eks. 0800)."
     },
     "checkoutSuccess": "Abonnement aktivert! Velkommen til AviSafe.",
     "checkoutCancelled": "Betaling ble avbrutt.",

@@ -52,6 +52,24 @@ const formatDateNotam = (d: Date) => {
   return `${dd}.${mm}.${yyyy}`;
 };
 
+// Parse "HHmm" (UTC) -> { h, m } or null when invalid
+const parseHhmm = (value: string): { h: number; m: number } | null => {
+  const match = /^(\d{2})(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (h > 23 || m > 59) return null;
+  return { h, m };
+};
+
+// Format a Date as "HHmm" in UTC (used when pre-filling from mission times)
+const toUtcHhmm = (d: Date) =>
+  `${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}`;
+
+// Combine the UTC date part of `date` with a UTC time-of-day
+const combineUtc = (date: Date, time: { h: number; m: number }) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), time.h, time.m));
+
 // Haversine distance in meters between two lat/lng points
 const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R = 6371000;
@@ -150,8 +168,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       setOperationType("BVLOS");
       setScheduleType("daily");
       setScheduleDays(["MON", "TUE", "WED", "THU", "FRI"]);
-      setTimeFrom("0800");
-      setTimeTo("1600");
+      setTimeFrom(mission.tidspunkt ? toUtcHhmm(new Date(mission.tidspunkt)) : "0800");
+      setTimeTo(mission.slutt_tidspunkt ? toUtcHhmm(new Date(mission.slutt_tidspunkt)) : "1600");
       setStartDate(mission.tidspunkt ? new Date(mission.tidspunkt) : undefined);
       setEndDate(mission.slutt_tidspunkt ? new Date(mission.slutt_tidspunkt) : undefined);
       setContactName("");
@@ -253,6 +271,27 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     return Math.ceil(totalFt / 50) * 50;
   }, [groundElevationM, maxAglFt]);
 
+  // Time fields (UTC) are the single source of truth for times in the NOTAM text.
+  // FROM/TO combines the picked dates with these times; the time on the date
+  // objects themselves (inherited from the mission) is ignored.
+  const parsedTimeFrom = useMemo(() => parseHhmm(timeFrom), [timeFrom]);
+  const parsedTimeTo = useMemo(() => parseHhmm(timeTo), [timeTo]);
+  const timeInvalid = !parsedTimeFrom || !parsedTimeTo;
+
+  // Effective FROM/TO instants: date + time-field time (UTC).
+  // For "daterange" (24/7 coverage) the time fields are hidden — use full days.
+  const effectiveFrom = useMemo(() => {
+    if (!startDate) return undefined;
+    if (scheduleType === "daterange") return combineUtc(startDate, { h: 0, m: 0 });
+    return parsedTimeFrom ? combineUtc(startDate, parsedTimeFrom) : startDate;
+  }, [startDate, scheduleType, parsedTimeFrom]);
+
+  const effectiveTo = useMemo(() => {
+    if (!endDate) return undefined;
+    if (scheduleType === "daterange") return combineUtc(endDate, { h: 23, m: 59 });
+    return parsedTimeTo ? combineUtc(endDate, parsedTimeTo) : endDate;
+  }, [endDate, scheduleType, parsedTimeTo]);
+
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
@@ -308,9 +347,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       return `${dd}-${mon}-${yyyy} ${hh}:${mm}`;
     };
     lines.push("");
-    if (startDate || endDate) {
-      const fromStr = startDate ? fmtFromTo(startDate) : "?";
-      const toStr = endDate ? fmtFromTo(endDate) : "?";
+    if (effectiveFrom || effectiveTo) {
+      const fromStr = effectiveFrom ? fmtFromTo(effectiveFrom) : "?";
+      const toStr = effectiveTo ? fmtFromTo(effectiveTo) : "?";
       lines.push(`FROM: ${fromStr} TO: ${toStr}`);
     }
     if (upperAmslFt != null) {
@@ -326,7 +365,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, contactName, contactPhone, companyName, vhfFrequency, upperAmslFt, elevationLoading]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, effectiveFrom, effectiveTo, contactName, contactPhone, companyName, vhfFrequency, upperAmslFt, elevationLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
@@ -341,8 +380,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       .update({
         notam_text: generatedText,
         notam_operation_type: operationType,
-        notam_start_utc: startDate?.toISOString() || null,
-        notam_end_utc: endDate?.toISOString() || null,
+        notam_start_utc: effectiveFrom?.toISOString() || null,
+        notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
         notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
@@ -376,8 +415,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       .update({
         notam_text: generatedText,
         notam_operation_type: operationType,
-        notam_start_utc: startDate?.toISOString() || null,
-        notam_end_utc: endDate?.toISOString() || null,
+        notam_start_utc: effectiveFrom?.toISOString() || null,
+        notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
         notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
@@ -587,6 +626,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                   <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
                 </div>
               </div>
+              {timeInvalid && (
+                <p className="text-sm text-destructive">{t('dashboard.notam.invalidTime')}</p>
+              )}
             </>
           )}
 
@@ -644,11 +686,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               <Copy className="w-4 h-4 sm:mr-1.5" />
               <span className="hidden sm:inline">{t('dashboard.notam.copy')}</span>
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving || timeInvalid}>
               <Save className="w-4 h-4 mr-1.5" />
               {saving ? t('dashboard.notam.saving') : t('dashboard.notam.save')}
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || timeInvalid} variant="default" className="bg-green-600 hover:bg-green-700">
               <Send className="w-4 h-4 mr-1.5" />
               {submitting ? t('dashboard.notam.submitting') : t('dashboard.notam.submit')}
             </Button>

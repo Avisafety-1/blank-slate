@@ -479,7 +479,8 @@
       "phoneCoverageDaily": "The phone number must be staffed {{days}} at {{from}}-{{to}}.",
       "allDays": "all days",
       "fetchingElevation": "(fetching terrain elevation…)",
-      "elevationUnavailable": "(terrain elevation unavailable)"
+      "elevationUnavailable": "(terrain elevation unavailable)",
+      "invalidTime": "Invalid time – use the HHmm format (e.g. 0800)."
     },
     "checkoutSuccess": "Subscription activated! Welcome to AviSafe.",
     "checkoutCancelled": "Payment was cancelled.",
