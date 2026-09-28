@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [ ] NOTAM: valgfritt polygon fra minst tre rutepunkter, med korrekt kartvisning og lagring
 - [x] Månedsoversikt: fullbredde operativ kalender, integrert fargeforklaring og dagsliste under valgt dato
 - [x] Ressurskalender: valg mellom dag-, uke- og månedsvisning med periodetilpasset navigasjon
 - [x] Ressurskalender: samlet operativ ukestidslinje med fast ressurskolonne, zoom og konfliktmarkering
