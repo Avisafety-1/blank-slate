@@ -20,6 +20,7 @@ import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
+import { savedNotamPolygon } from "@/lib/notamGeometry";
 import { RouteSegmentsInfo } from "@/components/oppdrag/RouteSegmentsInfo";
 import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";

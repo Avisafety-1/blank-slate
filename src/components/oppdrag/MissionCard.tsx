@@ -35,6 +35,7 @@ import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWa
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { savedNotamPolygon } from "@/lib/notamGeometry";
 import { RouteSegmentsInfo } from "@/components/oppdrag/RouteSegmentsInfo";
 
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
