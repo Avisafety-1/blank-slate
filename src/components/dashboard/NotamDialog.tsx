@@ -686,11 +686,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               <Copy className="w-4 h-4 sm:mr-1.5" />
               <span className="hidden sm:inline">{t('dashboard.notam.copy')}</span>
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving || timeInvalid}>
               <Save className="w-4 h-4 mr-1.5" />
               {saving ? t('dashboard.notam.saving') : t('dashboard.notam.save')}
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={submitting} variant="default" className="bg-green-600 hover:bg-green-700">
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || timeInvalid} variant="default" className="bg-green-600 hover:bg-green-700">
               <Send className="w-4 h-4 mr-1.5" />
               {submitting ? t('dashboard.notam.submitting') : t('dashboard.notam.submit')}
             </Button>
