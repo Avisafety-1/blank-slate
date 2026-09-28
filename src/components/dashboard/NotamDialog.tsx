@@ -168,8 +168,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       setOperationType("BVLOS");
       setScheduleType("daily");
       setScheduleDays(["MON", "TUE", "WED", "THU", "FRI"]);
-      setTimeFrom("0800");
-      setTimeTo("1600");
+      setTimeFrom(mission.tidspunkt ? toUtcHhmm(new Date(mission.tidspunkt)) : "0800");
+      setTimeTo(mission.slutt_tidspunkt ? toUtcHhmm(new Date(mission.slutt_tidspunkt)) : "1600");
       setStartDate(mission.tidspunkt ? new Date(mission.tidspunkt) : undefined);
       setEndDate(mission.slutt_tidspunkt ? new Date(mission.slutt_tidspunkt) : undefined);
       setContactName("");
