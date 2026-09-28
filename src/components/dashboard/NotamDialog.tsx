@@ -271,6 +271,27 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     return Math.ceil(totalFt / 50) * 50;
   }, [groundElevationM, maxAglFt]);
 
+  // Time fields (UTC) are the single source of truth for times in the NOTAM text.
+  // FROM/TO combines the picked dates with these times; the time on the date
+  // objects themselves (inherited from the mission) is ignored.
+  const parsedTimeFrom = useMemo(() => parseHhmm(timeFrom), [timeFrom]);
+  const parsedTimeTo = useMemo(() => parseHhmm(timeTo), [timeTo]);
+  const timeInvalid = !parsedTimeFrom || !parsedTimeTo;
+
+  // Effective FROM/TO instants: date + time-field time (UTC).
+  // For "daterange" (24/7 coverage) the time fields are hidden — use full days.
+  const effectiveFrom = useMemo(() => {
+    if (!startDate) return undefined;
+    if (scheduleType === "daterange") return combineUtc(startDate, { h: 0, m: 0 });
+    return parsedTimeFrom ? combineUtc(startDate, parsedTimeFrom) : startDate;
+  }, [startDate, scheduleType, parsedTimeFrom]);
+
+  const effectiveTo = useMemo(() => {
+    if (!endDate) return undefined;
+    if (scheduleType === "daterange") return combineUtc(endDate, { h: 23, m: 59 });
+    return parsedTimeTo ? combineUtc(endDate, parsedTimeTo) : endDate;
+  }, [endDate, scheduleType, parsedTimeTo]);
+
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
