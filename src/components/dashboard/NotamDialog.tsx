@@ -52,6 +52,24 @@ const formatDateNotam = (d: Date) => {
   return `${dd}.${mm}.${yyyy}`;
 };
 
+// Parse "HHmm" (UTC) -> { h, m } or null when invalid
+const parseHhmm = (value: string): { h: number; m: number } | null => {
+  const match = /^(\d{2})(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (h > 23 || m > 59) return null;
+  return { h, m };
+};
+
+// Format a Date as "HHmm" in UTC (used when pre-filling from mission times)
+const toUtcHhmm = (d: Date) =>
+  `${String(d.getUTCHours()).padStart(2, "0")}${String(d.getUTCMinutes()).padStart(2, "0")}`;
+
+// Combine the UTC date part of `date` with a UTC time-of-day
+const combineUtc = (date: Date, time: { h: number; m: number }) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), time.h, time.m));
+
 // Haversine distance in meters between two lat/lng points
 const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
   const R = 6371000;
