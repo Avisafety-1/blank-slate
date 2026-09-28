@@ -475,6 +475,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                       lng: currentMission.notam_center_lon_wgs84 ?? effectiveLng,
                       radiusNm: currentMission.notam_radius_nm ?? 0.5,
                       text: currentMission.notam_text,
+                      polygon: savedNotamPolygon(currentMission.notam_schedule_windows),
                     } : null}
                   />
                 </div>
