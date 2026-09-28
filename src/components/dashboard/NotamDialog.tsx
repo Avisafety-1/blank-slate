@@ -319,7 +319,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     if (polygon) {
       bodyParts.push(`PSN ${[...polygon, polygon[0]].map((point) => toNotamCoord(point.lat, point.lng)).join(" - ")}.`);
     } else if (areaMode === "circle" && centerLat != null && centerLng != null) {
-      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}, RADIUS ${radiusNm}NM.`);
+      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}.`);
     }
     bodyParts.push(`MAX HGT ${maxAglFt}FT AGL.`);
     if (contactPhone.trim()) {

@@ -3,8 +3,8 @@ import type { RoutePoint } from "@/types/map";
 /** Keep the polygon with the existing NOTAM schedule JSON, without a schema change. */
 export function validNotamPolygon(value: unknown): RoutePoint[] | null {
   if (!Array.isArray(value)) return null;
-  const points = value.map((p) => ({ lat: Number(p?.lat), lng: Number(p?.lng) }));
-  if (points.some((p) => !Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180)) return null;
+  const points = value.map((p) => ({ lat: p?.lat, lng: p?.lng }));
+  if (points.some((p) => typeof p.lat !== "number" || typeof p.lng !== "number" || !Number.isFinite(p.lat) || !Number.isFinite(p.lng) || Math.abs(p.lat) > 90 || Math.abs(p.lng) > 180)) return null;
   if (points.length > 1 && points[0].lat === points[points.length - 1].lat && points[0].lng === points[points.length - 1].lng) points.pop();
   if (new Set(points.map((p) => `${p.lat},${p.lng}`)).size < 3) return null;
   // Shoelace area: reject collinear points, which cannot bound an area.
@@ -12,7 +12,7 @@ export function validNotamPolygon(value: unknown): RoutePoint[] | null {
     const next = points[(i + 1) % points.length];
     return sum + p.lng * next.lat - next.lng * p.lat;
   }, 0);
-  return Math.abs(twiceArea) > 1e-10 ? points : null;
+  return Math.abs(twiceArea) > 1e-10 ? points as RoutePoint[] : null;
 }
 
 export function savedNotamPolygon(windows: unknown): RoutePoint[] | null {
