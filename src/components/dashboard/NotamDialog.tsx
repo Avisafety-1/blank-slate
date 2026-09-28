@@ -626,6 +626,9 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                   <Input value={timeTo} onChange={(e) => setTimeTo(e.target.value)} placeholder="1600" />
                 </div>
               </div>
+              {timeInvalid && (
+                <p className="text-sm text-destructive">{t('dashboard.notam.invalidTime')}</p>
+              )}
             </>
           )}
 
