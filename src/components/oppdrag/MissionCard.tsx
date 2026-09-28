@@ -35,6 +35,7 @@ import { AirspaceConflictWarning } from "@/components/oppdrag/AirspaceConflictWa
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
 import { MissionMapPreview } from "@/components/dashboard/MissionMapPreview";
+import { savedNotamPolygon } from "@/lib/notamGeometry";
 import { RouteSegmentsInfo } from "@/components/oppdrag/RouteSegmentsInfo";
 
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
@@ -608,6 +609,7 @@ export const MissionCard = ({
                     lng: mission.notam_center_lon_wgs84 ?? effectiveLng,
                     radiusNm: mission.notam_radius_nm ?? 0.5,
                     text: mission.notam_text,
+                    polygon: savedNotamPolygon(mission.notam_schedule_windows),
                   } : null}
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">

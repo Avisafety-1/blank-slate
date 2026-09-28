@@ -1,0 +1,1 @@
+NOTAM polygon geometry is stored in the existing `notam_schedule_windows[0]` object (`areaMode`, `polygon`), validated by `src/lib/notamGeometry.ts`; this keeps text and maps consistent without requiring a database migration.

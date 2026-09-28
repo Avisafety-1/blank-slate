@@ -18,6 +18,7 @@ import { fetchTerrainElevations, buildTerrainProfile, downsamplePositions, inter
 import { renderSoraZones, type SoraSettings } from "@/lib/soraGeometry";
 import { SoraSettingsPanel } from "@/components/SoraSettingsPanel";
 import { sanitizeArcgisGeoJson } from "@/lib/mapDataFetchers";
+import type { RoutePoint as NotamRoutePoint } from "@/types/map";
 
 
 interface RoutePoint {
@@ -54,6 +55,7 @@ interface NotamData {
   lng: number;
   radiusNm: number;
   text: string;
+  polygon?: NotamRoutePoint[] | null;
 }
 
 interface ExpandedMapDialogProps {
@@ -417,8 +419,13 @@ export const ExpandedMapDialog = ({
           });
         }
 
-        // NOTAM circle
-        if (notam && notam.lat && notam.lng && notam.radiusNm > 0) {
+        // Polygon NOTAMs are shown by their saved boundary, not as circles.
+        if (notam?.polygon && notam.polygon.length >= 3) {
+          const points = notam.polygon.map((p) => [p.lat, p.lng] as [number, number]);
+          L.polygon(points, { color: '#f59e0b', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.1, dashArray: '6, 4' })
+            .addTo(map).bindPopup(`<div style="font-size:12px;max-width:300px;white-space:pre-wrap;font-family:monospace;"><strong>NOTAM</strong><hr style="margin:4px 0"/>${notam.text}</div>`);
+          allPoints.push(...points);
+        } else if (notam && notam.lat && notam.lng && notam.radiusNm > 0 && !notam.polygon) {
           const radiusMeters = notam.radiusNm * 1852;
           const notamCircle = L.circle([notam.lat, notam.lng], {
             radius: radiusMeters,

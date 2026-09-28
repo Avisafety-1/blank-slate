@@ -20,6 +20,7 @@ import { getAirspaceRouteSegments } from "@/lib/missionAirspaceSegments";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
 import { MissionMapPreview } from "./MissionMapPreview";
+import { savedNotamPolygon } from "@/lib/notamGeometry";
 import { RouteSegmentsInfo } from "@/components/oppdrag/RouteSegmentsInfo";
 import { useNavigate } from "react-router-dom";
 import { DroneWeatherPanel } from "@/components/DroneWeatherPanel";
@@ -475,6 +476,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                       lng: currentMission.notam_center_lon_wgs84 ?? effectiveLng,
                       radiusNm: currentMission.notam_radius_nm ?? 0.5,
                       text: currentMission.notam_text,
+                      polygon: savedNotamPolygon(currentMission.notam_schedule_windows),
                     } : null}
                   />
                 </div>

@@ -17,6 +17,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { fetchTerrainElevations } from "@/lib/terrainElevation";
 import { useTranslation } from "react-i18next";
+import { segmentsFromRouteData } from "@/lib/routeSegments";
+import { savedNotamPolygon, toNotamCoord, validNotamPolygon } from "@/lib/notamGeometry";
+import type { RouteData } from "@/types/map";
 
 type Mission = any;
 
@@ -28,22 +31,6 @@ interface NotamDialogProps {
 }
 
 const ALL_DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
-
-const toNotamCoord = (lat: number, lng: number): string => {
-  const formatDMS = (value: number, isLat: boolean) => {
-    const abs = Math.abs(value);
-    const d = Math.floor(abs);
-    const mFull = (abs - d) * 60;
-    const m = Math.floor(mFull);
-    const s = Math.round((mFull - m) * 60);
-    const dStr = isLat ? String(d).padStart(2, "0") : String(d).padStart(3, "0");
-    const mStr = String(m).padStart(2, "0");
-    const sStr = String(s).padStart(2, "0");
-    const dir = isLat ? (value >= 0 ? "N" : "S") : (value >= 0 ? "E" : "W");
-    return `${dStr}${mStr}${sStr}${dir}`;
-  };
-  return `${formatDMS(lat, true)} ${formatDMS(lng, false)}`;
-};
 
 const formatDateNotam = (d: Date) => {
   const dd = String(d.getUTCDate()).padStart(2, "0");
@@ -107,6 +94,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [centerLat, setCenterLat] = useState<number | null>(null);
   const [centerLng, setCenterLng] = useState<number | null>(null);
   const [radiusNm, setRadiusNm] = useState(0.5);
+  const [areaMode, setAreaMode] = useState<"circle" | "polygon">("circle");
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [maxAglFt, setMaxAglFt] = useState(400);
   // "daily" = specific days with time window (phone manned during window)
   // "daterange" = date range only (phone manned 24/7)
@@ -124,10 +113,22 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const [submitting, setSubmitting] = useState(false);
   const [groundElevationM, setGroundElevationM] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
+  const routeSegments = useMemo(() => segmentsFromRouteData(mission?.route as RouteData | null), [mission?.route]);
+  const selectedPolygon = validNotamPolygon(routeSegments[selectedRouteIndex]?.coordinates);
+  const eligibleRoutes = routeSegments.map((segment, index) => ({ segment, index })).filter(({ segment }) => validNotamPolygon(segment.coordinates));
+  const polygon = areaMode === "polygon" ? selectedPolygon : null;
 
   // Pre-fill from mission data
   useEffect(() => {
     if (!open || !mission) return;
+    const routes = segmentsFromRouteData(mission.route as RouteData | null);
+    const savedPolygon = savedNotamPolygon(mission.notam_schedule_windows);
+    const savedRouteIndex = savedPolygon && routes.findIndex((route) => JSON.stringify(validNotamPolygon(route.coordinates)) === JSON.stringify(savedPolygon));
+    const activeIndex = routes.findIndex((route) => route.id === mission.route?.activeRouteId);
+    const preferredIndex = savedRouteIndex != null && savedRouteIndex >= 0 ? savedRouteIndex : activeIndex >= 0 ? activeIndex : 0;
+    const firstEligible = routes.findIndex((route) => validNotamPolygon(route.coordinates));
+    setSelectedRouteIndex(validNotamPolygon(routes[preferredIndex]?.coordinates) ? preferredIndex : Math.max(0, firstEligible));
+    setAreaMode(savedPolygon ? "polygon" : "circle");
 
     if (mission.notam_text) {
       setOperationType(mission.notam_operation_type || "BVLOS");
@@ -315,8 +316,10 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     const areaUpper = (areaName || "").toUpperCase().trim();
     const bodyParts: string[] = [];
     bodyParts.push(`UNMANNED ACFT (${operationType}) WILL TAKE PLACE${areaUpper ? ` AT ${areaUpper} AREA` : ""}`);
-    if (centerLat != null && centerLng != null) {
-      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}, RADIUS ${radiusNm}NM.`);
+    if (polygon) {
+      bodyParts.push(`PSN ${[...polygon, polygon[0]].map((point) => toNotamCoord(point.lat, point.lng)).join(" - ")}.`);
+    } else if (areaMode === "circle" && centerLat != null && centerLng != null) {
+      bodyParts.push(`PSN ${toNotamCoord(centerLat, centerLng)}.`);
     }
     bodyParts.push(`MAX HGT ${maxAglFt}FT AGL.`);
     if (contactPhone.trim()) {
@@ -346,7 +349,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     } else {
       lines.push(`LOWER: GND UPPER: ${maxAglFt}FT AGL${elevationLoading ? " " + t('dashboard.notam.fetchingElevation') : " " + t('dashboard.notam.elevationUnavailable')}`);
     }
-    lines.push(`RADIUS: ${radiusNm}NM.`);
+    if (areaMode === "circle") lines.push(`RADIUS: ${radiusNm}NM.`);
 
 
     if (vhfFrequency.trim()) {
@@ -354,7 +357,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, effectiveFrom, effectiveTo, contactPhone, vhfFrequency, upperAmslFt, elevationLoading]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, polygon, areaMode, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, effectiveFrom, effectiveTo, contactPhone, vhfFrequency, upperAmslFt, elevationLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
@@ -362,7 +365,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   };
 
   const handleSave = async () => {
-    if (!mission?.id) return;
+    if (!mission?.id || (areaMode === "polygon" && !polygon)) return;
     setSaving(true);
     const { error } = await (supabase as any)
       .from("missions")
@@ -373,7 +376,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
         notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
-        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
+        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null, areaMode, polygon }],
         notam_area_name: areaName,
         notam_center_lat_wgs84: centerLat,
         notam_center_lon_wgs84: centerLng,
@@ -397,7 +400,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   };
 
   const handleSubmit = async () => {
-    if (!mission?.id) return;
+    if (!mission?.id || (areaMode === "polygon" && !polygon)) return;
     setSubmitting(true);
     const { error } = await (supabase as any)
       .from("missions")
@@ -408,7 +411,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
         notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
-        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
+        notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null, areaMode, polygon }],
         notam_area_name: areaName,
         notam_center_lat_wgs84: centerLat,
         notam_center_lon_wgs84: centerLng,
@@ -487,7 +490,34 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
           </div>
 
           {/* Coordinates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>{t('dashboard.notam.areaShape')}</Label>
+            <Select value={areaMode} onValueChange={(value) => setAreaMode(value as "circle" | "polygon")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="circle">{t('dashboard.notam.circle')}</SelectItem>
+                <SelectItem value="polygon" disabled={eligibleRoutes.length === 0}>{t('dashboard.notam.routeArea')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {eligibleRoutes.length === 0 && <p className="text-xs text-muted-foreground">{t('dashboard.notam.routeAreaUnavailable')}</p>}
+          </div>
+
+          {areaMode === "polygon" && eligibleRoutes.length > 1 && (
+            <div className="space-y-1.5">
+              <Label>{t('dashboard.notam.route')}</Label>
+              <Select value={String(selectedRouteIndex)} onValueChange={(value) => setSelectedRouteIndex(Number(value))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {eligibleRoutes.map(({ segment, index }) => (
+                    <SelectItem key={segment.id} value={String(index)}>{segment.name || t('dashboard.notam.routeNumber', { number: index + 1 })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {areaMode === "polygon" && polygon && <p className="text-xs text-muted-foreground">{t('dashboard.notam.polygonPoints', { count: polygon.length })}</p>}
+
+          {areaMode === "circle" && <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>{t('dashboard.notam.latitude')}</Label>
               <Input
@@ -506,11 +536,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                 onChange={(e) => setCenterLng(e.target.value ? parseFloat(e.target.value) : null)}
               />
             </div>
-          </div>
+          </div>}
 
           {/* Radius & height */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            {areaMode === "circle" && <div className="space-y-1.5">
               <Label>{t('dashboard.notam.radiusNm')}</Label>
               <Input
                 type="number"
@@ -518,7 +548,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
                 value={radiusNm}
                 onChange={(e) => setRadiusNm(parseFloat(e.target.value) || 0.5)}
               />
-            </div>
+            </div>}
             <div className="space-y-1.5">
               <Label>{t('dashboard.notam.maxHeightFt')}</Label>
               <Input
@@ -675,11 +705,11 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
               <Copy className="w-4 h-4 sm:mr-1.5" />
               <span className="hidden sm:inline">{t('dashboard.notam.copy')}</span>
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving || timeInvalid}>
+            <Button size="sm" onClick={handleSave} disabled={saving || timeInvalid || (areaMode === "polygon" && !polygon)}>
               <Save className="w-4 h-4 mr-1.5" />
               {saving ? t('dashboard.notam.saving') : t('dashboard.notam.save')}
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={submitting || timeInvalid} variant="default" className="bg-green-600 hover:bg-green-700">
+            <Button size="sm" onClick={handleSubmit} disabled={submitting || timeInvalid || (areaMode === "polygon" && !polygon)} variant="default" className="bg-green-600 hover:bg-green-700">
               <Send className="w-4 h-4 mr-1.5" />
               {submitting ? t('dashboard.notam.submitting') : t('dashboard.notam.submit')}
             </Button>
