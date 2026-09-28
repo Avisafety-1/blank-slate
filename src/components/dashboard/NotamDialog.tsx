@@ -380,8 +380,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       .update({
         notam_text: generatedText,
         notam_operation_type: operationType,
-        notam_start_utc: startDate?.toISOString() || null,
-        notam_end_utc: endDate?.toISOString() || null,
+        notam_start_utc: effectiveFrom?.toISOString() || null,
+        notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
         notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
@@ -415,8 +415,8 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       .update({
         notam_text: generatedText,
         notam_operation_type: operationType,
-        notam_start_utc: startDate?.toISOString() || null,
-        notam_end_utc: endDate?.toISOString() || null,
+        notam_start_utc: effectiveFrom?.toISOString() || null,
+        notam_end_utc: effectiveTo?.toISOString() || null,
         notam_schedule_type: scheduleType,
         notam_schedule_days: scheduleDays,
         notam_schedule_windows: [{ from: timeFrom, to: timeTo, vhf: vhfFrequency || null }],
