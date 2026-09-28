@@ -295,14 +295,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
   const generatedText = useMemo(() => {
     const lines: string[] = [];
 
-    const datePrefix = startDate && endDate
-      ? `${formatDateNotam(startDate)}-${formatDateNotam(endDate)} `
-      : startDate
-      ? `${formatDateNotam(startDate)} `
-      : endDate
-      ? `?-${formatDateNotam(endDate)} `
-      : "";
-
+    let scheduleLine: string | null = null;
     if (scheduleType === "daily") {
       const sorted = ALL_DAYS.filter((d) => scheduleDays.includes(d));
       let dayStr = "";
@@ -315,12 +308,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       } else if (sorted.length === 1) {
         dayStr = sorted[0];
       }
-      const timePart = dayStr ? `${dayStr} ${timeFrom}-${timeTo}` : `${timeFrom}-${timeTo}`;
-      lines.push(`${datePrefix}${timePart}`);
-    } else if (scheduleType === "daterange") {
-      lines.push(datePrefix.trim() || `${timeFrom}-${timeTo}`);
-    } else {
-      lines.push(`${datePrefix}${timeFrom}-${timeTo}`);
+      scheduleLine = `SCHEDULE: ${dayStr ? `${dayStr} ` : ""}${timeFrom}-${timeTo}`;
     }
 
     // Main body — uppercase, matches Avinor NOTAM format
@@ -352,6 +340,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
       const toStr = effectiveTo ? fmtFromTo(effectiveTo) : "?";
       lines.push(`FROM: ${fromStr} TO: ${toStr}`);
     }
+    if (scheduleLine) lines.push(scheduleLine);
     if (upperAmslFt != null) {
       lines.push(`LOWER: GND UPPER: ${upperAmslFt}FT AMSL`);
     } else {
@@ -365,7 +354,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
     }
 
     return lines.join("\n");
-  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, startDate, endDate, effectiveFrom, effectiveTo, contactName, contactPhone, companyName, vhfFrequency, upperAmslFt, elevationLoading]);
+  }, [operationType, areaName, centerLat, centerLng, radiusNm, maxAglFt, scheduleType, scheduleDays, timeFrom, timeTo, effectiveFrom, effectiveTo, contactPhone, vhfFrequency, upperAmslFt, elevationLoading]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedText);
