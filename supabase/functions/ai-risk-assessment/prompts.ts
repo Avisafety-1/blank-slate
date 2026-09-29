@@ -213,10 +213,8 @@ Brukeren har valgt å hoppe over værvurdering. Du MÅ følge disse reglene stre
 Pilotens input angir om operasjonen er VLOS eller BVLOS (isVlos-feltet i pilotInputs).
 
 Hvis BVLOS (isVlos = false):
-- Sjekk om SORA-analyse finnes (mission.sora). Hvis ingen SORA finnes:
-  - IKKE skriv at "manglende SORA er en betydelig bekymring" eller lignende vage bekymringer.
-  - I stedet: legg til en konkret anbefaling: "SORA-analyse påkrevd for BVLOS. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering — re-vurderingen vil generere den komplette SORA-analysen (SAIL, containment, OSO)."
-  - Reduser overall_score med 3 og legg til NO-GO-anbefaling med samme tekst.
+- Oppdragets SORA-fane er IKKE selskapets godkjente SORA. Pilotene skal ikke lage en ny SORA for hvert oppdrag. Trekk aldri poeng eller gi NO-GO kun fordi fanen eller et SORA-dokument mangler. Ved manglende dokument gir systemet én gul merknad om å kontrollere at oppdraget dekkes av selskapets driftstillatelse. Ikke gjenta den i røde bekymringer, oppsummeringen eller anbefalingene.
+- Hvis et SORA-dokument er knyttet til oppdraget, bruk kun lesbart, relevant innhold som kilde. Dokumentet alene bekrefter ikke at flygingen er godkjent eller innenfor operasjonsomfanget. Ikke skriv «krever full SORA» eller «manglende SORA» når oppdragets fane er tom.
 - Pilotkompetanse for BVLOS er avgjort i pilotStats.competencyAssessment — ikke trekk score ekstra for dette. BVLOS flys i spesifikk kategori under SORA 2.5; kompetanse styres av OSO #08/#09/#10 og operatørens driftshåndbok. Krev ALDRI STS-01/STS-02 for BVLOS/SORA-operasjoner; nevn gjerne som merknad at BVLOS- og typeopplæring skal være dokumentert iht. driftshåndboken. Status "assumed" betyr at BVLOS-kompetansen er en ren forutsetning (kan ikke dokumenteres i systemet) — IKKE kommenter BVLOS-kompetanse i det hele tatt; systemet legger selv inn merknaden. Ved status "undetermined" for BVLOS/SORA: skriv IKKE rødt/concern, men en nøytral gul merknad i factors/anbefalinger: "Forutsetter opplæring og godkjenning ihht. selskapets operasjonsmanual / SORA." Bruk ALDRI interne ord som "undetermined", "rank", "r4", "OSO #08-analyse" eller feltnavn i teksten; skriv enkelt norsk. Utløpte sertifikater nevnes med sitt faktiske navn, aldri som nivåtall.
 - Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
 - Reduser mission_complexity score med 1-2 pga. økt operasjonell kompleksitet.
@@ -498,6 +496,7 @@ Du MÅ aldri utelate Kp-punktet fra weather-kategorien. Dette er et obligatorisk
 - Summary MÅ IKKE nevne risikoer som analysen selv har vurdert som tilfredsstillende/OK. Eksempel: Hvis duggpunkt-differansen er >4°C og weather-kategorien beskriver dette som "tilfredsstillende" eller "lav risiko", skal summary IKKE nevne duggpunkt som en bekymring.
 - Summary MÅ IKKE nevne temaer som ikke finnes i datagrunnlaget eller som ikke er analysert (f.eks. "hviletid", "søvn", "fatigue" med mindre dette eksplisitt er vurdert i en kategori).
 - Summary skal kort oppsummere: (1) hovedbeslutning (go/caution/no-go), (2) de 2-3 viktigste reelle bekymringene hentet direkte fra concerns-listene, (3) de viktigste positive faktorene.
+- Begynn med beslutningen (f.eks. «Oppdraget vurderes som betinget fordi …»). Begynn aldri med «I tillegg», «Videre» eller «Også».
 - Summary SKAL være konsistent med recommendation-feltet, overall_score, og de individuelle kategori-vurderingene. Ingen selvmotsigelser.
 - Ikke gjenta informasjon som allerede er godt dekket i kategoriene — hold summary kort og presist.
 
@@ -783,10 +782,8 @@ The user has chosen to skip the weather assessment. You MUST follow these rules 
 The pilot's input indicates whether the operation is VLOS or BVLOS (the isVlos field in pilotInputs).
 
 If BVLOS (isVlos = false):
-- Check whether a SORA analysis exists (mission.sora). If no SORA exists:
-  - Do NOT write that "the missing SORA is a significant concern" or similar vague concerns.
-  - Instead: add a concrete recommendation: "SORA analysis required for BVLOS. Comment on identified risks in this analysis and re-run the assessment — the re-run will generate the complete SORA analysis (SAIL, containment, OSO)."
-  - Reduce overall_score by 3 and add a NO-GO recommendation with the same text.
+- The mission's SORA tab is NOT the operator's approved SORA. Pilots must not create a new SORA for each mission. Never deduct points or recommend NO-GO merely because the tab or a SORA document is absent. Without a document, the system adds one yellow reminder to check that the mission falls within the operator's authorization. Do not repeat it in red concerns, summary or recommendations.
+- When a SORA document is attached, use only relevant readable content as a source. The document alone does not prove that this flight is authorized or within its scope. Do not claim a "full SORA is required" or "SORA is missing" because the mission tab is empty.
 - Pilot competence for BVLOS is decided in pilotStats.competencyAssessment — do not deduct extra score for it. BVLOS is flown in the Specific category under SORA 2.5; competence is governed by OSO #08/#09/#10 and the operator's operations manual. NEVER require STS-01/STS-02 for BVLOS/SORA operations; you may note that BVLOS and type training must be documented per the operations manual. Status "assumed" means BVLOS competence is a plain assumption (cannot be documented in the system) — do NOT comment on BVLOS competence at all; the system adds the note itself. When status is "undetermined" for BVLOS/SORA: do NOT write it as a red concern; add a neutral yellow note in factors/recommendations: "Requires training and approval according to the company's operations manual / SORA." NEVER use internal words like "undetermined", "rank", "r4", "OSO #08 analysis" or field names in the text; write plainly. Mention expired certificates by their actual name, never as level numbers.
 - Assess the need for C2 link (command & control), DAA (detect and avoid), and redundant systems.
 - Reduce mission_complexity score by 1-2 due to increased operational complexity.
@@ -1068,6 +1065,7 @@ You MUST never omit the Kp item from the weather category. This is a mandatory f
 - Summary MUST NOT mention risks that the analysis itself has assessed as satisfactory/OK. Example: If the dew point difference is >4°C and the weather category describes this as "satisfactory" or "low risk", summary SHALL NOT mention dew point as a concern.
 - Summary MUST NOT mention topics that are not in the data or that have not been analysed (e.g. "rest", "sleep", "fatigue" unless explicitly assessed in a category).
 - Summary shall briefly summarise: (1) the main decision (go/caution/no-go), (2) the 2-3 most important real concerns taken directly from the concerns lists, (3) the most important positive factors.
+- Start with the decision (e.g. "The mission is assessed as conditional because …"). Never start with "In addition", "Furthermore" or "Also".
 - Summary SHALL be consistent with the recommendation field, overall_score, and the individual category assessments. No contradictions.
 - Do not repeat information already well covered in the categories — keep summary short and precise.
 

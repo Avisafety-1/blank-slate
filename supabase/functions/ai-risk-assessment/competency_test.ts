@@ -67,3 +67,10 @@ Deno.test('jargon is scrubbed and expired rows carry readable codes', async () =
   assertEquals(a.status, 'assumed');
   assertEquals(a.expired.filter((e) => e.code).map((e) => e.code), ['A2']);
 });
+
+Deno.test('summary retains real operational findings and removes orphaned transitions', async () => {
+  const { scrubCompetencyText } = await import('./competency.ts');
+  assertEquals(scrubCompetencyText('BVLOS kompetanse er uavklart. I tillegg kreves Ninox-godkjenning.'), 'Kreves Ninox-godkjenning.');
+  assertEquals(scrubCompetencyText('Oppdraget er betinget på grunn av luftrom og pilotkompetanse. I tillegg kreves klarering.'), 'Oppdraget er betinget på grunn av luftrom og pilotkompetanse. I tillegg kreves klarering.');
+  assertEquals(scrubCompetencyText('In addition, airspace clearance is needed.'), 'Airspace clearance is needed.');
+});

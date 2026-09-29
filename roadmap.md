@@ -1,6 +1,8 @@
 # Roadmap
 
 ## Pågående
+- [ ] SORA-dokument per oppdragstype og oppdrag, PDF-tolkning og gul merknad ved manglende dokument (DB-migrasjon krever uttrykkelig forhåndsgodkjenning)
+- [ ] Risikovurdering: naturlig konklusjonsstart uten «I tillegg» og ingen krav om ny SORA per oppdrag
 - [x] NOTAM: valgfritt polygon fra minst tre rutepunkter, med korrekt kartvisning og lagring
 - [x] Månedsoversikt: fullbredde operativ kalender, integrert fargeforklaring og dagsliste under valgt dato
 - [x] Ressurskalender: valg mellom dag-, uke- og månedsvisning med periodetilpasset navigasjon
