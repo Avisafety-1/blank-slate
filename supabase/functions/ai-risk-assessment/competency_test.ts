@@ -37,7 +37,7 @@ Deno.test('BVLOS under SORA never requires STS and never hard-stops', () => {
   assertEquals(run([row('A1/A3')], null, 'sparsely_populated', false).status, 'ok');
   assertEquals(run([row('Operatør godkjenning LT', 'Godkjenning')], 'C2', 'sparsely_populated', false).status, 'ok');
   const none = run([], 'C2', 'sparsely_populated', false);
-  assertEquals(none.status, 'undetermined');
+  assertEquals(none.status, 'assumed');
   assertEquals(buildCompetencyReason(none, 'no'), null);
 });
 
@@ -56,4 +56,14 @@ Deno.test('unknown class or unclassified rows are undetermined', () => {
   assertEquals(run([row('A1/A3')], null).status, 'undetermined');
   assertEquals(run([row('A1/A3')], 'C5').status, 'undetermined');
   assertEquals(run([row('Dronepilot (specific category)', 'Sertifikat')], 'C2', 'populated').status, 'undetermined');
+});
+
+Deno.test('jargon is scrubbed and expired rows carry readable codes', async () => {
+  const m = await import('./competency.ts');
+  assertEquals(m.isCompetencyJargon("Flere 'r4'-sertifikater er utløpt"), true);
+  assertEquals(m.isCompetencyJargon('Kompetansevurderingen for BVLOS er uavklart'), true);
+  assertEquals(m.isCompetencyJargon('Piloten har gyldig PPL-A'), false);
+  const a = m.evaluateCompetency({ rows: [{ type: 'Sertifikat', navn: 'A2', utloper_dato: '2020-01-01' }, { type: 'Kurs', navn: 'R4 intern', utloper_dato: '2020-01-01' }], pilotIds: [], droneClass: 'C6', proximityToPeople: null, isVlos: false });
+  assertEquals(a.status, 'assumed');
+  assertEquals(a.expired.filter((e) => e.code).map((e) => e.code), ['A2']);
 });
