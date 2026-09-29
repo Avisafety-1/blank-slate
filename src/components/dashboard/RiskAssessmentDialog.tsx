@@ -22,7 +22,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { usePlanGating } from "@/hooks/usePlanGating";
-import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText } from "lucide-react";
+import { Loader2, ShieldCheck, AlertTriangle, History, AlertOctagon, Save, FileDown, BarChart3, FileText, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
@@ -839,7 +840,21 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                   {/* Flight Parameters */}
                   {currentMissionId && (
                     <div className="space-y-2">
-                      <Label>{t("riskAssessment.soraDocument")}</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label>{t("riskAssessment.soraDocument")}</Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="text-muted-foreground hover:text-foreground" aria-label={t("riskAssessment.soraDocumentAutoSelectHelp")}>
+                                <HelpCircle className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              {t("riskAssessment.soraDocumentAutoSelectHelp")}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <Select value={selectedSoraDocumentId || "none"} onValueChange={chooseSoraDocument}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
