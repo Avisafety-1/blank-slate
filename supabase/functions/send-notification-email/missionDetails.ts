@@ -197,11 +197,48 @@ export function buildRiskHtml(risk: RiskSummary | null, lang: 'no' | 'en'): stri
     + `</div></div>`;
 }
 
+const fmtDist = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`);
+
+/** Samme luftromssjekk som oppdragskortet (check_mission_airspace per rute, worst case). */
+async function loadMissionAirspace(supabase: any, mission: any) {
+  const lat = mission.latitude, lng = mission.longitude;
+  if (lat == null || lng == null) return [];
+  const route = mission.route as any;
+  const runs: Array<any[] | null> = Array.isArray(route?.routes) && route.routes.length
+    ? route.routes.map((r: any) => (r?.coordinates?.length ? r.coordinates : null))
+    : [route?.coordinates?.length ? route.coordinates : null];
+  const merged = new Map<string, any>();
+  for (const pts of runs) {
+    const { data, error } = await supabase.rpc('check_mission_airspace', { p_lat: lat, p_lng: lng, p_route: pts });
+    if (error) { console.error('check_mission_airspace failed', error); continue; }
+    for (const r of (data || []) as any[]) {
+      const key = `${r.z_type}|${r.z_name}`;
+      const ex = merged.get(key);
+      if (!ex) merged.set(key, { ...r });
+      else {
+        ex.route_inside = ex.route_inside || r.route_inside;
+        ex.min_distance = Math.min(ex.min_distance ?? r.min_distance, r.min_distance);
+      }
+    }
+  }
+  const order: Record<string, number> = { warning: 0, caution: 1, note: 2 };
+  return [...merged.values()].map((r) => {
+    const inside = !!r.route_inside;
+    const special = (r.z_type === '5KM' || r.z_type === 'ATZ_5KM') && inside;
+    const level = special ? 'warning' : inside
+      ? (r.severity === 'WARNING' ? 'warning' : 'caution')
+      : (r.severity === 'WARNING' ? 'caution' : 'note');
+    const name = String(r.z_name || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const message = inside ? `${r.z_type}: ruten går inne i sonen` : `${r.z_type}: ${fmtDist(r.min_distance ?? 0)} fra ruten`;
+    return { zone_name: name, zone_type: r.z_type, level, message };
+  }).sort((a, b) => (order[a.level] ?? 3) - (order[b.level] ?? 3));
+}
+
 /** Henter oppdragsdetaljer + siste risikovurdering direkte fra databasen (brukes av godkjenningsvarselet). */
 export async function loadMissionDetailsInput(supabase: any, missionId: string): Promise<MissionDetailsInput | null> {
   const { data: mission } = await supabase
     .from('missions')
-    .select('id, tidspunkt, slutt_tidspunkt, latitude, longitude, oppdragstype, oppdragstype_annet, merknader, customer_id, company_id')
+    .select('id, tidspunkt, slutt_tidspunkt, latitude, longitude, route, oppdragstype, oppdragstype_annet, merknader, customer_id, company_id')
     .eq('id', missionId)
     .maybeSingle();
   if (!mission) return null;
@@ -249,19 +286,7 @@ export async function loadMissionDetailsInput(supabase: any, missionId: string):
     })).filter((p: any) => p.navn),
     droner: (drones || []).map((d: any) => [d.modell, d.dji_aircraft_name || d.serienummer].filter(Boolean).join(' – ')).filter(Boolean),
     utstyr: (equipment || []).map((e: any) => e.navn).filter(Boolean),
-    luftrom: Array.isArray(risk?.airspace_warnings)
-      ? (risk.airspace_warnings as any[]).map((w: any) => {
-          const inside = !!w.route_inside;
-          const dist = typeof w.min_distance === 'number' ? w.min_distance : null;
-          const distTxt = inside ? 'Ruten går inne i sonen' : dist != null ? `${dist < 1000 ? Math.round(dist) + ' m' : (dist / 1000).toFixed(1) + ' km'} fra ruten` : '';
-          return {
-            zone_name: w.zone_name ?? w.z_name ?? w.name,
-            zone_type: w.zone_type ?? w.z_type,
-            level: w.level ?? (inside ? 'warning' : 'caution'),
-            message: w.message ?? [w.z_type, distTxt].filter(Boolean).join(' – '),
-          };
-        }).filter((w) => w.zone_name || w.zone_type)
-      : [],
+    luftrom: await loadMissionAirspace(supabase, mission),
     risiko: risk
       ? {
           overall_score: risk.overall_score,
