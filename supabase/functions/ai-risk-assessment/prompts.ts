@@ -217,7 +217,7 @@ Hvis BVLOS (isVlos = false):
   - IKKE skriv at "manglende SORA er en betydelig bekymring" eller lignende vage bekymringer.
   - I stedet: legg til en konkret anbefaling: "SORA-analyse påkrevd for BVLOS. Kommenter på identifiserte risikoer i denne analysen og kjør en re-vurdering — re-vurderingen vil generere den komplette SORA-analysen (SAIL, containment, OSO)."
   - Reduser overall_score med 3 og legg til NO-GO-anbefaling med samme tekst.
-- Pilotkompetanse for BVLOS er avgjort i pilotStats.competencyAssessment — ikke trekk score ekstra for dette.
+- Pilotkompetanse for BVLOS er avgjort i pilotStats.competencyAssessment — ikke trekk score ekstra for dette. BVLOS flys i spesifikk kategori under SORA 2.5; kompetanse styres av OSO #08/#09/#10 og operatørens driftshåndbok. Krev ALDRI STS-01/STS-02 for BVLOS/SORA-operasjoner; nevn gjerne som merknad at BVLOS- og typeopplæring skal være dokumentert iht. driftshåndboken.
 - Vurder behov for C2-link (command & control), DAA (detect and avoid), og redundante systemer.
 - Reduser mission_complexity score med 1-2 pga. økt operasjonell kompleksitet.
 - Legg til spesifikke BVLOS-anbefalinger i recommendations (kommunikasjonsplan, nødstopp-prosedyrer, lost-link-prosedyre).
@@ -787,7 +787,7 @@ If BVLOS (isVlos = false):
   - Do NOT write that "the missing SORA is a significant concern" or similar vague concerns.
   - Instead: add a concrete recommendation: "SORA analysis required for BVLOS. Comment on identified risks in this analysis and re-run the assessment — the re-run will generate the complete SORA analysis (SAIL, containment, OSO)."
   - Reduce overall_score by 3 and add a NO-GO recommendation with the same text.
-- Pilot competence for BVLOS is decided in pilotStats.competencyAssessment — do not deduct extra score for it.
+- Pilot competence for BVLOS is decided in pilotStats.competencyAssessment — do not deduct extra score for it. BVLOS is flown in the Specific category under SORA 2.5; competence is governed by OSO #08/#09/#10 and the operator's operations manual. NEVER require STS-01/STS-02 for BVLOS/SORA operations; you may note that BVLOS and type training must be documented per the operations manual.
 - Assess the need for C2 link (command & control), DAA (detect and avoid), and redundant systems.
 - Reduce mission_complexity score by 1-2 due to increased operational complexity.
 - Add specific BVLOS recommendations to recommendations (communication plan, emergency stop procedures, lost-link procedure).

@@ -30,12 +30,15 @@ Deno.test('C2 requires A2 only near people', () => {
   assertEquals(run([row('A2', 'Kurs')], 'C2', 'populated').status, 'ok');
 });
 
-Deno.test('BVLOS needs STS-02 or operator approval', () => {
-  assertEquals(run([row('STS')], 'C2', 'sparsely_populated', false).status, 'missing');
-  assertEquals(run([row('STS-02')], 'C6', 'sparsely_populated', false).status, 'ok');
-  const op = run([row('A1/A3'), row('Operatør godkjenning LT', 'Godkjenning')], 'C2', 'sparsely_populated', false);
-  assertEquals(op.status, 'ok');
-  assertEquals(op.coveredBy, 'operator_approval');
+Deno.test('BVLOS under SORA never requires STS and never hard-stops', () => {
+  const a = run([row('A2')], 'C2', 'populated', false);
+  assertEquals(a.status, 'ok');
+  assertEquals(a.coveredBy, 'sora_oso08');
+  assertEquals(run([row('A1/A3')], null, 'sparsely_populated', false).status, 'ok');
+  assertEquals(run([row('Operatør godkjenning LT', 'Godkjenning')], 'C2', 'sparsely_populated', false).status, 'ok');
+  const none = run([], 'C2', 'sparsely_populated', false);
+  assertEquals(none.status, 'undetermined');
+  assertEquals(buildCompetencyReason(none, 'no'), null);
 });
 
 Deno.test('expired does not count, no date counts', () => {

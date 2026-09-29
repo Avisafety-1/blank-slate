@@ -1,5 +1,8 @@
 // Deterministic, lenient ("godtroende") pilot competency check.
 // Rank ladder: 1 = A1/A3, 2 = A2, 3 = STS-01, 4 = STS-02 (higher covers lower).
+// BVLOS is flown in the Specific category under SORA 2.5 (EU 2019/947). Pilot
+// competence is then governed by OSO #08/#09/#10 and the operator's OM, NOT by
+// STS certificates. BVLOS therefore never requires STS-02 and never hard-stops.
 // The engine NEVER produces "missing" from data it cannot interpret — it then
 // returns "undetermined" and the AI assesses as before (never as a hard stop).
 
@@ -62,7 +65,7 @@ export interface CompetencyAssessment {
   requiredLabel: string | null;
   pilotRank: number | null;
   pilotLabel: string | null;
-  coveredBy: 'personal' | 'operator_approval' | null;
+  coveredBy: 'personal' | 'operator_approval' | 'sora_oso08' | null;
   operatorApproval: string | null;
   recognised: { name: string; code: string; expires: string | null }[];
   expired: { name: string; expired: string | null }[];
@@ -73,7 +76,7 @@ export interface CompetencyAssessment {
 }
 
 export const requiredRank = (droneClass: string | null, nearPeople: boolean, isVlos: boolean): number | null => {
-  if (!isVlos) return 4;
+  if (!isVlos) return 1; // Specific/SORA: baseline certificate, rest via OSO #08
   switch (droneClass) {
     case 'C0': case 'C1': case 'C3': case 'C4': return 1;
     case 'C2': return nearPeople ? 2 : 1;
@@ -129,11 +132,15 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     return { ...base, status: 'undetermined', coveredBy: null, reason: null,
       undeterminedWhy: droneClass ? `unsupported_class:${droneClass}` : 'missing_class' };
   }
+  if (!input.isVlos) {
+    // SORA 2.5 / OSO #08: never "missing" — at worst undetermined (advisory only).
+    if (operatorApproval || (pilotRank !== null && pilotRank >= 1)) {
+      return { ...base, status: 'ok', coveredBy: 'sora_oso08', reason: null, undeterminedWhy: null };
+    }
+    return { ...base, status: 'undetermined', coveredBy: null, reason: null, undeterminedWhy: 'bvlos_specific_oso08' };
+  }
   if (pilotRank !== null && pilotRank >= req) {
     return { ...base, status: 'ok', coveredBy: 'personal', reason: null, undeterminedWhy: null };
-  }
-  if (!input.isVlos && operatorApproval) {
-    return { ...base, status: 'ok', coveredBy: 'operator_approval', reason: null, undeterminedWhy: null };
   }
   // Never fail on data we could not interpret.
   if (unclassified.length > 0) {
@@ -149,11 +156,6 @@ export const buildCompetencyReason = (a: CompetencyAssessment, lang: 'no' | 'en'
     ? (en ? `the pilot only has ${a.pilotLabel}` : `piloten har kun ${a.pilotLabel}`)
     : (en ? 'the pilot has no valid recognised drone certificate' : 'piloten har ikke gyldig gjenkjent droneførerbevis');
   const noOp = en ? 'and no operator approval covers the operation' : 'og ingen operatørgodkjenning dekker operasjonen';
-  if (a.requiredRank === 4) {
-    return en
-      ? `The operation is BVLOS, which requires STS-02; ${has}, ${noOp}`
-      : `Operasjonen er BVLOS, som krever STS-02; ${has}, ${noOp}`;
-  }
   if (a.requiredRank === 2) {
     return en
       ? `The drone is C2 and flown near uninvolved people, which requires A2; ${has}, ${noOp}`
