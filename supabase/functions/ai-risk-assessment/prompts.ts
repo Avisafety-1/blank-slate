@@ -496,6 +496,7 @@ Du MÅ aldri utelate Kp-punktet fra weather-kategorien. Dette er et obligatorisk
 - Summary MÅ IKKE nevne risikoer som analysen selv har vurdert som tilfredsstillende/OK. Eksempel: Hvis duggpunkt-differansen er >4°C og weather-kategorien beskriver dette som "tilfredsstillende" eller "lav risiko", skal summary IKKE nevne duggpunkt som en bekymring.
 - Summary MÅ IKKE nevne temaer som ikke finnes i datagrunnlaget eller som ikke er analysert (f.eks. "hviletid", "søvn", "fatigue" med mindre dette eksplisitt er vurdert i en kategori).
 - Summary skal kort oppsummere: (1) hovedbeslutning (go/caution/no-go), (2) de 2-3 viktigste reelle bekymringene hentet direkte fra concerns-listene, (3) de viktigste positive faktorene.
+- Begynn med beslutningen (f.eks. «Oppdraget vurderes som betinget fordi …»). Begynn aldri med «I tillegg», «Videre» eller «Også».
 - Summary SKAL være konsistent med recommendation-feltet, overall_score, og de individuelle kategori-vurderingene. Ingen selvmotsigelser.
 - Ikke gjenta informasjon som allerede er godt dekket i kategoriene — hold summary kort og presist.
 
@@ -1064,6 +1065,7 @@ You MUST never omit the Kp item from the weather category. This is a mandatory f
 - Summary MUST NOT mention risks that the analysis itself has assessed as satisfactory/OK. Example: If the dew point difference is >4°C and the weather category describes this as "satisfactory" or "low risk", summary SHALL NOT mention dew point as a concern.
 - Summary MUST NOT mention topics that are not in the data or that have not been analysed (e.g. "rest", "sleep", "fatigue" unless explicitly assessed in a category).
 - Summary shall briefly summarise: (1) the main decision (go/caution/no-go), (2) the 2-3 most important real concerns taken directly from the concerns lists, (3) the most important positive factors.
+- Start with the decision (e.g. "The mission is assessed as conditional because …"). Never start with "In addition", "Furthermore" or "Also".
 - Summary SHALL be consistent with the recommendation field, overall_score, and the individual category assessments. No contradictions.
 - Do not repeat information already well covered in the categories — keep summary short and precise.
 
