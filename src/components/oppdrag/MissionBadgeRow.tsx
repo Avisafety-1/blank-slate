@@ -15,7 +15,6 @@ import {
   getApprovalStatusLabel,
   canSubmitForApproval,
   shouldShowApprovalBadge,
-  shouldShowSoraBadge,
   getAIRiskBadgeColor,
   getAIRiskLabel,
   formatMissionRiskScore,

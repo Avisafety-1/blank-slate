@@ -65,7 +65,6 @@ import {
   canSubmitForApproval,
   shouldShowAIRiskBadge,
   shouldShowApprovalBadge,
-  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;

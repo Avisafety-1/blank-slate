@@ -396,12 +396,11 @@ export const ProfileDialog = () => {
         let riskMap: Record<string, any> = {};
         let personnelMap: Record<string, string[]> = {};
         let personnelDetailsMap: Record<string, Array<{ id: string; name: string; roleName: string | null }>> = {};
-        let soraMap: Record<string, any> = {};
         let documentCountsMap: Record<string, number> = {};
         let companyNameMap: Record<string, string> = {};
         if (missionIds.length > 0) {
           const companyIds = Array.from(new Set((pendingMissions || []).map((m: any) => m.company_id).filter(Boolean)));
-          const [riskResult, personnelResult, soraResult, docsResult, companiesResult] = await Promise.all([
+          const [riskResult, personnelResult, docsResult, companiesResult] = await Promise.all([
             supabase
               .from("mission_risk_assessments")
               .select("*")
@@ -410,10 +409,6 @@ export const ProfileDialog = () => {
             supabase
               .from("mission_personnel")
               .select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(name)")
-              .in("mission_id", missionIds),
-            supabase
-              .from("mission_sora")
-              .select("mission_id, sora_status")
               .in("mission_id", missionIds),
             supabase
               .from("mission_documents")
@@ -446,12 +441,6 @@ export const ProfileDialog = () => {
             }
           }
 
-          if (soraResult.data) {
-            for (const s of soraResult.data as any[]) {
-              if (!soraMap[s.mission_id]) soraMap[s.mission_id] = s;
-            }
-          }
-
           if (docsResult.data) {
             for (const d of docsResult.data as any[]) {
               documentCountsMap[d.mission_id] = (documentCountsMap[d.mission_id] || 0) + 1;
@@ -471,7 +460,6 @@ export const ProfileDialog = () => {
             aiRisk: riskMap[m.id] || null,
             personnel_profile_ids: personnelMap[m.id] || [],
             personnel_details: personnelDetailsMap[m.id] || [],
-            sora: soraMap[m.id] || null,
             documentCount: documentCountsMap[m.id] || 0,
             company_name: companyNameMap[m.company_id] || null,
           }))

@@ -41,11 +41,9 @@ import {
   getAIRiskLabel,
   formatAIRiskScore,
   getApprovalStatusColor,
-  getSoraBadgeColor,
   canSubmitForApproval,
   shouldShowAIRiskBadge,
   shouldShowApprovalBadge,
-  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 import { useTranslation } from "react-i18next";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
@@ -76,7 +74,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   };
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
-  const [soraStatus, setSoraStatus] = useState<string | null>(null);
    const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string; hasSoraReassessment: boolean } | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [has5kmZone, setHas5kmZone] = useState(false);
@@ -104,15 +101,13 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   useEffect(() => {
     if (!open || !mission?.id) {
       setLiveMission(null);
-      setSoraStatus(null);
       setMissionFlightLogs(null);
       setFetchedAiRisk(null);
       return;
     }
     const fetchLatest = async () => {
-      const [missionRes, soraRes, logsRes, riskRes] = await Promise.all([
+      const [missionRes, logsRes, riskRes] = await Promise.all([
         supabase.from("missions").select("*").eq("id", mission.id).single(),
-        supabase.from("mission_sora").select("sora_status").eq("mission_id", mission.id).maybeSingle(),
         supabase.from("flight_logs").select(FLIGHT_ANALYSIS_COLUMNS)
           .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
          supabase.from("mission_risk_assessments").select("overall_score, recommendation, sora_output")
@@ -122,7 +117,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         setLiveMission(missionRes.data);
         setNinoxApproved(!!(missionRes.data as any).ninox_approved);
       }
-      setSoraStatus(soraRes.data?.sora_status ?? null);
       setMissionFlightLogs(logsRes.data || []);
        const latestRisk = riskRes.data?.[0];
        setFetchedAiRisk(latestRisk ? {
