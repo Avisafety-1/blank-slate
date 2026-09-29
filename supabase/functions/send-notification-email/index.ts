@@ -8,7 +8,7 @@ import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shar
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
 import { assertUserInCompany } from "../_shared/companyScope.ts";
-import { buildMissionDetails } from "./missionDetails.ts";
+import { buildMissionDetails, loadMissionDetailsInput } from "./missionDetails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -409,7 +409,12 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       const missionDate = new Date(mission.tidspunkt).toLocaleString(dateLocale, { timeZone: 'Europe/Oslo', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       let details: Record<string, string> = {};
       try {
-        details = await buildMissionDetails(supabase, mission as any, isEn ? 'en' : 'no', dateLocale);
+        let merknader = (mission as any).merknader ?? null;
+        if (merknader == null && (mission as any).id) {
+          const { data: mRow } = await supabase.from('missions').select('merknader').eq('id', (mission as any).id).maybeSingle();
+          merknader = mRow?.merknader ?? null;
+        }
+        details = await buildMissionDetails(supabase, { ...(mission as any), merknader }, isEn ? 'en' : 'no', dateLocale);
       } catch (e) {
         console.error('buildMissionDetails failed', e);
       }
@@ -587,8 +592,26 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
       const missionDate = new Date(missionData!.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: missionData!.tittel, mission_location: missionData!.lokasjon || 'Ikke oppgitt', mission_date: missionDate, mission_description: missionData!.beskrivelse || '', company_name: company?.navn || '' },
+      const approvalIsEn = String(requestLanguage).startsWith('en');
+      let approvalDetails: Record<string, string> = {};
+      try {
+        const input = missionData?.id ? await loadMissionDetailsInput(supabase, missionData.id) : null;
+        if (input) {
+          approvalDetails = await buildMissionDetails(supabase, input, approvalIsEn ? 'en' : 'no', approvalIsEn ? 'en-GB' : 'nb-NO');
+          approvalDetails.mission_details = `${approvalDetails.mission_risk || ''}${approvalDetails.mission_details || ''}`;
+        }
+      } catch (e) {
+        console.error('approval buildMissionDetails failed', e);
+      }
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_approval_request', { mission_title: escapeHtml(missionData!.tittel || ''), mission_location: escapeHtml(missionData!.lokasjon || 'Ikke oppgitt'), mission_date: missionDate, mission_description: escapeHtml(missionData!.beskrivelse || ''), company_name: company?.navn || '', ...approvalDetails },
       requestLanguage);
+      // Egendefinerte maler uten de nye variablene får detaljene lagt inn automatisk
+      if (approvalDetails.mission_details && templateResult.content && !templateResult.content.includes(approvalDetails.mission_weather)) {
+        const block = `<div style="max-width:600px;margin:0 auto;padding:0 20px 20px;font-family:Arial,sans-serif;">${approvalDetails.mission_details}</div>`;
+        templateResult.content = /<\/body>/i.test(templateResult.content)
+          ? templateResult.content.replace(/<\/body>/i, `${block}</body>`)
+          : templateResult.content + block;
+      }
 
       if (!templateResult.content) {
         console.warn('Empty template content for mission_approval_request, using inline fallback');

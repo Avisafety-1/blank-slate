@@ -132,6 +132,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </table>
 <p style="margin-top: 15px;"><strong>Description:</strong></p>
 <p>{{mission_description}}</p>
+{{mission_notes}}
 {{mission_resources}}
 {{mission_airspace_warnings}}
 {{mission_weather}}
@@ -430,6 +431,11 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 <p><strong>Location:</strong> {{mission_location}}</p>
 <p><strong>Time:</strong> {{mission_date}}</p>
 <p><strong>Description:</strong> {{mission_description}}</p>
+{{mission_notes}}
+{{mission_risk}}
+{{mission_resources}}
+{{mission_airspace_warnings}}
+{{mission_weather}}
 </div>
 <p style="text-align: center;">
 <a href="https://app.avisafe.no" class="button">Go to approval</a>

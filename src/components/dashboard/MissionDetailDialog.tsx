@@ -605,6 +605,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
                     type: 'notify_mission_approval',
                     companyId,
                     mission: {
+                      id: currentMission.id,
                       tittel: currentMission.tittel,
                       lokasjon: currentMission.lokasjon,
                       tidspunkt: currentMission.tidspunkt,
