@@ -5,35 +5,53 @@ const esc = (v: unknown) => String(v ?? '')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 export interface MissionDetailsInput {
+  id?: string | null;
   tidspunkt: string;
   slutt_tidspunkt?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   oppdragstype?: string | null;
   kunde?: string | null;
+  merknader?: string | null;
   personell?: Array<string | { navn: string; rolle?: string | null }>;
   droner?: string[];
   utstyr?: string[];
   luftrom?: Array<{ zone_name?: string; zone_type?: string; level?: string; message?: string }>;
+  risiko?: RiskSummary | null;
+}
+
+export interface RiskSummary {
+  overall_score?: number | string | null;
+  recommendation?: string | null;
+  headline?: string | null;
+  created_at?: string | null;
 }
 
 const L = {
   no: {
     personnel: 'Personell', drones: 'Droner', equipment: 'Utstyr', customer: 'Kunde', type: 'Oppdragstype', end: 'Slutt',
+    notes: 'Merknader',
     airspace: 'Luftromsvarsler', noAirspace: 'Ingen kjente luftromsvarsler for området.',
     weather: 'Værvarsel for oppdragsstart', weatherNa: 'Værvarsel er ikke tilgjengelig ennå (for langt frem i tid eller mangler posisjon).',
     weatherNote: 'Været oppdateres fortløpende i AviSafe frem til oppdraget starter.',
     temp: 'Temperatur', wind: 'Vind', gust: 'kast', precip: 'Nedbør',
     rec: { ok: 'Gode forhold', caution: 'Vær forsiktig', warning: 'Frarådes' } as Record<string, string>,
+    risk: 'Risikovurdering', riskNone: 'Det er ikke registrert noen risikovurdering på oppdraget ennå.',
+    riskScore: 'Samlet score', riskDone: 'Vurdert',
+    riskRec: { 'go': 'GO – akseptabel risiko', 'caution': 'CAUTION – vær forsiktig', 'no-go': 'NO-GO – frarådes' } as Record<string, string>,
     none: '—', noRole: '',
   },
   en: {
     personnel: 'Personnel', drones: 'Drones', equipment: 'Equipment', customer: 'Customer', type: 'Mission type', end: 'End',
+    notes: 'Notes',
     airspace: 'Airspace warnings', noAirspace: 'No known airspace warnings for the area.',
     weather: 'Weather forecast at mission start', weatherNa: 'Weather forecast not available yet (too far ahead or missing position).',
     weatherNote: 'The weather is continuously updated in AviSafe until the mission starts.',
     temp: 'Temperature', wind: 'Wind', gust: 'gusts', precip: 'Precipitation',
     rec: { ok: 'Good conditions', caution: 'Use caution', warning: 'Not recommended' } as Record<string, string>,
+    risk: 'Risk assessment', riskNone: 'No risk assessment has been registered for this mission yet.',
+    riskScore: 'Overall score', riskDone: 'Assessed',
+    riskRec: { 'go': 'GO – acceptable risk', 'caution': 'CAUTION – use caution', 'no-go': 'NO-GO – not recommended' } as Record<string, string>,
     none: '—', noRole: '',
   },
 };
