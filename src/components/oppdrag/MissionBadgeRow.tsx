@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
-  FileText,
   Radio as RadioIcon,
   ShieldCheck,
 } from "lucide-react";
@@ -17,10 +16,9 @@ import {
   canSubmitForApproval,
   shouldShowApprovalBadge,
   shouldShowSoraBadge,
-  getSoraBadgeColor,
   getAIRiskBadgeColor,
   getAIRiskLabel,
-  formatAIRiskScore,
+  formatMissionRiskScore,
   getNotamBadgeColor,
 } from "@/lib/oppdragHelpers";
 
@@ -42,10 +40,8 @@ interface Props {
   showApproval: boolean;
   onStatusChanged: () => void;
   onSubmitForApproval?: () => void;
-  aiRisk?: { recommendation: string; overall_score: unknown } | null;
+  aiRisk?: { recommendation: string; overall_score: unknown; hasSoraReassessment?: boolean } | null;
   onAIRiskClick?: () => void;
-  sora?: { sora_status?: string | null } | null;
-  onSoraClick?: () => void;
   onChecklistClick?: () => void;
   onNotamClick?: () => void;
   has5kmZone?: boolean;
@@ -62,8 +58,6 @@ export function MissionBadgeRow({
   onSubmitForApproval,
   aiRisk,
   onAIRiskClick,
-  sora,
-  onSoraClick,
   onChecklistClick,
   onNotamClick,
   has5kmZone,
@@ -141,32 +135,12 @@ export function MissionBadgeRow({
         <Brain className={iconSize} />
         {aiRisk
           ? compact
-            ? formatAIRiskScore(aiRisk.overall_score)
-            : `${t("missionBadges.ai")}: ${getAIRiskLabel(aiRisk.recommendation)} (${formatAIRiskScore(
-                aiRisk.overall_score
+            ? formatMissionRiskScore(aiRisk.overall_score, aiRisk.hasSoraReassessment)
+            : `${t("missionBadges.ai")}: ${getAIRiskLabel(aiRisk.recommendation)} (${formatMissionRiskScore(
+                aiRisk.overall_score, aiRisk.hasSoraReassessment
               )})`
           : t("missionBadges.riskNotAssessed")}
       </Badge>
-
-      {shouldShowSoraBadge(sora) && (
-        <Badge
-          variant="outline"
-          className={`${badgeSize} ${getSoraBadgeColor(sora?.sora_status)} ${
-            onSoraClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
-          }`}
-          onClick={
-            onSoraClick
-              ? (e: React.MouseEvent) => {
-                  stop(e);
-                  onSoraClick();
-                }
-              : undefined
-          }
-        >
-          <FileText className={iconSize} />
-          SORA: {sora?.sora_status}
-        </Badge>
-      )}
 
       {checklistIds.length > 0 && (
         <Badge

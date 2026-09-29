@@ -8849,6 +8849,7 @@
   },
   "missionBadges": {
     "ai": "AI",
+    "soraSuffix": "+SORA",
     "riskNotAssessed": "Risiko",
     "checklist": "Sjekkliste",
     "checklistCompleted": "Sjekkliste fullført",
