@@ -8,7 +8,7 @@ import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shar
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
 import { assertUserInCompany } from "../_shared/companyScope.ts";
-import { buildMissionDetails } from "./missionDetails.ts";
+import { buildMissionDetails, loadMissionDetailsInput } from "./missionDetails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -409,7 +409,12 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       const missionDate = new Date(mission.tidspunkt).toLocaleString(dateLocale, { timeZone: 'Europe/Oslo', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       let details: Record<string, string> = {};
       try {
-        details = await buildMissionDetails(supabase, mission as any, isEn ? 'en' : 'no', dateLocale);
+        let merknader = (mission as any).merknader ?? null;
+        if (merknader == null && (mission as any).id) {
+          const { data: mRow } = await supabase.from('missions').select('merknader').eq('id', (mission as any).id).maybeSingle();
+          merknader = mRow?.merknader ?? null;
+        }
+        details = await buildMissionDetails(supabase, { ...(mission as any), merknader }, isEn ? 'en' : 'no', dateLocale);
       } catch (e) {
         console.error('buildMissionDetails failed', e);
       }
