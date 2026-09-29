@@ -232,6 +232,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     }
     const current = getDocIds(mt);
     const next = current.includes(docId) ? current.filter((id) => id !== docId) : [...current, docId];
+    if (current.includes(docId) && mt.sora_document_id === docId) await setSoraDocument(mt, null);
     if (!current.includes(docId) && propagate && departments.length > 0) {
       const { data } = await supabase
         .from("document_department_visibility")
@@ -529,6 +530,12 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                         <p className="font-medium text-sm truncate">{doc.tittel}</p>
                         <p className="text-xs text-muted-foreground">{doc.kategori}</p>
                       </div>
+                      {isSelected && !doc.isEvaluation && /\.pdf$/i.test(doc.fil_url || "") && (
+                        <Button type="button" size="sm" variant={pickerOpenFor?.sora_document_id === doc.id ? "default" : "outline"}
+                          onClick={(event) => { event.stopPropagation(); if (pickerOpenFor) setSoraDocument(pickerOpenFor, pickerOpenFor.sora_document_id === doc.id ? null : doc.id); }}>
+                          {t("admin.missionTypes.markSora")}
+                        </Button>
+                      )}
                     </button>
                   );
                 })}
