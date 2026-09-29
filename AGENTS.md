@@ -1,1 +1,2 @@
 NOTAM polygon geometry is stored in the existing `notam_schedule_windows[0]` object (`areaMode`, `polygon`), validated by `src/lib/notamGeometry.ts`; this keeps text and maps consistent without requiring a database migration.
+SORA references use optional document IDs on mission types and missions; assess PDFs with the caller's RLS-scoped client and never equate a reference with an approved operating authorization, so departments inherit defaults without bypassing document access.
