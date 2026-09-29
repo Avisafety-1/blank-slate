@@ -64,14 +64,42 @@ async function fetchWeather(supabase: any, m: MissionDetailsInput) {
   if (!Number.isFinite(start.getTime())) return null;
   // MET har ca. 9-10 dagers varsel
   if (start.getTime() - Date.now() > 9 * 24 * 3600e3) return null;
+  void supabase;
   try {
-    const res = await Promise.race([
-      supabase.functions.invoke('drone-weather', { body: { lat: m.latitude, lon: m.longitude, targetTime: start.toISOString() } }),
-      new Promise((r) => setTimeout(() => r({ data: null }), 8000)),
-    ]) as any;
-    const d = res?.data;
-    if (!d || d.error || d.out_of_range || !d.current) return null;
-    return d;
+    const lat = Math.round(Number(m.latitude) * 10000) / 10000;
+    const lon = Math.round(Number(m.longitude) * 10000) / 10000;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`, {
+      headers: { 'User-Agent': 'Avisafe/1.0 (kontakt@avisafe.no)' },
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer));
+    if (!res.ok) { console.warn('mission weather MET error', res.status); return null; }
+    const json = await res.json();
+    const ts: any[] = json?.properties?.timeseries || [];
+    if (!ts.length) return null;
+    const target = Math.max(start.getTime(), Date.now());
+    let best = ts[0], bestDiff = Infinity;
+    for (const e of ts) {
+      const diff = Math.abs(new Date(e.time).getTime() - target);
+      if (diff < bestDiff) { bestDiff = diff; best = e; }
+    }
+    if (bestDiff > 6 * 3600e3) return null;
+    const inst = best?.data?.instant?.details || {};
+    const period = best?.data?.next_1_hours || best?.data?.next_6_hours || best?.data?.next_12_hours;
+    const hours = best?.data?.next_1_hours ? 1 : best?.data?.next_6_hours ? 6 : 12;
+    const precip = period?.details?.precipitation_amount ?? null;
+    const wind = inst.wind_speed ?? null;
+    const gust = inst.wind_speed_of_gust ?? null;
+    const temp = inst.air_temperature ?? null;
+    const precipPerH = precip != null ? precip / hours : 0;
+    let rec = 'ok';
+    if ((wind ?? 0) > 10 || (gust ?? 0) > 15 || precipPerH > 2) rec = 'warning';
+    else if ((wind ?? 0) > 7 || (gust ?? 0) > 10 || precipPerH > 0.5 || (temp != null && temp < -10)) rec = 'caution';
+    return {
+      current: { temperature: temp, wind_speed: wind, wind_gust: gust, precipitation: precip },
+      drone_flight_recommendation: rec,
+    };
   } catch (e) {
     console.warn('mission weather fetch failed', e);
     return null;
