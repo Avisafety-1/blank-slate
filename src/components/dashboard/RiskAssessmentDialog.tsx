@@ -68,7 +68,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user, companyId } = useAuth();
-  const { labels: missionTypeLabels } = useCompanyMissionTypes();
+  const { labels: missionTypeLabels, types: missionTypes, loading: missionTypesLoading } = useCompanyMissionTypes();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [etaMs, setEtaMs] = useState<number>(45000);
@@ -131,20 +131,39 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   useEffect(() => {
     if (!open || !currentMissionId) { setSoraDocuments([]); setSelectedSoraDocumentId(""); return; }
+    if (missionTypesLoading) return;
     let cancelled = false;
     (async () => {
       const [{ data: missionRow }, { data: docs }] = await Promise.all([
-        supabase.from("missions").select("sora_document_id").eq("id", currentMissionId).maybeSingle(),
+        supabase.from("missions").select("sora_document_id, oppdragstype").eq("id", currentMissionId).maybeSingle(),
         supabase.from("documents").select("id, tittel, fil_url").not("fil_url", "is", null),
       ]);
       if (cancelled) return;
+      const typeDocumentId = missionTypes.find((type) => type.label === missionRow?.oppdragstype)?.sora_document_id;
+      const linkedDocumentId = missionRow?.sora_document_id || typeDocumentId;
       const available = (docs || []).filter((doc) => /\.pdf$/i.test(doc.fil_url || ""));
+      if (linkedDocumentId && !available.some((doc) => doc.id === linkedDocumentId)) {
+        const { data: linkedDocument } = await supabase.from("documents")
+          .select("id, tittel, fil_url").eq("id", linkedDocumentId).maybeSingle();
+        if (cancelled) return;
+        if (linkedDocument && /\.pdf$/i.test(linkedDocument.fil_url || "")) available.push(linkedDocument);
+      }
       setSoraDocuments(available.map(({ id, tittel }) => ({ id, tittel })));
-      if (missionRow?.sora_document_id && !available.some((doc) => doc.id === missionRow.sora_document_id)) toast.error(t("riskAssessment.soraDocumentUnavailable"));
-      setSelectedSoraDocumentId(available.some((doc) => doc.id === missionRow?.sora_document_id) ? missionRow?.sora_document_id || "" : "");
+      if (linkedDocumentId && !available.some((doc) => doc.id === linkedDocumentId)) toast.error(t("riskAssessment.soraDocumentUnavailable"));
+      const selectedId = available.some((doc) => doc.id === linkedDocumentId) ? linkedDocumentId || "" : "";
+      setSelectedSoraDocumentId(selectedId);
+      // Older missions may predate the mission-type SORA setting. Persist the inherited
+      // selection so the server-side assessment reads exactly the document shown here.
+      if (selectedId && !missionRow?.sora_document_id) {
+        const { error } = await supabase.from("missions").update({ sora_document_id: selectedId } as any).eq("id", currentMissionId);
+        if (!cancelled && error) {
+          setSelectedSoraDocumentId("");
+          toast.error(t("riskAssessment.soraDocumentSaveError"));
+        }
+      }
     })();
     return () => { cancelled = true; };
-  }, [open, currentMissionId]);
+  }, [open, currentMissionId, missionTypes, missionTypesLoading, t]);
 
   const chooseSoraDocument = async (value: string) => {
     if (!currentMissionId) return;
