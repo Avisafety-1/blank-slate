@@ -1600,6 +1600,32 @@ const classifyComments = (pilotComments: unknown): {
   return result;
 };
 
+/** Human-readable labels for mitigation keys — the raw keys (m2_impact_reduction etc.) must never reach the user-facing narrative. */
+const MITIGATION_LABELS: Record<string, { no: string; en: string }> = {
+  m1a_sheltering: { no: 'M1(A) Skjerming', en: 'M1(A) Sheltering' },
+  m1b_operational_restrictions: { no: 'M1(B) Operasjonelle restriksjoner', en: 'M1(B) Operational restrictions' },
+  m1c_ground_observation: { no: 'M1(C) Bakkeobservasjon', en: 'M1(C) Ground observation' },
+  m2_impact_reduction: { no: 'M2 Redusert treffenergi', en: 'M2 Reduced impact energy' },
+};
+
+const humanizeOverrides = (mo: Record<string, unknown>, lang: 'no' | 'en'): Record<string, unknown> => {
+  const out: Record<string, unknown> = { ...mo };
+  if (Array.isArray(mo.mitigations)) {
+    out.mitigations = (mo.mitigations as Array<Record<string, unknown>>).map((m) => {
+      if (!m || typeof m !== 'object') return m;
+      const key = String(m.id ?? m.name ?? '');
+      const label = MITIGATION_LABELS[key]?.[lang];
+      const copy: Record<string, unknown> = { ...m };
+      if (label) {
+        copy.name = label;
+        delete copy.id;
+      }
+      return copy;
+    });
+  }
+  return out;
+};
+
 export const buildSoraReassessUserPrompt = (
   language: unknown,
   previousAnalysis: unknown,
@@ -1608,7 +1634,8 @@ export const buildSoraReassessUserPrompt = (
 ): string => {
   const lang = normalizeLang(language);
   const { ackOnly, substantive } = classifyComments(pilotComments);
-  const mo = manualOverrides && typeof manualOverrides === 'object' ? manualOverrides as Record<string, unknown> : null;
+  const moRaw = manualOverrides && typeof manualOverrides === 'object' ? manualOverrides as Record<string, unknown> : null;
+  const mo = moRaw ? humanizeOverrides(moRaw, lang) : null;
   const overrideBlockEn = mo
     ? `
 
