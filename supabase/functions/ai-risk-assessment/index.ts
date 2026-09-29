@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
-import { buildCompetencyReason, evaluateCompetency } from "./competency.ts";
+import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 
 import {
@@ -2279,7 +2279,10 @@ serve(async (req) => {
         daysSinceLastFlight,
         flightsWithThisDrone: aggregatedFlightStats.flightsWithDrone,
         validCompetencies: validCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expires: c.utloper_dato })),
-        expiredCompetencies: expiredCompetencies.map((c: any) => ({ name: c.navn, type: c.type, expired: c.utloper_dato })),
+        // Only recognised drone certificates, with readable labels (no internal codes/raw unknown rows).
+        expiredCompetencies: competencyAssessment.expired
+          .filter((e) => e.code)
+          .map((e) => ({ name: `${e.code} (${e.name})`, expired: e.expired })),
         competencyAssessment: {
           status: competencyAssessment.status,
           droneClass: competencyAssessment.droneClass,
@@ -2290,7 +2293,7 @@ serve(async (req) => {
           operatorApproval: competencyAssessment.operatorApproval,
           recognised: competencyAssessment.recognised,
           notFormalCompetency: competencyAssessment.ignored,
-          unclassified: competencyAssessment.unclassified,
+          unclassified: pilotInputs?.isVlos === false ? [] : competencyAssessment.unclassified,
           undeterminedWhy: competencyAssessment.undeterminedWhy,
         },
       },
@@ -3133,6 +3136,25 @@ serve(async (req) => {
     aiAnalysis.hard_stop_triggered = authoritativeHardStops.length > 0;
     aiAnalysis.hard_stop_reason = joinHardStopReasons(authoritativeHardStops);
     aiAnalysis.summary = removeHardStopClaims(aiAnalysis.summary);
+    // Competency wording is system-controlled: strip internal jargon and BVLOS competency claims,
+    // then (for BVLOS) add one fixed yellow assumption note.
+    {
+      const pilotCat = aiAnalysis.categories?.pilot_experience;
+      if (pilotCat) {
+        for (const key of ['concerns', 'factors'] as const) {
+          if (Array.isArray(pilotCat[key])) pilotCat[key] = pilotCat[key].filter((x: unknown) => !isCompetencyJargon(x));
+        }
+        if (typeof pilotCat.experience_summary === 'string') pilotCat.experience_summary = scrubCompetencyText(pilotCat.experience_summary);
+        if (pilotInputs?.isVlos === false) {
+          pilotCat.notes = [bvlosAssumptionNote(assessmentLang)];
+        }
+      }
+      aiAnalysis.summary = scrubCompetencyText(aiAnalysis.summary);
+      if (Array.isArray(aiAnalysis.recommendations)) {
+        aiAnalysis.recommendations = aiAnalysis.recommendations.filter((r: any) =>
+          !isCompetencyJargon(typeof r === 'string' ? r : `${r?.title ?? ''} ${r?.description ?? r?.text ?? ''}`));
+      }
+    }
     if (aiAnalysis.categories) {
       for (const category of categoriesWithHardStops) {
         if (aiAnalysis.categories[category]) aiAnalysis.categories[category].go_decision = 'NO-GO';

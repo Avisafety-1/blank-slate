@@ -16,6 +16,7 @@ interface CategoryScore {
   go_decision?: 'GO' | 'BETINGET' | 'NO-GO' | 'IKKE VURDERT';
   factors: string[];
   concerns: string[];
+  notes?: string[];
   actual_conditions?: string;
   comparison_to_limits?: string;
   status?: 'green' | 'yellow' | 'red';
@@ -275,7 +276,7 @@ export const RiskScoreCard = ({
                         {displayRiskText(category.actual_conditions || category.drone_status || category.experience_summary || category.complexity_factors || '')}
                       </p>
                     )}
-                    {(category.factors.length > 0 || category.concerns.length > 0) && (
+                    {(category.factors.length > 0 || category.concerns.length > 0 || (category.notes?.length ?? 0) > 0) && (
                       <div className="space-y-1">
                         {category.factors.map((factor, i) => (
                           <p key={`factor-${i}`} className="text-xs text-green-600 dark:text-green-400 flex items-start gap-1">
@@ -287,6 +288,12 @@ export const RiskScoreCard = ({
                           <p key={`concern-${i}`} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-1">
                             <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
                             <span className="break-words">{displayRiskText(concern)}</span>
+                          </p>
+                        ))}
+                        {category.notes?.map((note, i) => (
+                          <p key={`note-${i}`} className="text-xs text-yellow-600 dark:text-yellow-400 flex items-start gap-1">
+                            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span className="break-words">{displayRiskText(note)}</span>
                           </p>
                         ))}
                       </div>
