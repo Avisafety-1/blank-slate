@@ -140,7 +140,7 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     // No documentation possible/required: a plain assumption per the operations manual.
     return { ...base, unclassified: [], status: 'assumed', coveredBy: 'operations_manual', reason: null, undeterminedWhy: null };
   }
-  if (pilotRank !== null && pilotRank >= req) {
+  if (req !== null && pilotRank !== null && pilotRank >= req) {
     return { ...base, status: 'ok', coveredBy: 'personal', reason: null, undeterminedWhy: null };
   }
   // Never fail on data we could not interpret.
