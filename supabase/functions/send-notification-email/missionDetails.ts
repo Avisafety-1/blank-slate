@@ -196,7 +196,7 @@ export async function loadMissionDetailsInput(supabase: any, missionId: string):
   const [{ data: profiles }, { data: roles }, { data: drones }, { data: equipment }] = await Promise.all([
     profileIds.length ? supabase.from('profiles').select('id, full_name').in('id', profileIds) : Promise.resolve({ data: [] }),
     roleIds.length ? supabase.from('company_mission_roles').select('id, name').in('id', roleIds) : Promise.resolve({ data: [] }),
-    droneIds.length ? supabase.from('drones').select('id, navn, modell').in('id', droneIds) : Promise.resolve({ data: [] }),
+    droneIds.length ? supabase.from('drones').select('id, modell, serienummer, dji_aircraft_name').in('id', droneIds) : Promise.resolve({ data: [] }),
     equipIds.length ? supabase.from('equipment').select('id, navn').in('id', equipIds) : Promise.resolve({ data: [] }),
   ]);
 
@@ -219,7 +219,7 @@ export async function loadMissionDetailsInput(supabase: any, missionId: string):
       navn: profileName.get(r.profile_id) || '',
       rolle: r.role_id ? (roleName.get(r.role_id) || null) : null,
     })).filter((p: any) => p.navn),
-    droner: (drones || []).map((d: any) => [d.navn, d.modell].filter(Boolean).join(' – ')).filter(Boolean),
+    droner: (drones || []).map((d: any) => [d.modell, d.dji_aircraft_name || d.serienummer].filter(Boolean).join(' – ')).filter(Boolean),
     utstyr: (equipment || []).map((e: any) => e.navn).filter(Boolean),
     luftrom: Array.isArray(risk?.airspace_warnings) ? risk.airspace_warnings as any[] : [],
     risiko: risk
