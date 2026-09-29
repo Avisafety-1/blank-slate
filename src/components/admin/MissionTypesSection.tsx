@@ -195,13 +195,22 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const saveDocuments = async (typeId: string, docIds: string[]) => {
     const { error } = await (supabase
       .from("company_mission_types")
-      .update({ default_document_ids: docIds, default_document_id: docIds[0] ?? null } as any)
+      .update({ default_document_ids: docIds, default_document_id: docIds[0] ?? null, ...(docIds.length === 0 ? { sora_document_id: null } : {}) } as any)
       .eq("id", typeId) as any);
     if (error) {
       toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
       return;
     }
     await reload();
+  };
+
+  const setSoraDocument = async (mt: CompanyMissionType, docId: string | null) => {
+    const doc = docId ? docs.find((item) => item.id === docId) : null;
+    if (docId && (!doc || doc.isEvaluation || !/\.pdf$/i.test(doc.fil_url || ""))) return;
+    const { error } = await supabase.from("company_mission_types")
+      .update({ sora_document_id: docId } as any).eq("id", mt.id);
+    if (error) toast({ title: t("admin.missionTypes.toastDocumentSaveError"), description: error.message, variant: "destructive" });
+    else await reload();
   };
 
   const setEvaluationTemplate = async (typeId: string, templateId: string | null) => {
@@ -351,6 +360,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                     >
                       <FileText className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate">{doc.tittel}</span>
+                      {mt.sora_document_id === id && <span className="text-xs text-primary">SORA</span>}
                       {!isReadOnly && (
                         <button
                           type="button"
@@ -360,7 +370,8 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                             if (id === mt.default_evaluation_template_id) {
                               setEvaluationTemplate(mt.id, null);
                             } else {
-                              saveDocuments(mt.id, getDocIds(mt).filter((x) => x !== id));
+                               saveDocuments(mt.id, getDocIds(mt).filter((x) => x !== id));
+                               if (mt.sora_document_id === id) setSoraDocument(mt, null);
                             }
                           }}
                           aria-label={t("admin.missionTypes.removeDocument")}
