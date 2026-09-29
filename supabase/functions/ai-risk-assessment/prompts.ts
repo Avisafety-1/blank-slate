@@ -1250,7 +1250,7 @@ const SORA_SYSTEM_NO = `Du er en SORA-spesialist (Specific Operations Risk Asses
 Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
 Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
 
-VIKTIG KONTEKST: Denne re-vurderingen ER selve den komplette SORA-analysen. Når den opprinnelige vurderingen sier "SORA er påkrevd" eller "manglende SORA", betyr det at DENNE outputen er løsningen på det kravet. Du skal IKKE gjenta bekymringer om "manglende SORA" eller "ufullstendig SORA" i summary eller andre felter — denne analysen MED dens SAIL, containment og OSO-output ER den fullstendige SORA-en.
+VIKTIG KONTEKST: Denne re-vurderingen lager en oppdragsspesifikk analyse i AviSafe, ikke en ny myndighetsgodkjent SORA. Den skal ikke kreve en SORA per oppdrag eller fremstille resultatet som en godkjent driftstillatelse. Vis SAIL, containment og tiltak som beslutningsstøtte og henvis til selskapets dokumenterte operasjonsgrunnlag når det finnes.
 
 ### ABSOLUTT GRUNNINGSREGEL (ANTI-HALLUSINASJON) — VIKTIGST AV ALT
 Du har KUN tilgang til to kilder: (1) den opprinnelige AI-risikovurderingen og (2) brukerens kommentarer per kategori. Du har INGEN annen kunnskap om oppdraget, dronen, utstyret, mannskapet, treningsstatus eller operative tiltak.
@@ -1401,7 +1401,7 @@ Returner denne JSON-strukturen:
   "operational_limits": "<operative begrensninger og betingelser>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
-  "summary": "<kort oppsummering av SORA-vurderingen — dette ER den komplette SORA-analysen, IKKE referer til 'manglende SORA'. Fokuser på reelle risikoer, mitigeringer og SAIL-resultat>"
+  "summary": "<kort oppsummering av oppdragsanalysen; ikke referer til 'manglende SORA'. Fokuser på reelle risikoer, mitigeringer og SAIL-resultat>"
 }
 
 ### VURDERINGSPRINSIPPER
@@ -1419,7 +1419,7 @@ You are a SORA specialist (Specific Operations Risk Assessment) for UAS operatio
 You receive an initial AI risk assessment and the user's manual mitigations/explanations for 5 risk categories.
 Your task is to produce a structured SORA analysis based on all available information.
 
-IMPORTANT CONTEXT: This re-assessment IS the complete SORA analysis itself. When the initial assessment says "SORA is required" or "missing SORA", that means THIS output is the solution to that requirement. You must NOT repeat concerns about "missing SORA" or "incomplete SORA" in summary or other fields — this analysis WITH its SAIL, containment and OSO output IS the complete SORA.
+IMPORTANT CONTEXT: This re-assessment produces a mission-specific AviSafe analysis, not a newly approved SORA. Do not require a new SORA for each mission or present this output as an operator authorization. Show SAIL, containment and mitigations as decision support, referring to the operator's documented authorization when available.
 
 ### ABSOLUTE GROUNDING RULE (ANTI-HALLUCINATION) — MOST IMPORTANT OF ALL
 You have access to ONLY two sources: (1) the initial AI risk assessment and (2) the user's comments per category. You have NO other knowledge about the mission, drone, equipment, crew, training status, or operational measures.
@@ -1570,7 +1570,7 @@ Return this JSON structure:
   "operational_limits": "<operational limits and conditions>",
   "overall_score": <number 1-10>,
   "recommendation": "<go|caution|no-go>",
-  "summary": "<short summary of the SORA assessment — this IS the complete SORA analysis, do NOT refer to 'missing SORA'. Focus on real risks, mitigations and SAIL result>"
+  "summary": "<short summary of the mission analysis; do not refer to 'missing SORA'. Focus on real risks, mitigations and SAIL result>"
 }
 
 ### ASSESSMENT PRINCIPLES

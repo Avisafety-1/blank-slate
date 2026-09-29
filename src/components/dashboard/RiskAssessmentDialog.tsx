@@ -140,6 +140,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       if (cancelled) return;
       const available = (docs || []).filter((doc) => /\.pdf$/i.test(doc.fil_url || ""));
       setSoraDocuments(available.map(({ id, tittel }) => ({ id, tittel })));
+      if (missionRow?.sora_document_id && !available.some((doc) => doc.id === missionRow.sora_document_id)) toast.error(t("riskAssessment.soraDocumentUnavailable"));
       setSelectedSoraDocumentId(available.some((doc) => doc.id === missionRow?.sora_document_id) ? missionRow?.sora_document_id || "" : "");
     })();
     return () => { cancelled = true; };
