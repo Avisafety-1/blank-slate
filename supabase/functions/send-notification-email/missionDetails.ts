@@ -249,7 +249,19 @@ export async function loadMissionDetailsInput(supabase: any, missionId: string):
     })).filter((p: any) => p.navn),
     droner: (drones || []).map((d: any) => [d.modell, d.dji_aircraft_name || d.serienummer].filter(Boolean).join(' – ')).filter(Boolean),
     utstyr: (equipment || []).map((e: any) => e.navn).filter(Boolean),
-    luftrom: Array.isArray(risk?.airspace_warnings) ? risk.airspace_warnings as any[] : [],
+    luftrom: Array.isArray(risk?.airspace_warnings)
+      ? (risk.airspace_warnings as any[]).map((w: any) => {
+          const inside = !!w.route_inside;
+          const dist = typeof w.min_distance === 'number' ? w.min_distance : null;
+          const distTxt = inside ? 'Ruten går inne i sonen' : dist != null ? `${dist < 1000 ? Math.round(dist) + ' m' : (dist / 1000).toFixed(1) + ' km'} fra ruten` : '';
+          return {
+            zone_name: w.zone_name ?? w.z_name ?? w.name,
+            zone_type: w.zone_type ?? w.z_type,
+            level: w.level ?? (inside ? 'warning' : 'caution'),
+            message: w.message ?? [w.z_type, distTxt].filter(Boolean).join(' – '),
+          };
+        }).filter((w) => w.zone_name || w.zone_type)
+      : [],
     risiko: risk
       ? {
           overall_score: risk.overall_score,
