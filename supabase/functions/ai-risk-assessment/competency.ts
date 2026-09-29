@@ -154,12 +154,14 @@ export const bvlosAssumptionNote = (lang: 'no' | 'en') => lang === 'en'
   ? 'Requires training and approval according to the company\'s operations manual / SORA.'
   : 'Forutsetter opplæring og godkjenning ihht. selskapets operasjonsmanual / SORA.';
 
-const INTERNAL_JARGON_RE = /\br\s?-?4\b|\brank\b|undetermined|uavklart|OSO\s*#?\s*0?8|bvlos[^.]*(kompetanse|competenc|opplæring|training|sertifik|certif)|(kompetanse|competenc|opplæring|training)[^.]*bvlos/i;
+const INTERNAL_JARGON_RE = /\br\s?-?4\b|\brank\b|undetermined|uavklart|OSO\s*#?\s*0?8|\bBVLOS\b[^.!?]{0,100}\b(kompetanse|competenc|opplæring|training|sertifik|certif)\b|\b(kompetanse|competenc|opplæring|training)\b[^.!?]{0,100}\bBVLOS\b/i;
 
 /** Remove sentences with internal codes / BVLOS competency claims. */
 export const scrubCompetencyText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
-  return value.split(/(?<=[.!?])\s+/u).filter((s) => !INTERNAL_JARGON_RE.test(s)).join(' ').trim();
+  const cleaned = value.split(/(?<=[.!?])\s+/u).filter((s) => !INTERNAL_JARGON_RE.test(s)).join(' ').trim();
+  return cleaned.replace(/^(?:(?:I tillegg|Videre|Også|Dessuten|In addition|Additionally|Furthermore|Also)[,:]?\s+)+/i, '')
+    .replace(/^\p{L}/u, (letter) => letter.toLocaleUpperCase());
 };
 export const isCompetencyJargon = (value: unknown) => typeof value === 'string' && INTERNAL_JARGON_RE.test(value);
 
