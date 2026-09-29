@@ -1647,7 +1647,8 @@ Rules for these overrides:
 - Only the mitigations marked as applied (with their robustness level) count as ground mitigations; describe the others as not applied.
 - If an atypical/segregated airspace declaration (AEC 12 / ARC-a) is present, treat it as an operator declaration requiring documentation and authority acceptance, not as a table reduction.
 - Derive containment, OSO requirements and recommendations from the overridden SAIL.
-- In "ground_mitigations" and "airspace_mitigations" you MUST explain WHY the reduction was given and state explicitly that it comes from the operator's manual selection/declaration (and that it must be documented and accepted by the authority). Never write that no reduction was credited when the overrides show one.`
+- In "ground_mitigations" and "airspace_mitigations" you MUST explain WHY the reduction was given and state explicitly that it comes from the operator's manual selection/declaration (and that it must be documented and accepted by the authority). Never write that no reduction was credited when the overrides show one.
+- NEVER use internal key names like "m1a_sheltering", "m1b_operational_restrictions", "m1c_ground_observation" or "m2_impact_reduction" in any output text. Always use the plain-language names given in the overrides (e.g. "M2 Reduced impact energy").`
     : '';
   const overrideBlockNo = mo
     ? `
@@ -1660,7 +1661,8 @@ Regler for disse overstyringene:
 - Kun mitigeringer merket som anvendt (med sitt robusthetsnivå) teller som bakkemitigeringer; de øvrige beskrives som ikke anvendt.
 - Hvis atypisk/segregert luftrom (AEC 12 / ARC-a) er erklært, skal det behandles som en operatørerklæring som krever dokumentasjon og aksept fra myndighet, ikke som en tabellreduksjon.
 - Utled containment, OSO-krav og anbefalinger fra den overstyrte SAIL-en.
-- I "ground_mitigations" og "airspace_mitigations" SKAL du forklare HVORFOR reduksjonen er gitt og si eksplisitt at den kommer fra operatørens manuelle valg/erklæring (og at den må dokumenteres og aksepteres av myndighet). Skriv aldri at ingen reduksjon er kreditert når overstyringene viser en reduksjon.`
+- I "ground_mitigations" og "airspace_mitigations" SKAL du forklare HVORFOR reduksjonen er gitt og si eksplisitt at den kommer fra operatørens manuelle valg/erklæring (og at den må dokumenteres og aksepteres av myndighet). Skriv aldri at ingen reduksjon er kreditert når overstyringene viser en reduksjon.
+- Bruk ALDRI interne nøkkelnavn som "m1a_sheltering", "m1b_operational_restrictions", "m1c_ground_observation" eller "m2_impact_reduction" i teksten. Bruk alltid de lesbare navnene som er oppgitt i overstyringene (f.eks. "M2 Redusert treffenergi").`
     : '';
   if (lang === 'en') {
     return `CRITICAL: Respond ENTIRELY in English. Translate any Norwegian terms found in the input below.
