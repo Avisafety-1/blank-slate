@@ -789,6 +789,33 @@ serve(async (req) => {
         throw new Error('Invalid SORA AI response format');
       }
 
+      // Safety net: replace internal mitigation keys with readable labels if the model echoed them
+      try {
+        const MITIGATION_KEY_LABELS: Record<string, { no: string; en: string }> = {
+          m1a_sheltering: { no: 'M1(A) Skjerming', en: 'M1(A) Sheltering' },
+          m1b_operational_restrictions: { no: 'M1(B) Operasjonelle restriksjoner', en: 'M1(B) Operational restrictions' },
+          m1c_ground_observation: { no: 'M1(C) Bakkeobservasjon', en: 'M1(C) Ground observation' },
+          m2_impact_reduction: { no: 'M2 Redusert treffenergi', en: 'M2 Reduced impact energy' },
+        };
+        const scrubKeys = (value: unknown): unknown => {
+          if (typeof value === 'string') {
+            let out = value;
+            for (const [key, labels] of Object.entries(MITIGATION_KEY_LABELS)) {
+              out = out.replace(new RegExp(key, 'g'), labels[soraLang === 'en' ? 'en' : 'no']);
+            }
+            return out;
+          }
+          if (Array.isArray(value)) return value.map(scrubKeys);
+          if (value && typeof value === 'object') {
+            return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, scrubKeys(v)]));
+          }
+          return value;
+        };
+        soraAnalysis = scrubKeys(soraAnalysis);
+      } catch (scrubErr) {
+        console.warn('Mitigation key scrub failed (non-fatal):', scrubErr);
+      }
+
       // Deterministic SAIL lookup — override AI's value to keep result consistent with the matrix
       try {
         const SAIL_MATRIX: Record<string, Record<string, string>> = {
