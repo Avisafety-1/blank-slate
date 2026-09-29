@@ -7,7 +7,7 @@
 // returns "undetermined" and the AI assesses as before (never as a hard stop).
 
 export type CompetencyCode = 'A1A3' | 'A2' | 'STS01' | 'STS02';
-export type CompetencyStatus = 'ok' | 'missing' | 'undetermined';
+export type CompetencyStatus = 'ok' | 'missing' | 'undetermined' | 'assumed';
 
 export interface CompetencyRow {
   profile_id?: string | null;
@@ -65,10 +65,10 @@ export interface CompetencyAssessment {
   requiredLabel: string | null;
   pilotRank: number | null;
   pilotLabel: string | null;
-  coveredBy: 'personal' | 'operator_approval' | 'sora_oso08' | null;
+  coveredBy: 'personal' | 'operator_approval' | 'sora_oso08' | 'operations_manual' | null;
   operatorApproval: string | null;
   recognised: { name: string; code: string; expires: string | null }[];
-  expired: { name: string; expired: string | null }[];
+  expired: { name: string; code: string | null; expired: string | null }[];
   ignored: string[];
   unclassified: string[];
   reason: string | null; // plain, language-specific via buildCompetencyReason
@@ -102,7 +102,7 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     const name = (row.navn ?? '').trim() || '—';
     if (isIgnoredType(row)) { ignored.push(name); continue; }
     if (isOperatorApproval(row)) {
-      if (isExpired(row, now)) expired.push({ name, expired: row.utloper_dato ?? null });
+      if (isExpired(row, now)) expired.push({ name, code: null, expired: row.utloper_dato ?? null });
       else operatorApproval = operatorApproval ?? name;
       continue;
     }
@@ -113,8 +113,8 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
       if (type.includes('kurs')) ignored.push(name); else unclassified.push(name);
       continue;
     }
-    if (isExpired(row, now)) { expired.push({ name, expired: row.utloper_dato ?? null }); continue; }
     const best = Math.max(...codes.map((c) => RANK[c]));
+    if (isExpired(row, now)) { expired.push({ name, code: LABEL[best], expired: row.utloper_dato ?? null }); continue; }
     recognised.push({ name, code: LABEL[best], expires: row.utloper_dato ?? null });
     const key = row.profile_id ?? '_';
     rankByPilot.set(key, Math.max(rankByPilot.get(key) ?? 0, best));
@@ -128,7 +128,7 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     recognised, expired, ignored, unclassified,
   };
 
-  if (req === null) {
+  if (req === null && input.isVlos) {
     return { ...base, status: 'undetermined', coveredBy: null, reason: null,
       undeterminedWhy: droneClass ? `unsupported_class:${droneClass}` : 'missing_class' };
   }
@@ -137,7 +137,8 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     if (operatorApproval || (pilotRank !== null && pilotRank >= 1)) {
       return { ...base, status: 'ok', coveredBy: 'sora_oso08', reason: null, undeterminedWhy: null };
     }
-    return { ...base, status: 'undetermined', coveredBy: null, reason: null, undeterminedWhy: 'bvlos_specific_oso08' };
+    // No documentation possible/required: a plain assumption per the operations manual.
+    return { ...base, unclassified: [], status: 'assumed', coveredBy: 'operations_manual', reason: null, undeterminedWhy: null };
   }
   if (pilotRank !== null && pilotRank >= req) {
     return { ...base, status: 'ok', coveredBy: 'personal', reason: null, undeterminedWhy: null };
@@ -148,6 +149,19 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
   }
   return { ...base, status: 'missing', coveredBy: null, reason: null, undeterminedWhy: null };
 };
+
+export const bvlosAssumptionNote = (lang: 'no' | 'en') => lang === 'en'
+  ? 'Requires training and approval according to the company\'s operations manual / SORA.'
+  : 'Forutsetter opplæring og godkjenning ihht. selskapets operasjonsmanual / SORA.';
+
+const INTERNAL_JARGON_RE = /\br\s?-?4\b|\brank\b|undetermined|uavklart|OSO\s*#?\s*0?8|bvlos[^.]*(kompetanse|competenc|opplæring|training|sertifik|certif)|(kompetanse|competenc|opplæring|training)[^.]*bvlos/i;
+
+/** Remove sentences with internal codes / BVLOS competency claims. */
+export const scrubCompetencyText = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  return value.split(/(?<=[.!?])\s+/u).filter((s) => !INTERNAL_JARGON_RE.test(s)).join(' ').trim();
+};
+export const isCompetencyJargon = (value: unknown) => typeof value === 'string' && INTERNAL_JARGON_RE.test(value);
 
 export const buildCompetencyReason = (a: CompetencyAssessment, lang: 'no' | 'en'): string | null => {
   if (a.status !== 'missing') return null;
