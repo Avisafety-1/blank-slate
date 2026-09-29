@@ -270,6 +270,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
             type: 'notify_mission_approval',
             companyId,
             mission: {
+              id: missionToApprove.id,
               tittel: missionToApprove.tittel,
               lokasjon: missionToApprove.lokasjon,
               tidspunkt: missionToApprove.tidspunkt,
