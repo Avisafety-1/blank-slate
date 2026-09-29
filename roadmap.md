@@ -21,3 +21,4 @@
 - [x] Elverum: DJI-synkekøen kjørt manuelt 08.09 (19 logger til behandling)
 - [x] Rettet fastlåste sjekklister på nye oppdrag og konsekvent lagring fra oppdragstype
 - [ ] Synk-plan (venter på klarsignal): «Sync nå» drenerer egen kø umiddelbart, dagvindu for køen, ikke sperr manuell import for logger i kø, riktig melding i knappen
+- [x] E-post ved nytt oppdrag: personell med rolle, ressurser, luftromsvarsler og værvarsel ved oppdragsstart

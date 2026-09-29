@@ -138,6 +138,7 @@ export const AddMissionDialog = ({
   const [selectedCustomer, setSelectedCustomer] = useState<string>(initialSelectedCustomer || "");
   const [personnelRoles, setPersonnelRoles] = useState<Record<string, string | null>>({});
   const [companyMissionRoles, setCompanyMissionRoles] = useState<{id: string; name: string}[]>([]);
+  const [airspaceWarningsForEmail, setAirspaceWarningsForEmail] = useState<any[]>([]);
   const [openPersonnelPopover, setOpenPersonnelPopover] = useState(false);
   const [openEquipmentPopover, setOpenEquipmentPopover] = useState(false);
   const [openDronePopover, setOpenDronePopover] = useState(false);
@@ -1050,8 +1051,13 @@ export const AddMissionDialog = ({
             : undefined;
           
           const personnelNames = selectedPersonnel
-            .map(id => profiles.find(p => p.id === id)?.full_name)
-            .filter(Boolean) as string[];
+            .map(id => {
+              const navn = profiles.find(p => p.id === id)?.full_name;
+              if (!navn) return null;
+              const rolle = companyMissionRoles.find(r => r.id === personnelRoles[id])?.name || null;
+              return { navn, rolle };
+            })
+            .filter(Boolean) as { navn: string; rolle: string | null }[];
           
               const droneModels = selectedDrones
             .map(id => {
@@ -1073,7 +1079,7 @@ export const AddMissionDialog = ({
               mission: {
                 tittel: formData.tittel,
                 lokasjon: formData.lokasjon,
-                tidspunkt: formData.tidspunkt,
+                tidspunkt: formData.tidspunkt ? new Date(formData.tidspunkt).toISOString() : formData.tidspunkt,
                 beskrivelse: formData.beskrivelse,
                 status: formData.status,
                 riskNiva: formData.risk_nivå,
@@ -1082,7 +1088,12 @@ export const AddMissionDialog = ({
                 personell: personnelNames,
                 droner: droneModels,
                 utstyr: equipmentNames,
-                ruteLengde: routeData?.totalDistance
+                ruteLengde: routeData?.totalDistance,
+                slutt_tidspunkt: formData.slutt_tidspunkt ? new Date(formData.slutt_tidspunkt).toISOString() : null,
+                latitude: formData.latitude ?? null,
+                longitude: formData.longitude ?? null,
+                oppdragstype: formData.oppdragstype_annet || formData.oppdragstype || null,
+                luftrom: airspaceWarningsForEmail.map((w: any) => ({ zone_name: w.zone_name, zone_type: w.zone_type, level: w.level, message: w.message })),
               }
             }
           });
@@ -1263,6 +1274,7 @@ export const AddMissionDialog = ({
                 (i) => t('pages.missions.card.routeN', { n: i + 1 }),
               )}
               showAll={companySettings.show_all_airspace_warnings}
+              onAirspaceResult={setAirspaceWarningsForEmail}
             />
             
             <DroneWeatherPanel 
