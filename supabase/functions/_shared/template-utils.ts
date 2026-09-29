@@ -199,6 +199,9 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </table>
 <p style="margin-top: 15px;"><strong>Beskrivelse:</strong></p>
 <p>{{mission_description}}</p>
+{{mission_resources}}
+{{mission_airspace_warnings}}
+{{mission_weather}}
 </div>
 <p>Logg inn i AviSafe for mer informasjon.</p>
 <p>Med vennlig hilsen,<br>{{company_name}}</p>

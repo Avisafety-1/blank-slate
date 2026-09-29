@@ -132,6 +132,9 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
 </table>
 <p style="margin-top: 15px;"><strong>Description:</strong></p>
 <p>{{mission_description}}</p>
+{{mission_resources}}
+{{mission_airspace_warnings}}
+{{mission_weather}}
 </div>
 <p>Log in to AviSafe for more information.</p>
 <p>Best regards,<br>{{company_name}}</p>

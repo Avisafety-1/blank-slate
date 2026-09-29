@@ -415,6 +415,13 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       }
       const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: escapeHtml(mission.tittel || ''), mission_location: escapeHtml(mission.lokasjon || ''), mission_date: missionDate, mission_status: escapeHtml(mission.status || 'Planlagt'), mission_description: escapeHtml(mission.beskrivelse || ''), company_name: company?.navn || '', mission_type: escapeHtml((mission as any).oppdragstype || ''), mission_customer: escapeHtml((mission as any).kunde || ''), ...details },
       requestLanguage);
+      // Egendefinerte maler uten de nye variablene får detaljene lagt inn automatisk
+      if (details.mission_details && templateResult.content && !templateResult.content.includes(details.mission_weather)) {
+        const block = `<div style="max-width:600px;margin:0 auto;padding:0 20px 20px;font-family:Arial,sans-serif;">${details.mission_details}</div>`;
+        templateResult.content = /<\/body>/i.test(templateResult.content)
+          ? templateResult.content.replace(/<\/body>/i, `${block}</body>`)
+          : templateResult.content + block;
+      }
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
