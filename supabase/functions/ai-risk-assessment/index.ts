@@ -921,8 +921,24 @@ serve(async (req) => {
         if (groundManual) {
           const mits: any[] = (Array.isArray(ga?.mitigations) ? ga.mitigations : (mo2?.mitigations ?? [])) || [];
           const applied = mits.filter((m) => m?.applied === true || m?.selected === true);
+          const MIT_LABELS: Record<string, { no: string; en: string }> = {
+            m1a_sheltering: { no: 'M1(A) Skjerming', en: 'M1(A) Sheltering' },
+            m1b_operational_restrictions: { no: 'M1(B) Operasjonelle restriksjoner', en: 'M1(B) Operational restrictions' },
+            m1c_ground_observation: { no: 'M1(C) Bakkeobservasjon', en: 'M1(C) Ground observation' },
+            m2_impact_reduction: { no: 'M2 Redusert treffenergi', en: 'M2 Reduced impact energy' },
+          };
+          const ROB: Record<string, { no: string; en: string }> = {
+            none: { no: 'ingen', en: 'none' }, low: { no: 'lav', en: 'low' },
+            medium: { no: 'middels', en: 'medium' }, high: { no: 'høy', en: 'high' },
+          };
           const list = applied
-            .map((m) => `${m?.name ?? m?.title ?? m?.id ?? 'M?'}${m?.robustness ?? m?.robustness_level ? ` (${m.robustness ?? m.robustness_level})` : ''}`)
+            .map((m) => {
+              const raw = String(m?.name ?? m?.title ?? m?.id ?? 'M?');
+              const name = MIT_LABELS[raw]?.[en ? 'en' : 'no'] ?? raw;
+              const r = m?.robustness ?? m?.robustness_level;
+              const rl = r ? (ROB[String(r).toLowerCase()]?.[en ? 'en' : 'no'] ?? String(r)) : '';
+              return rl ? `${name} (${en ? 'robustness' : 'robusthet'}: ${rl})` : name;
+            })
             .join(', ');
           const igrcTxt = ga?.igrc ?? mo2?.igrc ?? soraAnalysis.igrc;
           const fgrcTxt = soraAnalysis.fgrc;
