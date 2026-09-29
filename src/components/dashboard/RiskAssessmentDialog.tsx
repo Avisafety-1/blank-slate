@@ -134,21 +134,23 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     if (missionTypesLoading) return;
     let cancelled = false;
     (async () => {
-      const [{ data: missionRow }, { data: docs }] = await Promise.all([
-        supabase.from("missions").select("sora_document_id, oppdragstype").eq("id", currentMissionId).maybeSingle(),
-        supabase.from("documents").select("id, tittel, fil_url").not("fil_url", "is", null),
-      ]);
+      const { data: missionRow } = await supabase.from("missions")
+        .select("sora_document_id, oppdragstype").eq("id", currentMissionId).maybeSingle();
       if (cancelled) return;
       const typeDocumentId = missionTypes.find((type) => type.label === missionRow?.oppdragstype)?.sora_document_id;
       const linkedDocumentId = missionRow?.sora_document_id || typeDocumentId;
-      const available = (docs || []).filter((doc) => /\.pdf$/i.test(doc.fil_url || ""));
-      if (linkedDocumentId && !available.some((doc) => doc.id === linkedDocumentId)) {
-        const { data: linkedDocument } = await supabase.from("documents")
-          .select("id, tittel, fil_url").eq("id", linkedDocumentId).maybeSingle();
+      // Only documents explicitly marked as SORA on a mission type are selectable.
+      const markedIds = [...new Set(missionTypes.map((type) => type.sora_document_id).filter(Boolean))] as string[];
+      const available: { id: string; tittel: string }[] = [];
+      if (markedIds.length > 0) {
+        const { data: docs } = await supabase.from("documents")
+          .select("id, tittel, fil_url").in("id", markedIds);
         if (cancelled) return;
-        if (linkedDocument && /\.pdf$/i.test(linkedDocument.fil_url || "")) available.push(linkedDocument);
+        for (const doc of docs || []) {
+          if (/\.pdf$/i.test(doc.fil_url || "")) available.push({ id: doc.id, tittel: doc.tittel });
+        }
       }
-      setSoraDocuments(available.map(({ id, tittel }) => ({ id, tittel })));
+      setSoraDocuments(available);
       if (linkedDocumentId && !available.some((doc) => doc.id === linkedDocumentId)) toast.error(t("riskAssessment.soraDocumentUnavailable"));
       const selectedId = available.some((doc) => doc.id === linkedDocumentId) ? linkedDocumentId || "" : "";
       setSelectedSoraDocumentId(selectedId);
