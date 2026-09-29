@@ -8,6 +8,7 @@ import { resolveLanguage, normalizeLanguage, type EmailLanguage } from "../_shar
 import { getTemplateAttachments, getTemplateId, generateDownloadLinksHtml } from "../_shared/attachment-utils.ts";
 import { requireUser, requireRole, AuthError, authErrorResponse, type AuthedUser } from "../_shared/auth.ts";
 import { assertUserInCompany } from "../_shared/companyScope.ts";
+import { buildMissionDetails } from "./missionDetails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,7 +63,7 @@ interface EmailRequest {
   newUser?: { fullName: string; email: string; companyName: string; };
   incident?: { tittel: string; beskrivelse?: string; alvorlighetsgrad: string; lokasjon?: string; };
   deviation?: { categoryPath?: string[]; comment?: string | null; flightPhase?: string | null; missionTitle?: string | null; missionLocation?: string | null; reporterName?: string | null; reportedAt?: string | null; };
-  mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; };
+  mission?: { id?: string; tittel: string; lokasjon: string; tidspunkt: string; beskrivelse?: string; status?: string; slutt_tidspunkt?: string | null; latitude?: number | null; longitude?: number | null; oppdragstype?: string | null; kunde?: string | null; personell?: Array<string | { navn: string; rolle?: string | null }>; droner?: string[]; utstyr?: string[]; luftrom?: Array<{ zone_name?: string; zone_type?: string; level?: string; message?: string }>; };
   followupAssigned?: { recipientId: string; recipientName: string; incidentTitle: string; incidentSeverity: string; incidentLocation?: string; incidentDescription?: string; };
   approvalMission?: { id?: string; tittel: string; lokasjon?: string; tidspunkt: string; beskrivelse?: string; };
   pilotComment?: { missionTitle: string; missionLocation: string; missionDate: string; comment: string; senderName: string; };
@@ -403,9 +404,24 @@ ${violations.map((v) => `<div class="violation">${escapeHtml(v)}</div>`).join(''
       if (!notificationUserIds.length) return new Response(JSON.stringify({ success: true, message: 'No users to notify' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
       const { data: company } = await supabase.from('companies').select('navn').eq('id', companyId).single();
-      const missionDate = new Date(mission.tidspunkt).toLocaleString('nb-NO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: mission.tittel, mission_location: mission.lokasjon, mission_date: missionDate, mission_status: mission.status || 'Planlagt', mission_description: mission.beskrivelse || '', company_name: company?.navn || '' },
+      const isEn = String(requestLanguage).startsWith('en');
+      const dateLocale = isEn ? 'en-GB' : 'nb-NO';
+      const missionDate = new Date(mission.tidspunkt).toLocaleString(dateLocale, { timeZone: 'Europe/Oslo', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      let details: Record<string, string> = {};
+      try {
+        details = await buildMissionDetails(supabase, mission as any, isEn ? 'en' : 'no', dateLocale);
+      } catch (e) {
+        console.error('buildMissionDetails failed', e);
+      }
+      const templateResult = await getEmailTemplateWithFallback(companyId, 'mission_notification', { mission_title: escapeHtml(mission.tittel || ''), mission_location: escapeHtml(mission.lokasjon || ''), mission_date: missionDate, mission_status: escapeHtml(mission.status || 'Planlagt'), mission_description: escapeHtml(mission.beskrivelse || ''), company_name: company?.navn || '', mission_type: escapeHtml((mission as any).oppdragstype || ''), mission_customer: escapeHtml((mission as any).kunde || ''), ...details },
       requestLanguage);
+      // Egendefinerte maler uten de nye variablene får detaljene lagt inn automatisk
+      if (details.mission_details && templateResult.content && !templateResult.content.includes(details.mission_weather)) {
+        const block = `<div style="max-width:600px;margin:0 auto;padding:0 20px 20px;font-family:Arial,sans-serif;">${details.mission_details}</div>`;
+        templateResult.content = /<\/body>/i.test(templateResult.content)
+          ? templateResult.content.replace(/<\/body>/i, `${block}</body>`)
+          : templateResult.content + block;
+      }
 
       const emailConfig = await getEmailConfig(companyId);
       const fromName = emailConfig.fromName || "AviSafe";
