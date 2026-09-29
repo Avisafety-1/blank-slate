@@ -2992,6 +2992,7 @@
     "soraDocumentUnavailable": "This document is not available to you. Choose another document.",
     "soraDocumentSaveError": "Could not save the SORA document",
     "soraDocumentInfo": "The document is a reference. Check that the mission falls within the operator's authorization.",
+    "soraDocumentAutoSelectHelp": "Selected automatically if a SORA document is linked to the chosen operation type in company settings",
     "flightMode": "Flight mode",
     "vlosDesc": "Visual contact with the drone throughout the flight",
     "bvlosDesc": "Flight beyond visual line of sight — requires SORA, C2 link and DAA",

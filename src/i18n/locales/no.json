@@ -2994,6 +2994,7 @@
     "soraDocumentUnavailable": "Dokumentet er ikke tilgjengelig for deg. Velg et annet dokument.",
     "soraDocumentSaveError": "Kunne ikke lagre SORA-dokumentet",
     "soraDocumentInfo": "Dokumentet er en referanse. Kontroller at oppdraget dekkes av selskapets driftstillatelse.",
+    "soraDocumentAutoSelectHelp": "Velges automatisk hvis et sora-dokument er tilknyttet valgt operasjonstype på selskapsinnstillingene",
     "flightMode": "Flygemodus",
     "vlosDesc": "Visuell kontakt med dronen gjennom hele flygingen",
     "bvlosDesc": "Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA",
