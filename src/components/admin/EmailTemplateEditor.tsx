@@ -566,7 +566,7 @@ const superadminTemplateTypes = [
   {
     value: "mission_notification",
     label: "Nytt oppdrag (Superadmin)",
-    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{company_name}}", "{{mission_type}}", "{{mission_customer}}", "{{mission_personnel}}", "{{mission_drones}}", "{{mission_equipment}}", "{{mission_resources}}", "{{mission_airspace_warnings}}", "{{mission_weather}}", "{{mission_details}}"],
+    variables: ["{{mission_title}}", "{{mission_location}}", "{{mission_date}}", "{{mission_status}}", "{{mission_description}}", "{{mission_notes}}", "{{company_name}}", "{{mission_type}}", "{{mission_customer}}", "{{mission_personnel}}", "{{mission_drones}}", "{{mission_equipment}}", "{{mission_resources}}", "{{mission_airspace_warnings}}", "{{mission_weather}}", "{{mission_details}}"],
     defaultSubject: "Nytt oppdrag: {{mission_title}}",
     previewData: {
       mission_title: "Inspeksjon av vindmøller",
