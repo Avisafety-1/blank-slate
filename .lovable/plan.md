@@ -1,41 +1,23 @@
-# Rikere e-postvarsel ved nytt oppdrag
+# BVLOS-kompetanse som forutsetning, ikke krav – og fjerne «r4»
 
-## Mål
-E-posten som går ut når et nytt oppdrag opprettes skal vise hvem som er tilknyttet (med rolle), hvilke ressurser som er tildelt, og luftromsvarsler for området – i tillegg til dagens tittel, status, lokasjon, tidspunkt og beskrivelse.
+## Hvorfor det fortsatt skjer
 
-## Nåværende tilstand (verifisert)
-- Varselet sendes fra `AddMissionDialog.tsx` (`notify_new_mission`) og rendres i edge-funksjonen `send-notification-email` med malen `mission_notification`.
-- Dialogen sender allerede med personellnavn, droner, utstyr, kunde, risikonivå og rutelengde i payloaden – men malen bruker dem ikke, og personell sendes uten rolle.
-- Luftromsvarsler beregnes allerede i dialogen av `AirspaceWarnings`, men fanges ikke opp (`onAirspaceResult` brukes ikke).
-- Selskaper kan ha egne overskrevne maler i `email_templates` – nye variabler må derfor være valgfrie og vises tomme hvis de mangler.
+Forrige endring la bare inn en instruks til AI-en. Systemet sender likevel fortsatt kompetansestatusen «uavklart» for BVLOS, og alle utløpte kompetanserader går til AI-en med sitt rå navn eller en intern kode. AI-en velger da selv å lage røde advarsler, blant annet om «r4». En instruks alene er ikke nok. Utfallet må styres av systemet.
 
 ## Endringer
 
-### 1. Opprett-dialogen (`src/components/dashboard/AddMissionDialog.tsx`)
-- Personell sendes med rolle: slå opp `role_id` i `company_mission_roles` (med arv fra morselskap, samme oppslag som dialogen allerede gjør) og send `personell: [{ navn, rolle }]`.
-- Fang luftromsvarsler via `onAirspaceResult` på `AirspaceWarnings` (ny state) og send dem med i payloaden (type, sonenavn, nivå, melding).
-- Send også med `oppdragstype` (evt. «Annet»-teksten) og `slutt_tidspunkt`.
+1. **BVLOS er alltid «forutsetning» og aldri «uavklart».** For BVLOS under SORA gir kompetansesjekken nå en egen status: «forutsatt iht. operasjonsmanual». Den gir aldri advarsel og aldri no-go. Det kreves ingen dokumentasjon.
+2. **Systemet skriver selv den gule merknaden.** Etter at AI-en har svart, fjerner vi AI-ens egne punkter om BVLOS-/OSO-kompetanse fra pilotkategorien. I stedet legges én fast gul merknad inn: «Forutsetter opplæring og godkjenning ihht. selskapets operasjonsmanual / SORA.» (engelsk tilsvarende).
+3. **Ingen interne koder i teksten.** Punkter som inneholder «r4», «rank», «uavklart», «undetermined» eller «OSO #08-analyse» fjernes automatisk fra pilotpunktene, oppsummeringen og anbefalingene.
+4. **Utløpte kompetanser.** AI-en får bare utløpte droneførerbevis som systemet gjenkjenner, med lesbart navn (f.eks. «A2 (utløpt 2025-03-01)»). Andre utløpte rader, som interne kurs og ukjente koder, sendes ikke med. Da kan de ikke gi røde advarsler.
+5. **Scoren påvirkes ikke** av BVLOS-kompetanse.
 
-### 2. Edge-funksjonen (`supabase/functions/send-notification-email/index.ts`)
-- Utvid `mission`-typen med de nye feltene.
-- Bygg nye malvariabler før rendering:
-  - `{{mission_personnel}}` – én linje per person: «Navn – Rolle»
-  - `{{mission_drones}}`, `{{mission_equipment}}` – punktlister
-  - `{{mission_airspace_warnings}}` – advarsler med nivå (f.eks. gult/rødt markert), eller «Ingen kjente luftromskonflikter»
-  - `{{mission_type}}`, `{{mission_end}}`, `{{mission_customer}}`, `{{mission_risk}}`
-- HTML-escaping av alle brukerstyrte verdier.
+Risikovurderinger som allerede er laget, endres ikke. Kjør vurderingen på nytt for å se endringen.
 
-### 3. Standardmaler (`supabase/functions/_shared/template-utils.ts` og `default-templates-en.ts`)
-- Utvid `mission_notification` (norsk og engelsk) med nye rader i oppdragsboksen: personell m/rolle, droner, utstyr, kunde, oppdragstype, sluttidspunkt og en egen luftromsvarsel-blokk.
-- Selskaper med egne maler beholder sin mal uendret; de kan legge inn de nye variablene selv via mal-editoren.
+## Teknisk
 
-### 4. Mal-editoren (`src/components/admin/EmailTemplateEditor.tsx`)
-- List opp de nye variablene for `mission_notification` slik at administratorer ser hva som er tilgjengelig.
-
-## Forslag på mer info (inkludert hvis enkelt, ellers droppet)
-- Direktelenke til oppdraget i appen (`https://app.avisafe.no/oppdrag` – oppdraget har ingen egen URL i dag, så lenken går til oversikten).
-- Vær tas ikke med: varselet går ved opprettelse, ofte langt før tidspunktet, så værmeldingen ville vært misvisende.
-
-## Tekniske detaljer
-- Ingen databaseendringer – kun frontend + edge-funksjon (deployes automatisk).
-- Verifisering: `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`, deretter opprett et testoppdrag og sjekk e-posten.
+- `competency.ts`: legg `'assumed'` til i `CompetencyStatus` og `coveredBy: 'operations_manual'`. BVLOS-grenen returnerer alltid `assumed` når den ikke er `ok`. `undeterminedWhy: 'bvlos_specific_oso08'` fjernes.
+- `index.ts`: `expiredCompetencies` i `pilotStats` erstattes med `competencyAssessment.expired`, filtrert til gjenkjente koder. `unclassified` sendes ikke for BVLOS. Etter AI-svaret gjør en ny `sanitizeCompetencyText()` følgende i `categories.pilot_experience` (concerns/factors), `summary` og `recommendations`: fjerner setninger som matcher `/\br\s?4\b|rank|undetermined|uavklart|OSO\s*#?0?8/i` og BVLOS-kompetansepunkter, og legger deretter inn den faste gule merknaden (samme kategori og format som eksisterende advarsler i pilotkategorien).
+- `prompts.ts` (NO/EN): beskriv `assumed` som en ren forutsetning som ikke skal kommenteres utover den faste merknaden.
+- `competency_test.ts`: BVLOS uten sertifikat gir `assumed`, og utløpte ukjente rader tas ikke med.
+- Deploy `ai-risk-assessment`, kjør Deno-testene og `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
