@@ -770,7 +770,9 @@ export const AddMissionDialog = ({
           longitude: missionCoordinates.longitude,
           route: routeForStorage,
           oppdragstype: formData.oppdragstype || null,
-            sora_document_id: missionTypes.find((type) => type.label === formData.oppdragstype)?.sora_document_id ?? null,
+            sora_document_id: formData.oppdragstype === (mission as any).oppdragstype
+              ? (mission as any).sora_document_id ?? null
+              : missionTypes.find((type) => type.label === formData.oppdragstype)?.sora_document_id ?? null,
           oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
           oppdatert_dato: new Date().toISOString(),
           ...(companySettings.allow_pilot_override_publish_settings ? {
@@ -935,9 +937,7 @@ export const AddMissionDialog = ({
             longitude: missionCoordinates.longitude,
             route: routeForStorage,
             oppdragstype: formData.oppdragstype || null,
-            sora_document_id: formData.oppdragstype === (mission as any).oppdragstype
-              ? (mission as any).sora_document_id ?? null
-              : missionTypes.find((type) => type.label === formData.oppdragstype)?.sora_document_id ?? null,
+            sora_document_id: missionTypes.find((type) => type.label === formData.oppdragstype)?.sora_document_id ?? null,
             oppdragstype_annet: formData.oppdragstype === "Annet" ? (formData.oppdragstype_annet || null) : null,
             publish_to_map: companySettings.allow_pilot_override_publish_settings
               ? publication.publish_to_map
