@@ -5,6 +5,7 @@ import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
+import { readMissionSoraDocument } from "./soraDocument.ts";
 
 import {
   calculateDroneAggregatedStatus,
@@ -1125,6 +1126,16 @@ serve(async (req) => {
       });
     }
 
+    const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: accessibleMission } = await callerClient.from('missions').select('id').eq('id', missionId).maybeSingle();
+    if (!accessibleMission) return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
+      status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    const soraDocument = await readMissionSoraDocument(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', authHeader.replace('Bearer ', ''), missionId)
+      .catch(() => null);
+
     // 2. Fetch assigned personnel for the mission
     // GDPR: Only fetch non-personal data needed for risk assessment (no names, email, phone)
     const { data: missionPersonnel, error: missionPersonnelError } = await supabase
@@ -2235,6 +2246,7 @@ serve(async (req) => {
 
     const contextData = {
       mission: {
+        soraDocument: soraDocument ? { name: soraDocument.name, readable: soraDocument.readable, reference: soraDocument.reference } : null,
         title: mission.tittel,
         location: mission.lokasjon,
         description: mission.beskrivelse,
@@ -3148,6 +3160,20 @@ serve(async (req) => {
         if (pilotInputs?.isVlos === false) {
           pilotCat.notes = [bvlosAssumptionNote(assessmentLang)];
         }
+      }
+      if (pilotInputs?.isVlos === false) {
+        const soraClaim = /(?:manglende|missing|full|complete|ikke registrert|not registered)[^.]{0,55}sora|sora[^.]{0,55}(?:mangler|missing|påkrevd|required|not registered)/i;
+        for (const category of Object.values(aiAnalysis.categories || {}) as any[]) {
+          if (Array.isArray(category?.concerns)) category.concerns = category.concerns.filter((item: unknown) => !soraClaim.test(String(item)));
+        }
+        if (Array.isArray(aiAnalysis.recommendations)) aiAnalysis.recommendations = aiAnalysis.recommendations.filter((item: any) =>
+          !soraClaim.test(typeof item === 'string' ? item : `${item?.title ?? ''} ${item?.description ?? item?.text ?? ''}`));
+        if (soraClaim.test(aiAnalysis.summary || '')) aiAnalysis.summary = String(aiAnalysis.summary || '').split(/(?<=[.!?])\s+/u).filter((item) => !soraClaim.test(item)).join(' ');
+        const note = soraDocument
+          ? (assessmentLang === 'en' ? `SORA reference: ${soraDocument.name}. Confirm that this mission falls within the operator's authorization.` : `SORA-referanse: ${soraDocument.name}. Kontroller at oppdraget dekkes av selskapets driftstillatelse.`)
+          : (assessmentLang === 'en' ? "Confirm that the mission falls within the operator's SORA / authorization." : 'Kontroller at oppdraget dekkes av selskapets SORA / driftstillatelse.');
+        const complexity = aiAnalysis.categories?.mission_complexity;
+        if (complexity) complexity.notes = [...(Array.isArray(complexity.notes) ? complexity.notes : []), note];
       }
       aiAnalysis.summary = scrubCompetencyText(aiAnalysis.summary);
       if (Array.isArray(aiAnalysis.recommendations)) {

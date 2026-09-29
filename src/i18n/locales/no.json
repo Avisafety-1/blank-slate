@@ -2533,6 +2533,7 @@
       "inheritedParentFallback": "moderselskap",
       "description": "Listen brukes i både «Legg til oppdrag» og i AI-risikovurdering. «Annet» er alltid tilgjengelig som fritekstvalg. Tilknytt et dokument til en oppdragstype så blir det automatisk lagt til på nye oppdrag av den typen.",
       "removeDocument": "Fjern dokument",
+      "markSora": "SORA",
       "unknownDocument": "Ukjent dokument",
       "attachDocument": "Tilknytt dokument",
       "addDocument": "Legg til dokument",
@@ -2988,6 +2989,11 @@
     }
   },
   "riskAssessment": {
+    "soraDocument": "SORA-dokument",
+    "noSoraDocument": "Ingen SORA valgt",
+    "soraDocumentUnavailable": "Dokumentet er ikke tilgjengelig for deg. Velg et annet dokument.",
+    "soraDocumentSaveError": "Kunne ikke lagre SORA-dokumentet",
+    "soraDocumentInfo": "Dokumentet er en referanse. Kontroller at oppdraget dekkes av selskapets driftstillatelse.",
     "flightMode": "Flygemodus",
     "vlosDesc": "Visuell kontakt med dronen gjennom hele flygingen",
     "bvlosDesc": "Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA",

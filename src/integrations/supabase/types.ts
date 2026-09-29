@@ -1662,6 +1662,7 @@ export type Database = {
           id: string
           is_active: boolean
           label: string
+          sora_document_id: string | null
           sort_order: number
         }
         Insert: {
@@ -1673,6 +1674,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label: string
+          sora_document_id?: string | null
           sort_order?: number
         }
         Update: {
@@ -1684,6 +1686,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           label?: string
+          sora_document_id?: string | null
           sort_order?: number
         }
         Relationships: [
@@ -1706,6 +1709,13 @@ export type Database = {
             columns: ["default_evaluation_template_id"]
             isOneToOne: false
             referencedRelation: "evaluation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_mission_types_sora_document_id_fkey"
+            columns: ["sora_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
@@ -6549,6 +6559,7 @@ export type Database = {
           route: Json | null
           share_contact_info: boolean | null
           slutt_tidspunkt: string | null
+          sora_document_id: string | null
           status: string
           submitted_for_approval_at: string | null
           tidspunkt: string
@@ -6603,6 +6614,7 @@ export type Database = {
           route?: Json | null
           share_contact_info?: boolean | null
           slutt_tidspunkt?: string | null
+          sora_document_id?: string | null
           status?: string
           submitted_for_approval_at?: string | null
           tidspunkt: string
@@ -6657,6 +6669,7 @@ export type Database = {
           route?: Json | null
           share_contact_info?: boolean | null
           slutt_tidspunkt?: string | null
+          sora_document_id?: string | null
           status?: string
           submitted_for_approval_at?: string | null
           tidspunkt?: string
@@ -6677,6 +6690,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_sora_document_id_fkey"
+            columns: ["sora_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]

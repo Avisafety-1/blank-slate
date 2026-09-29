@@ -2531,6 +2531,7 @@
       "inheritedParentFallback": "parent company",
       "description": "The list is used in both \"Add mission\" and in AI risk assessment. \"Other\" is always available as a free-text option. Link a document to a mission type so it's automatically added to new missions of that type.",
       "removeDocument": "Remove document",
+      "markSora": "SORA",
       "unknownDocument": "Unknown document",
       "attachDocument": "Attach document",
       "addDocument": "Add document",
@@ -2986,6 +2987,11 @@
     }
   },
   "riskAssessment": {
+    "soraDocument": "SORA document",
+    "noSoraDocument": "No SORA selected",
+    "soraDocumentUnavailable": "This document is not available to you. Choose another document.",
+    "soraDocumentSaveError": "Could not save the SORA document",
+    "soraDocumentInfo": "The document is a reference. Check that the mission falls within the operator's authorization.",
     "flightMode": "Flight mode",
     "vlosDesc": "Visual contact with the drone throughout the flight",
     "bvlosDesc": "Flight beyond visual line of sight — requires SORA, C2 link and DAA",
