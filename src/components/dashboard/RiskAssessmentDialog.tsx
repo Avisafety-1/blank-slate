@@ -110,6 +110,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [preparedByProfile, setPreparedByProfile] = useState<{ email?: string; full_name?: string } | null>(null);
   const [soraSaving, setSoraSaving] = useState(false);
   const [soraMissionDetails, setSoraMissionDetails] = useState<any>(null);
+  const [soraDocuments, setSoraDocuments] = useState<{ id: string; tittel: string }[]>([]);
+  const [selectedSoraDocumentId, setSelectedSoraDocumentId] = useState<string>("");
 
   const [pilotInputs, setPilotInputs] = useState<PilotInputs>({
     flightHeight: 120,
@@ -126,6 +128,31 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
+
+  useEffect(() => {
+    if (!open || !currentMissionId) { setSoraDocuments([]); setSelectedSoraDocumentId(""); return; }
+    let cancelled = false;
+    (async () => {
+      const [{ data: missionRow }, { data: docs }] = await Promise.all([
+        supabase.from("missions").select("sora_document_id").eq("id", currentMissionId).maybeSingle(),
+        supabase.from("documents").select("id, tittel, fil_url").not("fil_url", "is", null),
+      ]);
+      if (cancelled) return;
+      const available = (docs || []).filter((doc) => /\.pdf$/i.test(doc.fil_url || ""));
+      setSoraDocuments(available.map(({ id, tittel }) => ({ id, tittel })));
+      setSelectedSoraDocumentId(available.some((doc) => doc.id === missionRow?.sora_document_id) ? missionRow?.sora_document_id || "" : "");
+    })();
+    return () => { cancelled = true; };
+  }, [open, currentMissionId]);
+
+  const chooseSoraDocument = async (value: string) => {
+    if (!currentMissionId) return;
+    const documentId = value === "none" ? null : value;
+    if (documentId && !soraDocuments.some((doc) => doc.id === documentId)) return;
+    const { error } = await supabase.from("missions").update({ sora_document_id: documentId } as any).eq("id", currentMissionId);
+    if (error) toast.error(t("riskAssessment.soraDocumentSaveError"));
+    else setSelectedSoraDocumentId(documentId || "");
+  };
 
   const COMMENT_CATEGORIES: { key: string; labelKey: string }[] = [
     { key: 'weather', labelKey: 'riskAssessment.categories.weather' },
@@ -788,6 +815,19 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                   )}
 
                   {/* Flight Parameters */}
+                  {currentMissionId && (
+                    <div className="space-y-2">
+                      <Label>{t("riskAssessment.soraDocument")}</Label>
+                      <Select value={selectedSoraDocumentId || "none"} onValueChange={chooseSoraDocument}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">{t("riskAssessment.noSoraDocument")}</SelectItem>
+                          {soraDocuments.map((doc) => <SelectItem key={doc.id} value={doc.id}>{doc.tittel}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">{t("riskAssessment.soraDocumentInfo")}</p>
+                    </div>
+                  )}
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium text-muted-foreground">
                       {t('riskAssessment.flightParameters', 'Flygeparametere')}
