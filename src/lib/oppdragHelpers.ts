@@ -91,3 +91,10 @@ export const formatAIRiskScore = (score: unknown) => {
   if (!Number.isFinite(n)) return "—/10";
   return `${n.toFixed(1)}/10`;
 };
+
+// A reassessment belongs to the mission even if a newer ordinary assessment exists.
+export const hasSoraReassessment = (assessments: { sora_output?: unknown }[]) =>
+  assessments.some((assessment) => assessment.sora_output != null);
+
+export const formatMissionRiskScore = (score: unknown, reassessed?: boolean) =>
+  `${formatAIRiskScore(score)}${reassessed ? ` ${i18n.t("missionBadges.soraSuffix")}` : ""}`;

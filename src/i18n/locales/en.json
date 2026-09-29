@@ -8847,6 +8847,7 @@
   },
   "missionBadges": {
     "ai": "AI",
+    "soraSuffix": "+SORA",
     "riskNotAssessed": "Risk",
     "checklist": "Checklist",
     "checklistCompleted": "Checklist completed",

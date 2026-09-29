@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { User, Upload, Lock, Heart, Bell, AlertCircle, Camera, Save, Book, Award, Smartphone, PenTool, ClipboardCheck, CheckCircle2, MapPin, Calendar, MessageSquare, Send, Activity, CreditCard, Trash2, ArrowUpRight, Loader2, GraduationCap, Check, ChevronsUpDown, Search, Brain, Radio, FileText, Building2, Users, Inbox as InboxIcon, Mail, Plane, Timer } from "lucide-react";
-import { statusColors, getApprovalStatusColor, getApprovalStatusLabel, getSoraBadgeColor, getAIRiskBadgeColor, getNotamBadgeColor, shouldShowSoraBadge } from "@/lib/oppdragHelpers";
+import { statusColors, getApprovalStatusColor, getApprovalStatusLabel, getAIRiskBadgeColor, getNotamBadgeColor, hasSoraReassessment, formatMissionRiskScore } from "@/lib/oppdragHelpers";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 
@@ -396,12 +396,11 @@ export const ProfileDialog = () => {
         let riskMap: Record<string, any> = {};
         let personnelMap: Record<string, string[]> = {};
         let personnelDetailsMap: Record<string, Array<{ id: string; name: string; roleName: string | null }>> = {};
-        let soraMap: Record<string, any> = {};
         let documentCountsMap: Record<string, number> = {};
         let companyNameMap: Record<string, string> = {};
         if (missionIds.length > 0) {
           const companyIds = Array.from(new Set((pendingMissions || []).map((m: any) => m.company_id).filter(Boolean)));
-          const [riskResult, personnelResult, soraResult, docsResult, companiesResult] = await Promise.all([
+          const [riskResult, personnelResult, docsResult, companiesResult] = await Promise.all([
             supabase
               .from("mission_risk_assessments")
               .select("*")
@@ -410,10 +409,6 @@ export const ProfileDialog = () => {
             supabase
               .from("mission_personnel")
               .select("mission_id, profile_id, profiles(id, full_name), role_id, company_mission_roles(name)")
-              .in("mission_id", missionIds),
-            supabase
-              .from("mission_sora")
-              .select("mission_id, sora_status")
               .in("mission_id", missionIds),
             supabase
               .from("mission_documents")
@@ -425,9 +420,10 @@ export const ProfileDialog = () => {
           ]);
 
           if (riskResult.data) {
+             const reassessedMissionIds = new Set(riskResult.data.filter(r => hasSoraReassessment([r])).map(r => r.mission_id));
             for (const r of riskResult.data) {
               if (!riskMap[r.mission_id]) {
-                riskMap[r.mission_id] = r;
+                 riskMap[r.mission_id] = { ...r, hasSoraReassessment: reassessedMissionIds.has(r.mission_id) };
               }
             }
           }
@@ -442,12 +438,6 @@ export const ProfileDialog = () => {
                 name: p.profiles?.full_name || "Ukjent",
                 roleName: p.company_mission_roles?.name || null,
               });
-            }
-          }
-
-          if (soraResult.data) {
-            for (const s of soraResult.data as any[]) {
-              if (!soraMap[s.mission_id]) soraMap[s.mission_id] = s;
             }
           }
 
@@ -470,7 +460,6 @@ export const ProfileDialog = () => {
             aiRisk: riskMap[m.id] || null,
             personnel_profile_ids: personnelMap[m.id] || [],
             personnel_details: personnelDetailsMap[m.id] || [],
-            sora: soraMap[m.id] || null,
             documentCount: documentCountsMap[m.id] || 0,
             company_name: companyNameMap[m.company_id] || null,
           }))
@@ -2386,14 +2375,9 @@ export const ProfileDialog = () => {
                                 <Badge variant="outline" className={`${getApprovalStatusColor(mission.approval_status || 'pending_approval')} text-[10px] px-1.5 py-0.5`}>
                                   {getApprovalStatusLabel(mission.approval_status || 'pending_approval', true)}
                                 </Badge>
-                                {shouldShowSoraBadge(mission.sora) && (
-                                  <Badge variant="outline" className={`${getSoraBadgeColor(mission.sora?.sora_status)} text-[10px] px-1.5 py-0.5`}>
-                                    SORA: {mission.sora.sora_status}
-                                  </Badge>
-                                )}
                                 <Badge variant="outline" className={`${mission.aiRisk ? getAIRiskBadgeColor(mission.aiRisk.recommendation) : 'bg-gray-500/20 text-gray-900 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>
                                   <Brain className="w-3 h-3 mr-1" />
-                                  {mission.aiRisk ? Number(mission.aiRisk.overall_score).toFixed(1) : t('profile.approval.risk')}
+                                  {mission.aiRisk ? formatMissionRiskScore(mission.aiRisk.overall_score, mission.aiRisk.hasSoraReassessment) : t('profile.approval.risk')}
                                 </Badge>
                                 {mission.checklist_ids?.length > 0 && (
                                   <Badge variant="outline" className={`${mission.checklist_ids.every((id: string) => mission.checklist_completed_ids?.includes(id)) ? 'bg-green-500/20 text-green-900 border-green-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'} text-[10px] px-1.5 py-0.5`}>

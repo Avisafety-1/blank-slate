@@ -7,6 +7,7 @@ import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { parseKmlOrKmz } from "@/lib/kmlImport";
 import { toast } from "sonner";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { hasSoraReassessment } from "@/lib/oppdragHelpers";
 
 type Mission = any;
 
@@ -352,7 +353,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] || null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
         };
       });
 
@@ -510,7 +511,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] || null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
         };
       });
 

@@ -25,6 +25,7 @@ import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecut
 import { NotamDialog } from "./NotamDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
+import { hasSoraReassessment } from "@/lib/oppdragHelpers";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 import {
   statusColors,
@@ -32,16 +33,13 @@ import {
   getApprovalStatusColor,
   getApprovalStatusLabel,
   getNotamBadgeColor,
-  getSoraBadgeColor,
   canSubmitForApproval,
   shouldShowAIRiskBadge,
   shouldShowApprovalBadge,
-  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
-type MissionSora = any;
-type MissionAIRisk = { overall_score: number; recommendation: string };
+type MissionAIRisk = { overall_score: number; recommendation: string; hasSoraReassessment: boolean };
 
 
 export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
@@ -57,7 +55,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [missionSoras, setMissionSoras] = useState<Record<string, MissionSora>>({});
   const [missionDocumentCounts, setMissionDocumentCounts] = useState<Record<string, number>>({});
   const [missionAIRisks, setMissionAIRisks] = useState<Record<string, MissionAIRisk>>({});
   // Risk assessment states
@@ -67,8 +64,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const [approvalConfirmMissionId, setApprovalConfirmMissionId] = useState<string | null>(null);
   const [checklistMission, setChecklistMission] = useState<Mission | null>(null);
   const [notamMission, setNotamMission] = useState<Mission | null>(null);
-  // For SORA badge click - open RiskAssessmentDialog with manual-sora tab
-  const [soraMissionForDialog, setSoraMissionForDialog] = useState<Mission | null>(null);
 
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
 
@@ -109,7 +104,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
       if (companyId) setCachedData(`offline_dashboard_missions_${companyId}`, data || []);
       if (data && data.length > 0) {
         const missionIds = data.map((m: any) => m.id);
-        fetchMissionSoras(missionIds);
         fetchMissionDocumentCounts(missionIds);
         fetchMissionAIRisks(missionIds);
         fetchMyMissionIds(missionIds);
@@ -153,41 +147,26 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     }
   };
 
-  const fetchMissionSoras = async (missionIds: string[]) => {
-    const { data, error } = await supabase
-      .from("mission_sora")
-      .select("*")
-      .in("mission_id", missionIds);
-
-    if (error) {
-      console.error("Error fetching mission SORAs:", error);
-    } else if (data) {
-      const soraMap: Record<string, MissionSora> = {};
-      data.forEach((sora: any) => {
-        soraMap[sora.mission_id] = sora;
-      });
-      setMissionSoras(soraMap);
-    }
-  };
-
   const fetchMissionAIRisks = async (missionIds: string[]) => {
     const { data, error } = await supabase
       .from("mission_risk_assessments")
-      .select("mission_id, overall_score, recommendation")
+       .select("mission_id, overall_score, recommendation, sora_output")
       .in("mission_id", missionIds)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching mission AI risks:", error);
     } else if (data) {
-      const riskMap: Record<string, MissionAIRisk> = {};
+       const riskMap: Record<string, MissionAIRisk> = {};
       data.forEach((risk: any) => {
         if (!riskMap[risk.mission_id]) {
           riskMap[risk.mission_id] = {
             overall_score: risk.overall_score,
             recommendation: risk.recommendation,
+             hasSoraReassessment: false,
           };
         }
+         if (hasSoraReassessment([risk])) riskMap[risk.mission_id].hasSoraReassessment = true;
       });
       setMissionAIRisks(riskMap);
     }
@@ -200,13 +179,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
     };
     setSelectedMission(missionWithRisk);
     setDialogOpen(true);
-  };
-
-  const handleSoraClick = (mission: Mission, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setSoraMissionForDialog(mission);
-    setRiskDialogInitialTab('manual-sora');
-    setRiskDialogOpen(true);
   };
 
 
@@ -353,8 +325,6 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                       setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');
                       setRiskDialogOpen(true);
                     }}
-                    sora={missionSoras[mission.id] || null}
-                    onSoraClick={() => handleSoraClick({ ...mission, sora: missionSoras[mission.id] } as any)}
                     onChecklistClick={() => setChecklistMission(mission)}
                     onNotamClick={() => setNotamMission(mission)}
                   />
@@ -418,11 +388,10 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
           setRiskDialogOpen(open);
           if (!open) {
             setSelectedAIRiskMission(null);
-            setSoraMissionForDialog(null);
             handleRiskAssessmentSaved();
           }
         }}
-        mission={selectedAIRiskMission || soraMissionForDialog}
+        mission={selectedAIRiskMission}
         initialTab={riskDialogInitialTab}
         onSoraSaved={fetchMissions}
       />

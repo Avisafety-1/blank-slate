@@ -61,12 +61,10 @@ import {
   getAIRiskLabel,
   formatAIRiskScore,
   getApprovalStatusColor,
-  getSoraBadgeColor,
   getNotamBadgeColor,
   canSubmitForApproval,
   shouldShowAIRiskBadge,
   shouldShowApprovalBadge,
-  shouldShowSoraBadge,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -207,8 +205,6 @@ export const MissionCard = ({
             onSubmitForApproval={() => setApprovalConfirmOpen(true)}
             aiRisk={(mission as any).aiRisk || null}
             onAIRiskClick={() => onRiskBadgeClick(mission)}
-            sora={(mission as any).sora || null}
-            onSoraClick={() => onOpenSora(mission.id)}
             onChecklistClick={() => onExecuteChecklist(mission.id)}
             onNotamClick={() => onNotam?.(mission)}
             has5kmZone={has5kmZone}
@@ -636,9 +632,6 @@ export const MissionCard = ({
                 <Edit className="h-3 w-3 mr-1" />
                 {t('pages.missions.card.edit')}
               </Button>
-              <Badge variant="outline" className={getSoraBadgeColor(mission.sora.sora_status)}>
-                {mission.sora.sora_status}
-              </Badge>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
