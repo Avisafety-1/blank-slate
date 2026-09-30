@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [x] Dashbord: én aktiv flytur i fast felt, intern rulling og pil for flere uten å skyve andre widgeter ned
 - [x] SORA-dokument per oppdragstype og oppdrag, PDF-tolkning og gul merknad ved manglende dokument (DB-migrasjon uttrykkelig godkjent)
 - [x] Risikovurdering: naturlig konklusjonsstart uten «I tillegg» og ingen krav om ny SORA per oppdrag
 - [x] NOTAM: valgfritt polygon fra minst tre rutepunkter, med korrekt kartvisning og lagring

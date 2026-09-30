@@ -424,6 +424,8 @@
       "title": "Active flights",
       "noFlights": "No active flights",
       "viewOnMap": "View on map",
+      "nextFlight": "Show next active flight",
+      "previousFlight": "Show previous active flight",
       "freeFlight": "Free flight",
       "tagAdvisory": "SafeSky advisory",
       "tagLiveSafesky": "SafeSky live",

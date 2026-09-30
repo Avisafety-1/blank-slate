@@ -426,6 +426,8 @@
       "title": "Aktive flyturer",
       "noFlights": "Ingen aktive flyturer",
       "viewOnMap": "Vis på kart",
+      "nextFlight": "Vis neste aktive flytur",
+      "previousFlight": "Vis forrige aktive flytur",
       "freeFlight": "Fri flytur",
       "tagAdvisory": "SafeSky advisory",
       "tagLiveSafesky": "SafeSky live",
