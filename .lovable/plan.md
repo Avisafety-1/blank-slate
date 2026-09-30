@@ -1,25 +1,22 @@
-# Rulling i flylogger på DJI RC Pro
+# Rulling i behandling av flylogger på DJI RC Pro
 
 ## Mål
-Flylogg-oversikten, flyanalyse-vinduet og opplastings-/importvinduet skal kunne rulles med fingeren på DJI RC Pro, på samme måte som ressurssiden. Ingen endring i utseende eller oppførsel på PC, iPad eller mobil.
+Vinduet der man behandler flylogger og oppretter oppdrag fra dem — både enkeltvis (flylogg-detaljer) og i batch — skal kunne rulles på DJI RC Pro, på samme måte som ressurssiden. Ingen endring på PC, iPad eller mobil.
 
-## Hva som er annerledes i dag
-- Ressurssiden bruker enkle rullefelt (vanlig `overflow-y-auto`) uten spesielle berøringsregler og uten kart inne i listene.
-- Flylogg-oversikten har et lite Leaflet-kart i hvert kort. Kartet er satt til å ignorere berøring, men selve flyruta (linja) er fortsatt «interaktiv» i Leaflet, og Leaflets egne stiler kan fange opp fingerbevegelsen i den gamle nettleseren på kontrolleren. Når man starter å dra på et kartbilde, ruller ikke siden.
-- Flyanalyse-vinduet og opplastingsvinduet har rullefelt uten eksplisitt berøringsrulling (`touch-action: pan-y` / momentum), og enkelte underlister mangler `overscroll-contain`, slik at bevegelsen havner på vinduet bak (som er låst).
+## Sannsynlig årsak
+Vinduet får høyden sin fra `95dvh` / `90dvh` (enheten «dynamisk skjermhøyde»). Den gamle nettleseren på DJI-kontrolleren (Chromium 70) forstår ikke `dvh`, så høyden ignoreres helt. Da har vinduet ingen fast høyde, rullefeltene inni (venstre liste, flylogg-detaljer og batch-panelet) får aldri noen grense å rulle innenfor, og innholdet blir bare kuttet av (`overflow-hidden`). Ressurssidens vinduer bruker vanlig `vh`, som kontrolleren forstår — derfor fungerer de.
 
 ## Endringer
-1. Felles rulleregel: en liten CSS-klasse (f.eks. `dji-scroll`) i `src/index.css` som gir `overflow-y: auto`, `touch-action: pan-y`, `-webkit-overflow-scrolling: touch` og `overscroll-behavior: contain` — samme oppsett som allerede fungerer i nedtrekksmenyene og ressurs-loggbøkene.
-2. Flylogg-oversikten (`FlightLogCard.tsx`):
-   - Kartlinja lages som ikke-interaktiv (`interactive: false`) og kartbeholderen får `touch-action: pan-y` så Leaflet aldri fanger fingeren.
-   - Kortet beholder klikk for å åpne analysen; `touch-pan-y` beholdes.
-3. Flyanalyse-vinduet (`FlightAnalysisDialog.tsx`): hovedrullefeltet får `dji-scroll`. Eventuelle kart/grafer inne i vinduet påvirkes ikke utover selve rullefeltet.
-4. Last opp/importer logg (`UploadDroneLogDialog.tsx`, `PendingDjiLogsSection.tsx`): alle rullefelt (vinduet i enkel visning, venstre kolonne i delt visning, ventende DJI-logger, batch-lista og treff-lista) får `dji-scroll`.
+1. `src/index.css`: små hjelpeklasser som setter høyden først i `vh` (fallback) og deretter i `dvh`, f.eks. `.h-dialog-95 { height: 95vh; height: 95dvh }` og tilsvarende `max-height` for 95 % og 90 %. Nye nettlesere bruker `dvh`, kontrolleren bruker `vh`.
+2. `src/components/UploadDroneLogDialog.tsx`: bytt `h-[95dvh]`, `max-h-[95dvh]` og `max-h-[90dvh]` på vinduet med de nye klassene (gjelder enkelt- og delt visning).
+3. Rullefeltene i delt visning — venstre kolonne, flylogg-detaljer og treff-/utstyrslister — får samme berøringsregler som resten av appen bruker for DJI (`touch-action: pan-y`, `-webkit-overflow-scrolling: touch`, `overscroll-contain`).
+4. `src/components/upload/BatchLogPanel.tsx`: batch-lista har allerede riktig rullefelt, men får samme `touch-action: pan-y`, slik at den også ruller når man starter bevegelsen på et kort eller skjemafelt.
+5. Søk etter andre `dvh`-verdier i vinduer som brukes i flyloggflyten og gi dem samme fallback.
 
 ## Tekniske detaljer
-- Dialoger kjører allerede ikke-modalt på DJI (`isDjiController` i `ui/dialog.tsx`), så scroll-låsen er ikke årsaken; problemet er berøringsregler i selve rullefeltene og kartene.
-- Ingen database-, tekst- eller logikkendringer; ingen nye i18n-nøkler.
-- Regelen i `AGENTS.md` oppdateres: rullefelt som skal brukes på DJI-kontrolleren bruker `dji-scroll`, og statiske Leaflet-miniatyrer lages ikke-interaktive.
+- Dialoger kjører allerede ikke-modalt på DJI (`isDjiController` i `ui/dialog.tsx`), så scroll-låsen er ikke årsaken.
+- Ingen database-, tekst- eller logikkendringer.
+- `AGENTS.md` får regelen: bruk aldri `dvh` uten `vh`-fallback, fordi DJI-kontrollerens Chromium 70 ikke støtter det.
 
 ## Verifisering
-Build og typesjekk. Kontrolleren kan ikke testes herfra, så endelig bekreftelse må gjøres på RC Pro: rull i flylogg-oversikten (også ved å starte på et kartbilde), i flyanalysen og i opplastingsvinduet.
+Build og typesjekk, og kontroll i nettleser med en vanlig skjerm. Selve kontrolleren kan ikke testes herfra, så endelig bekreftelse må gjøres på RC Pro: åpne en ventende logg (enkelt) og velg flere (batch), og rull i begge panelene.
