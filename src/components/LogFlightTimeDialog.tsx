@@ -1236,7 +1236,7 @@ export const LogFlightTimeDialog = ({ open, onOpenChange, onFlightLogged, onStop
             {equipmentListOpen && (
               <div className="mt-1 rounded-md border border-border bg-popover overflow-hidden">
                 <div
-                  className="overscroll-contain max-h-[min(50dvh,20rem)] overflow-y-auto p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
+                  className="overscroll-contain max-h-[min(50vh,20rem)] max-h-[min(50dvh,20rem)] overflow-y-auto p-2 space-y-1 [touch-action:pan-y] [&::-webkit-scrollbar]:w-1.5"
                   style={{ WebkitOverflowScrolling: 'touch' }}
                 >
                   {equipmentList.length === 0 ? (

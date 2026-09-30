@@ -2,3 +2,4 @@ NOTAM polygon geometry is stored in the existing `notam_schedule_windows[0]` obj
 SORA references use optional document IDs on mission types and missions; assess PDFs with the caller's RLS-scoped client and never equate a reference with an approved operating authorization, so departments inherit defaults without bypassing document access.
 Mission risk badges use any non-null `mission_risk_assessments.sora_output` as the +SORA completion marker while keeping the latest assessment's score; this avoids conflating reassessment with `mission_sora` approval status.
 Keep the active-flights dashboard list to one scroll-snapped flight per viewport with an in-header navigation arrow, so simultaneous flights never expand the dashboard row.
+- Never use `dvh` without a preceding `vh` fallback (e.g. `max-h-[90vh] max-h-[90dvh]`) and give touch scroll areas `[touch-action:pan-y]`; the DJI RC Pro runs Chromium 70, which ignores `dvh` and then loses scrolling.
