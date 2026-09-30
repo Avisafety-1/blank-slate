@@ -2,6 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* RC Pro portrait: keep the flight-log dialog inside the visible screen and
+   scroll one vertical surface instead of two unconstrained split-view panes. */
+@media (orientation: portrait) {
+  .dji-log-portrait {
+    top: 2.5% !important;
+    bottom: 2.5% !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: translateX(-50%) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dji-log-portrait .dji-log-split {
+    display: block;
+    flex: none;
+    overflow: visible;
+  }
+
+  .dji-log-portrait .dji-log-list {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .dji-log-portrait [data-tour="upload-log-pending"] [class*="overflow-y-auto"] {
+    flex: none;
+    overflow-y: visible;
+  }
+
+  .dji-log-portrait .dji-log-detail {
+    margin-top: 1rem;
+    padding-left: 0;
+    border-left: 0;
+    min-height: auto;
+  }
+
+  .dji-log-portrait .dji-log-detail > [class*="overflow-y-auto"],
+  .dji-log-portrait .dji-log-detail > div > [class*="overflow-y-auto"] {
+    flex: none;
+    overflow-y: visible;
+  }
+}
+
 /* Force disable pointer events on airspace SVG paths during route planning.
    Leaflet strips 'Pane' suffix: createPane('rmzPane') → class 'leaflet-rmz-pane' */
 .route-planning-active .leaflet-aip-pane path,

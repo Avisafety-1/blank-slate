@@ -17,6 +17,7 @@
 - [x] DJI Cloud API-bridge (bridge.py) + Fly multi-process; venter på at bruker setter SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY og deployer
 
 ## Ferdig
+- [x] DJI RC Pro portrett: loggbehandling viser loggliste og detaljer under hverandre i ett rullbart vindu; landskap uendret
 - [x] Risikoscore viser +SORA etter re-vurdering; separate SORA-statusmerker fjernet fra oppdrag
 - [x] Redesignet «Rediger dokument» med åpne, last ned og oppdater øverst
 - [x] Batterikort-dialog mobiloptimalisert (offsets i stedet for breddeverdi)
