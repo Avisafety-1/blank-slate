@@ -327,6 +327,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingLogsRef = useRef<PendingDjiLogsSectionRef>(null);
+  const splitViewRef = useRef<HTMLDivElement>(null);
 
   const [step, setStep] = useState<Step>('method');
   const [file, setFile] = useState<File | null>(null);
@@ -450,6 +451,12 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
   const [logType, setLogType] = useState<'auto' | 'dji' | 'ardupilot'>('auto');
   const [selectedPendingLogId, setSelectedPendingLogId] = useState<string | null>(null);
   const [batchSelectedIds, setBatchSelectedIds] = useState<Set<string>>(new Set());
+  // Portrait stacks details above the list in one scroll area; start at the top
+  // whenever a new log (or batch) is opened instead of keeping the list position.
+  const hasBatchSelection = batchSelectedIds.size > 0;
+  useEffect(() => {
+    if (splitViewRef.current) splitViewRef.current.scrollTop = 0;
+  }, [selectedPendingLogId, hasBatchSelection, !!result]);
   // drone_personnel links for the owners of the batch-selected logs (profile_id -> drone_ids)
   const [droneIdsByProfile, setDroneIdsByProfile] = useState<Record<string, string[]>>({});
   const isMobile = useIsMobile();
@@ -3764,7 +3771,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-           <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'dji-log-split flex gap-6 flex-1 min-h-0' : ''}`}>
+           <div ref={splitViewRef} className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'dji-log-split flex gap-6 flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
              <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'dji-log-list w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pr-1' : ''}`}>
 
