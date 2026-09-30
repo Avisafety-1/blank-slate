@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { isDjiController } from "@/lib/deviceDetection";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
@@ -3755,7 +3754,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} ${isDjiController() ? 'dji-log-portrait' : ''} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'dji-log-portrait max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
