@@ -302,7 +302,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[calc(100vw-2rem)] sm:!w-[95vw] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="!w-[calc(100vw-2rem)] sm:!w-[95vw] max-w-[calc(100vw-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
         <DialogHeader className="min-w-0 max-w-full pr-8">
           <div className="flex min-w-0 max-w-full flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
             <DialogTitle className="min-w-0 max-w-full pr-2 text-lg sm:text-xl leading-snug whitespace-normal">

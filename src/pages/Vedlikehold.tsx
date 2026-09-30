@@ -1188,7 +1188,7 @@ const Vedlikehold = () => {
       )}
 
       <Dialog open={bulkOpen} onOpenChange={(o) => { if (!o) setBulkOpen(false); }}>
-        <DialogContent className="max-w-xl max-h-[90dvh] flex flex-col">
+        <DialogContent className="max-w-xl max-h-[90vh] max-h-[90dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wrench className="w-4 h-4 text-primary" />
@@ -1253,7 +1253,7 @@ const Vedlikehold = () => {
       )}
 
       <Dialog open={!!checklistPicker} onOpenChange={(o) => { if (!o) setChecklistPicker(null); }}>
-        <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col">
+        <DialogContent className="max-w-lg max-h-[85vh] max-h-[85dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="w-4 h-4 text-primary" />

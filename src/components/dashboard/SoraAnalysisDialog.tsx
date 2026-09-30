@@ -247,7 +247,7 @@ export const SoraAnalysisDialog = ({ open, onOpenChange, missionId, onSaved }: S
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {existingSora ? t("sora.analysisDialog.titleEdit") : t("sora.analysisDialog.titleNew")}

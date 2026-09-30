@@ -901,7 +901,7 @@ export default function Kalender() {
           setNewEvent({ title: "", type: "Annet", description: "", time: "09:00" });
         }
       }}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               {selectedDate && format(selectedDate, "dd. MMMM yyyy", { locale: dateLocale })}
