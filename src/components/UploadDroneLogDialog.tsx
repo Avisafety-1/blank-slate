@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { isDjiController } from "@/lib/deviceDetection";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
