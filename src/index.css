@@ -24,9 +24,15 @@
   }
 
   .dji-log-portrait .dji-log-list {
+    display: block;
     width: 100%;
     min-width: 0;
     overflow: visible;
+  }
+
+  .dji-log-portrait [data-tour="upload-log-pending"] [class*="overflow-y-auto"] {
+    flex: none;
+    overflow-y: visible;
   }
 
   .dji-log-portrait .dji-log-detail {
@@ -36,7 +42,8 @@
     min-height: auto;
   }
 
-  .dji-log-portrait .dji-log-detail [class*="overflow-y-auto"] {
+  .dji-log-portrait .dji-log-detail > [class*="overflow-y-auto"],
+  .dji-log-portrait .dji-log-detail > div > [class*="overflow-y-auto"] {
     flex: none;
     overflow-y: visible;
   }
