@@ -2,19 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* RC Pro portrait: keep the flight-log dialog inside the visible screen and
-   scroll one vertical surface instead of two unconstrained split-view panes. */
-@media (orientation: portrait) {
+/* Portrait (RC Pro, phones, tablets): keep the flight-log split dialog inside the
+   visible screen and scroll one vertical surface instead of two split-view panes.
+   Not gated on UA detection — newer Chromium reduces the Android model to "K". */
+@media (orientation: portrait) and (max-width: 1024px) {
   .dji-log-portrait {
     top: 2.5% !important;
     bottom: 2.5% !important;
     height: auto !important;
     max-height: none !important;
     transform: translateX(-50%) !important;
+    display: block !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   .dji-log-portrait .dji-log-split {

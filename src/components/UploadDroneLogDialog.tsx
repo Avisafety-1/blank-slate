@@ -3755,7 +3755,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} ${isDjiController() ? 'dji-log-portrait' : ''} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'dji-log-portrait max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
