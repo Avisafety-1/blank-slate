@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 /* Portrait (RC Pro, phones, tablets): keep the flight-log split dialog inside the
-   visible screen and scroll one vertical surface instead of two split-view panes.
-   Not gated on UA detection — newer Chromium reduces the Android model to "K". */
+   visible screen and stack list + details in ONE inner scroll area. The dialog
+   itself stays a flex column with overflow hidden — the same pattern as the
+   landscape panes, which scroll reliably on the controller. Details come first
+   so a selected log opens at the top. Not gated on UA detection. */
 @media (orientation: portrait) and (max-width: 1024px) {
   .dji-log-portrait {
     top: 2.5% !important;
@@ -12,41 +14,46 @@
     height: auto !important;
     max-height: none !important;
     transform: translateX(-50%) !important;
-    display: block !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    touch-action: pan-y;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
   }
 
   .dji-log-portrait .dji-log-split {
-    display: block;
-    flex: none;
-    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0%;
+    min-height: 0;
+    gap: 1rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
   .dji-log-portrait .dji-log-list {
     display: block;
+    flex: none;
     width: 100%;
     min-width: 0;
+    min-height: auto;
     overflow: visible;
   }
 
   .dji-log-portrait [data-tour="upload-log-pending"] [class*="overflow-y-auto"] {
     flex: none;
+    max-height: none;
     overflow-y: visible;
   }
 
   .dji-log-portrait .dji-log-detail {
-    margin-top: 1rem;
+    order: -1;
+    display: block;
+    flex: none;
     padding-left: 0;
     border-left: 0;
     min-height: auto;
   }
 
-  .dji-log-portrait .dji-log-detail > [class*="overflow-y-auto"],
-  .dji-log-portrait .dji-log-detail > div > [class*="overflow-y-auto"] {
+  .dji-log-portrait .dji-log-detail [class*="overflow-y-auto"]:not([class*="max-h-"]) {
     flex: none;
     overflow-y: visible;
   }
