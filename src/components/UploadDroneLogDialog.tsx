@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { isDjiController } from "@/lib/deviceDetection";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, MapPin, Clock, Battery, Zap, LogIn, LogOut, CloudDownload, ArrowLeft, Plane, Thermometer, Satellite, Mountain, Route, Info, Heart, Ruler, PlusCircle, ChevronDown, BookOpen, User, Wrench, X, RefreshCw, Eye, EyeOff } from "lucide-react";
@@ -3754,7 +3755,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl !top-[2.5%] !bottom-[2.5%] !translate-y-0 !h-auto !max-h-none !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} ${isDjiController() ? 'dji-log-portrait' : ''} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -3764,9 +3765,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
         {/* ── Step: Method selection ── */}
          {step === 'method' && (
-          <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'flex gap-6 flex-1 min-h-0' : ''}`}>
+           <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'dji-log-split flex gap-6 flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
-            <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pr-1' : ''}`}>
+             <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'dji-log-list w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pr-1' : ''}`}>
 
 
             <p className="text-sm text-muted-foreground">
@@ -3932,7 +3933,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
             {/* Right panel: batch logging */}
             {batchSelectedIds.size > 0 && companyId && user && (
-              <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
+               <div className="dji-log-detail flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
                 <BatchLogPanel
                   pendingLogs={(pendingLogsRef.current?.getLogs() || []).filter(l => batchSelectedIds.has(l.id)) as any}
                   drones={drones}
@@ -3959,7 +3960,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
             {/* Right panel: single result details (split view) */}
             {batchSelectedIds.size === 0 && selectedPendingLogId && result && (
-              <div className="flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
+               <div className="dji-log-detail flex-1 min-w-0 border-l border-border pl-6 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-3 shrink-0">
                   <p className="text-sm font-semibold">Flylogg-detaljer</p>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedPendingLogId(null); setResult(null); setMatchedLog(null); setMatchCandidates([]); setMatchedMissions([]); setSelectedMissionId(''); }}>
