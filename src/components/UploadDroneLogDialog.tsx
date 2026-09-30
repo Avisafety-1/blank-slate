@@ -3754,7 +3754,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
         }
         onOpenChange(newOpen);
       }}>
-      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl max-h-[95dvh] h-[95dvh] !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden'} transition-all`}>
+      <DialogContent data-tour="upload-log-dialog" className={`${step === 'method' && ((selectedPendingLogId && result) || batchSelectedIds.size > 0) ? 'max-w-5xl max-h-[95vh] max-h-[95dvh] h-[95vh] h-[95dvh] !flex flex-col overflow-hidden' : 'max-w-lg max-h-[90vh] max-h-[90dvh] overflow-y-auto overflow-x-hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch]'} transition-all`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -3766,7 +3766,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
          {step === 'method' && (
           <div className={`min-w-0 max-w-full overflow-x-hidden ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'flex gap-6 flex-1 min-h-0' : ''}`}>
             {/* Left panel: method + pending logs */}
-            <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto pr-1' : ''}`}>
+            <div className={`space-y-3 min-w-0 max-w-full ${(selectedPendingLogId && result) || batchSelectedIds.size > 0 ? 'w-1/3 min-w-[280px] shrink-0 flex flex-col min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pr-1' : ''}`}>
 
 
             <p className="text-sm text-muted-foreground">
@@ -3966,7 +3966,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] pr-1" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {renderResultPanel()}
                 </div>
               </div>
@@ -4018,7 +4018,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   <div className="space-y-2">
                     <FileText className="w-6 h-6 mx-auto text-primary" />
                     <p className="text-sm font-medium">{bulkFiles.length} filer valgt</p>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
+                    <div className="max-h-32 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] space-y-1">
                       {bulkFiles.map((f, i) => (
                         <p key={i} className="text-xs text-muted-foreground">{f.name} ({(f.size / 1024).toFixed(0)} KB)</p>
                       ))}
@@ -4307,7 +4307,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
                   </p>
                 )}
 
-                <div className="space-y-2 max-h-[40vh] overflow-y-auto overflow-x-hidden min-w-0 max-w-full pr-0.5">
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto overflow-x-hidden overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch] min-w-0 max-w-full pr-0.5">
                   {visibleDjiLogs.map(log => {
                     const known = isDjiLogKnown(log);
                     const badge = (() => {
