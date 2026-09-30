@@ -1,7 +1,7 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User, Building2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plane, Clock, MapPin, Radio, User, Building2, ChevronDown } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -219,11 +219,11 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
               size="icon"
               variant="ghost"
               className="h-7 w-7 shrink-0"
-              aria-label={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.previousFlight' : 'dashboard.activeFlights.nextFlight')}
-              title={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.previousFlight' : 'dashboard.activeFlights.nextFlight')}
-              onClick={() => moveToFlight(visibleFlightIndex >= flights.length - 1 ? visibleFlightIndex - 1 : visibleFlightIndex + 1)}
+              aria-label={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.firstFlight' : 'dashboard.activeFlights.nextFlight')}
+              title={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.firstFlight' : 'dashboard.activeFlights.nextFlight')}
+              onClick={() => moveToFlight((visibleFlightIndex + 1) % flights.length)}
             >
-              {visibleFlightIndex >= flights.length - 1 ? <ChevronUp /> : <ChevronDown />}
+              <ChevronDown />
             </Button>
           )}
         </div>
