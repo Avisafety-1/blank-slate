@@ -575,7 +575,7 @@ const DjiCloudLogin = () => {
 
   return (
     <div
-      className="min-h-[100dvh] text-white"
+      className="min-h-[100vh] min-h-[100dvh] text-white"
       style={{
         backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)), url(${droneBackground})`,
         backgroundSize: "cover",

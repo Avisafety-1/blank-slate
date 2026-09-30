@@ -40,7 +40,7 @@ export function LiveVideoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto p-3 sm:p-6 [&>*]:min-w-0">
+      <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-3 sm:p-6 [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>{t("liveVideo.title", { drone: droneName })}</DialogTitle>
         </DialogHeader>

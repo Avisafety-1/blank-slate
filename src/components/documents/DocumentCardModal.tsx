@@ -536,7 +536,7 @@ const DocumentCardModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] overflow-y-auto p-0 gap-0">
+        <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-0 gap-0">
           <DialogHeader>
             <div className="border-b px-4 py-4 pr-10 sm:px-6">
               <DialogTitle>

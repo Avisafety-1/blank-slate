@@ -222,9 +222,8 @@ export function SignatureDrawerDialog({ open, onClose, onSave, persistToProfile 
 
   const content = (
     <div
-      className="fixed inset-0 z-[2000] bg-background flex flex-col"
+      className="fixed inset-0 z-[2000] bg-background flex flex-col h-[100vh] h-[100dvh]"
       style={{
-        height: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         overscrollBehavior: "contain",

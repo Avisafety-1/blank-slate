@@ -464,7 +464,7 @@ export const NotamDialog = ({ open, onOpenChange, mission, onSaved }: NotamDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
         <DialogHeader>
           <DialogTitle>{t('dashboard.notam.title')}</DialogTitle>
         </DialogHeader>
