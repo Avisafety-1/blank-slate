@@ -1,8 +1,8 @@
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plane, Clock, MapPin, Radio, User, Building2 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { Plane, Clock, MapPin, Radio, User, Building2, ChevronDown } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleCheck } from "@/hooks/useRoleCheck";
@@ -29,7 +29,7 @@ interface ActiveFlight {
 export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChange?: (has: boolean) => void }) => {
   const { t } = useTranslation();
   const { companyId, companyName } = useAuth();
-  const { isSuperAdmin, isAdmin } = useRoleCheck();
+  const { isSuperAdmin } = useRoleCheck();
   const { registerFlights } = useDashboardRealtimeContext();
   const navigate = useNavigate();
   const [flights, setFlights] = useState<ActiveFlight[]>([]);
@@ -37,6 +37,8 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
   const [selectedMission, setSelectedMission] = useState<any>(null);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
   const [isParentCompany, setIsParentCompany] = useState(false);
+  const [visibleFlightIndex, setVisibleFlightIndex] = useState(0);
+  const flightListRef = useRef<HTMLDivElement>(null);
 
   const isSuperAdminAvisafe = isSuperAdmin && companyName === 'Avisafe';
 
@@ -111,6 +113,26 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [flights.length]);
+
+  useEffect(() => {
+    if (visibleFlightIndex >= flights.length) {
+      const nextIndex = Math.max(0, flights.length - 1);
+      setVisibleFlightIndex(nextIndex);
+      flightListRef.current?.scrollTo({ top: nextIndex * flightListRef.current.clientHeight });
+    }
+  }, [flights.length, visibleFlightIndex]);
+
+  const handleFlightListScroll = () => {
+    const list = flightListRef.current;
+    if (list?.clientHeight) {
+      setVisibleFlightIndex(Math.min(flights.length - 1, Math.round(list.scrollTop / list.clientHeight)));
+    }
+  };
+
+  const moveToFlight = (index: number) => {
+    flightListRef.current?.scrollTo({ top: index * flightListRef.current.clientHeight, behavior: 'smooth' });
+    setVisibleFlightIndex(index);
+  };
 
   const formatElapsed = (startTime: string) => {
     const seconds = Math.max(0, Math.floor((now - new Date(startTime).getTime()) / 1000));
@@ -191,14 +213,31 @@ export const ActiveFlightsSection = ({ onHasFlightsChange }: { onHasFlightsChang
               {flights.length}
             </Badge>
           </div>
+          {flights.length > 1 && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 shrink-0"
+              aria-label={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.firstFlight' : 'dashboard.activeFlights.nextFlight')}
+              title={t(visibleFlightIndex >= flights.length - 1 ? 'dashboard.activeFlights.firstFlight' : 'dashboard.activeFlights.nextFlight')}
+              onClick={() => moveToFlight((visibleFlightIndex + 1) % flights.length)}
+            >
+              <ChevronDown />
+            </Button>
+          )}
         </div>
 
-        <div className={`space-y-1.5 sm:space-y-2 ${(isSuperAdminAvisafe || isParentCompany) ? 'max-h-[400px]' : 'max-h-[250px]'} overflow-y-auto`}>
+        <div
+          ref={flightListRef}
+          onScroll={handleFlightListScroll}
+          className={`grid grid-flow-row auto-rows-[100%] overflow-y-auto overscroll-contain snap-y snap-mandatory ${isSuperAdminAvisafe || isParentCompany ? 'h-[144px] sm:h-[148px]' : 'h-[116px] sm:h-[120px]'}`}
+        >
           {flights.map((flight) => (
             <div
               key={flight.id}
               onClick={() => handleFlightClick(flight)}
-              className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer"
+              className="p-2 sm:p-3 bg-card/30 rounded hover:bg-card/50 transition-colors cursor-pointer snap-start flex flex-col justify-between min-h-0"
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex-1 min-w-0">
