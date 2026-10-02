@@ -175,6 +175,7 @@ async function syncLayer(supabase: any, spec: LayerSpec) {
   }
   const json = await res.json();
   const features: any[] = Array.isArray(json?.features) ? json.features : [];
+  if (!features.length) return { layer: spec.id, ok: false, error: "Empty source response; existing zones preserved" };
   const normalized = features
     .map((f, i) => normalizeFeature(f, spec, i))
     .filter(Boolean);
@@ -187,7 +188,7 @@ async function syncLayer(supabase: any, spec: LayerSpec) {
   if (error) {
     return { layer: spec.id, ok: false, error: error.message };
   }
-  return { layer: spec.id, ok: true, fetched: features.length, ...(data ?? {}) };
+  return { layer: spec.id, ok: (data?.error ?? 0) === 0, fetched: features.length, ...(data ?? {}) };
 }
 
 Deno.serve(async (req) => {
