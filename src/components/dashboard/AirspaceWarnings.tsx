@@ -151,6 +151,8 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
           } else if (isAtz5km && r.route_inside) {
             // Inside a 5 km småflyplass-zone — kontakt flyplassen / PPR.
             level = "warning";
+          } else if (r.z_type === 'CAA_VERNEOMRADER_OBS' && r.route_inside) {
+            level = "note";
           } else if (r.route_inside) {
             // Inside: WARNING stays warning, CAUTION stays caution, INFO→caution
             level = baseSeverity === "WARNING" ? "warning" : "caution";
@@ -179,6 +181,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
             message = r.route_inside
               ? t('safety.airspaceMessages.notamInside', { name: cleanName })
               : t('safety.airspaceMessages.notamNear', { name: cleanName, distance: distStr });
+          } else if (r.z_type === 'CAA_VERNEOMRADER_FORBUD') {
+            message = r.route_inside
+              ? t('safety.airspaceMessages.natureProhibitedInside', { name: r.z_name })
+              : t('safety.airspaceMessages.natureProhibitedNear', { name: r.z_name, distance: distStr });
+          } else if (r.z_type === 'CAA_VERNEOMRADER_OBS') {
+            message = r.route_inside
+              ? t('safety.airspaceMessages.natureObserveInside', { name: r.z_name })
+              : t('safety.airspaceMessages.natureObserveNear', { name: r.z_name, distance: distStr });
           } else if (r.z_type === 'NATURVERN') {
             message = r.route_inside
               ? t('safety.airspaceMessages.natureInside', { name: r.z_name })
