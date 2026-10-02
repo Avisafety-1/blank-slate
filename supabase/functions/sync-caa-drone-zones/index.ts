@@ -180,15 +180,32 @@ async function syncLayer(supabase: any, spec: LayerSpec) {
     .map((f, i) => normalizeFeature(f, spec, i))
     .filter(Boolean);
 
-  // Single bulk call: the RPC removes stale rows using the complete ID set.
+  // Large nature GeoJSON payloads exceed the worker memory limit as a single
+  // RPC. Process bounded batches, then prune stale IDs only after every batch.
+  if (spec.id.startsWith("verneomrader_")) {
+    let saved = 0;
+    for (let i = 0; i < normalized.length; i += 30) {
+      const { data, error } = await supabase.rpc("upsert_caa_nature_batch", {
+        p_layer_id: spec.id,
+        p_features: normalized.slice(i, i + 30),
+      });
+      if (error || data?.error || data?.success !== Math.min(30, normalized.length - i)) {
+        return { layer: spec.id, ok: false, fetched: features.length, saved, error: error?.message ?? `Batch failed at ${i}` };
+      }
+      saved += data.success;
+    }
+    const { error } = await supabase.rpc("prune_caa_nature_zones", {
+      p_layer_id: spec.id,
+      p_external_ids: normalized.map((f) => f?.external_id),
+    });
+    return { layer: spec.id, ok: !error && saved === normalized.length, fetched: features.length, success: saved, error: error?.message };
+  }
   const { data, error } = await supabase.rpc("bulk_upsert_caa_zones", {
     p_layer_id: spec.id,
     p_features: normalized,
   });
-  if (error) {
-    return { layer: spec.id, ok: false, error: error.message };
-  }
-  return { layer: spec.id, ok: (data?.error ?? 0) === 0, fetched: features.length, ...(data ?? {}) };
+  if (error) return { layer: spec.id, ok: false, error: error.message };
+  return { layer: spec.id, ok: (data?.error ?? 0) === 0 && (data?.success ?? 0) === normalized.length, fetched: features.length, ...(data ?? {}) };
 }
 
 Deno.serve(async (req) => {
@@ -203,10 +220,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const results = await Promise.all(LAYERS.map((s) => syncLayer(supabase, s)));
+    const requested = new URL(req.url).searchParams.get("layer");
+    const selected = requested ? LAYERS.filter((s) => s.id === requested) : LAYERS;
+    if (!selected.length) return new Response(JSON.stringify({ ok: false, error: "Unknown layer" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const results = [];
+    for (const spec of selected) results.push(await syncLayer(supabase, spec));
 
     return new Response(
-      JSON.stringify({ ok: true, results, synced_at: new Date().toISOString() }),
+      JSON.stringify({ ok: results.every((result) => result.ok), results, synced_at: new Date().toISOString() }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
