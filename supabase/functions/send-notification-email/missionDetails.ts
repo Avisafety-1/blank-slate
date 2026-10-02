@@ -16,7 +16,7 @@ export interface MissionDetailsInput {
   personell?: Array<string | { navn: string; rolle?: string | null }>;
   droner?: string[];
   utstyr?: string[];
-  luftrom?: Array<{ zone_name?: string; zone_type?: string; level?: string; message?: string }>;
+  luftrom?: Array<{ zone_name?: string; zone_type?: string; level?: string; message?: string; is_inside?: boolean; distance_meters?: number }>;
   risiko?: RiskSummary | null;
 }
 
@@ -130,7 +130,13 @@ export async function buildMissionDetails(supabase: any, m: MissionDetailsInput,
   const warnings = (m.luftrom || []).slice(0, 15);
   const airspaceHtml = `<div style="margin-top:15px;"><p style="margin:0 0 6px 0;"><strong>${esc(t.airspace)}</strong></p>${
     warnings.length
-      ? warnings.map((w) => `<div style="border-left:4px solid ${levelColor(w.level)};padding:6px 10px;margin:4px 0;background:#f9fafb;"><strong>${esc(w.zone_name || w.zone_type || '')}</strong>${w.message ? `<br><span style="font-size:13px;">${esc(w.message)}</span>` : ''}</div>`).join('')
+      ? warnings.map((w) => {
+        const nature = w.zone_type === 'CAA_VERNEOMRADER_FORBUD' || w.zone_type === 'CAA_VERNEOMRADER_OBS';
+        const message = nature && lang === 'en'
+          ? `${w.zone_type === 'CAA_VERNEOMRADER_FORBUD' ? 'Protected area with a drone prohibition' : 'Protected area without a registered drone prohibition'}: ${w.is_inside ? 'the route crosses the area' : `${fmtDist(w.distance_meters ?? 0)} from the route`}`
+          : w.message;
+        return `<div style="border-left:4px solid ${levelColor(w.level)};padding:6px 10px;margin:4px 0;background:#f9fafb;"><strong>${esc(w.zone_name || w.zone_type || '')}</strong>${message ? `<br><span style="font-size:13px;">${esc(message)}</span>` : ''}</div>`;
+      }).join('')
       : `<p style="margin:0;color:#666;">${esc(t.noAirspace)}</p>`
   }</div>`;
 
@@ -233,7 +239,7 @@ async function loadMissionAirspace(supabase: any, mission: any) {
     const message = nature
       ? `${r.z_type === 'CAA_VERNEOMRADER_FORBUD' ? 'Verneområde med droneforbud' : 'Verneområde uten registrert droneforbud'}: ${inside ? 'ruten går gjennom området' : `${fmtDist(r.min_distance ?? 0)} fra ruten`}`
       : inside ? `${r.z_type}: ruten går inne i sonen` : `${r.z_type}: ${fmtDist(r.min_distance ?? 0)} fra ruten`;
-    return { zone_name: name, zone_type: r.z_type, level, message };
+    return { zone_name: name, zone_type: r.z_type, level, message, is_inside: inside, distance_meters: r.min_distance };
   }).sort((a, b) => (order[a.level] ?? 3) - (order[b.level] ?? 3));
 }
 

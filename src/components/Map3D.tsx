@@ -188,7 +188,11 @@ function colorExpression(): any {
   // ['match', ['get','layer_id'], 'rod','#dc2626', ..., '#888']
   const expr: any[] = ["match", ["get", "layer_id"]];
   Object.entries(ZONE_COLORS).forEach(([k, v]) => {
-    expr.push(k, v);
+    // MapLibre cannot parse CSS var() colors; resolve the theme token before
+    // handing the expression to the WebGL renderer.
+    const token = k === 'verneomrader_forbud' ? '--nature-prohibited' : k === 'verneomrader_obs' ? '--nature-observe' : null;
+    const channels = token ? getComputedStyle(document.documentElement).getPropertyValue(token).trim().split(/\s+/) : [];
+    expr.push(k, channels.length === 3 ? `hsl(${channels.join(', ')})` : v);
   });
   expr.push("#888888");
   return expr;
