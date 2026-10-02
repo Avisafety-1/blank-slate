@@ -98,7 +98,10 @@ async function fetchDrones() {
   let parsed: any = null;
   try { parsed = JSON.parse(text); } catch { /* not JSON */ }
 
-  const list: any[] = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.data) ? parsed.data : [];
+  const list: any[] = Array.isArray(parsed) ? parsed
+    : Array.isArray(parsed?.drones) ? parsed.drones
+    : Array.isArray(parsed?.data) ? parsed.data
+    : [];
 
   return {
     request_url: url,
