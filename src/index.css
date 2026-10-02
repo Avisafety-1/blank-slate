@@ -419,11 +419,16 @@ All colors MUST be HSL.
   overflow-wrap: anywhere;
 }
 .nature-zone-popup__source { font-size: 11px; color: hsl(var(--muted-foreground)); margin-bottom: 6px; }
-.nature-zone-popup__link {
+.nature-zone-popup__link,
+.leaflet-popup-content .nature-zone-popup__link,
+.maplibregl-popup-content .nature-zone-popup__link {
   display: inline-block;
   padding: 5px 9px;
   border-radius: 4px;
   background: hsl(var(--primary));
+  /* Leaflet sets .leaflet-container a { color: #0078A8 } (0,1,1), which would
+     beat a bare class selector (0,1,0) and leave light-blue text on this dark
+     button; the (0,2,0) selectors above win over it in both map libraries. */
   color: hsl(var(--primary-foreground));
   font-size: 11px;
   font-weight: 600;
