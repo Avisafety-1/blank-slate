@@ -95,6 +95,8 @@ const CAA_LAYER_COLORS: Record<string, string> = {
   flyplasser:    '#dc2626',
   notam_soner:   '#eab308',
   restriksjoner: '#dc2626',
+  verneomrader_forbud: natureZoneColor('verneomrader_forbud'),
+  verneomrader_obs: natureZoneColor('verneomrader_obs'),
 };
 
 const caaIconLabel = (id: string): string =>
