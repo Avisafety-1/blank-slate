@@ -3746,6 +3746,13 @@
         "unknown": "Unknown",
         "loading": "Loading …",
         "source": "Source",
+        "nature": {
+          "prohibited": "Drone or access prohibition – check the regulation and seek an exemption if required",
+          "observe": "No registered drone prohibition – take care and check the regulation",
+          "timeLimited": "May apply only during part of the year – check the regulation's dates",
+          "source": "Source: dronesoner.no / Norwegian Environment Agency",
+          "regulation": "Read the regulation at Lovdata"
+        },
         "caa": {
           "zoneFallback": "⚠️ Zone",
           "iconLabels": {
