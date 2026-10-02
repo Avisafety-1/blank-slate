@@ -3749,6 +3749,12 @@
         "loading": "Laster …",
         "source": "Kilde",
         "nature": {
+          "area": "Verneområde",
+          "prohibitedTitle": "Droneforbud registrert",
+          "observeTitle": "Ingen droneforbud registrert",
+          "directBan": "Direkte forbud mot droner eller modellfly",
+          "accessBan": "Generelt ferdselsforbud",
+          "excerpt": "Utdrag fra verneforskriften",
           "prohibited": "Droneforbud / ferdselsforbud – sjekk verneforskriften og søk dispensasjon ved behov",
           "observe": "Ingen registrert droneforbud – vis hensyn og sjekk verneforskriften",
           "timeLimited": "Kan gjelde bare deler av året – sjekk datoene i forskriften",

@@ -170,16 +170,25 @@ export function buildCaaZonePopupHtml(zone: any): string {
 export function buildNatureDroneZonePopupHtml(zone: any): string {
   const prohibited = zone.layer_id === 'verneomrader_forbud';
   const p = zone.properties || {};
-  let html = `<div style="max-width:300px;line-height:1.45"><strong style="color:${natureZoneColor(zone.layer_id)}">${esc(tp(prohibited ? 'nature.prohibited' : 'nature.observe'))}</strong>`;
-  html += `<div style="font-weight:600;margin-top:4px">${esc(zone.name || tp('unknown'))}</div>`;
-  if (prohibited && p.forbudType && p.forbudType !== 'Ingen') html += `<div>${esc(p.forbudType)}</div>`;
-  if (p.tidsbegrenset) html += `<div>${esc(tp('nature.timeLimited'))}</div>`;
-  // The source's HTML is untrusted. Extract the regulation quote as plain text.
+  const kind = p.forbudType === 'Direkte drone/modellfly-forbud' ? 'nature.directBan'
+    : p.forbudType === 'Generelt ferdselsforbud' ? 'nature.accessBan' : null;
+  let html = `<div class="nature-zone-popup ${prohibited ? 'nature-zone-popup--prohibited' : 'nature-zone-popup--observe'}">`;
+  html += `<div class="nature-zone-popup__heading"><span class="nature-zone-popup__swatch"></span><span>${esc(tp('nature.area'))}</span></div>`;
+  html += `<div class="nature-zone-popup__name">${esc(zone.name || tp('unknown'))}</div>`;
+  html += `<div class="nature-zone-popup__status"><strong>${esc(tp(prohibited ? 'nature.prohibitedTitle' : 'nature.observeTitle'))}</strong>`;
+  html += `<div>${esc(tp(prohibited ? 'nature.prohibited' : 'nature.observe'))}</div>`;
+  if (kind && prohibited) html += `<div class="nature-zone-popup__kind">${esc(tp(kind))}</div>`;
+  if (p.tidsbegrenset === true) html += `<div class="nature-zone-popup__kind">${esc(tp('nature.timeLimited'))}</div>`;
+  html += `</div>`;
+  // The source's HTML is untrusted. Extract only the regulation quote as plain text.
   const quote = typeof p.beskrivelse === 'string' ? p.beskrivelse.match(/<i\b[^>]*>([\s\S]*?)<\/i>/i)?.[1] : null;
-  if (quote) html += `<blockquote style="margin:6px 0">${esc(quote.replace(/<[^>]*>/g, ''))}</blockquote>`;
-  html += `<div style="font-size:11px;margin-top:6px">${esc(tp('nature.source'))}</div>`;
+  if (quote) {
+    const text = quote.replace(/<[^>]*>/g, '').trim();
+    if (text) html += `<div class="nature-zone-popup__quote"><strong>${esc(tp('nature.excerpt'))}</strong><blockquote>${esc(text)}</blockquote></div>`;
+  }
+  html += `<div class="nature-zone-popup__source">${esc(tp('nature.source'))}</div>`;
   const url = typeof p.verneforskrift === 'string' && /^https:\/\/lovdata\.no\//.test(p.verneforskrift) ? p.verneforskrift : null;
-  if (url) html += `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(tp('nature.regulation'))}</a>`;
+  if (url) html += `<a class="nature-zone-popup__link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(tp('nature.regulation'))} ↗</a>`;
   return html + '</div>';
 }
 

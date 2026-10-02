@@ -375,6 +375,61 @@ All colors MUST be HSL.
    (avrundet hvit boks med tydelig "×" øverst til høyre). HTML-innholdet
    bygges av samme popup-byggere som 2D-kartet, så vi trenger bare å
    overstyre default MapLibre-CSS. */
+.nature-zone-popup {
+  max-width: 300px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: hsl(var(--foreground));
+}
+.nature-zone-popup--prohibited { --nature-zone-accent: var(--nature-prohibited); }
+.nature-zone-popup--observe { --nature-zone-accent: var(--nature-observe); }
+.nature-zone-popup__heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.nature-zone-popup__swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: hsl(var(--nature-zone-accent));
+}
+.nature-zone-popup__name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.nature-zone-popup__status {
+  border-left: 3px solid hsl(var(--nature-zone-accent));
+  background: hsl(var(--nature-zone-accent) / 0.12);
+  border-radius: 3px;
+  padding: 7px 9px;
+  margin-bottom: 8px;
+}
+.nature-zone-popup__status strong { display: block; margin-bottom: 3px; color: hsl(var(--nature-zone-accent)); }
+.nature-zone-popup__kind { margin-top: 4px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.nature-zone-popup__quote { margin-bottom: 8px; font-size: 11px; }
+.nature-zone-popup__quote blockquote {
+  margin: 4px 0 0;
+  padding-left: 8px;
+  border-left: 2px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  overflow-wrap: anywhere;
+}
+.nature-zone-popup__source { font-size: 11px; color: hsl(var(--muted-foreground)); margin-bottom: 6px; }
+.nature-zone-popup__link {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 4px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.nature-zone-popup__link:hover { text-decoration: underline; }
 .maplibregl-popup-content {
   background: #ffffff;
   color: #1f2937;
