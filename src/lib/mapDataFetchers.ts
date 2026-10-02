@@ -1069,9 +1069,11 @@ import {
   CAA_LAYER_STYLES as CAA_POPUP_STYLES,
   DK_LAYER_STYLES as DK_POPUP_STYLES,
   buildCaaZonePopupHtml,
+  buildNatureDroneZonePopupHtml,
   buildCaaSmallAirportPopupHtml,
   buildDkZonePopupHtml,
 } from './zonePopups';
+import { NATURE_ZONE_LAYER_IDS } from './natureZoneDisplay';
 
 export type CaaLayerStyle = (typeof CAA_POPUP_STYLES)[string];
 
@@ -1105,7 +1107,8 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
       (z) => hashString(`caa|${z.layer_id ?? ''}|${z.name ?? ''}|${JSON.stringify(z.geometry)}`),
       (zone) => {
         const style = CAA_LAYER_STYLES[zone.layer_id] || { color: '#dc2626', iconLabel: '⚠️ Sone' };
-        const isWarning = zone.restriction === 'REQ_AUTHORISATION';
+         const isNature = NATURE_ZONE_LAYER_IDS.includes(zone.layer_id);
+         const isWarning = zone.restriction === 'REQ_AUTHORISATION';
 
         // Småflyplasser (faste fly) tegnes som 5 km sirkel rundt sentroide — kontakt flyplassen/myppr.no.
         // Helikopterplasser holdes som ordinære små markører (default rendering nedenfor).
@@ -1148,20 +1151,20 @@ export async function fetchCaaDroneZones(params: BoundsFetchParams & {
             color: style.color,
             weight: 1.5,
             fillColor: style.color,
-            fillOpacity: isWarning ? 0.22 : 0.12,
-            dashArray: isWarning ? undefined : '4, 4',
+             fillOpacity: isNature ? 0.2 : isWarning ? 0.22 : 0.12,
+             dashArray: isNature || isWarning ? undefined : '4, 4',
           },
           onEachFeature: mode !== 'routePlanning' ? (feature, lyr) => {
             const p: any = feature.properties || {};
-            lyr.bindPopup(buildCaaZonePopupHtml(p));
+             lyr.bindPopup(isNature ? buildNatureDroneZonePopupHtml(p) : buildCaaZonePopupHtml(p));
             attachHoverPromotion(lyr, {
               paneName: 'overlayPane',
               baseStyle: {
                 color: style.color,
                 weight: 1.5,
                 fillColor: style.color,
-                fillOpacity: isWarning ? 0.22 : 0.12,
-                dashArray: isWarning ? undefined : '4, 4',
+                 fillOpacity: isNature ? 0.2 : isWarning ? 0.22 : 0.12,
+                 dashArray: isNature || isWarning ? undefined : '4, 4',
               },
             });
           } : undefined,
