@@ -49,9 +49,7 @@ import {
   fetchDroneTelemetry,
   fetchActiveAdvisories,
   fetchPilotPositions,
-  fetchNaturvernZones,
   fetchNkomCoverage,
-  fetchVernRestrictionZones,
   fetchCaaDroneZones,
   fetchDkDroneZones,
   fetchDkNatureAreas,
@@ -62,6 +60,7 @@ import {
   fetchUnifiedAirspaceZones,
 } from "@/lib/mapDataFetchers";
 import { isUnifiedAirspaceEnabled } from "@/lib/airspaceUnified";
+import { NATURE_ZONE_LAYER_IDS } from "@/lib/natureZoneDisplay";
 import { resetCache } from "@/lib/viewportLayerCache";
 import { createSafeSkyManager } from "@/lib/mapSafeSky";
 import { showWeatherPopup } from "@/lib/mapWeatherPopup";
@@ -1485,8 +1484,7 @@ export function OpenAIPMap({
     // Viewport-based verneområder fetching with debounce
     const fetchVerneomraader = () => {
       if (map.getZoom() < 10) {
-        resetCache('naturvern', naturvernLayer);
-        resetCache('vernRestriction', naturvernLayer);
+        resetCache(`caa:${NATURE_ZONE_LAYER_IDS.slice().sort().join(',')}`, naturvernLayer);
         return;
       }
       const b = map.getBounds();
@@ -1497,8 +1495,7 @@ export function OpenAIPMap({
         maxLng: b.getEast(),
       };
       // Diff-render inside fetchers — no pre-clear (eliminates flicker)
-      fetchNaturvernZones({ layer: naturvernLayer, mode: interactiveModeRef.current, bounds });
-      fetchVernRestrictionZones({ layer: naturvernLayer, mode: interactiveModeRef.current, bounds });
+      fetchCaaDroneZones({ layer: naturvernLayer, mode: interactiveModeRef.current, bounds, layerIds: NATURE_ZONE_LAYER_IDS });
     };
 
     // Viewport-based aviation obstacles fetch (uses GIST index via RPC)
@@ -1666,8 +1663,7 @@ export function OpenAIPMap({
     // lagene bygges i tegnemodus).
     (map as any)._refetchInteractiveZones = () => {
       resetCache('notam', notamLayer);
-      resetCache('naturvern', naturvernLayer);
-      resetCache('vernRestriction', naturvernLayer);
+      resetCache(`caa:${NATURE_ZONE_LAYER_IDS.slice().sort().join(',')}`, naturvernLayer);
       resetCache('obstacles', obstaclesLayer);
       nkomLayerMap.forEach(([band, lg]) => resetCache(`nkom:${band}`, lg));
       caaLayerMap.forEach(([layerId, lg]) => resetCache(`caa:${layerId}`, lg));

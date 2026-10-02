@@ -126,7 +126,8 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
                   {items.map((layer) => {
                     const IconComponent = layer.icon ? iconMap[layer.icon] : null;
                     return (
-                      <div key={layer.id} className="flex items-center space-x-3">
+                      <div key={layer.id} className="space-y-1">
+                        <div className="flex items-center space-x-3">
                         <Checkbox
                           id={layer.id}
                           checked={layer.enabled}
@@ -143,6 +144,13 @@ export function MapLayerControl({ layers, onLayerToggle }: MapLayerControlProps)
                         >
                           {t(`safety.mapLayerControl.layers.${layer.id}`, layer.name)}
                         </Label>
+                        </div>
+                      {layer.id === 'verneomrader' && (
+                        <div className="ml-7 space-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-sm bg-[hsl(var(--nature-prohibited))]" />{t('safety.natureProtection.mapProhibited')}</div>
+                          <div className="flex items-center gap-2"><span className="h-3 w-3 shrink-0 rounded-sm bg-[hsl(var(--nature-observe))]" />{t('safety.natureProtection.mapObserve')}</div>
+                        </div>
+                      )}
                       </div>
                     );
                   })}

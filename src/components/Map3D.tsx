@@ -18,10 +18,12 @@ import { getBeaconSvgUrl } from "@/lib/mapIcons";
 import { renderTrafficPopup } from "@/lib/mapTrafficPopup";
 import {
   buildCaaZonePopupHtml,
+  buildNatureDroneZonePopupHtml,
   buildDkZonePopupHtml,
   defaultUpperLimitM,
   zoneSource,
 } from "@/lib/zonePopups";
+import { NATURE_ZONE_LAYER_IDS, natureZoneColor } from "@/lib/natureZoneDisplay";
 import {
   AIP_ZONE_STYLES,
   AIP_ZONE_TYPES,
@@ -79,13 +81,15 @@ const ZONE_COLORS: Record<string, string> = {
   flyplasser: "#dc2626",
   notam_soner: "#eab308",
   restriksjoner: "#dc2626",
+  verneomrader_forbud: natureZoneColor('verneomrader_forbud'),
+  verneomrader_obs: natureZoneColor('verneomrader_obs'),
   // DK
   rod: "#dc2626",
   orange: "#f59e0b",
   bla: "#2563eb",
 };
 
-const CAA_LAYER_IDS = ["fengsler", "ambassader", "fareomrader", "flyplasser", "notam_soner", "restriksjoner"];
+const CAA_LAYER_IDS = ["fengsler", "ambassader", "fareomrader", "flyplasser", "notam_soner", "restriksjoner", ...NATURE_ZONE_LAYER_IDS];
 const DK_LAYER_IDS = ["rod", "orange", "bla"];
 
 // Lag/sources eid av Map3D. Brukes til cleanup ved unmount og toggle-extrude.
@@ -569,6 +573,7 @@ export default function Map3D({
               authority_name: row.authority_name ?? null,
               authority_url: row.authority_url ?? null,
               authority_phone: row.authority_phone ?? null,
+              ...(NATURE_ZONE_LAYER_IDS.includes(row.layer_id) ? row.properties : {}),
               // DK-spesifikt
               icao: row.icao ?? null,
               category: row.category ?? null,
@@ -710,7 +715,7 @@ export default function Map3D({
       const html =
         src === "dk"
           ? buildDkZonePopupHtml(p)
-          : buildCaaZonePopupHtml(p);
+          : NATURE_ZONE_LAYER_IDS.includes(p.layer_id) ? buildNatureDroneZonePopupHtml({ ...p, properties: p }) : buildCaaZonePopupHtml(p);
       new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
         .setLngLat(e.lngLat)
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)

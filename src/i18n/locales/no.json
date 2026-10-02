@@ -3748,6 +3748,13 @@
         "unknown": "Ukjent",
         "loading": "Laster …",
         "source": "Kilde",
+        "nature": {
+          "prohibited": "Droneforbud / ferdselsforbud – sjekk verneforskriften og søk dispensasjon ved behov",
+          "observe": "Ingen registrert droneforbud – vis hensyn og sjekk verneforskriften",
+          "timeLimited": "Kan gjelde bare deler av året – sjekk datoene i forskriften",
+          "source": "Kilde: dronesoner.no / Miljødirektoratet",
+          "regulation": "Les verneforskriften hos Lovdata"
+        },
         "caa": {
           "zoneFallback": "⚠️ Sone",
           "iconLabels": {
@@ -7678,6 +7685,8 @@
       "footerSource": "Værdata fra MET Norway"
     },
     "natureProtection": {
+      "mapProhibited": "Verneområde med droneforbud",
+      "mapObserve": "Verneområde uten registrert droneforbud",
       "unknownName": "Ukjent",
       "factSheetNote": "📄 Åpne faktaarket for verneforskriftens fulle ordlyd",
       "legalBasis": "Hjemmel: {{basis}}",

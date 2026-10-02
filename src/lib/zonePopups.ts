@@ -4,6 +4,7 @@
  * slik at info-boksene ser identiske ut på begge kart.
  */
 import i18n from '@/i18n';
+import { natureZoneColor } from '@/lib/natureZoneDisplay';
 const tp = (k: string, opts?: any): string => i18n.t(`pages.map.popups.${k}`, opts) as string;
 
 export const escapePopupHtml = (s: any): string =>
@@ -94,6 +95,8 @@ const CAA_LAYER_COLORS: Record<string, string> = {
   flyplasser:    '#dc2626',
   notam_soner:   '#eab308',
   restriksjoner: '#dc2626',
+  verneomrader_forbud: natureZoneColor('verneomrader_forbud'),
+  verneomrader_obs: natureZoneColor('verneomrader_obs'),
 };
 
 const caaIconLabel = (id: string): string =>
@@ -161,6 +164,23 @@ export function buildCaaZonePopupHtml(zone: any): string {
     html += `<div>${tp('caa.phone')}: <a href="tel:${esc(p.authority_phone)}">${esc(p.authority_phone)}</a></div>`;
   }
   return html;
+}
+
+/** Source-provided classification; do not infer a flight ban from the type of nature reserve. */
+export function buildNatureDroneZonePopupHtml(zone: any): string {
+  const prohibited = zone.layer_id === 'verneomrader_forbud';
+  const p = zone.properties || {};
+  let html = `<div style="max-width:300px;line-height:1.45"><strong style="color:${natureZoneColor(zone.layer_id)}">${esc(tp(prohibited ? 'nature.prohibited' : 'nature.observe'))}</strong>`;
+  html += `<div style="font-weight:600;margin-top:4px">${esc(zone.name || tp('unknown'))}</div>`;
+  if (prohibited && p.forbudType && p.forbudType !== 'Ingen') html += `<div>${esc(p.forbudType)}</div>`;
+  if (p.tidsbegrenset) html += `<div>${esc(tp('nature.timeLimited'))}</div>`;
+  // The source's HTML is untrusted. Extract the regulation quote as plain text.
+  const quote = typeof p.beskrivelse === 'string' ? p.beskrivelse.match(/<i\b[^>]*>([\s\S]*?)<\/i>/i)?.[1] : null;
+  if (quote) html += `<blockquote style="margin:6px 0">${esc(quote.replace(/<[^>]*>/g, ''))}</blockquote>`;
+  html += `<div style="font-size:11px;margin-top:6px">${esc(tp('nature.source'))}</div>`;
+  const url = typeof p.verneforskrift === 'string' && /^https:\/\/lovdata\.no\//.test(p.verneforskrift) ? p.verneforskrift : null;
+  if (url) html += `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(tp('nature.regulation'))}</a>`;
+  return html + '</div>';
 }
 
 /** CAA "småflyplass — 5 km sone" popup (sirkel rundt fly-plasser). */

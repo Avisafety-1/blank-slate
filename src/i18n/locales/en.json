@@ -3746,6 +3746,13 @@
         "unknown": "Unknown",
         "loading": "Loading …",
         "source": "Source",
+        "nature": {
+          "prohibited": "Drone or access prohibition – check the regulation and seek an exemption if required",
+          "observe": "No registered drone prohibition – take care and check the regulation",
+          "timeLimited": "May apply only during part of the year – check the regulation's dates",
+          "source": "Source: dronesoner.no / Norwegian Environment Agency",
+          "regulation": "Read the regulation at Lovdata"
+        },
         "caa": {
           "zoneFallback": "⚠️ Zone",
           "iconLabels": {
@@ -7676,6 +7683,8 @@
       "footerSource": "Weather data from MET Norway"
     },
     "natureProtection": {
+      "mapProhibited": "Protected area with drone prohibition",
+      "mapObserve": "Protected area without a registered drone prohibition",
       "unknownName": "Unknown",
       "factSheetNote": "📄 Open the fact sheet for the full protection regulation text",
       "legalBasis": "Legal basis: {{basis}}",

@@ -2,7 +2,8 @@ import L from "leaflet";
 import i18n from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { bufferPolyline } from "@/lib/soraGeometry";
-import { buildNatureZonePopupHtml } from "@/lib/natureProtectionRules";
+import { buildNatureDroneZonePopupHtml } from "@/lib/zonePopups";
+import { NATURE_ZONE_LAYER_IDS, natureZoneColor } from "@/lib/natureZoneDisplay";
 import type { RoutePoint } from "@/types/map";
 
 const tp = (k: string, opts?: Record<string, unknown>) => i18n.t(k, opts) as string;
@@ -38,16 +39,6 @@ const getAutoBadge = () =>
   `<div style="margin-top:6px;padding:3px 6px;background:#fef3c7;color:#92400e;border-radius:4px;font-size:11px;display:inline-block;">${escapeHtml(
     tp("safety.routeProximity.autoShownBadge"),
   )}</div>`;
-
-const NATURVERN_COLORS: Record<string, string> = {
-  Nasjonalpark: "#15803d",
-  Naturreservat: "#166534",
-  Landskapsvernområde: "#4ade80",
-  Biotopvernområde: "#22c55e",
-  "Marint verneområde": "#0ea5e9",
-  Dyrefredningsområde: "#a3e635",
-  Plantefredningsområde: "#84cc16",
-};
 
 const VERN_RESTRICTION_COLORS: Record<string, string> = {
   FERDSELSFORBUD: "#dc2626",
@@ -233,11 +224,12 @@ async function loadNaturvern(bbox: BBox, cache: SourceCache): Promise<any[]> {
   const key = bboxKey(bbox);
   const hit = cache.naturvern.get(key);
   if (hit) return hit;
-  const { data, error } = await supabase.rpc("get_naturvern_in_bounds", {
+  const { data, error } = await supabase.rpc("get_caa_zones_in_bounds", {
     min_lat: bbox.minLat,
     min_lng: bbox.minLng,
     max_lat: bbox.maxLat,
     max_lng: bbox.maxLng,
+    p_layer_ids: NATURE_ZONE_LAYER_IDS,
   });
   if (error || !data) return [];
   const list = (data as any[]).filter((z) => z?.geometry).slice(0, 500);
@@ -315,13 +307,8 @@ async function loadNvePowerLines(
 
 function renderNaturvern(layer: L.LayerGroup, zones: any[]) {
   for (const zone of zones) {
-    const color = NATURVERN_COLORS[zone.verneform || ""] || "#16a34a";
-    const popup = buildNatureZonePopupHtml({
-      name: zone.name,
-      verneform: zone.verneform,
-      properties: zone.properties,
-      extraFooterHtml: getAutoBadge(),
-    });
+    const color = natureZoneColor(zone.layer_id);
+    const popup = buildNatureDroneZonePopupHtml(zone) + getAutoBadge();
     try {
       L.geoJSON(
         { type: "Feature", geometry: zone.geometry, properties: {} } as any,
@@ -701,9 +688,7 @@ export async function updateRouteProximityLayers(
     activeManualLayers?.naturvern
       ? Promise.resolve([] as any[])
       : withTimeout(loadNaturvern(bbox, cache), 5000, signal).catch(() => []),
-    activeManualLayers?.vern
-      ? Promise.resolve([] as any[])
-      : withTimeout(loadVernRestrictions(bbox, cache), 5000, signal).catch(() => []),
+    Promise.resolve([] as any[]),
     activeManualLayers?.caa
       ? Promise.resolve([] as any[])
       : withTimeout(loadCaaZones(bbox, cache), 5000, signal).catch(() => []),
