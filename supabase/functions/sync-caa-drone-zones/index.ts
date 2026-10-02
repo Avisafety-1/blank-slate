@@ -188,7 +188,7 @@ async function syncLayer(supabase: any, spec: LayerSpec) {
   if (error) {
     return { layer: spec.id, ok: false, error: error.message };
   }
-  return { layer: spec.id, ok: (data?.error ?? 0) === 0, fetched: features.length, ...(data ?? {}) };
+  return { layer: spec.id, ok: (data?.error ?? 0) === 0 && (data?.success ?? 0) === normalized.length, fetched: features.length, ...(data ?? {}) };
 }
 
 Deno.serve(async (req) => {
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
     const results = await Promise.all(LAYERS.map((s) => syncLayer(supabase, s)));
 
     return new Response(
-      JSON.stringify({ ok: true, results, synced_at: new Date().toISOString() }),
+      JSON.stringify({ ok: results.every((result) => result.ok), results, synced_at: new Date().toISOString() }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

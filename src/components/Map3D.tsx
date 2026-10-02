@@ -573,7 +573,7 @@ export default function Map3D({
               authority_name: row.authority_name ?? null,
               authority_url: row.authority_url ?? null,
               authority_phone: row.authority_phone ?? null,
-              ...(NATURE_ZONE_LAYER_IDS.includes(row.layer_id) ? row.properties : {}),
+              ...(NATURE_ZONE_LAYER_IDS.includes(row.layer_id) ? { nature_properties: JSON.stringify(row.properties ?? {}) } : {}),
               // DK-spesifikt
               icao: row.icao ?? null,
               category: row.category ?? null,
@@ -715,7 +715,7 @@ export default function Map3D({
       const html =
         src === "dk"
           ? buildDkZonePopupHtml(p)
-          : NATURE_ZONE_LAYER_IDS.includes(p.layer_id) ? buildNatureDroneZonePopupHtml({ ...p, properties: p }) : buildCaaZonePopupHtml(p);
+          : NATURE_ZONE_LAYER_IDS.includes(p.layer_id) ? buildNatureDroneZonePopupHtml({ ...p, properties: JSON.parse(p.nature_properties || '{}') }) : buildCaaZonePopupHtml(p);
       new maplibregl.Popup({ closeButton: true, maxWidth: "320px" })
         .setLngLat(e.lngLat)
         .setHTML(`<div style="min-width:200px;max-width:300px;font-size:13px;line-height:1.4;">${html}</div>`)

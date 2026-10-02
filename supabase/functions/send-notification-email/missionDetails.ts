@@ -225,11 +225,14 @@ async function loadMissionAirspace(supabase: any, mission: any) {
   return [...merged.values()].map((r) => {
     const inside = !!r.route_inside;
     const special = (r.z_type === '5KM' || r.z_type === 'ATZ_5KM') && inside;
-    const level = special ? 'warning' : inside
+    const level = r.z_type === 'CAA_VERNEOMRADER_OBS' && inside ? 'note' : special ? 'warning' : inside
       ? (r.severity === 'WARNING' ? 'warning' : 'caution')
       : (r.severity === 'WARNING' ? 'caution' : 'note');
     const name = String(r.z_name || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    const message = inside ? `${r.z_type}: ruten går inne i sonen` : `${r.z_type}: ${fmtDist(r.min_distance ?? 0)} fra ruten`;
+    const nature = r.z_type === 'CAA_VERNEOMRADER_FORBUD' || r.z_type === 'CAA_VERNEOMRADER_OBS';
+    const message = nature
+      ? `${r.z_type === 'CAA_VERNEOMRADER_FORBUD' ? 'Verneområde med droneforbud' : 'Verneområde uten registrert droneforbud'}: ${inside ? 'ruten går gjennom området' : `${fmtDist(r.min_distance ?? 0)} fra ruten`}`
+      : inside ? `${r.z_type}: ruten går inne i sonen` : `${r.z_type}: ${fmtDist(r.min_distance ?? 0)} fra ruten`;
     return { zone_name: name, zone_type: r.z_type, level, message };
   }).sort((a, b) => (order[a.level] ?? 3) - (order[b.level] ?? 3));
 }
