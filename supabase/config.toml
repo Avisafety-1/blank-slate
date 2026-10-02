@@ -279,7 +279,3 @@ verify_jwt = false
 [functions.live-video-event]
 verify_jwt = false
 
-# TEST ONLY — dji-geo-test er en engangs testfunksjon mot DJI Geo Zones API.
-# Den skal slettes etter testing (både denne blokken og supabase/functions/dji-geo-test/).
-[functions.dji-geo-test]
-verify_jwt = false
