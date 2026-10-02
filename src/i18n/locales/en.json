@@ -3747,6 +3747,12 @@
         "loading": "Loading …",
         "source": "Source",
         "nature": {
+          "area": "Protected area",
+          "prohibitedTitle": "Drone prohibition registered",
+          "observeTitle": "No drone prohibition registered",
+          "directBan": "Direct prohibition of drones or model aircraft",
+          "accessBan": "General access prohibition",
+          "excerpt": "Excerpt from the protection regulation",
           "prohibited": "Drone or access prohibition – check the regulation and seek an exemption if required",
           "observe": "No registered drone prohibition – take care and check the regulation",
           "timeLimited": "May apply only during part of the year – check the regulation's dates",
