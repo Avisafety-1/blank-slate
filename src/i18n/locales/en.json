@@ -7676,6 +7676,8 @@
       "footerSource": "Weather data from MET Norway"
     },
     "natureProtection": {
+      "mapProhibited": "Protected area with drone prohibition",
+      "mapObserve": "Protected area without a registered drone prohibition",
       "unknownName": "Unknown",
       "factSheetNote": "📄 Open the fact sheet for the full protection regulation text",
       "legalBasis": "Legal basis: {{basis}}",

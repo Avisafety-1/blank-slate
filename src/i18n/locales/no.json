@@ -7678,6 +7678,8 @@
       "footerSource": "Værdata fra MET Norway"
     },
     "natureProtection": {
+      "mapProhibited": "Verneområde med droneforbud",
+      "mapObserve": "Verneområde uten registrert droneforbud",
       "unknownName": "Ukjent",
       "factSheetNote": "📄 Åpne faktaarket for verneforskriftens fulle ordlyd",
       "legalBasis": "Hjemmel: {{basis}}",

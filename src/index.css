@@ -190,6 +190,8 @@ All colors MUST be HSL.
     --status-green: 142 71% 45%;
     --status-yellow: 38 92% 50%;
     --status-red: 0 84% 60%;
+    --nature-prohibited: 0 72% 51%;
+    --nature-observe: 25 79% 52%;
 
     --evaluation-banner: 213 40% 18%;
     --evaluation-banner-foreground: 210 20% 98%;
@@ -263,6 +265,8 @@ All colors MUST be HSL.
     --status-green: 142 71% 45%;
     --status-yellow: 38 92% 50%;
     --status-red: 0 84% 60%;
+    --nature-prohibited: 0 72% 58%;
+    --nature-observe: 25 86% 58%;
 
     --evaluation-banner: 213 45% 13%;
     --evaluation-banner-foreground: 210 20% 98%;
