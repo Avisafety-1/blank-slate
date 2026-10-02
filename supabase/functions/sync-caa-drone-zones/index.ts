@@ -81,6 +81,24 @@ const LAYERS: LayerSpec[] = [
       return m ? `ENR${m[1]}` : null;
     },
   },
+  {
+    id: "verneomrader_forbud",
+    url: "https://dronesoner.no/data/forbud_verneomrader.geojson",
+    authority_name: "Miljødirektoratet",
+    authority_url: "https://www.miljodirektoratet.no",
+    default_restriction: "REQ_AUTHORISATION",
+    default_reason: ["NATURE"],
+    externalIdFn: (p) => `${p.offisieltNavn ?? ""}|${p.verneforskrift ?? ""}`,
+  },
+  {
+    id: "verneomrader_obs",
+    url: "https://dronesoner.no/data/obs_verneomrader.geojson",
+    authority_name: "Miljødirektoratet",
+    authority_url: "https://www.miljodirektoratet.no",
+    default_restriction: "CONDITIONAL",
+    default_reason: ["NATURE"],
+    externalIdFn: (p) => `${p.offisieltNavn ?? ""}|${p.verneforskrift ?? ""}`,
+  },
 ];
 
 function parseAltitudeMeters(raw: unknown): number | null {
@@ -111,17 +129,22 @@ function normalizeFeature(
   if (!feature?.geometry) return null;
   const p = feature.properties ?? {};
   const icao = p.icaoKode && p.icaoKode !== "XXXX" ? p.icaoKode : null;
-  const nameKey = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
+  const nameKey = p.offisieltNavn ?? p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? `idx-${index}`;
   const derivedId = spec.externalIdFn?.(p) ?? null;
+  // A few nature areas share a name and regulation URL. Add a geometry hash for
+  // those layers so separate polygons never overwrite one another in the upsert.
+  const natureId = spec.id.startsWith("verneomrader_")
+    ? `${derivedId}|${Array.from(JSON.stringify(feature.geometry)).reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261).toString(36)}`
+    : null;
   const baseId =
-    derivedId ??
+    natureId ?? derivedId ??
     p.id ??
     p["@id"] ??
     p.identifier ??
     icao ??
     `${spec.id}-${nameKey}-${index}`;
   const externalId = baseId;
-  const name = p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? null;
+  const name = p.offisieltNavn ?? p.navn ?? p.Navn ?? p.name ?? p.Name ?? p["name:nb"] ?? p["name:en"] ?? null;
   const message = p.info ?? p.remarks ?? null;
 
   return {
@@ -131,7 +154,7 @@ function normalizeFeature(
     reason: spec.default_reason,
     message,
     authority_name: spec.authority_name,
-    authority_url: spec.authority_url,
+    authority_url: spec.id.startsWith("verneomrader_") && typeof p.verneforskrift === "string" && /^https:\/\/lovdata\.no\//.test(p.verneforskrift) ? p.verneforskrift : spec.authority_url,
     authority_phone: spec.authority_phone ?? null,
     lower_limit_m: parseAltitudeMeters(p.lower_limit),
     upper_limit_m: parseAltitudeMeters(p.upper_limit),
@@ -156,15 +179,7 @@ async function syncLayer(supabase: any, spec: LayerSpec) {
     .map((f, i) => normalizeFeature(f, spec, i))
     .filter(Boolean);
 
-  // Chunk to avoid huge JSON payloads
-  const chunkSize = 200;
-  let agg = { success: 0, error: 0, skipped: 0, deleted: 0 };
-  for (let i = 0; i < normalized.length; i += chunkSize) {
-    const chunk = normalized.slice(i, i + chunkSize);
-    // Last chunk: pass full set instead via a single call so deletion works correctly
-    // — workaround: do bulk in one call (most layers are small enough).
-  }
-  // Single bulk call (deletion needs full set in one batch)
+  // Single bulk call: the RPC removes stale rows using the complete ID set.
   const { data, error } = await supabase.rpc("bulk_upsert_caa_zones", {
     p_layer_id: spec.id,
     p_features: normalized,
