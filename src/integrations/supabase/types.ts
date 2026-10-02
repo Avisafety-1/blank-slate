@@ -9712,6 +9712,10 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      prune_caa_nature_zones: {
+        Args: { p_external_ids: string[]; p_layer_id: string }
+        Returns: number
+      }
       purge_old_flighthub2_positions: { Args: never; Returns: undefined }
       reassign_flight_log: {
         Args: {
@@ -10474,6 +10478,10 @@ export type Database = {
         Returns: string
       }
       upsert_airspace_zones_pl: { Args: { rows: Json }; Returns: number }
+      upsert_caa_nature_batch: {
+        Args: { p_features: Json; p_layer_id: string }
+        Returns: Json
+      }
       upsert_geojson_feature: {
         Args: {
           p_description: string
