@@ -8,6 +8,7 @@ import type { TourId, TourStep } from "@/tours/types";
 import { waitForElement, sleep, closeMobileNav } from "@/tours/tourUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { clearStaleBodyLock } from "@/lib/modalState";
 
 const STORAGE_KEY = "avisafe.tours.completed";
 
