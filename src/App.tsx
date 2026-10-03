@@ -20,6 +20,8 @@ import { IdleTimeoutWarning } from "@/components/IdleTimeoutWarning";
 import { ForceReloadBanner } from "@/components/ForceReloadBanner";
 import { GuidedTourProvider } from "@/components/guided-tour/GuidedTourProvider";
 import { useForceReload } from "@/hooks/useForceReload";
+import { useBodyLockRecovery } from "@/hooks/useBodyLockRecovery";
+import { useVisualViewportVar } from "@/hooks/useVisualViewportVar";
 import { recordAuthRouteVisit } from "@/lib/authLoopGuard";
 import { PlanRestricted } from "@/components/PlanRestricted";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -87,6 +89,8 @@ const AuthenticatedLayoutInner = () => {
   const { user, loading, isApproved, profileLoaded, authRefreshing } = useAuth();
   const location = useLocation();
   useForceReload();
+  useBodyLockRecovery();
+  useVisualViewportVar();
 
   // Track whether profile has EVER been loaded in this session.
   // Once true, we never demount Header/SubscriptionGate just because a
