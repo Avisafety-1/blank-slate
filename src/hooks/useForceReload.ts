@@ -2,8 +2,10 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { processQueue } from '@/lib/offlineQueue';
+import { hasOpenModal, onLastModalClosed } from '@/lib/modalState';
 
 const VERSION_KEY = 'avisafe_app_version';
+const VERSION_CHECK_THROTTLE_MS = 60_000;
 
 function getLocalVersion(): string | null {
   return localStorage.getItem(VERSION_KEY);
@@ -32,6 +34,13 @@ export const subscribeForceReload = (fn: () => void) => {
   listeners.add(fn);
   return () => { listeners.delete(fn); };
 };
+
+// Skjuler banneret («Senere»). Tvungne oppdateringer kan ikke skjules.
+export function dismissForceReloadBanner() {
+  if (globalState.forceImmediate) return;
+  globalState = { ...globalState, showBanner: false };
+  notify();
+}
 
 async function clearAllCaches() {
   // 1. Clear Cache Storage (service worker caches)
@@ -108,9 +117,62 @@ export async function performReload() {
   window.location.reload();
 }
 
+// --- Pending reload state (deliberately module-level, shared by all callers) ---
+let pendingForce: boolean | null = null;
+let unsubscribeModalWatcher: (() => void) | null = null;
+
+function ensureModalWatcher() {
+  if (unsubscribeModalWatcher) return;
+  unsubscribeModalWatcher = onLastModalClosed(() => {
+    unsubscribeModalWatcher?.();
+    unsubscribeModalWatcher = null;
+    if (pendingForce !== null) {
+      const force = pendingForce;
+      pendingForce = null;
+      requestReload(force);
+    }
+  });
+}
+
+/**
+ * Ett inngangspunkt for alle oppdateringssignaler (broadcast og
+ * versjonssjekk). Aldri reload mens et skjema er åpent — da vises et
+ * banner i stedet, og tvungen reload skjer først når siste modal lukkes.
+ */
+export function requestReload(force: boolean) {
+  if (document.visibilityState === 'hidden') {
+    // Appen ligger i dvale — ta dette når den blir synlig igjen.
+    pendingForce = force;
+    return;
+  }
+
+  if (!hasOpenModal()) {
+    pendingForce = null;
+    if (force) {
+      performReload();
+    } else {
+      globalState = { showBanner: true, forceImmediate: false };
+      notify();
+    }
+    return;
+  }
+
+  // En modal er åpen — ikke forstyrr brukeren nå.
+  pendingForce = force;
+  if (force) {
+    // Tvungen: vis banner (uten «Senere») mens dialogen er åpen, og reload
+    // når siste modal lukkes. INGEN tidsgrense.
+    globalState = { showBanner: true, forceImmediate: true };
+    notify();
+  }
+  // Vanlig: banneret vises når siste modal lukkes (via watcher under).
+  ensureModalWatcher();
+}
+
 export function useForceReload() {
   const { user } = useAuth();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastVersionCheckRef = useRef(0);
 
   useEffect(() => {
     if (!user) return;
@@ -127,18 +189,16 @@ export function useForceReload() {
         if (payload?.payload?.version) {
           pendingVersion = payload.payload.version;
         }
-
-        if (forceImmediate) {
-          performReload();
-        } else {
-          globalState = { showBanner: true, forceImmediate: false };
-          notify();
-        }
+        requestReload(forceImmediate);
       })
       .subscribe();
 
-    // --- Layer 2: Version check on reconnect ---
+    // --- Layer 2: Version check on reconnect / foreground ---
     const handleOnline = async () => {
+      const now = Date.now();
+      if (now - lastVersionCheckRef.current < VERSION_CHECK_THROTTLE_MS) return;
+      lastVersionCheckRef.current = now;
+
       try {
         const { data, error } = await supabase
           .from('app_config')
@@ -155,8 +215,8 @@ export function useForceReload() {
         const localVer = getLocalVersion();
 
         // Forced update: local version is older than the force-flagged version.
-        // Reload immediately without banner. performReload persists the new
-        // version BEFORE reloading, so this happens at most once per user.
+        // Reload (uten banner når ingen modal er åpen). performReload persists
+        // the new version BEFORE reloading, so this happens at most once per user.
         if (
           forcedVersion && localVer &&
           Number(localVer) < Number(forcedVersion) &&
@@ -164,15 +224,14 @@ export function useForceReload() {
         ) {
           console.log(`[ForceReload] Forced update: local=${localVer}, forced=${forcedVersion}`);
           pendingVersion = appVersion;
-          performReload();
+          requestReload(true);
           return;
         }
 
         if (appVersion && localVer && appVersion !== localVer) {
           console.log(`[ForceReload] Version mismatch: local=${localVer}, remote=${appVersion}`);
           pendingVersion = appVersion;
-          globalState = { showBanner: true, forceImmediate: false };
-          notify();
+          requestReload(false);
         } else if (appVersion && !localVer) {
           // First visit — seed localStorage with current DB version
           setLocalVersion(appVersion);
@@ -182,7 +241,27 @@ export function useForceReload() {
       }
     };
 
+    const handleVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      // Ventende oppdatering fra da appen lå i dvale?
+      if (pendingForce !== null) {
+        const force = pendingForce;
+        pendingForce = null;
+        requestReload(force);
+        return;
+      }
+      // iOS kobler fra realtime i dvale — sjekk versjonen ved tilbakekomst.
+      handleOnline();
+    };
+
+    const handlePageShow = () => {
+      // iOS bfcache: siden kan gjenopptas uten visibilitychange.
+      handleVisible();
+    };
+
     window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('pageshow', handlePageShow);
 
     // Also check on mount (in case user was offline and reloaded while online)
     if (navigator.onLine) {
@@ -191,6 +270,8 @@ export function useForceReload() {
 
     return () => {
       window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('pageshow', handlePageShow);
       channel.unsubscribe();
       channelRef.current = null;
     };

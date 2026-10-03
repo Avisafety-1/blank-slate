@@ -8,6 +8,7 @@ import type { TourId, TourStep } from "@/tours/types";
 import { waitForElement, sleep, closeMobileNav } from "@/tours/tourUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { clearStaleBodyLock } from "@/lib/modalState";
 
 const STORAGE_KEY = "avisafe.tours.completed";
 
@@ -107,15 +108,14 @@ export const GuidedTourProvider = ({ children }: { children: ReactNode }) => {
       // Fjern globale klasser/attributter som driver.js setter på html/body.
       for (const root of [document.documentElement, document.body]) {
         root.classList.remove("driver-active", "driver-fade", "driver-active-element", "driver-highlighted-element");
-        // Nullstill inline-stiler driver.js kan ha satt.
-        if (root.style.pointerEvents) root.style.pointerEvents = "";
-        if (root.style.overflow === "hidden") root.style.overflow = "";
-        if (root.style.position === "fixed") root.style.position = "";
         // Fjern eventuelle data-driver-* attributter.
         Array.from(root.attributes)
           .filter((a) => a.name.startsWith("data-driver"))
           .forEach((a) => root.removeAttribute(a.name));
       }
+      // Nullstill inline-stiler (pointer-events/overflow/position) — delt
+      // oppryddingslogikk som også brukes av useBodyLockRecovery.
+      clearStaleBodyLock();
     };
 
     // Destroy any previous tour cleanly first.

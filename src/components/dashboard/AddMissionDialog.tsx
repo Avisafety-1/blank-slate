@@ -1238,12 +1238,24 @@ export const AddMissionDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
-        <DialogHeader>
+      <DialogContent
+        className="w-[95vw] max-w-2xl p-0 gap-0 flex flex-col overflow-hidden"
+        style={{ maxHeight: 'calc(var(--vvh, 90vh) * 0.92 - 2 * var(--update-banner-h, 0px))' }}
+      >
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-12">
           <DialogTitle>{mission ? t('missions.editMission') : t('missions.addMission')}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 sm:px-6"
+          onFocusCapture={(e) => {
+            const el = e.target as HTMLElement;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+              setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 300);
+            }
+          }}
+        >
+        <form id="mission-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="tittel">{t('forms.title')} *</Label>
             <Input
@@ -1973,17 +1985,21 @@ export const AddMissionDialog = ({
               </CollapsibleContent>
             </div>
           </Collapsible>
-
-          <div className="flex gap-2 justify-end pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('actions.cancel')}
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mission ? t('missions.saveChanges') : t('missions.createMission')}
-            </Button>
-          </div>
         </form>
+        </div>
+
+        <div
+          className="shrink-0 flex gap-2 justify-end px-4 sm:px-6 pt-3 border-t bg-background"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+        >
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {t('actions.cancel')}
+          </Button>
+          <Button type="submit" form="mission-form" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {mission ? t('missions.saveChanges') : t('missions.createMission')}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -4180,6 +4180,14 @@
       "unknownError": "Unknown error"
     }
   },
+  "forceReload": {
+    "available": "New version available",
+    "required": "A new version must be installed – save and close the window to update",
+    "updateNow": "Update now",
+    "updating": "Updating...",
+    "later": "Later",
+    "changelog": "View changelog"
+  },
   "changelog": {
     "title": "System status and changelog",
     "maintenanceDefault": "Maintenance in progress",
