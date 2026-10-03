@@ -11,9 +11,27 @@ Ingen databaseendringer. Ingen lokal utkastlagring (egen sak senere).
 ## Endringer
 
 ### 1) Ny fil `src/lib/modalState.ts`
-- `hasOpenModal(): boolean` — true hvis `[role="dialog"][data-state="open"][aria-modal="true"]` eller `[role="alertdialog"][data-state="open"]` finnes. Popover-innhold (role="dialog" uten aria-modal) teller IKKE. Inkluder åpne vaul-drawere hvis `drawer.tsx` brukes (sjekk attributter).
+- `hasOpenModal(): boolean` — IKKE `aria-modal` (Radix Dialog v1.1.14 setter det aldri). Implementer slik:
+
+```ts
+export function hasOpenModal(): boolean {
+  const nodes = document.querySelectorAll(
+    '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]'
+  );
+  for (let i = 0; i < nodes.length; i++) {
+    if (!nodes[i].closest('[data-radix-popper-content-wrapper]')) return true;
+  }
+  return false;
+}
+```
+
+  - Ikke `:not()` med kompleks selektor (krasjer i Chromium 70 på DJI RC Pro).
+  - Vaul-drawer og Sheet bygger på Radix Dialog og fanges av denne; ingen egen sjekk.
 - `clearStaleBodyLock(): void` — for `documentElement` og `body`: fjern inline `pointer-events`, `overflow:hidden`, `position:fixed`, og attributtet `data-scroll-locked`.
-- `onLastModalClosed(cb): () => void` — MutationObserver på `document.body` (attributes + childList + subtree, attributeFilter `['data-state','style','data-scroll-locked']`). Når `hasOpenModal()` går true→false: vent 400 ms, sjekk på nytt, kall `cb` kun hvis fortsatt ingen modal. Returner frakoblingsfunksjon.
+- `onLastModalClosed(cb): () => void` — lett observer (kartene muterer `style` kontinuerlig):
+  - Observer A: `document.body` med `{ childList: true }` (uten subtree) — portaler legges direkte på body.
+  - Observer B: `document.body` med `{ attributes: true, subtree: true, attributeFilter: ['data-state'] }`. IKKE `'style'` i attributeFilter med subtree.
+  - Callback gjør ingen DOM-spørring direkte: planlegg én sjekk med `setTimeout(…, 400)` (nullstill timer ved nye mutasjoner), og kall `hasOpenModal()` først da; kall `cb` kun hvis ingen modal. Returner frakoblingsfunksjon.
 - `GuidedTourProvider.tsx` (~linje 108–118) bytter til `clearStaleBodyLock()` slik at logikken bare finnes ett sted.
 
 ### 2) `src/hooks/useForceReload.ts`
@@ -67,4 +85,6 @@ Ingen databaseendringer. Ingen lokal utkastlagring (egen sak senere).
   c) Uten åpen dialog + `requestReload(true)` → reload straks.
   d) Fokus på felt nederst i skjemaet → feltet og Lagre synlige.
   e) Etter lukket dialog: body uten `pointer-events:none` og `data-scroll-locked`.
+  f) Åpne en Popover/Select på en vanlig side (ingen dialog) → `hasOpenModal() === false`.
+  g) Åpne «Rediger oppdrag» → `hasOpenModal() === true`. Åpne en Select inni → fortsatt true.
 - Oppsummer endrede filer til slutt.
