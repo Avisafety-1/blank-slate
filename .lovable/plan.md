@@ -100,4 +100,6 @@ export function hasOpenModal(): boolean {
   e) Etter lukket dialog: body uten `pointer-events:none` og `data-scroll-locked`.
   f) Åpne en Popover/Select på en vanlig side (ingen dialog) → `hasOpenModal() === false`.
   g) Åpne «Rediger oppdrag» → `hasOpenModal() === true`. Åpne en Select inni → fortsatt true.
+  h) Åpne «Rediger oppdrag» i 390x844 + `requestReload(true)` → hele footeren (Avbryt/Lagre) er synlig over banneret.
+  i) Sjekk i DevTools at en vanlig dialog får max-height med vh-verdi når dvh ikke støttes (regelen `.dialog-max-h` har begge linjene).
 - Oppsummer endrede filer til slutt.
