@@ -32,6 +32,7 @@ export function hasOpenModal(): boolean {
   - Observer A: `document.body` med `{ childList: true }` (uten subtree) — portaler legges direkte på body.
   - Observer B: `document.body` med `{ attributes: true, subtree: true, attributeFilter: ['data-state'] }`. IKKE `'style'` i attributeFilter med subtree.
   - Callback gjør ingen DOM-spørring direkte: planlegg én sjekk med `setTimeout(…, 400)` (nullstill timer ved nye mutasjoner), og kall `hasOpenModal()` først da; kall `cb` kun hvis ingen modal. Returner frakoblingsfunksjon.
+- `subscribeModalOpen(cb: (open: boolean) => void): () => void` — basert på samme lette observere og 400 ms debounce som `onLastModalClosed` (gjenbruk logikken, ikke dupliser). Lag en liten hook `useHasOpenModal()` over den.
 - `GuidedTourProvider.tsx` (~linje 108–118) bytter til `clearStaleBodyLock()` slik at logikken bare finnes ett sted.
 
 ### 2) `src/hooks/useForceReload.ts`
@@ -49,9 +50,10 @@ export function hasOpenModal(): boolean {
 
 ### 3) `src/components/ForceReloadBanner.tsx`
 - Plassering: `fixed bottom-0 left-0 right-0 z-[9999] pointer-events-auto`, `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem)`. Fjern top-padding.
-- Vanlig variant: «Ny versjon tilgjengelig», knappene «Oppdater nå» og «Senere», lenke «Se endringslogg». «Senere» skjuler banneret; vis igjen ved neste `visibilitychange → visible`, tidligst 30 min etter trykk.
-- Tvungen variant: «Ny versjon må installeres – lagre og lukk vinduet for å oppdatere». Ingen «Senere», ingen endringslogg-lenke. Behold «Oppdater nå».
-- Skjul «Se endringslogg» mens `hasOpenModal()` er true.
+- Mål egen høyde med ResizeObserver og sett `document.documentElement.style.setProperty('--update-banner-h', \`${h}px\`)`; sett til `'0px'` når banneret skjules/avmonteres.
+- Vanlig variant (`forceImmediate=false`): skjules helt mens `useHasOpenModal()` er true, vises igjen når modalen lukkes (hvis ikke «Senere» er trykket). Tekst «Ny versjon tilgjengelig», knappene «Oppdater nå» og «Senere», lenke «Se endringslogg». «Senere» skjuler banneret; vis igjen ved neste `visibilitychange → visible`, tidligst 30 min etter trykk.
+- Tvungen variant: vises også med åpen modal; dialogene krymper via `--update-banner-h` slik at X, Avbryt og Lagre er synlige og trykkbare. Tekst «Ny versjon må installeres – lagre og lukk vinduet for å oppdatere». Ingen «Senere», ingen endringslogg-lenke. Behold «Oppdater nå».
+- «Se endringslogg»-logikken bruker `useHasOpenModal()` i stedet for et engangskall.
 - Alle tekster via `t()`-nøkler i no.json og en.json: `forceReload.available`, `forceReload.required`, `forceReload.updateNow`, `forceReload.updating`, `forceReload.later`, `forceReload.changelog`.
 
 ### 4) Ny hook `src/hooks/useBodyLockRecovery.ts` (monteres i App.tsx ved `useForceReload()`)
@@ -61,10 +63,21 @@ export function hasOpenModal(): boolean {
 
 ### 5) Synlig høyde (tastatur og Safari-verktøylinje)
 - Ny hook `src/hooks/useVisualViewportVar.ts`, montert én gang i App.tsx: sett CSS-variabelen `--vvh` på `<html>` til `${visualViewport.height}px` (fallback `window.innerHeight`), oppdater på visualViewport `resize`/`scroll` og window `resize`, throttlet med `requestAnimationFrame`.
-- `src/components/ui/dialog.tsx`, `DialogContent`: legg KUN til `max-h-[90vh] max-h-[90dvh]` først i `cn()`, slik at `className` fra hver dialog fortsatt overstyrer (tailwind-merge). Ingen overflow/padding/logikk her.
+- vh-fallback forsvinner i twMerge (`cn()` slår sammen `max-h-[90vh] max-h-[90dvh]` til kun `max-h-[90dvh]`; Chromium 70 ignorerer dvh). Derfor, i `src/index.css`:
+
+```css
+@layer components {
+  .dialog-max-h {
+    max-height: calc(90vh - 2 * var(--update-banner-h, 0px));
+    max-height: calc(90dvh - 2 * var(--update-banner-h, 0px));
+  }
+}
+```
+
+- `src/components/ui/dialog.tsx`, `DialogContent`: bruk klassen `dialog-max-h` (først i `cn()`) i stedet for `max-h-[90vh] max-h-[90dvh]`. Ingen andre endringer i `dialog.tsx`. Ikke endre andre dialoger i denne runden.
 
 ### 6) `src/components/dashboard/AddMissionDialog.tsx`
-- `DialogContent`: `w-[95vw] max-w-2xl p-0 gap-0 flex flex-col overflow-hidden max-h-[90vh] max-h-[90dvh]` + `style={{ maxHeight: 'calc(var(--vvh, 90vh) * 0.92)' }}`.
+- `DialogContent`: `w-[95vw] max-w-2xl p-0 gap-0 flex flex-col overflow-hidden` + `style={{ maxHeight: 'calc(var(--vvh, 90vh) * 0.92 - 2 * var(--update-banner-h, 0px))' }}` (fjern `max-h-[90vh] max-h-[90dvh]` fra className — inline-stilen styrer).
 - Fast header (ikke rullende): `DialogTitle` med padding som gir plass til lukkeknappen (X).
 - Rullende midtdel: `flex-1 min-h-0 overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 sm:px-6`.
 - Fast footer (ikke rullende) med «Avbryt»/«Lagre», `border-t bg-background`, `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem)`.
@@ -87,4 +100,6 @@ export function hasOpenModal(): boolean {
   e) Etter lukket dialog: body uten `pointer-events:none` og `data-scroll-locked`.
   f) Åpne en Popover/Select på en vanlig side (ingen dialog) → `hasOpenModal() === false`.
   g) Åpne «Rediger oppdrag» → `hasOpenModal() === true`. Åpne en Select inni → fortsatt true.
+  h) Åpne «Rediger oppdrag» i 390x844 + `requestReload(true)` → hele footeren (Avbryt/Lagre) er synlig over banneret.
+  i) Sjekk i DevTools at en vanlig dialog får max-height med vh-verdi når dvh ikke støttes (regelen `.dialog-max-h` har begge linjene).
 - Oppsummer endrede filer til slutt.
