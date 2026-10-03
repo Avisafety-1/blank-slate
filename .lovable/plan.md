@@ -32,6 +32,7 @@ export function hasOpenModal(): boolean {
   - Observer A: `document.body` med `{ childList: true }` (uten subtree) — portaler legges direkte på body.
   - Observer B: `document.body` med `{ attributes: true, subtree: true, attributeFilter: ['data-state'] }`. IKKE `'style'` i attributeFilter med subtree.
   - Callback gjør ingen DOM-spørring direkte: planlegg én sjekk med `setTimeout(…, 400)` (nullstill timer ved nye mutasjoner), og kall `hasOpenModal()` først da; kall `cb` kun hvis ingen modal. Returner frakoblingsfunksjon.
+- `subscribeModalOpen(cb: (open: boolean) => void): () => void` — basert på samme lette observere og 400 ms debounce som `onLastModalClosed` (gjenbruk logikken, ikke dupliser). Lag en liten hook `useHasOpenModal()` over den.
 - `GuidedTourProvider.tsx` (~linje 108–118) bytter til `clearStaleBodyLock()` slik at logikken bare finnes ett sted.
 
 ### 2) `src/hooks/useForceReload.ts`
@@ -62,10 +63,21 @@ export function hasOpenModal(): boolean {
 
 ### 5) Synlig høyde (tastatur og Safari-verktøylinje)
 - Ny hook `src/hooks/useVisualViewportVar.ts`, montert én gang i App.tsx: sett CSS-variabelen `--vvh` på `<html>` til `${visualViewport.height}px` (fallback `window.innerHeight`), oppdater på visualViewport `resize`/`scroll` og window `resize`, throttlet med `requestAnimationFrame`.
-- `src/components/ui/dialog.tsx`, `DialogContent`: legg KUN til `max-h-[90vh] max-h-[90dvh]` først i `cn()`, slik at `className` fra hver dialog fortsatt overstyrer (tailwind-merge). Ingen overflow/padding/logikk her.
+- vh-fallback forsvinner i twMerge (`cn()` slår sammen `max-h-[90vh] max-h-[90dvh]` til kun `max-h-[90dvh]`; Chromium 70 ignorerer dvh). Derfor, i `src/index.css`:
+
+```css
+@layer components {
+  .dialog-max-h {
+    max-height: calc(90vh - 2 * var(--update-banner-h, 0px));
+    max-height: calc(90dvh - 2 * var(--update-banner-h, 0px));
+  }
+}
+```
+
+- `src/components/ui/dialog.tsx`, `DialogContent`: bruk klassen `dialog-max-h` (først i `cn()`) i stedet for `max-h-[90vh] max-h-[90dvh]`. Ingen andre endringer i `dialog.tsx`. Ikke endre andre dialoger i denne runden.
 
 ### 6) `src/components/dashboard/AddMissionDialog.tsx`
-- `DialogContent`: `w-[95vw] max-w-2xl p-0 gap-0 flex flex-col overflow-hidden max-h-[90vh] max-h-[90dvh]` + `style={{ maxHeight: 'calc(var(--vvh, 90vh) * 0.92)' }}`.
+- `DialogContent`: `w-[95vw] max-w-2xl p-0 gap-0 flex flex-col overflow-hidden` + `style={{ maxHeight: 'calc(var(--vvh, 90vh) * 0.92 - 2 * var(--update-banner-h, 0px))' }}` (fjern `max-h-[90vh] max-h-[90dvh]` fra className — inline-stilen styrer).
 - Fast header (ikke rullende): `DialogTitle` med padding som gir plass til lukkeknappen (X).
 - Rullende midtdel: `flex-1 min-h-0 overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 sm:px-6`.
 - Fast footer (ikke rullende) med «Avbryt»/«Lagre», `border-t bg-background`, `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem)`.
