@@ -468,3 +468,13 @@ All colors MUST be HSL.
   background: #f3f4f6;
   color: #111827;
 }
+
+@layer components {
+  /* Felles maks-høyde for dialoger: vh-fallback før dvh (Chromium 70 på
+     DJI RC Pro ignorerer dvh). Trekker fra oppdateringsbannerets høyde
+     slik at tvungent banner aldri dekker dialogens knapper. */
+  .dialog-max-h {
+    max-height: calc(90vh - 2 * var(--update-banner-h, 0px));
+    max-height: calc(90dvh - 2 * var(--update-banner-h, 0px));
+  }
+}

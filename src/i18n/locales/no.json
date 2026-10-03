@@ -4182,6 +4182,14 @@
       "unknownError": "Ukjent feil"
     }
   },
+  "forceReload": {
+    "available": "Ny versjon tilgjengelig",
+    "required": "Ny versjon må installeres – lagre og lukk vinduet for å oppdatere",
+    "updateNow": "Oppdater nå",
+    "updating": "Oppdaterer...",
+    "later": "Senere",
+    "changelog": "Se endringslogg"
+  },
   "changelog": {
     "title": "Driftstatus og endringslogg",
     "maintenanceDefault": "Drift og vedlikehold pågår",
