@@ -1,45 +1,31 @@
-# Testfunksjon `dji-geo-test` mot DJI Geo Zones API
+# Fiks frys og skjulte knapper i Safari på iPhone/iPad
 
 ## Mål
-En engangs edge-funksjon (kun testing, ikke koblet til UI) som kaller DJI sitt geo-API direkte og returnerer status + sammendrag, slik at vi ser nøyaktig hva DJI svarer.
+1. Appen skal ikke fryse når «Ny versjon tilgjengelig» dukker opp mens et vindu (f.eks. oppdragsredigering) er åpent.
+2. Knapper øverst og nederst skal aldri havne bak statuslinjen, hjem-streken eller tastaturet.
 
-## Funksjonen
+## Endringer
 
-**`supabase/functions/dji-geo-test/index.ts`** (ca. 120 linjer):
+### 1. Oppdateringsvarselet
+- Ikke vis varselet mens et vindu/skjema er åpent. Det venter til vinduet lukkes, og vises da.
+- «Tving umiddelbart» venter også til vinduet er lukket (maks ca. 2 min), slik at ingen mister ulagrede endringer.
+- Varselet legges nederst på skjermen i stedet for øverst, utenfor feltet der vinduenes lukkeknapper ligger. Høyden tilpasses hjem-streken.
+- Varselet kan lukkes («Senere»).
 
-1. **Input**: query-parametre `lat`, `lng` (obligatoriske – 400 hvis de mangler eller ikke er tall), `drone` (default `dji-mavic-3`), `radius` (default `20000`, maks 50000).
+### 2. Låste knapper etter at et vindu lukkes
+- Sikkerhetsnett: når siste vindu lukkes, fjernes eventuelle rester av «sperret siden»-tilstand som Safari av og til ikke rydder bort. Dette er den vanligste årsaken til at alle knapper slutter å virke til appen startes på nytt.
+- Samme opprydding når appen kommer tilbake fra bakgrunnen.
 
-2. **Kall 1 – geo-soner**:
-   ```
-   GET https://www-api.dji.com/api/geo/areas
-     ?drone=<drone>&zones_mode=total&country=NO
-     &level=0,1,2,3,4,6,7&lat=<lat>&lng=<lng>&search_radius=<radius>
-   ```
-   Returnerer: HTTP-status fra DJI, antall `areas`, og per area: `name`, `level`, `color`, `height`, `shape`, `type`, samt boolske flagg `has_polygon_points` og `has_sub_areas`.
+### 3. Knapper utenfor skjermen
+- Oppdragsvinduet (nytt/rediger oppdrag): fast topp med lukkeknapp og fast bunn med «Avbryt»/«Lagre». Kun innholdet i midten ruller.
+- Topp og bunn får avstand til statuslinje og hjem-strek.
+- Når tastaturet er oppe, krymper vinduet til synlig område så «Lagre» og feltet du skriver i alltid kan nås.
+- Samme høyderegel legges på felles vinduskomponent slik at andre vinduer også holder seg innenfor skjermen.
 
-3. **Kall 2 – støttede droner**:
-   ```
-   GET https://flysafe-api.dji.com/dji/drones
-   ```
-   Returnerer listen over drone-ID-er i samme respons.
-
-4. **Logging**: hele råsvaret fra begge kall logges til konsollen (`console.log`).
-
-5. **Respons** (JSON):
-   ```json
-   {
-     "geo": { "status": 200, "area_count": 12, "areas": [ ... ] },
-     "drones": { "status": 200, "drone_ids": [ ... ] }
-   }
-   ```
-   Ved DJI-feil returneres status og de første ~500 tegnene av svaret.
-
-## Sikkerhet og rammer
-- `verify_jwt = false` i `supabase/config.toml` (samme mønster som øvrige testfunksjoner). Funksjonen leser ingen data og kan ikke skrive noe.
-- Bruker `safeFetch` fra `_shared/http.ts` med allowlist `www-api.dji.com` og `flysafe-api.dji.com`.
-- Ingen nøkler, ingen databasekall, ingen endring i UI, kart eller eksisterende funksjoner.
-
-## Verifisering
-- Deploy via deploy-verktøyet.
-- Testkall med `curl_edge_functions` mot et punkt i Norge (f.eks. Oslo-området) og vis resultatet.
-- Funksjonen kan slettes etter testen hvis du vil.
+## Tekniske detaljer
+- `useForceReload.ts`: utsett `showBanner`/`performReload` mens `document.querySelector('[role="dialog"][data-state="open"]')` finnes; sjekk ved lukking via MutationObserver og `visibilitychange`.
+- `ForceReloadBanner.tsx`: `bottom-0`, `paddingBottom: calc(env(safe-area-inset-bottom) + .75rem)`, «Senere»-knapp; tekster via `t()` i no.json/en.json.
+- Ny `useBodyLockRecovery` (montert i App): når ingen åpne dialoger, fjern `pointer-events:none` og `overflow:hidden` på `body`/`html` og `data-scroll-locked`.
+- `dialog.tsx`: `max-h-[90vh] max-h-[90dvh]` (vh-fallback for DJI), maks høyde ut fra `visualViewport` når tastatur er oppe, safe-area padding.
+- `AddMissionDialog.tsx`: flex-kolonne med sticky header/footer, midtdel `overflow-y-auto [touch-action:pan-y]`.
+- Ingen databaseendringer. Validering: typesjekk + test i iPhone-størrelse i forhåndsvisning; endelig bekreftelse må gjøres på iPad/iPhone hos kunden.
