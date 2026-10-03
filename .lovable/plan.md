@@ -49,9 +49,10 @@ export function hasOpenModal(): boolean {
 
 ### 3) `src/components/ForceReloadBanner.tsx`
 - Plassering: `fixed bottom-0 left-0 right-0 z-[9999] pointer-events-auto`, `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem)`. Fjern top-padding.
-- Vanlig variant: «Ny versjon tilgjengelig», knappene «Oppdater nå» og «Senere», lenke «Se endringslogg». «Senere» skjuler banneret; vis igjen ved neste `visibilitychange → visible`, tidligst 30 min etter trykk.
-- Tvungen variant: «Ny versjon må installeres – lagre og lukk vinduet for å oppdatere». Ingen «Senere», ingen endringslogg-lenke. Behold «Oppdater nå».
-- Skjul «Se endringslogg» mens `hasOpenModal()` er true.
+- Mål egen høyde med ResizeObserver og sett `document.documentElement.style.setProperty('--update-banner-h', \`${h}px\`)`; sett til `'0px'` når banneret skjules/avmonteres.
+- Vanlig variant (`forceImmediate=false`): skjules helt mens `useHasOpenModal()` er true, vises igjen når modalen lukkes (hvis ikke «Senere» er trykket). Tekst «Ny versjon tilgjengelig», knappene «Oppdater nå» og «Senere», lenke «Se endringslogg». «Senere» skjuler banneret; vis igjen ved neste `visibilitychange → visible`, tidligst 30 min etter trykk.
+- Tvungen variant: vises også med åpen modal; dialogene krymper via `--update-banner-h` slik at X, Avbryt og Lagre er synlige og trykkbare. Tekst «Ny versjon må installeres – lagre og lukk vinduet for å oppdatere». Ingen «Senere», ingen endringslogg-lenke. Behold «Oppdater nå».
+- «Se endringslogg»-logikken bruker `useHasOpenModal()` i stedet for et engangskall.
 - Alle tekster via `t()`-nøkler i no.json og en.json: `forceReload.available`, `forceReload.required`, `forceReload.updateNow`, `forceReload.updating`, `forceReload.later`, `forceReload.changelog`.
 
 ### 4) Ny hook `src/hooks/useBodyLockRecovery.ts` (monteres i App.tsx ved `useForceReload()`)
