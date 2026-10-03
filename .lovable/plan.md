@@ -85,4 +85,6 @@ export function hasOpenModal(): boolean {
   c) Uten åpen dialog + `requestReload(true)` → reload straks.
   d) Fokus på felt nederst i skjemaet → feltet og Lagre synlige.
   e) Etter lukket dialog: body uten `pointer-events:none` og `data-scroll-locked`.
+  f) Åpne en Popover/Select på en vanlig side (ingen dialog) → `hasOpenModal() === false`.
+  g) Åpne «Rediger oppdrag» → `hasOpenModal() === true`. Åpne en Select inni → fortsatt true.
 - Oppsummer endrede filer til slutt.
