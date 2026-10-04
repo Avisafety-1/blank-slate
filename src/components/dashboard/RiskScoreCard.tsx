@@ -45,6 +45,7 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
+  approvalDecision?: { status: 'approved' | 'not_approved' | null; reason: string; severity: 'info' | 'warning' | 'danger' } | null;
   airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
   groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
   operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
@@ -67,6 +68,7 @@ export const RiskScoreCard = ({
   approvalStatus,
   approvalReason,
   approvalThreshold,
+  approvalDecision,
   airRiskAnalysis,
   groundRiskAnalysis,
   operationClassification,
@@ -155,7 +157,37 @@ export const RiskScoreCard = ({
         </div>
       )}
 
-      {/* Approval Status Banner */}
+      {/* Approval decision banner from the latest assessment — colored by severity.
+          'info' is already covered by the approved/not_approved banners below. */}
+      {approvalDecision && approvalDecision.severity !== 'info' && (
+        <div className={cn(
+          "p-4 rounded-lg border-2",
+          approvalDecision.severity === 'danger'
+            ? "border-red-500 bg-red-500/10"
+            : "border-yellow-500 bg-yellow-500/10"
+        )}>
+          <div className="flex items-start gap-3">
+            <AlertOctagon className={cn(
+              "w-6 h-6 flex-shrink-0 mt-0.5",
+              approvalDecision.severity === 'danger' ? "text-red-500" : "text-yellow-600 dark:text-yellow-400"
+            )} />
+            <div>
+              <h3 className={cn(
+                "font-bold",
+                approvalDecision.severity === 'danger' ? "text-red-700 dark:text-red-300" : "text-yellow-700 dark:text-yellow-300"
+              )}>
+                {t('riskAssessment.approvalDecisionWarning', 'Godkjenningsvarsel')}
+              </h3>
+              <p className={cn(
+                "text-sm mt-1",
+                approvalDecision.severity === 'danger' ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"
+              )}>
+                {approvalDecision.reason}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {approvalStatus === 'approved' && (
         <div className="p-4 rounded-lg border-2 border-green-500 bg-green-500/10">
           <div className="flex items-start gap-3">
