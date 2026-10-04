@@ -30,3 +30,4 @@
 - [x] DJI-loggsynk: «Sync nå» drenerer egen kø umiddelbart, dagvindu for køen, manuell import sperres ikke av logger i kø, riktig melding i knappen
 - [x] E-post ved nytt oppdrag: personell med rolle, ressurser, luftromsvarsler og værvarsel ved oppdragsstart
 - [x] dji-geo-test: testfunksjon mot DJI geo-API (deploy + testkall Gardermoen/Oslo), slettes etter testing
+- [ ] AI-risikovurdering: dato, primærdrone i SORA-revurdering, observatør fra personell (rettelser A–C)
