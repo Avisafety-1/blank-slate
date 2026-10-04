@@ -94,3 +94,10 @@ Deno.test('SORA reassessment cannot invent a hard stop', () => {
     { hard_stop_triggered: false, hard_stop_reason: null },
   );
 });
+Deno.test('mission observer role satisfies requireObserver when manual count is 0', async () => {
+  const { effectiveObserverCount, countMissionObservers } = await import('./missionContext.ts');
+  const missionObserverCount = countMissionObservers(['Luftromsobservatør']).total;
+  assertEquals(missionObserverCount, 1);
+  const reasons = deriveHardStops({ ...base, requireObserver: true, observerCount: effectiveObserverCount(0, missionObserverCount) });
+  assertEquals(reasons.map((r) => r.code).includes('observer'), false);
+});
