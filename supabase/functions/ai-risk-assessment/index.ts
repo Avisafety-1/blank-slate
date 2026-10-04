@@ -2346,7 +2346,18 @@ serve(async (req) => {
             .replace(/Does NOT require Ninox\.?/gi, '')
         : summaryParts.join(' ');
 
+      // If the airspace check never ran or failed, do NOT fabricate "no 5 km zones
+      // nearby" — the summary must say the data is unavailable so the AI cannot
+      // treat it as a verified clear result.
+      const airspaceDataAvailable = airspaceCheckRan && !airspaceCheckFailed;
+      const finalSummaryText = airspaceDataAvailable
+        ? finalText
+        : (asLang === 'en'
+          ? 'Airspace data unavailable — must be checked manually.'
+          : 'Luftromsdata utilgjengelig — må sjekkes manuelt.');
+
       return {
+        available: airspaceDataAvailable,
         warnings: mappedWarnings,
         summary: {
           requires_ninox_approval: unifiedAirspaceActive ? null : requiresNinox,
@@ -2360,7 +2371,7 @@ serve(async (req) => {
           small_airfield_policy: unifiedAirspaceActive
             ? '5 km-sone rundt småflyplass i DK/SE/DE/FI: verifiser PPR/koordineringskrav med lokal luftfartsmyndighet (ikke Ninox).'
             : 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
-          text: finalText,
+          text: finalSummaryText,
         },
       };
     })();
