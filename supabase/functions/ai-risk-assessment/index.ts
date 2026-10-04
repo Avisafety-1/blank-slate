@@ -674,15 +674,16 @@ serve(async (req) => {
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
-    if (authError || !user) {
+    if (authError || !authUser) {
       return new Response(JSON.stringify({ error: prompts.errors.unauthorized }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    user = authUser;
 
     const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
