@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
+import { countMissionObservers, daysUntilOslo, effectiveObserverCount, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
@@ -736,13 +737,47 @@ serve(async (req) => {
 
     console.log(`Starting risk assessment for mission ${missionId}${soraReassessment ? ' (SORA re-assessment)' : ''}`);
 
+    // Caller-scoped client (RLS) — created before any branch so mission access is checked once.
+    const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: accessibleMission } = await callerClient.from('missions').select('id, drone_id').eq('id', missionId).maybeSingle();
+    if (!accessibleMission) {
+      await finishJob('failed', 'mission not accessible');
+      return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const nowForAssessment = new Date();
+    const currentDateOslo = osloDateString(nowForAssessment)!;
+
     // Handle SORA re-assessment mode
     if (soraReassessment && previousAnalysis && pilotComments) {
       const soraLang = normalizeLang(language);
       console.log('[ai-risk-assessment/SORA] Running SORA re-assessment with pilot comments, language:', soraLang);
 
+      // Authoritative drone list from the mission itself (caller RLS), not from the AI text.
+      const missionDroneModels: string[] = [];
+      try {
+        const { data: mdRows } = await callerClient.from('mission_drones').select('drones(modell)').eq('mission_id', missionId);
+        for (const row of (mdRows ?? []) as any[]) {
+          const model = Array.isArray(row?.drones) ? row.drones[0]?.modell : row?.drones?.modell;
+          if (model) missionDroneModels.push(String(model));
+        }
+        const primaryId = (accessibleMission as any)?.drone_id;
+        if (primaryId) {
+          const { data: pd } = await callerClient.from('drones').select('modell').eq('id', primaryId).maybeSingle();
+          if (pd?.modell) missionDroneModels.unshift(String(pd.modell));
+        }
+      } catch (e) {
+        console.error('[ai-risk-assessment/SORA] mission drone lookup failed (non-blocking):', e);
+      }
+
       const soraSystemPrompt = buildSoraReassessSystemPrompt(soraLang);
-      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null);
+      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null, {
+        currentDate: currentDateOslo,
+        droneModels: Array.from(new Set(missionDroneModels)),
+      });
 
 
       const soraAiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -1001,15 +1036,20 @@ serve(async (req) => {
 
         const prevPrimary = (previousAnalysis as any)?.primaryDrone;
         const prevAssigned = (previousAnalysis as any)?.assignedDrones;
-        const knownDroneModels: string[] = [];
+        const prevFacts = (previousAnalysis as any)?.missionFacts;
+        const knownDroneModels: string[] = [...missionDroneModels];
         if (prevPrimary?.model) knownDroneModels.push(String(prevPrimary.model));
         if (Array.isArray(prevAssigned)) {
           for (const d of prevAssigned) {
             if (d?.model) knownDroneModels.push(String(d.model));
           }
         }
+        if (prevFacts?.primaryDroneModel) knownDroneModels.push(String(prevFacts.primaryDroneModel));
+        if (Array.isArray(prevFacts?.assignedDroneModels)) {
+          for (const m of prevFacts.assignedDroneModels) if (m) knownDroneModels.push(String(m));
+        }
         const normalizedKnown = knownDroneModels.map(m => m.toLowerCase());
-        const hasKnownDrone = normalizedKnown.length > 0;
+        const hasKnownDrone = missionDroneModels.length > 0 || normalizedKnown.length > 0;
 
         const DRONE_BRAND_RE = /\b(DJI|Autel|Parrot|Skydio|Yuneec|Mavic|Phantom|Matrice|Anafi|Inspire|Air ?2S?|Mini \d|M\d{2,3}[A-Z]*)\b/gi;
         const scrub = (text: unknown): unknown => {
@@ -1169,29 +1209,44 @@ serve(async (req) => {
       });
     }
 
-    const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: accessibleMission } = await callerClient.from('missions').select('id').eq('id', missionId).maybeSingle();
-    if (!accessibleMission) return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
-      status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
     const soraDocument = await readMissionSoraDocument(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', authHeader.replace('Bearer ', ''), missionId)
       .catch(() => null);
 
     // 2. Fetch assigned personnel for the mission
     // GDPR: Only fetch non-personal data needed for risk assessment (no names, email, phone)
-    const { data: missionPersonnel, error: missionPersonnelError } = await supabase
+    let { data: missionPersonnel, error: missionPersonnelError } = await supabase
       .from('mission_personnel')
-      .select('profile_id, profiles(id, tittel)')
+      .select('profile_id, role_id, profiles(id, tittel), company_mission_roles(name)')
       .eq('mission_id', missionId);
 
     if (missionPersonnelError) {
-      console.error('Mission personnel fetch error:', missionPersonnelError);
+      console.error('Mission personnel fetch with role join failed, falling back:', missionPersonnelError);
+      const fallback = await supabase
+        .from('mission_personnel')
+        .select('profile_id, role_id, profiles(id, tittel)')
+        .eq('mission_id', missionId);
+      missionPersonnel = fallback.data as any;
+      const roleIds = Array.from(new Set((fallback.data ?? []).map((r: any) => r.role_id).filter(Boolean)));
+      if (roleIds.length > 0) {
+        const { data: roles } = await supabase.from('company_mission_roles').select('id, name').in('id', roleIds);
+        const byId = new Map((roles ?? []).map((r: any) => [r.id, r.name]));
+        missionPersonnel = (missionPersonnel ?? []).map((r: any) => ({ ...r, company_mission_roles: r.role_id ? { name: byId.get(r.role_id) ?? null } : null })) as any;
+      }
     }
 
+    const personnelRoleName = (mp: any): string | null => {
+      const r = Array.isArray(mp?.company_mission_roles) ? mp.company_mission_roles[0] : mp?.company_mission_roles;
+      return r?.name ?? null;
+    };
+    const missionPersonnelRoles = (missionPersonnel ?? []).map((mp: any, i: number) => ({
+      identifier: `Person ${i + 1}`,
+      role: personnelRoleName(mp) ?? mp?.profiles?.tittel ?? null,
+    }));
+    const missionObservers = countMissionObservers((missionPersonnel ?? []).map(personnelRoleName));
+    const effectiveObservers = effectiveObserverCount(pilotInputs?.observerCount, missionObservers.total);
+
     const assignedPilots = missionPersonnel?.map((mp: any) => mp.profiles).filter(Boolean) || [];
-    console.log(`Found ${assignedPilots.length} assigned personnel for mission`);
+    console.log(`Found ${assignedPilots.length} assigned personnel for mission; observers=${JSON.stringify(missionObservers)} effective=${effectiveObservers}`);
     if ((missionPersonnel?.length || 0) > 0 && assignedPilots.length === 0) {
       console.log('mission_personnel rows exist, but joined profiles were empty. Sample row:', missionPersonnel?.[0]);
     }
@@ -2287,8 +2342,17 @@ serve(async (req) => {
     })();
     console.log('Airspace facts summary:', JSON.stringify(airspaceFacts.summary));
 
+    const missionDateOslo = osloDateString(mission.tidspunkt ?? null);
     const contextData = {
+      assessmentContext: {
+        currentDate: currentDateOslo,
+        currentDateTime: osloIsoWithOffset(nowForAssessment),
+        missionDate: missionDateOslo,
+        daysUntilMission: missionDateOslo ? daysUntilOslo(currentDateOslo, missionDateOslo) : null,
+      },
       mission: {
+        personnelRoles: missionPersonnelRoles,
+        observers: { ...missionObservers, effective: effectiveObservers },
         soraDocument: soraDocument ? { name: soraDocument.name, readable: soraDocument.readable, reference: soraDocument.reference } : null,
         title: mission.tittel,
         location: mission.lokasjon,
@@ -2370,6 +2434,7 @@ serve(async (req) => {
           flightHours: d.flyvetimer,
           lastInspection: d.sist_inspeksjon,
           nextInspection: d.neste_inspeksjon,
+          daysUntilNextInspection: daysUntilOslo(currentDateOslo, d.neste_inspeksjon),
           available: d.tilgjengelig,
           class: d.klasse,
         };
@@ -2382,6 +2447,7 @@ serve(async (req) => {
         serialNumber: e.serienummer,
         lastMaintenance: e.sist_vedlikeholdt,
         nextMaintenance: e.neste_vedlikehold,
+        daysUntilNextMaintenance: daysUntilOslo(currentDateOslo, e.neste_vedlikehold),
         available: e.tilgjengelig,
       })),
       primaryDrone: droneData ? {
@@ -2400,6 +2466,7 @@ serve(async (req) => {
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
         nextInspection: droneData.neste_inspeksjon,
+        daysUntilNextInspection: daysUntilOslo(currentDateOslo, droneData.neste_inspeksjon),
         available: droneData.tilgjengelig,
         class: droneData.klasse,
         catalogModel: droneCatalogMatch?.name ?? null,
@@ -3184,12 +3251,18 @@ serve(async (req) => {
       maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
         ? null
         : Number(companySoraConfig.max_population_density_per_km2),
-      observerCount: Number(pilotInputs?.observerCount ?? 0),
+      observerCount: effectiveObservers,
       requireObserver: companySoraConfig?.require_observer === true,
     });
     const categoriesWithHardStops = new Set(authoritativeHardStops.map((reason) => reason.category));
     aiAnalysis.hard_stop_triggered = authoritativeHardStops.length > 0;
     aiAnalysis.hard_stop_reason = joinHardStopReasons(authoritativeHardStops);
+    // Ground truth for later SORA re-assessments (no personal data).
+    aiAnalysis.missionFacts = {
+      primaryDroneModel: droneData?.modell ?? null,
+      assignedDroneModels: assignedDrones.map((d: any) => d?.modell).filter(Boolean),
+      observerCount: effectiveObservers,
+    };
     aiAnalysis.summary = removeHardStopClaims(aiAnalysis.summary);
     // Competency wording is system-controlled: strip internal jargon and BVLOS competency claims,
     // then (for BVLOS) add one fixed yellow assumption note.

@@ -129,6 +129,9 @@ Skriv i stedet naturlig norsk, f.eks.:
 
 Disse navnene tilhører dataformatet og skal kun forekomme i selve JSON-nøklene i svaret ditt — ikke i strenginnholdet.
 
+### DAGENS DATO
+Dagens dato er assessmentContext.currentDate. Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid begrepet "primærdrone", aldri "primærdrone".
+
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
 1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km. Nedbør eller IP-rating utløser ALDRI hard stop alene.
@@ -140,7 +143,7 @@ ${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_ina
 ${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selskapet tillater IKKE nattflyging — oppdrag i mørket er HARD STOP.` : ''}
 ${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
 ${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
-${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør. Kravet er oppfylt så lenge pilotInputs.observerCount >= 1 — uavhengig av om noen er tildelt rollen "Observatør" i mission_personnel. HARD STOP utløses KUN dersom pilotInputs.observerCount === 0. Hvis hard stop utløses, bruk teksten: "Antall observatører oppgitt i risikovurderingen er 0 — selskapet krever minst én." Ikke skriv at observatør "ikke er tildelt oppdraget" hvis observerCount >= 1.' : ''}
+${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør. Kravet er oppfylt når mission.observers.effective >= 1. Dette inkluderer observatører tildelt via oppdragets personellroller (mission.personnelRoles) og antall oppgitt i risikovurderingen. HARD STOP kun hvis mission.observers.effective === 0. Luftromsobservatør oppfyller kravet, men gir IKKE M1(C)-kreditering. Ikke skriv at observatør mangler eller ikke er tildelt når mission.observers.effective >= 1.' : ''}
 ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `SIVIL SKUMRING — HARD STOP: Oppdraget er planlagt kl. ${civilTwilightMissionTime} som er UTENFOR sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Dette er et BRUDD og SKAL gi recommendation='no-go' og hard_stop_triggered=true. Forklar i rapporten at tidspunktet bryter selskapets krav om flyging innenfor sivil skumring.` : civilTwilightNoTime ? `SIVIL SKUMRING — ADVARSEL: Selskapet krever flyging innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), men oppdraget har ingen planlagt tid. Gi advarsel i rapporten om at tidspunkt MÅ bekreftes innenfor skumringstidene før flyging.` : `SIVIL SKUMRING: OK — Oppdraget kl. ${civilTwilightMissionTime} er innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Bekreft kort i rapporten at skumringstid er overholdt.`) : ''}
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 HARD STOP-TEKST: hard_stop_reason skal KUN inneholde korte årsaker til vilkår som faktisk er brutt i datagrunnlaget. Ikke ta med bekreftelser på at noe er i orden, at tillatelse ikke kreves, at oppdraget er utenfor en sone, manglende datagrunnlag eller interne korreksjoner/diagnostikk. Ikke skriv «Luftromsbegrunnelse fjernet». Flere faktiske brudd oppgis som separate, korte setninger.
@@ -223,7 +226,7 @@ Hvis BVLOS (isVlos = false):
 
 Hvis VLOS (isVlos = true):
 - Standard vurdering uten ekstra BVLOS-krav.
-- Observer-behov vurderes basert på observerCount.
+- Observer-behov vurderes basert på mission.observers.effective.
 
 ### LUFTRISIKO — AEC, ARC OG TMPR (EASA SORA)
 Du SKAL alltid utføre en strukturert luftrisikoanalyse og returnere den i feltet "air_risk_analysis".
@@ -699,6 +702,9 @@ Instead, write natural English, e.g.:
 
 These names belong to the data format and shall only appear in the JSON keys of your response — not in the string content.
 
+### TODAY'S DATE
+Today's date is assessmentContext.currentDate. Use ONLY this as 'today'. Do not derive today's date from other dates. Use the daysUntil* fields when describing how close a maintenance is (e.g. 'in 6 days'). Always use the term "primary drone".
+
 ### HARD STOP LOGIC
 You SHALL return recommendation="no-go" and hard_stop_triggered=true if:
 1. WEATHER: Wind speed (mean wind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s OR wind gusts > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s OR visibility < ${companySoraConfig?.max_visibility_km ?? 1} km. Precipitation or an IP rating NEVER creates a hard stop by itself.
@@ -710,7 +716,7 @@ ${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_ina
 ${companySoraConfig?.allow_night_flight === false ? `NIGHT FLIGHT FORBIDDEN: The company does NOT allow night flight — missions in darkness are HARD STOP.` : ''}
 ${companySoraConfig?.max_population_density_per_km2 ? `POPULATION DENSITY: The company does NOT allow flight over areas with more than ${companySoraConfig.max_population_density_per_km2} persons/km² — HARD STOP if populationDensity.maxDensity exceeds this value.` : ''}
 ${companySoraConfig?.require_backup_battery ? 'BACKUP BATTERY: The company REQUIRES a backup battery — if missing, this is a HARD STOP.' : ''}
-${companySoraConfig?.require_observer ? 'OBSERVER: The company REQUIRES a dedicated observer. The requirement is satisfied as long as pilotInputs.observerCount >= 1 — regardless of whether anyone is assigned the "Observer" role in mission_personnel. HARD STOP is triggered ONLY if pilotInputs.observerCount === 0. If hard stop is triggered, use the text: "Number of observers entered in the risk assessment is 0 — the company requires at least one." Do not write that an observer is "not assigned to the mission" if observerCount >= 1.' : ''}
+${companySoraConfig?.require_observer ? 'OBSERVER: The company REQUIRES a dedicated observer. The requirement is satisfied when mission.observers.effective >= 1. This includes observers assigned via the mission personnel roles (mission.personnelRoles) and the number entered in the risk assessment. HARD STOP only if mission.observers.effective === 0. An airspace observer satisfies the requirement but does NOT give M1(C) credit. Do not write that an observer is missing or not assigned when mission.observers.effective >= 1.' : ''}
 ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `CIVIL TWILIGHT — HARD STOP: The mission is scheduled at ${civilTwilightMissionTime} which is OUTSIDE civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). This is a BREACH and SHALL result in recommendation='no-go' and hard_stop_triggered=true. Explain in the report that the time violates the company's requirement to fly within civil twilight.` : civilTwilightNoTime ? `CIVIL TWILIGHT — WARNING: The company requires flight within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), but the mission has no scheduled time. Warn in the report that the time MUST be confirmed within the twilight window before flight.` : `CIVIL TWILIGHT: OK — The mission at ${civilTwilightMissionTime} is within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Briefly confirm in the report that the twilight requirement is met.`) : ''}
 IMPORTANT: High pilot experience CANNOT compensate for technical or meteorological exceedances. HARD STOP shall be triggered regardless of other scores.
 HARD STOP TEXT: hard_stop_reason shall contain ONLY concise reasons for conditions actually breached in the supplied data. Do not include confirmations that conditions are acceptable, that approval is not required, that the mission is outside a zone, missing data, or internal corrections/diagnostics. Never write “airspace reason removed”. State multiple actual breaches as separate short sentences.
@@ -793,7 +799,7 @@ If BVLOS (isVlos = false):
 
 If VLOS (isVlos = true):
 - Standard assessment without additional BVLOS requirements.
-- Observer need is assessed based on observerCount.
+- Observer need is assessed based on mission.observers.effective.
 
 ### AIR RISK — AEC, ARC AND TMPR (EASA SORA)
 You SHALL always perform a structured air risk analysis and return it in the field "air_risk_analysis".
@@ -1247,6 +1253,8 @@ export const getPrompts = (language: unknown): Prompts => PROMPTS[normalizeLang(
 
 const SORA_SYSTEM_NO = `Du er en SORA-spesialist (Specific Operations Risk Assessment) for UAS-operasjoner i henhold til EASA-rammeverket (SORA 2.5).
 
+DATO: Dagens dato er assessmentContext.currentDate (oppgitt i brukermeldingen). Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid "primærdrone", aldri "hoveddrone".
+
 Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
 Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
 
@@ -1413,6 +1421,8 @@ Returner denne JSON-strukturen:
 - Vær konservativ, men anerkjenn dokumenterte mitigeringer fra brukerens kommentarer`;
 
 const SORA_SYSTEM_EN = `CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. The input data (previous analysis, pilot comments, mission context) may contain Norwegian text — translate or paraphrase any Norwegian terms into English in your output. Every field, including summary, reasoning, requirement, assurance, descriptions, environment, residual_risk_level, etc., MUST be in English. Do NOT mirror Norwegian in your output.
+
+DATE: Today's date is assessmentContext.currentDate (given in the user message). Use ONLY this as 'today'. Do not derive today's date from other dates. Use the daysUntil* fields when describing how close a maintenance is (e.g. 'in 6 days'). Always use "primary drone".
 
 You are a SORA specialist (Specific Operations Risk Assessment) for UAS operations under the EASA framework (SORA 2.5).
 
@@ -1631,8 +1641,17 @@ export const buildSoraReassessUserPrompt = (
   previousAnalysis: unknown,
   pilotComments: unknown,
   manualOverrides?: unknown,
+  facts?: { currentDate: string; droneModels: string[] } | null,
 ): string => {
   const lang = normalizeLang(language);
+  const factsEn = facts ? `### Mission facts (authoritative)
+Today's date is assessmentContext.currentDate = ${facts.currentDate}. Use ONLY this as 'today'. Do not derive today's date from other dates. Use the daysUntil* fields when describing how close a maintenance is (e.g. 'in 6 days').
+Drones assigned to the mission (primary drone first): ${JSON.stringify(facts.droneModels)}. Always use the term "primary drone".
+` : '';
+  const factsNo = facts ? `### Oppdragsfakta (autoritative)
+Dagens dato er assessmentContext.currentDate = ${facts.currentDate}. Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager').
+Droner på oppdraget (primærdrone først): ${JSON.stringify(facts.droneModels)}. Bruk alltid begrepet "primærdrone", aldri "hoveddrone".
+` : '';
   const { ackOnly, substantive } = classifyComments(pilotComments);
   const moRaw = manualOverrides && typeof manualOverrides === 'object' ? manualOverrides as Record<string, unknown> : null;
   const mo = moRaw ? humanizeOverrides(moRaw, lang) : null;
@@ -1669,6 +1688,7 @@ Regler for disse overstyringene:
 
 Generate a SORA analysis based on the following data:
 
+${factsEn}
 ### Initial AI risk assessment:
 ${JSON.stringify(previousAnalysis, null, 2)}
 
@@ -1689,6 +1709,7 @@ Analyze the data and produce a complete SORA assessment with SAIL lookup, contai
   }
   return `Generer en SORA-analyse basert på følgende data:
 
+${factsNo}
 ### Opprinnelig AI-risikovurdering:
 ${JSON.stringify(previousAnalysis, null, 2)}
 

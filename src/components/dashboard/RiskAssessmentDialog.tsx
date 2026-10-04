@@ -345,6 +345,29 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     })();
   }, [currentMissionId, open]);
 
+  // Prefill observer count from mission personnel roles (user can still edit)
+  const [missionObserverCount, setMissionObserverCount] = useState(0);
+  useEffect(() => {
+    if (!open || !currentMissionId) { setMissionObserverCount(0); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('mission_personnel')
+        .select('company_mission_roles(name)')
+        .eq('mission_id', currentMissionId);
+      if (cancelled) return;
+      const count = ((data || []) as any[]).filter((r) => {
+        const role = Array.isArray(r.company_mission_roles) ? r.company_mission_roles[0] : r.company_mission_roles;
+        const name = String(role?.name ?? '');
+        return /observat|observer/i.test(name) || /\bVO\b/.test(name);
+      }).length;
+      setMissionObserverCount(count);
+      if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: Math.max(prev.observerCount, count) }));
+    })();
+    return () => { cancelled = true; };
+  }, [currentMissionId, open]);
+
+
   // Auto-set operation type from mission's oppdragstype
   useEffect(() => {
     const type = (soraMissionDetails as any)?.oppdragstype;
@@ -936,6 +959,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             observerCount: e.target.value === '' ? 0 : parseInt(e.target.value) 
                           }))}
                         />
+                        {missionObserverCount > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t('riskAssessment.observersFromPersonnel', 'Hentet fra oppdragets personell')}
+                          </p>
+                        )}
                       </div>
 
                       <div>

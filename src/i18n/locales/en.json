@@ -3285,7 +3285,8 @@
       "airRiskReason": "NOTAM area marked as segregated/atypical airspace — initial ARC is set to ARC-a.",
       "airRiskNotApplied": "Enable the toggle above if the mission should be treated as segregated/atypical airspace."
     },
-    "atypicalSegregated": "Segregated/atypical airspace (NOTAM area)"
+    "atypicalSegregated": "Segregated/atypical airspace (NOTAM area)",
+    "observersFromPersonnel": "Taken from the mission's personnel"
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",
