@@ -2825,7 +2825,18 @@ serve(async (req) => {
       };
     }
 
-    const deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 0;
+    // Density basis: unknown population → highest band (5000). The `controlled`
+    // proximity choice grants controlled ground area (density 0). A measured
+    // density of 0 gives the lowest POPULATED band, not controlled ground area.
+    const controlledGroundSelected = (pilotInputs?.proximityToPeople ?? null) === 'controlled';
+    const populationDataAvailable = populationData != null;
+    const populationDensityUnknown = !populationDataAvailable;
+    let deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 5000;
+    if (controlledGroundSelected) {
+      deterministicPopulationDensityValue = 0;
+    } else if (populationData && deterministicPopulationDensityValue <= 0) {
+      deterministicPopulationDensityValue = 1; // lowest populated band (<100/km²)
+    }
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
     const grLang = resolveLang(language);
     const grEn = grLang === 'en';
@@ -2840,22 +2851,31 @@ serve(async (req) => {
       observerCount: effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible),
       lang: grLang,
       manualMitigations: manualGroundMitigations ?? null,
+      controlledGroundSelected,
+      populationDensityUnknown,
     });
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
       const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
       const driverFallback = grEn ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
+      const zeroDensityNote = controlledGroundSelected
+        ? (grEn
+            ? ' Controlled ground area selected by the operator — no uninvolved people are assumed within the footprint.'
+            : ' Kontrollert bakkeområde valgt av operatøren — ingen uinvolverte personer forutsettes innenfor fotavtrykket.')
+        : (grEn
+            ? ' No populated cells were found inside the footprint — the lowest populated band is used (not controlled ground area).'
+            : ' Ingen befolkede ruter ble funnet innenfor fotavtrykket — det laveste befolkede båndet brukes (ikke kontrollert bakkeområde).');
       const populationDensityDescription = populationData.cellCount > 0
         ? (grEn
             ? `We use population density data from Statistics Norway (SSB) to determine the population density within the drone operation footprint. The assessment is based on a 250-metre grid. The cell with the highest population density overlapping the footprint is dimensioning: ${populationData.calculation}. Average population density within the footprint is ${formatLocaleNumber(populationDensityAverage, 1, grLang)} people/km² based on ${formatLocaleNumber(populationData.cellCount, 0, grLang)} overlapping cells. The dimensioning cell is located ${populationData.driver ?? driverFallback}.`
             : `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? driverFallback}.`)
-        : populationData.summary;
+        : populationData.summary + zeroDensityNote;
 
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
-        population_density_value: populationDensityValue,
+        population_density_value: controlledGroundSelected ? 0 : populationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
@@ -2870,8 +2890,8 @@ serve(async (req) => {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
         population_density_description: grEn
-          ? 'SSB 250 m population density was not available. The system uses a conservative fallback to avoid AI variation.'
-          : 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. The highest population band (5000 people/km²) is used as the basis.'
+          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. Det høyeste befolkningsbåndet (5000 personer/km²) brukes som grunnlag.',
       };
     }
 
