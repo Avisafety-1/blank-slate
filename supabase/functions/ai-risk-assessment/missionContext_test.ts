@@ -39,7 +39,7 @@ Deno.test('observer roles are counted and split', () => {
 });
 
 Deno.test('filterPilots keeps pilot roles and role-less personnel, drops observers', () => {
-  const rows = [
+  const rows: Array<{ name: string; role: string | null } | null> = [
     { name: 'Per', role: 'Fjernpilot' },
     { name: 'Kari', role: 'Observatør' },
     { name: 'Lars', role: 'Luftromsobservatør' },
