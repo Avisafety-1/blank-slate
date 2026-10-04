@@ -29,7 +29,10 @@ Deno.test('ISO timestamp carries Oslo offset', () => {
 
 Deno.test('observer roles are counted and split', () => {
   const r = countMissionObservers(['Pilot', 'Luftromsobservatør', 'Bakkeobservatør', 'Observer', null]);
-  assertEquals(r, { airspace: 1, ground: 1, total: 3 });
+  assertEquals(r, { airspace: 1, ground: 1, total: 3, m1cEligible: 2 });
+  assertEquals(countMissionObservers(['Observatør']), { total: 1, airspace: 0, ground: 0, m1cEligible: 1 });
+  assertEquals(countMissionObservers(['Luftromsobservatør']), { total: 1, airspace: 1, ground: 0, m1cEligible: 0 });
+  assertEquals(countMissionObservers(['Bakkeobservatør']), { total: 1, airspace: 0, ground: 1, m1cEligible: 1 });
   assertEquals(effectiveObserverCount(0, r.total), 3);
   assertEquals(effectiveObserverCount(undefined, 0), 0);
   assertEquals(effectiveObserverCount('2', 1), 2);

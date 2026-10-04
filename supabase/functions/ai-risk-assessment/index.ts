@@ -280,8 +280,8 @@ const buildDeterministicGroundRisk = ({
     : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.';
   const m1cReason = observers > 0
     ? (en
-        ? `Automatically credited (Low): ${observers} declared ground observer(s) monitor the overflown area and can alter the flight pattern.`
-        : `Automatisk kreditert (Lav): ${observers} oppgitt(e) bakkeobservatør(er) overvåker overflyst område og kan endre flygemønster.`)
+        ? `Automatically credited (Low): ${observers} observer(s) assigned to the mission monitor the overflown area and can alert the pilot so the flight pattern is changed. Assumes the observer's task and communication are described in the company's procedures.`
+        : `Automatisk kreditert (Lav): ${observers} observatør(er) tildelt oppdraget overvåker overflyst område og kan varsle piloten slik at flygemønsteret endres. Forutsetter at observatørens oppgave og kommunikasjon er beskrevet i selskapets prosedyrer.`)
     : en
     ? 'Not automatically credited. Standard VLOS, pilot or airspace observer does not provide fGRC reduction without explicitly documented ground-based observation of the overflown area and the ability to alter the flight pattern.'
     : 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.';
@@ -2759,7 +2759,7 @@ serve(async (req) => {
       populationDensityAverage: deterministicPopulationDensityAverage,
       populationData,
       assignedEquipment,
-      observerCount: Number(pilotInputs?.observerCount ?? 0),
+      observerCount: effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible),
       lang: grLang,
       manualMitigations: manualGroundMitigations ?? null,
     });

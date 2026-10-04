@@ -42,18 +42,19 @@ export const daysUntilOslo = (currentDate: string, target: Date | string | null 
   return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(cy, cm - 1, cd)) / 86400000);
 };
 
-export interface MissionObservers { airspace: number; ground: number; total: number }
+export interface MissionObservers { airspace: number; ground: number; total: number; m1cEligible: number }
 
 /** Counts observers from mission personnel role names. */
 export const countMissionObservers = (roleNames: Array<string | null | undefined>): MissionObservers => {
-  const result = { airspace: 0, ground: 0, total: 0 };
+  const result = { airspace: 0, ground: 0, total: 0, m1cEligible: 0 };
   for (const raw of roleNames) {
     const name = String(raw ?? '');
     const isObserver = /observat|observer/i.test(name) || /\bVO\b/.test(name);
     if (!isObserver) continue;
     result.total++;
-    if (/luftrom|airspace/i.test(name) || /\bVO\b/.test(name)) result.airspace++;
-    else if (/bakke|ground/i.test(name)) result.ground++;
+    if (/luftrom|airspace/i.test(name) || /\bVO\b/.test(name)) { result.airspace++; continue; }
+    result.m1cEligible++;
+    if (/bakke|ground/i.test(name)) result.ground++;
   }
   return result;
 };

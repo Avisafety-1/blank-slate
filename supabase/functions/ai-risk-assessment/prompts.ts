@@ -130,7 +130,7 @@ Skriv i stedet naturlig norsk, f.eks.:
 Disse navnene tilhører dataformatet og skal kun forekomme i selve JSON-nøklene i svaret ditt — ikke i strenginnholdet.
 
 ### DAGENS DATO
-Dagens dato er assessmentContext.currentDate. Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid begrepet "primærdrone", aldri "primærdrone".
+Dagens dato er assessmentContext.currentDate. Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid begrepet "primærdrone", aldri "hoveddrone".
 
 ### HARD STOP-LOGIKK
 Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
@@ -404,6 +404,7 @@ SSB-metode for populationDensity:
 
 **M1(C) — Bakkeobservasjon (taktisk mitigering via observatør):**
 - Low robusthet (-1): Observatør overvåker overflyst område og pilot justerer flygemønster
+- M1(C) krediteres automatisk når mission.observers.m1cEligible >= 1 eller pilotInputs.observerCount >= 1. Luftrom-only observatører gir ikke M1(C).
 
 **M2 — Redusert treffenergi (fallskjerm e.l.):**
 - Medium robusthet (-1): MoC 2512 for energidempning
@@ -977,6 +978,7 @@ SSB method for populationDensity:
 
 **M1(C) — Ground observation (tactical mitigation via observer):**
 - Low robustness (-1): Observer monitors the overflown area and the pilot adjusts the flight pattern
+- M1(C) is credited automatically when mission.observers.m1cEligible >= 1 or pilotInputs.observerCount >= 1. Airspace-only observers do not give M1(C).
 
 **M2 — Reduced impact energy (parachute etc.):**
 - Medium robustness (-1): MoC 2512 for energy attenuation
