@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { countMissionObservers, daysUntilOslo, effectiveObserverCount, osloDateString, osloIsoWithOffset } from './missionContext.ts';
+import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from './missionContext.ts';
 
 Deno.test('Oslo date rolls over at local midnight (summer time)', () => {
   assertEquals(osloDateString(new Date('2026-10-03T21:59:00Z')), '2026-10-03');
