@@ -796,17 +796,20 @@ serve(async (req) => {
             { role: 'user', content: soraUserPrompt },
           ],
         }),
+        signal: AbortSignal.timeout(90_000),
       });
 
       if (!soraAiResponse.ok) {
         const errorText = await soraAiResponse.text();
         console.error('SORA AI gateway error:', soraAiResponse.status, errorText);
         if (soraAiResponse.status === 429) {
+          await finishJob('failed', 'AI gateway rate limited (SORA reassessment)');
           return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
         if (soraAiResponse.status === 402) {
+          await finishJob('failed', 'AI gateway credits exhausted (SORA reassessment)');
           return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
             status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -1406,6 +1409,7 @@ serve(async (req) => {
               'Authorization': `Bearer ${supabaseKey}`,
             },
             body: JSON.stringify({ lat, lon: lng, targetTime: mission.tidspunkt }),
+            signal: AbortSignal.timeout(15_000),
           });
           if (weatherResponse.ok) {
             weatherData = await weatherResponse.json();
