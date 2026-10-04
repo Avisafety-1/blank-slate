@@ -3286,7 +3286,7 @@
       "airRiskNotApplied": "Enable the toggle above if the mission should be treated as segregated/atypical airspace."
     },
     "atypicalSegregated": "Segregated/atypical airspace (NOTAM area)",
-    "observersFromPersonnel": "Taken from the mission's personnel"
+    "observersFromPersonnelM1c": "Taken from the mission's personnel ({{n}} observer(s)). Gives M1(C) credit."
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",

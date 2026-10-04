@@ -359,7 +359,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       const count = ((data || []) as any[]).filter((r) => {
         const role = Array.isArray(r.company_mission_roles) ? r.company_mission_roles[0] : r.company_mission_roles;
         const name = String(role?.name ?? '');
-        return /observat|observer/i.test(name) || /\bVO\b/.test(name);
+        const isObserver = /observat|observer/i.test(name) || /\bVO\b/.test(name);
+        const airspaceOnly = /luftrom|airspace/i.test(name) || /\bVO\b/.test(name);
+        return isObserver && !airspaceOnly;
       }).length;
       setMissionObserverCount(count);
       if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: Math.max(prev.observerCount, count) }));
@@ -961,7 +963,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         />
                         {missionObserverCount > 0 && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {t('riskAssessment.observersFromPersonnel', 'Hentet fra oppdragets personell')}
+                            {t('riskAssessment.observersFromPersonnelM1c', { n: missionObserverCount, defaultValue: 'Hentet fra oppdragets personell ({{n}} observatør(er)). Gir M1(C)-kreditering.' })}
                           </p>
                         )}
                       </div>
