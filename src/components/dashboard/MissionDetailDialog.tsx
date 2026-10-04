@@ -74,7 +74,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   };
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
-   const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string; hasSoraReassessment: boolean } | null>(null);
+   const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string; hasSoraReassessment: boolean; approvalDanger?: string | null } | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
@@ -119,10 +119,16 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       }
       setMissionFlightLogs(logsRes.data || []);
        const latestRisk = riskRes.data?.[0];
+       const latestDecision = (latestRisk as any)?.ai_analysis?.approvalDecision;
+       const latestDanger = latestDecision?.severity === 'danger' &&
+         (latestDecision.status === 'approved' || latestDecision.status === 'pending_approval')
+           ? latestDecision.reason
+           : null;
        setFetchedAiRisk(latestRisk ? {
          overall_score: latestRisk.overall_score,
          recommendation: latestRisk.recommendation as string,
          hasSoraReassessment: hasSoraReassessment(riskRes.data || []),
+         approvalDanger: latestDanger,
        } : null);
     };
     fetchLatest();
