@@ -1529,9 +1529,14 @@ serve(async (req) => {
       }
     };
 
+    // Availability of the airspace check (used for dataAvailability and prompt facts).
+    let airspaceCheckRan = false;
+    let airspaceCheckFailed = false;
+
     if (lat && lng) {
       for (const run of airspaceRuns) {
         try {
+          airspaceCheckRan = true;
           const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
             p_lat: lat,
             p_lng: lng,
@@ -1539,11 +1544,13 @@ serve(async (req) => {
           });
           if (airspaceError) {
             console.error('Airspace check RPC error:', airspaceError);
+            airspaceCheckFailed = true;
           } else {
             mergeWarnings(warnings || [], run.label);
           }
         } catch (e) {
           console.error('Airspace check error:', e);
+          airspaceCheckFailed = true;
         }
       }
       console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
