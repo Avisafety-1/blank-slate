@@ -202,6 +202,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
     if (!currentMissionId || !currentAssessment) return;
     setRunningSora(true);
+    const missionIdAtStart = currentMissionId;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -291,6 +292,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
+      // Ignore the response if the user has switched to another mission meanwhile.
+      if (missionRef.current !== missionIdAtStart) return;
       setSoraOutput(result.soraAnalysis);
       if (result.assessment?.id) {
         setCurrentAssessmentId(result.assessment.id);
