@@ -3288,7 +3288,7 @@
       "airRiskNotApplied": "Slå på bryteren over hvis oppdraget skal behandles som segregert/atypisk luftrom."
     },
     "atypicalSegregated": "Segregert/atypisk luftrom (NOTAM-området)",
-    "observersFromPersonnel": "Hentet fra oppdragets personell"
+    "observersFromPersonnelM1c": "Hentet fra oppdragets personell ({{n}} observatør(er)). Gir M1(C)-kreditering."
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",
