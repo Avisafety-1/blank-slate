@@ -9,16 +9,19 @@ Regler (i denne rekkefølgen):
 - **Godkjent (`approved`)**: statusen endres aldri. Hard stop → rødt varsel «Oppdraget er godkjent, men siste vurdering har hard stop: …». NO-GO → «… har NO-GO i <kategori>».
 - **Sendt til godkjenning (`pending_approval`)**: hard stop eller NO-GO endrer ikke statusen. Det gir et rødt varsel: «Siste vurdering har hard stop: … — godkjenner må ta stilling» (eller «… har NO-GO i <kategori>»). Beslutningen ligger hos godkjenneren. Score under terskel endrer heller ikke statusen («AI-score X under terskel Y — venter på manuell godkjenning»). Alle krav oppfylt, uten hard stop/NO-GO og med automatisk godkjenning på → `approved`.
 - **Ikke godkjent (`not_approved`)**: `approved` bare når automatisk godkjenning er på OG score ≥ terskel, ingen hard stop, ingen NO-GO-kategori, vær er vurdert, alle datakilder finnes og vurderingen ble lagret. Ellers uendret, og årsaken oppgis konkret (første krav som ikke er oppfylt).
-- Hard stop-regelen gjelder også når automatisk godkjenning er av. `sora_hardstop_requires_approval` ignoreres.
+- **Automatisk godkjenning av:** `decideApproval` returnerer alltid `status=null`, altså ingen statusendring. Begrunnelse og alvorlighetsgrad beregnes likevel, så røde varsler vises fortsatt. `sora_hardstop_requires_approval` ignoreres.
 - Begrunnelsene skrives på brukerens språk (NO/EN).
 - `normalizeRiskScore` runder til én desimal (6.5 forblir 6.5). Brøk-skalaen (0–1) beholdes.
-- **Tilgang:** statusen skrives via brukerens egen tilgang (`callerClient.update(...).select('id')`). Hvis ingen rad kommer tilbake, endres ingenting, og begrunnelsen blir «Du har ikke tilgang til å endre godkjenningsstatus».
+- **Tilgang:** statusen kan skrives hvis brukeren (1) kan oppdatere oppdraget med sin egen tilgang, eller (2) er tildelt oppdraget som personell. Begge deler sjekkes med brukerens egen tilgang (`callerClient`). Selve skrivingen skjer deretter med service-role. Hvis ingen av delene stemmer, endres ingenting, og begrunnelsen blir «Du har ikke tilgang til å endre godkjenningsstatus».
 - Begrunnelsen og alvorlighetsgraden lagres i `aiAnalysis.approvalDecision`. Da kan oppdragskortet vise det røde varselet fra siste vurdering uten nye kolonner.
 
 ## 2) Manglende data gir et konservativt resultat
 - `dataAvailability = { population, airspace, weather }` lagres i `aiAnalysis.dataAvailability`. Dialogen viser en gul advarsel: «Datagrunnlag mangler: …».
-- **Befolkning ukjent** (SSB/Eurostat feilet eller ingen rute): bruk det høyeste befolkningsbåndet i iGRC-tabellen. Ground risk-teksten sier at tettheten er ukjent.
-- **Befolkning målt til 0:** gir det laveste befolkede båndet, ikke kontrollert bakkeområde. Kontrollert bakkeområde brukes bare når operatøren har valgt det (`proximityToPeople === 'controlled'`). Teksten «konservativ fallback» om 0-tetthet fjernes.
+- **Punktoppdrag uten rute:** tettheten beregnes fra SSB/Eurostat i en sirkel rundt oppdragspunktet. Radius = flygeografi + contingency + bakkerisikobuffer fra SORA-innstillingene når de finnes, ellers 500 m. Ground risk-teksten får merknaden «Estimert rundt oppdragspunkt (ingen rute tegnet)».
+- **Oppdrag utenfor Norge** (`unifiedAirspaceActive`): det verifiseres at de får Eurostat-tetthet både for rute og punkt, og ikke havner i «ukjent». Hvis ikke, legges Eurostat inn for dem.
+- **Befolkning ukjent:** gjelder bare når oppslaget feiler eller oppdraget verken har rute eller koordinater. Da brukes det høyeste befolkningsbåndet, `population=false`, og teksten sier at tettheten er ukjent.
+- **Befolkning målt til 0:** gir det laveste befolkede båndet, ikke kontrollert bakkeområde. Kontrollert bakkeområde brukes bare ved det nye valget `controlled`; «Ingen» (`none`) gir det ikke. Teksten «konservativ fallback» om 0-tetthet fjernes.
+- **Nytt valg i dialogen:** «Kontrollert bakkeområde (operatør garanterer ingen uinvolverte personer)» med ny i18n-nøkkel i `no.json` og `en.json`.
 - **Luftrom:** hvis RPC-en feiler eller koordinater mangler, står det «Luftromsdata utilgjengelig — må sjekkes manuelt», og kategorien settes til minst BETINGET. Teksten «Ingen 5 km-soner …» brukes bare når sjekken faktisk ble kjørt.
 - **Vær:** hvis værhentingen feiler og vær ikke er valgt bort, får kategorien IKKE VURDERT og `weather=false`.
 
