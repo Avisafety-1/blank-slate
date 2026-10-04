@@ -3443,6 +3443,14 @@ serve(async (req) => {
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
 
+    // Data availability, stored on the assessment so the dialog can warn when
+    // a data source was missing.
+    aiAnalysis.dataAvailability = {
+      population: populationDataAvailable,
+      airspace: airspaceFacts.available !== false,
+      weather: weatherData != null || skipWeather,
+    };
+
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase
       .from('mission_risk_assessments')
