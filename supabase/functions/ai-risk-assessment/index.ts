@@ -639,6 +639,23 @@ serve(async (req) => {
 
   let prompts = getPrompts(undefined);
 
+  // Declared before try so the catch can finalize a failed job.
+  let supabase: ReturnType<typeof createClient> | null = null;
+  let user: { id: string } | null = null;
+  let jobId: string | null = null;
+  let jobStart = 0;
+  const finishJob = async (status: 'done' | 'failed', errorMessage?: string) => {
+    if (!jobId || !supabase) return;
+    try {
+      await supabase.from('ai_risk_assessment_jobs').update({
+        status,
+        finished_at: new Date().toISOString(),
+        duration_ms: jobStart ? Date.now() - jobStart : 0,
+        error_message: errorMessage ?? null,
+      }).eq('id', jobId);
+    } catch (e) { console.error('finishJob error', e); }
+  };
+
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -647,7 +664,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
