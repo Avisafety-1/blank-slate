@@ -129,7 +129,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   // Guard: responses for a mission that is no longer selected are ignored.
   const missionRef = useRef<string | null>(null);
-  useEffect(() => { missionRef.current = currentMissionId; }, [currentMissionId]);
   // One common "busy" flag gates both the full assessment and the SORA re-assessment.
   const busy = loading || runningSora;
 
