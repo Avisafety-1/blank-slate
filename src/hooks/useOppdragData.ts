@@ -25,6 +25,14 @@ export interface MissionFilterOptions {
 
 const PAGE_SIZE = 10;
 
+/** Red warning marker: latest assessment's approval decision is dangerous on an approved/pending mission. */
+const getApprovalDanger = (risk: any): string | null => {
+  const decision = risk?.ai_analysis?.approvalDecision;
+  return decision?.severity === 'danger' && (decision.status === 'approved' || decision.status === 'pending_approval')
+    ? decision.reason
+    : null;
+};
+
 
 export const useOppdragData = () => {
   const { user, loading, companyId } = useAuth();
