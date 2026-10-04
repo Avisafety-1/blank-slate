@@ -49,5 +49,5 @@ Deno.test('filterPilots keeps pilot roles and role-less personnel, drops observe
   ];
   const pilots = filterPilots(rows, (r) => r.role).map((r) => r.name);
   assertEquals(pilots, ['Per', 'Hans', 'Nina']);
-  assertEquals(filterPilots([], (r) => r.role), []);
+  assertEquals(filterPilots([] as Array<{ name: string; role: string | null }>, (r) => r.role), []);
 });
