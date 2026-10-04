@@ -7,7 +7,7 @@ Ny `approval.ts` med `decideApproval(input) → { status: 'approved' | 'not_appr
 
 Regler (i denne rekkefølgen):
 - **Godkjent (`approved`)**: statusen endres aldri. Hard stop → rødt varsel «Oppdraget er godkjent, men siste vurdering har hard stop: …». NO-GO → «… har NO-GO i <kategori>».
-- **Sendt til godkjenning (`pending_approval`)**: hard stop → `not_approved` («Hard stop utløst (…) — send til godkjenning på nytt når forholdet er løst»). Alle krav oppfylt og automatisk godkjenning på → `approved`. Ellers uendret, f.eks. «AI-score X under terskel Y — venter på manuell godkjenning».
+- **Sendt til godkjenning (`pending_approval`)**: hard stop eller NO-GO endrer ikke statusen. Det gir et rødt varsel: «Siste vurdering har hard stop: … — godkjenner må ta stilling» (eller «… har NO-GO i <kategori>»). Beslutningen ligger hos godkjenneren. Score under terskel endrer heller ikke statusen («AI-score X under terskel Y — venter på manuell godkjenning»). Alle krav oppfylt, uten hard stop/NO-GO og med automatisk godkjenning på → `approved`.
 - **Ikke godkjent (`not_approved`)**: `approved` bare når automatisk godkjenning er på OG score ≥ terskel, ingen hard stop, ingen NO-GO-kategori, vær er vurdert, alle datakilder finnes og vurderingen ble lagret. Ellers uendret, og årsaken oppgis konkret (første krav som ikke er oppfylt).
 - Hard stop-regelen gjelder også når automatisk godkjenning er av. `sora_hardstop_requires_approval` ignoreres.
 - Begrunnelsene skrives på brukerens språk (NO/EN).
@@ -36,13 +36,13 @@ Regler (i denne rekkefølgen):
 - Svar ignoreres hvis `missionId` ikke lenger er valgt oppdrag (sammenlignes via en ref).
 - Ett felles «opptatt»-flagg for full vurdering og SORA-revurdering.
 - Nye visninger: gul boks for manglende data og rød/gul godkjenningsbegrunnelse. Nye i18n-nøkler i `no.json` og `en.json`.
-- Oppdragskortet viser det røde varselet når siste vurdering har `approvalDecision.severity === 'danger'` på et godkjent oppdrag.
+- Det røde varselet vises når siste vurdering har `approvalDecision.severity === 'danger'` på et godkjent oppdrag eller et oppdrag som er sendt til godkjenning. Det vises på oppdragskortet og i godkjenningsvisningen, slik at godkjenneren ser årsaken før hen godkjenner.
 
 ## Uendret
 iGRC-tabell, M1(B)/M2, C0-kompetanse, SORA-revurderingens fGRC/ARC, observatør/M1(C)-logikken og varslingsflyten for «send til godkjenning».
 
 ## Validering
-- `approval_test.ts` dekker alle 11 tilfellene i oppdraget, inkludert 6.5 → 6.5.
+- `approval_test.ts` dekker tilfellene i oppdraget, inkludert 6.5 → 6.5. For `pending_approval` testes dette: hard stop → uendret og årsaken står i begrunnelsen; NO-GO → uendret; lav score → uendret; alt grønt og auto på → `approved`. Testen «pending + hard stop → not_approved» er fjernet.
 - Hard stop-test: bare «Observatør» på oppdraget gir `pilot_missing` (via ny ren `filterPilots`).
 - `deno test supabase/functions/ai-risk-assessment/` og `npx tsc --noEmit -p tsconfig.app.json`. Edge-funksjonen deployes.
 - Manuelt (krever innlogging, gjøres av deg): vurder oppdrag A, lukk, åpne B → ingen data fra A.
