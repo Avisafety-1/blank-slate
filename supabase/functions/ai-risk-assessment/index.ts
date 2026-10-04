@@ -730,7 +730,7 @@ serve(async (req) => {
       }
     }
 
-    const jobStart = Date.now();
+    jobStart = Date.now();
     const { data: jobRow } = await supabase
       .from('ai_risk_assessment_jobs')
       .insert({
@@ -741,19 +741,7 @@ serve(async (req) => {
       })
       .select('id')
       .single();
-    const jobId: string | null = jobRow?.id ?? null;
-
-    const finishJob = async (status: 'done' | 'failed', errorMessage?: string) => {
-      if (!jobId) return;
-      try {
-        await supabase.from('ai_risk_assessment_jobs').update({
-          status,
-          finished_at: new Date().toISOString(),
-          duration_ms: Date.now() - jobStart,
-          error_message: errorMessage ?? null,
-        }).eq('id', jobId);
-      } catch (e) { console.error('finishJob error', e); }
-    };
+    jobId = jobRow?.id ?? null;
     // ---- End Phase 2 gate ----
 
     console.log(`Starting risk assessment for mission ${missionId}${soraReassessment ? ' (SORA re-assessment)' : ''}`);
