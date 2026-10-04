@@ -1004,6 +1004,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ssb_data">{t('riskAssessment.proximity.ssbData', 'SSB data (automatisk)')}</SelectItem>
+                            <SelectItem value="controlled">{t('riskAssessment.proximity.controlled', 'Kontrollert bakkeområde (operatør garanterer ingen uinvolverte personer)')}</SelectItem>
                             <SelectItem value="none">{t('riskAssessment.proximity.none', 'Ingen')}</SelectItem>
                             <SelectItem value="few">{t('riskAssessment.proximity.few', 'Få')}</SelectItem>
                             <SelectItem value="many">{t('riskAssessment.proximity.many', 'Mange')}</SelectItem>
@@ -1064,7 +1065,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                   <Button 
                     onClick={runAssessment} 
-                    disabled={loading}
+                    disabled={busy}
                     className="w-full"
                   >
                     {loading ? (
@@ -1123,6 +1124,29 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </div>
 
                     {/* Score Card with new SMS fields */}
+                    {(() => {
+                      const da = currentAssessment?.dataAvailability as Record<string, boolean> | undefined;
+                      if (!da) return null;
+                      const sourceNames: Record<string, string> = {
+                        population: t('riskAssessment.dataSources.population', 'befolkningsdata'),
+                        airspace: t('riskAssessment.dataSources.airspace', 'luftromsdata'),
+                        weather: t('riskAssessment.dataSources.weather', 'værdata'),
+                      };
+                      const missing = Object.entries(da)
+                        .filter(([, available]) => available === false)
+                        .map(([key]) => sourceNames[key] ?? key);
+                      if (missing.length === 0) return null;
+                      return (
+                        <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-foreground">
+                              {t('riskAssessment.dataAvailabilityMissing', 'Datagrunnlag mangler: {{sources}}', { sources: missing.join(', ') })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <RiskScoreCard
                       overallScore={currentAssessment.overall_score}
                       recommendation={currentAssessment.recommendation}
@@ -1138,6 +1162,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       approvalStatus={currentAssessment._approvalStatus}
                       approvalReason={currentAssessment._approvalReason}
                       approvalThreshold={currentAssessment._approvalThreshold}
+                      approvalDecision={currentAssessment.approvalDecision ?? (currentAssessment._approvalStatus
+                        ? { status: currentAssessment._approvalStatus, reason: currentAssessment._approvalReason }
+                        : null)}
                       airRiskAnalysis={currentAssessment.air_risk_analysis}
                       groundRiskAnalysis={currentAssessment.ground_risk_analysis}
                       operationClassification={currentAssessment.operation_classification}
@@ -1191,7 +1218,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                               runSoraReassessment();
                             }
                           }}
-                          disabled={runningSora}
+                          disabled={busy}
                           className="w-full"
                         >
                           {runningSora ? (
