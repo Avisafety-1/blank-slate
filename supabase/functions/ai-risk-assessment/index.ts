@@ -182,6 +182,8 @@ const buildDeterministicGroundRisk = ({
   observerCount = 0,
   lang = 'no',
   manualMitigations = null,
+  controlledGroundSelected = false,
+  populationDensityUnknown = false,
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -193,6 +195,8 @@ const buildDeterministicGroundRisk = ({
   observerCount?: number;
   lang?: Lang;
   manualMitigations?: Record<string, { applicable?: boolean; robustness?: string | null }> | null;
+  controlledGroundSelected?: boolean;
+  populationDensityUnknown?: boolean;
 }) => {
   const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
   const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
