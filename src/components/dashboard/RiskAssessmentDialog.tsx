@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -126,6 +126,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     skipWeatherEvaluation: false,
   });
   const [atypicalSegregated, setAtypicalSegregated] = useState(false);
+
+  // Guard: responses for a mission that is no longer selected are ignored.
+  const missionRef = useRef<string | null>(null);
+  useEffect(() => { missionRef.current = currentMissionId; }, [currentMissionId]);
+  // One common "busy" flag gates both the full assessment and the SORA re-assessment.
+  const busy = loading || runningSora;
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
@@ -303,6 +309,22 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   useEffect(() => {
     if (open) {
       setActiveTab(initialTab);
+      // Reset per-mission state so no data from a previous mission leaks in.
+      setCurrentAssessment(null);
+      setCurrentAssessmentId(null);
+      setSoraOutput(null);
+      setCategoryComments({});
+      setPilotInputs({
+        flightHeight: 120,
+        operationType: 'inspection',
+        isVlos: true,
+        observerCount: 0,
+        atcRequired: false,
+        proximityToPeople: 'ssb_data',
+        criticalInfrastructure: false,
+        backupLandingAvailable: true,
+        skipWeatherEvaluation: false,
+      });
       if (!mission && companyId) {
         fetchMissions();
       }
@@ -364,7 +386,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         return isObserver && !airspaceOnly;
       }).length;
       setMissionObserverCount(count);
-      if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: Math.max(prev.observerCount, count) }));
+      if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: count }));
     })();
     return () => { cancelled = true; };
   }, [currentMissionId, open]);
@@ -609,13 +631,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       if (error) throw error;
       setPreviousAssessments(data || []);
-      
-      if (data && data.length > 0 && currentAssessmentId) {
-        const match = data.find((a: any) => a.id === currentAssessmentId);
-        if (match?.pilot_comments) {
-          setCategoryComments(match.pilot_comments as Record<string, string>);
-        }
-      } else if (data && data.length > 0 && !currentAssessmentId && initialTab === 'result') {
+
+      // Always adopt the newest assessment (data[0]) so reopening the dialog
+      // shows the latest result for the selected mission.
+      if (data && data.length > 0) {
         const latest = data[0];
         setCurrentAssessment(latest.ai_analysis);
         setCurrentAssessmentId(latest.id);
