@@ -3053,6 +3053,7 @@
     },
     "proximity": {
       "ssbData": "SSB data (automatisk)",
+      "controlled": "Kontrollert bakkeområde (operatør garanterer ingen uinvolverte personer)",
       "none": "Ingen",
       "few": "Få",
       "many": "Mange"
@@ -3064,6 +3065,13 @@
     "manualSoraTabShort": "SORA",
     "historyTabShort": "Hist.",
     "aiDisclaimerText": "AI risikovurdering kan brukes som beslutningsstøtte. Det er alltid «pilot-in-command» som selv må vurdere risikoen knyttet til oppdraget. Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i data kan påvirke resultatet.",
+    "dataAvailabilityMissing": "Datagrunnlag mangler: {{sources}}",
+    "dataSources": {
+      "population": "befolkningsdata",
+      "airspace": "luftromsdata",
+      "weather": "værdata"
+    },
+    "approvalDecisionWarning": "Godkjenningsvarsel",
     "suggestedConclusion": "Foreslått konklusjon",
     "exportPdf": "Eksporter til PDF",
     "runSora": "Kjør SORA-basert re-vurdering",
@@ -8882,6 +8890,8 @@
     "ai": "AI",
     "soraSuffix": "+SORA",
     "riskNotAssessed": "Risiko",
+    "approvalDanger": "Godkjenningsvarsel — se siste AI-vurdering",
+    "approvalDangerShort": "Godkjenningsvarsel",
     "checklist": "Sjekkliste",
     "checklistCompleted": "Sjekkliste fullført",
     "checklistExecute": "Utfør sjekkliste",

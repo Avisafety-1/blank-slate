@@ -3051,6 +3051,7 @@
     },
     "proximity": {
       "ssbData": "SSB data (automatic)",
+      "controlled": "Controlled ground area (operator guarantees no uninvolved people)",
       "none": "None",
       "few": "Few",
       "many": "Many"
@@ -3062,6 +3063,13 @@
     "manualSoraTabShort": "SORA",
     "historyTabShort": "Hist.",
     "aiDisclaimerText": "AI risk assessment may be used as decision support. The pilot-in-command is always responsible for assessing the risk of the mission. The assessment is based on data available at the time. Changes to the data may affect the result.",
+    "dataAvailabilityMissing": "Missing data basis: {{sources}}",
+    "dataSources": {
+      "population": "population data",
+      "airspace": "airspace data",
+      "weather": "weather data"
+    },
+    "approvalDecisionWarning": "Approval warning",
     "suggestedConclusion": "Suggested conclusion",
     "exportPdf": "Export to PDF",
     "runSora": "Run SORA-based reassessment",
@@ -8880,6 +8888,8 @@
     "ai": "AI",
     "soraSuffix": "+SORA",
     "riskNotAssessed": "Risk",
+    "approvalDanger": "Approval warning — see latest AI assessment",
+    "approvalDangerShort": "Approval warning",
     "checklist": "Checklist",
     "checklistCompleted": "Checklist completed",
     "checklistExecute": "Run checklist",
