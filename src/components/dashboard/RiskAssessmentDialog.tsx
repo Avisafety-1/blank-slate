@@ -134,6 +134,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
+  useEffect(() => { missionRef.current = currentMissionId; }, [currentMissionId]);
 
   useEffect(() => {
     if (!open || !currentMissionId) { setSoraDocuments([]); setSelectedSoraDocumentId(""); return; }
