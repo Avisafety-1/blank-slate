@@ -1209,6 +1209,7 @@ serve(async (req) => {
 
     if (missionError || !mission) {
       console.error('Mission fetch error:', missionError);
+      await finishJob('failed', 'mission not found');
       return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2554,6 +2555,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: aiRequestBody,
+        signal: AbortSignal.timeout(90_000),
       });
 
       if (aiResponse.ok || (aiResponse.status !== 502 && aiResponse.status !== 503)) {
@@ -2572,18 +2574,21 @@ serve(async (req) => {
       console.error('AI gateway error:', aiResponse!.status, errorText);
       
       if (aiResponse!.status === 429) {
+        await finishJob('failed', 'AI gateway rate limited');
         return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 402) {
+        await finishJob('failed', 'AI gateway credits exhausted');
         return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 502 || aiResponse!.status === 503) {
+        await finishJob('failed', `AI gateway unavailable (${aiResponse!.status})`);
         return new Response(JSON.stringify({ error: prompts.errors.aiUnavailable }), {
           status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
