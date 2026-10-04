@@ -2423,6 +2423,11 @@ serve(async (req) => {
         currentDateTime: osloIsoWithOffset(nowForAssessment),
         missionDate: missionDateOslo,
         daysUntilMission: missionDateOslo ? daysUntilOslo(currentDateOslo, missionDateOslo) : null,
+        dataAvailability: {
+          population: populationData != null,
+          airspace: airspaceFacts.available !== false,
+          weather: weatherData != null || skipWeather,
+        },
       },
       mission: {
         personnelRoles: missionPersonnelRoles,
@@ -2450,7 +2455,12 @@ serve(async (req) => {
         warnings: weatherData.warnings,
         recommendation: weatherData.droneFlightRecommendation,
         bestWindow: weatherData.bestFlightWindow,
-      } : null),
+      } : {
+        unavailable: true,
+        note: (resolveLang(language) === 'en')
+          ? 'Weather data unavailable — must be assessed manually.'
+          : 'Værdata utilgjengelig — må vurderes manuelt.',
+      }),
       airspace: airspaceFacts,
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
       assignedPilots: assignedPilots.map((p: any, index: number) => {
