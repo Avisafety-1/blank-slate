@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
+  AlertOctagon,
   Radio as RadioIcon,
   ShieldCheck,
 } from "lucide-react";
@@ -39,7 +40,12 @@ interface Props {
   showApproval: boolean;
   onStatusChanged: () => void;
   onSubmitForApproval?: () => void;
-  aiRisk?: { recommendation: string; overall_score: unknown; hasSoraReassessment?: boolean } | null;
+  aiRisk?: {
+    recommendation: string;
+    overall_score: unknown;
+    hasSoraReassessment?: boolean;
+    approvalDanger?: string | null;
+  } | null;
   onAIRiskClick?: () => void;
   onChecklistClick?: () => void;
   onNotamClick?: () => void;
@@ -140,6 +146,26 @@ export function MissionBadgeRow({
               )})`
           : t("missionBadges.riskNotAssessed")}
       </Badge>
+
+      {/* Red warning marker: latest assessment's approval decision is dangerous
+          on an approved or pending-approval mission */}
+      {aiRisk?.approvalDanger && (
+        <Badge
+          variant="outline"
+          className={`${badgeSize} bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30`}
+          onClick={
+            onAIRiskClick
+              ? (e: React.MouseEvent) => {
+                  stop(e);
+                  onAIRiskClick();
+                }
+              : undefined
+          }
+        >
+          <AlertOctagon className={iconSize} />
+          {compact ? t("missionBadges.approvalDangerShort") : t("missionBadges.approvalDanger")}
+        </Badge>
+      )}
 
       {checklistIds.length > 0 && (
         <Badge

@@ -31,3 +31,4 @@
 - [x] E-post ved nytt oppdrag: personell med rolle, ressurser, luftromsvarsler og værvarsel ved oppdragsstart
 - [x] dji-geo-test: testfunksjon mot DJI geo-API (deploy + testkall Gardermoen/Oslo), slettes etter testing
 - [x] AI-risikovurdering: dato, primærdrone i SORA-revurdering, observatør fra personell (rettelser A–C)
+- [x] Fase 1: trygg AI-risikovurdering — decideApproval-godkjenningslogikk, konservativ håndtering av manglende data (befolkning/luftrom/vær), bare piloter teller som piloter, reset og varsler i vurderingsdialogen (edge deploy avventer klarsignal)

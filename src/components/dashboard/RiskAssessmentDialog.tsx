@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -127,8 +127,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   });
   const [atypicalSegregated, setAtypicalSegregated] = useState(false);
 
+  // Guard: responses for a mission that is no longer selected are ignored.
+  const missionRef = useRef<string | null>(null);
+  // One common "busy" flag gates both the full assessment and the SORA re-assessment.
+  const busy = loading || runningSora;
+
   // Determine current mission ID (from prop or selected)
   const currentMissionId = mission?.id || selectedMissionId;
+  useEffect(() => { missionRef.current = currentMissionId; }, [currentMissionId]);
 
   useEffect(() => {
     if (!open || !currentMissionId) { setSoraDocuments([]); setSelectedSoraDocumentId(""); return; }
@@ -196,6 +202,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
     if (!currentMissionId || !currentAssessment) return;
     setRunningSora(true);
+    const missionIdAtStart = currentMissionId;
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -285,6 +292,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
+      // Ignore the response if the user has switched to another mission meanwhile.
+      if (missionRef.current !== missionIdAtStart) return;
       setSoraOutput(result.soraAnalysis);
       if (result.assessment?.id) {
         setCurrentAssessmentId(result.assessment.id);
@@ -303,6 +312,22 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   useEffect(() => {
     if (open) {
       setActiveTab(initialTab);
+      // Reset per-mission state so no data from a previous mission leaks in.
+      setCurrentAssessment(null);
+      setCurrentAssessmentId(null);
+      setSoraOutput(null);
+      setCategoryComments({});
+      setPilotInputs({
+        flightHeight: 120,
+        operationType: 'inspection',
+        isVlos: true,
+        observerCount: 0,
+        atcRequired: false,
+        proximityToPeople: 'ssb_data',
+        criticalInfrastructure: false,
+        backupLandingAvailable: true,
+        skipWeatherEvaluation: false,
+      });
       if (!mission && companyId) {
         fetchMissions();
       }
@@ -364,7 +389,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         return isObserver && !airspaceOnly;
       }).length;
       setMissionObserverCount(count);
-      if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: Math.max(prev.observerCount, count) }));
+      if (count > 0) setPilotInputs(prev => ({ ...prev, observerCount: count }));
     })();
     return () => { cancelled = true; };
   }, [currentMissionId, open]);
@@ -609,13 +634,10 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       if (error) throw error;
       setPreviousAssessments(data || []);
-      
-      if (data && data.length > 0 && currentAssessmentId) {
-        const match = data.find((a: any) => a.id === currentAssessmentId);
-        if (match?.pilot_comments) {
-          setCategoryComments(match.pilot_comments as Record<string, string>);
-        }
-      } else if (data && data.length > 0 && !currentAssessmentId && initialTab === 'result') {
+
+      // Always adopt the newest assessment (data[0]) so reopening the dialog
+      // shows the latest result for the selected mission.
+      if (data && data.length > 0) {
         const latest = data[0];
         setCurrentAssessment(latest.ai_analysis);
         setCurrentAssessmentId(latest.id);
@@ -634,6 +656,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       toast.error(t('riskAssessment.selectMissionFirst', 'Velg et oppdrag først'));
       return;
     }
+    const missionIdAtStart = currentMissionId;
 
     setLoading(true);
     setProgress(0);
@@ -702,6 +725,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
+      // Ignore the response if the user has switched to another mission meanwhile.
+      if (missionRef.current !== missionIdAtStart) return;
       setProgress(100);
       setCurrentAssessment({
         ...result.aiAnalysis,
@@ -979,6 +1004,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ssb_data">{t('riskAssessment.proximity.ssbData', 'SSB data (automatisk)')}</SelectItem>
+                            <SelectItem value="controlled">{t('riskAssessment.proximity.controlled', 'Kontrollert bakkeområde (operatør garanterer ingen uinvolverte personer)')}</SelectItem>
                             <SelectItem value="none">{t('riskAssessment.proximity.none', 'Ingen')}</SelectItem>
                             <SelectItem value="few">{t('riskAssessment.proximity.few', 'Få')}</SelectItem>
                             <SelectItem value="many">{t('riskAssessment.proximity.many', 'Mange')}</SelectItem>
@@ -1039,7 +1065,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
                   <Button 
                     onClick={runAssessment} 
-                    disabled={loading}
+                    disabled={busy}
                     className="w-full"
                   >
                     {loading ? (
@@ -1098,6 +1124,29 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </div>
 
                     {/* Score Card with new SMS fields */}
+                    {(() => {
+                      const da = currentAssessment?.dataAvailability as Record<string, boolean> | undefined;
+                      if (!da) return null;
+                      const sourceNames: Record<string, string> = {
+                        population: t('riskAssessment.dataSources.population', 'befolkningsdata'),
+                        airspace: t('riskAssessment.dataSources.airspace', 'luftromsdata'),
+                        weather: t('riskAssessment.dataSources.weather', 'værdata'),
+                      };
+                      const missing = Object.entries(da)
+                        .filter(([, available]) => available === false)
+                        .map(([key]) => sourceNames[key] ?? key);
+                      if (missing.length === 0) return null;
+                      return (
+                        <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-foreground">
+                              {t('riskAssessment.dataAvailabilityMissing', 'Datagrunnlag mangler: {{sources}}', { sources: missing.join(', ') })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     <RiskScoreCard
                       overallScore={currentAssessment.overall_score}
                       recommendation={currentAssessment.recommendation}
@@ -1113,6 +1162,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       approvalStatus={currentAssessment._approvalStatus}
                       approvalReason={currentAssessment._approvalReason}
                       approvalThreshold={currentAssessment._approvalThreshold}
+                      approvalDecision={currentAssessment.approvalDecision ?? (currentAssessment._approvalStatus
+                        ? { status: currentAssessment._approvalStatus, reason: currentAssessment._approvalReason }
+                        : null)}
                       airRiskAnalysis={currentAssessment.air_risk_analysis}
                       groundRiskAnalysis={currentAssessment.ground_risk_analysis}
                       operationClassification={currentAssessment.operation_classification}
@@ -1166,7 +1218,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                               runSoraReassessment();
                             }
                           }}
-                          disabled={runningSora}
+                          disabled={busy}
                           className="w-full"
                         >
                           {runningSora ? (

@@ -39,7 +39,7 @@ import {
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
-type MissionAIRisk = { overall_score: number; recommendation: string; hasSoraReassessment: boolean };
+type MissionAIRisk = { overall_score: number; recommendation: string; hasSoraReassessment: boolean; approvalDanger?: string | null };
 
 
 export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
@@ -150,7 +150,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
   const fetchMissionAIRisks = async (missionIds: string[]) => {
     const { data, error } = await supabase
       .from("mission_risk_assessments")
-       .select("mission_id, overall_score, recommendation, sora_output")
+       .select("mission_id, overall_score, recommendation, sora_output, ai_analysis")
       .in("mission_id", missionIds)
       .order("created_at", { ascending: false });
 
@@ -160,10 +160,14 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
        const riskMap: Record<string, MissionAIRisk> = {};
       data.forEach((risk: any) => {
         if (!riskMap[risk.mission_id]) {
+          const decision = risk.ai_analysis?.approvalDecision;
+          const isDanger = decision?.severity === 'danger' &&
+            (decision.status === 'approved' || decision.status === 'pending_approval');
           riskMap[risk.mission_id] = {
             overall_score: risk.overall_score,
             recommendation: risk.recommendation,
              hasSoraReassessment: false,
+            approvalDanger: isDanger ? decision.reason : null,
           };
         }
          if (hasSoraReassessment([risk])) riskMap[risk.mission_id].hasSoraReassessment = true;

@@ -25,6 +25,14 @@ export interface MissionFilterOptions {
 
 const PAGE_SIZE = 10;
 
+/** Red warning marker: latest assessment's approval decision is dangerous on an approved/pending mission. */
+const getApprovalDanger = (risk: any): string | null => {
+  const decision = risk?.ai_analysis?.approvalDecision;
+  return decision?.severity === 'danger' && (decision.status === 'approved' || decision.status === 'pending_approval')
+    ? decision.reason
+    : null;
+};
+
 
 export const useOppdragData = () => {
   const { user, loading, companyId } = useAuth();
@@ -353,7 +361,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries), approvalDanger: getApprovalDanger(riskEntries[0]) } : null,
         };
       });
 
@@ -511,7 +519,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries), approvalDanger: getApprovalDanger(riskEntries[0]) } : null,
         };
       });
 
