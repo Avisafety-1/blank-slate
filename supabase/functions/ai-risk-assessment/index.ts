@@ -3361,10 +3361,11 @@ serve(async (req) => {
       // Still return the analysis even if save fails
     }
 
-    // 11. SORA-based auto-approval
+    // 11. Approval decision — decideApproval is the single source of truth.
     let autoApproved = false;
     let approvalStatus: 'approved' | 'not_approved' | null = null;
     let approvalReason: string | null = null;
+    let approvalSeverity: 'info' | 'warning' | 'danger' | null = null;
     let approvalThreshold: number | null = null;
     try {
       // Use RPC that respects parent-company propagation (propagate_sora_approval)
@@ -3386,33 +3387,92 @@ serve(async (req) => {
         threshold: soraApprovalConfig?.sora_approval_threshold,
       });
 
-      if (soraApprovalConfig?.sora_based_approval && missionId) {
-        const overallScore = aiAnalysis.overall_score ?? 0;
-        const hardStopTriggered = aiAnalysis.hard_stop_triggered === true;
+      if (missionId) {
         const threshold = Number(soraApprovalConfig.sora_approval_threshold) || 7.0;
-        const hardstopRequiresApproval = soraApprovalConfig.sora_hardstop_requires_approval !== false;
         approvalThreshold = threshold;
 
-        if (hardStopTriggered && hardstopRequiresApproval) {
-          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
-          approvalStatus = 'not_approved';
-          approvalReason = `Hardstop utløst — krever manuell godkjenning`;
-          console.log('SORA auto-approval: DENIED (hardstop triggered)');
-        } else if (overallScore >= threshold && !hardStopTriggered) {
-          await supabase.from('missions').update({ approval_status: 'approved' }).eq('id', missionId);
-          autoApproved = true;
-          approvalStatus = 'approved';
-          approvalReason = `AI-score ${overallScore.toFixed(1)} oppfyller terskel ${threshold.toFixed(1)}`;
-          console.log('SORA auto-approval: APPROVED (score', overallScore, '>=', threshold, ')');
-        } else {
-          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
-          approvalStatus = 'not_approved';
-          approvalReason = `AI-score ${overallScore.toFixed(1)} er under terskel ${threshold.toFixed(1)} — krever manuell godkjenning`;
-          console.log('SORA auto-approval: DENIED (score', overallScore, '<', threshold, ')');
+        const noGoCategories = Object.entries(aiAnalysis.categories || {})
+          .filter(([, cat]) => (cat as any)?.go_decision === 'NO-GO')
+          .map(([key]) => key);
+        const weatherAssessed = weatherData != null || skipWeather;
+        const dataAvailability = {
+          population: populationDataAvailable,
+          airspace: airspaceDataAvailable,
+          weather: weatherAssessed,
+        };
+
+        // Write access is checked with the caller's own access: the user must be able
+        // to update the mission, or be assigned to it as personnel.
+        let canWrite = false;
+        try {
+          const { data: probeRows, error: probeErr } = await callerClient
+            .from('missions')
+            .update({ approval_status: (mission as any).approval_status ?? 'not_approved' })
+            .eq('id', missionId)
+            .select('id');
+          canWrite = !probeErr && (probeRows?.length ?? 0) > 0;
+        } catch { canWrite = false; }
+        if (!canWrite) {
+          try {
+            const { data: assignedRow } = await callerClient
+              .from('mission_personnel')
+              .select('profile_id')
+              .eq('mission_id', missionId)
+              .eq('profile_id', user.id)
+              .limit(1);
+            canWrite = (assignedRow?.length ?? 0) > 0;
+          } catch { canWrite = false; }
         }
+
+        const decision = decideApproval({
+          lang: assessmentLang,
+          currentStatus: (mission as any).approval_status ?? 'not_approved',
+          score: normalizeRiskScore(aiAnalysis.overall_score),
+          threshold,
+          autoApprovalOn: soraApprovalConfig?.sora_based_approval === true,
+          hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
+          hardStopReason: aiAnalysis.hard_stop_reason ?? null,
+          noGoCategories,
+          weatherAssessed,
+          dataAvailability,
+          assessmentSaved: !saveError,
+          canWrite,
+        });
+
+        aiAnalysis.approvalDecision = {
+          status: decision.status,
+          reason: decision.reason,
+          severity: decision.severity,
+        };
+
+        if (decision.status === 'approved') {
+          const { error: writeErr } = await supabase
+            .from('missions')
+            .update({ approval_status: 'approved' })
+            .eq('id', missionId);
+          if (writeErr) {
+            console.error('Approval status write error (service role):', writeErr);
+          } else {
+            autoApproved = true;
+            approvalStatus = 'approved';
+          }
+        }
+        approvalReason = decision.reason;
+        approvalSeverity = decision.severity;
+        console.log('Approval decision:', decision.status, '|', decision.severity, '|', decision.reason);
       }
     } catch (approvalErr) {
       console.error('SORA auto-approval error (non-blocking):', approvalErr);
+    }
+
+    // Store the decision inside the saved assessment so mission cards can show it.
+    if (savedAssessment && !saveError) {
+      try {
+        await supabase
+          .from('mission_risk_assessments')
+          .update({ ai_analysis: aiAnalysis })
+          .eq('id', (savedAssessment as any).id);
+      } catch (e) { console.error('approvalDecision save error:', e); }
     }
 
     await finishJob('done');
