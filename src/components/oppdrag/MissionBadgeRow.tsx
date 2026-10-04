@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Brain,
   CheckCircle2,
@@ -92,20 +93,16 @@ export function MissionBadgeRow({
   const approvalBadge = (
     <Badge
       variant="outline"
-      title={approvalWarning || undefined}
-      role={approvalWarning ? "button" : undefined}
-      tabIndex={approvalWarning ? 0 : undefined}
-      aria-label={approvalWarning ? `${getApprovalStatusLabel(approvalStatus, compact)}: ${approvalWarning}` : undefined}
       className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${approvalWarning ? "border-destructive text-destructive cursor-pointer" : ""} ${
         approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
       }`}
       onClick={
-        approvalClickable
+        approvalClickable && !approvalWarning
           ? (e: React.MouseEvent) => {
               stop(e);
               onSubmitForApproval?.();
             }
-          : approvalWarning ? stop : undefined
+          : undefined
       }
     >
       {approvalWarning && <AlertTriangle className={iconSize} aria-hidden="true" />}
@@ -130,7 +127,11 @@ export function MissionBadgeRow({
       {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
         approvalWarning ? (
           <Popover>
-            <PopoverTrigger asChild>{approvalBadge}</PopoverTrigger>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-auto p-0" title={approvalWarning} aria-label={`${getApprovalStatusLabel(approvalStatus, compact)}: ${approvalWarning}`} onClick={stop}>
+                {approvalBadge}
+              </Button>
+            </PopoverTrigger>
             <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] text-sm break-words" onClick={stop}>
               {approvalWarning}
             </PopoverContent>
