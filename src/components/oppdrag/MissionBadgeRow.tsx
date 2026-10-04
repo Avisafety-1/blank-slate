@@ -93,8 +93,8 @@ export function MissionBadgeRow({
   const approvalBadge = (
     <Badge
       variant="outline"
-      className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${approvalWarning ? "border-destructive text-destructive cursor-pointer" : ""} ${
-        approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+      className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${
+        approvalWarning || approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
       }`}
       onClick={
         approvalClickable && !approvalWarning
@@ -105,9 +105,14 @@ export function MissionBadgeRow({
           : undefined
       }
     >
-      {approvalWarning && <AlertTriangle className={iconSize} aria-hidden="true" />}
-      {approvalStatus === "pending_approval" && <Clock className={iconSize} />}
-      {approvalStatus === "approved" && <CheckCircle2 className={iconSize} />}
+      {approvalWarning ? (
+        <AlertTriangle className={`${iconSize} text-destructive`} aria-hidden="true" />
+      ) : (
+        <>
+          {approvalStatus === "pending_approval" && <Clock className={iconSize} />}
+          {approvalStatus === "approved" && <CheckCircle2 className={iconSize} />}
+        </>
+      )}
       {getApprovalStatusLabel(approvalStatus, compact)}
     </Badge>
   );
