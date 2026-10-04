@@ -2875,7 +2875,7 @@ serve(async (req) => {
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
-        population_density_value: controlledGroundSelected ? 0 : populationDensityValue,
+        population_density_value: deterministicPopulationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
