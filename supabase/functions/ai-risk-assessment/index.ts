@@ -276,8 +276,8 @@ const buildDeterministicGroundRisk = ({
     ? `Dimension class ${dimensionClass}, speed class ${speedClass}, population class ${populationBand}`
     : `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`;
   const igrcReasoning = en
-    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${outsideSoraNote}`
-    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${outsideSoraNote}`;
+    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${populationDensityUnknown ? ' Population density is unknown — the highest band is used as the basis.' : ''}${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${populationDensityUnknown ? ' Befolkningstettheten er ukjent — det høyeste båndet brukes som grunnlag.' : ''}${outsideSoraNote}`;
 
   const m1aReason = en
     ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
@@ -347,7 +347,7 @@ const buildDeterministicGroundRisk = ({
     igrc,
     fgrc,
     total_reduction: fgrc - igrc,
-    controlled_ground_area: populationDensityValue <= 0,
+    controlled_ground_area: controlledGroundSelected,
     controlled_ground_minimum: controlledGroundMinimum,
     mitigations_manual_override: !!manualEntries,
     grc_calculation_method: grcCalcMethod,
