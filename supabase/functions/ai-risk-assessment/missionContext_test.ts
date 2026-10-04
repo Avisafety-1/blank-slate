@@ -37,3 +37,17 @@ Deno.test('observer roles are counted and split', () => {
   assertEquals(effectiveObserverCount(undefined, 0), 0);
   assertEquals(effectiveObserverCount('2', 1), 2);
 });
+
+Deno.test('filterPilots keeps pilot roles and role-less personnel, drops observers', () => {
+  const rows = [
+    { name: 'Per', role: 'Fjernpilot' },
+    { name: 'Kari', role: 'Observatør' },
+    { name: 'Lars', role: 'Luftromsobservatør' },
+    { name: 'Hans', role: 'RPIC' },
+    { name: 'Nina', role: null },
+    null,
+  ];
+  const pilots = filterPilots(rows, (r) => r.role).map((r) => r.name);
+  assertEquals(pilots, ['Per', 'Hans', 'Nina']);
+  assertEquals(filterPilots([], (r) => r.role), []);
+});
