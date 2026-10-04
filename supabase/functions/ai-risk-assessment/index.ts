@@ -3434,11 +3434,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Risk assessment error:', error);
+    await finishJob('failed', (error as Error)?.message ?? 'unknown');
     try {
       // Best-effort: mark any in-flight job for this user as failed
-      await supabase.from('ai_risk_assessment_jobs')
-        .update({ status: 'failed', finished_at: new Date().toISOString(), error_message: (error as Error)?.message ?? 'unknown' })
-        .eq('user_id', user.id).eq('status', 'running');
+      if (supabase && user) {
+        await supabase.from('ai_risk_assessment_jobs')
+          .update({ status: 'failed', finished_at: new Date().toISOString(), error_message: (error as Error)?.message ?? 'unknown' })
+          .eq('user_id', user.id).eq('status', 'running');
+      }
     } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
