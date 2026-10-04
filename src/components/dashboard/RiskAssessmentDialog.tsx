@@ -653,6 +653,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       toast.error(t('riskAssessment.selectMissionFirst', 'Velg et oppdrag først'));
       return;
     }
+    const missionIdAtStart = currentMissionId;
 
     setLoading(true);
     setProgress(0);
@@ -721,6 +722,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
 
       const result = await response.json();
+      // Ignore the response if the user has switched to another mission meanwhile.
+      if (missionRef.current !== missionIdAtStart) return;
       setProgress(100);
       setCurrentAssessment({
         ...result.aiAnalysis,
