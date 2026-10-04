@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { getApprovalWarning } from "@/lib/oppdragHelpers";
 
 interface ApproveMissionButtonProps {
   missionId: string;
@@ -68,13 +69,10 @@ export const ApproveMissionButton = ({
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return;
-        const decision = (data as any)?.ai_analysis?.approvalDecision;
-        const isDanger = decision?.severity === 'danger' &&
-          (decision.status === 'approved' || decision.status === 'pending_approval');
-        setApprovalDanger(isDanger ? decision.reason : null);
+        setApprovalDanger(getApprovalWarning(approvalStatus, data));
       });
     return () => { cancelled = true; };
-  }, [open, missionId]);
+  }, [open, missionId, approvalStatus]);
 
   const isPending = approvalStatus === "pending_approval";
   const scopeIsAll = Array.isArray(approvalCompanyIds) && approvalCompanyIds.includes("all");
@@ -237,7 +235,7 @@ export const ApproveMissionButton = ({
             <>
               {approvalDanger && (
                 <div className="rounded-md border-2 border-red-500 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-                  {t("missionBadges.approvalDanger")}: {approvalDanger}
+                  {t("riskAssessment.approvalDecisionWarning")}: {approvalDanger}
                 </div>
               )}
               <Textarea

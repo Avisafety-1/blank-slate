@@ -65,6 +65,7 @@ import {
   canSubmitForApproval,
   shouldShowAIRiskBadge,
   shouldShowApprovalBadge,
+  getApprovalWarning,
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
@@ -204,6 +205,7 @@ export const MissionCard = ({
             onStatusChanged={fetchMissions}
             onSubmitForApproval={() => setApprovalConfirmOpen(true)}
             aiRisk={(mission as any).aiRisk || null}
+            approvalWarning={getApprovalWarning(mission.approval_status, (mission as any).aiRisk)}
             onAIRiskClick={() => onRiskBadgeClick(mission)}
             onChecklistClick={() => onExecuteChecklist(mission.id)}
             onNotamClick={() => onNotam?.(mission)}

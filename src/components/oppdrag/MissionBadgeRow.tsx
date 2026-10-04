@@ -1,15 +1,17 @@
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Brain,
   CheckCircle2,
   ClipboardCheck,
   Clock,
-  AlertOctagon,
+  AlertTriangle,
   Radio as RadioIcon,
   ShieldCheck,
 } from "lucide-react";
 import { MissionStatusDropdown } from "@/components/dashboard/MissionStatusDropdown";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   statusColors,
   getApprovalStatusColor,
@@ -44,8 +46,8 @@ interface Props {
     recommendation: string;
     overall_score: unknown;
     hasSoraReassessment?: boolean;
-    approvalDanger?: string | null;
   } | null;
+  approvalWarning?: string | null;
   onAIRiskClick?: () => void;
   onChecklistClick?: () => void;
   onNotamClick?: () => void;
@@ -62,6 +64,7 @@ export function MissionBadgeRow({
   onStatusChanged,
   onSubmitForApproval,
   aiRisk,
+  approvalWarning,
   onAIRiskClick,
   onChecklistClick,
   onNotamClick,
@@ -87,6 +90,28 @@ export function MissionBadgeRow({
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
 
+  const approvalBadge = (
+    <Badge
+      variant="outline"
+      className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${approvalWarning ? "border-destructive text-destructive cursor-pointer" : ""} ${
+        approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+      }`}
+      onClick={
+        approvalClickable && !approvalWarning
+          ? (e: React.MouseEvent) => {
+              stop(e);
+              onSubmitForApproval?.();
+            }
+          : undefined
+      }
+    >
+      {approvalWarning && <AlertTriangle className={iconSize} aria-hidden="true" />}
+      {approvalStatus === "pending_approval" && <Clock className={iconSize} />}
+      {approvalStatus === "approved" && <CheckCircle2 className={iconSize} />}
+      {getApprovalStatusLabel(approvalStatus, compact)}
+    </Badge>
+  );
+
   return (
     <div className={`flex flex-wrap gap-1 sm:gap-2 items-center ${className}`}>
       <MissionStatusDropdown
@@ -100,24 +125,18 @@ export function MissionBadgeRow({
       />
 
       {shouldShowApprovalBadge(showApproval, mission.approval_status) && (
-        <Badge
-          variant="outline"
-          className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${
-            approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
-          }`}
-          onClick={
-            approvalClickable
-              ? (e: React.MouseEvent) => {
-                  stop(e);
-                  onSubmitForApproval?.();
-                }
-              : undefined
-          }
-        >
-          {approvalStatus === "pending_approval" && <Clock className={iconSize} />}
-          {approvalStatus === "approved" && <CheckCircle2 className={iconSize} />}
-          {getApprovalStatusLabel(approvalStatus, compact)}
-        </Badge>
+        approvalWarning ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-auto p-0" title={approvalWarning} aria-label={`${getApprovalStatusLabel(approvalStatus, compact)}: ${approvalWarning}`} onClick={stop}>
+                {approvalBadge}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] text-sm break-words" onClick={stop}>
+              {approvalWarning}
+            </PopoverContent>
+          </Popover>
+        ) : approvalBadge
       )}
 
       {/* AI risk is always shown, even when no assessment exists yet */}
@@ -146,26 +165,6 @@ export function MissionBadgeRow({
               )})`
           : t("missionBadges.riskNotAssessed")}
       </Badge>
-
-      {/* Red warning marker: latest assessment's approval decision is dangerous
-          on an approved or pending-approval mission */}
-      {aiRisk?.approvalDanger && (
-        <Badge
-          variant="outline"
-          className={`${badgeSize} bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30`}
-          onClick={
-            onAIRiskClick
-              ? (e: React.MouseEvent) => {
-                  stop(e);
-                  onAIRiskClick();
-                }
-              : undefined
-          }
-        >
-          <AlertOctagon className={iconSize} />
-          {compact ? t("missionBadges.approvalDangerShort") : t("missionBadges.approvalDanger")}
-        </Badge>
-      )}
 
       {checklistIds.length > 0 && (
         <Badge
