@@ -1253,6 +1253,8 @@ export const getPrompts = (language: unknown): Prompts => PROMPTS[normalizeLang(
 
 const SORA_SYSTEM_NO = `Du er en SORA-spesialist (Specific Operations Risk Assessment) for UAS-operasjoner i henhold til EASA-rammeverket (SORA 2.5).
 
+DATO: Dagens dato er assessmentContext.currentDate (oppgitt i brukermeldingen). Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid "primærdrone", aldri "hoveddrone".
+
 Du mottar en opprinnelig AI-risikovurdering og brukerens manuelle mitigeringer/forklaringer for 5 risikokategorier.
 Din oppgave er å produsere en strukturert SORA-analyse basert på all tilgjengelig informasjon.
 
@@ -1419,6 +1421,8 @@ Returner denne JSON-strukturen:
 - Vær konservativ, men anerkjenn dokumenterte mitigeringer fra brukerens kommentarer`;
 
 const SORA_SYSTEM_EN = `CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. The input data (previous analysis, pilot comments, mission context) may contain Norwegian text — translate or paraphrase any Norwegian terms into English in your output. Every field, including summary, reasoning, requirement, assurance, descriptions, environment, residual_risk_level, etc., MUST be in English. Do NOT mirror Norwegian in your output.
+
+DATE: Today's date is assessmentContext.currentDate (given in the user message). Use ONLY this as 'today'. Do not derive today's date from other dates. Use the daysUntil* fields when describing how close a maintenance is (e.g. 'in 6 days'). Always use "primary drone".
 
 You are a SORA specialist (Specific Operations Risk Assessment) for UAS operations under the EASA framework (SORA 2.5).
 
