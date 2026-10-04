@@ -1744,8 +1744,33 @@ serve(async (req) => {
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
     // Ved flere ruter brukes worst case (høyeste tetthet).
+    // Punktoppdrag uten rute: tettheten beregnes i en sirkel rundt oppdragspunktet.
     const popSegments = routeSegmentsRaw.filter((s) => s.coords.length >= 2);
-    if (popSegments.length > 0 && !unifiedAirspaceActive) {
+    const pointMissionNoRoute = popSegments.length === 0 && lat != null && lng != null;
+    const popRuns: Array<{ label: string | null; coords: RouteCoord[] }> = popSegments.map((s) => ({
+      label: multiRoute ? s.label : null,
+      coords: s.coords,
+    }));
+    if (pointMissionNoRoute) {
+      popRuns.push({ label: null, coords: [ { lat, lng }, { lat: lat + 1e-6, lng: lng + 1e-6 } ] });
+    }
+    const popLangEn = resolveLang(language) === 'en';
+    const popFootprintDescriptionOverride = pointMissionNoRoute
+      ? (popLangEn ? 'Estimated around the mission point (no route drawn).' : 'Estimert rundt oppdragspunkt (ingen rute tegnet).')
+      : null;
+    const popBufferForRun = (run: { coords: RouteCoord[] }): number => {
+      if (pointMissionNoRoute) {
+        const soraData = mission.mission_sora?.[0];
+        const routeSora = (mission.route as any)?.soraSettings;
+        const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
+        const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
+        const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
+        return (fg > 0 || grb > 0) ? Math.max(fg + contingency + grb, 1) : 500;
+      }
+      return null as unknown as number;
+    };
+
+    if (popRuns.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1756,11 +1781,12 @@ serve(async (req) => {
 
         let computed: any = null;
         let computedLabel: string | null = null;
-        for (const seg of popSegments) {
-          const res = await computeSsb250PopulationDensity(seg.coords, footprintBufferM, resolveLang(language));
+        for (const run of popRuns) {
+          const runBufferM = pointMissionNoRoute ? popBufferForRun(run) : footprintBufferM;
+          const res = await computeSsb250PopulationDensity(run.coords, runBufferM, resolveLang(language));
           if (res && (!computed || res.maxDensity > computed.maxDensity)) {
             computed = res;
-            computedLabel = multiRoute ? seg.label : null;
+            computedLabel = run.label;
           }
         }
 
@@ -1781,6 +1807,7 @@ serve(async (req) => {
           const routeNote = computedLabel ? ` Dimensjonerende rute i oppdraget: ${computedLabel}.` : '';
           const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.${routeNote}`;
           populationData = { ...computed, grcImpact, grcIncrement, summary };
+          if (popFootprintDescriptionOverride) populationData.footprintDescription = popFootprintDescriptionOverride;
           console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
 
         } else {
@@ -1791,10 +1818,15 @@ serve(async (req) => {
             cellCount: 0,
             grcImpact: 'none',
             grcIncrement: 0,
-            summary: 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
+            summary: popLangEn
+              ? 'No populated SSB 250 m cells were found inside the operation footprint.'
+              : 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
             gridResolutionM: 250,
-            dataSource: 'SSB befolkning på rutenett 250 m (2025)',
-            method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+            dataSource: popLangEn ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)',
+            method: popLangEn
+              ? 'Highest overlapping 250 m cell is multiplied by 16 to obtain people/km².'
+              : 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+            footprintDescription: popFootprintDescriptionOverride ?? undefined,
           };
         }
       } catch (e) {
@@ -1803,7 +1835,7 @@ serve(async (req) => {
     }
 
     // 9c-eu. Eurostat 1 km population density for missions outside Norway (allowlisted companies).
-    if (popSegments.length > 0 && unifiedAirspaceActive) {
+    if (popRuns.length > 0 && unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1814,11 +1846,12 @@ serve(async (req) => {
 
         let computed: any = null;
         let computedLabel: string | null = null;
-        for (const seg of popSegments) {
-          const res = await computeEurostatPopulationDensity(seg.coords, footprintBufferM, resolveLang(language), supabase);
+        for (const run of popRuns) {
+          const runBufferM = pointMissionNoRoute ? popBufferForRun(run) : footprintBufferM;
+          const res = await computeEurostatPopulationDensity(run.coords, runBufferM, resolveLang(language), supabase);
           if (res && (!computed || res.maxDensity > computed.maxDensity)) {
             computed = res;
-            computedLabel = multiRoute ? seg.label : null;
+            computedLabel = run.label;
           }
         }
 
@@ -1830,17 +1863,18 @@ serve(async (req) => {
           else if (maxDensity >= 500) { grcImpact = 'high'; grcIncrement = 1; }
           else if (maxDensity >= 100) { grcImpact = 'moderate'; }
 
-          const en = resolveLang(language) === 'en';
+          const en = popLangEn;
           const routeNote = computedLabel ? (en ? ` Dimensioning route: ${computedLabel}.` : ` Dimensjonerende rute i oppdraget: ${computedLabel}.`) : '';
           const summary = (en
             ? `Eurostat 1 km: ${computed.calculation}. Average density inside footprint is ${computed.avgDensity.toFixed(1)} people/km² across ${computed.cellCount} overlapping cells. Dimensioning cell is ${computed.driver}.`
             : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`) + routeNote;
 
           populationData = { ...computed, grcImpact, grcIncrement, summary };
+          if (popFootprintDescriptionOverride) populationData.footprintDescription = popFootprintDescriptionOverride;
           console.log(`Eurostat population: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}`);
         } else {
           console.log('Eurostat 1km: no overlapping populated cells found inside operational footprint');
-          const en = resolveLang(language) === 'en';
+          const en = popLangEn;
           populationData = {
             maxDensity: 0,
             avgDensity: 0,
@@ -1855,6 +1889,7 @@ serve(async (req) => {
             method: en
               ? 'Highest overlapping 1 km cell equals people/km² directly.'
               : 'Høyeste overlappende 1 km-rute tilsvarer personer/km² direkte.',
+            footprintDescription: popFootprintDescriptionOverride ?? undefined,
           };
         }
       } catch (e) {
