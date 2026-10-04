@@ -1586,6 +1586,7 @@ serve(async (req) => {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
           for (const run of airspaceRuns) {
+            airspaceCheckRan = true;
             const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
               'check_mission_airspace_unified',
               {
