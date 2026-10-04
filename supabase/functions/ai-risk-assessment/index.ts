@@ -2921,6 +2921,23 @@ serve(async (req) => {
       const lowAltitudeOutside5km = Number.isFinite(flightHeightM) && flightHeightM <= 120 && !insideAny5km;
       const ctrOverlapIsCautionOnly = insideAnyCtr && lowAltitudeOutside5km;
 
+      const airspaceUnavailable = airspaceFacts.available === false;
+
+      // Airspace data unavailable: skip every correction and scrub that relies
+      // on verified zone data — the AI text must stand, but the category is
+      // floored at CONDITIONAL (a NO-GO is kept).
+      if (airspaceUnavailable) {
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        const airCat = aiAnalysis.categories.airspace || {};
+        const unavailableNote = (resolveLang(language) === 'en')
+          ? 'Airspace data unavailable — must be checked manually.'
+          : 'Luftromsdata utilgjengelig — må sjekkes manuelt.';
+        airCat.go_decision = airCat.go_decision === 'NO-GO' ? 'NO-GO' : 'BETINGET';
+        airCat.concerns = [...(Array.isArray(airCat.concerns) ? airCat.concerns : []), unavailableNote];
+        if (!airCat.actual_conditions) airCat.actual_conditions = unavailableNote;
+        aiAnalysis.categories.airspace = airCat;
+        console.log('Airspace guard skipped: airspace data unavailable');
+      } else {
       // Build the set of 5KM zone names and their boundary distances for
       // text scrubbing: any AI sentence that says "N m fra <airport name>"
       // when the server only knows N m to the 5 km boundary is a hallucination.
@@ -3101,6 +3118,7 @@ serve(async (req) => {
           console.log('Discarding airspace-based hard-stop reason; authoritative reasons are derived after all guards:', sum.text);
           aiAnalysis.hard_stop_reason = null;
         }
+      }
       }
     } catch (guardErr) {
       console.error('Airspace deterministic guard error (non-blocking):', guardErr);
