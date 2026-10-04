@@ -204,6 +204,7 @@ export const MissionCard = ({
             onStatusChanged={fetchMissions}
             onSubmitForApproval={() => setApprovalConfirmOpen(true)}
             aiRisk={(mission as any).aiRisk || null}
+            approvalWarning={(mission as any).aiRisk?.approvalWarning ?? null}
             onAIRiskClick={() => onRiskBadgeClick(mission)}
             onChecklistClick={() => onExecuteChecklist(mission.id)}
             onNotamClick={() => onNotam?.(mission)}

@@ -47,7 +47,7 @@ import {
 } from "@/lib/oppdragHelpers";
 import { useTranslation } from "react-i18next";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { hasSoraReassessment } from "@/lib/oppdragHelpers";
+import { hasSoraReassessment, getApprovalWarning } from "@/lib/oppdragHelpers";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 import { EvaluationMissionButton } from "@/components/oppdrag/EvaluationMissionButton";
 
@@ -74,7 +74,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   };
   const [flightLogs, setFlightLogs] = useState<any[] | null>(null);
   const [liveMission, setLiveMission] = useState<any>(null);
-   const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string; hasSoraReassessment: boolean; approvalDanger?: string | null } | null>(null);
+   const [fetchedAiRisk, setFetchedAiRisk] = useState<{ overall_score: any; recommendation: string; hasSoraReassessment: boolean; ai_analysis?: unknown } | null>(null);
   const [approvalConfirmOpen, setApprovalConfirmOpen] = useState(false);
   const [has5kmZone, setHas5kmZone] = useState(false);
   const [ninoxConfirmOpen, setNinoxConfirmOpen] = useState(false);
@@ -119,16 +119,11 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
       }
       setMissionFlightLogs(logsRes.data || []);
        const latestRisk = riskRes.data?.[0];
-       const latestDecision = (latestRisk as any)?.ai_analysis?.approvalDecision;
-       const latestDanger = latestDecision?.severity === 'danger' &&
-         (latestDecision.status === 'approved' || latestDecision.status === 'pending_approval')
-           ? latestDecision.reason
-           : null;
        setFetchedAiRisk(latestRisk ? {
          overall_score: latestRisk.overall_score,
          recommendation: latestRisk.recommendation as string,
          hasSoraReassessment: hasSoraReassessment(riskRes.data || []),
-         approvalDanger: latestDanger,
+          ai_analysis: latestRisk.ai_analysis,
        } : null);
     };
     fetchLatest();
@@ -259,6 +254,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
             }}
             onSubmitForApproval={() => setApprovalConfirmOpen(true)}
             aiRisk={fetchedAiRisk || (currentMission as any).aiRisk || null}
+            approvalWarning={getApprovalWarning(currentMission.approval_status, fetchedAiRisk || (currentMission as any).aiRisk)}
             onAIRiskClick={() => {
               setRiskDialogInitialTab((fetchedAiRisk || (currentMission as any).aiRisk) ? 'history' : 'input');
               setRiskDialogOpen(true);

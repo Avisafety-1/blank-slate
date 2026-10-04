@@ -20,6 +20,19 @@ export const getApprovalStatusColor = (status?: string | null) =>
 export const getApprovalStatusLabel = (status?: string | null, compact = false) =>
   translateApprovalStatus(status, { compact });
 
+/** The assessment's decision.status is a proposed change, not the mission's current status. */
+export const getApprovalWarning = (
+  missionApprovalStatus: string | null | undefined,
+  latestRisk: { ai_analysis?: unknown } | null | undefined,
+): string | null => {
+  if (missionApprovalStatus !== "approved" && missionApprovalStatus !== "pending_approval") return null;
+  const analysis = latestRisk?.ai_analysis as { approvalDecision?: { severity?: string; reason?: unknown } } | null | undefined;
+  const decision = analysis?.approvalDecision;
+  return decision?.severity === "danger" && typeof decision.reason === "string" && decision.reason.trim()
+    ? decision.reason
+    : null;
+};
+
 
 
 export const shouldShowApprovalBadge = (showApproval: boolean, status?: string | null) =>

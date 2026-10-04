@@ -25,7 +25,7 @@ import { ChecklistExecutionDialog } from "@/components/resources/ChecklistExecut
 import { NotamDialog } from "./NotamDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { invokeEmailFunction } from "@/lib/emailInvoke";
-import { hasSoraReassessment } from "@/lib/oppdragHelpers";
+import { hasSoraReassessment, getApprovalWarning } from "@/lib/oppdragHelpers";
 import { ApproveMissionButton } from "@/components/oppdrag/ApproveMissionButton";
 import {
   statusColors,
@@ -39,7 +39,7 @@ import {
 } from "@/lib/oppdragHelpers";
 
 type Mission = any;
-type MissionAIRisk = { overall_score: number; recommendation: string; hasSoraReassessment: boolean; approvalDanger?: string | null };
+type MissionAIRisk = { overall_score: number; recommendation: string; hasSoraReassessment: boolean; ai_analysis?: unknown };
 
 
 export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) => {
@@ -160,14 +160,11 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
        const riskMap: Record<string, MissionAIRisk> = {};
       data.forEach((risk: any) => {
         if (!riskMap[risk.mission_id]) {
-          const decision = risk.ai_analysis?.approvalDecision;
-          const isDanger = decision?.severity === 'danger' &&
-            (decision.status === 'approved' || decision.status === 'pending_approval');
           riskMap[risk.mission_id] = {
             overall_score: risk.overall_score,
             recommendation: risk.recommendation,
              hasSoraReassessment: false,
-            approvalDanger: isDanger ? decision.reason : null,
+             ai_analysis: risk.ai_analysis,
           };
         }
          if (hasSoraReassessment([risk])) riskMap[risk.mission_id].hasSoraReassessment = true;
@@ -324,6 +321,7 @@ export const MissionsSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                     onStatusChanged={fetchMissions}
                     onSubmitForApproval={() => setApprovalConfirmMissionId(mission.id)}
                     aiRisk={missionAIRisks[mission.id] || null}
+                    approvalWarning={getApprovalWarning(mission.approval_status, missionAIRisks[mission.id])}
                     onAIRiskClick={() => {
                       setSelectedAIRiskMission({ ...mission, aiRisk: missionAIRisks[mission.id] || null });
                       setRiskDialogInitialTab(missionAIRisks[mission.id] ? 'history' : 'input');

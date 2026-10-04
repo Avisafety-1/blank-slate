@@ -8888,8 +8888,6 @@
     "ai": "AI",
     "soraSuffix": "+SORA",
     "riskNotAssessed": "Risk",
-    "approvalDanger": "Approval warning — see latest AI assessment",
-    "approvalDangerShort": "Approval warning",
     "checklist": "Checklist",
     "checklistCompleted": "Checklist completed",
     "checklistExecute": "Run checklist",

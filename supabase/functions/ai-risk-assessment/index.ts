@@ -3567,6 +3567,7 @@ serve(async (req) => {
           status: decision.status,
           reason: decision.reason,
           severity: decision.severity,
+          missionStatus: (mission as any).approval_status ?? 'not_approved',
         };
 
         if (decision.status === 'approved') {
