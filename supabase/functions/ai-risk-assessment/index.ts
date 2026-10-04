@@ -2785,7 +2785,20 @@ serve(async (req) => {
         aiAnalysis.categories.weather = weatherCategory;
       }
     }
-    if (skipWeather && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
+    // Weather data could not be fetched (and the user did not opt out):
+    // the category must be NOT ASSESSED, not silently guessed by the AI.
+    if (!skipWeather && weatherData == null && aiAnalysis.categories?.weather) {
+      aiAnalysis.categories.weather.score = null;
+      aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
+      aiAnalysis.categories.weather.actual_conditions = (resolveLang(language) === 'en')
+        ? 'Weather data could not be fetched — weather is not assessed by AI. The pilot must assess weather before flight.'
+        : 'Værdata kunne ikke hentes — vær er ikke vurdert av AI. Pilot må selv vurdere vær før flyging.';
+      aiAnalysis.categories.weather.factors = [];
+      aiAnalysis.categories.weather.concerns = [];
+    }
+    // Exclude weather from overall_score whenever it was not assessed.
+    const weatherNotAssessed = skipWeather || weatherData == null;
+    if (weatherNotAssessed && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
       const otherScores = ['airspace', 'equipment', 'pilot_experience', 'mission_complexity']
         .map((k) => Number(aiAnalysis.categories?.[k]?.score))
         .filter((n) => Number.isFinite(n));
