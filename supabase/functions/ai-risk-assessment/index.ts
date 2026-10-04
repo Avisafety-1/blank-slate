@@ -1596,6 +1596,7 @@ serve(async (req) => {
             );
             if (unifiedErr) {
               console.error('Unified airspace RPC error:', unifiedErr);
+              airspaceCheckFailed = true;
             } else {
               mergeWarnings(unifiedWarnings || [], run.label);
             }
