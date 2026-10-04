@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
-import { countMissionObservers, daysUntilOslo, effectiveObserverCount, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
+import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
+import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
@@ -39,8 +40,10 @@ const normalizeRiskScore = (score: number | string | undefined | null): number |
   if (score === undefined || score === null) return null;
   const numericScore = typeof score === 'number' ? score : Number(score);
   if (!Number.isFinite(numericScore)) return null;
-  if (numericScore > 0 && numericScore < 1) return Math.round(numericScore * 10);
-  return Math.max(1, Math.min(10, Math.round(numericScore)));
+  // One decimal on the 1-10 scale; the 0-1 fraction scale is kept as-is.
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  if (numericScore > 0 && numericScore < 1) return round1(numericScore * 10);
+  return Math.max(1, Math.min(10, round1(numericScore)));
 };
 
 const deriveRiskRecommendation = (
@@ -179,6 +182,8 @@ const buildDeterministicGroundRisk = ({
   observerCount = 0,
   lang = 'no',
   manualMitigations = null,
+  controlledGroundSelected = false,
+  populationDensityUnknown = false,
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -190,6 +195,8 @@ const buildDeterministicGroundRisk = ({
   observerCount?: number;
   lang?: Lang;
   manualMitigations?: Record<string, { applicable?: boolean; robustness?: string | null }> | null;
+  controlledGroundSelected?: boolean;
+  populationDensityUnknown?: boolean;
 }) => {
   const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
   const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
@@ -269,8 +276,8 @@ const buildDeterministicGroundRisk = ({
     ? `Dimension class ${dimensionClass}, speed class ${speedClass}, population class ${populationBand}`
     : `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`;
   const igrcReasoning = en
-    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${outsideSoraNote}`
-    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${outsideSoraNote}`;
+    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${populationDensityUnknown ? ' Population density is unknown — the highest band is used as the basis.' : ''}${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${populationDensityUnknown ? ' Befolkningstettheten er ukjent — det høyeste båndet brukes som grunnlag.' : ''}${outsideSoraNote}`;
 
   const m1aReason = en
     ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
@@ -340,7 +347,7 @@ const buildDeterministicGroundRisk = ({
     igrc,
     fgrc,
     total_reduction: fgrc - igrc,
-    controlled_ground_area: populationDensityValue <= 0,
+    controlled_ground_area: controlledGroundSelected,
     controlled_ground_minimum: controlledGroundMinimum,
     mitigations_manual_override: !!manualEntries,
     grc_calculation_method: grcCalcMethod,
@@ -636,6 +643,23 @@ serve(async (req) => {
 
   let prompts = getPrompts(undefined);
 
+  // Declared before try so the catch can finalize a failed job.
+  let supabase: ReturnType<typeof createClient> | null = null;
+  let user: { id: string } | null = null;
+  let jobId: string | null = null;
+  let jobStart = 0;
+  const finishJob = async (status: 'done' | 'failed', errorMessage?: string) => {
+    if (!jobId || !supabase) return;
+    try {
+      await supabase.from('ai_risk_assessment_jobs').update({
+        status,
+        finished_at: new Date().toISOString(),
+        duration_ms: jobStart ? Date.now() - jobStart : 0,
+        error_message: errorMessage ?? null,
+      }).eq('id', jobId);
+    } catch (e) { console.error('finishJob error', e); }
+  };
+
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -644,7 +668,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -654,15 +678,16 @@ serve(async (req) => {
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
-    if (authError || !user) {
+    if (authError || !authUser) {
       return new Response(JSON.stringify({ error: prompts.errors.unauthorized }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    user = authUser;
 
     const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
@@ -709,7 +734,7 @@ serve(async (req) => {
       }
     }
 
-    const jobStart = Date.now();
+    jobStart = Date.now();
     const { data: jobRow } = await supabase
       .from('ai_risk_assessment_jobs')
       .insert({
@@ -720,19 +745,7 @@ serve(async (req) => {
       })
       .select('id')
       .single();
-    const jobId: string | null = jobRow?.id ?? null;
-
-    const finishJob = async (status: 'done' | 'failed', errorMessage?: string) => {
-      if (!jobId) return;
-      try {
-        await supabase.from('ai_risk_assessment_jobs').update({
-          status,
-          finished_at: new Date().toISOString(),
-          duration_ms: Date.now() - jobStart,
-          error_message: errorMessage ?? null,
-        }).eq('id', jobId);
-      } catch (e) { console.error('finishJob error', e); }
-    };
+    jobId = jobRow?.id ?? null;
     // ---- End Phase 2 gate ----
 
     console.log(`Starting risk assessment for mission ${missionId}${soraReassessment ? ' (SORA re-assessment)' : ''}`);
@@ -793,17 +806,20 @@ serve(async (req) => {
             { role: 'user', content: soraUserPrompt },
           ],
         }),
+        signal: AbortSignal.timeout(90_000),
       });
 
       if (!soraAiResponse.ok) {
         const errorText = await soraAiResponse.text();
         console.error('SORA AI gateway error:', soraAiResponse.status, errorText);
         if (soraAiResponse.status === 429) {
+          await finishJob('failed', 'AI gateway rate limited (SORA reassessment)');
           return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
         if (soraAiResponse.status === 402) {
+          await finishJob('failed', 'AI gateway credits exhausted (SORA reassessment)');
           return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
             status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -1203,6 +1219,7 @@ serve(async (req) => {
 
     if (missionError || !mission) {
       console.error('Mission fetch error:', missionError);
+      await finishJob('failed', 'mission not found');
       return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -1245,8 +1262,9 @@ serve(async (req) => {
     const missionObservers = countMissionObservers((missionPersonnel ?? []).map(personnelRoleName));
     const effectiveObservers = effectiveObserverCount(pilotInputs?.observerCount, missionObservers.total);
 
-    const assignedPilots = missionPersonnel?.map((mp: any) => mp.profiles).filter(Boolean) || [];
-    console.log(`Found ${assignedPilots.length} assigned personnel for mission; observers=${JSON.stringify(missionObservers)} effective=${effectiveObservers}`);
+    // Only personnel with a pilot role (or no role at all) count as pilots.
+    const assignedPilots = filterPilots(missionPersonnel ?? [], personnelRoleName).map((mp: any) => mp.profiles).filter(Boolean) || [];
+    console.log(`Found ${assignedPilots.length} assigned pilots (of ${(missionPersonnel ?? []).length} personnel) for mission; observers=${JSON.stringify(missionObservers)} effective=${effectiveObservers}`);
     if ((missionPersonnel?.length || 0) > 0 && assignedPilots.length === 0) {
       console.log('mission_personnel rows exist, but joined profiles were empty. Sample row:', missionPersonnel?.[0]);
     }
@@ -1402,6 +1420,7 @@ serve(async (req) => {
               'Authorization': `Bearer ${supabaseKey}`,
             },
             body: JSON.stringify({ lat, lon: lng, targetTime: mission.tidspunkt }),
+            signal: AbortSignal.timeout(15_000),
           });
           if (weatherResponse.ok) {
             weatherData = await weatherResponse.json();
@@ -1514,9 +1533,14 @@ serve(async (req) => {
       }
     };
 
+    // Availability of the airspace check (used for dataAvailability and prompt facts).
+    let airspaceCheckRan = false;
+    let airspaceCheckFailed = false;
+
     if (lat && lng) {
       for (const run of airspaceRuns) {
         try {
+          airspaceCheckRan = true;
           const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
             p_lat: lat,
             p_lng: lng,
@@ -1524,11 +1548,13 @@ serve(async (req) => {
           });
           if (airspaceError) {
             console.error('Airspace check RPC error:', airspaceError);
+            airspaceCheckFailed = true;
           } else {
             mergeWarnings(warnings || [], run.label);
           }
         } catch (e) {
           console.error('Airspace check error:', e);
+          airspaceCheckFailed = true;
         }
       }
       console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
@@ -1564,6 +1590,7 @@ serve(async (req) => {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
           for (const run of airspaceRuns) {
+            airspaceCheckRan = true;
             const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
               'check_mission_airspace_unified',
               {
@@ -1574,6 +1601,7 @@ serve(async (req) => {
             );
             if (unifiedErr) {
               console.error('Unified airspace RPC error:', unifiedErr);
+              airspaceCheckFailed = true;
             } else {
               mergeWarnings(unifiedWarnings || [], run.label);
             }
@@ -1720,8 +1748,33 @@ serve(async (req) => {
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
     // Ved flere ruter brukes worst case (høyeste tetthet).
+    // Punktoppdrag uten rute: tettheten beregnes i en sirkel rundt oppdragspunktet.
     const popSegments = routeSegmentsRaw.filter((s) => s.coords.length >= 2);
-    if (popSegments.length > 0 && !unifiedAirspaceActive) {
+    const pointMissionNoRoute = popSegments.length === 0 && lat != null && lng != null;
+    const popRuns: Array<{ label: string | null; coords: RouteCoord[] }> = popSegments.map((s) => ({
+      label: multiRoute ? s.label : null,
+      coords: s.coords,
+    }));
+    if (pointMissionNoRoute) {
+      popRuns.push({ label: null, coords: [ { lat, lng }, { lat: lat + 1e-6, lng: lng + 1e-6 } ] });
+    }
+    const popLangEn = resolveLang(language) === 'en';
+    const popFootprintDescriptionOverride = pointMissionNoRoute
+      ? (popLangEn ? 'Estimated around the mission point (no route drawn).' : 'Estimert rundt oppdragspunkt (ingen rute tegnet).')
+      : null;
+    const popBufferForRun = (run: { coords: RouteCoord[] }): number => {
+      if (pointMissionNoRoute) {
+        const soraData = mission.mission_sora?.[0];
+        const routeSora = (mission.route as any)?.soraSettings;
+        const fg = Number(routeSora?.flightGeographyDistance ?? soraData?.flight_geography_distance ?? 0) || 0;
+        const contingency = Number(routeSora?.contingencyDistance ?? soraData?.contingency_distance ?? 50) || 50;
+        const grb = Number(routeSora?.groundRiskDistance ?? soraData?.ground_risk_distance ?? 0) || 0;
+        return (fg > 0 || grb > 0) ? Math.max(fg + contingency + grb, 1) : 500;
+      }
+      return null as unknown as number;
+    };
+
+    if (popRuns.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1732,11 +1785,12 @@ serve(async (req) => {
 
         let computed: any = null;
         let computedLabel: string | null = null;
-        for (const seg of popSegments) {
-          const res = await computeSsb250PopulationDensity(seg.coords, footprintBufferM, resolveLang(language));
+        for (const run of popRuns) {
+          const runBufferM = pointMissionNoRoute ? popBufferForRun(run) : footprintBufferM;
+          const res = await computeSsb250PopulationDensity(run.coords, runBufferM, resolveLang(language));
           if (res && (!computed || res.maxDensity > computed.maxDensity)) {
             computed = res;
-            computedLabel = multiRoute ? seg.label : null;
+            computedLabel = run.label;
           }
         }
 
@@ -1757,6 +1811,7 @@ serve(async (req) => {
           const routeNote = computedLabel ? ` Dimensjonerende rute i oppdraget: ${computedLabel}.` : '';
           const summary = `SSB 250 m: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.${routeNote}`;
           populationData = { ...computed, grcImpact, grcIncrement, summary };
+          if (popFootprintDescriptionOverride) populationData.footprintDescription = popFootprintDescriptionOverride;
           console.log(`Population data 250m: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}, driver=${computed.driver}`);
 
         } else {
@@ -1767,10 +1822,15 @@ serve(async (req) => {
             cellCount: 0,
             grcImpact: 'none',
             grcIncrement: 0,
-            summary: 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
+            summary: popLangEn
+              ? 'No populated SSB 250 m cells were found inside the operation footprint.'
+              : 'Ingen befolkede SSB 250 m-ruter ble funnet innenfor operasjonens fotavtrykk.',
             gridResolutionM: 250,
-            dataSource: 'SSB befolkning på rutenett 250 m (2025)',
-            method: 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+            dataSource: popLangEn ? 'SSB population on 250 m grid (2025)' : 'SSB befolkning på rutenett 250 m (2025)',
+            method: popLangEn
+              ? 'Highest overlapping 250 m cell is multiplied by 16 to obtain people/km².'
+              : 'Høyeste overlappende 250 m-rute multipliseres med 16 for å beregne personer/km².',
+            footprintDescription: popFootprintDescriptionOverride ?? undefined,
           };
         }
       } catch (e) {
@@ -1779,7 +1839,7 @@ serve(async (req) => {
     }
 
     // 9c-eu. Eurostat 1 km population density for missions outside Norway (allowlisted companies).
-    if (popSegments.length > 0 && unifiedAirspaceActive) {
+    if (popRuns.length > 0 && unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
         const routeSora = (mission.route as any)?.soraSettings;
@@ -1790,11 +1850,12 @@ serve(async (req) => {
 
         let computed: any = null;
         let computedLabel: string | null = null;
-        for (const seg of popSegments) {
-          const res = await computeEurostatPopulationDensity(seg.coords, footprintBufferM, resolveLang(language), supabase);
+        for (const run of popRuns) {
+          const runBufferM = pointMissionNoRoute ? popBufferForRun(run) : footprintBufferM;
+          const res = await computeEurostatPopulationDensity(run.coords, runBufferM, resolveLang(language), supabase);
           if (res && (!computed || res.maxDensity > computed.maxDensity)) {
             computed = res;
-            computedLabel = multiRoute ? seg.label : null;
+            computedLabel = run.label;
           }
         }
 
@@ -1806,17 +1867,18 @@ serve(async (req) => {
           else if (maxDensity >= 500) { grcImpact = 'high'; grcIncrement = 1; }
           else if (maxDensity >= 100) { grcImpact = 'moderate'; }
 
-          const en = resolveLang(language) === 'en';
+          const en = popLangEn;
           const routeNote = computedLabel ? (en ? ` Dimensioning route: ${computedLabel}.` : ` Dimensjonerende rute i oppdraget: ${computedLabel}.`) : '';
           const summary = (en
             ? `Eurostat 1 km: ${computed.calculation}. Average density inside footprint is ${computed.avgDensity.toFixed(1)} people/km² across ${computed.cellCount} overlapping cells. Dimensioning cell is ${computed.driver}.`
             : `Eurostat 1 km: ${computed.calculation}. Gjennomsnitt i fotavtrykket er ${computed.avgDensity.toFixed(1)} personer/km² basert på ${computed.cellCount} overlappende ruter. Dimensjonerende rute ligger ${computed.driver}.`) + routeNote;
 
           populationData = { ...computed, grcImpact, grcIncrement, summary };
+          if (popFootprintDescriptionOverride) populationData.footprintDescription = popFootprintDescriptionOverride;
           console.log(`Eurostat population: max=${maxDensity}, avg=${computed.avgDensity.toFixed(1)}, cells=${computed.cellCount}`);
         } else {
           console.log('Eurostat 1km: no overlapping populated cells found inside operational footprint');
-          const en = resolveLang(language) === 'en';
+          const en = popLangEn;
           populationData = {
             maxDensity: 0,
             avgDensity: 0,
@@ -1831,6 +1893,7 @@ serve(async (req) => {
             method: en
               ? 'Highest overlapping 1 km cell equals people/km² directly.'
               : 'Høyeste overlappende 1 km-rute tilsvarer personer/km² direkte.',
+            footprintDescription: popFootprintDescriptionOverride ?? undefined,
           };
         }
       } catch (e) {
@@ -2322,7 +2385,18 @@ serve(async (req) => {
             .replace(/Does NOT require Ninox\.?/gi, '')
         : summaryParts.join(' ');
 
+      // If the airspace check never ran or failed, do NOT fabricate "no 5 km zones
+      // nearby" — the summary must say the data is unavailable so the AI cannot
+      // treat it as a verified clear result.
+      const airspaceDataAvailable = airspaceCheckRan && !airspaceCheckFailed;
+      const finalSummaryText = airspaceDataAvailable
+        ? finalText
+        : (asLang === 'en'
+          ? 'Airspace data unavailable — must be checked manually.'
+          : 'Luftromsdata utilgjengelig — må sjekkes manuelt.');
+
       return {
+        available: airspaceDataAvailable,
         warnings: mappedWarnings,
         summary: {
           requires_ninox_approval: unifiedAirspaceActive ? null : requiresNinox,
@@ -2336,7 +2410,7 @@ serve(async (req) => {
           small_airfield_policy: unifiedAirspaceActive
             ? '5 km-sone rundt småflyplass i DK/SE/DE/FI: verifiser PPR/koordineringskrav med lokal luftfartsmyndighet (ikke Ninox).'
             : 'ATZ_5KM = 5 km rundt en småflyplass. Krever PPR (Prior Permission Required) — pilot må kontakte flyplassen / bruke myppr.no. IKKE automatisk no-go/hard-stop, IKKE Ninox.',
-          text: finalText,
+          text: finalSummaryText,
         },
       };
     })();
@@ -2349,6 +2423,11 @@ serve(async (req) => {
         currentDateTime: osloIsoWithOffset(nowForAssessment),
         missionDate: missionDateOslo,
         daysUntilMission: missionDateOslo ? daysUntilOslo(currentDateOslo, missionDateOslo) : null,
+        dataAvailability: {
+          population: populationData != null,
+          airspace: airspaceFacts.available !== false,
+          weather: weatherData != null || skipWeather,
+        },
       },
       mission: {
         personnelRoles: missionPersonnelRoles,
@@ -2376,7 +2455,12 @@ serve(async (req) => {
         warnings: weatherData.warnings,
         recommendation: weatherData.droneFlightRecommendation,
         bestWindow: weatherData.bestFlightWindow,
-      } : null),
+      } : {
+        unavailable: true,
+        note: (resolveLang(language) === 'en')
+          ? 'Weather data unavailable — must be assessed manually.'
+          : 'Værdata utilgjengelig — må vurderes manuelt.',
+      }),
       airspace: airspaceFacts,
       // GDPR: Anonymize pilot data before sending to AI - use identifiers instead of names
       assignedPilots: assignedPilots.map((p: any, index: number) => {
@@ -2546,6 +2630,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: aiRequestBody,
+        signal: AbortSignal.timeout(90_000),
       });
 
       if (aiResponse.ok || (aiResponse.status !== 502 && aiResponse.status !== 503)) {
@@ -2564,18 +2649,21 @@ serve(async (req) => {
       console.error('AI gateway error:', aiResponse!.status, errorText);
       
       if (aiResponse!.status === 429) {
+        await finishJob('failed', 'AI gateway rate limited');
         return new Response(JSON.stringify({ error: prompts.errors.rateLimited }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 402) {
+        await finishJob('failed', 'AI gateway credits exhausted');
         return new Response(JSON.stringify({ error: prompts.errors.creditsExhausted }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       if (aiResponse!.status === 502 || aiResponse!.status === 503) {
+        await finishJob('failed', `AI gateway unavailable (${aiResponse!.status})`);
         return new Response(JSON.stringify({ error: prompts.errors.aiUnavailable }), {
           status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -2707,7 +2795,20 @@ serve(async (req) => {
         aiAnalysis.categories.weather = weatherCategory;
       }
     }
-    if (skipWeather && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
+    // Weather data could not be fetched (and the user did not opt out):
+    // the category must be NOT ASSESSED, not silently guessed by the AI.
+    if (!skipWeather && weatherData == null && aiAnalysis.categories?.weather) {
+      aiAnalysis.categories.weather.score = null;
+      aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
+      aiAnalysis.categories.weather.actual_conditions = (resolveLang(language) === 'en')
+        ? 'Weather data could not be fetched — weather is not assessed by AI. The pilot must assess weather before flight.'
+        : 'Værdata kunne ikke hentes — vær er ikke vurdert av AI. Pilot må selv vurdere vær før flyging.';
+      aiAnalysis.categories.weather.factors = [];
+      aiAnalysis.categories.weather.concerns = [];
+    }
+    // Exclude weather from overall_score whenever it was not assessed.
+    const weatherNotAssessed = skipWeather || weatherData == null;
+    if (weatherNotAssessed && aiAnalysis.categories && !aiAnalysis.hard_stop_triggered) {
       const otherScores = ['airspace', 'equipment', 'pilot_experience', 'mission_complexity']
         .map((k) => Number(aiAnalysis.categories?.[k]?.score))
         .filter((n) => Number.isFinite(n));
@@ -2747,7 +2848,18 @@ serve(async (req) => {
       };
     }
 
-    const deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 0;
+    // Density basis: unknown population → highest band (5000). The `controlled`
+    // proximity choice grants controlled ground area (density 0). A measured
+    // density of 0 gives the lowest POPULATED band, not controlled ground area.
+    const controlledGroundSelected = (pilotInputs?.proximityToPeople ?? null) === 'controlled';
+    const populationDataAvailable = populationData != null;
+    const populationDensityUnknown = !populationDataAvailable;
+    let deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 5000;
+    if (controlledGroundSelected) {
+      deterministicPopulationDensityValue = 0;
+    } else if (populationData && deterministicPopulationDensityValue <= 0) {
+      deterministicPopulationDensityValue = 1; // lowest populated band (<100/km²)
+    }
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
     const grLang = resolveLang(language);
     const grEn = grLang === 'en';
@@ -2762,22 +2874,31 @@ serve(async (req) => {
       observerCount: effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible),
       lang: grLang,
       manualMitigations: manualGroundMitigations ?? null,
+      controlledGroundSelected,
+      populationDensityUnknown,
     });
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
       const populationDensityAverage = Number(populationData.avgDensity.toFixed(1));
       const driverFallback = grEn ? 'within the operation footprint' : 'innenfor operasjonens fotavtrykk';
+      const zeroDensityNote = controlledGroundSelected
+        ? (grEn
+            ? ' Controlled ground area selected by the operator — no uninvolved people are assumed within the footprint.'
+            : ' Kontrollert bakkeområde valgt av operatøren — ingen uinvolverte personer forutsettes innenfor fotavtrykket.')
+        : (grEn
+            ? ' No populated cells were found inside the footprint — the lowest populated band is used (not controlled ground area).'
+            : ' Ingen befolkede ruter ble funnet innenfor fotavtrykket — det laveste befolkede båndet brukes (ikke kontrollert bakkeområde).');
       const populationDensityDescription = populationData.cellCount > 0
         ? (grEn
             ? `We use population density data from Statistics Norway (SSB) to determine the population density within the drone operation footprint. The assessment is based on a 250-metre grid. The cell with the highest population density overlapping the footprint is dimensioning: ${populationData.calculation}. Average population density within the footprint is ${formatLocaleNumber(populationDensityAverage, 1, grLang)} people/km² based on ${formatLocaleNumber(populationData.cellCount, 0, grLang)} overlapping cells. The dimensioning cell is located ${populationData.driver ?? driverFallback}.`
             : `Vi bruker befolkningstetthetsdata fra Statistisk sentralbyrå (SSB) for å fastsette befolkningstettheten innenfor droneoperasjonens fotavtrykk. Vurderingen er basert på et 250-meters rutenett. Ruten med høyest befolkningstetthet som overlapper fotavtrykket er dimensjonerende: ${populationData.calculation}. Gjennomsnittlig befolkningstetthet i fotavtrykket er ${formatNbNumber(populationDensityAverage, 1)} personer/km² basert på ${formatNbNumber(populationData.cellCount)} overlappende ruter. Dimensjonerende rute ligger ${populationData.driver ?? driverFallback}.`)
-        : populationData.summary;
+        : populationData.summary + zeroDensityNote;
 
       aiAnalysis.ground_risk_analysis = {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
-        population_density_value: populationDensityValue,
+        population_density_value: deterministicPopulationDensityValue,
         population_density_calculation: populationData.calculation ?? populationData.summary,
         population_density_average: populationDensityAverage,
         population_density_driver: populationData.driver ?? null,
@@ -2792,8 +2913,8 @@ serve(async (req) => {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
         population_density_description: grEn
-          ? 'SSB 250 m population density was not available. The system uses a conservative fallback to avoid AI variation.'
-          : 'SSB 250 m-befolkningstetthet var ikke tilgjengelig. Systemet bruker konservativ fallback for å unngå AI-variasjon.',
+          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. The highest population band (5000 people/km²) is used as the basis.'
+          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. Det høyeste befolkningsbåndet (5000 personer/km²) brukes som grunnlag.',
       };
     }
 
@@ -2810,6 +2931,23 @@ serve(async (req) => {
       const lowAltitudeOutside5km = Number.isFinite(flightHeightM) && flightHeightM <= 120 && !insideAny5km;
       const ctrOverlapIsCautionOnly = insideAnyCtr && lowAltitudeOutside5km;
 
+      const airspaceUnavailable = airspaceFacts.available === false;
+
+      // Airspace data unavailable: skip every correction and scrub that relies
+      // on verified zone data — the AI text must stand, but the category is
+      // floored at CONDITIONAL (a NO-GO is kept).
+      if (airspaceUnavailable) {
+        aiAnalysis.categories = aiAnalysis.categories || {};
+        const airCat = aiAnalysis.categories.airspace || {};
+        const unavailableNote = (resolveLang(language) === 'en')
+          ? 'Airspace data unavailable — must be checked manually.'
+          : 'Luftromsdata utilgjengelig — må sjekkes manuelt.';
+        airCat.go_decision = airCat.go_decision === 'NO-GO' ? 'NO-GO' : 'BETINGET';
+        airCat.concerns = [...(Array.isArray(airCat.concerns) ? airCat.concerns : []), unavailableNote];
+        if (!airCat.actual_conditions) airCat.actual_conditions = unavailableNote;
+        aiAnalysis.categories.airspace = airCat;
+        console.log('Airspace guard skipped: airspace data unavailable');
+      } else {
       // Build the set of 5KM zone names and their boundary distances for
       // text scrubbing: any AI sentence that says "N m fra <airport name>"
       // when the server only knows N m to the 5 km boundary is a hallucination.
@@ -2990,6 +3128,7 @@ serve(async (req) => {
           console.log('Discarding airspace-based hard-stop reason; authoritative reasons are derived after all guards:', sum.text);
           aiAnalysis.hard_stop_reason = null;
         }
+      }
       }
     } catch (guardErr) {
       console.error('Airspace deterministic guard error (non-blocking):', guardErr);
@@ -3314,6 +3453,14 @@ serve(async (req) => {
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
 
+    // Data availability, stored on the assessment so the dialog can warn when
+    // a data source was missing.
+    aiAnalysis.dataAvailability = {
+      population: populationDataAvailable,
+      airspace: airspaceFacts.available !== false,
+      weather: weatherData != null || skipWeather,
+    };
+
     // 10. Save to database
     const { data: savedAssessment, error: saveError } = await supabase
       .from('mission_risk_assessments')
@@ -3342,10 +3489,11 @@ serve(async (req) => {
       // Still return the analysis even if save fails
     }
 
-    // 11. SORA-based auto-approval
+    // 11. Approval decision — decideApproval is the single source of truth.
     let autoApproved = false;
     let approvalStatus: 'approved' | 'not_approved' | null = null;
     let approvalReason: string | null = null;
+    let approvalSeverity: 'info' | 'warning' | 'danger' | null = null;
     let approvalThreshold: number | null = null;
     try {
       // Use RPC that respects parent-company propagation (propagate_sora_approval)
@@ -3367,33 +3515,92 @@ serve(async (req) => {
         threshold: soraApprovalConfig?.sora_approval_threshold,
       });
 
-      if (soraApprovalConfig?.sora_based_approval && missionId) {
-        const overallScore = aiAnalysis.overall_score ?? 0;
-        const hardStopTriggered = aiAnalysis.hard_stop_triggered === true;
+      if (missionId) {
         const threshold = Number(soraApprovalConfig.sora_approval_threshold) || 7.0;
-        const hardstopRequiresApproval = soraApprovalConfig.sora_hardstop_requires_approval !== false;
         approvalThreshold = threshold;
 
-        if (hardStopTriggered && hardstopRequiresApproval) {
-          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
-          approvalStatus = 'not_approved';
-          approvalReason = `Hardstop utløst — krever manuell godkjenning`;
-          console.log('SORA auto-approval: DENIED (hardstop triggered)');
-        } else if (overallScore >= threshold && !hardStopTriggered) {
-          await supabase.from('missions').update({ approval_status: 'approved' }).eq('id', missionId);
-          autoApproved = true;
-          approvalStatus = 'approved';
-          approvalReason = `AI-score ${overallScore.toFixed(1)} oppfyller terskel ${threshold.toFixed(1)}`;
-          console.log('SORA auto-approval: APPROVED (score', overallScore, '>=', threshold, ')');
-        } else {
-          await supabase.from('missions').update({ approval_status: 'not_approved' }).eq('id', missionId);
-          approvalStatus = 'not_approved';
-          approvalReason = `AI-score ${overallScore.toFixed(1)} er under terskel ${threshold.toFixed(1)} — krever manuell godkjenning`;
-          console.log('SORA auto-approval: DENIED (score', overallScore, '<', threshold, ')');
+        const noGoCategories = Object.entries(aiAnalysis.categories || {})
+          .filter(([, cat]) => (cat as any)?.go_decision === 'NO-GO')
+          .map(([key]) => key);
+        const weatherAssessed = weatherData != null || skipWeather;
+        const dataAvailability = {
+          population: populationDataAvailable,
+          airspace: airspaceDataAvailable,
+          weather: weatherAssessed,
+        };
+
+        // Write access is checked with the caller's own access: the user must be able
+        // to update the mission, or be assigned to it as personnel.
+        let canWrite = false;
+        try {
+          const { data: probeRows, error: probeErr } = await callerClient
+            .from('missions')
+            .update({ approval_status: (mission as any).approval_status ?? 'not_approved' })
+            .eq('id', missionId)
+            .select('id');
+          canWrite = !probeErr && (probeRows?.length ?? 0) > 0;
+        } catch { canWrite = false; }
+        if (!canWrite) {
+          try {
+            const { data: assignedRow } = await callerClient
+              .from('mission_personnel')
+              .select('profile_id')
+              .eq('mission_id', missionId)
+              .eq('profile_id', user.id)
+              .limit(1);
+            canWrite = (assignedRow?.length ?? 0) > 0;
+          } catch { canWrite = false; }
         }
+
+        const decision = decideApproval({
+          lang: assessmentLang,
+          currentStatus: (mission as any).approval_status ?? 'not_approved',
+          score: normalizeRiskScore(aiAnalysis.overall_score),
+          threshold,
+          autoApprovalOn: soraApprovalConfig?.sora_based_approval === true,
+          hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
+          hardStopReason: aiAnalysis.hard_stop_reason ?? null,
+          noGoCategories,
+          weatherAssessed,
+          dataAvailability,
+          assessmentSaved: !saveError,
+          canWrite,
+        });
+
+        aiAnalysis.approvalDecision = {
+          status: decision.status,
+          reason: decision.reason,
+          severity: decision.severity,
+        };
+
+        if (decision.status === 'approved') {
+          const { error: writeErr } = await supabase
+            .from('missions')
+            .update({ approval_status: 'approved' })
+            .eq('id', missionId);
+          if (writeErr) {
+            console.error('Approval status write error (service role):', writeErr);
+          } else {
+            autoApproved = true;
+            approvalStatus = 'approved';
+          }
+        }
+        approvalReason = decision.reason;
+        approvalSeverity = decision.severity;
+        console.log('Approval decision:', decision.status, '|', decision.severity, '|', decision.reason);
       }
     } catch (approvalErr) {
       console.error('SORA auto-approval error (non-blocking):', approvalErr);
+    }
+
+    // Store the decision inside the saved assessment so mission cards can show it.
+    if (savedAssessment && !saveError) {
+      try {
+        await supabase
+          .from('mission_risk_assessments')
+          .update({ ai_analysis: aiAnalysis })
+          .eq('id', (savedAssessment as any).id);
+      } catch (e) { console.error('approvalDecision save error:', e); }
     }
 
     await finishJob('done');
@@ -3408,6 +3615,7 @@ serve(async (req) => {
       autoApproved,
       approvalStatus,
       approvalReason,
+      approvalSeverity,
       approvalThreshold,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -3415,11 +3623,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Risk assessment error:', error);
+    await finishJob('failed', (error as Error)?.message ?? 'unknown');
     try {
       // Best-effort: mark any in-flight job for this user as failed
-      await supabase.from('ai_risk_assessment_jobs')
-        .update({ status: 'failed', finished_at: new Date().toISOString(), error_message: (error as Error)?.message ?? 'unknown' })
-        .eq('user_id', user.id).eq('status', 'running');
+      if (supabase && user) {
+        await supabase.from('ai_risk_assessment_jobs')
+          .update({ status: 'failed', finished_at: new Date().toISOString(), error_message: (error as Error)?.message ?? 'unknown' })
+          .eq('user_id', user.id).eq('status', 'running');
+      }
     } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 

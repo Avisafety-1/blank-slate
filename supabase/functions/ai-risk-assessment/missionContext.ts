@@ -64,3 +64,22 @@ export const effectiveObserverCount = (pilotInputCount: unknown, missionObserver
   const manual = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
   return Math.max(manual, missionObserverTotal);
 };
+
+/** True when the role name counts as a pilot role. */
+export const isPilotRoleName = (name: string | null | undefined): boolean =>
+  /pilot|fjernpilot|rpic/i.test(String(name ?? ''));
+
+/**
+ * Filters mission personnel down to the rows that count as pilots:
+ * a role matching pilot patterns, or no role at all (backwards compatible).
+ */
+export const filterPilots = <T,>(
+  rows: Array<T | null | undefined>,
+  roleName: (row: T) => string | null | undefined,
+): T[] =>
+  (rows || []).filter((row): row is T => {
+    if (!row) return false;
+    const role = roleName(row);
+    if (role == null || role === '') return true;
+    return isPilotRoleName(role);
+  });

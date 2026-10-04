@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
-import { countMissionObservers, daysUntilOslo, effectiveObserverCount, osloDateString, osloIsoWithOffset } from './missionContext.ts';
+import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from './missionContext.ts';
 
 Deno.test('Oslo date rolls over at local midnight (summer time)', () => {
   assertEquals(osloDateString(new Date('2026-10-03T21:59:00Z')), '2026-10-03');
@@ -36,4 +36,18 @@ Deno.test('observer roles are counted and split', () => {
   assertEquals(effectiveObserverCount(0, r.total), 3);
   assertEquals(effectiveObserverCount(undefined, 0), 0);
   assertEquals(effectiveObserverCount('2', 1), 2);
+});
+
+Deno.test('filterPilots keeps pilot roles and role-less personnel, drops observers', () => {
+  const rows: Array<{ name: string; role: string | null } | null> = [
+    { name: 'Per', role: 'Fjernpilot' },
+    { name: 'Kari', role: 'Observatør' },
+    { name: 'Lars', role: 'Luftromsobservatør' },
+    { name: 'Hans', role: 'RPIC' },
+    { name: 'Nina', role: null },
+    null,
+  ];
+  const pilots = filterPilots(rows, (r) => r.role).map((r) => r.name);
+  assertEquals(pilots, ['Per', 'Hans', 'Nina']);
+  assertEquals(filterPilots([] as Array<{ name: string; role: string | null }>, (r) => r.role), []);
 });
