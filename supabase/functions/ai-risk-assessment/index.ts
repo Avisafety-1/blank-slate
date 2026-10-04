@@ -754,7 +754,26 @@ serve(async (req) => {
     const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: accessibleMission } = await callerClient.from('missions').select('id, drone_id').eq('id', missionId).maybeSingle();
+    const { data: callerMission, error: callerMissionErr } = await callerClient.from('missions').select('id, drone_id').eq('id', missionId).maybeSingle();
+    if (callerMissionErr) console.error('[ai-risk-assessment] caller mission lookup error:', callerMissionErr);
+    let accessibleMission: { id: string; drone_id: string | null } | null = callerMission ?? null;
+    if (!accessibleMission) {
+      // Fallback: verify access server-side (same company hierarchy or assigned personnel).
+      const { data: m } = await supabase.from('missions').select('id, drone_id, company_id, user_id').eq('id', missionId).maybeSingle();
+      if (m) {
+        let allowed = m.user_id === user.id || (!!gateCompanyId && m.company_id === gateCompanyId);
+        if (!allowed) {
+          const { data: canAccess } = await supabase.rpc('can_user_access_company', { _user_id: user.id, _company_id: m.company_id });
+          allowed = canAccess === true;
+        }
+        if (!allowed) {
+          const { data: mp } = await supabase.from('mission_personnel').select('mission_id').eq('mission_id', missionId).eq('profile_id', user.id).maybeSingle();
+          allowed = !!mp;
+        }
+        if (allowed) accessibleMission = { id: m.id, drone_id: m.drone_id };
+      }
+      console.warn('[ai-risk-assessment] caller RLS lookup empty; fallback access =', !!accessibleMission);
+    }
     if (!accessibleMission) {
       await finishJob('failed', 'mission not accessible');
       return new Response(JSON.stringify({ error: prompts.errors.missionNotFound }), {
