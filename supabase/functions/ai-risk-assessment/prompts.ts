@@ -148,6 +148,14 @@ ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwiligh
 VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
 HARD STOP-TEKST: hard_stop_reason skal KUN inneholde korte årsaker til vilkår som faktisk er brutt i datagrunnlaget. Ikke ta med bekreftelser på at noe er i orden, at tillatelse ikke kreves, at oppdraget er utenfor en sone, manglende datagrunnlag eller interne korreksjoner/diagnostikk. Ikke skriv «Luftromsbegrunnelse fjernet». Flere faktiske brudd oppgis som separate, korte setninger.
 
+### MANGLER DATAGRUNNLAG (OBLIGATORISK)
+assessmentContext.dataAvailability angir hvilke datakilder som faktisk var tilgjengelige da vurderingen ble laget (population = befolkningstetthet, airspace = luftromssjekk, weather = MET-vær). Gjeldende regler:
+- population = false: Befolkningstettheten er UKJENT og er konservativt satt til det høyeste befolkede båndet. Si eksplisitt at tettheten er ukjent og bør sjekkes manuelt. Påstå ALDRI at området er ubeboelt, uten mennesker eller har null tetthet.
+- airspace = false: Luftromsdata er utilgjengelige. Luftromskategorien er satt til minst BETINGET. Si at luftrommet må sjekkes manuelt før flyging. Påstå ALDRI at luftrommet er tomt, at ingen soner finnes eller at oppdraget er utenfor en sone.
+- weather = false: Værdata er utilgjengelige. Værkategorien er IKKE VURDERT. Si at været må vurderes manuelt før flyging. Ikke utled værforhold eller lokal klimavurdering på egen hånd.
+Nevn manglende datakilder som en kort, nøytral merknad i concerns for den aktuelle kategorien. Dette er en advarsel om å sjekke manuelt — IKKE en hard stop.
+
+
 ${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
 Feltet "companyConfig" inneholder selskapets egne krav som ALLTID gjelder:
 
@@ -721,6 +729,14 @@ ${companySoraConfig?.require_observer ? 'OBSERVER: The company REQUIRES a dedica
 ${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `CIVIL TWILIGHT — HARD STOP: The mission is scheduled at ${civilTwilightMissionTime} which is OUTSIDE civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). This is a BREACH and SHALL result in recommendation='no-go' and hard_stop_triggered=true. Explain in the report that the time violates the company's requirement to fly within civil twilight.` : civilTwilightNoTime ? `CIVIL TWILIGHT — WARNING: The company requires flight within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), but the mission has no scheduled time. Warn in the report that the time MUST be confirmed within the twilight window before flight.` : `CIVIL TWILIGHT: OK — The mission at ${civilTwilightMissionTime} is within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Briefly confirm in the report that the twilight requirement is met.`) : ''}
 IMPORTANT: High pilot experience CANNOT compensate for technical or meteorological exceedances. HARD STOP shall be triggered regardless of other scores.
 HARD STOP TEXT: hard_stop_reason shall contain ONLY concise reasons for conditions actually breached in the supplied data. Do not include confirmations that conditions are acceptable, that approval is not required, that the mission is outside a zone, missing data, or internal corrections/diagnostics. Never write “airspace reason removed”. State multiple actual breaches as separate short sentences.
+
+### MISSING DATA BASIS (MANDATORY)
+assessmentContext.dataAvailability states which data sources were actually available when the assessment was made (population = population density, airspace = airspace check, weather = MET weather). Rules:
+- population = false: The population density is UNKNOWN and is conservatively set to the highest populated band. State explicitly that the density is unknown and should be checked manually. NEVER claim that the area is uninhabited, free of people or has zero density.
+- airspace = false: Airspace data is unavailable. The airspace category is set to at least CONDITIONAL (BETINGET). State that the airspace must be checked manually before flight. NEVER claim the airspace is empty, that no zones exist or that the mission is outside a zone.
+- weather = false: Weather data is unavailable. The weather category is NOT ASSESSED. State that weather must be assessed manually before flight. Do not derive weather conditions or local climate assessments yourself.
+Mention missing data sources as a short, neutral note in the concerns of the relevant category. This is a reminder to check manually — NOT a hard stop.
+
 
 ${companySoraConfig ? `### COMPANY SETTINGS (MANDATORY — OVERRIDES SYSTEM DEFAULTS)
 The "companyConfig" field contains the company's own requirements which ALWAYS apply:
