@@ -3521,7 +3521,7 @@ serve(async (req) => {
         const weatherAssessed = weatherData != null || skipWeather;
         const dataAvailability = {
           population: populationDataAvailable,
-          airspace: airspaceDataAvailable,
+          airspace: airspaceFacts.available !== false,
           weather: weatherAssessed,
         };
 
@@ -3608,6 +3608,7 @@ serve(async (req) => {
             autoApproved = true;
             approvalStatus = 'approved';
           } else {
+            aiAnalysis.approvalDecision.status = null;
             aiAnalysis.approvalDecision.reason = assessmentLang === 'en'
               ? 'Approval status changed while the assessment was running — no change made'
               : 'Godkjenningsstatus ble endret mens vurderingen pågikk — ingen endring';
@@ -3616,8 +3617,10 @@ serve(async (req) => {
             approvalSeverity = 'warning';
           }
         }
-        approvalReason = decision.reason;
-        approvalSeverity = decision.severity;
+        if (approvalSeverity === null) {
+          approvalReason = decision.reason;
+          approvalSeverity = decision.severity;
+        }
         console.log('Approval decision:', decision.status, '|', decision.severity, '|', decision.reason);
       }
     } catch (approvalErr) {
