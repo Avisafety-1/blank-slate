@@ -142,7 +142,8 @@ function ensureModalWatcher() {
 export function requestReload(force: boolean) {
   if (document.visibilityState === 'hidden') {
     // Appen ligger i dvale — ta dette når den blir synlig igjen.
-    pendingForce = force;
+    // Nedgrader aldri en ventende tvungen oppdatering.
+    pendingForce = force || pendingForce === true;
     return;
   }
 
@@ -157,9 +158,12 @@ export function requestReload(force: boolean) {
     return;
   }
 
-  // En modal er åpen — ikke forstyrr brukeren nå.
-  pendingForce = force;
-  if (force) {
+  // En modal er åpen — ikke forstyrre brukeren nå. Nedgrader aldri en
+  // ventende tvungen oppdatering: bruk den sammenslåtte verdien når vi
+  // avgjør om tvungent banner skal vises.
+  const pending = force || pendingForce === true;
+  pendingForce = pending;
+  if (pending) {
     // Tvungen: vis banner (uten «Senere») mens dialogen er åpen, og reload
     // når siste modal lukkes. INGEN tidsgrense.
     globalState = { showBanner: true, forceImmediate: true };

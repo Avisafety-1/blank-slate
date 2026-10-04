@@ -26,16 +26,17 @@ export const ForceReloadBanner = () => {
   const bannerRef = useRef<HTMLDivElement | null>(null);
 
   const forced = state.forceImmediate;
-  // Vanlig banner skjules helt mens en modal er åpen (vises igjen når
-  // modalen lukkes, med mindre «Senere» er trykket). Tvungent banner
-  // vises også med åpen modal — dialogene krymper via --update-banner-h.
-  const visible =
-    state.showBanner &&
-    !snoozed &&
-    Date.now() >= snoozedUntil &&
-    (forced || !hasOpenModal);
+  // «Senere» gjelder kun det vanlige banneret — tvungne oppdateringer
+  // kan aldri snoozes. Vanlig banner skjules også helt mens en modal
+  // er åpen (vises igjen når modalen lukkes, med mindre «Senere» er
+  // trykket). Tvungent banner vises også med åpen modal — dialogene
+  // krymper via --update-banner-h.
+  const snoozeActive = snoozed || Date.now() < snoozedUntil;
+  const visible = state.showBanner && (forced || (!snoozeActive && !hasOpenModal));
 
   // Mål bannerhøyden slik at dialoger kan krympe unna (--update-banner-h).
+  // Når tastaturet er oppe ligger banneret bak tastaturet i iOS — sett
+  // variabelen til 0 så dialogene ikke krymper unødvendig.
   useEffect(() => {
     const el = bannerRef.current;
     if (!visible || !el) {
@@ -44,14 +45,19 @@ export const ForceReloadBanner = () => {
     }
     const setH = (h: number) =>
       document.documentElement.style.setProperty('--update-banner-h', `${h}px`);
-    setH(el.getBoundingClientRect().height);
-    const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect.height;
-      if (h) setH(h);
-    });
+    const isKeyboardUp = () =>
+      !!window.visualViewport &&
+      window.innerHeight - window.visualViewport.height > 150;
+    const update = () => setH(isKeyboardUp() ? 0 : el.getBoundingClientRect().height);
+    update();
+    // Border-box: contentRect mangler padding.
+    const ro = new ResizeObserver(() => update());
     ro.observe(el);
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', update);
     return () => {
       ro.disconnect();
+      vv?.removeEventListener('resize', update);
       document.documentElement.style.setProperty('--update-banner-h', '0px');
     };
   }, [visible]);
