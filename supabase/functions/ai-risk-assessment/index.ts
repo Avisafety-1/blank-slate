@@ -3525,20 +3525,31 @@ serve(async (req) => {
           weather: weatherAssessed,
         };
 
-        // Write access is checked with the caller's own access: the user must be able
-        // to update the mission, or be assigned to it as personnel.
-        let canWrite = false;
-        try {
-          const { data: probeRows, error: probeErr } = await callerClient
-            .from('missions')
-            .update({ approval_status: (mission as any).approval_status ?? 'not_approved' })
-            .eq('id', missionId)
-            .select('id');
-          canWrite = !probeErr && (probeRows?.length ?? 0) > 0;
-        } catch { canWrite = false; }
+        // Read-only write-access check (no update probe): the user must own the
+        // mission, hold an admin/operativ_leder role in the mission's company
+        // (same logic as the missions RLS policies), or be assigned as personnel.
+        let canWrite = (mission as any).user_id === user.id;
         if (!canWrite) {
           try {
-            const { data: assignedRow } = await callerClient
+            const [adminRes, leaderRes] = await Promise.all([
+              supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
+              supabase.rpc('has_role', { _user_id: user.id, _role: 'operativ_leder' }),
+            ]);
+            const hasCompanyRole = adminRes.data === true || leaderRes.data === true;
+            if (hasCompanyRole) {
+              const { data: ucRow } = await supabase
+                .from('user_companies')
+                .select('company_id')
+                .eq('user_id', user.id)
+                .eq('company_id', (mission as any).company_id)
+                .limit(1);
+              canWrite = (ucRow?.length ?? 0) > 0;
+            }
+          } catch { /* fall through */ }
+        }
+        if (!canWrite) {
+          try {
+            const { data: assignedRow } = await supabase
               .from('mission_personnel')
               .select('profile_id')
               .eq('mission_id', missionId)
@@ -3548,9 +3559,21 @@ serve(async (req) => {
           } catch { canWrite = false; }
         }
 
+        // Re-read the approval status right before deciding: it may have changed
+        // while the assessment was running.
+        let currentStatus = (mission as any).approval_status ?? 'not_approved';
+        try {
+          const { data: freshMission } = await supabase
+            .from('missions')
+            .select('approval_status')
+            .eq('id', missionId)
+            .single();
+          if (freshMission?.approval_status) currentStatus = freshMission.approval_status;
+        } catch (e) { console.error('approval_status re-read error:', e); }
+
         const decision = decideApproval({
           lang: assessmentLang,
-          currentStatus: (mission as any).approval_status ?? 'not_approved',
+          currentStatus,
           score: normalizeRiskScore(aiAnalysis.overall_score),
           threshold,
           autoApprovalOn: soraApprovalConfig?.sora_based_approval === true,
@@ -3567,19 +3590,30 @@ serve(async (req) => {
           status: decision.status,
           reason: decision.reason,
           severity: decision.severity,
-          missionStatus: (mission as any).approval_status ?? 'not_approved',
+          missionStatus: currentStatus,
         };
 
         if (decision.status === 'approved') {
-          const { error: writeErr } = await supabase
+          // Conditional write: only approve if the status is unchanged since the
+          // re-read, so a concurrent approval action is never overwritten.
+          const { data: updatedRows, error: writeErr } = await supabase
             .from('missions')
             .update({ approval_status: 'approved' })
-            .eq('id', missionId);
+            .eq('id', missionId)
+            .eq('approval_status', currentStatus)
+            .select('id');
           if (writeErr) {
             console.error('Approval status write error (service role):', writeErr);
-          } else {
+          } else if ((updatedRows?.length ?? 0) > 0) {
             autoApproved = true;
             approvalStatus = 'approved';
+          } else {
+            aiAnalysis.approvalDecision.reason = assessmentLang === 'en'
+              ? 'Approval status changed while the assessment was running — no change made'
+              : 'Godkjenningsstatus ble endret mens vurderingen pågikk — ingen endring';
+            aiAnalysis.approvalDecision.severity = 'warning';
+            approvalReason = aiAnalysis.approvalDecision.reason;
+            approvalSeverity = 'warning';
           }
         }
         approvalReason = decision.reason;
