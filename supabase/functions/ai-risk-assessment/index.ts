@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt, normalizeLang } from "./prompts.ts";
-import { countMissionObservers, daysUntilOslo, effectiveObserverCount, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
+import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
+import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
@@ -39,8 +40,10 @@ const normalizeRiskScore = (score: number | string | undefined | null): number |
   if (score === undefined || score === null) return null;
   const numericScore = typeof score === 'number' ? score : Number(score);
   if (!Number.isFinite(numericScore)) return null;
-  if (numericScore > 0 && numericScore < 1) return Math.round(numericScore * 10);
-  return Math.max(1, Math.min(10, Math.round(numericScore)));
+  // One decimal on the 1-10 scale; the 0-1 fraction scale is kept as-is.
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  if (numericScore > 0 && numericScore < 1) return round1(numericScore * 10);
+  return Math.max(1, Math.min(10, round1(numericScore)));
 };
 
 const deriveRiskRecommendation = (
@@ -1245,8 +1248,9 @@ serve(async (req) => {
     const missionObservers = countMissionObservers((missionPersonnel ?? []).map(personnelRoleName));
     const effectiveObservers = effectiveObserverCount(pilotInputs?.observerCount, missionObservers.total);
 
-    const assignedPilots = missionPersonnel?.map((mp: any) => mp.profiles).filter(Boolean) || [];
-    console.log(`Found ${assignedPilots.length} assigned personnel for mission; observers=${JSON.stringify(missionObservers)} effective=${effectiveObservers}`);
+    // Only personnel with a pilot role (or no role at all) count as pilots.
+    const assignedPilots = filterPilots(missionPersonnel ?? [], personnelRoleName).map((mp: any) => mp.profiles).filter(Boolean) || [];
+    console.log(`Found ${assignedPilots.length} assigned pilots (of ${(missionPersonnel ?? []).length} personnel) for mission; observers=${JSON.stringify(missionObservers)} effective=${effectiveObservers}`);
     if ((missionPersonnel?.length || 0) > 0 && assignedPilots.length === 0) {
       console.log('mission_personnel rows exist, but joined profiles were empty. Sample row:', missionPersonnel?.[0]);
     }
