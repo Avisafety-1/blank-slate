@@ -110,7 +110,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
         supabase.from("missions").select("*").eq("id", mission.id).single(),
         supabase.from("flight_logs").select(FLIGHT_ANALYSIS_COLUMNS)
           .eq("mission_id", mission.id).not("flight_track", "is", null).order("flight_date", { ascending: false }),
-         supabase.from("mission_risk_assessments").select("overall_score, recommendation, sora_output")
+         supabase.from("mission_risk_assessments").select("overall_score, recommendation, sora_output, ai_analysis")
            .eq("mission_id", mission.id).order("created_at", { ascending: false }),
       ]);
       if (missionRes.data) {

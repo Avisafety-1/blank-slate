@@ -50,6 +50,31 @@ export const ApproveMissionButton = ({
   const [saving, setSaving] = useState(false);
   const [assignedIds, setAssignedIds] = useState<string[]>(personnelProfileIds ?? []);
   const [childCompanyIds, setChildCompanyIds] = useState<string[] | null>(null);
+  /** Red warning from the latest assessment's approval decision, shown before approving. */
+  const [approvalDanger, setApprovalDanger] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setApprovalDanger(null);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("mission_risk_assessments")
+      .select("ai_analysis")
+      .eq("mission_id", missionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const decision = (data as any)?.ai_analysis?.approvalDecision;
+        const isDanger = decision?.severity === 'danger' &&
+          (decision.status === 'approved' || decision.status === 'pending_approval');
+        setApprovalDanger(isDanger ? decision.reason : null);
+      });
+    return () => { cancelled = true; };
+  }, [open, missionId]);
 
   const isPending = approvalStatus === "pending_approval";
   const scopeIsAll = Array.isArray(approvalCompanyIds) && approvalCompanyIds.includes("all");
@@ -209,12 +234,19 @@ export const ApproveMissionButton = ({
               {t("profile.approval.selfBlocked")}
             </div>
           ) : (
-            <Textarea
-              placeholder={t("profile.approval.commentOptional")}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={3}
-            />
+            <>
+              {approvalDanger && (
+                <div className="rounded-md border-2 border-red-500 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">
+                  {t("missionBadges.approvalDanger")}: {approvalDanger}
+                </div>
+              )}
+              <Textarea
+                placeholder={t("profile.approval.commentOptional")}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+              />
+            </>
           )}
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
