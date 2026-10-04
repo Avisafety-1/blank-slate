@@ -361,7 +361,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries), approvalDanger: getApprovalDanger(riskEntries[0]) } : null,
         };
       });
 
@@ -519,7 +519,7 @@ export const useOppdragData = () => {
           incidents: incidentsMap.get(mission.id) || [],
           flightLogs: missionLogs,
           created_by_name: mission.user_id ? (profileMap.get(mission.user_id) || null) : null,
-          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries) } : null,
+          aiRisk: riskEntries[0] ? { ...riskEntries[0], hasSoraReassessment: hasSoraReassessment(riskEntries), approvalDanger: getApprovalDanger(riskEntries[0]) } : null,
         };
       });
 
