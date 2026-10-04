@@ -3487,6 +3487,7 @@ serve(async (req) => {
       autoApproved,
       approvalStatus,
       approvalReason,
+      approvalSeverity,
       approvalThreshold,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
