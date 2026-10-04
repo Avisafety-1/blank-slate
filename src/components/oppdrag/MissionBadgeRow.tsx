@@ -93,6 +93,9 @@ export function MissionBadgeRow({
     <Badge
       variant="outline"
       title={approvalWarning || undefined}
+      role={approvalWarning ? "button" : undefined}
+      tabIndex={approvalWarning ? 0 : undefined}
+      aria-label={approvalWarning ? `${getApprovalStatusLabel(approvalStatus, compact)}: ${approvalWarning}` : undefined}
       className={`${badgeSize} ${getApprovalStatusColor(approvalStatus)} ${approvalWarning ? "border-destructive text-destructive cursor-pointer" : ""} ${
         approvalClickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
       }`}
