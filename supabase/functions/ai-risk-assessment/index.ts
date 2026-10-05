@@ -24,6 +24,7 @@ import {
 import { UNKNOWN_STATUS_TEXT } from "./maintenanceStatus.ts";
 import { normalizeCategoryDecisions } from "./decisionCodes.ts";
 import { resolveFlightInputs } from "./flightInputs.ts";
+import { isYellowStatus, unknownStatusText } from "./maintenanceStatus.ts";
 import { evaluateCivilTwilight, POLAR_NIGHT_TEXT } from "./twilight.ts";
 import { isFixedWingDrone, modelSearchTerms } from "./catalogLookup.ts";
 import { osloDateString as osloDay } from "./missionContext.ts";
@@ -1199,7 +1200,7 @@ serve(async (req) => {
       });
     }
 
-    // Flyhøyde/VLOS: pilotens verdi, ellers oppdragets NOTAM-felt, aldri 0 m.
+    // Flyhøyde/VLOS: pilotens verdi, ellers ruteplanleggerens flightAltitude, ellers 120 m. NOTAM brukes ikke.
     const flightInputs = resolveFlightInputs(rawPilotInputs, mission, resolveLang(language) === 'en' ? 'en' : 'no');
     const pilotInputs: any = { ...(rawPilotInputs || {}), flightHeight: flightInputs.heightM, isVlos: flightInputs.isVlos };
     console.log(`Flight inputs: height=${flightInputs.heightM}m (${flightInputs.heightSource}), vlos=${flightInputs.isVlos} (${flightInputs.vlosSource})`);
@@ -2535,10 +2536,11 @@ serve(async (req) => {
       }
     };
 
+    const outLangYellow: 'no' | 'en' = resolveLang(language) === 'en' ? 'en' : 'no';
     if (primaryDroneStatusInfo) {
       const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
       if (primaryDroneStatusInfo.ownStatus === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
-      else if (primaryDroneStatusInfo.ownStatus === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
+      else if (isYellowStatus(primaryDroneStatusInfo.ownStatus)) yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownStatus === 'Ukjent' ? [unknownStatusText(outLangYellow)] : primaryDroneStatusInfo.ownReasons });
       if (primaryDroneStatusInfo.linkedReasons.length > 0) addLinkedNotes(label, primaryDroneStatusInfo.linkedReasons);
     }
     for (const d of assignedDrones as any[]) {
@@ -2546,7 +2548,7 @@ serve(async (req) => {
       const info = assignedDroneStatuses.get(d.id);
       const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
       if (info?.ownStatus === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
-      else if (info?.ownStatus === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+      else if (isYellowStatus(info?.ownStatus)) yellowDrones.push({ label, reasons: info?.ownStatus === 'Ukjent' ? [unknownStatusText(outLangYellow)] : [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
       if (info?.linkedReasons?.length) addLinkedNotes(label, info.linkedReasons);
     }
     const redEquipment: string[] = [];
@@ -2555,7 +2557,7 @@ serve(async (req) => {
       const s = assignedEquipmentStatuses.get(e.id);
       const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${String(e.neste_vedlikehold).slice(0, 10)})` : ''}`;
       if (s === 'Rød') redEquipment.push(label);
-      else if (s === 'Gul') yellowEquipment.push(label);
+      else if (isYellowStatus(s)) yellowEquipment.push(s === 'Ukjent' ? `${label} — ${unknownStatusText(outLangYellow)}` : label);
     }
     // Sikkerhet: dropp evt. duplikater fra linkedOnlyNotes som faktisk er i assignedEquipment.
     // (linkedEquipment-listen er navnbasert, så vi kan ikke matche eksakt — beholder notene som de er.)

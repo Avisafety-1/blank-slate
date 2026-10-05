@@ -45,7 +45,7 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
-  approvalDecision?: { status: 'approved' | 'not_approved' | null; reason: string; severity: 'info' | 'warning' | 'danger' } | null;
+  approvalDecision?: { status: 'approved' | 'not_approved' | null; reason: string; severity: 'info' | 'warning' | 'danger'; missionStatus?: string | null } | null;
   airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
   groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
   operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
@@ -133,6 +133,13 @@ export const RiskScoreCard = ({
     );
   };
 
+  // One red box: when a hard stop exists, the danger approval warning is folded into it.
+  const mergeIntoHardStop = !!hardStopTriggered && approvalDecision?.severity === 'danger';
+  const hardStopStatusLine = !mergeIntoHardStop ? null
+    : approvalDecision?.missionStatus === 'approved' ? t('riskAssessment.hardStopMissionApproved')
+    : approvalDecision?.missionStatus === 'pending_approval' ? t('riskAssessment.hardStopMissionPending')
+    : null;
+
   const categoryLabels: Record<string, string> = {
     weather: t('riskAssessment.categories.weather', 'Vær'),
     airspace: t('riskAssessment.categories.airspace', 'Luftrom'),
@@ -155,6 +162,9 @@ export const RiskScoreCard = ({
               <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                 {hardStopReason || t('riskAssessment.hardStopGeneric', 'Kritiske terskler er overskredet')}
               </p>
+              {hardStopStatusLine && (
+                <p className="text-sm font-medium text-red-700 dark:text-red-300 mt-2">{hardStopStatusLine}</p>
+              )}
             </div>
           </div>
         </div>
@@ -162,7 +172,7 @@ export const RiskScoreCard = ({
 
       {/* Approval decision banner from the latest assessment — colored by severity.
           'info' is already covered by the approved/not_approved banners below. */}
-      {approvalDecision && approvalDecision.severity !== 'info' && (
+      {approvalDecision && approvalDecision.severity !== 'info' && !mergeIntoHardStop && (
         <div className={cn(
           "p-4 rounded-lg border-2",
           approvalDecision.severity === 'danger'

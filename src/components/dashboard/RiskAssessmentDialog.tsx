@@ -459,26 +459,20 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }));
   }, [soraMissionDetails?.oppdragstype, missionTypeLabels]);
 
-  // Prefill VLOS/BVLOS and flight height from the mission's NOTAM fields.
-  const [missionFlightDefaults, setMissionFlightDefaults] = useState<{ heightM: number | null; isVlos: boolean | null }>({ heightM: null, isVlos: null });
+  // Prefill flight height from the route planner (meters). NOTAM fields are never used.
+  const [routeHeightM, setRouteHeightM] = useState<number | null>(null);
   useEffect(() => {
-    setMissionFlightDefaults({ heightM: null, isVlos: null });
+    setRouteHeightM(null);
     if (!open || !currentMissionId) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase.from('missions')
-        .select('notam_operation_type, notam_max_agl_ft').eq('id', currentMissionId).maybeSingle();
+        .select('route').eq('id', currentMissionId).maybeSingle();
       if (cancelled || !data) return;
-      const ft = Number((data as any).notam_max_agl_ft);
-      const heightM = Number.isFinite(ft) && ft > 0 ? Math.round(ft * 0.3048) : null;
-      const opType = String((data as any).notam_operation_type ?? '').trim().toUpperCase();
-      const isVlos = opType ? opType !== 'BVLOS' : null;
-      setMissionFlightDefaults({ heightM, isVlos });
-      setPilotInputs(prev => ({
-        ...prev,
-        ...(heightM !== null ? { flightHeight: heightM } : {}),
-        ...(isVlos !== null ? { isVlos } : {}),
-      }));
+      const alt = Number((data as any).route?.soraSettings?.flightAltitude);
+      const heightM = Number.isFinite(alt) && alt > 0 ? Math.round(alt) : null;
+      setRouteHeightM(heightM);
+      if (heightM !== null) setPilotInputs(prev => ({ ...prev, flightHeight: heightM }));
     })();
     return () => { cancelled = true; };
   }, [currentMissionId, open]);
@@ -1035,11 +1029,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             flightHeight: e.target.value === '' ? 0 : parseInt(e.target.value) 
                           }))}
                         />
-                        {missionFlightDefaults.heightM !== null && (
-                          pilotInputs.flightHeight === missionFlightDefaults.heightM ? (
-                            <p className="text-xs text-muted-foreground mt-1">{t('riskAssessment.fromMissionNotam')}</p>
+                        {routeHeightM !== null && (
+                          pilotInputs.flightHeight === routeHeightM ? (
+                            <p className="text-xs text-muted-foreground mt-1">{t('riskAssessment.fromRoutePlanner')}</p>
                           ) : (
-                            <p className="text-xs text-status-yellow mt-1">{t('riskAssessment.differsFromMissionHeight', { value: missionFlightDefaults.heightM })}</p>
+                            <p className="text-xs text-status-yellow mt-1">{t('riskAssessment.differsFromRouteHeight', { value: routeHeightM })}</p>
                           )
                         )}
                       </div>
@@ -1084,13 +1078,6 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           ? t('riskAssessment.vlosDesc', 'Visuell kontakt med dronen gjennom hele flygingen')
                           : t('riskAssessment.bvlosDesc', 'Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA')}
                       </p>
-                      {missionFlightDefaults.isVlos !== null && (
-                        pilotInputs.isVlos === missionFlightDefaults.isVlos ? (
-                          <p className="text-xs text-muted-foreground">{t('riskAssessment.fromMissionNotam')}</p>
-                        ) : (
-                          <p className="text-xs text-status-yellow">{t('riskAssessment.differsFromMissionMode', { value: missionFlightDefaults.isVlos ? 'VLOS' : 'BVLOS' })}</p>
-                        )
-                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
