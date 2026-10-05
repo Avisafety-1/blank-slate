@@ -54,6 +54,8 @@ export interface CompetencyInput {
   droneClass: string | null | undefined;
   proximityToPeople: string | null | undefined;
   isVlos: boolean;
+  /** Drone weight in kg; legacy/self-built < 250 g is treated like C0. */
+  weightKg?: number | null;
   now?: Date;
 }
 
@@ -71,12 +73,16 @@ export interface CompetencyAssessment {
   expired: { name: string; code: string | null; expired: string | null }[];
   ignored: string[];
   unclassified: string[];
+  /** C0 / < 250 g: no certificate required, only the user manual. */
+  c0NoCertificate?: boolean;
   reason: string | null; // plain, language-specific via buildCompetencyReason
   undeterminedWhy: string | null;
 }
 
-export const requiredRank = (droneClass: string | null, nearPeople: boolean, isVlos: boolean): number | null => {
+export const requiredRank = (droneClass: string | null, nearPeople: boolean, isVlos: boolean, weightKg: number | null = null): number | null => {
   if (!isVlos) return 1; // Specific/SORA: baseline certificate, rest via OSO #08
+  const isClassMarked = droneClass !== null && /^C[0-6]$/.test(droneClass);
+  if (!isClassMarked && weightKg !== null && weightKg < 0.25) return 0; // legacy/self-built < 250 g // Specific/SORA: baseline certificate, rest via OSO #08
   switch (droneClass) {
     case 'C0': return 0; // UAS.OPEN.020: only read the user manual
     case 'C1': case 'C3': case 'C4': return 1;
@@ -122,7 +128,7 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
   }
 
   const pilotRank = rankByPilot.size ? Math.max(...rankByPilot.values()) : null;
-  const req = requiredRank(droneClass, nearPeople, input.isVlos);
+  const req = requiredRank(droneClass, nearPeople, input.isVlos, input.weightKg ?? null);
   const base = {
     droneClass, nearPeople, requiredRank: req, requiredLabel: rankLabel(req),
     pilotRank, pilotLabel: rankLabel(pilotRank), operatorApproval,
@@ -131,7 +137,7 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
 
   // C0 / legacy < 250 g: no certificate required (UAS.OPEN.020), never a hard stop.
   if (req === 0) {
-    return { ...base, requiredRank: null, requiredLabel: null, status: 'ok', coveredBy: 'operations_manual', reason: null, undeterminedWhy: null };
+    return { ...base, requiredRank: null, requiredLabel: null, status: 'ok', coveredBy: 'operations_manual', c0NoCertificate: true, reason: null, undeterminedWhy: null };
   }
   if (req === null && input.isVlos) {
     return { ...base, status: 'undetermined', coveredBy: null, reason: null,

@@ -7,7 +7,7 @@ import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
-import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
+import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 import { readMissionSoraDocument } from "./soraDocument.ts";
 
@@ -2173,6 +2173,7 @@ serve(async (req) => {
       rows: allCompetencies,
       pilotIds,
       droneClass: droneData?.klasse ?? null,
+      weightKg: Number.isFinite(Number(droneData?.vekt)) && Number(droneData?.vekt) > 0 ? Number(droneData?.vekt) : null,
       proximityToPeople: pilotInputs?.proximityToPeople ?? null,
       isVlos: pilotInputs?.isVlos !== false,
       now: today,
@@ -3379,6 +3380,8 @@ serve(async (req) => {
         if (typeof pilotCat.experience_summary === 'string') pilotCat.experience_summary = scrubCompetencyText(pilotCat.experience_summary);
         if (pilotInputs?.isVlos === false) {
           pilotCat.notes = [bvlosAssumptionNote(assessmentLang)];
+        } else if (competencyAssessment.c0NoCertificate) {
+          pilotCat.notes = [c0ManualNote(assessmentLang)];
         }
       }
       if (pilotInputs?.isVlos === false) {
