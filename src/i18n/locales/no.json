@@ -7248,6 +7248,13 @@
       "saving": "Lagrer...",
       "saveButton": "Lagre SORA-innstillinger",
       "parentCompanyFallback": "Morselskap"
+    },
+    "containment": {
+      "required": "Påkrevd inneslutning: {{level}}",
+      "notCalculated": "Ikke beregnet",
+      "outOfScope": "Utenfor specific-kategorien",
+      "sourceMap": "Fra kartets tilstøtende område, beregnet {{date}}",
+      "adjacentFacts": "Tilstøtende radius {{radius}} m, snittetthet {{density}} pers/km²"
     }
   },
   "eccairs": {

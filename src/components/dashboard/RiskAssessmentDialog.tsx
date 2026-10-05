@@ -32,6 +32,7 @@ import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { deriveSail } from "@/lib/soraSail";
 import { AutoMitigationsPreview } from "./AutoMitigationsPreview";
+import { ContainmentSourceBox } from "./ContainmentSourceBox";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -1254,6 +1255,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
                       );
                     })()}
+                    {currentAssessment.containment?.source && (
+                      <ContainmentSourceBox data={currentAssessment.containment} />
+                    )}
                     <RiskScoreCard
                       overallScore={currentAssessment.overall_score}
                       recommendation={currentAssessment.recommendation}

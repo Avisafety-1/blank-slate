@@ -4,6 +4,7 @@ import { AlertTriangle, Shield, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { SAIL_MATRIX, deriveSail } from "@/lib/soraSail";
+import { ContainmentSourceBox, type ContainmentSystemDecision } from "./ContainmentSourceBox";
 
 interface ContainmentCriterion {
   criterion: string;
@@ -32,6 +33,7 @@ interface ContainmentData {
   fts_required: boolean;
   fts_note?: string;
   tethered?: boolean;
+  system?: ContainmentSystemDecision;
 }
 
 interface SoraData {
@@ -261,6 +263,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-2">
+              {data.containment.system && <ContainmentSourceBox data={data.containment.system} />}
               <Field label={t("sora.resultView.reasoningLabel")} value={data.containment.reasoning} />
 
               {data.containment.criteria && data.containment.criteria.length > 0 && (
