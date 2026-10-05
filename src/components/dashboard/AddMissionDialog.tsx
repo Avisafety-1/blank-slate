@@ -147,6 +147,10 @@ export const AddMissionDialog = ({
   const [newCustomerName, setNewCustomerName] = useState("");
   const [showNewCustomerInput, setShowNewCustomerInput] = useState(false);
   const [routeData, setRouteData] = useState<RouteData | null>(initialRouteData || null);
+  const airspaceSegments = useMemo(
+    () => getAirspaceRouteSegments(routeData as any, (i) => t('pages.missions.card.routeN', { n: i + 1 })),
+    [routeData, t],
+  );
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStart, setMentionStart] = useState<number | null>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1289,10 +1293,7 @@ export const AddMissionDialog = ({
               latitude={formData.latitude} 
               longitude={formData.longitude}
               routePoints={routeData?.coordinates}
-              routeSegments={getAirspaceRouteSegments(
-                routeData as any,
-                (i) => t('pages.missions.card.routeN', { n: i + 1 }),
-              )}
+              routeSegments={airspaceSegments}
               showAll={companySettings.show_all_airspace_warnings}
               onAirspaceResult={setAirspaceWarningsForEmail}
             />

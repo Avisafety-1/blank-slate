@@ -604,7 +604,7 @@ export const TakeCourseDialog = ({ assignmentId, courseId: directCourseId, previ
         ref={dialogRef}
         className={
           isFullscreen
-            ? "fixed inset-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen rounded-none border-none p-0 overflow-hidden"
+            ? "fixed !inset-0 translate-x-0 translate-y-0 max-w-none w-screen h-screen rounded-none border-none p-0 overflow-hidden"
             : "max-w-3xl max-h-[90vh] overflow-y-auto"
         }
       >

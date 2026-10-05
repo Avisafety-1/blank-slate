@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -82,9 +82,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
     }
   }, [cachedWarnings]);
 
+  const coordsKey = (pts?: RoutePoint[]) =>
+    (pts || []).map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join(";");
   const segmentsKey = (routeSegments || [])
-    .map((s) => `${s.id}:${s.label}:${s.coordinates.length}:${s.coordinates[0]?.lat ?? ''},${s.coordinates[0]?.lng ?? ''}`)
+    .map((s) => `${s.label}:${coordsKey(s.coordinates)}`)
     .join("|");
+  const routePointsKey = coordsKey(routePoints);
+  const lastCompletedKeyRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
 
@@ -96,7 +101,12 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
       return;
     }
 
+    const runKey = `${latitude}|${longitude}|${segmentsKey}|${routePointsKey}`;
+    if (lastCompletedKeyRef.current === runKey) return;
+
     const checkAirspace = async () => {
+      const requestId = ++requestIdRef.current;
+      const isStale = () => requestId !== requestIdRef.current;
       setLoading(true);
       setError(null);
       const controller = new AbortController();
@@ -121,7 +131,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
           if (error) {
             if (error.message?.includes('AbortError') || controller.signal.aborted) {
               clearTimeout(timeoutId2);
-              setError("Luftromssjekk tok for lang tid. Prøv igjen.");
+              if (!isStale()) setError(t('safety.airspaceMessages.timeoutError'));
               return;
             }
             console.error("Error checking airspace:", error);
@@ -134,6 +144,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
         }
 
         clearTimeout(timeoutId2);
+        if (isStale()) return;
 
         // Map raw RPC response to expected format
         const warningsArray: AirspaceWarning[] = rawWithLabel.map(({ r, label: routeLabel }) => {
@@ -311,11 +322,14 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
           (a, b) => severityOrder[a.level] - severityOrder[b.level]
         );
 
+        if (isStale()) return;
+        lastCompletedKeyRef.current = runKey;
         setWarnings(sortedWarnings);
 
         onAirspaceResult?.(sortedWarnings);
       } catch (err: any) {
         clearTimeout(timeoutId2);
+        if (isStale()) return;
         if (err?.name === 'AbortError' || controller.signal.aborted) {
           setError(t('safety.airspaceMessages.timeoutError'));
         } else {
@@ -323,7 +337,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
           setError(t('safety.airspaceMessages.genericError'));
         }
       } finally {
-        setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     };
 
@@ -331,7 +345,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
     const timeoutId = setTimeout(checkAirspace, 500);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latitude, longitude, routePoints, segmentsKey]);
+  }, [latitude, longitude, routePointsKey, segmentsKey]);
 
 
   if (!latitude || !longitude) {
