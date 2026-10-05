@@ -141,3 +141,24 @@ Deno.test('fraction scale input is treated as a high score (0.65 -> 6.5)', () =>
   const d = decideApproval({ ...base(), score: 0.65, threshold: 6.5 });
   assertEquals(d.status, null);
 });
+
+Deno.test('pending + score 2.0 overall NO-GO without hard stop -> unchanged, danger', () => {
+  const d = decideApproval({ ...base(), currentStatus: 'pending_approval', score: 2.0, overallNoGo: true });
+  assertEquals(d.status, null);
+  assertEquals(d.severity, 'danger');
+  assertEquals(d.reason, 'Siste vurdering anbefaler NO-GO (AI-score 2/10) — godkjenner må ta stilling');
+});
+
+Deno.test('approved + score 3.0 overall NO-GO -> unchanged, danger', () => {
+  const d = decideApproval({ ...base(), currentStatus: 'approved', score: 3.0, overallNoGo: true });
+  assertEquals(d.status, null);
+  assertEquals(d.severity, 'danger');
+  assertEquals(d.reason, 'Oppdraget er godkjent, men siste vurdering anbefaler NO-GO (AI-score 3/10)');
+});
+
+Deno.test('not_approved + overall NO-GO never auto-approves (EN text)', () => {
+  const d = decideApproval({ ...base(), lang: 'en', score: 9, threshold: 1, overallNoGo: true });
+  assertEquals(d.status, null);
+  assertEquals(d.severity, 'danger');
+  assertEquals(d.reason.startsWith('The latest assessment recommends NO-GO (AI score 9/10)'), true);
+});
