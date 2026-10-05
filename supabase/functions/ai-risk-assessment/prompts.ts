@@ -329,6 +329,7 @@ Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
 
 #### ALOS
 ALOS er beregnet av systemet (systemDecisions.alosMaxM / primaryDrone.alos). Gjengi verdien, ikke beregn den.
+Inneslutningskrav (systemDecisions.containment) er beregnet fra kartets tilstøtende område. Gjengi det; utled det aldri fra SAIL.
 
 #### Buffersone-sjekk
 Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
@@ -697,6 +698,7 @@ If the operation CANNOT be performed in Open or STS → SORA is required.
 
 #### ALOS
 ALOS is calculated by the system (systemDecisions.alosMaxM / primaryDrone.alos). Reproduce it; do not calculate it.
+The containment requirement (systemDecisions.containment) is calculated from the map's adjacent area. Reproduce it; never derive it from SAIL.
 
 #### Buffer zone check
 Check whether the mission has SORA buffer zones calculated. Look at mission.route.soraSettings:
@@ -884,10 +886,7 @@ fGRC\\ARC:   a      b      c      d
 Du SKAL bruke denne matrisen eksakt. Ikke gjett SAIL.
 
 ### STEG 8: CONTAINMENT
-Bestem robusthetsnivå for containment basert på SAIL:
-- SAIL I-II: Low robustness
-- SAIL III-IV: Medium robustness
-- SAIL V-VI: High robustness
+Påkrevd robusthetsnivå for containment er SYSTEMBESTEMT fra kartets tilstøtende område (fastData.containment: required, note). Gjengi required som robustness_level og note i reasoning; ikke utled nivået fra SAIL. Er required "Ikke beregnet", skriv at tilstøtende område må beregnes i kartet.
 
 Vurder fire kriterier:
 1. Criterion #1 - Operational Volume Containment: Prosedyrer/systemer for å holde dronen innenfor operasjonsvolumet
@@ -1055,10 +1054,7 @@ fGRC\\ARC:   a      b      c      d
 You MUST use this matrix exactly. Do not guess SAIL.
 
 ### STEP 8: CONTAINMENT
-Determine robustness level for containment based on SAIL:
-- SAIL I-II: Low robustness
-- SAIL III-IV: Medium robustness
-- SAIL V-VI: High robustness
+The required containment robustness is SYSTEM-DETERMINED from the map's adjacent area (fixed data containment: required, note). Reproduce required as robustness_level and the note in reasoning; never derive the level from SAIL. If required is "Ikke beregnet" (not calculated), state that the adjacent area must be calculated in the map.
 
 Evaluate four criteria:
 1. Criterion #1 - Operational Volume Containment: Procedures/systems to keep the drone within the operational volume

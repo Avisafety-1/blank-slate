@@ -4,10 +4,13 @@ import { deriveHardStops, joinHardStopReasons, type HardStopReason } from './har
 import { lookupSail } from './soraGroundRisk.ts';
 import { countBatteries, describeBatteries, type EquipmentLike } from './batteryCount.ts';
 import { deriveFogAdvisory, type FogAdvisory } from './fog.ts';
+import { resolveContainment, type ContainmentDecision } from './containment.ts';
 
 type HardStopInput = Parameters<typeof deriveHardStops>[0];
 
 export interface SystemDecisionsInput {
+  /** mission.route.adjacentAreaDocumentation from the map. */
+  containmentDoc?: unknown;
   hardStopInput: Omit<HardStopInput, 'backupBattery'>;
   requireBackupBattery: boolean;
   missionEquipment: EquipmentLike[];
@@ -58,6 +61,7 @@ export interface SystemDecisions {
     batteries: { required: boolean; count: number; description: string };
   };
   fog: FogAdvisory | null;
+  containment: ContainmentDecision;
   dataAvailability: SystemDecisionsInput['dataAvailability'];
   airspace: SystemDecisionsInput['airspace'];
 }
@@ -71,15 +75,26 @@ export const buildSystemDecisions = (input: SystemDecisionsInput): SystemDecisio
   });
   const arcLetter = parseArcLetter(input.airRisk?.residual_arc) ?? parseArcLetter(input.airRisk?.initial_arc);
   const sail = lookupSail(input.groundRisk?.fgrc ?? null, arcLetter);
+  const certifiedCategory = sail.certified || input.groundRisk?.outside_sora === true;
+  const sailLabel = sail.sail ? `SAIL ${sail.sail}` : null;
+  const containment = resolveContainment(
+    input.containmentDoc,
+    sailLabel,
+    lang === 'en' ? 'en' : 'no',
+    certifiedCategory
+      ? (lang === 'en' ? 'certified category (outside specific/SORA)' : 'sertifisert kategori (utenfor specific/SORA)')
+      : null,
+  );
   return {
+    containment,
     hardStops,
     hardStopTriggered: hardStops.length > 0,
     hardStopReason: joinHardStopReasons(hardStops),
     hardStopCategories: [...new Set(hardStops.map((r) => r.category))],
     groundRisk: input.groundRisk,
     airRisk: input.airRisk,
-    sail: sail.sail ? `SAIL ${sail.sail}` : null,
-    certifiedCategory: sail.certified || input.groundRisk?.outside_sora === true,
+    sail: sailLabel,
+    certifiedCategory,
     alosMaxM: input.alos?.alosMaxM ?? null,
     equipment: {
       ...input.equipment,

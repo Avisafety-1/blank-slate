@@ -8,6 +8,7 @@ import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildSystemDecisions, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { resolveContainment } from "./containment.ts";
 import { buildDecisionSentence, enforceConsistency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
@@ -780,7 +781,15 @@ serve(async (req) => {
             grc_adjustment: m?.reduction ?? 0,
           }))
         : null;
+      const { data: soraMissionRow } = await callerClient.from('missions').select('route').eq('id', missionId).maybeSingle();
+      const soraContainment = resolveContainment(
+        (soraMissionRow as any)?.route?.adjacentAreaDocumentation,
+        fixedSail.sail,
+        soraLang === 'en' ? 'en' : 'no',
+        fixedSail.certified ? certifiedCategoryText(soraLang) : null,
+      );
       const soraFixed = {
+        containment: soraContainment,
         ground_manual_override: groundManual,
         igrc: prevIgrc,
         fgrc: fixedFgrc,
@@ -907,10 +916,6 @@ serve(async (req) => {
             soraAnalysis.certified_category_note = certifiedCategoryText(soraLang);
           } else if (fixedSail.sail) {
             soraAnalysis.sail = `SAIL ${fixedSail.sail}`;
-            if (soraAnalysis.containment && typeof soraAnalysis.containment === 'object') {
-              const s = fixedSail.sail;
-              soraAnalysis.containment.robustness_level = (s === 'I' || s === 'II') ? 'Low' : (s === 'III' || s === 'IV') ? 'Medium' : 'High';
-            }
           }
           if (aiSail && aiSail !== soraAnalysis.sail) {
             console.log(`SAIL overridden: AI said "${aiSail}" → code says "${soraAnalysis.sail}" (fGRC=${fixedFgrc}, ARC=${fixedArc})`);
@@ -1088,6 +1093,12 @@ serve(async (req) => {
       soraAnalysis.hard_stop_reason = preservedHardStop.hard_stop_reason;
       soraAnalysis.summary = removeHardStopClaims(soraAnalysis.summary);
 
+      // Containment is system-determined from the map's adjacent area; the AI never overrides it.
+      soraAnalysis.containment = {
+        ...(soraAnalysis.containment && typeof soraAnalysis.containment === 'object' ? soraAnalysis.containment : {}),
+        robustness_level: soraContainment.required,
+        system: soraContainment,
+      };
       console.log('SORA analysis complete:', soraAnalysis.sail, soraAnalysis.residual_risk_level);
 
       const soraOverallScore = normalizeRiskScore(soraAnalysis.overall_score) ?? normalizeRiskScore(previousAnalysis.overall_score);
@@ -1099,7 +1110,7 @@ serve(async (req) => {
         soraAnalysis.hard_stop_triggered === true,
         previousAnalysis.recommendation
       );
-      if (soraAnalysis.certified_category === true && soraAnalysis.recommendation === 'go') {
+      if ((soraAnalysis.certified_category === true || soraContainment.outOfScope) && soraAnalysis.recommendation === 'go') {
         soraAnalysis.recommendation = 'caution';
       }
       if (soraAnalysis.certified_category === true && typeof soraAnalysis.summary === 'string'
@@ -2587,6 +2598,7 @@ serve(async (req) => {
 
     const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
     const systemDecisions = buildSystemDecisions({
+      containmentDoc: (mission.route as any)?.adjacentAreaDocumentation ?? null,
       hardStopInput: {
         lang: assessmentLang,
         skipWeather,
@@ -3536,7 +3548,8 @@ serve(async (req) => {
       aiAnalysis.recommendation
     );
     // Outside specific/SORA (iGRC N/A or fGRC > 7): never a plain GO.
-    if (aiAnalysis.ground_risk_analysis?.outside_sora === true && aiAnalysis.recommendation === 'go') {
+    aiAnalysis.containment = systemDecisions.containment;
+    if ((aiAnalysis.ground_risk_analysis?.outside_sora === true || systemDecisions.containment.outOfScope) && aiAnalysis.recommendation === 'go') {
       aiAnalysis.recommendation = 'caution';
     }
     // Fixed first sentence with the decision; the AI never writes the decision itself.
@@ -3553,6 +3566,7 @@ serve(async (req) => {
       fog: systemDecisions.fog,
       batteries: systemDecisions.equipment.batteries,
       hardStopCodes: systemDecisions.hardStops.map((r) => r.code),
+      containment: systemDecisions.containment,
     };
 
     console.log(`Assessment duration before save: ${Date.now() - requestStartedAt} ms`);
