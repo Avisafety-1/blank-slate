@@ -133,44 +133,6 @@ const formatLocaleNumber = (value: number, maximumFractionDigits = 0, lang: Lang
     minimumFractionDigits: maximumFractionDigits,
   });
 
-const derivePopulationDensityBand = (densityPerKm2: number, lang: Lang = 'no'): string => {
-  if (lang === 'en') {
-    if (densityPerKm2 <= 0) return 'Controlled ground area / uninhabited';
-    if (densityPerKm2 < 100) return 'Sparsely populated (<100/km²)';
-    if (densityPerKm2 < 500) return 'Populated (<500/km²)';
-    if (densityPerKm2 < 1500) return 'Densely populated (<1500/km²)';
-    return 'Gatherings of people / very densely populated (>1500/km²)';
-  }
-  if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
-  if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
-  if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
-  if (densityPerKm2 < 1500) return 'Tett befolket (<1500/km²)';
-  return 'Folkemengder / svært tett befolket (>1500/km²)';
-};
-
-const GRC_DIMENSION_LIMITS = [1, 3, 8, 20, 40];
-const GRC_SPEED_LIMITS = [25, 35, 75, 120, 200];
-const GRC_MATRIX = [
-  [[1, 2, 3, 4, 5], [1, 2, 3, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9]],
-  [[2, 3, 4, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10]],
-  [[3, 4, 5, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10]],
-  [[4, 5, 6, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10]],
-  [[5, 6, 7, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10], [8, 9, 10, 10, 10]],
-] as const;
-
-const firstLimitIndex = (limits: number[], value: number): number => {
-  const index = limits.findIndex((limit) => value <= limit);
-  return index === -1 ? limits.length - 1 : index;
-};
-
-const populationClassIndex = (densityPerKm2: number): number => {
-  if (densityPerKm2 <= 0) return 0;
-  if (densityPerKm2 < 100) return 1;
-  if (densityPerKm2 < 500) return 2;
-  if (densityPerKm2 < 1500) return 3;
-  return 4;
-};
-
 const buildDeterministicGroundRisk = ({
   characteristicDimensionM,
   maxSpeedMps,
@@ -198,93 +160,61 @@ const buildDeterministicGroundRisk = ({
   controlledGroundSelected?: boolean;
   populationDensityUnknown?: boolean;
 }) => {
-  const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
-  const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
-  const popIndex = populationClassIndex(populationDensityValue);
-  const igrc = weightKg !== null && weightKg <= 0.25 && maxSpeedMps <= 25 && popIndex < 4
-    ? 1
-    : GRC_MATRIX[dimensionIndex][speedIndex][popIndex];
-  const controlledGroundMinimum = GRC_MATRIX[dimensionIndex][speedIndex][0];
-
-  const parachuteEvidence = assignedEquipment.find((e: any) => {
-    const text = `${e?.navn ?? ''} ${e?.type ?? ''} ${e?.beskrivelse ?? ''}`.toLowerCase();
-    return /fallskjerm|parachute|moc\s*2512|dvr|design verification/.test(text);
+  const igrcResult = computeIgrc({
+    dimensionM: characteristicDimensionM,
+    speedMps: maxSpeedMps,
+    weightKg,
+    densityPerKm2: populationDensityValue,
+    controlled: controlledGroundSelected,
   });
-  const parachuteText = parachuteEvidence
-    ? `${parachuteEvidence.navn ?? parachuteEvidence.type ?? 'Dokumentert energi-/fallskjermsystem'}`.toLowerCase()
-    : '';
-  const m2Reduction = parachuteText.includes('dvr') || parachuteText.includes('design verification')
-    ? -2
-    : parachuteEvidence && /fallskjerm|parachute|moc\s*2512/.test(parachuteText)
-      ? -1
-      : 0;
-  // SORA robustness matrix (null = N/A for that mitigation)
-  const MITIGATION_MATRIX: Record<string, Record<string, number | null>> = {
-    m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
-    m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
-    m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
-    m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
-  };
-  const normalizeRobustness = (value?: string | null): string => {
-    const v = String(value ?? '').toLowerCase();
-    if (v.startsWith('high') || v.startsWith('høy')) return 'High';
-    if (v.startsWith('med')) return 'Medium';
-    if (v.startsWith('low') || v.startsWith('lav')) return 'Low';
-    return 'None';
-  };
+  const { igrc, controlledMinimum: controlledGroundMinimum } = igrcResult;
 
   const observers = Number.isFinite(Number(observerCount)) ? Math.max(0, Math.trunc(Number(observerCount))) : 0;
   const m1cAutoReduction = observers > 0 ? -1 : 0;
-
   const manualEntries = manualMitigations && typeof manualMitigations === 'object' ? manualMitigations : null;
-  const manualReduction = (key: string): number | null => {
-    if (!manualEntries) return null;
-    const entry = (manualEntries as any)[key];
-    if (!entry) return null;
-    if (!entry.applicable) return 0;
-    return MITIGATION_MATRIX[key]?.[normalizeRobustness(entry.robustness)] ?? 0;
-  };
+  const { totalReduction, fgrc } = applyGroundMitigations({
+    igrc,
+    controlledMinimum: controlledGroundMinimum,
+    manual: manualEntries,
+    autoM1c: m1cAutoReduction,
+  });
+  const outsideSora = igrcResult.outsideSora || (fgrc !== null && fgrc > 7);
 
-  const effective = {
-    m1a_sheltering: manualReduction('m1a_sheltering') ?? 0,
-    m1b_operational_restrictions: manualReduction('m1b_operational_restrictions') ?? 0,
-    m1c_ground_observation: manualReduction('m1c_ground_observation') ?? m1cAutoReduction,
-    m2_impact_reduction: manualReduction('m2_impact_reduction') ?? m2Reduction,
-  };
-  const totalReduction = Object.values(effective).reduce((sum, r) => sum + r, 0);
-  const fgrc = Math.max(controlledGroundMinimum, igrc + totalReduction);
-  const dimensionClass = `≤${GRC_DIMENSION_LIMITS[dimensionIndex]} m`;
-  const speedClass = `≤${GRC_SPEED_LIMITS[speedIndex]} m/s`;
-  const populationBand = derivePopulationDensityBand(populationDensityValue, lang);
-
+  const columnClass = columnLabel(igrcResult.column, lang);
+  const populationBand = populationBandLabel(igrcResult.row, lang);
   const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
   const en = lang === 'en';
+  const parachuteHint = hasParachuteHint(assignedEquipment);
 
-  const outsideSoraNote = igrc > 7
+  const outsideSoraNote = igrcResult.outsideSora
+    ? ` ${outsideSpecificText(lang)}.`
+    : (fgrc !== null && fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : '');
+  const unknownNote = populationDensityUnknown
     ? (en
-        ? ' iGRC exceeds 7 and is outside the ordinary SORA matrix; this requires a special/certified assessment.'
-        : ' iGRC er over 7 og ligger utenfor ordinær SORA-matrise; dette krever særskilt/sertifisert vurdering.')
+        ? ' Population density is unknown — 5,000 people/km² (band < 50,000) is used as the basis.'
+        : ' Befolkningstettheten er ukjent — 5 000 personer/km² (bånd < 50 000) brukes som grunnlag.')
     : '';
 
   const footprintFallback = en
     ? 'Planned route with operational volume and ground risk buffer.'
     : 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.';
   const grcCalcMethod = en
-    ? 'System-calculated using the fixed SORA iGRC matrix. AI output cannot modify iGRC/fGRC.'
-    : 'Systemberegnet etter fast SORA iGRC-matrise. AI-output kan ikke endre iGRC/fGRC.';
+    ? 'System-calculated using the SORA 2.5 iGRC table. AI output cannot modify iGRC/fGRC.'
+    : 'Systemberegnet etter SORA 2.5 iGRC-tabellen. AI-output kan ikke endre iGRC/fGRC.';
   const tableBasis = en
-    ? `Dimension class ${dimensionClass}, speed class ${speedClass}, population class ${populationBand}`
-    : `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`;
+    ? `Column ${columnClass} (strictest of dimension and speed), population band ${populationBand}`
+    : `Kolonne ${columnClass} (strengeste av dimensjon og fart), befolkningsbånd ${populationBand}`;
+  const igrcText = igrc === null ? (en ? 'N/A' : 'N/A') : String(igrc);
   const igrcReasoning = en
-    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${populationDensityUnknown ? ' Population density is unknown — the highest band is used as the basis.' : ''}${outsideSoraNote}`
-    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${populationDensityUnknown ? ' Befolkningstettheten er ukjent — det høyeste båndet brukes som grunnlag.' : ''}${outsideSoraNote}`;
+    ? `System-calculated iGRC=${igrcText} from the SORA 2.5 table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m, max speed ${fmt(maxSpeedMps, 1)} m/s (column ${columnClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${unknownNote}${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrcText} fra SORA 2.5-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m, maks hastighet ${fmt(maxSpeedMps, 1)} m/s (kolonne ${columnClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${unknownNote}${outsideSoraNote}`;
 
   const m1aReason = en
     ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
     : 'Ikke automatisk kreditert. Skjerming krever dokumentasjon på at eksponerte personer faktisk er beskyttet av strukturer.';
   const m1bReason = en
-    ? 'Not automatically credited. Time/location restrictions must document approx. 90–99% reduction of exposed people.'
-    : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.';
+    ? 'Not automatically credited. Time/location restrictions must document the reduction of exposed people (Medium −1, High −2).'
+    : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere reduksjon av eksponerte personer (Middels −1, Høy −2).';
   const m1cReason = observers > 0
     ? (en
         ? `Automatically credited (Low): ${observers} observer(s) assigned to the mission monitor the overflown area and can alert the pilot so the flight pattern is changed. Assumes the observer's task and communication are described in the company's procedures.`
@@ -292,32 +222,31 @@ const buildDeterministicGroundRisk = ({
     : en
     ? 'Not automatically credited. Standard VLOS, pilot or airspace observer does not provide fGRC reduction without explicitly documented ground-based observation of the overflown area and the ability to alter the flight pattern.'
     : 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.';
-  const m2NoEvidence = en
-    ? 'No documented parachute, MoC 2512 or DVR-based energy/impact reduction found.'
-    : 'Ingen dokumentert fallskjerm, MoC 2512 eller DVR-basert energi-/treffenergidemping funnet.';
-  const m2WithEvidence = parachuteEvidence
-    ? (en
-        ? `Reduction based on documented equipment: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`
-        : `Reduksjon basert på dokumentert utstyr: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`)
-    : m2NoEvidence;
+  const m2Reason = (en
+    ? 'Not automatically credited. Requires documented MoC/DVR basis.'
+    : 'Ikke automatisk kreditert. Krever dokumentert MoC/DVR-grunnlag.')
+    + (parachuteHint
+      ? (en
+          ? ' Parachute system registered on the mission — M2 can be considered manually with documentation.'
+          : ' Fallskjermsystem registrert på oppdraget — M2 kan vurderes manuelt med dokumentasjon.')
+      : '');
 
-  const fgrcReasoning = totalReduction < 0
+  const fgrcReasoning = fgrc === null
+    ? outsideSpecificText(lang)
+    : totalReduction < 0
     ? (en
-        ? `fGRC=${fgrc}: iGRC ${igrc} with documented reduction ${totalReduction}. The M1 limit is enforced so fGRC cannot fall below the controlled-ground-area value ${controlledGroundMinimum}.`
-        : `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.`)
+        ? `fGRC=${fgrc}: iGRC ${igrc} with documented reduction ${totalReduction}. The M1 limit is enforced so fGRC cannot fall below the controlled-ground-area value ${controlledGroundMinimum}.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`
+        : `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`)
     : (en
-        ? `fGRC=${fgrc}: No documented GRC-reducing mitigations are credited, therefore fGRC equals iGRC. Observer/pilot does not automatically give -1 without explicit ground-based observation of the overflown area.`
-        : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC. Observatør/pilot gir ikke automatisk -1 uten eksplisitt bakkebasert observasjon av overflyst område.`);
+        ? `fGRC=${fgrc}: No documented GRC-reducing mitigations are credited, therefore fGRC equals iGRC.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`
+        : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`);
 
   const defaultSource = en
     ? 'SSB population on 250 m grid (2025)'
     : 'SSB befolkning på rutenett 250 m (2025)';
-
-  const manualReasonSuffix = en
-    ? ' Manually selected by the operator.'
-    : ' Manuelt valgt av operatøren.';
+  const manualReasonSuffix = en ? ' Manually selected by the operator.' : ' Manuelt valgt av operatøren.';
   const buildEntry = (
-    key: string,
+    key: MitigationKey,
     autoApplicable: boolean,
     autoRobustness: string | null,
     autoReduction: number,
@@ -332,8 +261,9 @@ const buildDeterministicGroundRisk = ({
   };
 
   return {
-    characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m (${dimensionClass})`,
-    max_speed_category: `${fmt(maxSpeedMps, 1)} m/s (${speedClass})`,
+    characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m`,
+    max_speed_category: `${fmt(maxSpeedMps, 1)} m/s`,
+    igrc_column: columnClass,
     drone_weight_kg: weightKg,
     population_density_band: populationBand,
     population_density_value: populationDensityValue,
@@ -346,18 +276,23 @@ const buildDeterministicGroundRisk = ({
     ssb_grid_resolution_m: populationData?.gridResolutionM ?? 250,
     igrc,
     fgrc,
-    total_reduction: fgrc - igrc,
+    total_reduction: igrc !== null && fgrc !== null ? fgrc - igrc : null,
+    outside_sora: outsideSora,
+    outside_sora_note: outsideSora
+      ? (igrcResult.outsideSora ? outsideSpecificText(lang) : certifiedCategoryText(lang))
+      : null,
     controlled_ground_area: controlledGroundSelected,
     controlled_ground_minimum: controlledGroundMinimum,
     mitigations_manual_override: !!manualEntries,
     grc_calculation_method: grcCalcMethod,
     igrc_table_basis: tableBasis,
     igrc_reasoning: igrcReasoning,
+    m2_parachute_hint: parachuteHint,
     mitigations: {
       m1a_sheltering: buildEntry('m1a_sheltering', false, null, 0, m1aReason),
       m1b_operational_restrictions: buildEntry('m1b_operational_restrictions', false, null, 0, m1bReason),
       m1c_ground_observation: buildEntry('m1c_ground_observation', m1cAutoReduction < 0, m1cAutoReduction < 0 ? 'Low' : null, m1cAutoReduction, m1cReason),
-      m2_impact_reduction: buildEntry('m2_impact_reduction', m2Reduction < 0, m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, m2Reduction, m2WithEvidence),
+      m2_impact_reduction: buildEntry('m2_impact_reduction', false, null, 0, m2Reason),
     },
     fgrc_reasoning: fgrcReasoning,
   };
@@ -2854,7 +2789,7 @@ serve(async (req) => {
     if (controlledGroundSelected) {
       deterministicPopulationDensityValue = 0;
     } else if (populationData && deterministicPopulationDensityValue <= 0) {
-      deterministicPopulationDensityValue = 1; // lowest populated band (<100/km²)
+      deterministicPopulationDensityValue = 1; // lowest populated band (< 5/km²)
     }
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
     const grLang = resolveLang(language);
@@ -2909,8 +2844,8 @@ serve(async (req) => {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
         population_density_description: grEn
-          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. The highest population band (5000 people/km²) is used as the basis.'
-          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. Det høyeste befolkningsbåndet (5000 personer/km²) brukes som grunnlag.',
+          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. 5,000 people/km² (band < 50,000) is used as the basis.'
+          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. 5 000 personer/km² (bånd < 50 000) brukes som grunnlag.',
       };
     }
 
