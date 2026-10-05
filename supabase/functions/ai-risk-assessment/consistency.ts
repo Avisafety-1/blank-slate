@@ -63,10 +63,9 @@ export const buildDecisionSentence = (input: {
   return `${label}: GO (${en ? 'AI score' : 'AI-score'} ${score}/10).`;
 };
 
-const DECISION_PREFIX = /^\s*(?:Anbefaling|Recommendation)\s*:[^.]*(?:\.[^.]*?)?\.\s*/iu;
-
-/** Prepend the fixed decision sentence; replaces an earlier one if present. */
+/** Prepend the fixed decision sentence (called once, after AI text is cleaned). */
 export const withDecisionSentence = (summary: unknown, sentence: string): string => {
-  const rest = typeof summary === 'string' ? summary.replace(DECISION_PREFIX, '').trim() : '';
+  const rest = typeof summary === 'string' ? summary.trim() : '';
+  if (rest.startsWith(sentence)) return rest;
   return rest ? `${sentence} ${rest}` : sentence;
 };
