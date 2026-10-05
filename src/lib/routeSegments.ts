@@ -34,9 +34,9 @@ export function makeSegment(coordinates: RoutePoint[] = [], id?: string, name?: 
 export function segmentsFromRouteData(route?: RouteData | null): RouteSegment[] {
   if (!route) return [];
   if (Array.isArray(route.routes) && route.routes.length > 0) {
-    return route.routes.map((s) => makeSegment(s.coordinates || [], s.id, s.name));
+    return route.routes.map((s, index) => makeSegment(s.coordinates || [], s.id || `route-${index}`, s.name));
   }
-  if (route.coordinates?.length) return [makeSegment(route.coordinates)];
+  if (route.coordinates?.length) return [makeSegment(route.coordinates, "route-0")];
   return [];
 }
 

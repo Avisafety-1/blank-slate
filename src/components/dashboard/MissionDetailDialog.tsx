@@ -134,6 +134,11 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
 
   const currentMission = liveMission ? { ...mission, ...liveMission } : mission;
+  const currentRoute = (currentMission as any)?.route;
+  const airspaceSegments = useMemo(
+    () => getAirspaceRouteSegments(currentRoute as any, (i) => t('pages.missions.card.routeN', { n: i + 1 })),
+    [currentRoute, t],
+  );
 
   const memoizedFlightTracks = useMemo(() => {
     if (!flightLogs || flightLogs.length === 0) return null;
@@ -276,10 +281,6 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
 
           {(() => {
               const routeCoords = (currentMission.route as any)?.coordinates;
-              const airspaceSegments = getAirspaceRouteSegments(
-                currentMission.route as any,
-                (i) => t('pages.missions.card.routeN', { n: i + 1 }),
-              );
               const effectiveLat = currentMission.latitude ?? routeCoords?.[0]?.lat;
               const effectiveLng = currentMission.longitude ?? routeCoords?.[0]?.lng;
               const isCompleted = currentMission.status === "Fullført";
