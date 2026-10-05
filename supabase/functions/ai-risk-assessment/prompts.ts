@@ -464,7 +464,8 @@ LOW SCORE = BAD (high risk, dangerous)
 
 ### DECISION AND GO_DECISION
 - recommendation and hard stop are set by the system. Do not return them.
-- go_decision per category is only "GO" or "CONDITIONAL" (or "NOT ASSESSED" for weather). "NO-GO" is set only by the system.
+- go_decision uses fixed internal codes, even in English: "BETINGET" means conditional and "IKKE VURDERT" means not assessed. Write these codes exactly; all other text in English.
+- go_decision per category is only "GO" or "BETINGET" (or "IKKE VURDERT" for weather). "NO-GO" is set only by the system.
 - Score per category: 1–10 with one decimal.
 
 ### GENERAL REQUIREMENTS
@@ -554,7 +555,7 @@ NEVER state that a large difference increases risk — that is WRONG. A large di
 ${skipWeather ? `### WEATHER — NOT ASSESSED (MANDATORY)
 The user has chosen to skip the weather assessment. You MUST follow these rules strictly:
 - Set categories.weather.score to null (not a number, not 7, not 10).
-- Set categories.weather.go_decision to "NOT ASSESSED".
+- Set categories.weather.go_decision to "IKKE VURDERT".
 - categories.weather.actual_conditions: "Weather has not been assessed by the AI per the user's choice. The pilot must assess weather themselves before flight."
 - categories.weather.factors: [] (empty list).
 - categories.weather.concerns: [] (empty list).
@@ -758,11 +759,11 @@ Return ONLY JSON with this structure:
   "overall_score": <number 1-10, one decimal>,
   "summary": "<short summary WITHOUT the decision itself — the system inserts the decision sentence>",
   "categories": {
-    "weather": { "score": <1-10 or null if NOT ASSESSED>, "go_decision": "<GO|CONDITIONAL|NOT ASSESSED>", "actual_conditions": "<actual weather data>", "comparison_to_limits": "<against limits>", "factors": ["..."], "concerns": ["..."] },
-    "airspace": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "actual_conditions": "<airspace conditions; use 'inside'/'outside' per warnings[].inside>", "factors": ["..."], "concerns": ["..."] },
-    "equipment": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "status": "<green|yellow|red>", "drone_status": "<drone status and maintenance>", "factors": ["..."], "concerns": ["..."] },
-    "pilot_experience": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "experience_summary": "<experience and competency>", "factors": ["..."], "concerns": ["..."] },
-    "mission_complexity": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "complexity_factors": "<land use, terrain, population and operational factors>", "actual_conditions": "<actual conditions in the area>", "factors": ["..."], "concerns": ["..."] }
+    "weather": { "score": <1-10 or null if NOT ASSESSED>, "go_decision": "<GO|BETINGET|IKKE VURDERT>", "actual_conditions": "<actual weather data>", "comparison_to_limits": "<against limits>", "factors": ["..."], "concerns": ["..."] },
+    "airspace": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "actual_conditions": "<airspace conditions; use 'inside'/'outside' per warnings[].inside>", "factors": ["..."], "concerns": ["..."] },
+    "equipment": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "status": "<green|yellow|red>", "drone_status": "<drone status and maintenance>", "factors": ["..."], "concerns": ["..."] },
+    "pilot_experience": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "experience_summary": "<experience and competency>", "factors": ["..."], "concerns": ["..."] },
+    "mission_complexity": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "complexity_factors": "<land use, terrain, population and operational factors>", "actual_conditions": "<actual conditions in the area>", "factors": ["..."], "concerns": ["..."] }
   },
   "air_risk_analysis": {
     "strategic_mitigations_applied": ["..."],

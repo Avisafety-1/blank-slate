@@ -2980,7 +2980,7 @@ serve(async (req) => {
     if (skipWeather && aiAnalysis.categories?.weather) {
       aiAnalysis.categories.weather.score = null;
       aiAnalysis.categories.weather.go_decision = 'IKKE VURDERT';
-      aiAnalysis.categories.weather.actual_conditions = 'Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.';
+      aiAnalysis.categories.weather.actual_conditions = (outEn ? 'Weather was not assessed by the AI at the user\'s request. The pilot must assess the weather before flight.' : 'Vær er ikke vurdert av AI etter brukerens valg. Pilot må selv vurdere vær før flyging.');
       aiAnalysis.categories.weather.factors = [];
       aiAnalysis.categories.weather.concerns = [];
     }
@@ -3375,7 +3375,7 @@ serve(async (req) => {
             eqCat.score = Number.isFinite(currentScore) ? Math.max(currentScore, 6) : 7;
             eqCat.concerns = [
               ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
-              'Info: Tilknyttet utstyr/tilbehør har rød status, men er ikke valgt på oppdraget — antas ikke brukt. Ingen hard stop.',
+              outEn ? 'Info: Linked equipment/accessories have red status but are not selected on the mission — assumed not used. No hard stop.' : 'Info: Tilknyttet utstyr/tilbehør har rød status, men er ikke valgt på oppdraget — antas ikke brukt. Ingen hard stop.',
             ];
             aiAnalysis.categories.equipment = eqCat;
           }
@@ -3385,20 +3385,20 @@ serve(async (req) => {
 
       if (redDrones.length > 0 || redEquipment.length > 0) {
         const reasonBits: string[] = [];
-        for (const d of redDrones) reasonBits.push(`${d.label}: ${d.reasons.join('; ') || 'forfalt vedlikehold/inspeksjon'}`);
-        for (const e of redEquipment) reasonBits.push(`Utstyr ${e}: forfalt vedlikehold`);
-        const reasonText = `Forfalt vedlikehold/inspeksjon — ${reasonBits.join(' | ')}`;
+        for (const d of redDrones) reasonBits.push(`${d.label}: ${d.reasons.join('; ') || (outEn ? 'overdue maintenance/inspection' : 'forfalt vedlikehold/inspeksjon')}`);
+        for (const e of redEquipment) reasonBits.push(outEn ? `Equipment ${e}: overdue maintenance` : `Utstyr ${e}: forfalt vedlikehold`);
+        const reasonText = `${outEn ? 'Overdue maintenance/inspection' : 'Forfalt vedlikehold/inspeksjon'} — ${reasonBits.join(' | ')}`;
 
         // Kort overskriftstekst til konklusjon/hard stop (uten SN/datoer).
         let shortReason: string;
         if (redDrones.length > 0 && redEquipment.length > 0) {
-          shortReason = 'Forfalt vedlikehold/inspeksjon på drone og oppdragsutstyr';
+          shortReason = outEn ? 'Overdue maintenance/inspection on drone and mission equipment' : 'Forfalt vedlikehold/inspeksjon på drone og oppdragsutstyr';
         } else if (redDrones.length === 1) {
-          shortReason = 'Forfalt vedlikehold/inspeksjon på dronen';
+          shortReason = outEn ? 'Overdue maintenance/inspection on the drone' : 'Forfalt vedlikehold/inspeksjon på dronen';
         } else if (redDrones.length > 1) {
-          shortReason = `Forfalt vedlikehold/inspeksjon på ${redDrones.length} droner`;
+          shortReason = outEn ? `Overdue maintenance/inspection on ${redDrones.length} drones` : `Forfalt vedlikehold/inspeksjon på ${redDrones.length} droner`;
         } else {
-          shortReason = 'Forfalt vedlikehold på oppdragsutstyr';
+          shortReason = outEn ? 'Overdue maintenance on mission equipment' : 'Forfalt vedlikehold på oppdragsutstyr';
         }
         console.log('Equipment hard-stop triggered:', reasonText);
         deterministicEquipmentHardStopReason = shortReason;
@@ -3421,9 +3421,9 @@ serve(async (req) => {
         aiAnalysis.recommendation = 'no-go';
       } else if (yellowDrones.length > 0 || yellowEquipment.length > 0) {
         const noteBits: string[] = [];
-        for (const d of yellowDrones) noteBits.push(`${d.label}: ${d.reasons.join('; ') || 'vedlikehold nærmer seg'}`);
-        for (const e of yellowEquipment) noteBits.push(`Utstyr ${e}: vedlikehold nærmer seg`);
-        const noteText = `Vedlikehold/inspeksjon nærmer seg fristen — ${noteBits.join(' | ')}`;
+        for (const d of yellowDrones) noteBits.push(`${d.label}: ${d.reasons.join('; ') || (outEn ? 'maintenance due soon' : 'vedlikehold nærmer seg')}`);
+        for (const e of yellowEquipment) noteBits.push(outEn ? `Equipment ${e}: maintenance due soon` : `Utstyr ${e}: vedlikehold nærmer seg`);
+        const noteText = `${outEn ? 'Maintenance/inspection deadline approaching' : 'Vedlikehold/inspeksjon nærmer seg fristen'} — ${noteBits.join(' | ')}`;
         console.log('Equipment caution applied:', noteText);
         aiAnalysis.categories = aiAnalysis.categories || {};
         const eqCat = aiAnalysis.categories.equipment || {};
@@ -3432,7 +3432,7 @@ serve(async (req) => {
         eqCat.go_decision = eqCat.go_decision === 'NO-GO' ? 'NO-GO' : 'BETINGET';
         eqCat.concerns = [
           ...(Array.isArray(eqCat.concerns) ? eqCat.concerns : []),
-          ...noteBits.map(n => `Forsiktighet: ${n}.`),
+          ...noteBits.map(n => `${outEn ? 'Caution' : 'Forsiktighet'}: ${n}.`),
           ...linkedOnlyNotes.map(n => `Info: ${n}`),
         ];
         aiAnalysis.categories.equipment = eqCat;
