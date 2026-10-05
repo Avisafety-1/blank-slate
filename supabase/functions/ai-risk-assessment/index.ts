@@ -2711,7 +2711,7 @@ serve(async (req) => {
         route: {
           routeCount: routeSegmentsRaw.length,
           pointCount: allRouteCoords.length,
-          totalDistanceKm: (mission.route as any)?.totalDistance ?? null,
+          totalDistance: (mission.route as any)?.totalDistance ?? null,
           soraSettings: (mission.route as any)?.soraSettings || null,
         },
         sora: mission.mission_sora?.[0],
