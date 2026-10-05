@@ -6,7 +6,10 @@ import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
-import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
+import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
+import { buildSystemDecisions, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { buildDecisionSentence, enforceConsistency, withDecisionSentence } from "./consistency.ts";
+import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 import { readMissionSoraDocument } from "./soraDocument.ts";
@@ -3469,43 +3472,10 @@ serve(async (req) => {
     // Final authority: derive hard stops only from measured data and explicit
     // company limits after every category guard has completed. AI prose and
     // category labels cannot create, preserve or remove a hard stop here.
-    const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
-    const authoritativeHardStops = deriveHardStops({
-      lang: assessmentLang,
-      skipWeather,
-      weatherCurrent: weatherData?.current ?? null,
-      weatherLimits: {
-        maxWindSpeedMs: Number(companySoraConfig?.max_wind_speed_ms ?? 10),
-        maxWindGustMs: Number(companySoraConfig?.max_wind_gust_ms ?? 15),
-        minTempC: Number(companySoraConfig?.min_temp_c ?? -10),
-        maxTempC: Number(companySoraConfig?.max_temp_c ?? 40),
-      },
-      equipmentReason: deterministicEquipmentHardStopReason,
-      assignedPilotCount: assignedPilots.length,
-      competencyReason: buildCompetencyReason(competencyAssessment, assessmentLang),
-      daysSinceLastFlight,
-      maxPilotInactivityDays: companySoraConfig?.max_pilot_inactivity_days == null
-        ? null
-        : Number(companySoraConfig.max_pilot_inactivity_days),
-      flightHeightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
-      maxFlightAltitudeM: companySoraConfig?.max_flight_altitude_m == null
-        ? null
-        : Number(companySoraConfig.max_flight_altitude_m),
-      isVlos: pilotInputs?.isVlos !== false,
-      allowBvlos: companySoraConfig?.allow_bvlos ?? null,
-      allowNightFlight: companySoraConfig?.allow_night_flight ?? null,
-      requireCivilTwilight: companySoraConfig?.require_civil_twilight === true,
-      civilTwilightViolation,
-      populationDensity: populationData ? deterministicPopulationDensityValue : null,
-      maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
-        ? null
-        : Number(companySoraConfig.max_population_density_per_km2),
-      observerCount: effectiveObservers,
-      requireObserver: companySoraConfig?.require_observer === true,
-    });
-    const categoriesWithHardStops = new Set(authoritativeHardStops.map((reason) => reason.category));
-    aiAnalysis.hard_stop_triggered = authoritativeHardStops.length > 0;
-    aiAnalysis.hard_stop_reason = joinHardStopReasons(authoritativeHardStops);
+    const authoritativeHardStops = systemDecisions.hardStops;
+    const categoriesWithHardStops = new Set<string>(systemDecisions.hardStopCategories);
+    aiAnalysis.hard_stop_triggered = systemDecisions.hardStopTriggered;
+    aiAnalysis.hard_stop_reason = systemDecisions.hardStopReason;
     // Ground truth for later SORA re-assessments (no personal data).
     aiAnalysis.missionFacts = {
       primaryDroneModel: droneData?.modell ?? null,
@@ -3548,11 +3518,26 @@ serve(async (req) => {
           !isCompetencyJargon(typeof r === 'string' ? r : `${r?.title ?? ''} ${r?.description ?? r?.text ?? ''}`));
       }
     }
-    if (aiAnalysis.categories) {
-      for (const category of categoriesWithHardStops) {
-        if (aiAnalysis.categories[category]) aiAnalysis.categories[category].go_decision = 'NO-GO';
-      }
+    // Fog advisory (never a hard stop): weather at least BETINGET.
+    if (systemDecisions.fog && aiAnalysis.categories?.weather && !weatherNotAssessed) {
+      const w = aiAnalysis.categories.weather;
+      if (w.go_decision === 'GO' || !w.go_decision) w.go_decision = 'BETINGET';
+      w.concerns = [...(Array.isArray(w.concerns) ? w.concerns : []), systemDecisions.fog.text];
     }
+    // Always state which batteries were counted when the company requires a backup battery.
+    if (systemDecisions.equipment.batteries.required) {
+      aiAnalysis.categories = aiAnalysis.categories || {};
+      const eq = aiAnalysis.categories.equipment || {};
+      eq.factors = [...(Array.isArray(eq.factors) ? eq.factors : []), systemDecisions.equipment.batteries.description];
+      if (categoriesWithHardStops.has('equipment') && systemDecisions.hardStops.some((r) => r.code === 'backup_battery')) {
+        eq.concerns = [...(Array.isArray(eq.concerns) ? eq.concerns : []),
+          systemDecisions.hardStops.find((r) => r.code === 'backup_battery')!.text];
+      }
+      aiAnalysis.categories.equipment = eq;
+    }
+    // Consistency: hard-stop categories NO-GO (≤ 3.0), AI NO-GO without hard stop → BETINGET,
+    // overall ≤ 4.9 with a hard stop.
+    enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
 
     // Recompute recommendation after authoritative hard-stop derivation.
     aiAnalysis.recommendation = deriveRiskRecommendation(
@@ -3564,6 +3549,21 @@ serve(async (req) => {
     if (aiAnalysis.ground_risk_analysis?.outside_sora === true && aiAnalysis.recommendation === 'go') {
       aiAnalysis.recommendation = 'caution';
     }
+    // Fixed first sentence with the decision; the AI never writes the decision itself.
+    aiAnalysis.summary = withDecisionSentence(aiAnalysis.summary, buildDecisionSentence({
+      recommendation: aiAnalysis.recommendation,
+      overallScore: aiAnalysis.overall_score,
+      hardStopReason: aiAnalysis.hard_stop_reason,
+      hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
+      lang: assessmentLang,
+    }));
+    aiAnalysis.systemDecisions = {
+      sail: systemDecisions.sail,
+      certifiedCategory: systemDecisions.certifiedCategory,
+      fog: systemDecisions.fog,
+      batteries: systemDecisions.equipment.batteries,
+      hardStopCodes: systemDecisions.hardStops.map((r) => r.code),
+    };
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
