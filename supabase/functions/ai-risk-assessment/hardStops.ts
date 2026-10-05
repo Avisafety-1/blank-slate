@@ -30,6 +30,8 @@ interface HardStopInput {
   allowNightFlight: boolean | null;
   requireCivilTwilight: boolean;
   civilTwilightViolation: boolean;
+  /** No civil-twilight boundary on the date (polar night). */
+  civilTwilightPolarNight?: boolean;
   populationDensity: number | null;
   maxPopulationDensity: number | null;
   observerCount: number;
@@ -118,7 +120,10 @@ export const deriveHardStops = (input: HardStopInput): HardStopReason[] => {
     add('bvlos', 'mission_complexity', 'Oppdraget er BVLOS, men selskapet tillater ikke BVLOS-flyging', 'The mission is BVLOS, but the company does not allow BVLOS flights');
   }
 
-  if (input.civilTwilightViolation && input.allowNightFlight === false) {
+  if (input.civilTwilightPolarNight && (input.allowNightFlight === false || input.requireCivilTwilight)) {
+    add(input.allowNightFlight === false ? 'night_flight' : 'civil_twilight', 'mission_complexity',
+      'Ingen sivil skumring på denne datoen (polarnatt)', 'No civil twilight on this date (polar night)');
+  } else if (input.civilTwilightViolation && input.allowNightFlight === false) {
     add('night_flight', 'mission_complexity', 'Oppdraget er planlagt utenfor sivil skumring, men selskapet tillater ikke nattflyging', 'The mission is scheduled outside civil twilight, but the company does not allow night flights');
   } else if (input.civilTwilightViolation && input.requireCivilTwilight) {
     add('civil_twilight', 'mission_complexity', 'Oppdraget er planlagt utenfor selskapets krav til sivil skumring', 'The mission is scheduled outside the company civil-twilight requirement');
