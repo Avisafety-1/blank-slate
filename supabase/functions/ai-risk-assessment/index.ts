@@ -2599,6 +2599,14 @@ serve(async (req) => {
     const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
     const systemDecisions = buildSystemDecisions({
       containmentDoc: (mission.route as any)?.adjacentAreaDocumentation ?? null,
+      operation: {
+        isVlos: flightInputs.isVlos,
+        flightHeightM: flightInputs.heightM,
+        droneClass: droneData?.klasse ?? null,
+        weightKg: deterministicWeightKg,
+        companyRequiresSora: companyRequireSora,
+        hasSoraDocument: !!soraDocument,
+      },
       hardStopInput: {
         lang: assessmentLang,
         skipWeather,

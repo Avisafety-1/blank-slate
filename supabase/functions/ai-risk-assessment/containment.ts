@@ -12,8 +12,10 @@ import {
 type Lang = 'no' | 'en';
 
 export interface ContainmentDecision {
-  required: ContainmentRequirement | 'Ikke beregnet';
-  source: 'map' | 'missing';
+  required: ContainmentRequirement | 'Ikke beregnet' | 'Ikke relevant';
+  source: 'map' | 'missing' | 'not_applicable';
+  operationCategory?: 'open' | 'specific' | null;
+  operationReasons?: string[];
   mapSail: string | null;
   assessmentSail: string | null;
   calculatedAt: string | null;
@@ -44,6 +46,8 @@ export const resolveContainment = (
   assessmentSailRaw: unknown,
   lang: Lang,
   sailMissingReason?: string | null,
+  /** Omitted for SORA reassessment → always computed. */
+  operationCategory?: 'open' | 'specific',
 ): ContainmentDecision => {
   const assessmentSail = normalizeSail(assessmentSailRaw);
   const valid = doc && doc.enabled === true && UA.includes(doc.uaSize) &&
@@ -53,6 +57,15 @@ export const resolveContainment = (
     calculatedAt: null, adjacentRadiusM: null, avgDensity: null, densityCategory: null,
     outdoorAssemblies: null, uaSize: null, outOfScope: false, warning: true, note: null,
   };
+  if (operationCategory === 'open') {
+    return {
+      ...base, required: 'Ikke relevant', source: 'not_applicable', warning: false,
+      operationCategory: 'open',
+      note: lang === 'en'
+        ? 'Open category — adjacent area and containment are not relevant'
+        : 'Åpen kategori — tilstøtende område og inneslutning er ikke relevant',
+    };
+  }
   if (!valid) {
     return {
       ...base,

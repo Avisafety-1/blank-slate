@@ -7252,7 +7252,9 @@
       "notCalculated": "Not calculated",
       "outOfScope": "Outside the specific category",
       "sourceMap": "From the map's adjacent area, calculated {{date}}",
-      "adjacentFacts": "Adjacent radius {{radius}} m, average density {{density}} people/km²"
+      "adjacentFacts": "Adjacent radius {{radius}} m, average density {{density}} people/km²",
+      "notApplicableLine": "Containment: Not relevant (open category)",
+      "specificReasons": "Specific category because: {{reasons}}"
     }
   },
   "eccairs": {

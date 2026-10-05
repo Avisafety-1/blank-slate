@@ -1255,7 +1255,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         </div>
                       );
                     })()}
-                    {currentAssessment.containment?.source && (
+                    {currentAssessment.containment?.source && currentAssessment.containment.source !== 'not_applicable' && (
                       <ContainmentSourceBox data={currentAssessment.containment} />
                     )}
                     <RiskScoreCard
