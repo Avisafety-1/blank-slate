@@ -1,16 +1,26 @@
-// Deno-port of src/lib/maintenanceStatus.ts. Holdt i synk manuelt — hvis
-// statuslogikken endres i UI-et må denne filen oppdateres tilsvarende.
+// HOLD LIK src/lib/maintenanceStatus.ts — Deno-port av appens statuslogikk.
+// Endres statuslogikken i én fil må den andre oppdateres tilsvarende;
+// maintenanceParity_test.ts og src/lib/maintenanceParity.test.ts låser pariteten.
 // Brukes for å beregne ekte aggregert dronestatus for AI-risikovurderingen,
 // slik at AI ikke får utdatert "Grønn" fra drones.status-kolonnen når en
 // inspeksjonsdato er forfalt eller intervalltimer/oppdrag er overskredet.
 
-export type Status = "Grønn" | "Gul" | "Rød";
+import { daysUntilOslo, osloDateString } from "./missionContext.ts";
+
+// 'Ukjent' = statusoppslag feilet. Vektes som gul, gir aldri hard stop alene.
+export type Status = "Grønn" | "Gul" | "Rød" | "Ukjent";
 
 export const STATUS_PRIORITY: Record<Status, number> = {
   "Rød": 2,
   "Gul": 1,
+  "Ukjent": 1,
   "Grønn": 0,
 };
+
+export const UNKNOWN_STATUS_TEXT = "Vedlikeholdsstatus kunne ikke hentes";
+
+const asStatus = (v: unknown): Status =>
+  v === "Rød" || v === "Gul" || v === "Grønn" || v === "Ukjent" ? v : "Grønn";
 
 export const worstStatus = (a: Status, b: Status): Status =>
   STATUS_PRIORITY[a] >= STATUS_PRIORITY[b] ? a : b;
@@ -18,13 +28,13 @@ export const worstStatus = (a: Status, b: Status): Status =>
 export const calculateMaintenanceStatus = (
   nextDate: Date | string | null | undefined,
   warningDays = 14,
+  now?: Date,
 ): Status => {
   if (!nextDate) return "Grønn";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const next = new Date(nextDate);
-  next.setHours(0, 0, 0, 0);
-  const daysUntil = Math.floor((next.getTime() - today.getTime()) / 86400000);
+  // Dagens dato i Europe/Oslo, ikke UTC-midnatt.
+  const today = osloDateString(now ?? new Date())!;
+  const daysUntil = daysUntilOslo(today, nextDate);
+  if (daysUntil === null) return "Grønn";
   if (daysUntil < 0) return "Rød";
   if (daysUntil <= warningDays) return "Gul";
   return "Grønn";
@@ -110,18 +120,23 @@ export interface DroneAggregateInput {
   missions_since_inspection?: number | null;
   inspection_interval_missions?: number | null;
   varsel_oppdrag?: number | null;
+  /** drones.status (bl.a. satt fra loggadvarsler) — inngår i dronens egen status. */
+  status?: string | null;
 }
 
 export interface MaintenanceItem {
   navn?: string | null;
   neste_vedlikehold?: string | null;
   varsel_dager?: number | null;
+  /** Loggstyrt status-kolonne (equipment.status). */
+  status?: string | null;
 }
 
 export const calculateDroneAggregatedStatus = (
   drone: DroneAggregateInput,
   accessories: MaintenanceItem[],
   linkedEquipment: MaintenanceItem[],
+  options: { lookupFailed?: boolean } = {},
 ): {
   status: Status;
   ownStatus: Status;
@@ -149,7 +164,14 @@ export const calculateDroneAggregatedStatus = (
   );
   if (missionsS !== "Grønn") ownReasons.push(`Oppdrag siden inspeksjon (${drone.missions_since_inspection}/${drone.inspection_interval_missions}) → ${missionsS}`);
 
-  const ownStatus = [dateS, hoursS, missionsS].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+  const dbS = asStatus(drone.status);
+  if (dbS !== "Grønn") ownReasons.push(`Dronestatus satt til ${dbS}`);
+
+  let ownStatus = [dateS, hoursS, missionsS, dbS].reduce((w, s) => worstStatus(w, s), "Grønn" as Status);
+  if (options.lookupFailed && ownStatus === "Grønn") {
+    ownStatus = "Ukjent";
+    ownReasons.push(UNKNOWN_STATUS_TEXT);
+  }
   let worst: Status = ownStatus;
 
   for (const acc of accessories || []) {
@@ -161,7 +183,10 @@ export const calculateDroneAggregatedStatus = (
     worst = worstStatus(worst, s);
   }
   for (const eq of linkedEquipment || []) {
-    const s = calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14);
+    const s = worstStatus(
+      calculateMaintenanceStatus(eq.neste_vedlikehold, eq.varsel_dager ?? 14),
+      asStatus(eq.status),
+    );
     if (s !== "Grønn") {
       affectedItems.push(eq.navn || "Utstyr");
       linkedReasons.push(`Koblet utstyr ${eq.navn ?? ""} → ${s}`);
