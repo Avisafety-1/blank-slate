@@ -329,6 +329,7 @@ Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
 
 #### ALOS
 ALOS er beregnet av systemet (systemDecisions.alosMaxM / primaryDrone.alos). Gjengi verdien, ikke beregn den.
+Inneslutningskrav (systemDecisions.containment) er beregnet fra kartets tilstøtende område. Gjengi det; utled det aldri fra SAIL.
 
 #### Buffersone-sjekk
 Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
@@ -697,6 +698,7 @@ If the operation CANNOT be performed in Open or STS → SORA is required.
 
 #### ALOS
 ALOS is calculated by the system (systemDecisions.alosMaxM / primaryDrone.alos). Reproduce it; do not calculate it.
+The containment requirement (systemDecisions.containment) is calculated from the map's adjacent area. Reproduce it; never derive it from SAIL.
 
 #### Buffer zone check
 Check whether the mission has SORA buffer zones calculated. Look at mission.route.soraSettings:
@@ -884,10 +886,7 @@ fGRC\\ARC:   a      b      c      d
 Du SKAL bruke denne matrisen eksakt. Ikke gjett SAIL.
 
 ### STEG 8: CONTAINMENT
-Bestem robusthetsnivå for containment basert på SAIL:
-- SAIL I-II: Low robustness
-- SAIL III-IV: Medium robustness
-- SAIL V-VI: High robustness
+Påkrevd robusthetsnivå for containment er SYSTEMBESTEMT fra kartets tilstøtende område (containment.required og containment.note i de bindende verdiene). Gjengi required som robustness_level og note i reasoning; ikke utled nivået fra SAIL. Er required "Ikke beregnet", skriv at tilstøtende område må beregnes i kartet.
 
 Vurder fire kriterier:
 1. Criterion #1 - Operational Volume Containment: Prosedyrer/systemer for å holde dronen innenfor operasjonsvolumet
@@ -1055,10 +1054,7 @@ fGRC\\ARC:   a      b      c      d
 You MUST use this matrix exactly. Do not guess SAIL.
 
 ### STEP 8: CONTAINMENT
-Determine robustness level for containment based on SAIL:
-- SAIL I-II: Low robustness
-- SAIL III-IV: Medium robustness
-- SAIL V-VI: High robustness
+The required containment robustness is SYSTEM-DETERMINED from the map's adjacent area (containment.required and containment.note in the binding values). Reproduce required as robustness_level and the note in reasoning; never derive the level from SAIL. If required is "Ikke beregnet" (not calculated), state that the adjacent area must be calculated in the map.
 
 Evaluate four criteria:
 1. Criterion #1 - Operational Volume Containment: Procedures/systems to keep the drone within the operational volume
@@ -1254,7 +1250,7 @@ Rules for these overrides:
 - Use the given fGRC, residual ARC and SAIL as-is. Do NOT recompute, question or contradict them, and do not describe a different fGRC/ARC/SAIL anywhere in the narrative.
 - Only the mitigations marked as applied (with their robustness level) count as ground mitigations; describe the others as not applied.
 - If an atypical/segregated airspace declaration (AEC 12 / ARC-a) is present, treat it as an operator declaration requiring documentation and authority acceptance, not as a table reduction.
-- Derive containment, OSO requirements and recommendations from the overridden SAIL.
+- The containment requirement is given in "containment" (from the map's adjacent area). Use containment.required as robustness_level and never derive it from SAIL. Derive OSO requirements and recommendations from the given SAIL.
 - In "ground_mitigations" and "airspace_mitigations" you MUST explain WHY the reduction was given and state explicitly that it comes from the operator's manual selection/declaration (and that it must be documented and accepted by the authority). Never write that no reduction was credited when the overrides show one.
 - NEVER use internal key names like "m1a_sheltering", "m1b_operational_restrictions", "m1c_ground_observation" or "m2_impact_reduction" in any output text. Always use the plain-language names given in the overrides (e.g. "M2 Reduced impact energy").`
     : '';
@@ -1269,7 +1265,7 @@ Regler for disse overstyringene:
 - Bruk oppgitt fGRC, residual ARC og SAIL som de er. IKKE beregn på nytt, betvil eller motsi dem, og ikke beskriv en annen fGRC/ARC/SAIL noe sted i teksten.
 - Kun mitigeringer merket som anvendt (med sitt robusthetsnivå) teller som bakkemitigeringer; de øvrige beskrives som ikke anvendt.
 - Hvis atypisk/segregert luftrom (AEC 12 / ARC-a) er erklært, skal det behandles som en operatørerklæring som krever dokumentasjon og aksept fra myndighet, ikke som en tabellreduksjon.
-- Utled containment, OSO-krav og anbefalinger fra den overstyrte SAIL-en.
+- Inneslutningskravet står i "containment" (fra kartets tilstøtende område). Bruk containment.required som robustness_level og utled det aldri fra SAIL. Utled OSO-krav og anbefalinger fra gitt SAIL.
 - I "ground_mitigations" og "airspace_mitigations" SKAL du forklare HVORFOR reduksjonen er gitt og si eksplisitt at den kommer fra operatørens manuelle valg/erklæring (og at den må dokumenteres og aksepteres av myndighet). Skriv aldri at ingen reduksjon er kreditert når overstyringene viser en reduksjon.
 - Bruk ALDRI interne nøkkelnavn som "m1a_sheltering", "m1b_operational_restrictions", "m1c_ground_observation" eller "m2_impact_reduction" i teksten. Bruk alltid de lesbare navnene som er oppgitt i overstyringene (f.eks. "M2 Redusert treffenergi").`
     : '';
