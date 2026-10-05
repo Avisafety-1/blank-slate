@@ -1,34 +1,44 @@
-# Stabiliser oppdragsdetaljer etter iOS-tastatur
+# Stabiliser tastaturdialoger på iOS og Android-PWA
 
-Ingen databaseendringer, ingen nye tekster og ingen endringer i felles dialogsentrering, animasjoner eller flylogg-dialoger.
+Ingen databaseendringer, ingen nye tekster og ingen endringer i dialoganimasjoner eller flylogg-dialogenes egne posisjoner.
 
 ## Endringer
 
-1. **Utvid eksisterende viewport-hook** (`src/hooks/useVisualViewportVar.ts`)
-   - Gjenbruk den allerede globalt monterte hooken; ingen ekstra global hook eller separat lytteroppsett.
-   - Oppdag redigerbare felt (`input`, `textarea`, `select`, `[contenteditable]`) uten UA-sniffing.
-   - Ved første `focusin` i en fokusøkt lagres sidens `scrollY`.
-   - Ved `focusout` ventes omtrent 120 ms. Når fokus ikke lenger er i et redigerbart felt, gjenopprettes lagret scrollposisjon hvis siden er flyttet eller `visualViewport.offsetTop > 0`.
-   - Eksporter `resetViewportAfterKeyboard()` slik at nestede dialoger kan be om samme gjenoppretting etter lukking. Funksjonen nullstiller fokusøktens lagrede posisjon og oppdaterer `--vvh` straks, etter 300 ms og etter 600 ms.
-   - Hold referanser til alle timeouts og `requestAnimationFrame`, og rydd lyttere/timere ved avmontering. Scroll på desktop/Android forblir en no-op når posisjonen ikke har endret seg.
+1. **La Android-tastaturet krympe innholdsområdet** (`index.html`)
+   - Legg `interactive-widget=resizes-content` til eksisterende viewport-meta uten å endre de øvrige verdiene.
+   - Android Chrome/PWA kan da sentrere fixed-dialoger over tastaturet; iOS og eldre Chromium kan ignorere nøkkelen og bruker visual-viewport-løsningen under.
 
-2. **La felles dialoghøyde følge synlig viewport** (`src/index.css`)
-   - Behold eksisterende `vh`-linje først og `dvh`-linje etterpå.
-   - Legg til `max-height: calc(var(--vvh, 100vh) * 0.9 - 2 * var(--update-banner-h, 0px));` sist, slik at den faktiske synlige høyden vinner når hooken er aktiv, med en Chromium 70-kompatibel fallback.
+2. **Utvid den eksisterende viewport-hooken** (`src/hooks/useVisualViewportVar.ts`)
+   - I samme `update()` som setter `--vvh`, sett `--vvt` fra `visualViewport.offsetTop`, med `0px` som fallback.
+   - Behold eksisterende `visualViewport`- og vinduslyttere; ikke opprett en ny global hook og ikke bruk UA-sniffing.
+   - Legg til én `focusout`-lytter. Etter omtrent 150 ms kontrolleres om aktivt element ikke er `input`, `textarea`, `select` eller `[contenteditable]`.
+   - Når tastaturet er lukket, oppdater viewportvariablene straks og på nytt etter 300 og 600 ms. Hvis `visualViewport.offsetTop > 0`, kall `window.scrollTo(window.scrollX, window.scrollY)` for å tvinge ny layout/repaint.
+   - Spor alle timeouts og `requestAnimationFrame`, og rydd dem og alle lyttere ved avmontering.
 
-3. **Fjern lokal høydeoverstyring** (`src/components/dashboard/MissionDetailDialog.tsx`)
-   - Fjern bare `max-h-[90vh]` fra `DialogContent`.
-   - Behold `overflow-y-auto`, `[touch-action:pan-y]`, `[-webkit-overflow-scrolling:touch]` og resten av dialogoppsettet uendret, slik at den arver `.dialog-max-h` fra basekomponenten.
+3. **Bruk synlig høyde og synlig sentrum for vanlige dialoger** (`src/index.css`)
+   - Utvid `.dialog-max-h` med en tredje, siste regel basert på `--vvh`, med `100vh` som fallback. Behold eksisterende `vh` før `dvh`.
+   - Legg `.dialog-vv-center` ved siden av den eksisterende klassen, med vanlig `top: 50%` fallback og deretter sentrum beregnet fra `--vvt + --vvh / 2`.
+   - Kontroller CSS-kaskaden eksplisitt: den nye sentreringen skal vinne over baseklassens vanlige `top-[50%]`, mens dialoger med egne posisjonsregler fortsatt skal vinne. Hvis Tailwind flytter components-laget foran utilities, gis den nye klassen bare nødvendig selektorspesifisitet; flyloggens eksplisitte `!top`/`!bottom` skal fortsatt overstyre den.
 
-4. **Lukk tastaturet før merknadsdialogen** (`src/components/dashboard/MissionNotesDialog.tsx`)
-   - Etter vellykket lagring: blur aktivt element før `onOpenChange(false)`.
-   - Kall deretter `resetViewportAfterKeyboard()` for å gjenopprette vindusposisjon og måle synlig høyde på nytt mens oppdragsdetaljene fortsatt er åpne.
-   - Behold lagring, varsling og dialogflyt ellers uendret.
+4. **Aktiver visual-viewport-sentrering i felles dialog** (`src/components/ui/dialog.tsx`)
+   - Legg `dialog-vv-center` til baseklassene i `DialogContent`.
+   - Behold `top-[50%]`, translate-sentrering og alle åpne/lukke-animasjoner som de er.
+   - Ikke endre DJI non-modal-logikken eller håndtering av klikk utenfor dialogen.
+
+5. **Fjern lokal høydeoverstyring i oppdragsdetaljene** (`src/components/dashboard/MissionDetailDialog.tsx`)
+   - Fjern bare `max-h-[90vh]` fra `DialogContent`, slik at `.dialog-max-h` gjelder.
+   - Behold `overflow-y-auto`, `[touch-action:pan-y]`, `[-webkit-overflow-scrolling:touch]` og resten av oppsettet.
+
+6. **Lukk tastaturet før lagringsflyten lukker dialogen**
+   - I `AddMissionDialog.tsx`: blur aktivt element etter vellykket lagring, men før `onMissionAdded`/`onMissionAddedWithData` og lukking. Behold eksisterende inline `maxHeight` med `--vvh`.
+   - I `MissionNotesDialog.tsx`: blur aktivt element etter vellykket lagring og før `onOpenChange(false)`.
+   - Endre ikke lagring, varsling, validering eller øvrig dialogflyt.
 
 ## Validering
 
 - Kjør `npx tsgo --noEmit -p tsconfig.app.json && git diff --check`.
-- Kontroller i mobilvisning at Oppdragsdetaljer → Merknad → skriv → Lagre beholder synlig og trykkbar X-knapp, også når siden var rullet før åpning.
-- Gjenta flyten fem ganger og kontroller både opprinnelig topposisjon og en nedrullet side.
-- Kontroller desktop og DJI-kompatibilitet: scrollområdene virker, `vh` står før `dvh`, og flyloggens split-view er urørt.
-- En fysisk iPhone/iOS Safari er endelig akseptansetest; den lokale nettlesertesten kan kontrollere layout og hendelsesflyt, men kan ikke fullt ut simulere iOS-tastaturets viewport-feil.
+- Test mobil viewport med både opprett/rediger-dialogen og Oppdragsdetaljer → Merknad: fokuser Merknader, skriv og lagre; header og X skal være synlige og trykkbare før og etter tastaturet lukkes.
+- Gjenta merknadsflyten flere ganger, også når dashbordet var rullet før dialogen åpnet.
+- Kontroller at `--vvh` og `--vvt` oppdateres ved både resize og visual-viewport-scroll, samt ved de forsinkede målingene etter blur.
+- Kontroller desktop og DJI-kompatibilitet: vanlige dialoger er sentrert som før, `vh` står før `dvh`, scrollområdene beholder touch-rulling, og `.dji-log-split`/flyloggens prosentbaserte split-view har uendret posisjon.
+- Endelig akseptansetest gjøres på fysisk iPhone Safari og Android-PWA; lokal Chromium kan kontrollere CSS, fokusflyt og responsive tilstander, men ikke fullt ut gjenskape begge mobile tastaturmotorene.
