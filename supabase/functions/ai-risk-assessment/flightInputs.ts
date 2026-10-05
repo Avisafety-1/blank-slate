@@ -1,19 +1,19 @@
 // Resolves flight height and VLOS/BVLOS from pilot inputs with the mission
 // (NOTAM fields) as fallback. Never falls back to 0 m.
 
-export const FT_TO_M = 0.3048;
 export const DEFAULT_FLIGHT_HEIGHT_M = 120;
 
+// Flyhøyde kommer fra pilotens input eller ruteplanleggeren (meter).
+// NOTAM-feltene brukes IKKE i risikovurderingen.
 export interface MissionFlightFields {
-  notam_max_agl_ft?: number | string | null;
-  notam_operation_type?: string | null;
+  route?: { soraSettings?: { flightAltitude?: number | string | null } | null } | null;
 }
 
 export interface ResolvedFlightInputs {
   heightM: number;
-  heightSource: 'pilot' | 'notam' | 'default';
+  heightSource: 'pilot' | 'route' | 'default';
   isVlos: boolean;
-  vlosSource: 'pilot' | 'notam' | 'default';
+  vlosSource: 'pilot' | 'default';
   note: string | null;
 }
 
@@ -23,16 +23,8 @@ const positive = (value: unknown): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-export const missionHeightM = (mission: MissionFlightFields | null | undefined): number | null => {
-  const ft = positive(mission?.notam_max_agl_ft);
-  return ft === null ? null : Math.round(ft * FT_TO_M);
-};
-
-export const missionIsVlos = (mission: MissionFlightFields | null | undefined): boolean | null => {
-  const t = String(mission?.notam_operation_type ?? '').trim().toUpperCase();
-  if (!t) return null;
-  return t !== 'BVLOS';
-};
+export const routeHeightM = (mission: MissionFlightFields | null | undefined): number | null =>
+  positive((mission?.route as any)?.soraSettings?.flightAltitude);
 
 export const resolveFlightInputs = (
   pilotInputs: { flightHeight?: unknown; isVlos?: unknown } | null | undefined,
@@ -40,12 +32,12 @@ export const resolveFlightInputs = (
   lang: 'no' | 'en' = 'no',
 ): ResolvedFlightInputs => {
   const pilotHeight = positive(pilotInputs?.flightHeight);
-  const notamHeight = missionHeightM(mission);
+  const routeHeight = routeHeightM(mission);
   let heightM: number;
   let heightSource: ResolvedFlightInputs['heightSource'];
   let note: string | null = null;
   if (pilotHeight !== null) { heightM = pilotHeight; heightSource = 'pilot'; }
-  else if (notamHeight !== null) { heightM = notamHeight; heightSource = 'notam'; }
+  else if (routeHeight !== null) { heightM = routeHeight; heightSource = 'route'; }
   else {
     heightM = DEFAULT_FLIGHT_HEIGHT_M;
     heightSource = 'default';
@@ -57,11 +49,7 @@ export const resolveFlightInputs = (
   let isVlos: boolean;
   let vlosSource: ResolvedFlightInputs['vlosSource'];
   if (typeof pilotInputs?.isVlos === 'boolean') { isVlos = pilotInputs.isVlos; vlosSource = 'pilot'; }
-  else {
-    const fromMission = missionIsVlos(mission);
-    if (fromMission !== null) { isVlos = fromMission; vlosSource = 'notam'; }
-    else { isVlos = true; vlosSource = 'default'; }
-  }
+  else { isVlos = true; vlosSource = 'default'; }
 
   return { heightM, heightSource, isVlos, vlosSource, note };
 };

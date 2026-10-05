@@ -3,6 +3,7 @@ import { resolveFlightInputs } from "./flightInputs.ts";
 import { evaluateCivilTwilight } from "./twilight.ts";
 import { isFixedWingDrone, modelSearchTerms, sanitizeIlikeTerm } from "./catalogLookup.ts";
 import { deriveHardStops } from "./hardStops.ts";
+import { calculateDroneAggregatedStatus, isYellowStatus, unknownStatusText } from "./maintenanceStatus.ts";
 
 Deno.test("høyde mangler → 120 m + merknad", () => {
   const r = resolveFlightInputs({}, {});
@@ -11,21 +12,26 @@ Deno.test("høyde mangler → 120 m + merknad", () => {
   assertEquals(r.note, "Flyhøyde ikke oppgitt — 120 m lagt til grunn");
 });
 
-Deno.test("høyde 0 → NOTAM-høyde i meter", () => {
-  const r = resolveFlightInputs({ flightHeight: 0 }, { notam_max_agl_ft: 400 });
-  assertEquals(r.heightM, 122);
-  assertEquals(r.heightSource, "notam");
-  assertEquals(r.note, null);
+Deno.test("soraSettings 42 → 42 m", () => {
+  const r = resolveFlightInputs({ flightHeight: 0 }, { route: { soraSettings: { flightAltitude: 42 } } });
+  assertEquals([r.heightM, r.heightSource, r.note], [42, "route", null]);
 });
 
-Deno.test("pilotens høyde og VLOS vinner", () => {
-  const r = resolveFlightInputs({ flightHeight: 80, isVlos: true }, { notam_max_agl_ft: 400, notam_operation_type: "BVLOS" });
-  assertEquals([r.heightM, r.isVlos], [80, true]);
+Deno.test("pilotInputs overstyrer soraSettings", () => {
+  const r = resolveFlightInputs({ flightHeight: 80, isVlos: false }, { route: { soraSettings: { flightAltitude: 42 } } });
+  assertEquals([r.heightM, r.heightSource, r.isVlos], [80, "pilot", false]);
 });
 
-Deno.test("isVlos mangler → fra oppdragets BVLOS", () => {
-  assertEquals(resolveFlightInputs({ flightHeight: 50 }, { notam_operation_type: "BVLOS" }).isVlos, false);
-  assertEquals(resolveFlightInputs({ flightHeight: 50 }, { notam_operation_type: "VLOS" }).isVlos, true);
+Deno.test("NOTAM ignoreres, isVlos mangler → VLOS", () => {
+  const r = resolveFlightInputs({}, { notam_max_agl_ft: 400, notam_operation_type: "BVLOS" } as any);
+  assertEquals([r.heightM, r.isVlos], [120, true]);
+});
+
+Deno.test("lookupFailed → gul liste", () => {
+  const r = calculateDroneAggregatedStatus({ id: "d" } as any, [], [], { lookupFailed: true });
+  assertEquals(r.ownStatus, "Ukjent");
+  assertEquals(isYellowStatus(r.ownStatus), true);
+  assertEquals(unknownStatusText("en"), "Maintenance status could not be retrieved");
 });
 
 Deno.test("skumring: slutt_tidspunkt etter dusk → brudd", () => {
