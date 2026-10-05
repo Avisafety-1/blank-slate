@@ -6,7 +6,10 @@ import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
-import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
+import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
+import { buildSystemDecisions, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { buildDecisionSentence, enforceConsistency, withDecisionSentence } from "./consistency.ts";
+import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 import { readMissionSoraDocument } from "./soraDocument.ts";
@@ -574,6 +577,7 @@ async function computeEurostatPopulationDensity(
 
 
 serve(async (req) => {
+  const requestStartedAt = Date.now();
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -818,6 +822,8 @@ serve(async (req) => {
             { role: 'system', content: soraSystemPrompt },
             { role: 'user', content: soraUserPrompt },
           ],
+          max_completion_tokens: 16000,
+          response_format: { type: 'json_object' },
         }),
         signal: AbortSignal.timeout(90_000),
       });
@@ -844,14 +850,7 @@ serve(async (req) => {
       let soraContent = soraAiData.choices?.[0]?.message?.content;
       if (!soraContent) throw new Error('No content in SORA AI response');
 
-      soraContent = soraContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      let soraAnalysis;
-      try {
-        soraAnalysis = JSON.parse(soraContent);
-      } catch (e) {
-        console.error('Failed to parse SORA AI response:', soraContent);
-        throw new Error('Invalid SORA AI response format');
-      }
+      let soraAnalysis = parseAiJson(soraContent, soraAiData.choices?.[0]?.finish_reason);
 
       // Safety net: replace internal mitigation keys with readable labels if the model echoed them
       try {
@@ -1350,7 +1349,7 @@ serve(async (req) => {
     });
 
     // 8. Fetch weather data if coordinates available and not skipped
-    let weatherData = null;
+    let weatherData: any = null;
     const routeCoords = (mission.route as any)?.coordinates;
     // Oppdrag kan ha flere ruter. Risikovurderingen bruker worst case på tvers
     // av alle rutene (luftrom, arealbruk og befolkningstetthet).
@@ -1371,6 +1370,7 @@ serve(async (req) => {
     
     const skipWeather = pilotInputs?.skipWeatherEvaluation === true;
 
+    const fetchWeatherTask = async () => {
     if (skipWeather) {
       console.log('Weather evaluation skipped by user request');
     } else {
@@ -1400,6 +1400,7 @@ serve(async (req) => {
         console.log('No coordinates available for weather fetch');
       }
     }
+    };
 
     // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
     // Always provide an object so the AI prompt can include Kp consistently, even when unavailable.
@@ -1408,6 +1409,7 @@ serve(async (req) => {
       noaaScale: 'unknown',
       level: 'unavailable',
     };
+    const fetchKpTask = async () => {
     try {
       const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
         signal: AbortSignal.timeout(5000),
@@ -1472,6 +1474,7 @@ serve(async (req) => {
     } catch (e) {
       console.error('Solar activity fetch error (non-blocking):', e);
     }
+    };
 
     // 9. Fetch airspace warnings (worst case across all routes)
     let airspaceWarnings: any[] = [];
@@ -1502,30 +1505,6 @@ serve(async (req) => {
     let airspaceCheckRan = false;
     let airspaceCheckFailed = false;
 
-    if (lat && lng) {
-      for (const run of airspaceRuns) {
-        try {
-          airspaceCheckRan = true;
-          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
-            p_lat: lat,
-            p_lng: lng,
-            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
-          });
-          if (airspaceError) {
-            console.error('Airspace check RPC error:', airspaceError);
-            airspaceCheckFailed = true;
-          } else {
-            mergeWarnings(warnings || [], run.label);
-          }
-        } catch (e) {
-          console.error('Airspace check error:', e);
-          airspaceCheckFailed = true;
-        }
-      }
-      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
-    }
-
-
     // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
     // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
     // og norske ruter går aldri hit — check_mission_airspace (NO) er urørt.
@@ -1554,6 +1533,37 @@ serve(async (req) => {
         if (allow) {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
+        }
+      } catch (e) {
+        console.error('Unified airspace allowlist check error (non-blocking):', e);
+      }
+    }
+
+    const fetchAirspaceTask = async () => {
+    if (lat && lng) {
+      for (const run of airspaceRuns) {
+        try {
+          airspaceCheckRan = true;
+          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
+            p_lat: lat,
+            p_lng: lng,
+            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+          });
+          if (airspaceError) {
+            console.error('Airspace check RPC error:', airspaceError);
+            airspaceCheckFailed = true;
+          } else {
+            mergeWarnings(warnings || [], run.label);
+          }
+        } catch (e) {
+          console.error('Airspace check error:', e);
+          airspaceCheckFailed = true;
+        }
+      }
+      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
+    }
+      if (unifiedAirspaceActive) {
+        try {
           for (const run of airspaceRuns) {
             airspaceCheckRan = true;
             const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
@@ -1571,19 +1581,20 @@ serve(async (req) => {
               mergeWarnings(unifiedWarnings || [], run.label);
             }
           }
-
+        } catch (e) {
+          console.error('Unified airspace check error (non-blocking):', e);
+          airspaceCheckFailed = true;
         }
-      } catch (e) {
-        console.error('Unified airspace check error (non-blocking):', e);
       }
-    }
+    };
 
 
 
     // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
     // Norge-only datakilde (Geonorge WFS). For unified/europeisk gren settes
     // en tydelig coverage-note i stedet slik at AI ikke skriver "0 people/km²".
-    let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
+    let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null as any;
+    const fetchLandUseTask = async () => {
     if (unifiedAirspaceActive) {
       landUseData = {
         categories: [],
@@ -1690,6 +1701,7 @@ serve(async (req) => {
         console.error('SSB Arealbruk fetch error (continuing without land use data):', e);
       }
     }
+    };
 
     // 9c. Fetch SSB 250m population density for the operational footprint (route + SORA buffers)
     let populationData: {
@@ -1708,7 +1720,7 @@ serve(async (req) => {
       footprintDescription?: string;
       driver?: string;
       driverCoordinate?: { lat: number; lng: number };
-    } | null = null;
+    } | null = null as any;
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
@@ -1739,6 +1751,7 @@ serve(async (req) => {
       return null as unknown as number;
     };
 
+    const fetchPopulationTask = async () => {
     if (popRuns.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
@@ -1865,7 +1878,7 @@ serve(async (req) => {
         console.error('Eurostat population fetch error (continuing without data):', e);
       }
     }
-
+    };
 
     // 9d. Fetch company-specific SORA config
     // Inheritance rules:
@@ -1878,6 +1891,7 @@ serve(async (req) => {
     let linkedDocumentSummary = '';
     let companyRequireSora = false;
     const soraSelect = 'max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids';
+    const fetchSoraConfigTask = async () => {
     if (companyId) {
       try {
         const { data: companyRow } = await supabase
@@ -1943,6 +1957,30 @@ serve(async (req) => {
         console.error('Error fetching company SORA config (using defaults):', e);
       }
     }
+    };
+
+    // Independent data sources run in parallel; one failure never stops the others.
+    const sourceDurations: Record<string, number> = {};
+    const timed = (name: string, task: () => Promise<void>) => async () => {
+      const t0 = Date.now();
+      try {
+        await task();
+      } finally {
+        sourceDurations[name] = Date.now() - t0;
+      }
+    };
+    const dataSourceResults = await Promise.allSettled([
+      timed('weather', fetchWeatherTask)(),
+      timed('kp', fetchKpTask)(),
+      timed('airspace', fetchAirspaceTask)(),
+      timed('landUse', fetchLandUseTask)(),
+      timed('population', fetchPopulationTask)(),
+      timed('soraConfig', fetchSoraConfigTask)(),
+    ]);
+    dataSourceResults.forEach((r, idx) => {
+      if (r.status === 'rejected') console.error(`Data source ${idx} failed (non-blocking):`, r.reason);
+    });
+    console.log('Data source durations (ms):', JSON.stringify(sourceDurations));
 
     // 9e. Calculate civil twilight if required
     let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
@@ -2382,8 +2420,257 @@ serve(async (req) => {
     })();
     console.log('Airspace facts summary:', JSON.stringify(airspaceFacts.summary));
 
+    // ===== SYSTEM DECISIONS (computed BEFORE the AI call) =====
+    // Nothing below depends on the AI response; the AI only reproduces it.
+    const deterministicCharacteristicDimensionM = primaryDroneCharacteristicDimensionM
+      ?? (typeof droneData?.vekt === 'number' && droneData.vekt >= 5 ? 1.2 : typeof droneData?.vekt === 'number' && droneData.vekt >= 1 ? 0.6 : 0.3);
+    const deterministicMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
+    const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
+
+
+    // Density basis: unknown population → highest band (5000). The `controlled`
+    // proximity choice grants controlled ground area (density 0). A measured
+    // density of 0 gives the lowest POPULATED band, not controlled ground area.
+    const controlledGroundSelected = (pilotInputs?.proximityToPeople ?? null) === 'controlled';
+    const populationDataAvailable = populationData != null;
+    const populationDensityUnknown = !populationDataAvailable;
+    let deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 5000;
+    if (controlledGroundSelected) {
+      deterministicPopulationDensityValue = 0;
+    } else if (populationData && deterministicPopulationDensityValue <= 0) {
+      deterministicPopulationDensityValue = 1; // lowest populated band (< 5/km²)
+    }
+    const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
+    const grLang = resolveLang(language);
+    const grEn = grLang === 'en';
+    const deterministicGroundRisk = buildDeterministicGroundRisk({
+      characteristicDimensionM: deterministicCharacteristicDimensionM,
+      maxSpeedMps: deterministicMaxSpeedMps,
+      weightKg: deterministicWeightKg,
+      populationDensityValue: deterministicPopulationDensityValue,
+      populationDensityAverage: deterministicPopulationDensityAverage,
+      populationData,
+      assignedEquipment,
+      observerCount: effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible),
+      lang: grLang,
+      manualMitigations: manualGroundMitigations ?? null,
+      controlledGroundSelected,
+      populationDensityUnknown,
+    });
+
+    let deterministicAirFields: Record<string, any> | null = null;
+    try {
+      const sum = airspaceFacts?.summary ?? {};
+      const arLang = resolveLang(language);
+      const arEn = arLang === 'en';
+      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
+      const urban = deterministicPopulationDensityValue >= 500;
+      const airportEnvironment = sum.inside_5km_zone === true || sum.inside_small_airfield_5km_zone === true;
+
+      // Atypical/segregated airspace (AEC 12) is NOT something the system can detect —
+      // it must be explicitly declared and documented by the operator (Annex G 3.20(d)).
+      const declaredAtypical = (manualAirRisk as any)?.arc_a_atypical === true;
+
+      const aecRow = deriveAec({
+        flightHeightM,
+        insideControlledAirspace: sum.inside_controlled_airspace === true,
+        airportEnvironment,
+        airportAirspaceClass: sum.inside_controlled_airspace === true ? 'D' : 'G',
+        urban,
+        atypicalSegregated: declaredAtypical,
+      });
+
+
+
+      const air: Record<string, any> = {};
+      air.aec = `AEC ${aecRow.aec}`;
+      air.aec_environment = arEn ? aecRow.environment : aecRow.environmentNo;
+      air.aec_density_rating = aecRow.density;
+      air.initial_arc = aecRow.arc;
+      air.aec_declared_atypical = declaredAtypical;
+      air.aec_reasoning = declaredAtypical
+        ? (arEn
+            ? `AEC 12 (atypical/segregated airspace) is declared by the operator, not derived by the system. Requires that all conditions in Annex G section 3.20(d) are met and documented. Initial ARC ${aecRow.arc}.`
+            : `AEC 12 (atypisk/segregert luftrom) er erklært av operatøren, ikke utledet av systemet. Krever at alle vilkår i Annex G seksjon 3.20(d) er oppfylt og dokumentert. Initiell ARC ${aecRow.arc}.`)
+        : (arEn
+            ? `AEC ${aecRow.aec} per SORA Annex C Table 1: ${aecRow.environment}. Flight height ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'inside controlled airspace' : 'uncontrolled airspace'}, ${urban ? 'urban' : 'rural'} area${airportEnvironment ? ', airport/heliport environment' : ''}. Generalised density rating ${aecRow.density} gives initial ARC ${aecRow.arc}.`
+            : `AEC ${aecRow.aec} etter SORA Annex C tabell 1: ${aecRow.environmentNo}. Flygehøyde ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'innenfor kontrollert luftrom' : 'ukontrollert luftrom'}, ${urban ? 'urbant' : 'landlig'} område${airportEnvironment ? ', flyplass-/heliportmiljø' : ''}. Generalisert tetthetsrating ${aecRow.density} gir initiell ARC ${aecRow.arc}.`);
+
+      // Manual ARC override from the user (Annex C Table 2) wins over AI output.
+      const manual = manualAirRisk ?? null;
+      if (manual && (manual.arc_manual_override === true || declaredAtypical)) {
+        const density = manual.manual_density_rating ?? null;
+        const atypical = declaredAtypical || manual.arc_a_atypical === true;
+        const reduced = atypical ? 'ARC-a' : residualArcForDensity(aecRow.aec, density);
+        air.arc_manual_override = true;
+        air.manual_density_rating = atypical ? null : density;
+        air.arc_a_atypical = atypical;
+        air.arc_reduction_justification = manual.arc_reduction_justification ?? null;
+        air.residual_arc = reduced ?? aecRow.arc;
+      } else {
+        air.arc_manual_override = false;
+        air.manual_density_rating = null;
+        air.arc_a_atypical = false;
+        // Without documented manual reduction the residual ARC equals the initial ARC.
+        air.residual_arc = aecRow.arc;
+      }
+
+      deterministicAirFields = air;
+      console.log(`AEC deterministic: AEC ${aecRow.aec} => iARC=${aecRow.arc}, residual=${air.residual_arc}`);
+    } catch (aecErr) {
+      console.error('AEC deterministic guard error (non-blocking):', aecErr);
+    }
+
+    let deterministicEquipmentHardStopReason: string | null = null;
+    const redDrones: { label: string; reasons: string[] }[] = [];
+    const yellowDrones: { label: string; reasons: string[] }[] = [];
+    // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
+    // Disse trigger ikke hard stop — vises kun informativt i utstyrsseksjonen.
+    const linkedOnlyNotes: string[] = [];
+    const assignedEqIds = new Set((assignedEquipment as any[]).map(e => e.id));
+
+    const addLinkedNotes = (droneLabel: string, linkedReasons: string[]) => {
+      for (const r of linkedReasons || []) {
+        linkedOnlyNotes.push(`${droneLabel}: ${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt).`);
+      }
+    };
+
+    if (primaryDroneStatusInfo) {
+      const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
+      if (primaryDroneStatusInfo.ownStatus === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
+      else if (primaryDroneStatusInfo.ownStatus === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
+      if (primaryDroneStatusInfo.linkedReasons.length > 0) addLinkedNotes(label, primaryDroneStatusInfo.linkedReasons);
+    }
+    for (const d of assignedDrones as any[]) {
+      if (droneData && d.id === droneData.id) continue;
+      const info = assignedDroneStatuses.get(d.id);
+      const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
+      if (info?.ownStatus === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+      else if (info?.ownStatus === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
+      if (info?.linkedReasons?.length) addLinkedNotes(label, info.linkedReasons);
+    }
+    const redEquipment: string[] = [];
+    const yellowEquipment: string[] = [];
+    for (const e of assignedEquipment as any[]) {
+      const s = assignedEquipmentStatuses.get(e.id);
+      const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${String(e.neste_vedlikehold).slice(0, 10)})` : ''}`;
+      if (s === 'Rød') redEquipment.push(label);
+      else if (s === 'Gul') yellowEquipment.push(label);
+    }
+    // Sikkerhet: dropp evt. duplikater fra linkedOnlyNotes som faktisk er i assignedEquipment.
+    // (linkedEquipment-listen er navnbasert, så vi kan ikke matche eksakt — beholder notene som de er.)
+    void assignedEqIds;
+
+    if (redDrones.length > 0 || redEquipment.length > 0) {
+      if (redDrones.length > 0 && redEquipment.length > 0) deterministicEquipmentHardStopReason = 'Forfalt vedlikehold/inspeksjon på drone og oppdragsutstyr';
+      else if (redDrones.length === 1) deterministicEquipmentHardStopReason = 'Forfalt vedlikehold/inspeksjon på dronen';
+      else if (redDrones.length > 1) deterministicEquipmentHardStopReason = `Forfalt vedlikehold/inspeksjon på ${redDrones.length} droner`;
+      else deterministicEquipmentHardStopReason = 'Forfalt vedlikehold på oppdragsutstyr';
+    }
+
+    // Backup battery: equipment selected on the mission OR linked to the primary drone.
+    const requireBackupBattery = companySoraConfig?.require_backup_battery === true;
+    let primaryDroneLinkedEquipment: any[] = [];
+    if (requireBackupBattery && droneData?.id) {
+      try {
+        const { data: linkedRows } = await supabase
+          .from('drone_equipment')
+          .select('equipment(id, navn, type)')
+          .eq('drone_id', droneData.id);
+        primaryDroneLinkedEquipment = ((linkedRows as any[]) || []).map((r) => r.equipment).filter(Boolean);
+      } catch (e) {
+        console.error('Linked equipment lookup for battery count failed (non-blocking):', e);
+      }
+    }
+
+    const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
+    const systemDecisions = buildSystemDecisions({
+      hardStopInput: {
+        lang: assessmentLang,
+        skipWeather,
+        weatherCurrent: weatherData?.current ?? null,
+        weatherLimits: {
+          maxWindSpeedMs: Number(companySoraConfig?.max_wind_speed_ms ?? 10),
+          maxWindGustMs: Number(companySoraConfig?.max_wind_gust_ms ?? 15),
+          minTempC: Number(companySoraConfig?.min_temp_c ?? -10),
+          maxTempC: Number(companySoraConfig?.max_temp_c ?? 40),
+        },
+        equipmentReason: deterministicEquipmentHardStopReason,
+        assignedPilotCount: assignedPilots.length,
+        competencyReason: buildCompetencyReason(competencyAssessment, assessmentLang),
+        daysSinceLastFlight,
+        maxPilotInactivityDays: companySoraConfig?.max_pilot_inactivity_days == null
+          ? null
+          : Number(companySoraConfig.max_pilot_inactivity_days),
+        flightHeightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
+        maxFlightAltitudeM: companySoraConfig?.max_flight_altitude_m == null
+          ? null
+          : Number(companySoraConfig.max_flight_altitude_m),
+        isVlos: pilotInputs?.isVlos !== false,
+        allowBvlos: companySoraConfig?.allow_bvlos ?? null,
+        allowNightFlight: companySoraConfig?.allow_night_flight ?? null,
+        requireCivilTwilight: companySoraConfig?.require_civil_twilight === true,
+        civilTwilightViolation,
+        populationDensity: populationData ? deterministicPopulationDensityValue : null,
+        maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
+          ? null
+          : Number(companySoraConfig.max_population_density_per_km2),
+        observerCount: effectiveObservers,
+        requireObserver: companySoraConfig?.require_observer === true,
+      },
+      requireBackupBattery,
+      missionEquipment: assignedEquipment as any[],
+      primaryDroneLinkedEquipment,
+      maxVisibilityKm: companySoraConfig?.max_visibility_km == null ? null : Number(companySoraConfig.max_visibility_km),
+      groundRisk: {
+        igrc: deterministicGroundRisk.igrc ?? null,
+        fgrc: deterministicGroundRisk.fgrc ?? null,
+        controlled_ground_minimum: (deterministicGroundRisk as any).controlled_ground_minimum ?? null,
+        total_reduction: deterministicGroundRisk.total_reduction ?? null,
+        outside_sora: (deterministicGroundRisk as any).outside_sora === true,
+        population_band: (deterministicGroundRisk as any).population_density_band ?? null,
+        igrc_table_basis: deterministicGroundRisk.igrc_table_basis ?? null,
+      },
+      airRisk: deterministicAirFields
+        ? { aec: deterministicAirFields.aec ?? null, initial_arc: deterministicAirFields.initial_arc ?? null, residual_arc: deterministicAirFields.residual_arc ?? null }
+        : null,
+      alos: deterministicAlos ? { alosMaxM: deterministicAlos.alosMaxM ?? null } : null,
+      equipment: {
+        primaryDroneStatus: primaryDroneStatusInfo?.ownStatus ?? droneData?.status ?? null,
+        redItems: [...redDrones.map((d) => d.label), ...redEquipment],
+        yellowItems: [...yellowDrones.map((d) => d.label), ...yellowEquipment],
+        linkedOnlyNotes,
+      },
+      dataAvailability: {
+        population: populationData != null,
+        airspace: airspaceFacts.available !== false,
+        weather: weatherData != null || skipWeather,
+      },
+      airspace: {
+        inside5km: airspaceFacts.summary?.inside_5km_zone === true,
+        insideControlled: airspaceFacts.summary?.inside_controlled_airspace === true,
+        requiresNinox: airspaceFacts.summary?.requires_ninox_approval === true,
+        atcConfirmed: pilotInputs?.atcRequired === true,
+      },
+    });
+    console.log('System decisions:', JSON.stringify({ hardStops: systemDecisions.hardStops.map((r) => r.code), sail: systemDecisions.sail, fog: !!systemDecisions.fog, batteries: systemDecisions.equipment.batteries.count }));
+
     const missionDateOslo = osloDateString(mission.tidspunkt ?? null);
     const contextData = {
+      systemDecisionsInstruction: SYSTEM_DECISIONS_INSTRUCTION[assessmentLang],
+      systemDecisions: {
+        hardStops: systemDecisions.hardStops.map((r) => ({ category: r.category, text: r.text })),
+        hardStopTriggered: systemDecisions.hardStopTriggered,
+        hardStopReason: systemDecisions.hardStopReason,
+        groundRisk: systemDecisions.groundRisk,
+        airRisk: systemDecisions.airRisk,
+        sail: systemDecisions.sail,
+        certifiedCategory: systemDecisions.certifiedCategory,
+        alosMaxM: systemDecisions.alosMaxM,
+        equipment: systemDecisions.equipment,
+        fog: systemDecisions.fog,
+        airspace: systemDecisions.airspace,
+      },
       assessmentContext: {
         currentDate: currentDateOslo,
         currentDateTime: osloIsoWithOffset(nowForAssessment),
@@ -2405,8 +2692,11 @@ serve(async (req) => {
         scheduledTime: mission.tidspunkt,
         endTime: mission.slutt_tidspunkt,
         riskLevel: mission.risk_nivå,
+        // Route coordinates are not sent; only size, length and SORA settings.
         route: {
-          ...(mission.route as any),
+          routeCount: routeSegmentsRaw.length,
+          pointCount: allRouteCoords.length,
+          totalDistance: (mission.route as any)?.totalDistance ?? null,
           soraSettings: (mission.route as any)?.soraSettings || null,
         },
         sora: mission.mission_sora?.[0],
@@ -2475,7 +2765,6 @@ serve(async (req) => {
           // Hard stop skal kun vurderes ut fra denne + valgt oppdragsutstyr.
           status: info?.ownStatus ?? d.status,
           aggregatedStatus: info?.status ?? d.status,
-          rawDbStatus: d.status,
           // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
           // skal ALDRI utløse hard stop eller senke utstyrs-score.
           linkedOnlyIssues: (info?.linkedReasons ?? []).map((r: string) =>
@@ -2493,7 +2782,6 @@ serve(async (req) => {
         name: e.navn,
         type: e.type,
         status: assignedEquipmentStatuses.get(e.id) ?? e.status,
-        rawDbStatus: e.status,
         serialNumber: e.serienummer,
         lastMaintenance: e.sist_vedlikeholdt,
         nextMaintenance: e.neste_vedlikehold,
@@ -2512,7 +2800,6 @@ serve(async (req) => {
         linkedOnlyIssues: (primaryDroneStatusInfo?.linkedReasons ?? []).map((r: string) =>
           `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
         ),
-        rawDbStatus: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
         nextInspection: droneData.neste_inspeksjon,
@@ -2537,21 +2824,6 @@ serve(async (req) => {
       landUse: landUseData,
       populationDensity: populationData,
       companyConfig: companySoraConfig ? {
-        hardStops: {
-          maxWindSpeedMs: companySoraConfig.max_wind_speed_ms,
-          maxWindGustMs: companySoraConfig.max_wind_gust_ms,
-          maxVisibilityKm: companySoraConfig.max_visibility_km,
-          maxFlightAltitudeM: companySoraConfig.max_flight_altitude_m,
-          requireBackupBattery: companySoraConfig.require_backup_battery,
-          requireObserver: companySoraConfig.require_observer,
-          minTempC: companySoraConfig.min_temp_c ?? -10,
-          maxTempC: companySoraConfig.max_temp_c ?? 40,
-          allowBvlos: companySoraConfig.allow_bvlos ?? false,
-          allowNightFlight: companySoraConfig.allow_night_flight ?? false,
-          requireCivilTwilight: companySoraConfig.require_civil_twilight ?? false,
-          maxPilotInactivityDays: companySoraConfig.max_pilot_inactivity_days ?? null,
-          maxPopulationDensityPerKm2: companySoraConfig.max_population_density_per_km2 ?? null,
-        },
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
@@ -2573,6 +2845,7 @@ serve(async (req) => {
     });
 
     const userPrompt = prompts.buildUserPrompt(contextData);
+    console.log(`Prompt sizes (chars): system=${systemPrompt.length}, user=${userPrompt.length}`);
 
     // 9. Call AI (with retry for transient 502/503 errors)
     console.log('Calling AI for risk assessment...');
@@ -2645,33 +2918,7 @@ serve(async (req) => {
       throw new Error('No content in AI response');
     }
 
-    // Parse JSON from AI response (remove markdown if present)
-    aiContent = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    let aiAnalysis;
-    try {
-      aiAnalysis = JSON.parse(aiContent);
-    } catch (e) {
-      // Fallback: try to extract the largest balanced JSON object
-      const start = aiContent.indexOf('{');
-      const end = aiContent.lastIndexOf('}');
-      if (start !== -1 && end > start) {
-        let candidate = aiContent.substring(start, end + 1)
-          .replace(/,\s*}/g, '}')
-          .replace(/,\s*]/g, ']')
-          .replace(/[\x00-\x1F\x7F]/g, '');
-        try {
-          aiAnalysis = JSON.parse(candidate);
-        } catch (e2) {
-          const finishReason = aiData.choices?.[0]?.finish_reason;
-          console.error('Failed to parse AI response (finish_reason=' + finishReason + '):', aiContent);
-          throw new Error('Invalid AI response format' + (finishReason === 'length' ? ' (truncated)' : ''));
-        }
-      } else {
-        console.error('Failed to parse AI response:', aiContent);
-        throw new Error('Invalid AI response format');
-      }
-    }
+    let aiAnalysis = parseAiJson(aiContent, aiData.choices?.[0]?.finish_reason);
 
 
     // Safety net: strip leaked internal field/variable names from any narrative text
@@ -2793,10 +3040,6 @@ serve(async (req) => {
       aiAnalysis.recommendation
     );
 
-    const deterministicCharacteristicDimensionM = primaryDroneCharacteristicDimensionM
-      ?? (typeof droneData?.vekt === 'number' && droneData.vekt >= 5 ? 1.2 : typeof droneData?.vekt === 'number' && droneData.vekt >= 1 ? 0.6 : 0.3);
-    const deterministicMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
-    const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
 
     if (deterministicAlos) {
       aiAnalysis.ground_risk_analysis = {
@@ -2813,36 +3056,6 @@ serve(async (req) => {
         alos_calculation: deterministicAlos.alosCalculation,
       };
     }
-
-    // Density basis: unknown population → highest band (5000). The `controlled`
-    // proximity choice grants controlled ground area (density 0). A measured
-    // density of 0 gives the lowest POPULATED band, not controlled ground area.
-    const controlledGroundSelected = (pilotInputs?.proximityToPeople ?? null) === 'controlled';
-    const populationDataAvailable = populationData != null;
-    const populationDensityUnknown = !populationDataAvailable;
-    let deterministicPopulationDensityValue = populationData ? Math.round(populationData.maxDensity) : 5000;
-    if (controlledGroundSelected) {
-      deterministicPopulationDensityValue = 0;
-    } else if (populationData && deterministicPopulationDensityValue <= 0) {
-      deterministicPopulationDensityValue = 1; // lowest populated band (< 5/km²)
-    }
-    const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
-    const grLang = resolveLang(language);
-    const grEn = grLang === 'en';
-    const deterministicGroundRisk = buildDeterministicGroundRisk({
-      characteristicDimensionM: deterministicCharacteristicDimensionM,
-      maxSpeedMps: deterministicMaxSpeedMps,
-      weightKg: deterministicWeightKg,
-      populationDensityValue: deterministicPopulationDensityValue,
-      populationDensityAverage: deterministicPopulationDensityAverage,
-      populationData,
-      assignedEquipment,
-      observerCount: effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible),
-      lang: grLang,
-      manualMitigations: manualGroundMitigations ?? null,
-      controlledGroundSelected,
-      populationDensityUnknown,
-    });
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
@@ -3103,70 +3316,13 @@ serve(async (req) => {
     // ===== DETERMINISTIC AEC / ARC (SORA Annex C, Table 1 + 2) =====
     // AI models frequently pick the wrong AEC (e.g. AEC 11, which is >FL600).
     // Derive AEC and initial ARC from server-known facts instead.
-    let deterministicEquipmentHardStopReason: string | null = null;
-    try {
-      const sum = airspaceFacts?.summary ?? {};
-      const arLang = resolveLang(language);
-      const arEn = arLang === 'en';
-      const flightHeightM = Number(pilotInputs?.flightHeight ?? 0);
-      const urban = deterministicPopulationDensityValue >= 500;
-      const airportEnvironment = sum.inside_5km_zone === true || sum.inside_small_airfield_5km_zone === true;
-
-      // Atypical/segregated airspace (AEC 12) is NOT something the system can detect —
-      // it must be explicitly declared and documented by the operator (Annex G 3.20(d)).
-      const declaredAtypical = (manualAirRisk as any)?.arc_a_atypical === true;
-
-      const aecRow = deriveAec({
-        flightHeightM,
-        insideControlledAirspace: sum.inside_controlled_airspace === true,
-        airportEnvironment,
-        airportAirspaceClass: sum.inside_controlled_airspace === true ? 'D' : 'G',
-        urban,
-        atypicalSegregated: declaredAtypical,
-      });
 
 
 
-      const air = { ...(aiAnalysis.air_risk_analysis || {}) };
-      air.aec = `AEC ${aecRow.aec}`;
-      air.aec_environment = arEn ? aecRow.environment : aecRow.environmentNo;
-      air.aec_density_rating = aecRow.density;
-      air.initial_arc = aecRow.arc;
-      air.aec_declared_atypical = declaredAtypical;
-      air.aec_reasoning = declaredAtypical
-        ? (arEn
-            ? `AEC 12 (atypical/segregated airspace) is declared by the operator, not derived by the system. Requires that all conditions in Annex G section 3.20(d) are met and documented. Initial ARC ${aecRow.arc}.`
-            : `AEC 12 (atypisk/segregert luftrom) er erklært av operatøren, ikke utledet av systemet. Krever at alle vilkår i Annex G seksjon 3.20(d) er oppfylt og dokumentert. Initiell ARC ${aecRow.arc}.`)
-        : (arEn
-            ? `AEC ${aecRow.aec} per SORA Annex C Table 1: ${aecRow.environment}. Flight height ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'inside controlled airspace' : 'uncontrolled airspace'}, ${urban ? 'urban' : 'rural'} area${airportEnvironment ? ', airport/heliport environment' : ''}. Generalised density rating ${aecRow.density} gives initial ARC ${aecRow.arc}.`
-            : `AEC ${aecRow.aec} etter SORA Annex C tabell 1: ${aecRow.environmentNo}. Flygehøyde ${Math.round(flightHeightM)} m AGL, ${sum.inside_controlled_airspace === true ? 'innenfor kontrollert luftrom' : 'ukontrollert luftrom'}, ${urban ? 'urbant' : 'landlig'} område${airportEnvironment ? ', flyplass-/heliportmiljø' : ''}. Generalisert tetthetsrating ${aecRow.density} gir initiell ARC ${aecRow.arc}.`);
-
-      // Manual ARC override from the user (Annex C Table 2) wins over AI output.
-      const manual = manualAirRisk ?? null;
-      if (manual && (manual.arc_manual_override === true || declaredAtypical)) {
-        const density = manual.manual_density_rating ?? null;
-        const atypical = declaredAtypical || manual.arc_a_atypical === true;
-        const reduced = atypical ? 'ARC-a' : residualArcForDensity(aecRow.aec, density);
-        air.arc_manual_override = true;
-        air.manual_density_rating = atypical ? null : density;
-        air.arc_a_atypical = atypical;
-        air.arc_reduction_justification = manual.arc_reduction_justification ?? null;
-        air.residual_arc = reduced ?? aecRow.arc;
-      } else {
-        air.arc_manual_override = false;
-        air.manual_density_rating = null;
-        air.arc_a_atypical = false;
-        // Without documented manual reduction the residual ARC equals the initial ARC.
-        air.residual_arc = aecRow.arc;
-      }
-
-      aiAnalysis.air_risk_analysis = air;
-      console.log(`AEC deterministic: AEC ${aecRow.aec} => iARC=${aecRow.arc}, residual=${air.residual_arc}`);
-    } catch (aecErr) {
-      console.error('AEC deterministic guard error (non-blocking):', aecErr);
+    if (deterministicAirFields) {
+      aiAnalysis.air_risk_analysis = { ...(aiAnalysis.air_risk_analysis || {}), ...deterministicAirFields };
+      console.log(`AEC deterministic: ${deterministicAirFields.aec} => iARC=${deterministicAirFields.initial_arc}, residual=${deterministicAirFields.residual_arc}`);
     }
-
-
 
     // ===== DETERMINISTIC EQUIPMENT/MAINTENANCE GUARD =====
     // Hvis serverberegnet aggregert dronestatus eller utstyrsstatus er Rød
@@ -3213,44 +3369,6 @@ serve(async (req) => {
         }
       }
 
-      const redDrones: { label: string; reasons: string[] }[] = [];
-      const yellowDrones: { label: string; reasons: string[] }[] = [];
-      // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
-      // Disse trigger ikke hard stop — vises kun informativt i utstyrsseksjonen.
-      const linkedOnlyNotes: string[] = [];
-      const assignedEqIds = new Set((assignedEquipment as any[]).map(e => e.id));
-
-      const addLinkedNotes = (droneLabel: string, linkedReasons: string[]) => {
-        for (const r of linkedReasons || []) {
-          linkedOnlyNotes.push(`${droneLabel}: ${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt).`);
-        }
-      };
-
-      if (primaryDroneStatusInfo) {
-        const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
-        if (primaryDroneStatusInfo.ownStatus === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
-        else if (primaryDroneStatusInfo.ownStatus === 'Gul') yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
-        if (primaryDroneStatusInfo.linkedReasons.length > 0) addLinkedNotes(label, primaryDroneStatusInfo.linkedReasons);
-      }
-      for (const d of assignedDrones as any[]) {
-        if (droneData && d.id === droneData.id) continue;
-        const info = assignedDroneStatuses.get(d.id);
-        const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
-        if (info?.ownStatus === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
-        else if (info?.ownStatus === 'Gul') yellowDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
-        if (info?.linkedReasons?.length) addLinkedNotes(label, info.linkedReasons);
-      }
-      const redEquipment: string[] = [];
-      const yellowEquipment: string[] = [];
-      for (const e of assignedEquipment as any[]) {
-        const s = assignedEquipmentStatuses.get(e.id);
-        const label = `${e.navn ?? 'Utstyr'}${e.neste_vedlikehold ? ` (neste vedlikehold ${String(e.neste_vedlikehold).slice(0, 10)})` : ''}`;
-        if (s === 'Rød') redEquipment.push(label);
-        else if (s === 'Gul') yellowEquipment.push(label);
-      }
-      // Sikkerhet: dropp evt. duplikater fra linkedOnlyNotes som faktisk er i assignedEquipment.
-      // (linkedEquipment-listen er navnbasert, så vi kan ikke matche eksakt — beholder notene som de er.)
-      void assignedEqIds;
 
       if (redDrones.length > 0 || redEquipment.length > 0) {
         const reasonBits: string[] = [];
@@ -3288,7 +3406,6 @@ serve(async (req) => {
         aiAnalysis.hard_stop_reason = shortReason;
         aiAnalysis.overall_score = Math.min(Number(aiAnalysis.overall_score) || 1, 2);
         aiAnalysis.recommendation = 'no-go';
-        aiAnalysis.summary = `${shortReason}. ${aiAnalysis.summary || ''}`.trim();
       } else if (yellowDrones.length > 0 || yellowEquipment.length > 0) {
         const noteBits: string[] = [];
         for (const d of yellowDrones) noteBits.push(`${d.label}: ${d.reasons.join('; ') || 'vedlikehold nærmer seg'}`);
@@ -3325,43 +3442,10 @@ serve(async (req) => {
     // Final authority: derive hard stops only from measured data and explicit
     // company limits after every category guard has completed. AI prose and
     // category labels cannot create, preserve or remove a hard stop here.
-    const assessmentLang = resolveLang(language) === 'en' ? 'en' : 'no';
-    const authoritativeHardStops = deriveHardStops({
-      lang: assessmentLang,
-      skipWeather,
-      weatherCurrent: weatherData?.current ?? null,
-      weatherLimits: {
-        maxWindSpeedMs: Number(companySoraConfig?.max_wind_speed_ms ?? 10),
-        maxWindGustMs: Number(companySoraConfig?.max_wind_gust_ms ?? 15),
-        minTempC: Number(companySoraConfig?.min_temp_c ?? -10),
-        maxTempC: Number(companySoraConfig?.max_temp_c ?? 40),
-      },
-      equipmentReason: deterministicEquipmentHardStopReason,
-      assignedPilotCount: assignedPilots.length,
-      competencyReason: buildCompetencyReason(competencyAssessment, assessmentLang),
-      daysSinceLastFlight,
-      maxPilotInactivityDays: companySoraConfig?.max_pilot_inactivity_days == null
-        ? null
-        : Number(companySoraConfig.max_pilot_inactivity_days),
-      flightHeightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
-      maxFlightAltitudeM: companySoraConfig?.max_flight_altitude_m == null
-        ? null
-        : Number(companySoraConfig.max_flight_altitude_m),
-      isVlos: pilotInputs?.isVlos !== false,
-      allowBvlos: companySoraConfig?.allow_bvlos ?? null,
-      allowNightFlight: companySoraConfig?.allow_night_flight ?? null,
-      requireCivilTwilight: companySoraConfig?.require_civil_twilight === true,
-      civilTwilightViolation,
-      populationDensity: populationData ? deterministicPopulationDensityValue : null,
-      maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
-        ? null
-        : Number(companySoraConfig.max_population_density_per_km2),
-      observerCount: effectiveObservers,
-      requireObserver: companySoraConfig?.require_observer === true,
-    });
-    const categoriesWithHardStops = new Set(authoritativeHardStops.map((reason) => reason.category));
-    aiAnalysis.hard_stop_triggered = authoritativeHardStops.length > 0;
-    aiAnalysis.hard_stop_reason = joinHardStopReasons(authoritativeHardStops);
+    const authoritativeHardStops = systemDecisions.hardStops;
+    const categoriesWithHardStops = new Set<string>(systemDecisions.hardStopCategories);
+    aiAnalysis.hard_stop_triggered = systemDecisions.hardStopTriggered;
+    aiAnalysis.hard_stop_reason = systemDecisions.hardStopReason;
     // Ground truth for later SORA re-assessments (no personal data).
     aiAnalysis.missionFacts = {
       primaryDroneModel: droneData?.modell ?? null,
@@ -3404,11 +3488,26 @@ serve(async (req) => {
           !isCompetencyJargon(typeof r === 'string' ? r : `${r?.title ?? ''} ${r?.description ?? r?.text ?? ''}`));
       }
     }
-    if (aiAnalysis.categories) {
-      for (const category of categoriesWithHardStops) {
-        if (aiAnalysis.categories[category]) aiAnalysis.categories[category].go_decision = 'NO-GO';
-      }
+    // Fog advisory (never a hard stop): weather at least BETINGET.
+    if (systemDecisions.fog && aiAnalysis.categories?.weather && !weatherNotAssessed) {
+      const w = aiAnalysis.categories.weather;
+      if (w.go_decision === 'GO' || !w.go_decision) w.go_decision = 'BETINGET';
+      w.concerns = [...(Array.isArray(w.concerns) ? w.concerns : []), systemDecisions.fog.text];
     }
+    // Always state which batteries were counted when the company requires a backup battery.
+    if (systemDecisions.equipment.batteries.required) {
+      aiAnalysis.categories = aiAnalysis.categories || {};
+      const eq = aiAnalysis.categories.equipment || {};
+      eq.factors = [...(Array.isArray(eq.factors) ? eq.factors : []), systemDecisions.equipment.batteries.description];
+      if (categoriesWithHardStops.has('equipment') && systemDecisions.hardStops.some((r) => r.code === 'backup_battery')) {
+        eq.concerns = [...(Array.isArray(eq.concerns) ? eq.concerns : []),
+          systemDecisions.hardStops.find((r) => r.code === 'backup_battery')!.text];
+      }
+      aiAnalysis.categories.equipment = eq;
+    }
+    // Consistency: hard-stop categories NO-GO (≤ 3.0), AI NO-GO without hard stop → BETINGET,
+    // overall ≤ 4.9 with a hard stop.
+    enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
 
     // Recompute recommendation after authoritative hard-stop derivation.
     aiAnalysis.recommendation = deriveRiskRecommendation(
@@ -3420,7 +3519,23 @@ serve(async (req) => {
     if (aiAnalysis.ground_risk_analysis?.outside_sora === true && aiAnalysis.recommendation === 'go') {
       aiAnalysis.recommendation = 'caution';
     }
+    // Fixed first sentence with the decision; the AI never writes the decision itself.
+    aiAnalysis.summary = withDecisionSentence(aiAnalysis.summary, buildDecisionSentence({
+      recommendation: aiAnalysis.recommendation,
+      overallScore: aiAnalysis.overall_score,
+      hardStopReason: aiAnalysis.hard_stop_reason,
+      hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
+      lang: assessmentLang,
+    }));
+    aiAnalysis.systemDecisions = {
+      sail: systemDecisions.sail,
+      certifiedCategory: systemDecisions.certifiedCategory,
+      fog: systemDecisions.fog,
+      batteries: systemDecisions.equipment.batteries,
+      hardStopCodes: systemDecisions.hardStops.map((r) => r.code),
+    };
 
+    console.log(`Assessment duration before save: ${Date.now() - requestStartedAt} ms`);
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 

@@ -96,11 +96,10 @@ Du skal vurdere 5 kategorier på en skala fra 1 til 10:
 HØY SCORE = BRA (lav risiko, trygt)
 LAV SCORE = DÅRLIG (høy risiko, farlig)
 
-### KONSISTENS MELLOM SCORE OG ANBEFALING
-- overall_score 7.0-10.0 skal gi recommendation="go".
-- overall_score 5.0-6.9 skal gi recommendation="caution" med forholdsregler.
-- recommendation="no-go" skal kun brukes hvis overall_score er under 5.0 eller HARD STOP er utløst.
-- En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
+### BESLUTNING OG GO_DECISION
+- recommendation og hard stop settes av systemet. Ikke returner dem.
+- go_decision per kategori er kun "GO" eller "BETINGET" (eller "IKKE VURDERT" for vær). "NO-GO" settes bare av systemet.
+- Score per kategori: 1–10 med én desimal.
 
 ### GENERELLE KRAV
 - Skill tydelig mellom:
@@ -110,7 +109,6 @@ LAV SCORE = DÅRLIG (høy risiko, farlig)
   • AI-baserte vurderinger
 - Vurder risiko konservativt.
 - Bruk klart og profesjonelt språk egnet for operative beslutninger og tilsyn.
-- Dersom kritiske terskler overskrides, skal AI bruke "HARD STOP"-logikk som overstyrer numerisk score.
 
 ### SPRÅKKRAV (KRITISK!)
 Du skal ALDRI sitere interne felt-, variabel- eller objektnavn fra inputdata i fritekst (sammendrag, begrunnelser, "concerns", "factors", "reasoning", anbefalinger osv.). Ingen camelCase, snake_case, dot-notasjon eller anførselstegn rundt tekniske nøkkelnavn.
@@ -132,21 +130,16 @@ Disse navnene tilhører dataformatet og skal kun forekomme i selve JSON-nøklene
 ### DAGENS DATO
 Dagens dato er assessmentContext.currentDate. Bruk KUN denne som 'i dag'. Ikke utled dagens dato fra andre datoer. Bruk daysUntil*-feltene når du omtaler hvor nært et vedlikehold er (f.eks. 'om 6 dager'). Bruk alltid begrepet "primærdrone", aldri "hoveddrone".
 
-### HARD STOP-LOGIKK
-Du SKAL returnere recommendation="no-go" og hard_stop_triggered=true hvis:
-1. VÆR: Vindstyrke (middelvind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s ELLER vindkast > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s ELLER sikt < ${companySoraConfig?.max_visibility_km ?? 1} km. Nedbør eller IP-rating utløser ALDRI hard stop alene.
-2. VÆR - TEMPERATUR: Temperatur < ${companySoraConfig?.min_temp_c ?? -10}°C ELLER > ${companySoraConfig?.max_temp_c ?? 40}°C (kritisk for LiPo-batterier)
-3. UTSTYR: Drone eller kritisk utstyr har status "Rød" (MERK: "Gul" status utløser IKKE hard stop, men skal gi lavere score og anbefaling om forsiktighet). VIKTIG: Feltet primaryDrone.status (og assignedDrones[].status / assignedEquipment[].status) er ALLEREDE beregnet aggregert status som tar hensyn til forfalt inspeksjonsdato, overskredet timeintervall, oppdragsintervall, tilbehør og koblet utstyr. primaryDrone.statusReasons forklarer hvorfor. Du SKAL bruke dette feltet som fasit — IKKE overstyr det basert på lastInspection/nextInspection-datoer og IKKE bortforklar at "siste inspeksjon ble nylig utført". Hvis status er "Rød", skriv begrunnelsen fra statusReasons direkte i rapporten.
-4. PILOT: Kompetansesjekken (pilotStats.competencyAssessment) er allerede avgjort av systemet. Ved status "ok" eller "missing": gjengi den, ikke overprøv den, og ikke lag egen kompetanse-hard stop. Ved "undetermined" kan du vurdere kompetansen selv, men ALDRI som hard stop. Rader i notFormalCompetency (kurs/veiledet tour) teller aldri som formell kompetanse.
-${companySoraConfig?.max_pilot_inactivity_days ? `5. PILOT - INAKTIVITET: Pilot har ikke flydd på mer enn ${companySoraConfig.max_pilot_inactivity_days} dager → HARD STOP for å sikre recency.` : ''}
-${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_inactivity_days ? '6' : '5'}. BVLOS FORBUDT: Selskapet tillater IKKE BVLOS-flyging — oppdrag utenfor visuell rekkevidde er HARD STOP.` : ''}
-${companySoraConfig?.allow_night_flight === false ? `NATTFLYGING FORBUDT: Selskapet tillater IKKE nattflyging — oppdrag i mørket er HARD STOP.` : ''}
-${companySoraConfig?.max_population_density_per_km2 ? `BEFOLKNINGSTETTHET: Selskapet tillater IKKE flyging over områder med mer enn ${companySoraConfig.max_population_density_per_km2} pers/km² — HARD STOP hvis populationDensity.maxDensity overstiger denne verdien.` : ''}
-${companySoraConfig?.require_backup_battery ? 'RESERVEBATTERI: Selskapet KREVER reservebatteri — mangler dette er det HARD STOP.' : ''}
-${companySoraConfig?.require_observer ? 'OBSERVATØR: Selskapet KREVER dedikert observatør. Kravet er oppfylt når mission.observers.effective >= 1. Dette inkluderer observatører tildelt via oppdragets personellroller (mission.personnelRoles) og antall oppgitt i risikovurderingen. HARD STOP kun hvis mission.observers.effective === 0. Luftromsobservatør oppfyller kravet, men gir IKKE M1(C)-kreditering. Ikke skriv at observatør mangler eller ikke er tildelt når mission.observers.effective >= 1.' : ''}
-${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `SIVIL SKUMRING — HARD STOP: Oppdraget er planlagt kl. ${civilTwilightMissionTime} som er UTENFOR sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Dette er et BRUDD og SKAL gi recommendation='no-go' og hard_stop_triggered=true. Forklar i rapporten at tidspunktet bryter selskapets krav om flyging innenfor sivil skumring.` : civilTwilightNoTime ? `SIVIL SKUMRING — ADVARSEL: Selskapet krever flyging innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), men oppdraget har ingen planlagt tid. Gi advarsel i rapporten om at tidspunkt MÅ bekreftes innenfor skumringstidene før flyging.` : `SIVIL SKUMRING: OK — Oppdraget kl. ${civilTwilightMissionTime} er innenfor sivil skumring (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Bekreft kort i rapporten at skumringstid er overholdt.`) : ''}
-VIKTIG: Høy piloterfaring kan IKKE kompensere for tekniske eller meteorologiske overskridelser. HARD STOP skal utløses uavhengig av andre scores.
-HARD STOP-TEKST: hard_stop_reason skal KUN inneholde korte årsaker til vilkår som faktisk er brutt i datagrunnlaget. Ikke ta med bekreftelser på at noe er i orden, at tillatelse ikke kreves, at oppdraget er utenfor en sone, manglende datagrunnlag eller interne korreksjoner/diagnostikk. Ikke skriv «Luftromsbegrunnelse fjernet». Flere faktiske brudd oppgis som separate, korte setninger.
+### SYSTEMBESLUTNINGER (systemDecisions) — FASTSATT AV SYSTEMET
+Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem.
+- hardStops / hardStopTriggered / hardStopReason: de eneste hard stop-ene. Du skal ALDRI opprette, fjerne eller omtale andre hard stops. Sikt og luftrom gir aldri hard stop.
+- groundRisk (iGRC/fGRC/mitigeringer), airRisk (AEC/ARC), sail, certifiedCategory, alosMaxM: SORA-tall — gjengi.
+- equipment.primaryDroneStatus = dronens EGEN status. aggregatedStatus og linkedOnlyIssues er kun informative og gir aldri hard stop eller trekk. equipment.batteries beskriver talte batterier.
+- fog: tåke meldt → værkategorien er minst BETINGET; bruk fog.text.
+- dataAvailability og airspace (5 km, kontrollert luftrom, Ninox, ATC-bekreftelse): fakta.
+- Observatør: ikke skriv at observatør mangler når mission.observers.effective >= 1. Luftromsobservatør gir ikke M1(C).
+- Kompetansesjekken (pilotStats.competencyAssessment) er avgjort av systemet — gjengi den.
+- Høy piloterfaring kompenserer aldri for brudd.
 
 ### MANGLER DATAGRUNNLAG (OBLIGATORISK)
 assessmentContext.dataAvailability angir hvilke datakilder som faktisk var tilgjengelige da vurderingen ble laget (population = befolkningstetthet, airspace = luftromssjekk, weather = MET-vær). Gjeldende regler:
@@ -156,30 +149,14 @@ assessmentContext.dataAvailability angir hvilke datakilder som faktisk var tilgj
 Nevn manglende datakilder som en kort, nøytral merknad i concerns for den aktuelle kategorien. Dette er en advarsel om å sjekke manuelt — IKKE en hard stop.
 
 
-${companySoraConfig ? `### SELSKAPSINNSTILLINGER (OBLIGATORISK — OVERSTYRER SYSTEM-DEFAULTS)
-Feltet "companyConfig" inneholder selskapets egne krav som ALLTID gjelder:
-
-HARDSTOP-GRENSER (absolutte, ikke forhandlingsbare):
-- Max vindstyrke: ${companySoraConfig.max_wind_speed_ms} m/s
-- Max vindkast: ${companySoraConfig.max_wind_gust_ms} m/s
-- Min sikt: ${companySoraConfig.max_visibility_km} km
-- Max flyhøyde: ${companySoraConfig.max_flight_altitude_m} m AGL
-- Temperaturvindu: ${companySoraConfig.min_temp_c ?? -10}°C til ${companySoraConfig.max_temp_c ?? 40}°C
-- BVLOS tillatt: ${companySoraConfig.allow_bvlos ? 'Ja' : 'NEI — HARD STOP ved BVLOS'}
-- Nattflyging tillatt: ${companySoraConfig.allow_night_flight ? 'Ja' : 'NEI — HARD STOP ved nattoppdrag'}
-${companySoraConfig.max_pilot_inactivity_days ? `- Maks pilotinaktivitet: ${companySoraConfig.max_pilot_inactivity_days} dager` : ''}
-${companySoraConfig.max_population_density_per_km2 ? `- Maks befolkningstetthet: ${companySoraConfig.max_population_density_per_km2} pers/km²` : ''}
-- Krev reservebatteri: ${companySoraConfig.require_backup_battery ? 'JA — OBLIGATORISK' : 'Nei'}
-- Krev observatør: ${companySoraConfig.require_observer ? 'JA — OBLIGATORISK' : 'Nei'}
-${companySoraConfig.require_civil_twilight ? `- Krev sivil skumring: JA — HARD STOP utenfor dawn/dusk${civilTwilightInfo ? ` (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk})` : ''}` : ''}
-
-Hvis flyhøyde i oppdraget overstiger ${companySoraConfig.max_flight_altitude_m} m AGL, SKAL recommendation="no-go" og hard_stop_triggered=true returneres.
+${companySoraConfig ? `### SELSKAPSINNSTILLINGER
+Selskapets grenser er allerede vurdert av systemet (systemDecisions.hardStops). Bruk dem kun som kontekst.
 
 ${companySoraConfig.operative_restrictions ? `OPERATIVE BEGRENSNINGER FRA SELSKAPET:\n${companySoraConfig.operative_restrictions}` : ''}
 
-${companySoraConfig.policy_notes ? `SELSKAPETS OPERASJONSMANUAL — NØKKELPUNKTER (les og bruk aktivt):\n${companySoraConfig.policy_notes}\n\nVurder om oppdraget er i tråd med disse reglene. Nevn avvik eksplisitt i concerns.` : ''}
+${companySoraConfig.policy_notes ? `SELSKAPETS OPERASJONSMANUAL — NØKKELPUNKTER:\n${companySoraConfig.policy_notes}\n\nVurder om oppdraget er i tråd med disse reglene. Nevn avvik i concerns.` : ''}
 
-${linkedDocumentSummary ? `TILKNYTTEDE POLICYDOKUMENTER (referanse for AI):\n${linkedDocumentSummary}` : ''}` : ''}
+${linkedDocumentSummary ? `TILKNYTTEDE POLICYDOKUMENTER (referanse):\n${linkedDocumentSummary}` : ''}` : ''}
 
 ### FORUTSETNINGER
 Anta alltid at piloten vil:
@@ -195,7 +172,7 @@ Disse skal kommenteres som forutsetninger i prerequisites.
 - Ikke oversett IP-koden til en grense i mm/t. Gjengi produsentbegrensningen når den finnes.
 
 ### DUGGPUNKT OG ISINGSRISIKO (VIKTIG — KORREKT LOGIKK)
-Værdata kan inneholde duggpunktstemperatur (dew_point_temperature).
+Værdata kan inneholde duggpunktstemperatur (dew_point).
 Isingsrisiko styres ALLTID av lufttemperaturen — ising er fysisk umulig godt over frysepunktet:
 
 - Lufttemperatur > +2°C: INGEN isingsrisiko. Nevn ALDRI ising som fare, og gi IKKE score-trekk for ising. Liten duggpunktdifferanse vurderes fortsatt som risiko for tåke/kondens/redusert sikt — det er en annen fare enn ising.
@@ -236,36 +213,8 @@ Hvis VLOS (isVlos = true):
 - Standard vurdering uten ekstra BVLOS-krav.
 - Observer-behov vurderes basert på mission.observers.effective.
 
-### LUFTRISIKO — AEC, ARC OG TMPR (EASA SORA)
-Du SKAL alltid utføre en strukturert luftrisikoanalyse og returnere den i feltet "air_risk_analysis".
-
-#### Steg 1: Bestem AEC (Air Encounter Category) — JARUS SORA Annex C, Tabell 1
-Bruk KUN denne tabellen (miljø → AEC → iARC). AEC-numrene beskriver miljøet, ikke luftromsklassen alene:
-
-| Miljø | Tetthet (kol. A) | AEC | iARC |
-|-------|------------------|-----|------|
-| Flyplass-/heliportmiljø i klasse B, C eller D | 5 | AEC 1 | ARC-d |
-| Flyplass-/heliportmiljø i klasse E, F eller G | 3 | AEC 6 | ARC-c |
-| >500 ft AGL, <FL600, i Mode-S Veil eller TMZ | 5 | AEC 2 | ARC-d |
-| >500 ft AGL, <FL600, i kontrollert luftrom | 5 | AEC 3 | ARC-d |
-| >500 ft AGL, <FL600, ukontrollert over urbant område | 3 | AEC 4 | ARC-c |
-| >500 ft AGL, <FL600, ukontrollert over landlig område | 2 | AEC 5 | ARC-c |
-| <500 ft AGL, i Mode-S Veil eller TMZ | 3 | AEC 7 | ARC-c |
-| <500 ft AGL, i kontrollert luftrom | 3 | AEC 8 | ARC-c |
-| <500 ft AGL, ukontrollert over urbant område | 2 | AEC 9 | ARC-c |
-| <500 ft AGL, ukontrollert over landlig område | 1 | AEC 10 | ARC-b |
-| Over FL600 | 1 | AEC 11 | ARC-b |
-| Atypisk/segregert luftrom | 1 | AEC 12 | ARC-a |
-
-KRITISK: AEC 11 gjelder KUN operasjoner over FL600 (ca. 60 000 fot). Bruk den ALDRI for vanlige droneoperasjoner. En typisk VLOS-operasjon under 500 ft (152 m) i ukontrollert luftrom er AEC 10 (landlig) eller AEC 9 (urbant).
-
-Bruk kontekstdata:
-- airspace.summary.inside_controlled_airspace: true → kontrollert luftrom
-- airspace.summary.inside_5km_zone / flyplassnære soner → flyplass-/heliportmiljø
-- pilotInputs.flightHeight: over/under 500 ft (~152 m AGL)
-- populationDensity/landUse: urbant vs landlig
-- Hvis ingen luftromsadvarsler: anta ukontrollert (klasse G)
-
+### LUFTRISIKO — TOLKNING (EASA SORA)
+Returner beskrivende luftrisikotekst i "air_risk_analysis". Tallene (AEC/ARC) er systembestemt — se systemDecisions.airRisk.
 
 #### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
 Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
@@ -283,7 +232,7 @@ ABSOLUTTE FORBUD:
 - Skriv ALDRI at oppdraget krever Ninox-godkjenning når airspace.summary.requires_ninox_approval = false.
 - Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun inside-flagget og description.
 - En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
-- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Luftrom utløser ALDRI hard stop. Nærhet til CTR/TIZ eller 5 km-sone er INFO/CAUTION.
 - Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
 - CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
 - KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen».
@@ -294,12 +243,7 @@ ABSOLUTTE FORBUD:
 - Krever IKKE Ninox-godkjenning, IKKE ATC-klarering, IKKE tårnkontakt. Bland ALDRI ATZ_5KM med vanlig 5KM (Avinor) i tekst eller konklusjon.
 
 ### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
-Feltet pilotInputs.atcRequired (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.
-
-- Hvis airspace.summary.requires_ninox_approval = true (oppdrag er innenfor 5 km-sonen):
-  - atcRequired = true: Behandle Ninox/ATC-godkjenning som PLANLAGT og DOKUMENTERT. Dette er en POSITIV strategisk mitigering. Skriv eksplisitt at piloten har bekreftet at klarering vil innhentes. ØK airspace.score med +2 (men ikke over 9), endre go_decision fra NO-GO til BETINGET/GO, og legg til en positiv setning i factors om at ATC-koordinering er bekreftet. IKKE skriv at «manglende klarering er en bekymring» eller at det er en NO-GO.
-  - atcRequired = false: Dette er en reell bekymring. Skriv at piloten IKKE har bekreftet Ninox-koordinering, behold NO-GO/CAUTION, og krev at klarering må innhentes før flyging.
-- Hvis airspace.summary.requires_ninox_approval = false (utenfor 5 km-sonen): atcRequired er irrelevant — ikke kommenter på det og ikke gi verken trekk eller bonus for det.
+Systemet justerer selv luftromsscoren og legger til tekst om bekreftet eller manglende Ninox/ATC-koordinering (systemDecisions.airspace). Ikke legg til egen bonus, trekk eller bekymring om dette.
 
 
 Eksempel feil → riktig:
@@ -308,34 +252,8 @@ Eksempel feil → riktig:
 - RIKTIG (når begge er inside=false): «Operasjonsområdet ligger utenfor kontrollert luftrom (CTR) og utenfor 5 km-sonen rundt Trondheim lufthavn, Værnes — 329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen. Ingen Ninox-godkjenning kreves.»
 
 
-#### Steg 2: Bestem initiell ARC (iARC)
-Sett iARC direkte fra AEC-tabellen ovenfor.
-
-#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC) — Annex C, Tabell 2
-ARC kan KUN reduseres etter Tabell 2, ved å dokumentere at den lokale lufttrafikktettheten er lavere enn den generaliserte tettheten for AEC-en. Referansemiljøet for tetthetsvurdering er alltid AEC 10 (<500 ft AGL over landlig område).
-
-| AEC | Tetthet (A) | iARC (B) | Dokumentert lokal tetthet (C) | Residual ARC (D) |
-|-----|-------------|----------|-------------------------------|------------------|
-| AEC 1 eller 2 | 5 | ARC-d | 4 eller 3 | ARC-c |
-| AEC 1 eller 2 | 5 | ARC-d | 2 eller 1 | ARC-b |
-| AEC 3 | 4 | ARC-d | 3 eller 2 | ARC-c |
-| AEC 3 | 4 | ARC-d | 1 | ARC-b |
-| AEC 4 | 3 | ARC-c | 1 | ARC-b |
-| AEC 5 | 2 | ARC-c | 1 | ARC-b |
-| AEC 6, 7 eller 8 | 3 | ARC-c | 1 | ARC-b |
-| AEC 9 | 2 | ARC-c | 1 | ARC-b |
-
-- AEC 10 og AEC 11 kan IKKE reduseres via Tabell 2.
-- Reduksjon til ARC-a er kun mulig hvis alle krav til atypisk/segregert luftrom (Annex G, seksjon 3.20(d)) er oppfylt og dokumentert.
-- Enhver reduksjon krever dokumentasjon og godkjenning fra myndighet (Luftfartstilsynet). IKKE reduser ARC automatisk — foreslå reduksjon kun når det finnes konkret grunnlag, og forklar hva som må dokumenteres.
-
-Eksempler på grunnlag for lavere lokal tetthet: avgrenset operasjonsområde med lite bemannet trafikk, tidspunkt med lav trafikkforventning, kort eksponeringstid, NOTAM publisert på forhånd, elektronisk synlighet (ADS-B/ADS-L, SafeSky), koordinering/klarering med lufttrafikktjeneste (Ninox).
-
-Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30 m over bakken, eller innenfor 30 m fra hindre under 20 m, eller innenfor 15 m fra hindre over 20 m).
-
-
-#### Steg 4: Bestem residual ARC
-Sett residual ARC etter å ha vurdert alle relevante mitigeringer.
+#### ARC, TMPR og deteksjon
+AEC, initiell ARC og residual ARC står i systemDecisions.airRisk og er SYSTEMBESTEMT (SORA Annex C). Gjengi dem; ikke velg AEC eller reduser ARC selv. Du kan beskrive hva som må dokumenteres for en eventuell reduksjon (Annex C tabell 2 / Annex G 3.20(d)).
 
 #### Steg 5: Bestem TMPR-nivå og krav
 Basert på residual ARC og flygemodus:
@@ -367,195 +285,10 @@ Anbefal konkrete deteksjonssystemer basert på operasjonstype og luftrom:
 
 Hvis operasjonen er VLOS, sett vlos_exemption=true og forenkle TMPR-kravene.
 
-### BAKKERISIKO — iGRC OG fGRC (EASA SORA Steg 2-3)
-Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i feltet "ground_risk_analysis".
+### BAKKERISIKO — SYSTEMBESTEMT
+iGRC, mitigeringer (M1(A), M1(B), M1(C), M2) og fGRC står i systemDecisions.groundRisk og er SYSTEMBEREGNET (SORA 2.5). Gjengi dem i igrc_reasoning/fgrc_reasoning; ikke beregn eller endre tall. M2 krediteres aldri automatisk. Er certifiedCategory = true, er operasjonen utenfor specific-kategorien.
+Forklar befolkningsgrunnlaget med populationDensity.calculation, populationDensity.driver og populationDensity.footprintDescription (SSB 250 m: personer i høyeste overlappende rute × 16 = personer/km²). Bruk alltid populationDensity.maxDensity når den finnes.
 
-#### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
-Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
-
-**iGRC-tabell (SORA 2.5). Kolonne = den STRENGESTE av dimensjonsklasse og fartsklasse:**
-
-| Maks befolkningstetthet | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
-|---|---|---|---|---|---|
-| Kontrollert bakkeområde | 1 | 1 | 2 | 3 | 3 |
-| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
-| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
-| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
-| < 5 000 /km² | 5 | 6 | 7 | 8 | 9 |
-| < 50 000 /km² | 6 | 7 | 8 | 9 | 10 |
-| ≥ 50 000 /km² | 7 | 8 | N/A | N/A | N/A |
-
-N/A, over 40 m eller over 200 m/s = utenfor specific-kategorien (sertifisert kategori).
-
-VIKTIG: iGRC og fGRC er SYSTEMBEREGNET og leveres i ground_risk_analysis. Du skal GJENGI verdiene, ikke beregne dem selv. En drone ≤250g med maks hastighet ≤25 m/s har iGRC=1 (unntatt ≥ 50 000/km²).
-
-Bruk kontekstdata:
-- airspace.summary.inside_controlled_airspace: true → kontrollert luftrom
-- airspace.summary.inside_5km_zone / flyplassnære soner → flyplass-/heliportmiljø
-- pilotInputs.flightHeight: over/under 500 ft (~152 m AGL)
-- populationDensity/landUse: urbant vs landlig
-- Hvis ingen luftromsadvarsler: anta ukontrollert (klasse G)
-
-
-#### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
-Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
-
-- airspace.summary.text — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i air_risk_analysis.actual_conditions og i fritekstforklaringen for luftrom.
-- airspace.summary.requires_ninox_approval (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis false, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis true, nevn det eksplisitt.
-- airspace.summary.inside_controlled_airspace (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er true.
-- airspace.summary.distance_semantics — forklarer at ALLE avstander er til sonens yttergrense.
-- Hver warnings[i].description — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
-- Hver warnings[i].inside (boolean) — true = ruten er INNE I sonen, false = ruten er UTENFOR sonen.
-- Hver warnings[i].distance (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
-
-ABSOLUTTE FORBUD:
-- Skriv ALDRI at oppdraget er «innenfor» en sone når inside = false.
-- Skriv ALDRI at oppdraget krever Ninox-godkjenning når airspace.summary.requires_ninox_approval = false.
-- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun inside-flagget og description.
-- En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
-- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
-- Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
-- CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
-- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen».
-
-### SMÅFLYPLASS — 5 KM SONE (ATZ_5KM)
-- type = «ATZ_5KM» betyr 5 km-sone rundt en småflyplass (ATZ — Aerodrome Traffic Zone, f.eks. Eggemoen, Gvarv, Starmoen). Dette er IKKE en Avinor-aerodrome og IKKE en kontrollert luftromssone.
-- Hvis airspace.summary.inside_small_airfield_5km_zone = true (eller en ATZ_5KM-advarsel har inside=true): Skriv eksplisitt i airspace.actual_conditions og som concern at piloten må kontakte flyplassen før flyging og sjekke myppr.no for PPR (Prior Permission Required). Trekk litt på airspace.score (typisk –1 til –2), men IKKE no-go og IKKE hard stop.
-- Krever IKKE Ninox-godkjenning, IKKE ATC-klarering, IKKE tårnkontakt. Bland ALDRI ATZ_5KM med vanlig 5KM (Avinor) i tekst eller konklusjon.
-
-### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
-Feltet pilotInputs.atcRequired (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.
-
-- Hvis airspace.summary.requires_ninox_approval = true (oppdrag er innenfor 5 km-sonen):
-  - atcRequired = true: Behandle Ninox/ATC-godkjenning som PLANLAGT og DOKUMENTERT. Dette er en POSITIV strategisk mitigering. Skriv eksplisitt at piloten har bekreftet at klarering vil innhentes. ØK airspace.score med +2 (men ikke over 9), endre go_decision fra NO-GO til BETINGET/GO, og legg til en positiv setning i factors om at ATC-koordinering er bekreftet. IKKE skriv at «manglende klarering er en bekymring» eller at det er en NO-GO.
-  - atcRequired = false: Dette er en reell bekymring. Skriv at piloten IKKE har bekreftet Ninox-koordinering, behold NO-GO/CAUTION, og krev at klarering må innhentes før flyging.
-- Hvis airspace.summary.requires_ninox_approval = false (utenfor 5 km-sonen): atcRequired er irrelevant — ikke kommenter på det og ikke gi verken trekk eller bonus for det.
-
-
-Eksempel feil → riktig:
-- FEIL: «Operasjonsområdet ligger 329 m fra Trondheim lufthavn, Værnes.»
-- FEIL: «Operasjonsområdet ligger innenfor kontrollert luftrom (CTR) og 5 km-sonen for Værnes (329 meters avstand).»
-- RIKTIG (når begge er inside=false): «Operasjonsområdet ligger utenfor kontrollert luftrom (CTR) og utenfor 5 km-sonen rundt Trondheim lufthavn, Værnes — 329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen. Ingen Ninox-godkjenning kreves.»
-
-
-#### Steg 2: Bestem initiell ARC (iARC)
-Sett iARC direkte fra AEC-tabellen ovenfor.
-
-#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC) — Annex C, Tabell 2
-ARC kan KUN reduseres etter Tabell 2, ved å dokumentere at den lokale lufttrafikktettheten er lavere enn den generaliserte tettheten for AEC-en. Referansemiljøet for tetthetsvurdering er alltid AEC 10 (<500 ft AGL over landlig område).
-
-| AEC | Tetthet (A) | iARC (B) | Dokumentert lokal tetthet (C) | Residual ARC (D) |
-|-----|-------------|----------|-------------------------------|------------------|
-| AEC 1 eller 2 | 5 | ARC-d | 4 eller 3 | ARC-c |
-| AEC 1 eller 2 | 5 | ARC-d | 2 eller 1 | ARC-b |
-| AEC 3 | 4 | ARC-d | 3 eller 2 | ARC-c |
-| AEC 3 | 4 | ARC-d | 1 | ARC-b |
-| AEC 4 | 3 | ARC-c | 1 | ARC-b |
-| AEC 5 | 2 | ARC-c | 1 | ARC-b |
-| AEC 6, 7 eller 8 | 3 | ARC-c | 1 | ARC-b |
-| AEC 9 | 2 | ARC-c | 1 | ARC-b |
-
-- AEC 10 og AEC 11 kan IKKE reduseres via Tabell 2.
-- Reduksjon til ARC-a er kun mulig hvis alle krav til atypisk/segregert luftrom (Annex G, seksjon 3.20(d)) er oppfylt og dokumentert.
-- Enhver reduksjon krever dokumentasjon og godkjenning fra myndighet (Luftfartstilsynet). IKKE reduser ARC automatisk — foreslå reduksjon kun når det finnes konkret grunnlag, og forklar hva som må dokumenteres.
-
-Eksempler på grunnlag for lavere lokal tetthet: avgrenset operasjonsområde med lite bemannet trafikk, tidspunkt med lav trafikkforventning, kort eksponeringstid, NOTAM publisert på forhånd, elektronisk synlighet (ADS-B/ADS-L, SafeSky), koordinering/klarering med lufttrafikktjeneste (Ninox).
-
-Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30 m over bakken, eller innenfor 30 m fra hindre under 20 m, eller innenfor 15 m fra hindre over 20 m).
-
-
-#### Steg 4: Bestem residual ARC
-Sett residual ARC etter å ha vurdert alle relevante mitigeringer.
-
-#### Steg 5: Bestem TMPR-nivå og krav
-Basert på residual ARC og flygemodus:
-
-| Residual ARC | TMPR-nivå | Robusthetsnivå |
-|---|---|---|
-| ARC-d | High | Høy |
-| ARC-c | Medium | Middels |
-| ARC-b | Low | Lav |
-| ARC-a | None | Ingen krav |
-
-VLOS-operasjon eller BVLOS med luftromsobservatør anses som akseptabel taktisk mitigering for alle ARC-klasser.
-
-For BVLOS uten observatør, angi spesifikke TMPR-krav for de 5 funksjonene:
-- **Detect**: Hvordan detektere bemannet trafikk (ADS-B mottaker, SafeSky, Flightradar24, FLARM/ADS-L)
-- **Decide**: Dokumentert unnvikelsesprosedyre
-- **Command**: C2-link latenskrav
-- **Execute**: Dronens evne til å utføre unnvikelsesmanøver
-- **Feedback Loop**: Oppdateringsrate og latens for posisjonsinformasjon
-
-#### Steg 6: Deteksjonsanbefalinger
-Anbefal konkrete deteksjonssystemer basert på operasjonstype og luftrom:
-- Innebygd ADS-B mottaker (1090 MHz)
-- ADS-L mottaker (868 MHz, for seilfly/FLARM)
-- SafeSky (app-basert posisjonsdeling)
-- Flightradar24 (sjekk dekningsgrad for operasjonsområdet)
-- Luftromsobservatør (maks 1-3 km fra observatør)
-- Flyradio (lytte på relevant frekvens nær landingsplasser)
-
-Hvis operasjonen er VLOS, sett vlos_exemption=true og forenkle TMPR-kravene.
-
-### BAKKERISIKO — iGRC OG fGRC (EASA SORA Steg 2-3)
-Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i feltet "ground_risk_analysis".
-
-#### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
-Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
-
-**iGRC-tabell (SORA 2.5). Kolonne = den STRENGESTE av dimensjonsklasse og fartsklasse:**
-
-| Maks befolkningstetthet | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
-|---|---|---|---|---|---|
-| Kontrollert bakkeområde | 1 | 1 | 2 | 3 | 3 |
-| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
-| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
-| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
-| < 5 000 /km² | 5 | 6 | 7 | 8 | 9 |
-| < 50 000 /km² | 6 | 7 | 8 | 9 | 10 |
-| ≥ 50 000 /km² | 7 | 8 | N/A | N/A | N/A |
-
-N/A, over 40 m eller over 200 m/s = utenfor specific-kategorien (sertifisert kategori).
-
-VIKTIG: iGRC og fGRC er SYSTEMBEREGNET og leveres i ground_risk_analysis. Du skal GJENGI verdiene, ikke beregne dem selv. En drone ≤250g med maks hastighet ≤25 m/s har iGRC=1 (unntatt ≥ 50 000/km²).
-
-Bruk kontekstdata:
-- primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
-- populationDensity.maxDensity: Dimensjonerende befolkningstetthet fra SSB 250 m-rutenett. Denne verdien styrer befolkningstetthetskategorien/iGRC.
-- populationDensity.avgDensity: Gjennomsnittlig tetthet i operasjonens fotavtrykk, kun som støtteinformasjon.
-- landUse: Arealbruk for kvalitativ vurdering
-
-SSB-metode for populationDensity:
-- Bruk alltid populationDensity.maxDensity når den finnes; ikke erstatt den med estimat.
-- Datagrunnlaget er SSB befolkning på rutenett 250 m (2025).
-- Beregningen dekker droneoperasjonens fotavtrykk: planlagt rute + Flight Geography + Contingency + Ground Risk Buffer.
-- Høyeste overlappende 250 m-rute er dimensjonerende: antall personer i ruten × 16 = personer/km².
-- Rapporten SKAL forklare formelen, gjennomsnittlig tetthet og hvilket rutepunkt/segment som driver tallet basert på populationDensity.calculation, populationDensity.driver og populationDensity.footprintDescription.
-
-#### Steg 2: Vurder mitigeringer (reduserer iGRC til fGRC)
-
-**M1(A) — Skjerming (reduserer antall eksponerte personer via bygninger):**
-- Low robusthet (-1): Flyr over område med strukturer som gir beskyttelse, drone <25 kg MTOM, ikke over folkemengder
-- Medium robusthet (-2): I tillegg begrenset flytid og dokumentert at flertallet er skjermet. Kan IKKE kombineres med M1(B).
-
-**M1(B) — Operasjonelle restriksjoner (tidspunkt/sted-begrensninger):**
-- Medium robusthet (-1): Reduksjon av eksponerte personer med ~90% via tid/sted-begrensninger
-- High robusthet (-2): Reduksjon med ~99%, validert av luftfartsmyndighet. Kan IKKE kombineres med M1(A) Medium.
-
-**M1(C) — Bakkeobservasjon (taktisk mitigering via observatør):**
-- Low robusthet (-1): Observatør overvåker overflyst område og pilot justerer flygemønster
-- M1(C) krediteres automatisk når mission.observers.m1cEligible >= 1 eller pilotInputs.observerCount >= 1. Luftrom-only observatører gir ikke M1(C).
-
-**M2 — Redusert treffenergi (fallskjerm e.l.):** Krediteres ALDRI automatisk ut fra utstyrsnavn — kun ved operatørens manuelle valg med dokumentert MoC/DVR-grunnlag.
-- Medium robusthet (-1): MoC 2512 for energidempning
-- High robusthet (-2): EASA Design Verification Report (DVR)
-
-BEGRENSNINGER:
-- M1 kan IKKE redusere GRC lavere enn verdien for "Kontrollert bakkeområde" i tabellen
-- M1(A) Medium og M1(B) kan IKKE kombineres
-
-#### Steg 3: Beregn fGRC
-fGRC = iGRC + sum av alle mitigasjonsreduksjoner. Minimum = kontrollert-bakkeområde-verdien.
 
     ### KATEGORISERING — STEG 0: TRENGER OPERASJONEN SORA?
 Du SKAL alltid vurdere om operasjonen krever SORA og returnere resultatet i feltet "operation_classification".
@@ -594,13 +327,8 @@ Kontrollert område = operatøren sørger for at ingen utenforstående kan komme
 #### Spesifikk kategori (SORA påkrevd)
 Hvis operasjonen IKKE kan utføres i Åpen eller STS → SORA er påkrevd.
 
-#### ALOS-beregning
-Beregn maks VLOS-avstand (ALOS = Attitude Line of Sight):
-- Multirotor/helikopter: ALOS = 327 × CD + 20m (CD = karakteristisk dimensjon i meter)
-- Fastvinget fly: ALOS = 490 × CD + 30m
-- Bruk ALLTID primaryDrone.characteristicDimensionM når den finnes. Ikke estimer CD hvis denne verdien er oppgitt.
-- Hvis primaryDrone.alos finnes, bruk nøyaktig primaryDrone.alos.alosMaxM og primaryDrone.alos.alosCalculation i operation_classification.
-- Hvis CD ikke finnes i dronemodell-katalogen, skriv tydelig at CD er estimert.
+#### ALOS
+ALOS er beregnet av systemet (systemDecisions.alosMaxM / primaryDrone.alos). Gjengi verdien, ikke beregn den.
 
 #### Buffersone-sjekk
 Sjekk om oppdraget har SORA-buffersoner beregnet. Se etter mission.route.soraSettings:
@@ -640,9 +368,9 @@ Du MÅ aldri utelate Kp-punktet fra weather-kategorien. Dette er et obligatorisk
 - Summary SKAL KUN omtale bekymringer som faktisk er reflektert i kategori-scorene og concerns-listene.
 - Summary MÅ IKKE nevne risikoer som analysen selv har vurdert som tilfredsstillende/OK. Eksempel: Hvis duggpunkt-differansen er >4°C og weather-kategorien beskriver dette som "tilfredsstillende" eller "lav risiko", skal summary IKKE nevne duggpunkt som en bekymring.
 - Summary MÅ IKKE nevne temaer som ikke finnes i datagrunnlaget eller som ikke er analysert (f.eks. "hviletid", "søvn", "fatigue" med mindre dette eksplisitt er vurdert i en kategori).
-- Summary skal kort oppsummere: (1) hovedbeslutning (go/caution/no-go), (2) de 2-3 viktigste reelle bekymringene hentet direkte fra concerns-listene, (3) de viktigste positive faktorene.
-- Begynn med beslutningen (f.eks. «Oppdraget vurderes som betinget fordi …»). Begynn aldri med «I tillegg», «Videre» eller «Også».
-- Summary SKAL være konsistent med recommendation-feltet, overall_score, og de individuelle kategori-vurderingene. Ingen selvmotsigelser.
+- Summary skal kort oppsummere de 2-3 viktigste reelle bekymringene (hentet fra concerns) og de viktigste positive faktorene.
+- Skriv IKKE selve beslutningen (GO/forsiktighet/NO-GO/hard stop) — systemet setter inn en fast beslutningssetning først. Begynn aldri med «I tillegg», «Videre» eller «Også».
+- Summary skal være konsistent med kategori-vurderingene. Ingen selvmotsigelser.
 - Ikke gjenta informasjon som allerede er godt dekket i kategoriene — hold summary kort og presist.
 
 ### RESPONS-FORMAT
@@ -650,129 +378,53 @@ Returner KUN gyldig JSON uten markdown-formatering. Svar ALLTID på norsk.`;
 };
 
 const buildUserPromptNO = (contextData: unknown): string => {
-  return `KRITISK SPRÅKINSTRUKSJON: Du SKAL svare HELE responsen på norsk (bokmål). Selv om input-data nedenfor kan inneholde engelske begreper eller kodenavn, skal alle dine tekstfelter (summary, mission_overview, factors, concerns, reasoning, actions, osv.) være på naturlig norsk. Oversett eller omskriv engelske termer til norsk.
+  return `KRITISK SPRÅKINSTRUKSJON: Svar HELE responsen på naturlig norsk (bokmål), også når input inneholder engelske begreper eller kodenavn.
 
-Analyser denne droneoppdrag-risikovurderingen:
+Analyser dette droneoppdraget. Feltet systemDecisions er fastsatt av systemet — gjengi verdiene, ikke beregn eller endre dem.
 
-${JSON.stringify(contextData, null, 2)}
+${JSON.stringify(contextData)}
 
-Returner en JSON-respons med denne strukturen:
+Returner KUN JSON med denne strukturen:
 {
-  "mission_overview": "<kort oppsummering av oppdragets formål, lokasjon og operasjonstype>",
-  "assessment_method": "<kort forklaring av vurderingsmetoden, vekting og HARD STOP-logikk>",
-  "overall_score": <number 1-10>,
-  "recommendation": "<go|caution|no-go>",
-  "hard_stop_triggered": <boolean>,
-  "hard_stop_reason": "<kun faktisk brutte hard-stop-vilkår som korte setninger hvis true, ellers null>",
-  "summary": "<kort oppsummering på norsk>",
+  "mission_overview": "<kort oppsummering av formål, lokasjon og operasjonstype>",
+  "assessment_method": "<kort forklaring av vurderingsmetoden>",
+  "overall_score": <tall 1-10, én desimal>,
+  "summary": "<kort oppsummering UTEN selve beslutningen — systemet setter inn beslutningssetningen>",
   "categories": {
-    "weather": {
-      "score": <number 1-10, eller null hvis IKKE VURDERT>,
-      "go_decision": "<GO|BETINGET|NO-GO|IKKE VURDERT>",
-      "actual_conditions": "<beskrivelse av faktiske værdata, eller IKKE VURDERT-tekst>",
-      "comparison_to_limits": "<sammenligning mot sikkerhetsgrenser>",
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "airspace": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "actual_conditions": "<beskrivelse av luftromsforhold. Bruk ALLTID ordene 'innenfor' eller 'utenfor' basert på warnings[].inside, og oppgi avstand i meter/km når inside=false. Aldri skriv 'innenfor 5 km av X' når inside=false — skriv 'utenfor 5 km-sonen rundt X (N m unna)'.>",
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "equipment": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "status": "<green|yellow|red>",
-      "drone_status": "<beskrivelse av dronestatus og vedlikehold>",
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "pilot_experience": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "experience_summary": "<beskrivelse av erfaring og kompetanse>",
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    },
-    "mission_complexity": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|BETINGET|NO-GO>",
-      "complexity_factors": "<lettlest beskrivelse av arealbruk, terreng, befolkningstetthet og operasjonelle faktorer på naturlig norsk — IKKE bruk tekniske variabelnavn>",
-      "actual_conditions": "<beskrivelse av faktiske forhold i området på naturlig norsk, inkludert befolkningstetthet og arealbruk>",
-      "factors": ["<positive faktorer>"],
-      "concerns": ["<bekymringer>"]
-    }
+    "weather": { "score": <1-10 eller null hvis IKKE VURDERT>, "go_decision": "<GO|BETINGET|IKKE VURDERT>", "actual_conditions": "<faktiske værdata>", "comparison_to_limits": "<mot grensene>", "factors": ["..."], "concerns": ["..."] },
+    "airspace": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "actual_conditions": "<luftromsforhold; bruk 'innenfor'/'utenfor' etter warnings[].inside>", "factors": ["..."], "concerns": ["..."] },
+    "equipment": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "status": "<green|yellow|red>", "drone_status": "<dronestatus og vedlikehold>", "factors": ["..."], "concerns": ["..."] },
+    "pilot_experience": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "experience_summary": "<erfaring og kompetanse>", "factors": ["..."], "concerns": ["..."] },
+    "mission_complexity": { "score": <1-10>, "go_decision": "<GO|BETINGET>", "complexity_factors": "<arealbruk, terreng, befolkning og operasjonelle faktorer>", "actual_conditions": "<faktiske forhold i området>", "factors": ["..."], "concerns": ["..."] }
   },
   "air_risk_analysis": {
-    "aec": "<AEC 1-12>",
-    "aec_reasoning": "<kort forklaring av hvorfor denne AEC ble valgt basert på luftrom, høyde og lokasjon>",
-    "initial_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
-    "strategic_mitigations_applied": ["<liste over relevante strategiske mitigeringer som er vurdert/anbefalt>"],
-    "strategic_mitigations_not_applied": ["<mitigeringer som IKKE er tilgjengelig eller relevant>"],
-    "residual_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
-    "tmpr_level": "<High|Medium|Low|None>",
-    "tmpr_requirements": {
-      "detect": "<krav til deteksjon av bemannet trafikk, eller 'Ikke påkrevd' for ARC-a/VLOS>",
-      "decide": "<krav til beslutningsprosedyre>",
-      "command": "<krav til C2-link>",
-      "execute": "<krav til unnvikelsesevne>",
-      "feedback_loop": "<krav til oppdateringsrate>"
-    },
-    "detection_recommendations": ["<konkrete anbefalte deteksjonssystemer>"],
-    "vlos_exemption": <true hvis VLOS — forenklet TMPR>,
-    "traffic_types_to_consider": ["<relevante trafikktyper å vurdere i området, f.eks. ambulansehelikopter, småfly, paraglidere>"],
-    "arc_reduction_reasoning": "<kort forklaring av hvorfor/hvordan ARC ble redusert, eller 'Ingen reduksjon' hvis iARC = residual ARC>"
+    "strategic_mitigations_applied": ["..."],
+    "strategic_mitigations_not_applied": ["..."],
+    "tmpr_level": "<High|Medium|Low|None — fra residual ARC i systemDecisions>",
+    "tmpr_requirements": { "detect": "...", "decide": "...", "command": "...", "execute": "...", "feedback_loop": "..." },
+    "detection_recommendations": ["..."],
+    "vlos_exemption": <true hvis VLOS>,
+    "traffic_types_to_consider": ["..."],
+    "arc_reduction_reasoning": "<hva som må dokumenteres for eventuell reduksjon, eller 'Ingen reduksjon'>"
   },
   "ground_risk_analysis": {
-    "characteristic_dimension": "<estimert største dimensjon, f.eks. '1m', '3m', '8m'>",
-    "max_speed_category": "<estimert maks hastighet, f.eks. '25 m/s', '35 m/s'>",
-    "drone_weight_kg": <estimert MTOW i kg>,
-    "population_density_band": "<gjengi systemets bånd: Kontrollert bakkeområde|< 5|< 50|< 500|< 5 000|< 50 000|≥ 50 000 personer/km²>",
     "population_density_description": "<kort beskrivelse av området>",
-    "population_density_value": <befolkningstetthet per km², bruk populationDensity.maxDensity når tilgjengelig>,
-    "population_density_calculation": "<SSB 250 m-beregning, f.eks. '12 personer i 250 m-rute × 16 = 192 personer/km²'>",
-    "population_density_average": <gjennomsnittlig befolkningstetthet i fotavtrykket, populationDensity.avgDensity eller null>,
-    "population_density_driver": "<hvilket rutepunkt/segment som driver tallet, fra populationDensity.driver>",
-    "population_density_source": "<datakilde og metode, f.eks. SSB befolkning på rutenett 250 m (2025)>",
-    "population_density_footprint": "<hvilke buffere/fotavtrykk beregningen dekker>",
-    "ssb_grid_population": <antall personer i dimensjonerende 250 m-rute eller null>,
-    "ssb_grid_resolution_m": 250,
-    "igrc": <number 1-10>,
-    "igrc_reasoning": "<kort forklaring av iGRC-beregningen>",
-    "mitigations": {
-      "m1a_sheltering": { "applicable": <boolean>, "robustness": "<Low|Medium|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" },
-      "m1b_operational_restrictions": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" },
-      "m1c_ground_observation": { "applicable": <boolean>, "robustness": "<Low|null>", "reduction": <0|-1>, "reasoning": "<begrunnelse>" },
-      "m2_impact_reduction": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<begrunnelse>" }
-    },
-    "total_reduction": <sum av alle reduksjoner, negativt tall>,
-    "fgrc": <endelig GRC>,
-    "fgrc_reasoning": "<kort forklaring av fGRC-beregningen med mitigeringer>",
-    "controlled_ground_area": <boolean — true hvis operasjon er over kontrollert bakkeområde>
+    "igrc_reasoning": "<gjengi systemets iGRC og grunnlag>",
+    "fgrc_reasoning": "<gjengi systemets fGRC og mitigeringer>"
   },
   "operation_classification": {
-    "requires_sora": <boolean — true hvis operasjonen krever SORA>,
+    "requires_sora": <boolean>,
     "category": "<Open|STS|Specific>",
-    "subcategory": "<A1|A2|A3|STS-01|STS-02|SORA — underkategori>",
-    "reasoning": "<kort begrunnelse for kategoriseringen>",
-    "alos_max_m": <beregnet ALOS-avstand i meter, eller null>,
-    "alos_calculation": "<formel brukt for ALOS, f.eks. '327 × 1m + 20m = 347m'>",
-    "sora_buffers_calculated": <boolean — true hvis mission.route.soraSettings.enabled === true>,
-    "sora_buffers_recommendation": "<anbefaling om bufferberegning hvis påkrevd men ikke utført, ellers null>",
-    "sts_applicable": "<beskrivelse av relevant STS hvis aktuelt, ellers null>",
-    "open_category_rules": ["<regler som gjelder for valgt underkategori>"],
-    "company_requires_sora": <boolean — true hvis selskapet krever SORA som internkrav uavhengig av kategori>
+    "subcategory": "<A1|A2|A3|STS-01|STS-02|SORA>",
+    "reasoning": "<kort begrunnelse>",
+    "sora_buffers_calculated": <boolean — mission.route.soraSettings.enabled === true>,
+    "sora_buffers_recommendation": "<anbefaling eller null>",
+    "sts_applicable": "<relevant STS eller null>",
+    "open_category_rules": ["..."],
+    "company_requires_sora": <boolean>
   },
-  "recommendations": [
-    {
-      "priority": "<high|medium|low>",
-      "action": "<konkret tiltak på norsk>",
-      "risk_addressed": "<hvilken risiko tiltaket reduserer>"
-    }
-  ],
-  "prerequisites": ["<betingelser som må være oppfylt før flyging>"],
+  "recommendations": [ { "priority": "<high|medium|low>", "action": "<konkret tiltak>", "risk_addressed": "<risiko>" } ],
+  "prerequisites": ["<betingelser før flyging>"],
   "ai_disclaimer": "Vurderingen er basert på tilgjengelige data på vurderingstidspunktet. Endringer i input kan påvirke resultatet."
 }`;
 };
@@ -810,11 +462,10 @@ You shall assess 5 categories on a scale from 1 to 10:
 HIGH SCORE = GOOD (low risk, safe)
 LOW SCORE = BAD (high risk, dangerous)
 
-### CONSISTENCY BETWEEN SCORE AND RECOMMENDATION
-- overall_score 7.0-10.0 shall result in recommendation="go".
-- overall_score 5.0-6.9 shall result in recommendation="caution" with precautions.
-- recommendation="no-go" shall only be used if overall_score is below 5.0 or a HARD STOP has been triggered.
-- A score of 5.0 is elevated risk requiring mitigations, but is NOT no-go on its own.
+### DECISION AND GO_DECISION
+- recommendation and hard stop are set by the system. Do not return them.
+- go_decision per category is only "GO" or "CONDITIONAL" (or "NOT ASSESSED" for weather). "NO-GO" is set only by the system.
+- Score per category: 1–10 with one decimal.
 
 ### GENERAL REQUIREMENTS
 - Clearly distinguish between:
@@ -824,7 +475,6 @@ LOW SCORE = BAD (high risk, dangerous)
   • AI-based assessments
 - Assess risk conservatively.
 - Use clear, professional language suitable for operational decisions and oversight.
-- If critical thresholds are exceeded, the AI shall apply "HARD STOP" logic that overrides the numeric score.
 
 ### LANGUAGE REQUIREMENTS (CRITICAL!)
 You shall NEVER quote internal field, variable or object names from the input data in free text (summary, reasoning, "concerns", "factors", "reasoning", recommendations etc.). No camelCase, snake_case, dot-notation or quotes around technical key names.
@@ -846,21 +496,16 @@ These names belong to the data format and shall only appear in the JSON keys of 
 ### TODAY'S DATE
 Today's date is assessmentContext.currentDate. Use ONLY this as 'today'. Do not derive today's date from other dates. Use the daysUntil* fields when describing how close a maintenance is (e.g. 'in 6 days'). Always use the term "primary drone".
 
-### HARD STOP LOGIC
-You SHALL return recommendation="no-go" and hard_stop_triggered=true if:
-1. WEATHER: Wind speed (mean wind) > ${companySoraConfig?.max_wind_speed_ms ?? 10} m/s OR wind gusts > ${companySoraConfig?.max_wind_gust_ms ?? 15} m/s OR visibility < ${companySoraConfig?.max_visibility_km ?? 1} km. Precipitation or an IP rating NEVER creates a hard stop by itself.
-2. WEATHER - TEMPERATURE: Temperature < ${companySoraConfig?.min_temp_c ?? -10}°C OR > ${companySoraConfig?.max_temp_c ?? 40}°C (critical for LiPo batteries)
-3. EQUIPMENT: Drone or critical equipment has status "Red" (NOTE: "Yellow" status does NOT trigger hard stop, but shall result in a lower score and a recommendation to exercise caution). IMPORTANT: The primaryDrone.status field (and assignedDrones[].status / assignedEquipment[].status) is ALREADY a pre-computed aggregated status that accounts for overdue inspection dates, exceeded hour intervals, mission intervals, accessories and linked equipment. primaryDrone.statusReasons explains why. Treat that field as ground truth — do NOT override it based on lastInspection/nextInspection dates and do NOT explain it away as "recent inspection". If status is "Red", quote the reasons from statusReasons directly in the report.
-4. PILOT: The competency check (pilotStats.competencyAssessment) is already decided by the system. When status is "ok" or "missing": restate it, do not override it, and do not create your own competency hard stop. When "undetermined" you may assess competence yourself, but NEVER as a hard stop. Rows in notFormalCompetency (courses/guided tours) never count as formal competence.
-${companySoraConfig?.max_pilot_inactivity_days ? `5. PILOT - INACTIVITY: Pilot has not flown for more than ${companySoraConfig.max_pilot_inactivity_days} days → HARD STOP to ensure recency.` : ''}
-${companySoraConfig?.allow_bvlos === false ? `${companySoraConfig?.max_pilot_inactivity_days ? '6' : '5'}. BVLOS FORBIDDEN: The company does NOT allow BVLOS flight — missions beyond visual line of sight are HARD STOP.` : ''}
-${companySoraConfig?.allow_night_flight === false ? `NIGHT FLIGHT FORBIDDEN: The company does NOT allow night flight — missions in darkness are HARD STOP.` : ''}
-${companySoraConfig?.max_population_density_per_km2 ? `POPULATION DENSITY: The company does NOT allow flight over areas with more than ${companySoraConfig.max_population_density_per_km2} persons/km² — HARD STOP if populationDensity.maxDensity exceeds this value.` : ''}
-${companySoraConfig?.require_backup_battery ? 'BACKUP BATTERY: The company REQUIRES a backup battery — if missing, this is a HARD STOP.' : ''}
-${companySoraConfig?.require_observer ? 'OBSERVER: The company REQUIRES a dedicated observer. The requirement is satisfied when mission.observers.effective >= 1. This includes observers assigned via the mission personnel roles (mission.personnelRoles) and the number entered in the risk assessment. HARD STOP only if mission.observers.effective === 0. An airspace observer satisfies the requirement but does NOT give M1(C) credit. Do not write that an observer is missing or not assigned when mission.observers.effective >= 1.' : ''}
-${companySoraConfig?.require_civil_twilight && civilTwilightInfo ? (civilTwilightViolation ? `CIVIL TWILIGHT — HARD STOP: The mission is scheduled at ${civilTwilightMissionTime} which is OUTSIDE civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). This is a BREACH and SHALL result in recommendation='no-go' and hard_stop_triggered=true. Explain in the report that the time violates the company's requirement to fly within civil twilight.` : civilTwilightNoTime ? `CIVIL TWILIGHT — WARNING: The company requires flight within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}), but the mission has no scheduled time. Warn in the report that the time MUST be confirmed within the twilight window before flight.` : `CIVIL TWILIGHT: OK — The mission at ${civilTwilightMissionTime} is within civil twilight (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk}). Briefly confirm in the report that the twilight requirement is met.`) : ''}
-IMPORTANT: High pilot experience CANNOT compensate for technical or meteorological exceedances. HARD STOP shall be triggered regardless of other scores.
-HARD STOP TEXT: hard_stop_reason shall contain ONLY concise reasons for conditions actually breached in the supplied data. Do not include confirmations that conditions are acceptable, that approval is not required, that the mission is outside a zone, missing data, or internal corrections/diagnostics. Never write “airspace reason removed”. State multiple actual breaches as separate short sentences.
+### SYSTEM DECISIONS (systemDecisions) — SET BY THE SYSTEM
+These are set by the system. Reproduce the values; do not calculate or change them.
+- hardStops / hardStopTriggered / hardStopReason: the only hard stops. NEVER create, remove or mention other hard stops. Visibility and airspace never cause a hard stop.
+- groundRisk (iGRC/fGRC/mitigations), airRisk (AEC/ARC), sail, certifiedCategory, alosMaxM: SORA numbers — reproduce.
+- equipment.primaryDroneStatus = the drone's OWN status. aggregatedStatus and linkedOnlyIssues are informational only and never cause a hard stop or deduction. equipment.batteries describes the counted batteries.
+- fog: fog forecast → the weather category is at least CONDITIONAL; use fog.text.
+- dataAvailability and airspace (5 km, controlled airspace, Ninox, ATC confirmation): facts.
+- Observer: do not state that an observer is missing when mission.observers.effective >= 1. An airspace observer does not give M1(C).
+- The competency check (pilotStats.competencyAssessment) is decided by the system — reproduce it.
+- High pilot experience never compensates for breaches.
 
 ### MISSING DATA BASIS (MANDATORY)
 assessmentContext.dataAvailability states which data sources were actually available when the assessment was made (population = population density, airspace = airspace check, weather = MET weather). Rules:
@@ -870,30 +515,14 @@ assessmentContext.dataAvailability states which data sources were actually avail
 Mention missing data sources as a short, neutral note in the concerns of the relevant category. This is a reminder to check manually — NOT a hard stop.
 
 
-${companySoraConfig ? `### COMPANY SETTINGS (MANDATORY — OVERRIDES SYSTEM DEFAULTS)
-The "companyConfig" field contains the company's own requirements which ALWAYS apply:
-
-HARD STOP LIMITS (absolute, non-negotiable):
-- Max wind speed: ${companySoraConfig.max_wind_speed_ms} m/s
-- Max wind gusts: ${companySoraConfig.max_wind_gust_ms} m/s
-- Min visibility: ${companySoraConfig.max_visibility_km} km
-- Max flight altitude: ${companySoraConfig.max_flight_altitude_m} m AGL
-- Temperature window: ${companySoraConfig.min_temp_c ?? -10}°C to ${companySoraConfig.max_temp_c ?? 40}°C
-- BVLOS allowed: ${companySoraConfig.allow_bvlos ? 'Yes' : 'NO — HARD STOP for BVLOS'}
-- Night flight allowed: ${companySoraConfig.allow_night_flight ? 'Yes' : 'NO — HARD STOP for night missions'}
-${companySoraConfig.max_pilot_inactivity_days ? `- Max pilot inactivity: ${companySoraConfig.max_pilot_inactivity_days} days` : ''}
-${companySoraConfig.max_population_density_per_km2 ? `- Max population density: ${companySoraConfig.max_population_density_per_km2} persons/km²` : ''}
-- Require backup battery: ${companySoraConfig.require_backup_battery ? 'YES — MANDATORY' : 'No'}
-- Require observer: ${companySoraConfig.require_observer ? 'YES — MANDATORY' : 'No'}
-${companySoraConfig.require_civil_twilight ? `- Require civil twilight: YES — HARD STOP outside dawn/dusk${civilTwilightInfo ? ` (dawn: ${civilTwilightInfo.dawn}, dusk: ${civilTwilightInfo.dusk})` : ''}` : ''}
-
-If the mission flight altitude exceeds ${companySoraConfig.max_flight_altitude_m} m AGL, recommendation="no-go" and hard_stop_triggered=true SHALL be returned.
+${companySoraConfig ? `### COMPANY SETTINGS
+The company limits have already been evaluated by the system (systemDecisions.hardStops). Use them only as context.
 
 ${companySoraConfig.operative_restrictions ? `OPERATIONAL RESTRICTIONS FROM THE COMPANY:\n${companySoraConfig.operative_restrictions}` : ''}
 
-${companySoraConfig.policy_notes ? `COMPANY OPERATIONS MANUAL — KEY POINTS (read and apply actively):\n${companySoraConfig.policy_notes}\n\nAssess whether the mission complies with these rules. Mention any deviations explicitly in concerns.` : ''}
+${companySoraConfig.policy_notes ? `COMPANY OPERATIONS MANUAL — KEY POINTS:\n${companySoraConfig.policy_notes}\n\nAssess whether the mission complies with these rules. Mention deviations in concerns.` : ''}
 
-${linkedDocumentSummary ? `LINKED POLICY DOCUMENTS (reference for AI):\n${linkedDocumentSummary}` : ''}` : ''}
+${linkedDocumentSummary ? `LINKED POLICY DOCUMENTS (reference):\n${linkedDocumentSummary}` : ''}` : ''}
 
 ### ASSUMPTIONS
 Always assume the pilot will:
@@ -909,7 +538,7 @@ These shall be noted as assumptions in prerequisites.
 - Never convert an IP code into a made-up mm/h threshold. State the manufacturer limitation when supplied.
 
 ### DEW POINT AND ICING RISK (IMPORTANT — CORRECT LOGIC)
-Weather data may include dew point temperature (dew_point_temperature).
+Weather data may include dew point temperature (dew_point).
 Icing risk is ALWAYS governed by the air temperature — icing is physically impossible well above freezing:
 
 - Air temperature > +2°C: NO icing risk. NEVER mention icing as a hazard, and do NOT deduct score for icing. A small dew point spread is still assessed as a risk of fog/condensation/reduced visibility — that is a different hazard than icing.
@@ -950,35 +579,8 @@ If VLOS (isVlos = true):
 - Standard assessment without additional BVLOS requirements.
 - Observer need is assessed based on mission.observers.effective.
 
-### AIR RISK — AEC, ARC AND TMPR (EASA SORA)
-You SHALL always perform a structured air risk analysis and return it in the field "air_risk_analysis".
-
-#### Step 1: Determine AEC (Air Encounter Category) — JARUS SORA Annex C, Table 1
-Use ONLY this table (environment → AEC → iARC). The AEC numbers describe the environment, not the airspace class alone:
-
-| Environment | Density (col. A) | AEC | iARC |
-|-------------|------------------|-----|------|
-| Airport/heliport environment in Class B, C or D | 5 | AEC 1 | ARC-d |
-| Airport/heliport environment in Class E, F or G | 3 | AEC 6 | ARC-c |
-| >500 ft AGL, <FL600, in a Mode-S Veil or TMZ | 5 | AEC 2 | ARC-d |
-| >500 ft AGL, <FL600, in controlled airspace | 5 | AEC 3 | ARC-d |
-| >500 ft AGL, <FL600, uncontrolled over urban area | 3 | AEC 4 | ARC-c |
-| >500 ft AGL, <FL600, uncontrolled over rural area | 2 | AEC 5 | ARC-c |
-| <500 ft AGL, in a Mode-S Veil or TMZ | 3 | AEC 7 | ARC-c |
-| <500 ft AGL, in controlled airspace | 3 | AEC 8 | ARC-c |
-| <500 ft AGL, uncontrolled over urban area | 2 | AEC 9 | ARC-c |
-| <500 ft AGL, uncontrolled over rural area | 1 | AEC 10 | ARC-b |
-| Above FL600 | 1 | AEC 11 | ARC-b |
-| Atypical/segregated airspace | 1 | AEC 12 | ARC-a |
-
-CRITICAL: AEC 11 applies ONLY to operations above FL600 (approx. 60,000 ft). NEVER use it for normal drone operations. A typical VLOS operation below 500 ft (152 m) in uncontrolled airspace is AEC 10 (rural) or AEC 9 (urban).
-
-Use the context data:
-- airspace.summary.inside_controlled_airspace: true → controlled airspace
-- airspace.summary.inside_5km_zone / airport-proximity zones → airport/heliport environment
-- pilotInputs.flightHeight: above/below 500 ft (~152 m AGL)
-- populationDensity/landUse: urban vs rural
-- If no airspace warnings: assume uncontrolled (class G)
+### AIR RISK — INTERPRETATION (EASA SORA)
+Return descriptive air risk text in "air_risk_analysis". The numbers (AEC/ARC) are system-determined — see systemDecisions.airRisk.
 
 
 #### CRITICAL: Interpretation of airspace warnings (airspace.warnings and airspace.summary)
@@ -997,7 +599,7 @@ ABSOLUTE PROHIBITIONS:
 - NEVER write that the mission requires Ninox approval when airspace.summary.requires_ninox_approval = false.
 - NEVER interpret the name of a zone (e.g. "5 km Flesland") as proof that the route is inside it. Only use the inside flag and description.
 - A 5KM or CTR/TIZ warning with inside=false shall NOT automatically result in class D. Fall back to class G if the route is clearly outside controlled airspace.
-- NEVER TRIGGER HARD STOP due to proximity to CTR/TIZ or the 5 km zone. HARD STOP for airspace can ONLY be triggered when airspace.summary.inside_controlled_airspace = true AND no clearance is documented. Proximity (even a few hundred metres) is INFO/CAUTION, not no-go.
+- Airspace NEVER triggers a hard stop. Proximity to CTR/TIZ or the 5 km zone is INFO/CAUTION.
 - It is FULLY LEGAL to fly outside the 5 km zone as long as you stay below 120 m AGL — this does NOT require Ninox or special approval and shall not result in no-go.
 - CTR/TIZ overlap OUTSIDE the 5 km zone at max 120 m AGL: 100% legal. NEVER write that the pilot must "contact the tower", "obtain clearance", "coordinate with ATC", "active action required" or similar. Only write a short caution about manned traffic.
 - CRITICAL DISTANCE ERROR — FORBIDDEN: NEVER describe warnings[i].distance (for 5KM/CTR/TIZ/NSM) as the distance to the "airport", "aerodrome", "tower", "facility" or any point feature. It is ALWAYS the distance to the zone's polygon outer boundary. For 5KM zones: if distance=329 m, then the airport is ~5.33 km away (not 329 m). Instead write "329 m outside the 5 km zone boundary around X (≈ 5.33 km from the airport itself)".
@@ -1008,12 +610,7 @@ ABSOLUTE PROHIBITIONS:
 - Does NOT require Ninox approval, ATC clearance, or tower contact. NEVER conflate ATZ_5KM with regular 5KM (Avinor) in text or conclusion.
 
 ### ATC / NINOX COORDINATION (pilotInputs.atcRequired)
-The field pilotInputs.atcRequired (boolean) is the pilot's own confirmation that ATC/Ninox coordination is planned and will be obtained before flight.
-
-- If airspace.summary.requires_ninox_approval = true (mission is inside the 5 km zone):
-  - atcRequired = true: Treat Ninox/ATC approval as PLANNED and DOCUMENTED. This is a POSITIVE strategic mitigation. Explicitly state that the pilot has confirmed clearance will be obtained. INCREASE airspace.score by +2 (but not above 9), change go_decision from NO-GO to CONDITIONAL/GO, and add a positive sentence to factors that ATC coordination is confirmed. Do NOT write that "missing clearance is a concern" or that it is a NO-GO.
-  - atcRequired = false: This is a real concern. State that the pilot has NOT confirmed Ninox coordination, keep NO-GO/CAUTION, and require that clearance must be obtained before flight.
-- If airspace.summary.requires_ninox_approval = false (outside the 5 km zone): atcRequired is irrelevant — do not comment on it and do not apply penalty or bonus for it.
+The system itself adjusts the airspace score and adds text about confirmed or missing Ninox/ATC coordination (systemDecisions.airspace). Do not add your own bonus, deduction or concern about this.
 
 
 Example wrong → right:
@@ -1022,34 +619,8 @@ Example wrong → right:
 - RIGHT (when both are inside=false): "The operating area lies outside controlled airspace (CTR) and outside the 5 km zone around Trondheim Airport, Værnes — 329 m outside the 5 km zone's outer boundary, corresponding to approximately 5.33 km from the airport itself. No Ninox approval required."
 
 
-#### Step 2: Determine initial ARC (iARC)
-Set iARC directly from the AEC table above.
-
-#### Step 3: Assess strategic mitigations (may reduce ARC) — Annex C, Table 2
-ARC may ONLY be reduced per Table 2, by demonstrating that the local air traffic density is lower than the generalised density for the AEC. The reference environment for density assessment is always AEC 10 (<500 ft AGL over rural areas).
-
-| AEC | Density (A) | iARC (B) | Demonstrated local density (C) | Residual ARC (D) |
-|-----|-------------|----------|--------------------------------|------------------|
-| AEC 1 or 2 | 5 | ARC-d | 4 or 3 | ARC-c |
-| AEC 1 or 2 | 5 | ARC-d | 2 or 1 | ARC-b |
-| AEC 3 | 4 | ARC-d | 3 or 2 | ARC-c |
-| AEC 3 | 4 | ARC-d | 1 | ARC-b |
-| AEC 4 | 3 | ARC-c | 1 | ARC-b |
-| AEC 5 | 2 | ARC-c | 1 | ARC-b |
-| AEC 6, 7 or 8 | 3 | ARC-c | 1 | ARC-b |
-| AEC 9 | 2 | ARC-c | 1 | ARC-b |
-
-- AEC 10 and AEC 11 canNOT be reduced via Table 2.
-- Reduction to ARC-a is only possible if all requirements for Atypical/Segregated airspace (Annex G, section 3.20(d)) are met and documented.
-- Any reduction requires documentation and approval by the competent authority (CAA). Do NOT reduce ARC automatically — propose a reduction only when there is concrete justification, and explain what must be documented.
-
-Examples of justification for lower local density: confined operating area with little manned traffic, timing with low traffic expectation, short exposure time, NOTAM published in advance, electronic conspicuity (ADS-B/ADS-L, SafeSky), coordination/clearance with air traffic service (Ninox).
-
-Atypical airspace (ARC-a) is defined as airspace where the risk of collision between drone and manned aviation is acceptably low without tactical mitigations. Examples: reserved airspace, operations at very low altitude near objects/the ground (below 30m above ground, or within 30m of obstacles below 20m, or within 15m of obstacles above 20m).
-
-
-#### Step 4: Determine residual ARC
-Set residual ARC after considering all relevant mitigations.
+#### ARC, TMPR and detection
+AEC, initial ARC and residual ARC are in systemDecisions.airRisk and are SYSTEM-DETERMINED (SORA Annex C). Reproduce them; never choose the AEC or reduce the ARC yourself. You may describe what would need to be documented for a reduction (Annex C Table 2 / Annex G 3.20(d)).
 
 #### Step 5: Determine TMPR level and requirements
 Based on residual ARC and flight mode:
@@ -1081,65 +652,10 @@ Recommend concrete detection systems based on operation type and airspace:
 
 If the operation is VLOS, set vlos_exemption=true and simplify the TMPR requirements.
 
-### GROUND RISK — iGRC AND fGRC (EASA SORA Steps 2-3)
-You SHALL always perform a structured ground risk analysis and return it in the field "ground_risk_analysis".
+### GROUND RISK — SYSTEM-DETERMINED
+iGRC, mitigations (M1(A), M1(B), M1(C), M2) and fGRC are in systemDecisions.groundRisk and are SYSTEM-CALCULATED (SORA 2.5). Reproduce them in igrc_reasoning/fgrc_reasoning; do not calculate or change numbers. M2 is never credited automatically. If certifiedCategory = true, the operation is outside the specific category.
+Explain the population basis using populationDensity.calculation, populationDensity.driver and populationDensity.footprintDescription (SSB 250 m: people in the highest overlapping cell × 16 = people/km²). Always use populationDensity.maxDensity when present.
 
-#### Step 1: Determine iGRC (Inherent Ground Risk Class)
-Use the drone's characteristic dimension (diagonal between propeller tips for multirotor, wingspan for fixed wing) and max speed.
-
-**iGRC table (SORA 2.5). Column = the STRICTEST of dimension class and speed class:**
-
-| Max population density | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
-|---|---|---|---|---|---|
-| Controlled ground area | 1 | 1 | 2 | 3 | 3 |
-| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
-| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
-| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
-| < 5,000 /km² | 5 | 6 | 7 | 8 | 9 |
-| < 50,000 /km² | 6 | 7 | 8 | 9 | 10 |
-| ≥ 50,000 /km² | 7 | 8 | N/A | N/A | N/A |
-
-N/A, above 40 m or above 200 m/s = outside the specific category (certified category).
-
-IMPORTANT: iGRC and fGRC are SYSTEM-CALCULATED and delivered in ground_risk_analysis. You must REPRODUCE the values, not calculate them yourself. A drone ≤250g with max speed ≤25 m/s has iGRC=1 (except ≥ 50,000/km²).
-
-Use context data:
-- primaryDrone/assignedDrones: Find the model → estimate dimension and weight
-- populationDensity.maxDensity: Dimensioning population density from the SSB 250 m grid. This value drives the population density band/iGRC.
-- populationDensity.avgDensity: Average density across the operation's footprint, support information only.
-- landUse: Land use for qualitative assessment
-
-SSB method for populationDensity:
-- Always use populationDensity.maxDensity when present; do not replace it with an estimate.
-- The data source is SSB population on a 250 m grid (2025).
-- The calculation covers the drone operation's footprint: planned route + Flight Geography + Contingency + Ground Risk Buffer.
-- The highest overlapping 250 m cell is dimensioning: number of people in the cell × 16 = people/km².
-- The report SHALL explain the formula, the average density, and which route point/segment drives the number based on populationDensity.calculation, populationDensity.driver and populationDensity.footprintDescription.
-
-#### Step 2: Assess mitigations (reduce iGRC to fGRC)
-
-**M1(A) — Sheltering (reduces number of exposed people via buildings):**
-- Low robustness (-1): Flying over an area with structures providing protection, drone <25 kg MTOM, not over crowds
-- Medium robustness (-2): In addition, limited flight time and documented that the majority is sheltered. CANNOT be combined with M1(B).
-
-**M1(B) — Operational restrictions (time/place limitations):**
-- Medium robustness (-1): Reduction of exposed people by ~90% via time/place restrictions
-- High robustness (-2): Reduction by ~99%, validated by the aviation authority. CANNOT be combined with M1(A) Medium.
-
-**M1(C) — Ground observation (tactical mitigation via observer):**
-- Low robustness (-1): Observer monitors the overflown area and the pilot adjusts the flight pattern
-- M1(C) is credited automatically when mission.observers.m1cEligible >= 1 or pilotInputs.observerCount >= 1. Airspace-only observers do not give M1(C).
-
-**M2 — Reduced impact energy (parachute etc.):** NEVER credited automatically from equipment names — only by the operator's manual selection with a documented MoC/DVR basis.
-- Medium robustness (-1): MoC 2512 for energy attenuation
-- High robustness (-2): EASA Design Verification Report (DVR)
-
-LIMITATIONS:
-- M1 CANNOT reduce GRC below the value for "Controlled ground area" in the table
-- M1(A) Medium and M1(B) CANNOT be combined
-
-#### Step 3: Calculate fGRC
-fGRC = iGRC + sum of all mitigation reductions. Minimum = the controlled-ground-area value.
 
     ### CATEGORISATION — STEP 0: DOES THE OPERATION NEED SORA?
 You SHALL always assess whether the operation requires SORA and return the result in the field "operation_classification".
@@ -1178,13 +694,8 @@ Controlled area = the operator ensures no uninvolved persons can enter.
 #### Specific category (SORA required)
 If the operation CANNOT be performed in Open or STS → SORA is required.
 
-#### ALOS calculation
-Calculate max VLOS distance (ALOS = Attitude Line of Sight):
-- Multirotor/helicopter: ALOS = 327 × CD + 20m (CD = characteristic dimension in metres)
-- Fixed wing: ALOS = 490 × CD + 30m
-- ALWAYS use primaryDrone.characteristicDimensionM when present. Do not estimate CD if this value is provided.
-- If primaryDrone.alos is present, use exactly primaryDrone.alos.alosMaxM and primaryDrone.alos.alosCalculation in operation_classification.
-- If CD is not in the drone model catalogue, clearly state that CD is estimated.
+#### ALOS
+ALOS is calculated by the system (systemDecisions.alosMaxM / primaryDrone.alos). Reproduce it; do not calculate it.
 
 #### Buffer zone check
 Check whether the mission has SORA buffer zones calculated. Look at mission.route.soraSettings:
@@ -1224,9 +735,9 @@ You MUST never omit the Kp item from the weather category. This is a mandatory f
 - Summary SHALL ONLY mention concerns that are actually reflected in the category scores and concerns lists.
 - Summary MUST NOT mention risks that the analysis itself has assessed as satisfactory/OK. Example: If the dew point difference is >4°C and the weather category describes this as "satisfactory" or "low risk", summary SHALL NOT mention dew point as a concern.
 - Summary MUST NOT mention topics that are not in the data or that have not been analysed (e.g. "rest", "sleep", "fatigue" unless explicitly assessed in a category).
-- Summary shall briefly summarise: (1) the main decision (go/caution/no-go), (2) the 2-3 most important real concerns taken directly from the concerns lists, (3) the most important positive factors.
-- Start with the decision (e.g. "The mission is assessed as conditional because …"). Never start with "In addition", "Furthermore" or "Also".
-- Summary SHALL be consistent with the recommendation field, overall_score, and the individual category assessments. No contradictions.
+- Summary shall briefly cover the 2-3 most important real concerns (from the concerns lists) and the most important positive factors.
+- Do NOT write the decision itself (GO/caution/NO-GO/hard stop) — the system inserts a fixed decision sentence first. Never start with "In addition", "Furthermore" or "Also".
+- Summary shall be consistent with the category assessments. No contradictions.
 - Do not repeat information already well covered in the categories — keep summary short and precise.
 
 ### RESPONSE FORMAT
@@ -1234,130 +745,54 @@ Return ONLY valid JSON without markdown formatting. Always respond in English.`;
 };
 
 const buildUserPromptEN = (contextData: unknown): string => {
-  return `CRITICAL LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in English. The input data below contains Norwegian text from Norwegian data sources (Met.no weather, airspace zones, SORA configuration, place names). DO NOT mirror the Norwegian language of the input. Translate or paraphrase any Norwegian terms (e.g. "Tynt befolket" → "sparsely populated", "vindkast" → "wind gusts", "duggpunkt" → "dew point", "luftrom" → "airspace", "ingen 5 km-soner" → "no 5 km zones", "utenfor kontrollert luftrom" → "outside controlled airspace") into natural English in EVERY text field (summary, mission_overview, factors, concerns, reasoning, actions, recommendations, etc.). Place names may remain in Norwegian.
+  return `CRITICAL LANGUAGE INSTRUCTION: Respond ENTIRELY in natural English, even when the input contains Norwegian terms.
 
-Analyse this drone mission risk assessment:
+Analyse this drone mission. The systemDecisions field is set by the system — reproduce its values; do not calculate or change them.
 
-${JSON.stringify(contextData, null, 2)}
+${JSON.stringify(contextData)}
 
-Return a JSON response with this structure:
+Return ONLY JSON with this structure:
 {
-  "mission_overview": "<short summary of the mission's purpose, location and operation type>",
-  "assessment_method": "<short explanation of the assessment method, weighting and HARD STOP logic>",
-  "overall_score": <number 1-10>,
-  "recommendation": "<go|caution|no-go>",
-  "hard_stop_triggered": <boolean>,
-  "hard_stop_reason": "<only actually breached hard-stop conditions as short sentences if true, otherwise null>",
-  "summary": "<short summary in English>",
+  "mission_overview": "<short summary of purpose, location and operation type>",
+  "assessment_method": "<short explanation of the assessment method>",
+  "overall_score": <number 1-10, one decimal>,
+  "summary": "<short summary WITHOUT the decision itself — the system inserts the decision sentence>",
   "categories": {
-    "weather": {
-      "score": <number 1-10, or null if NOT ASSESSED>,
-      "go_decision": "<GO|CONDITIONAL|NO-GO|NOT ASSESSED>",
-      "actual_conditions": "<description of actual weather data, or NOT ASSESSED text>",
-      "comparison_to_limits": "<comparison against safety limits>",
-      "factors": ["<positive factors>"],
-      "concerns": ["<concerns>"]
-    },
-    "airspace": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|CONDITIONAL|NO-GO>",
-      "actual_conditions": "<description of airspace conditions. ALWAYS use the words 'inside' or 'outside' based on warnings[].inside, and state distance in metres/km when inside=false. Never write 'inside 5 km of X' when inside=false — write 'outside the 5 km zone around X (N m away)'.>",
-      "factors": ["<positive factors>"],
-      "concerns": ["<concerns>"]
-    },
-    "equipment": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|CONDITIONAL|NO-GO>",
-      "status": "<green|yellow|red>",
-      "drone_status": "<description of drone status and maintenance>",
-      "factors": ["<positive factors>"],
-      "concerns": ["<concerns>"]
-    },
-    "pilot_experience": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|CONDITIONAL|NO-GO>",
-      "experience_summary": "<description of experience and competence>",
-      "factors": ["<positive factors>"],
-      "concerns": ["<concerns>"]
-    },
-    "mission_complexity": {
-      "score": <number 1-10>,
-      "go_decision": "<GO|CONDITIONAL|NO-GO>",
-      "complexity_factors": "<readable description of land use, terrain, population density and operational factors in natural English — do NOT use technical variable names>",
-      "actual_conditions": "<description of actual conditions in the area in natural English, including population density and land use>",
-      "factors": ["<positive factors>"],
-      "concerns": ["<concerns>"]
-    }
+    "weather": { "score": <1-10 or null if NOT ASSESSED>, "go_decision": "<GO|CONDITIONAL|NOT ASSESSED>", "actual_conditions": "<actual weather data>", "comparison_to_limits": "<against limits>", "factors": ["..."], "concerns": ["..."] },
+    "airspace": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "actual_conditions": "<airspace conditions; use 'inside'/'outside' per warnings[].inside>", "factors": ["..."], "concerns": ["..."] },
+    "equipment": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "status": "<green|yellow|red>", "drone_status": "<drone status and maintenance>", "factors": ["..."], "concerns": ["..."] },
+    "pilot_experience": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "experience_summary": "<experience and competency>", "factors": ["..."], "concerns": ["..."] },
+    "mission_complexity": { "score": <1-10>, "go_decision": "<GO|CONDITIONAL>", "complexity_factors": "<land use, terrain, population and operational factors>", "actual_conditions": "<actual conditions in the area>", "factors": ["..."], "concerns": ["..."] }
   },
   "air_risk_analysis": {
-    "aec": "<AEC 1-12>",
-    "aec_reasoning": "<short explanation of why this AEC was chosen based on airspace, altitude and location>",
-    "initial_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
-    "strategic_mitigations_applied": ["<list of relevant strategic mitigations assessed/recommended>"],
-    "strategic_mitigations_not_applied": ["<mitigations that are NOT available or relevant>"],
-    "residual_arc": "<ARC-a|ARC-b|ARC-c|ARC-d>",
-    "tmpr_level": "<High|Medium|Low|None>",
-    "tmpr_requirements": {
-      "detect": "<requirements for detecting manned traffic, or 'Not required' for ARC-a/VLOS>",
-      "decide": "<requirements for decision procedure>",
-      "command": "<requirements for C2 link>",
-      "execute": "<requirements for avoidance capability>",
-      "feedback_loop": "<requirements for update rate>"
-    },
-    "detection_recommendations": ["<concrete recommended detection systems>"],
-    "vlos_exemption": <true if VLOS — simplified TMPR>,
-    "traffic_types_to_consider": ["<relevant traffic types to consider in the area, e.g. air ambulance, light aircraft, paragliders>"],
-    "arc_reduction_reasoning": "<short explanation of why/how ARC was reduced, or 'No reduction' if iARC = residual ARC>"
+    "strategic_mitigations_applied": ["..."],
+    "strategic_mitigations_not_applied": ["..."],
+    "tmpr_level": "<High|Medium|Low|None — from the residual ARC in systemDecisions>",
+    "tmpr_requirements": { "detect": "...", "decide": "...", "command": "...", "execute": "...", "feedback_loop": "..." },
+    "detection_recommendations": ["..."],
+    "vlos_exemption": <true if VLOS>,
+    "traffic_types_to_consider": ["..."],
+    "arc_reduction_reasoning": "<what must be documented for any reduction, or 'No reduction'>"
   },
   "ground_risk_analysis": {
-    "characteristic_dimension": "<estimated largest dimension, e.g. '1m', '3m', '8m'>",
-    "max_speed_category": "<estimated max speed, e.g. '25 m/s', '35 m/s'>",
-    "drone_weight_kg": <estimated MTOW in kg>,
-    "population_density_band": "<reproduce the system band: Controlled ground area|< 5|< 50|< 500|< 5,000|< 50,000|≥ 50,000 people/km²>",
     "population_density_description": "<short description of the area>",
-    "population_density_value": <population density per km², use populationDensity.maxDensity when available>,
-    "population_density_calculation": "<SSB 250 m calculation, e.g. '12 people in 250 m cell × 16 = 192 people/km²'>",
-    "population_density_average": <average population density in the footprint, populationDensity.avgDensity or null>,
-    "population_density_driver": "<which route point/segment drives the number, from populationDensity.driver>",
-    "population_density_source": "<data source and method, e.g. SSB population on 250 m grid (2025)>",
-    "population_density_footprint": "<which buffers/footprint the calculation covers>",
-    "ssb_grid_population": <number of people in the dimensioning 250 m cell or null>,
-    "ssb_grid_resolution_m": 250,
-    "igrc": <number 1-10>,
-    "igrc_reasoning": "<short explanation of the iGRC calculation>",
-    "mitigations": {
-      "m1a_sheltering": { "applicable": <boolean>, "robustness": "<Low|Medium|null>", "reduction": <0|-1|-2>, "reasoning": "<reason>" },
-      "m1b_operational_restrictions": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<reason>" },
-      "m1c_ground_observation": { "applicable": <boolean>, "robustness": "<Low|null>", "reduction": <0|-1>, "reasoning": "<reason>" },
-      "m2_impact_reduction": { "applicable": <boolean>, "robustness": "<Medium|High|null>", "reduction": <0|-1|-2>, "reasoning": "<reason>" }
-    },
-    "total_reduction": <sum of all reductions, negative number>,
-    "fgrc": <final GRC>,
-    "fgrc_reasoning": "<short explanation of the fGRC calculation with mitigations>",
-    "controlled_ground_area": <boolean — true if operation is over controlled ground area>
+    "igrc_reasoning": "<reproduce the system iGRC and basis>",
+    "fgrc_reasoning": "<reproduce the system fGRC and mitigations>"
   },
   "operation_classification": {
-    "requires_sora": <boolean — true if the operation requires SORA>,
+    "requires_sora": <boolean>,
     "category": "<Open|STS|Specific>",
-    "subcategory": "<A1|A2|A3|STS-01|STS-02|SORA — subcategory>",
-    "reasoning": "<short justification for the categorisation>",
-    "alos_max_m": <calculated ALOS distance in metres, or null>,
-    "alos_calculation": "<formula used for ALOS, e.g. '327 × 1m + 20m = 347m'>",
-    "sora_buffers_calculated": <boolean — true if mission.route.soraSettings.enabled === true>,
-    "sora_buffers_recommendation": "<recommendation for buffer calculation if required but not performed, otherwise null>",
-    "sts_applicable": "<description of relevant STS if applicable, otherwise null>",
-    "open_category_rules": ["<rules applicable to the chosen subcategory>"],
-    "company_requires_sora": <boolean — true if the company requires SORA as an internal requirement regardless of category>
+    "subcategory": "<A1|A2|A3|STS-01|STS-02|SORA>",
+    "reasoning": "<short justification>",
+    "sora_buffers_calculated": <boolean — mission.route.soraSettings.enabled === true>,
+    "sora_buffers_recommendation": "<recommendation or null>",
+    "sts_applicable": "<relevant STS or null>",
+    "open_category_rules": ["..."],
+    "company_requires_sora": <boolean>
   },
-  "recommendations": [
-    {
-      "priority": "<high|medium|low>",
-      "action": "<concrete mitigation in English>",
-      "risk_addressed": "<which risk the mitigation reduces>"
-    }
-  ],
-  "prerequisites": ["<conditions that must be met before flight>"],
-  "ai_disclaimer": "The assessment is based on data available at the time of assessment. Changes to inputs may affect the result."
+  "recommendations": [ { "priority": "<high|medium|low>", "action": "<concrete action>", "risk_addressed": "<risk>" } ],
+  "prerequisites": ["<conditions before flight>"],
+  "ai_disclaimer": "The assessment is based on data available at the time of assessment. Changes in input may affect the result."
 }`;
 };
 
