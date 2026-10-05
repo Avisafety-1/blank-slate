@@ -822,6 +822,8 @@ serve(async (req) => {
             { role: 'system', content: soraSystemPrompt },
             { role: 'user', content: soraUserPrompt },
           ],
+          max_completion_tokens: 16000,
+          response_format: { type: 'json_object' },
         }),
         signal: AbortSignal.timeout(90_000),
       });
@@ -848,14 +850,7 @@ serve(async (req) => {
       let soraContent = soraAiData.choices?.[0]?.message?.content;
       if (!soraContent) throw new Error('No content in SORA AI response');
 
-      soraContent = soraContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      let soraAnalysis;
-      try {
-        soraAnalysis = JSON.parse(soraContent);
-      } catch (e) {
-        console.error('Failed to parse SORA AI response:', soraContent);
-        throw new Error('Invalid SORA AI response format');
-      }
+      let soraAnalysis = parseAiJson(soraContent, soraAiData.choices?.[0]?.finish_reason);
 
       // Safety net: replace internal mitigation keys with readable labels if the model echoed them
       try {
@@ -2677,6 +2672,20 @@ serve(async (req) => {
 
     const missionDateOslo = osloDateString(mission.tidspunkt ?? null);
     const contextData = {
+      systemDecisionsInstruction: SYSTEM_DECISIONS_INSTRUCTION[assessmentLang],
+      systemDecisions: {
+        hardStops: systemDecisions.hardStops.map((r) => ({ category: r.category, text: r.text })),
+        hardStopTriggered: systemDecisions.hardStopTriggered,
+        hardStopReason: systemDecisions.hardStopReason,
+        groundRisk: systemDecisions.groundRisk,
+        airRisk: systemDecisions.airRisk,
+        sail: systemDecisions.sail,
+        certifiedCategory: systemDecisions.certifiedCategory,
+        alosMaxM: systemDecisions.alosMaxM,
+        equipment: systemDecisions.equipment,
+        fog: systemDecisions.fog,
+        airspace: systemDecisions.airspace,
+      },
       assessmentContext: {
         currentDate: currentDateOslo,
         currentDateTime: osloIsoWithOffset(nowForAssessment),
@@ -2698,8 +2707,11 @@ serve(async (req) => {
         scheduledTime: mission.tidspunkt,
         endTime: mission.slutt_tidspunkt,
         riskLevel: mission.risk_nivå,
+        // Route coordinates are not sent; only size, length and SORA settings.
         route: {
-          ...(mission.route as any),
+          routeCount: routeSegmentsRaw.length,
+          pointCount: allRouteCoords.length,
+          totalDistanceKm: (mission.route as any)?.totalDistance ?? null,
           soraSettings: (mission.route as any)?.soraSettings || null,
         },
         sora: mission.mission_sora?.[0],
@@ -2768,7 +2780,6 @@ serve(async (req) => {
           // Hard stop skal kun vurderes ut fra denne + valgt oppdragsutstyr.
           status: info?.ownStatus ?? d.status,
           aggregatedStatus: info?.status ?? d.status,
-          rawDbStatus: d.status,
           // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
           // skal ALDRI utløse hard stop eller senke utstyrs-score.
           linkedOnlyIssues: (info?.linkedReasons ?? []).map((r: string) =>
@@ -2786,7 +2797,6 @@ serve(async (req) => {
         name: e.navn,
         type: e.type,
         status: assignedEquipmentStatuses.get(e.id) ?? e.status,
-        rawDbStatus: e.status,
         serialNumber: e.serienummer,
         lastMaintenance: e.sist_vedlikeholdt,
         nextMaintenance: e.neste_vedlikehold,
@@ -2805,7 +2815,6 @@ serve(async (req) => {
         linkedOnlyIssues: (primaryDroneStatusInfo?.linkedReasons ?? []).map((r: string) =>
           `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
         ),
-        rawDbStatus: droneData.status,
         flightHours: droneData.flyvetimer,
         lastInspection: droneData.sist_inspeksjon,
         nextInspection: droneData.neste_inspeksjon,
@@ -2830,21 +2839,6 @@ serve(async (req) => {
       landUse: landUseData,
       populationDensity: populationData,
       companyConfig: companySoraConfig ? {
-        hardStops: {
-          maxWindSpeedMs: companySoraConfig.max_wind_speed_ms,
-          maxWindGustMs: companySoraConfig.max_wind_gust_ms,
-          maxVisibilityKm: companySoraConfig.max_visibility_km,
-          maxFlightAltitudeM: companySoraConfig.max_flight_altitude_m,
-          requireBackupBattery: companySoraConfig.require_backup_battery,
-          requireObserver: companySoraConfig.require_observer,
-          minTempC: companySoraConfig.min_temp_c ?? -10,
-          maxTempC: companySoraConfig.max_temp_c ?? 40,
-          allowBvlos: companySoraConfig.allow_bvlos ?? false,
-          allowNightFlight: companySoraConfig.allow_night_flight ?? false,
-          requireCivilTwilight: companySoraConfig.require_civil_twilight ?? false,
-          maxPilotInactivityDays: companySoraConfig.max_pilot_inactivity_days ?? null,
-          maxPopulationDensityPerKm2: companySoraConfig.max_population_density_per_km2 ?? null,
-        },
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
@@ -2866,6 +2860,7 @@ serve(async (req) => {
     });
 
     const userPrompt = prompts.buildUserPrompt(contextData);
+    console.log(`Prompt sizes (chars): system=${systemPrompt.length}, user=${userPrompt.length}`);
 
     // 9. Call AI (with retry for transient 502/503 errors)
     console.log('Calling AI for risk assessment...');
@@ -2938,33 +2933,7 @@ serve(async (req) => {
       throw new Error('No content in AI response');
     }
 
-    // Parse JSON from AI response (remove markdown if present)
-    aiContent = aiContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    let aiAnalysis;
-    try {
-      aiAnalysis = JSON.parse(aiContent);
-    } catch (e) {
-      // Fallback: try to extract the largest balanced JSON object
-      const start = aiContent.indexOf('{');
-      const end = aiContent.lastIndexOf('}');
-      if (start !== -1 && end > start) {
-        let candidate = aiContent.substring(start, end + 1)
-          .replace(/,\s*}/g, '}')
-          .replace(/,\s*]/g, ']')
-          .replace(/[\x00-\x1F\x7F]/g, '');
-        try {
-          aiAnalysis = JSON.parse(candidate);
-        } catch (e2) {
-          const finishReason = aiData.choices?.[0]?.finish_reason;
-          console.error('Failed to parse AI response (finish_reason=' + finishReason + '):', aiContent);
-          throw new Error('Invalid AI response format' + (finishReason === 'length' ? ' (truncated)' : ''));
-        }
-      } else {
-        console.error('Failed to parse AI response:', aiContent);
-        throw new Error('Invalid AI response format');
-      }
-    }
+    let aiAnalysis = parseAiJson(aiContent, aiData.choices?.[0]?.finish_reason);
 
 
     // Safety net: strip leaked internal field/variable names from any narrative text
@@ -3565,6 +3534,7 @@ serve(async (req) => {
       hardStopCodes: systemDecisions.hardStops.map((r) => r.code),
     };
 
+    console.log(`Assessment duration before save: ${Date.now() - requestStartedAt} ms`);
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
 
