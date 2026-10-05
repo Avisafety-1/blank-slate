@@ -74,3 +74,15 @@ Deno.test('summary retains real operational findings and removes orphaned transi
   assertEquals(scrubCompetencyText('Oppdraget er betinget på grunn av luftrom og pilotkompetanse. I tillegg kreves klarering.'), 'Oppdraget er betinget på grunn av luftrom og pilotkompetanse. I tillegg kreves klarering.');
   assertEquals(scrubCompetencyText('In addition, airspace clearance is needed.'), 'Airspace clearance is needed.');
 });
+
+Deno.test('C0 without any certificate -> ok, never missing', () => {
+  const a = run([], 'C0', 'populated');
+  assertEquals(a.status, 'ok');
+  assertEquals(a.c0NoCertificate, true);
+  assertEquals(buildCompetencyReason(a, 'no'), null);
+});
+
+Deno.test('legacy < 250 g without class and certificate -> ok', () => {
+  const a = evaluateCompetency({ rows: [], pilotIds: [], droneClass: null, weightKg: 0.249, proximityToPeople: 'populated', isVlos: true, now });
+  assertEquals(a.status, 'ok');
+});
