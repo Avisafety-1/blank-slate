@@ -476,5 +476,11 @@ All colors MUST be HSL.
   .dialog-max-h {
     max-height: calc(90vh - 2 * var(--update-banner-h, 0px));
     max-height: calc(90dvh - 2 * var(--update-banner-h, 0px));
+    max-height: calc(var(--vvh, 100vh) * 0.9 - 2 * var(--update-banner-h, 0px));
+  }
+
+  .dialog-vv-center {
+    top: 50%;
+    top: calc(var(--vvt, 0px) + var(--vvh, 100vh) / 2);
   }
 }

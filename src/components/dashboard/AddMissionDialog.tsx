@@ -917,6 +917,7 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionUpdated'));
+        (document.activeElement as HTMLElement | null)?.blur();
         onMissionAdded();
       } else {
         // INSERT mode
@@ -1119,6 +1120,7 @@ export const AddMissionDialog = ({
         }
 
         toast.success(t('missions.missionCreated'));
+        (document.activeElement as HTMLElement | null)?.blur();
 
         if (onMissionAddedWithData && createdMission) {
           onMissionAddedWithData(createdMission);

@@ -163,7 +163,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-2xl overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] p-4 sm:p-6">
           <DialogHeader className="space-y-3">
             <div className="flex items-start justify-between gap-2 pr-8">
               <DialogTitle className="text-lg sm:text-xl">{currentMission.tittel}</DialogTitle>

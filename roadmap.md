@@ -17,6 +17,7 @@
 - [x] MQTT-brokerfiler fra Fly.io lagret under mqtt-broker/
 - [x] DJI Cloud API-bridge (bridge.py) + Fly multi-process; venter på at bruker setter SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY og deployer
 - [x] Safari iOS/iPadOS: fiks frys og skjulte knapper i webappen (oppdateringsvarsel, modal-lås, synlig høyde, oppdragsdialog)
+- [x] iOS Safari og Android-PWA: hold oppdragsdialogenes header og X synlige ved tastatur og etter lagring
 
 ## Ferdig
 - [x] DJI RC Pro portrett: loggbehandling viser loggliste og detaljer under hverandre i ett rullbart vindu; landskap uendret

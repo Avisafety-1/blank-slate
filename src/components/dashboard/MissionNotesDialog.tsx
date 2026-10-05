@@ -156,6 +156,7 @@ export const MissionNotesDialog = ({ open, onOpenChange, mission, onSaved }: Mis
       if (error) throw error;
       await sendMentionNotifications(mission.id, savedNote);
       toast.success("Merknad lagret");
+      (document.activeElement as HTMLElement | null)?.blur();
       onSaved();
       onOpenChange(false);
     } catch (error) {
