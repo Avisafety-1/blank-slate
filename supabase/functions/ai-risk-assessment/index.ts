@@ -1349,7 +1349,7 @@ serve(async (req) => {
     });
 
     // 8. Fetch weather data if coordinates available and not skipped
-    let weatherData = null;
+    let weatherData: any = null;
     const routeCoords = (mission.route as any)?.coordinates;
     // Oppdrag kan ha flere ruter. Risikovurderingen bruker worst case på tvers
     // av alle rutene (luftrom, arealbruk og befolkningstetthet).
@@ -1593,7 +1593,7 @@ serve(async (req) => {
     // 9b. Fetch SSB Arealbruk (land use) data for ground risk classification
     // Norge-only datakilde (Geonorge WFS). For unified/europeisk gren settes
     // en tydelig coverage-note i stedet slik at AI ikke skriver "0 people/km²".
-    let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
+    let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null as any;
     const fetchLandUseTask = async () => {
     if (unifiedAirspaceActive) {
       landUseData = {
@@ -1720,7 +1720,7 @@ serve(async (req) => {
       footprintDescription?: string;
       driver?: string;
       driverCoordinate?: { lat: number; lng: number };
-    } | null = null;
+    } | null = null as any;
 
     // Befolkningstetthet beregnes fra selve flyruten og SORA-fotavtrykket,
     // ikke fra oppdragets start-/lokasjonspunkt. Krev minst 2 rutepunkter.
