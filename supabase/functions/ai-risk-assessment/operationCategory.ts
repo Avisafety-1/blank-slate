@@ -4,7 +4,7 @@ export type OperationCategory = 'open' | 'specific';
 
 export interface OperationClassificationInput {
   isVlos: boolean;
-  flightHeightM: number;
+  flightHeightM: number | null;
   droneClass?: string | null;
   weightKg?: number | null;
   companyRequiresSora?: boolean;
@@ -31,7 +31,7 @@ export const classifyOperation = (i: OperationClassificationInput): OperationCla
   const t = T[i.lang === 'en' ? 'en' : 'no'];
   const reasons: string[] = [];
   if (i.isVlos === false) reasons.push(t.bvlos);
-  if (Number.isFinite(i.flightHeightM) && i.flightHeightM > 120) reasons.push(t.height);
+  if (typeof i.flightHeightM === "number" && i.flightHeightM > 120) reasons.push(t.height);
   const cls = normalizeDroneClass(i.droneClass);
   if (cls === 'C5' || cls === 'C6') reasons.push(t.cls(cls));
   else if (!cls && typeof i.weightKg === 'number' && i.weightKg > 25) reasons.push(t.weight);
