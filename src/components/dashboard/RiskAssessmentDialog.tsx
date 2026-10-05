@@ -13,7 +13,6 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -28,7 +27,7 @@ import { exportRiskAssessmentPDF } from "@/lib/riskAssessmentPdfExport";
 import { RiskScoreCard } from "./RiskScoreCard";
 import { RiskRecommendations } from "./RiskRecommendations";
 import { format } from "date-fns";
-import { nb } from "date-fns/locale";
+import { nb, enGB } from "date-fns/locale";
 import { SoraResultView } from "./SoraResultView";
 import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { deriveSail } from "@/lib/soraSail";
@@ -72,6 +71,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const { labels: missionTypeLabels, types: missionTypes, loading: missionTypesLoading } = useCompanyMissionTypes();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [notSaved, setNotSaved] = useState(false);
   const [etaMs, setEtaMs] = useState<number>(45000);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentAssessment, setCurrentAssessment] = useState<any>(null);
@@ -207,6 +207,43 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       && new Date(current.created_at).getTime() >= new Date(latestBase.created_at).getTime();
   })();
 
+  const dateLocale = i18n.language?.startsWith('en') ? enGB : nb;
+  const RISK_TIMEOUT_MS = 150_000;
+  const isAbortError = (e: unknown) => (e as any)?.name === 'AbortError';
+  const fetchWithTimeout = async (url: string, init: RequestInit) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), RISK_TIMEOUT_MS);
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } finally {
+      window.clearTimeout(timer);
+    }
+  };
+  const showRiskError = (error: unknown, fallback: string) => {
+    if (isAbortError(error)) {
+      toast.error(t('riskAssessment.timeoutError'));
+      return;
+    }
+    const msg = error instanceof Error && error.message && error.message !== 'Unknown error' ? error.message : fallback;
+    toast.error(msg);
+  };
+  const handleRateErrors = (status: number, error: any): boolean => {
+    if (status === 429) {
+      if (error?.status === 'queued') {
+        const waitSec = Math.ceil((error.retryAfterMs ?? 30000) / 1000);
+        toast.warning(t('riskAssessment.aiBusy', { seconds: waitSec }));
+      } else {
+        toast.error(error?.error || t('riskAssessment.rateLimitError'));
+      }
+      return true;
+    }
+    if (status === 402) {
+      toast.error(error?.error || t('riskAssessment.creditsError'));
+      return true;
+    }
+    return false;
+  };
+
   const runSoraReassessment = async () => {
     if (!canAccess('sora')) {
       toast.error(t('riskAssessment.soraReassessRequiresPlan', 'SORA re-vurdering krever Grower-planen eller høyere.'));
@@ -222,7 +259,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-risk-assessment`,
         {
           method: 'POST',
@@ -299,7 +336,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       );
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({}));
+        if (handleRateErrors(response.status, error)) return;
         throw new Error(error.error || 'Unknown error');
       }
 
@@ -309,13 +347,16 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       setSoraOutput(result.soraAnalysis);
       if (result.assessment?.id) {
         setCurrentAssessmentId(result.assessment.id);
+        setNotSaved(false);
+      } else {
+        setNotSaved(true);
       }
       setActiveTab('sora');
       toast.success(t('riskAssessment.soraReassessCompleted', 'SORA re-vurdering fullført'));
       loadPreviousAssessments();
     } catch (error) {
       console.error('SORA reassessment error:', error);
-      toast.error(t('riskAssessment.soraReassessError', 'Kunne ikke utføre SORA re-vurdering'));
+      if (missionRef.current === missionIdAtStart) showRiskError(error, t('riskAssessment.soraReassessError'));
     } finally {
       setRunningSora(false);
     }
@@ -327,6 +368,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       // Reset per-mission state so no data from a previous mission leaks in.
       setCurrentAssessment(null);
       setCurrentAssessmentId(null);
+      setNotSaved(false);
       setSoraOutput(null);
       setCategoryComments({});
       setPilotInputs({
@@ -716,11 +758,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error(t('errors.notLoggedIn', 'Du må være logget inn'));
+        toast.error(t('errors.notLoggedIn'));
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-risk-assessment`,
         {
           method: 'POST',
@@ -745,18 +787,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        if (response.status === 429) {
-          if (error?.status === 'queued') {
-            const waitSec = Math.ceil((error.retryAfterMs ?? 30000) / 1000);
-            toast.warning(t('riskAssessment.aiBusy', 'AI er opptatt (3 vurderinger kjører nå). Prøv igjen om ca. {{seconds}} sekunder.', { seconds: waitSec }));
-          } else {
-            toast.error(t('riskAssessment.rateLimitError', 'For mange forespørsler, prøv igjen senere'));
-          }
-        } else if (response.status === 402) {
-          toast.error(t('riskAssessment.creditsError', 'AI-kreditter oppbrukt'));
-        } else {
-          throw new Error(error.error || 'Unknown error');
-        }
+        if (!handleRateErrors(response.status, error)) throw new Error(error.error || 'Unknown error');
         return;
       }
 
@@ -771,6 +802,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
         _approvalThreshold: result.approvalThreshold || null,
       });
       setCurrentAssessmentId(result.assessment?.id || null);
+      setNotSaved(!result.assessment?.id);
       setActiveTab('result');
       if (result.autoApproved) {
         toast.success(t('riskAssessment.autoApproved', 'Oppdraget ble automatisk godkjent basert på SORA-vurderingen'));
@@ -780,7 +812,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       loadPreviousAssessments();
     } catch (error) {
       console.error('Risk assessment error:', error);
-      toast.error(t('riskAssessment.error', 'Kunne ikke utføre risikovurdering'));
+      if (missionRef.current === missionIdAtStart) showRiskError(error, t('riskAssessment.error'));
     } finally {
       window.clearInterval(interval);
       setLoading(false);
@@ -790,6 +822,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const viewPreviousAssessment = (assessment: any) => {
     setCurrentAssessment(assessment.ai_analysis);
     setCurrentAssessmentId(assessment.id);
+    setNotSaved(false);
     setCategoryComments(assessment.pilot_comments || {});
     setSoraOutput(assessment.sora_output || null);
     setActiveTab(assessment.sora_output ? 'sora' : 'result');
@@ -849,6 +882,42 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     }
   };
 
+  const currentRecord: any = currentAssessmentId ? previousAssessments.find((a: any) => a.id === currentAssessmentId) : null;
+  const renderAssessmentHeader = () => {
+    if (notSaved) {
+      return (
+        <div className="p-3 rounded-lg border border-status-yellow/40 bg-status-yellow/10">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-foreground">{t('riskAssessment.notSaved')}</p>
+          </div>
+        </div>
+      );
+    }
+    if (!currentRecord) return null;
+    const isLatest = previousAssessments[0]?.id === currentRecord.id;
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">
+          {format(new Date(currentRecord.created_at), "PPp", { locale: dateLocale })}
+        </span>
+        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", isLatest ? "bg-primary/10 text-primary border-primary/30" : "")}>
+          {isLatest ? t('riskAssessment.latestBadge') : t('riskAssessment.olderBadge')}
+        </Badge>
+        {currentRecord.sora_output && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30">
+            {t('riskAssessment.soraBadge')}
+          </Badge>
+        )}
+      </div>
+    );
+  };
+  const recommendationLabel = (rec: string) =>
+    rec === 'go' ? t('riskAssessment.recommendationShort.go')
+      : rec === 'caution' ? t('riskAssessment.recommendationShort.caution')
+      : rec === 'no-go' ? t('riskAssessment.recommendationShort.noGo')
+      : String(rec ?? '').toUpperCase();
+
   const isManualSoraActive = activeTab === 'manual-sora';
 
   return (
@@ -869,7 +938,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             {soraOutput && (
               <TabsTrigger value="sora" className="text-xs sm:text-sm">
                 <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                AI SORA
+                {t('riskAssessment.aiSoraTab')}
               </TabsTrigger>
             )}
             <TabsTrigger value="manual-sora" className="text-xs sm:text-sm">
@@ -887,9 +956,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 min-h-0 mt-4">
-            <TabsContent value="input" className="h-full m-0">
-              <ScrollArea className="h-[calc(90vh-220px)]">
+          <div className="flex-1 min-h-0 mt-4 flex flex-col">
+            <TabsContent value="input" className="m-0 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                 <div className="space-y-6 pr-4">
                   {/* Mission Selector - only show when no mission prop */}
                   {!mission && (
@@ -1148,13 +1217,14 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </div>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            <TabsContent value="result" className="h-full m-0">
-              <ScrollArea className="h-[calc(90vh-220px)]">
+            <TabsContent value="result" className="m-0 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                 {currentAssessment && (
                   <div className="space-y-6 pr-4">
+                    {renderAssessmentHeader()}
                     {/* AI Disclaimer */}
                     <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
                       <div className="flex items-start gap-2">
@@ -1241,7 +1311,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           <span className="truncate">{t('riskAssessment.saveComments', 'Lagre kommentarer')}</span>
                         </Button>
                         <Button
-                          onClick={() => exportToPdf(currentAssessment, categoryComments)}
+                          onClick={() => exportToPdf(currentAssessment, categoryComments, currentRecord?.created_at)}
                           disabled={exportingPdf}
                           variant="outline"
                           className="flex-1 min-w-0"
@@ -1295,16 +1365,17 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     />
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            <TabsContent value="sora" className="h-full m-0">
-              <ScrollArea className="h-[calc(90vh-220px)]">
+            <TabsContent value="sora" className="m-0 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                 {soraOutput ? (
                   <div className="pr-4 space-y-4">
+                    {renderAssessmentHeader()}
                     <SoraResultView data={soraOutput} />
                     <Button
-                      onClick={() => exportToPdf(currentAssessment || {}, categoryComments, undefined, 'sora', soraOutput)}
+                      onClick={() => exportToPdf(currentAssessment || {}, categoryComments, currentRecord?.created_at, 'sora', soraOutput)}
                       disabled={exportingPdf}
                       variant="outline"
                       className="w-full"
@@ -1323,12 +1394,12 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     {t('riskAssessment.noSoraAvailable', 'Ingen SORA-analyse tilgjengelig')}
                   </p>
                 )}
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* Manual SORA Tab */}
-            <TabsContent value="manual-sora" className="h-full m-0">
-              <ScrollArea className="h-[calc(90vh-220px)]">
+            <TabsContent value="manual-sora" className="m-0 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                 <div className="space-y-6 pr-4">
                   {/* Mission Selector - only show when no mission prop */}
                   {!mission && (
@@ -1362,9 +1433,9 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           </div>
                           <div>
                             <span className="font-semibold">{t("riskAssessment.manualSora.dateTimeLabel")}</span>{" "}
-                            {format(new Date(soraMissionDetails.tidspunkt), "d. MMM yyyy HH:mm", { locale: nb })}
+                            {format(new Date(soraMissionDetails.tidspunkt), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                             {soraMissionDetails.slutt_tidspunkt &&
-                              ` - ${format(new Date(soraMissionDetails.slutt_tidspunkt), "HH:mm", { locale: nb })}`
+                              ` - ${format(new Date(soraMissionDetails.slutt_tidspunkt), "HH:mm", { locale: dateLocale })}`
                             }
                           </div>
                           <div>
@@ -1596,7 +1667,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           <div className="space-y-2">
                             <Label>{t("riskAssessment.manualSora.preparedAtLabel")}</Label>
                             <Input
-                              value={format(new Date(existingSora.prepared_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                              value={format(new Date(existingSora.prepared_at), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                               disabled
                             />
                           </div>
@@ -1617,7 +1688,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           <div className="space-y-2">
                             <Label>{t("riskAssessment.manualSora.approvedAtLabel")}</Label>
                             <Input
-                              value={format(new Date(existingSora.approved_at), "d. MMM yyyy HH:mm", { locale: nb })}
+                              value={format(new Date(existingSora.approved_at), "d. MMM yyyy HH:mm", { locale: dateLocale })}
                               disabled
                             />
                           </div>
@@ -1636,11 +1707,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </Button>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
-            <TabsContent value="history" className="h-full m-0">
-              <ScrollArea className="h-[calc(90vh-220px)]">
+            <TabsContent value="history" className="m-0 flex-1 min-h-0 flex flex-col data-[state=inactive]:hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
                 <div className="space-y-3 pr-4">
                   {loadingHistory ? (
                     <div className="flex items-center justify-center py-8">
@@ -1665,11 +1736,11 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="text-sm font-medium">
-                                  {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: nb })}
+                                  {format(new Date(assessment.created_at), "dd. MMM yyyy, HH:mm", { locale: dateLocale })}
                                 </p>
                                 {assessment.sora_output && (
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/30">
-                                    SORA
+                                    {t('riskAssessment.soraBadge')}
                                   </Badge>
                                 )}
                               </div>
@@ -1708,7 +1779,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                                 ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300'
                                 : 'bg-red-500/20 text-red-700 dark:text-red-300'
                             }`}>
-                              {assessment.recommendation.toUpperCase()}
+                              {recommendationLabel(assessment.recommendation)}
                             </div>
                           </div>
                         </div>
@@ -1716,7 +1787,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     ))
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
           </div>
         </Tabs>
