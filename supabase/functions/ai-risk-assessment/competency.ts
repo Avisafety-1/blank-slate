@@ -82,7 +82,7 @@ export interface CompetencyAssessment {
 export const requiredRank = (droneClass: string | null, nearPeople: boolean, isVlos: boolean, weightKg: number | null = null): number | null => {
   if (!isVlos) return 1; // Specific/SORA: baseline certificate, rest via OSO #08
   const isClassMarked = droneClass !== null && /^C[0-6]$/.test(droneClass);
-  if (!isClassMarked && weightKg !== null && weightKg < 0.25) return 0; // legacy/self-built < 250 g // Specific/SORA: baseline certificate, rest via OSO #08
+  if (!isClassMarked && weightKg !== null && weightKg < 0.25) return 0; // legacy/self-built < 250 g
   switch (droneClass) {
     case 'C0': return 0; // UAS.OPEN.020: only read the user manual
     case 'C1': case 'C3': case 'C4': return 1;
