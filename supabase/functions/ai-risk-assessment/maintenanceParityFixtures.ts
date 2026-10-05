@@ -1,5 +1,5 @@
 // Shared parity fixtures: used by maintenanceParity_test.ts (Deno edge copy)
-// and src/lib/maintenanceParity.test.ts (app). Dates are relative to "today".
+// and tests/maintenanceParity.test.ts (app). Dates are relative to "today".
 const day = 86400000;
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * day).toISOString().slice(0, 10);
 

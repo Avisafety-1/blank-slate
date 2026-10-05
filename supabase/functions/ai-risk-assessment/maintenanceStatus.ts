@@ -1,6 +1,6 @@
 // HOLD LIK src/lib/maintenanceStatus.ts — Deno-port av appens statuslogikk.
 // Endres statuslogikken i én fil må den andre oppdateres tilsvarende;
-// maintenanceParity_test.ts og src/lib/maintenanceParity.test.ts låser pariteten.
+// maintenanceParity_test.ts og tests/maintenanceParity.test.ts låser pariteten.
 // Brukes for å beregne ekte aggregert dronestatus for AI-risikovurderingen,
 // slik at AI ikke får utdatert "Grønn" fra drones.status-kolonnen når en
 // inspeksjonsdato er forfalt eller intervalltimer/oppdrag er overskredet.

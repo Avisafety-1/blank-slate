@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { calculateDroneAggregatedStatus, worstStatus, type Status } from "./maintenanceStatus";
-import { parityCases } from "../../supabase/functions/ai-risk-assessment/maintenanceParityFixtures";
+import { calculateDroneAggregatedStatus, worstStatus } from "../src/lib/maintenanceStatus";
+import type { Status } from "../src/types";
+import { parityCases } from "../supabase/functions/ai-risk-assessment/maintenanceParityFixtures";
 
 // Same fixtures as the edge copy. The app combines drones.status with the
 // aggregated status in the UI, so it is applied here the same way.
