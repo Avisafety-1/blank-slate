@@ -18,6 +18,10 @@ export const STATUS_PRIORITY: Record<Status, number> = {
 };
 
 export const UNKNOWN_STATUS_TEXT = "Vedlikeholdsstatus kunne ikke hentes";
+export const UNKNOWN_STATUS_TEXT_EN = "Maintenance status could not be retrieved";
+/** Gul eller Ukjent havner i gul liste (aldri hard stop alene). */
+export const isYellowStatus = (s: unknown): boolean => s === "Gul" || s === "Ukjent";
+export const unknownStatusText = (lang: "no" | "en"): string => lang === "en" ? UNKNOWN_STATUS_TEXT_EN : UNKNOWN_STATUS_TEXT;
 
 const asStatus = (v: unknown): Status =>
   v === "Rød" || v === "Gul" || v === "Grønn" || v === "Ukjent" ? v : "Grønn";
