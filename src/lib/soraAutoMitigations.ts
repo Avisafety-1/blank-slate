@@ -9,7 +9,7 @@ export type Robustness = 'None' | 'Low' | 'Medium' | 'High';
 /** SORA robustness matrix (null = N/A for that mitigation) */
 export const MITIGATION_MATRIX: Record<MitigationKey, Record<Robustness, number | null>> = {
   m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
-  m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
+  m1b_operational_restrictions: { None: 0, Low: null, Medium: -1, High: -2 },
   m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
   m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
 };
@@ -89,22 +89,15 @@ export const computeAutoMitigations = ({
           reduction: 0,
           reasonKey: 'm1cNone',
         },
-    parachute
-      ? {
-          key: 'm2_impact_reduction' as MitigationKey,
-          applicable: true,
-          robustness: parachute.robustness,
-          reduction: parachute.reduction,
-          reasonKey: 'm2Equipment',
-          reasonParams: { equipment: parachute.name },
-        }
-      : {
-          key: 'm2_impact_reduction' as MitigationKey,
-          applicable: false,
-          robustness: null,
-          reduction: 0,
-          reasonKey: 'm2None',
-        },
+    // M2 is never credited automatically — only manually with documented MoC/DVR.
+    {
+      key: 'm2_impact_reduction' as MitigationKey,
+      applicable: false,
+      robustness: null,
+      reduction: 0,
+      reasonKey: parachute ? 'm2ParachuteHint' : 'm2None',
+      reasonParams: parachute ? { equipment: parachute.name } : undefined,
+    },
   ];
 };
 

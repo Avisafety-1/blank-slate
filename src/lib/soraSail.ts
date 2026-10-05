@@ -26,5 +26,7 @@ export const deriveSail = (
   const numeric = typeof fgrc === "number" ? fgrc : parseInt(String(fgrc ?? ""), 10);
   const col = arcColumn(arc);
   if (!col || !Number.isFinite(numeric)) return null;
+  // fGRC > 7 is the certified category — no SAIL.
+  if (numeric > 7) return null;
   return SAIL_MATRIX[fgrcRow(numeric)]?.[col] ?? null;
 };

@@ -3288,8 +3288,8 @@
         "m1bNone": "Krever dokumenterte tid-/stedbegrensninger som reduserer eksponerte personer.",
         "m1cObservers": "{{count}} observatør(er) oppgitt — gir automatisk -1 (Lav).",
         "m1cNone": "Legg til minst én observatør for å få automatisk reduksjon.",
-        "m2Equipment": "Basert på dokumentert utstyr: {{equipment}}.",
-        "m2None": "Ingen fallskjerm, MoC 2512 eller DVR-dokumentasjon funnet på tilknyttet utstyr."
+        "m2ParachuteHint": "Fallskjermsystem registrert på oppdraget ({{equipment}}) — M2 kan vurderes manuelt med dokumentasjon.",
+        "m2None": "Krediteres ikke automatisk. Krever dokumentert MoC/DVR-grunnlag."
       },
       "airRiskLabel": "Luftrisiko: Atypisk/segregert luftrom",
       "airRiskReason": "NOTAM-området er markert som segregert/atypisk luftrom — initiell ARC settes til ARC-a.",
