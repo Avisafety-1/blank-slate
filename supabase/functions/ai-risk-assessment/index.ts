@@ -4,6 +4,8 @@ import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt,
 import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
 import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
+import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
+import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
@@ -624,7 +626,9 @@ serve(async (req) => {
     }
     user = authUser;
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
+    // previousAnalysis/manualOverrides/manualAirRisk from the body are accepted for backward
+    // compatibility but ignored: a SORA re-assessment always loads the base assessment from the DB.
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -701,8 +705,86 @@ serve(async (req) => {
     const currentDateOslo = osloDateString(nowForAssessment)!;
 
     // Handle SORA re-assessment mode
-    if (soraReassessment && previousAnalysis && pilotComments) {
+    if (soraReassessment && pilotComments) {
       const soraLang = normalizeLang(language);
+
+      // Load the base assessment from the DB (caller RLS) — never trust the client copy.
+      const { data: assessmentRows, error: assessmentRowsErr } = await callerClient
+        .from('mission_risk_assessments')
+        .select('id, mission_id, created_at, sora_output, ai_analysis')
+        .eq('mission_id', missionId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (assessmentRowsErr) console.error('[ai-risk-assessment/SORA] assessment lookup error:', assessmentRowsErr);
+      const reassessCheck = checkReassessTarget((assessmentRows ?? []) as AssessmentRow[], previousAssessmentId, missionId);
+      if (!reassessCheck.ok || !(reassessCheck.row.ai_analysis && typeof reassessCheck.row.ai_analysis === 'object')) {
+        await finishJob('failed', `SORA reassessment rejected: ${reassessCheck.ok ? 'no analysis' : reassessCheck.reason}`);
+        return new Response(JSON.stringify({ error: reassessNotLatestMessage(soraLang) }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const previousAnalysis: any = reassessCheck.row.ai_analysis;
+
+      // fGRC / ARC / SAIL are decided in code, not by the AI.
+      const parseIntLoose = (v: unknown): number | null => {
+        if (typeof v === 'number' && Number.isFinite(v)) return Math.floor(v);
+        if (typeof v === 'string') { const m = v.match(/\d+/); if (m) return parseInt(m[0], 10); }
+        return null;
+      };
+      const parseArcLetter = (v: unknown): string | null => {
+        if (typeof v !== 'string') return null;
+        const t = v.toLowerCase();
+        const m = t.match(/arc[\s_-]*([abcd])/) ?? t.match(/^\s*([abcd])\s*$/);
+        return m ? m[1] : null;
+      };
+      const prevGround: any = previousAnalysis?.ground_risk_analysis ?? null;
+      const prevAir: any = previousAnalysis?.air_risk_analysis ?? null;
+      const groundManual = prevGround?.mitigations_manual_override === true;
+      const airManual = prevAir?.arc_manual_override === true;
+      const prevIgrc = parseIntLoose(prevGround?.igrc);
+      let fixedFgrc: number | null = parseIntLoose(prevGround?.fgrc);
+      if (groundManual && prevIgrc !== null && prevGround?.mitigations && typeof prevGround.mitigations === 'object' && !Array.isArray(prevGround.mitigations)) {
+        const prevM1c = Number(prevGround.mitigations?.m1c_ground_observation?.reduction);
+        fixedFgrc = applyGroundMitigations({
+          igrc: prevIgrc,
+          controlledMinimum: parseIntLoose(prevGround?.controlled_ground_minimum),
+          manual: prevGround.mitigations,
+          autoM1c: Number.isFinite(prevM1c) ? prevM1c : 0,
+        }).fgrc;
+      }
+      let fixedArc: string | null = parseArcLetter(prevAir?.residual_arc) ?? parseArcLetter(prevAir?.initial_arc);
+      if (airManual) {
+        if (prevAir?.arc_a_atypical === true) fixedArc = 'a';
+        else if (prevAir?.manual_density_rating != null) {
+          const aecNum = parseIntLoose(prevAir?.aec);
+          const reduced = aecNum !== null ? parseArcLetter(residualArcForDensity(aecNum, prevAir.manual_density_rating)) : null;
+          if (reduced) fixedArc = reduced;
+        }
+      }
+      const fixedSail = lookupSail(fixedFgrc, fixedArc);
+      const groundMitigationList = prevGround?.mitigations && typeof prevGround.mitigations === 'object' && !Array.isArray(prevGround.mitigations)
+        ? Object.entries(prevGround.mitigations).map(([key, m]: [string, any]) => ({
+            id: key,
+            applied: m?.applicable === true,
+            robustness: m?.robustness ?? null,
+            grc_adjustment: m?.reduction ?? 0,
+          }))
+        : null;
+      const soraFixed = {
+        ground_manual_override: groundManual,
+        igrc: prevIgrc,
+        fgrc: fixedFgrc,
+        mitigations: groundMitigationList,
+        air_manual_override: airManual,
+        aec: prevAir?.aec ?? null,
+        initial_arc: prevAir?.initial_arc ?? null,
+        residual_arc: fixedArc ? `ARC-${fixedArc}` : null,
+        arc_a_atypical: prevAir?.arc_a_atypical === true,
+        manual_density_rating: prevAir?.manual_density_rating ?? null,
+        arc_reduction_justification: prevAir?.arc_reduction_justification ?? null,
+        sail: fixedSail.sail ? `SAIL ${fixedSail.sail}` : null,
+        certified_category: fixedSail.certified,
+      };
       console.log('[ai-risk-assessment/SORA] Running SORA re-assessment with pilot comments, language:', soraLang);
 
       // Authoritative drone list from the mission itself (caller RLS), not from the AI text.
@@ -718,7 +800,7 @@ serve(async (req) => {
       }
 
       const soraSystemPrompt = buildSoraReassessSystemPrompt(soraLang);
-      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null, {
+      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, soraFixed, {
         currentDate: currentDateOslo,
         droneModels: Array.from(new Set(missionDroneModels)),
       });
@@ -798,92 +880,35 @@ serve(async (req) => {
         console.warn('Mitigation key scrub failed (non-fatal):', scrubErr);
       }
 
-      // Deterministic SAIL lookup — override AI's value to keep result consistent with the matrix
+      // Apply the code-determined fGRC/ARC/SAIL — AI values are always overridden.
       try {
-        const SAIL_MATRIX: Record<string, Record<string, string>> = {
-          '2': { a: 'I', b: 'II', c: 'IV', d: 'VI' },
-          '3': { a: 'II', b: 'II', c: 'IV', d: 'VI' },
-          '4': { a: 'III', b: 'III', c: 'IV', d: 'VI' },
-          '5': { a: 'IV', b: 'IV', c: 'IV', d: 'VI' },
-          '6': { a: 'V', b: 'V', c: 'V', d: 'VI' },
-          '7': { a: 'VI', b: 'VI', c: 'VI', d: 'VI' },
-        };
-        const parseFgrc = (v: unknown): number | null => {
-          if (typeof v === 'number') return Math.floor(v);
-          if (typeof v === 'string') {
-            const m = v.match(/\d+/);
-            if (m) return parseInt(m[0], 10);
-          }
-          return null;
-        };
-        const parseArc = (v: unknown): string | null => {
-          if (typeof v !== 'string') return null;
-          const s = v.toLowerCase();
-          const m = s.match(/arc[\s_-]*([abcd])/) ?? s.match(/^\s*([abcd])\s*$/);
-          return m ? m[1] : null;
-        };
-        const mo = (manualOverrides as any) ?? null;
-        const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
-        const groundOverridden = manualGround?.mitigations_manual_override === true || mo?.ground_manual_override === true;
-        const manualFgrc = groundOverridden ? (parseFgrc(manualGround?.fgrc) ?? parseFgrc(mo?.fgrc)) : null;
-        const fgrcRaw = manualFgrc ?? parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
-        if (manualFgrc !== null) {
-          soraAnalysis.fgrc = manualFgrc;
-          soraAnalysis.igrc = manualGround?.igrc ?? mo?.igrc ?? soraAnalysis.igrc;
+        if (fixedFgrc !== null) {
+          soraAnalysis.fgrc = fixedFgrc;
+          if (prevIgrc !== null) soraAnalysis.igrc = prevIgrc;
         }
-        const manualAir = (manualAirRisk as any)
-          ?? (mo?.air_manual_override === true
-            ? {
-                arc_manual_override: true,
-                arc_a_atypical: mo?.arc_a_atypical === true,
-                manual_density_rating: mo?.manual_density_rating ?? null,
-                aec: mo?.aec ?? null,
-                residual_arc: mo?.residual_arc ?? null,
-              }
-            : null);
-        // Manual ARC: use the explicit residual ARC when sent, otherwise re-derive it
-        // from the operator's declaration (atypical) or Annex C table 2 density rating.
-        let manualArcResidual: string | null = null;
-        if (manualAir?.arc_manual_override === true) {
-          manualArcResidual = parseArc(manualAir.residual_arc);
-          if (!manualArcResidual && manualAir.arc_a_atypical === true) manualArcResidual = 'a';
-          if (!manualArcResidual && manualAir.manual_density_rating != null) {
-            const aecNum = parseFgrc(manualAir.aec ?? (previousAnalysis as any)?.air_risk_analysis?.aec);
-            if (aecNum !== null) {
-              manualArcResidual = parseArc(residualArcForDensity(aecNum, manualAir.manual_density_rating));
-            }
-          }
-          if (!manualArcResidual) {
-            manualArcResidual = parseArc((previousAnalysis as any)?.air_risk_analysis?.residual_arc)
-              ?? parseArc((previousAnalysis as any)?.air_risk_analysis?.initial_arc);
-          }
-        }
-        const arc = manualArcResidual ?? parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
-        if (manualArcResidual) {
-          soraAnalysis.arc_residual = `ARC-${manualArcResidual}`;
-        }
-
-        if (fgrcRaw !== null && arc) {
-          const rowKey = fgrcRaw <= 2 ? '2' : String(Math.min(fgrcRaw, 7));
-          const computed = SAIL_MATRIX[rowKey]?.[arc];
-          if (computed) {
-            const aiSail = soraAnalysis.sail;
-            soraAnalysis.sail = `SAIL ${computed}`;
-            soraAnalysis.sail_lookup = {
-              ...(soraAnalysis.sail_lookup || {}),
-              fgrc_used: fgrcRaw,
-              arc_used: arc,
-              result: computed,
-            };
+        if (fixedArc) soraAnalysis.arc_residual = `ARC-${fixedArc}`;
+        if (fixedFgrc !== null && fixedArc) {
+          const aiSail = soraAnalysis.sail;
+          soraAnalysis.sail_lookup = {
+            ...(soraAnalysis.sail_lookup || {}),
+            fgrc_used: fixedFgrc,
+            arc_used: fixedArc,
+            result: fixedSail.sail,
+            certified_category: fixedSail.certified,
+          };
+          if (fixedSail.certified) {
+            soraAnalysis.sail = null;
+            soraAnalysis.certified_category = true;
+            soraAnalysis.certified_category_note = certifiedCategoryText(soraLang);
+          } else if (fixedSail.sail) {
+            soraAnalysis.sail = `SAIL ${fixedSail.sail}`;
             if (soraAnalysis.containment && typeof soraAnalysis.containment === 'object') {
-              const robustness = (computed === 'I' || computed === 'II')
-                ? 'Low'
-                : (computed === 'III' || computed === 'IV') ? 'Medium' : 'High';
-              soraAnalysis.containment.robustness_level = robustness;
+              const s = fixedSail.sail;
+              soraAnalysis.containment.robustness_level = (s === 'I' || s === 'II') ? 'Low' : (s === 'III' || s === 'IV') ? 'Medium' : 'High';
             }
-            if (aiSail && aiSail !== soraAnalysis.sail) {
-              console.log(`SAIL overridden: AI said "${aiSail}" → matrix says "${soraAnalysis.sail}" (fGRC=${fgrcRaw}, ARC=${arc})`);
-            }
+          }
+          if (aiSail && aiSail !== soraAnalysis.sail) {
+            console.log(`SAIL overridden: AI said "${aiSail}" → code says "${soraAnalysis.sail}" (fGRC=${fixedFgrc}, ARC=${fixedArc})`);
           }
         }
       } catch (e) {
@@ -893,7 +918,7 @@ serve(async (req) => {
       // Manual overrides must also be reflected in the narrative text — the AI
       // otherwise keeps writing "no reduction credited" while the numbers show one.
       try {
-        const mo2 = (manualOverrides as any) ?? null;
+        const mo2: any = null;
         const ga = (previousAnalysis as any)?.ground_risk_analysis;
         const aa = (previousAnalysis as any)?.air_risk_analysis;
         const en = normalizeLang(language) === 'en';
@@ -1065,6 +1090,15 @@ serve(async (req) => {
         soraAnalysis.hard_stop_triggered === true,
         previousAnalysis.recommendation
       );
+      if (soraAnalysis.certified_category === true && soraAnalysis.recommendation === 'go') {
+        soraAnalysis.recommendation = 'caution';
+      }
+      if (soraAnalysis.certified_category === true && typeof soraAnalysis.summary === 'string'
+        && !soraAnalysis.summary.includes(certifiedCategoryText(soraLang))) {
+        soraAnalysis.summary = `${certifiedCategoryText(soraLang)}. ${soraAnalysis.summary}`;
+      }
+      // Card warnings follow the DB row, not the client.
+      if (previousAnalysis?.approvalDecision) soraAnalysis.approvalDecision = previousAnalysis.approvalDecision;
 
       // Get user's profile for company_id
       const { data: profile } = await supabase
