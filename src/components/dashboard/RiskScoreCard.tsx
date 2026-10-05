@@ -123,9 +123,12 @@ export const RiskScoreCard = ({
       'IKKE VURDERT': 'bg-muted text-muted-foreground',
     };
 
+    // Stored codes are internal (BETINGET / IKKE VURDERT); legacy EN labels are mapped to them.
+    const legacy: Record<string, string> = { 'CONDITIONAL': 'BETINGET', 'NOT ASSESSED': 'IKKE VURDERT' };
+    const code = legacy[decision.toUpperCase()] ?? decision;
     return (
-      <span className={cn("px-2 py-0.5 rounded text-xs font-semibold uppercase", styles[decision] || 'bg-muted')}>
-        {decision}
+      <span className={cn("px-2 py-0.5 rounded text-xs font-semibold uppercase", styles[code] || 'bg-muted')}>
+        {styles[code] ? t(`riskAssessment.goDecision.${code}`) : decision}
       </span>
     );
   };
