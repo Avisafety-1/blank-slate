@@ -97,6 +97,7 @@ export const AirspaceWarnings = ({ latitude, longitude, routePoints, routeSegmen
     if (cachedWarnings) return;
 
     if (!latitude || !longitude) {
+      lastCompletedKeyRef.current = null;
       setWarnings([]);
       return;
     }
