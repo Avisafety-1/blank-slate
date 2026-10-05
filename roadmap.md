@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Pågående
-- [ ] Menyer: fjern lave lagoverstyringer og gi dropdown/undermenyer intern touch-rulling innenfor ledig skjermplass; behold modalitet og valg
+- [x] Menyer: fjern lave lagoverstyringer og gi dropdown/undermenyer intern touch-rulling innenfor ledig skjermplass; behold modalitet og valg
 - [x] Verneområder: ett kartlag med røde forbudssoner og oransje observasjonssoner fra dronesoner.no; synkroniser data og vis kilde/regler
 - [x] Dashbord: én aktiv flytur i fast felt, intern rulling og pil for flere uten å skyve andre widgeter ned
 - [x] SORA-dokument per oppdragstype og oppdrag, PDF-tolkning og gul merknad ved manglende dokument (DB-migrasjon uttrykkelig godkjent)
