@@ -1,3 +1,5 @@
+// HOLD LIK supabase/functions/ai-risk-assessment/maintenanceStatus.ts (Deno-kopi for AI-risikovurderingen).
+// Endres statuslogikken her, må edge-kopien oppdateres; tests/maintenanceParity.test.ts låser pariteten.
 import { Status } from "@/types";
 import i18n from "@/i18n";
 

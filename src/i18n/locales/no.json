@@ -3296,7 +3296,10 @@
       "airRiskNotApplied": "Slå på bryteren over hvis oppdraget skal behandles som segregert/atypisk luftrom."
     },
     "atypicalSegregated": "Segregert/atypisk luftrom (NOTAM-området)",
-    "observersFromPersonnelM1c": "Hentet fra oppdragets personell ({{n}} observatør(er)). Gir M1(C)-kreditering."
+    "observersFromPersonnelM1c": "Hentet fra oppdragets personell ({{n}} observatør(er)). Gir M1(C)-kreditering.",
+    "fromMissionNotam": "Hentet fra oppdraget/NOTAM",
+    "differsFromMissionHeight": "Avviker fra oppdraget ({{value}} m AGL)",
+    "differsFromMissionMode": "Avviker fra oppdraget ({{value}})"
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",

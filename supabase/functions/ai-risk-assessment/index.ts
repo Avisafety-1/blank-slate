@@ -21,6 +21,11 @@ import {
   worstStatus,
   type Status as MaintStatus,
 } from "./maintenanceStatus.ts";
+import { UNKNOWN_STATUS_TEXT } from "./maintenanceStatus.ts";
+import { resolveFlightInputs } from "./flightInputs.ts";
+import { evaluateCivilTwilight, POLAR_NIGHT_TEXT } from "./twilight.ts";
+import { isFixedWingDrone, modelSearchTerms } from "./catalogLookup.ts";
+import { osloDateString as osloDay } from "./missionContext.ts";
 import { fetchCustomScheduleStatuses } from "./customSchedules.ts";
 
 
@@ -99,10 +104,7 @@ const pickBestDroneModelMatch = <T extends { name: string }>(models: T[], droneM
   return candidates[0]?.model ?? null;
 };
 
-const isFixedWingDrone = (droneModel?: string | null, catalogCategory?: string | null): boolean => {
-  const value = `${droneModel ?? ''} ${catalogCategory ?? ''}`.toLowerCase();
-  return /fixed|wing|fastving|fly|plane|vtol/.test(value);
-};
+
 
 const calculateAlos = (characteristicDimensionM?: number | null, fixedWing = false) => {
   if (typeof characteristicDimensionM !== 'number' || !Number.isFinite(characteristicDimensionM) || characteristicDimensionM <= 0) {
@@ -632,7 +634,7 @@ serve(async (req) => {
 
     // previousAnalysis/manualOverrides/manualAirRisk from the body are accepted for backward
     // compatibility but ignored: a SORA re-assessment always loads the base assessment from the DB.
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
+    const { missionId, pilotInputs: rawPilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -1190,6 +1192,11 @@ serve(async (req) => {
       });
     }
 
+    // Flyhøyde/VLOS: pilotens verdi, ellers oppdragets NOTAM-felt, aldri 0 m.
+    const flightInputs = resolveFlightInputs(rawPilotInputs, mission, resolveLang(language) === 'en' ? 'en' : 'no');
+    const pilotInputs: any = { ...(rawPilotInputs || {}), flightHeight: flightInputs.heightM, isVlos: flightInputs.isVlos };
+    console.log(`Flight inputs: height=${flightInputs.heightM}m (${flightInputs.heightSource}), vlos=${flightInputs.isVlos} (${flightInputs.vlosSource})`);
+
     const soraDocument = await readMissionSoraDocument(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', authHeader.replace('Bearer ', ''), missionId)
       .catch(() => null);
 
@@ -1422,9 +1429,7 @@ serve(async (req) => {
         } else {
           type KpRow = { time_tag: string; kp: number; observed?: string; noaa_scale?: string | null };
           const rows = kpRaw as KpRow[];
-          const missionDateStr = mission.tidspunkt
-            ? new Date(mission.tidspunkt).toISOString().substring(0, 10)
-            : new Date().toISOString().substring(0, 10);
+          const missionDateStr = osloDay(mission.tidspunkt ? new Date(mission.tidspunkt) : new Date())!;
           let maxKp = 0;
           let matchedDate = false;
           for (const row of rows) {
@@ -1437,9 +1442,8 @@ serve(async (req) => {
           }
           // Fallback to tomorrow if no data for mission date
           if (!matchedDate) {
-            const tomorrow = new Date(missionDateStr);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().substring(0, 10);
+            const [ky, km, kd] = missionDateStr.split('-').map(Number);
+            const tomorrowStr = new Date(Date.UTC(ky, km - 1, kd + 1)).toISOString().substring(0, 10);
             for (const row of rows) {
               if (!row || typeof row.kp !== 'number' || !row.time_tag) continue;
               const rowDate = row.time_tag.substring(0, 10);
@@ -1942,10 +1946,12 @@ serve(async (req) => {
         }
 
         if (companySoraConfig?.linked_document_ids?.length > 0) {
-          const { data: linkedDocs } = await supabase
+          // Dokumenttitler leses med brukerens RLS (callerClient), ikke service-role.
+          const { data: linkedDocs, error: linkedDocsErr } = await callerClient
             .from('documents')
             .select('tittel, beskrivelse, kategori')
             .in('id', companySoraConfig.linked_document_ids);
+          if (linkedDocsErr) console.error('Linked document lookup failed (RLS):', linkedDocsErr.message);
           linkedDocumentSummary = linkedDocs
             ?.map((d: any) => `- ${d.tittel} (${d.kategori})${d.beskrivelse ? ': ' + d.beskrivelse : ''}`)
             .join('\n') || '';
@@ -1987,45 +1993,16 @@ serve(async (req) => {
     let civilTwilightViolation = false;
     let civilTwilightMissionTime = '';
     let civilTwilightNoTime = false;
+    let civilTwilightPolarNight = false;
     if ((companySoraConfig?.require_civil_twilight || companySoraConfig?.allow_night_flight === false) && lat && lng) {
       try {
-        const missionDate = mission.tidspunkt ? new Date(mission.tidspunkt) : new Date();
-        const DEG_TO_RAD = Math.PI / 180;
-        const doy = Math.floor((missionDate.getTime() - new Date(missionDate.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-        const gamma = ((2 * Math.PI) / 365) * (doy - 1);
-        const eqTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) - 0.014615 * Math.cos(2 * gamma) - 0.04089 * Math.sin(2 * gamma));
-        const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
-        const zenith = 96;
-        const latRad = lat * DEG_TO_RAD;
-        const cosHA = (Math.cos(zenith * DEG_TO_RAD) - Math.sin(latRad) * Math.sin(decl)) / (Math.cos(latRad) * Math.cos(decl));
-        if (cosHA >= -1 && cosHA <= 1) {
-          const ha = Math.acos(cosHA) * (180 / Math.PI);
-          const dawnMin = 720 - 4 * (lng + ha) - eqTime;
-          const duskMin = 720 - 4 * (lng - ha) - eqTime;
-          const base = new Date(Date.UTC(missionDate.getFullYear(), missionDate.getMonth(), missionDate.getDate()));
-          const dawnUTC = new Date(base.getTime() + dawnMin * 60000);
-          const duskUTC = new Date(base.getTime() + duskMin * 60000);
-          const fmt = (d: Date) => d.toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Oslo' });
-          civilTwilightInfo = { dawn: fmt(dawnUTC), dusk: fmt(duskUTC) };
-          console.log(`Civil twilight calculated: dawn=${civilTwilightInfo.dawn}, dusk=${civilTwilightInfo.dusk}`);
-
-          // Deterministic comparison: check if mission time is outside twilight window
-          if (mission.tidspunkt) {
-            const missionTime = new Date(mission.tidspunkt);
-            civilTwilightMissionTime = fmt(missionTime);
-            if (missionTime < dawnUTC || missionTime > duskUTC) {
-              civilTwilightViolation = true;
-              console.log(`Civil twilight VIOLATION: mission at ${civilTwilightMissionTime} is outside ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
-            } else {
-              console.log(`Civil twilight OK: mission at ${civilTwilightMissionTime} is within ${civilTwilightInfo.dawn}-${civilTwilightInfo.dusk}`);
-            }
-          } else {
-            civilTwilightNoTime = true;
-            console.log('Civil twilight: no mission time set, will warn');
-          }
-        } else {
-          console.log('Civil twilight: polar conditions, no twilight boundary');
-        }
+        const tw = evaluateCivilTwilight({ start: mission.tidspunkt, end: mission.slutt_tidspunkt, lat, lng });
+        civilTwilightInfo = tw.info;
+        civilTwilightViolation = tw.violation;
+        civilTwilightPolarNight = tw.polarNight;
+        civilTwilightMissionTime = tw.missionTime;
+        civilTwilightNoTime = tw.noTimeSet && !tw.polarNight;
+        console.log(`Civil twilight: info=${JSON.stringify(tw.info)}, missionTime=${tw.missionTime}, violation=${tw.violation}, polarNight=${tw.polarNight}`);
       } catch (e) {
         console.error('Civil twilight calc error:', e);
       }
@@ -2041,11 +2018,16 @@ serve(async (req) => {
     let deterministicAlos: ReturnType<typeof calculateAlos> | null = null;
     if (droneData?.modell) {
       try {
-        const { data: droneModels } = await supabase
-          .from('drone_models' as any)
-          .select('name, characteristic_dimension_m, max_speed_mps, max_wind_mps, weight_kg, category, ip_rating, ip_source_status, ip_source_url, ip_manufacturer_limitation_no, ip_manufacturer_limitation_en')
-          .or(`name.ilike.%${droneData.modell}%,name.ilike.%${String(droneData.modell).replace(/^DJI\s+/i, '')}%`)
-          .limit(20);
+        // Separate .ilike-spørringer med rensede søkeord: komma/parentes i
+        // modellnavnet ødelegger ellers .or()-filteret.
+        const modelSelect = 'name, characteristic_dimension_m, max_speed_mps, max_wind_mps, weight_kg, category, ip_rating, ip_source_status, ip_source_url, ip_manufacturer_limitation_no, ip_manufacturer_limitation_en';
+        const modelResults = await Promise.all(modelSearchTerms(droneData.modell).map((term) =>
+          supabase.from('drone_models' as any).select(modelSelect).ilike('name', `%${term}%`).limit(20)));
+        const droneModels: any[] = [];
+        for (const r of modelResults) {
+          if (r.error) console.error('Drone model catalog query failed:', r.error.message);
+          for (const row of (r.data as any[]) || []) if (!droneModels.some((m) => m.name === row.name)) droneModels.push(row);
+        }
 
         droneCatalogMatch = pickBestDroneModelMatch((droneModels as any[]) || [], droneData.modell);
         primaryDroneCharacteristicDimensionM = droneCatalogMatch?.characteristic_dimension_m ?? null;
@@ -2107,8 +2089,10 @@ serve(async (req) => {
     }> => {
       const [accRes, eqRes] = await Promise.all([
         supabase.from('drone_accessories').select('navn, neste_vedlikehold, varsel_dager').eq('drone_id', d.id),
-        supabase.from('drone_equipment').select('equipment(navn, neste_vedlikehold, varsel_dager)').eq('drone_id', d.id),
+        supabase.from('drone_equipment').select('equipment(navn, neste_vedlikehold, varsel_dager, status)').eq('drone_id', d.id),
       ]);
+      const lookupFailed = !!(accRes.error || eqRes.error);
+      if (lookupFailed) console.error(`Status lookup failed for drone ${d.id}:`, accRes.error?.message ?? eqRes.error?.message);
       const accessories = (accRes.data as any[]) || [];
       const linkedEquipment = ((eqRes.data as any[]) || []).map(r => r.equipment).filter(Boolean);
       const missionsSinceInspection = d.inspection_interval_missions
@@ -2125,9 +2109,11 @@ serve(async (req) => {
           missions_since_inspection: missionsSinceInspection,
           inspection_interval_missions: d.inspection_interval_missions,
           varsel_oppdrag: d.varsel_oppdrag,
+          status: d.status,
         },
         accessories,
         linkedEquipment,
+        { lookupFailed },
       );
       const dbStatus = (d.status as MaintStatus) || 'Grønn';
       const custom = customDroneSchedules[d.id];
@@ -2154,14 +2140,16 @@ serve(async (req) => {
 
     const computeEquipmentStatus = async (e: any): Promise<MaintStatus> => {
       let missionsSinceMaintenance = 0;
+      let lookupFailed = false;
       if (e.inspection_interval_missions) {
         try {
-          const { data } = await supabase.from('mission_equipment').select('mission_id').eq('equipment_id', e.id);
+          const { data, error } = await supabase.from('mission_equipment').select('mission_id').eq('equipment_id', e.id);
+          if (error) lookupFailed = true;
           if (data) {
             const total = new Set(data.map((r: any) => r.mission_id)).size;
             missionsSinceMaintenance = Math.max(0, total - (e.missions_at_last_maintenance ?? 0));
           }
-        } catch (_) { /* ignore */ }
+        } catch (_) { lookupFailed = true; }
       }
       const maint = calculateEquipmentMaintenanceStatus({
         neste_vedlikehold: e.neste_vedlikehold,
@@ -2178,10 +2166,15 @@ serve(async (req) => {
       if (custom && custom.reasons.length > 0) {
         console.log(`Utstyr ${e.navn ?? e.id}: egendefinert vedlikehold → ${custom.status}. Årsaker: ${custom.reasons.join('; ')}`);
       }
-      return worstStatus(
+      const eqStatus = worstStatus(
         worstStatus(maint, (e.status as MaintStatus) || 'Grønn'),
         custom?.status ?? 'Grønn',
       );
+      if (lookupFailed && eqStatus === 'Grønn') {
+        console.warn(`Utstyr ${e.navn ?? e.id}: ${UNKNOWN_STATUS_TEXT}`);
+        return 'Ukjent';
+      }
+      return eqStatus;
 
     };
 
@@ -2611,6 +2604,7 @@ serve(async (req) => {
         allowNightFlight: companySoraConfig?.allow_night_flight ?? null,
         requireCivilTwilight: companySoraConfig?.require_civil_twilight === true,
         civilTwilightViolation,
+        civilTwilightPolarNight,
         populationDensity: populationData ? deterministicPopulationDensityValue : null,
         maxPopulationDensity: companySoraConfig?.max_population_density_per_km2 == null
           ? null
@@ -2827,7 +2821,7 @@ serve(async (req) => {
         operativeRestrictions: companySoraConfig.operative_restrictions || null,
         policyNotes: companySoraConfig.policy_notes || null,
         linkedDocuments: linkedDocumentSummary || null,
-        civilTwilight: civilTwilightInfo ? { ...civilTwilightInfo, violation: civilTwilightViolation, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
+        civilTwilight: (civilTwilightInfo || civilTwilightPolarNight) ? { ...(civilTwilightInfo ?? {}), violation: civilTwilightViolation, polarNight: civilTwilightPolarNight, polarNightText: civilTwilightPolarNight ? POLAR_NIGHT_TEXT[resolveLang(language) === 'en' ? 'en' : 'no'] : null, missionTime: civilTwilightMissionTime, noTimeSet: civilTwilightNoTime } : null,
       } : null,
       solarActivity,
     };
@@ -3487,6 +3481,11 @@ serve(async (req) => {
         aiAnalysis.recommendations = aiAnalysis.recommendations.filter((r: any) =>
           !isCompetencyJargon(typeof r === 'string' ? r : `${r?.title ?? ''} ${r?.description ?? r?.text ?? ''}`));
       }
+    }
+    if (flightInputs.note && aiAnalysis.categories?.mission_complexity) {
+      const mc = aiAnalysis.categories.mission_complexity;
+      mc.notes = [...(Array.isArray(mc.notes) ? mc.notes : []), flightInputs.note];
+      mc.concerns = [...(Array.isArray(mc.concerns) ? mc.concerns : []), flightInputs.note];
     }
     // Fog advisory (never a hard stop): weather at least BETINGET.
     if (systemDecisions.fog && aiAnalysis.categories?.weather && !weatherNotAssessed) {
