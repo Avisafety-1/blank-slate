@@ -22,6 +22,7 @@ import {
   type Status as MaintStatus,
 } from "./maintenanceStatus.ts";
 import { UNKNOWN_STATUS_TEXT } from "./maintenanceStatus.ts";
+import { normalizeCategoryDecisions } from "./decisionCodes.ts";
 import { resolveFlightInputs } from "./flightInputs.ts";
 import { evaluateCivilTwilight, POLAR_NIGHT_TEXT } from "./twilight.ts";
 import { isFixedWingDrone, modelSearchTerms } from "./catalogLookup.ts";
@@ -635,6 +636,8 @@ serve(async (req) => {
     // previousAnalysis/manualOverrides/manualAirRisk from the body are accepted for backward
     // compatibility but ignored: a SORA re-assessment always loads the base assessment from the DB.
     const { missionId, pilotInputs: rawPilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
+    // Language for texts the code itself adds (concerns, notes, summaries).
+    const outEn = resolveLang(language) === 'en';
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -1034,7 +1037,7 @@ serve(async (req) => {
             const inKnown = normalizedKnown.some(k => k.includes(ml) || ml.includes(k));
             const inComments = substantiveText.toLowerCase().includes(ml);
             if (!inKnown && !inComments) {
-              out = out.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'primærdrone ikke spesifisert');
+              out = out.replace(new RegExp(m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), outEn ? 'primary drone not specified' : 'primærdrone ikke spesifisert');
             }
           }
           return out;
@@ -1057,13 +1060,17 @@ serve(async (req) => {
           console.log('Anti-hallucination guard: forcing recommendation down from "go" because equipment was red and comment is ack-only');
           soraAnalysis.recommendation = 'caution';
           if (typeof soraAnalysis.summary === 'string') {
-            soraAnalysis.summary = `Merk: Opprinnelig utstyrsvurdering var rød/betinget og kommentaren ga ingen ny mitigering. Anbefaling nedjustert. ${soraAnalysis.summary}`;
+            soraAnalysis.summary = outEn
+              ? `Note: The original equipment assessment was red/conditional and the comment added no new mitigation. Recommendation lowered. ${soraAnalysis.summary}`
+              : `Merk: Opprinnelig utstyrsvurdering var rød/betinget og kommentaren ga ingen ny mitigering. Anbefaling nedjustert. ${soraAnalysis.summary}`;
           }
         }
 
         // If primary drone was missing in previousAnalysis, force a note in summary.
-        if (!hasKnownDrone && typeof soraAnalysis.summary === 'string' && !/primærdrone ikke spesifisert/i.test(soraAnalysis.summary)) {
-          soraAnalysis.summary = `${soraAnalysis.summary} Merk: primærdrone er ikke spesifisert i oppdraget.`;
+        if (!hasKnownDrone && typeof soraAnalysis.summary === 'string' && !/primærdrone ikke spesifisert|primary drone not specified/i.test(soraAnalysis.summary)) {
+          soraAnalysis.summary = outEn
+            ? `${soraAnalysis.summary} Note: the primary drone is not specified on the mission.`
+            : `${soraAnalysis.summary} Merk: primærdrone er ikke spesifisert i oppdraget.`;
         }
       } catch (e) {
         console.error('Anti-hallucination guard failed (non-blocking):', e);
@@ -2917,22 +2924,24 @@ serve(async (req) => {
 
     // Safety net: strip leaked internal field/variable names from any narrative text
     // (the model occasionally quotes camelCase/dot-notation tokens from the prompt).
-    const JARGON_REPLACEMENTS: Array<[RegExp, string]> = [
-      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|===|er|=)?\s*'?true'?/gi, 'SORA-buffersoner er aktivert'],
-      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|===|er|=|!==)\s*'?(?:false|null|undefined)'?/gi, 'SORA-buffersoner er ikke aktivert'],
-      [/`?'?mission\.route\.soraSettings(?:\.enabled)?'?`?/gi, 'SORA-buffersoner'],
-      [/`?'?soraSettings'?`?/g, 'SORA-buffersoner'],
-      [/`?'?daysSinceLastFlight'?`?/g, 'antall dager siden siste flyging'],
-      [/`?'?maxPilotInactivityDays'?`?/g, 'selskapets grense for pilotinaktivitet'],
-      [/`?'?primaryDrone\.characteristicDimensionM'?`?/g, 'dronens karakteristiske dimensjon'],
-      [/`?'?primaryDrone\.alos(?:\.[a-zA-Z]+)?'?`?/g, 'dronens ALOS-verdi'],
-      [/`?'?primaryDrone(?:\.[a-zA-Z]+)*'?`?/g, 'primærdronen'],
-      [/`?'?company_requires_sora_on_missions'?`?/g, 'selskapets SORA-krav'],
-      [/`?'?solarActivity\.[a-zA-Z]+'?`?/g, 'geomagnetisk aktivitet'],
-      [/`?'?kpIndex'?`?/g, 'Kp-indeks'],
-      [/`?'?aggregatedFlightStats(?:\.[a-zA-Z]+)*'?`?/g, 'pilotens flystatistikk'],
-      [/`?'?lastFlightDate'?`?/g, 'siste registrerte flyging'],
+    const JARGON_TABLE: Array<[RegExp, string, string]> = [
+      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|set to|===|er|is|=)?\s*'?true'?/gi, 'SORA-buffersoner er aktivert', 'SORA buffer zones are enabled'],
+      [/`?'?soraSettings\.enabled'?`?\s*(?:satt til|set to|===|er|is|=|!==)\s*'?(?:false|null|undefined)'?/gi, 'SORA-buffersoner er ikke aktivert', 'SORA buffer zones are not enabled'],
+      [/`?'?mission\.route\.soraSettings(?:\.enabled)?'?`?/gi, 'SORA-buffersoner', 'SORA buffer zones'],
+      [/`?'?soraSettings'?`?/g, 'SORA-buffersoner', 'SORA buffer zones'],
+      [/`?'?daysSinceLastFlight'?`?/g, 'antall dager siden siste flyging', 'days since last flight'],
+      [/`?'?maxPilotInactivityDays'?`?/g, 'selskapets grense for pilotinaktivitet', "the company's pilot inactivity limit"],
+      [/`?'?primaryDrone\.characteristicDimensionM'?`?/g, 'dronens karakteristiske dimensjon', "the drone's characteristic dimension"],
+      [/`?'?primaryDrone\.alos(?:\.[a-zA-Z]+)?'?`?/g, 'dronens ALOS-verdi', "the drone's ALOS value"],
+      [/`?'?primaryDrone(?:\.[a-zA-Z]+)*'?`?/g, 'primærdronen', 'the primary drone'],
+      [/`?'?company_requires_sora_on_missions'?`?/g, 'selskapets SORA-krav', "the company's SORA requirement"],
+      [/`?'?solarActivity\.[a-zA-Z]+'?`?/g, 'geomagnetisk aktivitet', 'geomagnetic activity'],
+      [/`?'?kpIndex'?`?/g, 'Kp-indeks', 'Kp index'],
+      [/`?'?aggregatedFlightStats(?:\.[a-zA-Z]+)*'?`?/g, 'pilotens flystatistikk', "the pilot's flight statistics"],
+      [/`?'?lastFlightDate'?`?/g, 'siste registrerte flyging', 'last recorded flight'],
     ];
+    const JARGON_REPLACEMENTS: Array<[RegExp, string]> = JARGON_TABLE.map(([re, no, en]) => [re, outEn ? en : no]);
+
 
     const scrubJargon = (input: unknown): unknown => {
       if (typeof input === 'string') {
@@ -2956,6 +2965,7 @@ serve(async (req) => {
       return input;
     };
     aiAnalysis = scrubJargon(aiAnalysis) as typeof aiAnalysis;
+    normalizeCategoryDecisions(aiAnalysis);
 
 
     if (aiAnalysis.categories) {
@@ -3138,16 +3148,19 @@ serve(async (req) => {
           const airportKm = (5 + d / 1000).toFixed(2);
           // Patterns: "329 m fra Trondheim lufthavn", "329 meter fra flyplassen", "329 m unna lufthavnen"
           const re = new RegExp(
-            `(\\b${d}\\s*(?:m|meter)\\s*(?:fra|unna|til)\\s*)([^.,;()]*?(?:lufthavn|flyplass|aerodrom|tårn|airport)[^.,;()]*)`,
+            `(\\b${d}\\s*(?:m|meter|metres|meters)\\s*(?:fra|unna|til|from|away from|to)\\s*)([^.,;()]*?(?:lufthavn|flyplass|aerodrom|tårn|airport|aerodrome|tower)[^.,;()]*)`,
             'gi'
           );
           out = out.replace(re, (_m, p1, p2) =>
-            `${d} m utenfor 5 km-sonens yttergrense rundt ${p2.trim()} (≈ ${airportKm} km til selve flyplassen)`
+            outEn
+              ? `${d} m outside the 5 km zone boundary around ${p2.trim()} (≈ ${airportKm} km to the airport itself)`
+              : `${d} m utenfor 5 km-sonens yttergrense rundt ${p2.trim()} (≈ ${airportKm} km til selve flyplassen)`
           );
         }
         // Catch "innenfor 5 km-sonen" when actually outside
         if (!insideAny5km) {
           out = out.replace(/innenfor\s+5\s*km[- ]?sonen/gi, 'utenfor 5 km-sonen');
+          out = out.replace(/inside\s+the\s+5\s*km[- ]?zone/gi, 'outside the 5 km zone');
         }
         return out;
       };
@@ -3169,13 +3182,13 @@ serve(async (req) => {
         aiAnalysis.categories.airspace.actual_conditions = sum.text;
         const falseClaim = (s: string): boolean => {
           const t = (s || '').toLowerCase();
-          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('5 km buffer') || t.includes('5km buffer') || t.includes('krever ninox') || t.includes('ninox-godkjenning'))) return true;
-          if (!insideAny5km && /nærhet til .*?(lufthavn|flyplass|aerodrom).*?(konflikt med bemannet|tillatelse|koordinering)/i.test(s || '')) return true;
-          if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)'))) return true;
-          if (ctrOverlapIsCautionOnly && /kontrollert luftrom|ctr|tiz/i.test(s || '') && /hard stop|no-go|ikke tillatt|overtredelse|kritisk brudd|krever spesifikk klarering|klarering.*ikke.*bekreftet|atc.*required|kontakt(?:e)?\s+tårn|snakke\s+med\s+tårn|tårnkontakt|krever (?:aktiv handling|klarering|tillatelse|godkjenning)|avklare og eventuelt få klarering/i.test(s || '')) return true;
+          if (!insideAny5km && (t.includes('innenfor 5 km') || t.includes('innenfor 5km') || t.includes('5 km buffer') || t.includes('5km buffer') || t.includes('krever ninox') || t.includes('ninox-godkjenning') || t.includes('inside the 5 km') || t.includes('inside the 5km') || t.includes('within the 5 km') || t.includes('inside 5 km') || t.includes('requires ninox') || t.includes('ninox approval'))) return true;
+          if (!insideAny5km && /(nærhet til|proximity to|close to) .*?(lufthavn|flyplass|aerodrom|airport|aerodrome).*?(konflikt med bemannet|tillatelse|koordinering|conflict with manned|permission|coordination)/i.test(s || '')) return true;
+          if (!insideAnyCtr && (t.includes('innenfor kontrollert luftrom') || t.includes('innenfor ctr') || t.includes('innenfor tiz') || t.includes('i kontrollert luftrom (ctr)') || t.includes('inside controlled airspace') || t.includes('within controlled airspace') || t.includes('inside the ctr') || t.includes('inside ctr') || t.includes('inside the tiz') || t.includes('inside tiz'))) return true;
+          if (ctrOverlapIsCautionOnly && /kontrollert luftrom|controlled airspace|ctr|tiz/i.test(s || '') && /hard stop|no-go|ikke tillatt|not permitted|not allowed|violation|requires (?:specific )?clearance|clearance.*not.*confirmed|contact(?:ing)?\s+(?:the\s+)?tower|requires (?:active action|clearance|permission|approval)|overtredelse|kritisk brudd|krever spesifikk klarering|klarering.*ikke.*bekreftet|atc.*required|kontakt(?:e)?\s+tårn|snakke\s+med\s+tårn|tårnkontakt|krever (?:aktiv handling|klarering|tillatelse|godkjenning)|avklare og eventuelt få klarering/i.test(s || '')) return true;
           // Drop concerns that wrongly state proximity to airport based on the boundary distance.
           for (const w of fiveKmWarnings) {
-            if (w.distance && new RegExp(`\\b${w.distance}\\s*(?:m|meter)\\s*(?:fra|unna|til)\\s*[^.,;()]*(?:lufthavn|flyplass|aerodrom|airport)`, 'i').test(s || '')) {
+            if (w.distance && new RegExp(`\\b${w.distance}\\s*(?:m|meter|metres|meters)\\s*(?:fra|unna|til|from|away from|to)\\s*[^.,;()]*(?:lufthavn|flyplass|aerodrom|airport|aerodrome)`, 'i').test(s || '')) {
               return true;
             }
           }
@@ -3227,13 +3240,15 @@ serve(async (req) => {
             cat.score = Math.min(9, currentScore + 2);
             cat.factors = [
               ...(Array.isArray(cat.factors) ? cat.factors : []),
-              `Ninox-/ATC-koordinering bekreftet av pilot: klarering vil innhentes før flyging. Behandles som planlagt strategisk mitigering for operasjon innenfor 5 km-sonen.`,
+              outEn
+                ? 'Ninox/ATC coordination confirmed by the pilot: clearance will be obtained before flight. Treated as a planned strategic mitigation for an operation inside the 5 km zone.'
+                : `Ninox-/ATC-koordinering bekreftet av pilot: klarering vil innhentes før flyging. Behandles som planlagt strategisk mitigering for operasjon innenfor 5 km-sonen.`,
             ];
             // Fjern bekymringer som handler om manglende ATC/Ninox-koordinering
             if (Array.isArray(cat.concerns)) {
               cat.concerns = cat.concerns.filter((c: string) => {
                 const t = (c || '').toLowerCase();
-                return !(/ninox|atc|klarering|tårn/i.test(t) && /mangl|ikke.*(bekreft|innhent|avklart|koordinert)|må\s+(?:innhent|avklar|koordiner)/i.test(t));
+                return !(/ninox|atc|klarering|tårn|clearance|tower/i.test(t) && /mangl|ikke.*(bekreft|innhent|avklart|koordinert)|må\s+(?:innhent|avklar|koordiner)|missing|lack|not.*(confirm|obtain|clarif|coordinat)|must\s+(?:obtain|clarif|coordinat)/i.test(t));
               });
             }
             if (cat.go_decision === 'NO-GO') {
@@ -3243,7 +3258,9 @@ serve(async (req) => {
             // Pilot har ikke bekreftet — sørg for at dette fremgår som reell bekymring.
             cat.concerns = [
               ...(Array.isArray(cat.concerns) ? cat.concerns : []),
-              `Oppdraget er innenfor 5 km-sonen og krever Ninox-/ATC-godkjenning, men piloten har ikke bekreftet at koordinering er planlagt. Avklar klarering før flyging.`,
+              outEn
+                ? 'The mission is inside the 5 km zone and requires Ninox/ATC approval, but the pilot has not confirmed that coordination is planned. Clarify clearance before flight.'
+                : `Oppdraget er innenfor 5 km-sonen og krever Ninox-/ATC-godkjenning, men piloten har ikke bekreftet at koordinering er planlagt. Avklar klarering før flyging.`,
             ];
           }
         }
@@ -3252,8 +3269,10 @@ serve(async (req) => {
       // 2) Rewrite air_risk_analysis fields
       if (aiAnalysis.air_risk_analysis) {
         const reasoning = String(aiAnalysis.air_risk_analysis.aec_reasoning || '');
-        aiAnalysis.air_risk_analysis.aec_reasoning = !insideAnyCtr && /klasse\s*d|ctr|tiz|kontrollert luftrom/i.test(reasoning)
-          ? `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Ukontrollert luftrom (klasse G) antas.`
+        aiAnalysis.air_risk_analysis.aec_reasoning = !insideAnyCtr && /klasse\s*d|class\s*d|ctr|tiz|kontrollert luftrom|controlled airspace/i.test(reasoning)
+          ? (outEn
+            ? `The operation is outside controlled airspace (CTR/TIZ). ${sum.text} Uncontrolled airspace (class G) is assumed.`
+            : `Operasjonen er utenfor kontrollert luftrom (CTR/TIZ). ${sum.text} Ukontrollert luftrom (klasse G) antas.`)
           : scrubAirportDistanceText(reasoning);
       }
 
@@ -3277,8 +3296,8 @@ serve(async (req) => {
       if (aiAnalysis.hard_stop_triggered === true && !insideAny5km && (!insideAnyCtr || ctrOverlapIsCautionOnly)) {
         const reason = String(aiAnalysis.hard_stop_reason || '').toLowerCase();
         const summaryLc = String(aiAnalysis.summary || '').toLowerCase();
-        const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|5\s*km|ninox|flyplass|lufthavn|aerodrom/.test(reason) ||
-          /ctr|tiz|kontrollert luftrom|5\s*km|ninox|flyplass|lufthavn|aerodrom/.test(summaryLc);
+        const reasonMentionsAirspace = /ctr|tiz|kontrollert luftrom|controlled airspace|5\s*km|ninox|flyplass|lufthavn|aerodrom|airport/.test(reason) ||
+          /ctr|tiz|kontrollert luftrom|controlled airspace|5\s*km|ninox|flyplass|lufthavn|aerodrom|airport/.test(summaryLc);
         const otherHardStop =
           (aiAnalysis.categories?.weather?.go_decision === 'NO-GO') ||
           (aiAnalysis.categories?.equipment?.go_decision === 'NO-GO') ||
@@ -3296,7 +3315,7 @@ serve(async (req) => {
             false,
             'go'
           );
-          aiAnalysis.summary = (aiAnalysis.summary ? aiAnalysis.summary + ' ' : '') + `(Korrigert: ${sum.text})`;
+          aiAnalysis.summary = (aiAnalysis.summary ? aiAnalysis.summary + ' ' : '') + (outEn ? `(Corrected: ${sum.text})` : `(Korrigert: ${sum.text})`);
         } else if (reasonMentionsAirspace && otherHardStop) {
           console.log('Discarding airspace-based hard-stop reason; authoritative reasons are derived after all guards:', sum.text);
           aiAnalysis.hard_stop_reason = null;
