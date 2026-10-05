@@ -875,7 +875,7 @@ const Admin = () => {
                     <Menu className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass z-50">
+                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-md border-glass">
                   <DropdownMenuItem onClick={() => navigate("/kart")}>{t('nav.map')}</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/dokumenter")}>{t('nav.documents')}</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/kalender")}>{t('nav.calendar')}</DropdownMenuItem>
@@ -1653,7 +1653,7 @@ const Admin = () => {
                                   <SelectTrigger className="w-[140px] h-10">
                                     <SelectValue placeholder={t('admin.selectRole')} />
                                   </SelectTrigger>
-                                  <SelectContent className="z-50">
+                                  <SelectContent>
                                     {availableRoles.map((role) => (
                                       <SelectItem key={role.value} value={role.value}>
                                         {t(role.labelKey)}
