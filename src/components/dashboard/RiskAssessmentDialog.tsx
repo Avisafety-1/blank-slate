@@ -195,6 +195,18 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   const { canAccess } = usePlanGating();
 
+  // Re-assessment is only allowed on the newest base assessment, or a SORA row built on it.
+  const canReassessCurrent = (() => {
+    if (!currentAssessmentId) return false;
+    if (previousAssessments.length === 0) return true;
+    const latestBase = previousAssessments.find((a: any) => a.sora_output == null);
+    if (!latestBase) return false;
+    if (latestBase.id === currentAssessmentId) return true;
+    const current: any = previousAssessments.find((a: any) => a.id === currentAssessmentId);
+    return !!current && current.sora_output != null
+      && new Date(current.created_at).getTime() >= new Date(latestBase.created_at).getTime();
+  })();
+
   const runSoraReassessment = async () => {
     if (!canAccess('sora')) {
       toast.error(t('riskAssessment.soraReassessRequiresPlan', 'SORA re-vurdering krever Grower-planen eller høyere.'));
@@ -263,7 +275,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
             return JSON.stringify({
               missionId: currentMissionId,
               soraReassessment: true,
-              previousAnalysis: currentAssessment,
+              previousAssessmentId: currentAssessmentId,
               manualGroundMitigations: groundOverridden ? ground.mitigations : undefined,
               manualAirRisk: airOverridden
                 ? {
@@ -1207,8 +1219,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       </div>
                     )}
 
-                    {/* SORA re-assessment button */}
-                    {currentAssessmentId && (
+                    {/* SORA re-assessment button (latest assessment only) */}
+                    {currentAssessmentId && canReassessCurrent && (
                       <div className="space-y-1">
                         <Button
                           onClick={() => {
