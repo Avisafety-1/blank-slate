@@ -3070,6 +3070,8 @@
       "airspace": "airspace data",
       "weather": "weather data"
     },
+    "hardStopMissionApproved": "The mission is approved — the approval has not been changed.",
+    "hardStopMissionPending": "Awaiting approval — the approver must decide.",
     "approvalDecisionWarning": "Approval warning",
     "suggestedConclusion": "Suggested conclusion",
     "exportPdf": "Export to PDF",

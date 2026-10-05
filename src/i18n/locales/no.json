@@ -3072,6 +3072,8 @@
       "airspace": "luftromsdata",
       "weather": "værdata"
     },
+    "hardStopMissionApproved": "Oppdraget er godkjent — godkjenningen er ikke endret.",
+    "hardStopMissionPending": "Venter på godkjenning — godkjenner må ta stilling.",
     "approvalDecisionWarning": "Godkjenningsvarsel",
     "suggestedConclusion": "Foreslått konklusjon",
     "exportPdf": "Eksporter til PDF",
