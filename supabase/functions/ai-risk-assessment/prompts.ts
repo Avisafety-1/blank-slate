@@ -503,19 +503,21 @@ Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i felt
 #### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
 Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
 
-**iGRC-tabell (karakteristisk dimensjon × befolkningstetthet):**
+**iGRC-tabell (SORA 2.5). Kolonne = den STRENGESTE av dimensjonsklasse og fartsklasse:**
 
-| Max dimensjon | ≤25 m/s | ≤35 m/s | ≤75 m/s | ≤120 m/s | ≤200 m/s |
+| Maks befolkningstetthet | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
 |---|---|---|---|---|---|
-| ≤1m | 1/2/3/4/5 | 1/2/3/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 |
-| ≤3m | 2/3/4/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 |
-| ≤8m | 3/4/5/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 |
-| ≤20m | 4/5/6/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 |
-| ≤40m | 5/6/7/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 | 8/9/10/10/10 |
+| Kontrollert bakkeområde | 1 | 1 | 2 | 3 | 3 |
+| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
+| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
+| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
+| < 5 000 /km² | 5 | 6 | 7 | 8 | 9 |
+| < 50 000 /km² | 6 | 7 | 8 | 9 | 10 |
+| ≥ 50 000 /km² | 7 | 8 | N/A | N/A | N/A |
 
-De 5 tallene per celle er for: Kontrollert bakkeområde / Tynt befolket (<100/km²) / Befolket (<500/km²) / Tett befolket (<1500/km²) / Folkemengder (>1500/km²).
+N/A, over 40 m eller over 200 m/s = utenfor specific-kategorien (sertifisert kategori).
 
-VIKTIG: En drone ≤250g med maks hastighet ≤25 m/s har alltid iGRC=1, uavhengig av befolkningstetthet (unntatt over folkemengder).
+VIKTIG: iGRC og fGRC er SYSTEMBEREGNET og leveres i ground_risk_analysis. Du skal GJENGI verdiene, ikke beregne dem selv. En drone ≤250g med maks hastighet ≤25 m/s har iGRC=1 (unntatt ≥ 50 000/km²).
 
 Bruk kontekstdata:
 - primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
