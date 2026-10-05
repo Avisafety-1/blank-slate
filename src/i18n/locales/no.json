@@ -1802,7 +1802,8 @@
     "generic": "Noe gikk galt",
     "noPermission": "Du har ikke tilgang til dette",
     "notFound": "Ikke funnet",
-    "loadFailed": "Kunne ikke laste data"
+    "loadFailed": "Kunne ikke laste data",
+    "notLoggedIn": "Du må være logget inn"
   },
   "roles": {
     "superadmin": "Super Administrator",
@@ -3299,7 +3300,24 @@
     "observersFromPersonnelM1c": "Hentet fra oppdragets personell ({{n}} observatør(er)). Gir M1(C)-kreditering.",
     "fromMissionNotam": "Hentet fra oppdraget/NOTAM",
     "differsFromMissionHeight": "Avviker fra oppdraget ({{value}} m AGL)",
-    "differsFromMissionMode": "Avviker fra oppdraget ({{value}})"
+    "differsFromMissionMode": "Avviker fra oppdraget ({{value}})",
+    "timeoutError": "Vurderingen tok for lang tid — prøv igjen",
+    "notSaved": "Vurderingen ble ikke lagret. Kommentarer, PDF og SORA-revurdering er ikke tilgjengelig for denne kjøringen — prøv igjen.",
+    "latestBadge": "Siste",
+    "olderBadge": "Eldre vurdering",
+    "soraBadge": "SORA",
+    "aiSoraTab": "AI SORA",
+    "recommendationShort": {
+      "go": "GO",
+      "caution": "FORSIKTIGHET",
+      "noGo": "NO-GO"
+    },
+    "goDecision": {
+      "GO": "GO",
+      "BETINGET": "BETINGET",
+      "NO-GO": "NO-GO",
+      "IKKE VURDERT": "IKKE VURDERT"
+    }
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",

@@ -1800,7 +1800,8 @@
     "generic": "Something went wrong",
     "noPermission": "You do not have access to this",
     "notFound": "Not found",
-    "loadFailed": "Could not load data"
+    "loadFailed": "Could not load data",
+    "notLoggedIn": "You must be logged in"
   },
   "roles": {
     "superadmin": "Super Administrator",
@@ -3297,7 +3298,24 @@
     "observersFromPersonnelM1c": "Taken from the mission's personnel ({{n}} observer(s)). Gives M1(C) credit.",
     "fromMissionNotam": "Taken from the mission/NOTAM",
     "differsFromMissionHeight": "Differs from the mission ({{value}} m AGL)",
-    "differsFromMissionMode": "Differs from the mission ({{value}})"
+    "differsFromMissionMode": "Differs from the mission ({{value}})",
+    "timeoutError": "The assessment took too long — please try again",
+    "notSaved": "The assessment was not saved. Comments, PDF and SORA reassessment are unavailable for this run — please try again.",
+    "latestBadge": "Latest",
+    "olderBadge": "Older assessment",
+    "soraBadge": "SORA",
+    "aiSoraTab": "AI SORA",
+    "recommendationShort": {
+      "go": "GO",
+      "caution": "CAUTION",
+      "noGo": "NO-GO"
+    },
+    "goDecision": {
+      "GO": "GO",
+      "BETINGET": "CONDITIONAL",
+      "NO-GO": "NO-GO",
+      "IKKE VURDERT": "NOT ASSESSED"
+    }
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",
