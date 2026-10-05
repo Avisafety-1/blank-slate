@@ -1371,6 +1371,7 @@ serve(async (req) => {
     
     const skipWeather = pilotInputs?.skipWeatherEvaluation === true;
 
+    const fetchWeatherTask = async () => {
     if (skipWeather) {
       console.log('Weather evaluation skipped by user request');
     } else {
@@ -1400,6 +1401,7 @@ serve(async (req) => {
         console.log('No coordinates available for weather fetch');
       }
     }
+    };
 
     // 8b. Fetch solar/geomagnetic activity (Kp-index) from NOAA SWPC
     // Always provide an object so the AI prompt can include Kp consistently, even when unavailable.
@@ -1408,6 +1410,7 @@ serve(async (req) => {
       noaaScale: 'unknown',
       level: 'unavailable',
     };
+    const fetchKpTask = async () => {
     try {
       const kpRes = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json', {
         signal: AbortSignal.timeout(5000),
@@ -1472,6 +1475,7 @@ serve(async (req) => {
     } catch (e) {
       console.error('Solar activity fetch error (non-blocking):', e);
     }
+    };
 
     // 9. Fetch airspace warnings (worst case across all routes)
     let airspaceWarnings: any[] = [];
@@ -1502,30 +1506,6 @@ serve(async (req) => {
     let airspaceCheckRan = false;
     let airspaceCheckFailed = false;
 
-    if (lat && lng) {
-      for (const run of airspaceRuns) {
-        try {
-          airspaceCheckRan = true;
-          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
-            p_lat: lat,
-            p_lng: lng,
-            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
-          });
-          if (airspaceError) {
-            console.error('Airspace check RPC error:', airspaceError);
-            airspaceCheckFailed = true;
-          } else {
-            mergeWarnings(warnings || [], run.label);
-          }
-        } catch (e) {
-          console.error('Airspace check error:', e);
-          airspaceCheckFailed = true;
-        }
-      }
-      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
-    }
-
-
     // 9a. Unified europeisk luftrom (DK/SE/DE/FI) — ADDITIV, kun når ruten
     // ligger utenfor Norge OG selskapet står på allowlisten. Norske brukere
     // og norske ruter går aldri hit — check_mission_airspace (NO) er urørt.
@@ -1554,6 +1534,37 @@ serve(async (req) => {
         if (allow) {
           unifiedAirspaceActive = true;
           console.log(`Unified airspace enabled for company ${companyId} (route outside NO)`);
+        }
+      } catch (e) {
+        console.error('Unified airspace allowlist check error (non-blocking):', e);
+      }
+    }
+
+    const fetchAirspaceTask = async () => {
+    if (lat && lng) {
+      for (const run of airspaceRuns) {
+        try {
+          airspaceCheckRan = true;
+          const { data: warnings, error: airspaceError } = await supabase.rpc('check_mission_airspace', {
+            p_lat: lat,
+            p_lng: lng,
+            p_route: run.coords ? JSON.parse(JSON.stringify(run.coords)) : null,
+          });
+          if (airspaceError) {
+            console.error('Airspace check RPC error:', airspaceError);
+            airspaceCheckFailed = true;
+          } else {
+            mergeWarnings(warnings || [], run.label);
+          }
+        } catch (e) {
+          console.error('Airspace check error:', e);
+          airspaceCheckFailed = true;
+        }
+      }
+      console.log(`Airspace warnings found (merged): ${airspaceWarnings.length}`);
+    }
+      if (unifiedAirspaceActive) {
+        try {
           for (const run of airspaceRuns) {
             airspaceCheckRan = true;
             const { data: unifiedWarnings, error: unifiedErr } = await supabase.rpc(
@@ -1571,12 +1582,12 @@ serve(async (req) => {
               mergeWarnings(unifiedWarnings || [], run.label);
             }
           }
-
+        } catch (e) {
+          console.error('Unified airspace check error (non-blocking):', e);
+          airspaceCheckFailed = true;
         }
-      } catch (e) {
-        console.error('Unified airspace check error (non-blocking):', e);
       }
-    }
+    };
 
 
 
@@ -1584,6 +1595,7 @@ serve(async (req) => {
     // Norge-only datakilde (Geonorge WFS). For unified/europeisk gren settes
     // en tydelig coverage-note i stedet slik at AI ikke skriver "0 people/km²".
     let landUseData: { categories: string[]; groundRiskClassification: string; summary: string; featureCount: Record<string, number> } | null = null;
+    const fetchLandUseTask = async () => {
     if (unifiedAirspaceActive) {
       landUseData = {
         categories: [],
@@ -1690,6 +1702,7 @@ serve(async (req) => {
         console.error('SSB Arealbruk fetch error (continuing without land use data):', e);
       }
     }
+    };
 
     // 9c. Fetch SSB 250m population density for the operational footprint (route + SORA buffers)
     let populationData: {
@@ -1739,6 +1752,7 @@ serve(async (req) => {
       return null as unknown as number;
     };
 
+    const fetchPopulationTask = async () => {
     if (popRuns.length > 0 && !unifiedAirspaceActive) {
       try {
         const soraData = mission.mission_sora?.[0];
@@ -1865,7 +1879,7 @@ serve(async (req) => {
         console.error('Eurostat population fetch error (continuing without data):', e);
       }
     }
-
+    };
 
     // 9d. Fetch company-specific SORA config
     // Inheritance rules:
@@ -1878,6 +1892,7 @@ serve(async (req) => {
     let linkedDocumentSummary = '';
     let companyRequireSora = false;
     const soraSelect = 'max_wind_speed_ms, max_wind_gust_ms, max_visibility_km, max_flight_altitude_m, require_backup_battery, require_observer, min_temp_c, max_temp_c, allow_bvlos, allow_night_flight, require_civil_twilight, max_pilot_inactivity_days, max_population_density_per_km2, operative_restrictions, policy_notes, linked_document_ids';
+    const fetchSoraConfigTask = async () => {
     if (companyId) {
       try {
         const { data: companyRow } = await supabase
@@ -1943,6 +1958,30 @@ serve(async (req) => {
         console.error('Error fetching company SORA config (using defaults):', e);
       }
     }
+    };
+
+    // Independent data sources run in parallel; one failure never stops the others.
+    const sourceDurations: Record<string, number> = {};
+    const timed = (name: string, task: () => Promise<void>) => async () => {
+      const t0 = Date.now();
+      try {
+        await task();
+      } finally {
+        sourceDurations[name] = Date.now() - t0;
+      }
+    };
+    const dataSourceResults = await Promise.allSettled([
+      timed('weather', fetchWeatherTask)(),
+      timed('kp', fetchKpTask)(),
+      timed('airspace', fetchAirspaceTask)(),
+      timed('landUse', fetchLandUseTask)(),
+      timed('population', fetchPopulationTask)(),
+      timed('soraConfig', fetchSoraConfigTask)(),
+    ]);
+    dataSourceResults.forEach((r, idx) => {
+      if (r.status === 'rejected') console.error(`Data source ${idx} failed (non-blocking):`, r.reason);
+    });
+    console.log('Data source durations (ms):', JSON.stringify(sourceDurations));
 
     // 9e. Calculate civil twilight if required
     let civilTwilightInfo: { dawn: string; dusk: string } | null = null;
