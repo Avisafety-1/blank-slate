@@ -17,6 +17,8 @@ interface HardStopInput {
     maxTempC: number;
   };
   equipmentReason?: string | null;
+  /** Backup-battery rule: only evaluated when required is true. */
+  backupBattery?: { required: boolean; count: number } | null;
   assignedPilotCount: number;
   competencyReason?: string | null;
   daysSinceLastFlight: number | null;
@@ -77,6 +79,13 @@ export const deriveHardStops = (input: HardStopInput): HardStopReason[] => {
 
   if (input.equipmentReason) {
     reasons.push({ code: 'equipment_red', category: 'equipment', text: input.equipmentReason });
+  }
+
+  if (input.backupBattery?.required && input.backupBattery.count < 2) {
+    const n = input.backupBattery.count;
+    add('backup_battery', 'equipment',
+      `Selskapet krever reservebatteri, men oppdraget har bare ${n} batteri(er)`,
+      `The company requires a backup battery, but the mission only has ${n} battery(ies)`);
   }
 
   if (input.assignedPilotCount === 0) {
