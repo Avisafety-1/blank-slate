@@ -4,6 +4,7 @@ import { deriveHardStops, joinHardStopReasons, type HardStopReason } from './har
 import { lookupSail } from './soraGroundRisk.ts';
 import { countBatteries, describeBatteries, type EquipmentLike } from './batteryCount.ts';
 import { deriveFogAdvisory, type FogAdvisory } from './fog.ts';
+import { classifyOperation, type OperationClassification, type OperationClassificationInput } from './operationCategory.ts';
 import { resolveContainment, type ContainmentDecision } from './containment.ts';
 
 type HardStopInput = Parameters<typeof deriveHardStops>[0];
@@ -11,6 +12,7 @@ type HardStopInput = Parameters<typeof deriveHardStops>[0];
 export interface SystemDecisionsInput {
   /** mission.route.adjacentAreaDocumentation from the map. */
   containmentDoc?: unknown;
+  operation?: Omit<OperationClassificationInput, 'lang'>;
   hardStopInput: Omit<HardStopInput, 'backupBattery'>;
   requireBackupBattery: boolean;
   missionEquipment: EquipmentLike[];
@@ -62,6 +64,7 @@ export interface SystemDecisions {
   };
   fog: FogAdvisory | null;
   containment: ContainmentDecision;
+  operationCategory: OperationClassification;
   dataAvailability: SystemDecisionsInput['dataAvailability'];
   airspace: SystemDecisionsInput['airspace'];
 }
@@ -77,16 +80,25 @@ export const buildSystemDecisions = (input: SystemDecisionsInput): SystemDecisio
   const sail = lookupSail(input.groundRisk?.fgrc ?? null, arcLetter);
   const certifiedCategory = sail.certified || input.groundRisk?.outside_sora === true;
   const sailLabel = sail.sail ? `SAIL ${sail.sail}` : null;
-  const containment = resolveContainment(
+  const operationCategory = classifyOperation({
+    isVlos: input.operation?.isVlos ?? input.hardStopInput.isVlos,
+    flightHeightM: input.operation?.flightHeightM ?? input.hardStopInput.flightHeightM,
+    ...input.operation,
+    lang: lang === 'en' ? 'en' : 'no',
+  });
+  const containmentRaw = resolveContainment(
     input.containmentDoc,
     sailLabel,
     lang === 'en' ? 'en' : 'no',
     certifiedCategory
       ? (lang === 'en' ? 'certified category (outside specific/SORA)' : 'sertifisert kategori (utenfor specific/SORA)')
       : null,
+    operationCategory.category,
   );
+  const containment = { ...containmentRaw, operationCategory: operationCategory.category, operationReasons: operationCategory.reasons };
   return {
     containment,
+    operationCategory,
     hardStops,
     hardStopTriggered: hardStops.length > 0,
     hardStopReason: joinHardStopReasons(hardStops),
