@@ -373,19 +373,151 @@ Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i felt
 #### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
 Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
 
-**iGRC-tabell (karakteristisk dimensjon × befolkningstetthet):**
+**iGRC-tabell (SORA 2.5). Kolonne = den STRENGESTE av dimensjonsklasse og fartsklasse:**
 
-| Max dimensjon | ≤25 m/s | ≤35 m/s | ≤75 m/s | ≤120 m/s | ≤200 m/s |
+| Maks befolkningstetthet | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
 |---|---|---|---|---|---|
-| ≤1m | 1/2/3/4/5 | 1/2/3/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 |
-| ≤3m | 2/3/4/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 |
-| ≤8m | 3/4/5/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 |
-| ≤20m | 4/5/6/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 |
-| ≤40m | 5/6/7/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 | 8/9/10/10/10 |
+| Kontrollert bakkeområde | 1 | 1 | 2 | 3 | 3 |
+| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
+| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
+| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
+| < 5 000 /km² | 5 | 6 | 7 | 8 | 9 |
+| < 50 000 /km² | 6 | 7 | 8 | 9 | 10 |
+| ≥ 50 000 /km² | 7 | 8 | N/A | N/A | N/A |
 
-De 5 tallene per celle er for: Kontrollert bakkeområde / Tynt befolket (<100/km²) / Befolket (<500/km²) / Tett befolket (<1500/km²) / Folkemengder (>1500/km²).
+N/A, over 40 m eller over 200 m/s = utenfor specific-kategorien (sertifisert kategori).
 
-VIKTIG: En drone ≤250g med maks hastighet ≤25 m/s har alltid iGRC=1, uavhengig av befolkningstetthet (unntatt over folkemengder).
+VIKTIG: iGRC og fGRC er SYSTEMBEREGNET og leveres i ground_risk_analysis. Du skal GJENGI verdiene, ikke beregne dem selv. En drone ≤250g med maks hastighet ≤25 m/s har iGRC=1 (unntatt ≥ 50 000/km²).
+
+Bruk kontekstdata:
+- airspace.summary.inside_controlled_airspace: true → kontrollert luftrom
+- airspace.summary.inside_5km_zone / flyplassnære soner → flyplass-/heliportmiljø
+- pilotInputs.flightHeight: over/under 500 ft (~152 m AGL)
+- populationDensity/landUse: urbant vs landlig
+- Hvis ingen luftromsadvarsler: anta ukontrollert (klasse G)
+
+
+#### KRITISK: Tolkning av luftromsadvarsler (airspace.warnings og airspace.summary)
+Server har FORHÅNDSBEREGNET autoritativ tekst. Du MÅ bruke disse feltene som fasit og IKKE finne på egen tolkning:
+
+- airspace.summary.text — autoritativ ett-setnings oppsummering. Bruk den (eller en svært nær parafrase) ordrett i air_risk_analysis.actual_conditions og i fritekstforklaringen for luftrom.
+- airspace.summary.requires_ninox_approval (boolean) — den ENESTE sannheten for om Ninox-godkjenning kreves pga. 5 km-sonen. Hvis false, IKKE skriv at oppdraget krever Ninox-godkjenning eller at det er innenfor 5 km-sonen. Hvis true, nevn det eksplisitt.
+- airspace.summary.inside_controlled_airspace (boolean) — kun nevn «innenfor kontrollert luftrom (CTR/TIZ)» når denne er true.
+- airspace.summary.distance_semantics — forklarer at ALLE avstander er til sonens yttergrense.
+- Hver warnings[i].description — server-generert tekst per sone. Gjengi denne ordrett heller enn å omformulere selv.
+- Hver warnings[i].inside (boolean) — true = ruten er INNE I sonen, false = ruten er UTENFOR sonen.
+- Hver warnings[i].distance (meter) — avstand til SONENS YTTERGRENSE (polygon-boundary). For 5KM betyr 329 m at man er 329 m utenfor 5 km-radiusen, dvs. ~5,3 km fra selve flyplassen.
+
+ABSOLUTTE FORBUD:
+- Skriv ALDRI at oppdraget er «innenfor» en sone når inside = false.
+- Skriv ALDRI at oppdraget krever Ninox-godkjenning når airspace.summary.requires_ninox_approval = false.
+- Tolk ALDRI navnet på en sone (f.eks. «5 km Flesland») som bevis på at ruten er inne i den. Bruk kun inside-flagget og description.
+- En 5KM- eller CTR/TIZ-advarsel med inside=false skal IKKE automatisk gi klasse D. Fall tilbake på klasse G hvis ruten er klart utenfor kontrollert luftrom.
+- UTLØS ALDRI HARD STOP på grunn av nærhet til CTR/TIZ eller 5 km-sone. HARD STOP for luftrom kan KUN utløses når airspace.summary.inside_controlled_airspace = true OG ingen klarering er dokumentert. Nærhet (selv få hundre meter) er INFO/CAUTION, ikke no-go.
+- Det er FULLT LOVLIG å fly utenfor 5 km-sonen så lenge man holder seg under 120 m AGL — dette krever IKKE Ninox eller spesiell godkjenning og skal ikke gi no-go.
+- CTR/TIZ-overlapp UTENFOR 5 km-sonen ved maks 120 m AGL: 100 % lovlig. Skriv ALDRI at piloten må «kontakte tårnet», «få klarering», «avklare med ATC», «kreves aktiv handling» eller lignende. Skriv kun en kort aktsomhets­advarsel om bemannet trafikk.
+- KRITISK AVSTANDSFEIL — FORBUDT: Beskriv ALDRI warnings[i].distance (for 5KM/CTR/TIZ/NSM) som avstand til «flyplassen», «lufthavnen», «aerodromen», «tårnet», «anlegget» eller noe punkt-feature. Det er ALLTID avstand til sonens polygon-yttergrense. For 5KM-soner: hvis distance=329 m, så er flyplassen ~5,33 km unna (ikke 329 m). Skriv heller «329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen».
+
+### SMÅFLYPLASS — 5 KM SONE (ATZ_5KM)
+- type = «ATZ_5KM» betyr 5 km-sone rundt en småflyplass (ATZ — Aerodrome Traffic Zone, f.eks. Eggemoen, Gvarv, Starmoen). Dette er IKKE en Avinor-aerodrome og IKKE en kontrollert luftromssone.
+- Hvis airspace.summary.inside_small_airfield_5km_zone = true (eller en ATZ_5KM-advarsel har inside=true): Skriv eksplisitt i airspace.actual_conditions og som concern at piloten må kontakte flyplassen før flyging og sjekke myppr.no for PPR (Prior Permission Required). Trekk litt på airspace.score (typisk –1 til –2), men IKKE no-go og IKKE hard stop.
+- Krever IKKE Ninox-godkjenning, IKKE ATC-klarering, IKKE tårnkontakt. Bland ALDRI ATZ_5KM med vanlig 5KM (Avinor) i tekst eller konklusjon.
+
+### ATC / NINOX-KOORDINERING (pilotInputs.atcRequired)
+Feltet pilotInputs.atcRequired (boolean) er pilotens egen bekreftelse på at ATC-/Ninox-koordinering er planlagt og vil bli innhentet før flyging.
+
+- Hvis airspace.summary.requires_ninox_approval = true (oppdrag er innenfor 5 km-sonen):
+  - atcRequired = true: Behandle Ninox/ATC-godkjenning som PLANLAGT og DOKUMENTERT. Dette er en POSITIV strategisk mitigering. Skriv eksplisitt at piloten har bekreftet at klarering vil innhentes. ØK airspace.score med +2 (men ikke over 9), endre go_decision fra NO-GO til BETINGET/GO, og legg til en positiv setning i factors om at ATC-koordinering er bekreftet. IKKE skriv at «manglende klarering er en bekymring» eller at det er en NO-GO.
+  - atcRequired = false: Dette er en reell bekymring. Skriv at piloten IKKE har bekreftet Ninox-koordinering, behold NO-GO/CAUTION, og krev at klarering må innhentes før flyging.
+- Hvis airspace.summary.requires_ninox_approval = false (utenfor 5 km-sonen): atcRequired er irrelevant — ikke kommenter på det og ikke gi verken trekk eller bonus for det.
+
+
+Eksempel feil → riktig:
+- FEIL: «Operasjonsområdet ligger 329 m fra Trondheim lufthavn, Værnes.»
+- FEIL: «Operasjonsområdet ligger innenfor kontrollert luftrom (CTR) og 5 km-sonen for Værnes (329 meters avstand).»
+- RIKTIG (når begge er inside=false): «Operasjonsområdet ligger utenfor kontrollert luftrom (CTR) og utenfor 5 km-sonen rundt Trondheim lufthavn, Værnes — 329 m utenfor 5 km-sonens yttergrense, som tilsvarer ca. 5,33 km fra selve flyplassen. Ingen Ninox-godkjenning kreves.»
+
+
+#### Steg 2: Bestem initiell ARC (iARC)
+Sett iARC direkte fra AEC-tabellen ovenfor.
+
+#### Steg 3: Vurder strategiske mitigeringer (kan redusere ARC) — Annex C, Tabell 2
+ARC kan KUN reduseres etter Tabell 2, ved å dokumentere at den lokale lufttrafikktettheten er lavere enn den generaliserte tettheten for AEC-en. Referansemiljøet for tetthetsvurdering er alltid AEC 10 (<500 ft AGL over landlig område).
+
+| AEC | Tetthet (A) | iARC (B) | Dokumentert lokal tetthet (C) | Residual ARC (D) |
+|-----|-------------|----------|-------------------------------|------------------|
+| AEC 1 eller 2 | 5 | ARC-d | 4 eller 3 | ARC-c |
+| AEC 1 eller 2 | 5 | ARC-d | 2 eller 1 | ARC-b |
+| AEC 3 | 4 | ARC-d | 3 eller 2 | ARC-c |
+| AEC 3 | 4 | ARC-d | 1 | ARC-b |
+| AEC 4 | 3 | ARC-c | 1 | ARC-b |
+| AEC 5 | 2 | ARC-c | 1 | ARC-b |
+| AEC 6, 7 eller 8 | 3 | ARC-c | 1 | ARC-b |
+| AEC 9 | 2 | ARC-c | 1 | ARC-b |
+
+- AEC 10 og AEC 11 kan IKKE reduseres via Tabell 2.
+- Reduksjon til ARC-a er kun mulig hvis alle krav til atypisk/segregert luftrom (Annex G, seksjon 3.20(d)) er oppfylt og dokumentert.
+- Enhver reduksjon krever dokumentasjon og godkjenning fra myndighet (Luftfartstilsynet). IKKE reduser ARC automatisk — foreslå reduksjon kun når det finnes konkret grunnlag, og forklar hva som må dokumenteres.
+
+Eksempler på grunnlag for lavere lokal tetthet: avgrenset operasjonsområde med lite bemannet trafikk, tidspunkt med lav trafikkforventning, kort eksponeringstid, NOTAM publisert på forhånd, elektronisk synlighet (ADS-B/ADS-L, SafeSky), koordinering/klarering med lufttrafikktjeneste (Ninox).
+
+Atypisk luftrom (ARC-a) er definert som luftrom der risiko for kollisjon mellom drone og bemannet luftfart er akseptabelt lav uten taktiske mitigeringer. Eksempler: reservert luftrom, operasjoner i svært lav høyde nær objekter/bakken (under 30 m over bakken, eller innenfor 30 m fra hindre under 20 m, eller innenfor 15 m fra hindre over 20 m).
+
+
+#### Steg 4: Bestem residual ARC
+Sett residual ARC etter å ha vurdert alle relevante mitigeringer.
+
+#### Steg 5: Bestem TMPR-nivå og krav
+Basert på residual ARC og flygemodus:
+
+| Residual ARC | TMPR-nivå | Robusthetsnivå |
+|---|---|---|
+| ARC-d | High | Høy |
+| ARC-c | Medium | Middels |
+| ARC-b | Low | Lav |
+| ARC-a | None | Ingen krav |
+
+VLOS-operasjon eller BVLOS med luftromsobservatør anses som akseptabel taktisk mitigering for alle ARC-klasser.
+
+For BVLOS uten observatør, angi spesifikke TMPR-krav for de 5 funksjonene:
+- **Detect**: Hvordan detektere bemannet trafikk (ADS-B mottaker, SafeSky, Flightradar24, FLARM/ADS-L)
+- **Decide**: Dokumentert unnvikelsesprosedyre
+- **Command**: C2-link latenskrav
+- **Execute**: Dronens evne til å utføre unnvikelsesmanøver
+- **Feedback Loop**: Oppdateringsrate og latens for posisjonsinformasjon
+
+#### Steg 6: Deteksjonsanbefalinger
+Anbefal konkrete deteksjonssystemer basert på operasjonstype og luftrom:
+- Innebygd ADS-B mottaker (1090 MHz)
+- ADS-L mottaker (868 MHz, for seilfly/FLARM)
+- SafeSky (app-basert posisjonsdeling)
+- Flightradar24 (sjekk dekningsgrad for operasjonsområdet)
+- Luftromsobservatør (maks 1-3 km fra observatør)
+- Flyradio (lytte på relevant frekvens nær landingsplasser)
+
+Hvis operasjonen er VLOS, sett vlos_exemption=true og forenkle TMPR-kravene.
+
+### BAKKERISIKO — iGRC OG fGRC (EASA SORA Steg 2-3)
+Du SKAL alltid utføre en strukturert bakkerisikoanalyse og returnere den i feltet "ground_risk_analysis".
+
+#### Steg 1: Bestem iGRC (Inherent Ground Risk Class)
+Bruk dronens karakteristiske dimensjon (diagonalt mellom propelltuppene for multirotor, vingespenn for fly) og maks hastighet.
+
+**iGRC-tabell (SORA 2.5). Kolonne = den STRENGESTE av dimensjonsklasse og fartsklasse:**
+
+| Maks befolkningstetthet | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
+|---|---|---|---|---|---|
+| Kontrollert bakkeområde | 1 | 1 | 2 | 3 | 3 |
+| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
+| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
+| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
+| < 5 000 /km² | 5 | 6 | 7 | 8 | 9 |
+| < 50 000 /km² | 6 | 7 | 8 | 9 | 10 |
+| ≥ 50 000 /km² | 7 | 8 | N/A | N/A | N/A |
+
+N/A, over 40 m eller over 200 m/s = utenfor specific-kategorien (sertifisert kategori).
+
+VIKTIG: iGRC og fGRC er SYSTEMBEREGNET og leveres i ground_risk_analysis. Du skal GJENGI verdiene, ikke beregne dem selv. En drone ≤250g med maks hastighet ≤25 m/s har iGRC=1 (unntatt ≥ 50 000/km²).
 
 Bruk kontekstdata:
 - primaryDrone/assignedDrones: Finn modell → estimer dimensjon og vekt
@@ -414,7 +546,7 @@ SSB-metode for populationDensity:
 - Low robusthet (-1): Observatør overvåker overflyst område og pilot justerer flygemønster
 - M1(C) krediteres automatisk når mission.observers.m1cEligible >= 1 eller pilotInputs.observerCount >= 1. Luftrom-only observatører gir ikke M1(C).
 
-**M2 — Redusert treffenergi (fallskjerm e.l.):**
+**M2 — Redusert treffenergi (fallskjerm e.l.):** Krediteres ALDRI automatisk ut fra utstyrsnavn — kun ved operatørens manuelle valg med dokumentert MoC/DVR-grunnlag.
 - Medium robusthet (-1): MoC 2512 for energidempning
 - High robusthet (-2): EASA Design Verification Report (DVR)
 
@@ -597,7 +729,7 @@ Returner en JSON-respons med denne strukturen:
     "characteristic_dimension": "<estimert største dimensjon, f.eks. '1m', '3m', '8m'>",
     "max_speed_category": "<estimert maks hastighet, f.eks. '25 m/s', '35 m/s'>",
     "drone_weight_kg": <estimert MTOW i kg>,
-    "population_density_band": "<Kontrollert bakkeområde|Tynt befolket (<100/km²)|Befolket (<500/km²)|Tett befolket (<1500/km²)|Folkemengder (>1500/km²)>",
+    "population_density_band": "<gjengi systemets bånd: Kontrollert bakkeområde|< 5|< 50|< 500|< 5 000|< 50 000|≥ 50 000 personer/km²>",
     "population_density_description": "<kort beskrivelse av området>",
     "population_density_value": <befolkningstetthet per km², bruk populationDensity.maxDensity når tilgjengelig>,
     "population_density_calculation": "<SSB 250 m-beregning, f.eks. '12 personer i 250 m-rute × 16 = 192 personer/km²'>",
@@ -955,19 +1087,21 @@ You SHALL always perform a structured ground risk analysis and return it in the 
 #### Step 1: Determine iGRC (Inherent Ground Risk Class)
 Use the drone's characteristic dimension (diagonal between propeller tips for multirotor, wingspan for fixed wing) and max speed.
 
-**iGRC table (characteristic dimension × population density):**
+**iGRC table (SORA 2.5). Column = the STRICTEST of dimension class and speed class:**
 
-| Max dimension | ≤25 m/s | ≤35 m/s | ≤75 m/s | ≤120 m/s | ≤200 m/s |
+| Max population density | ≤1 m / ≤25 m/s | ≤3 m / ≤35 m/s | ≤8 m / ≤75 m/s | ≤20 m / ≤120 m/s | ≤40 m / ≤200 m/s |
 |---|---|---|---|---|---|
-| ≤1m | 1/2/3/4/5 | 1/2/3/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 |
-| ≤3m | 2/3/4/5/6 | 2/3/4/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 |
-| ≤8m | 3/4/5/6/7 | 3/4/5/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 |
-| ≤20m | 4/5/6/7/8 | 4/5/6/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 |
-| ≤40m | 5/6/7/8/9 | 5/6/7/9/10 | 6/7/8/10/10 | 7/8/9/10/10 | 8/9/10/10/10 |
+| Controlled ground area | 1 | 1 | 2 | 3 | 3 |
+| < 5 /km² | 2 | 3 | 4 | 5 | 6 |
+| < 50 /km² | 3 | 4 | 5 | 6 | 7 |
+| < 500 /km² | 4 | 5 | 6 | 7 | 8 |
+| < 5,000 /km² | 5 | 6 | 7 | 8 | 9 |
+| < 50,000 /km² | 6 | 7 | 8 | 9 | 10 |
+| ≥ 50,000 /km² | 7 | 8 | N/A | N/A | N/A |
 
-The 5 numbers per cell are for: Controlled ground area / Sparsely populated (<100/km²) / Populated (<500/km²) / Densely populated (<1500/km²) / Crowds (>1500/km²).
+N/A, above 40 m or above 200 m/s = outside the specific category (certified category).
 
-IMPORTANT: A drone ≤250g with max speed ≤25 m/s always has iGRC=1, regardless of population density (except over crowds).
+IMPORTANT: iGRC and fGRC are SYSTEM-CALCULATED and delivered in ground_risk_analysis. You must REPRODUCE the values, not calculate them yourself. A drone ≤250g with max speed ≤25 m/s has iGRC=1 (except ≥ 50,000/km²).
 
 Use context data:
 - primaryDrone/assignedDrones: Find the model → estimate dimension and weight
@@ -996,7 +1130,7 @@ SSB method for populationDensity:
 - Low robustness (-1): Observer monitors the overflown area and the pilot adjusts the flight pattern
 - M1(C) is credited automatically when mission.observers.m1cEligible >= 1 or pilotInputs.observerCount >= 1. Airspace-only observers do not give M1(C).
 
-**M2 — Reduced impact energy (parachute etc.):**
+**M2 — Reduced impact energy (parachute etc.):** NEVER credited automatically from equipment names — only by the operator's manual selection with a documented MoC/DVR basis.
 - Medium robustness (-1): MoC 2512 for energy attenuation
 - High robustness (-2): EASA Design Verification Report (DVR)
 
@@ -1179,7 +1313,7 @@ Return a JSON response with this structure:
     "characteristic_dimension": "<estimated largest dimension, e.g. '1m', '3m', '8m'>",
     "max_speed_category": "<estimated max speed, e.g. '25 m/s', '35 m/s'>",
     "drone_weight_kg": <estimated MTOW in kg>,
-    "population_density_band": "<Controlled ground area|Sparsely populated (<100/km²)|Populated (<500/km²)|Densely populated (<1500/km²)|Crowds (>1500/km²)>",
+    "population_density_band": "<reproduce the system band: Controlled ground area|< 5|< 50|< 500|< 5,000|< 50,000|≥ 50,000 people/km²>",
     "population_density_description": "<short description of the area>",
     "population_density_value": <population density per km², use populationDensity.maxDensity when available>,
     "population_density_calculation": "<SSB 250 m calculation, e.g. '12 people in 250 m cell × 16 = 192 people/km²'>",
@@ -1291,7 +1425,7 @@ Hvis en kommentar er tom eller bare en bekreftelse ("ok"/"ja"/"greit"): behandle
 
 Hvis du er i tvil om en faktapåstand har dekning i input: IKKE skriv den. Skriv heller "ikke spesifisert" eller utelat detaljen.
 
-VIKTIG: Brukerens manuelle kommentarer KAN inneholde ytterligere mitigeringer som reduserer fGRC og/eller ARC — men KUN når kommentaren konkret beskriver et tiltak. Juster fGRC/ARC kun da, og bare for den kategorien kommentaren gjelder.
+VIKTIG: fGRC, residual ARC og SAIL er systemberegnet og oppgitt i forespørselen. Du skal GJENGI dem og kun beskrive mitigeringer. Juster ALDRI tallene ut fra fritekst i kommentarene.
 
 ### KONSISTENS MELLOM SCORE OG ANBEFALING
 - overall_score 7.0-10.0 skal gi recommendation="go".
@@ -1300,7 +1434,7 @@ VIKTIG: Brukerens manuelle kommentarer KAN inneholde ytterligere mitigeringer so
 - En score på 5.0 er forhøyet risiko som krever tiltak, men er IKKE no-go alene.
 
 ### STEG 7: SAIL-OPPSLAG (EKSAKT MATRISE)
-Bruk den endelige fGRC (etter alle mitigeringer inkl. brukerkommentarer) og residual ARC for å slå opp SAIL:
+SAIL er systemberegnet fra oppgitt fGRC og residual ARC (matrisen under er kun til referanse):
 
 fGRC\\ARC:   a      b      c      d
 ≤2           I      II     IV     VI
@@ -1432,8 +1566,8 @@ Returner denne JSON-strukturen:
 
 ### VURDERINGSPRINSIPPER
 - iGRC bestemmes av operasjonsmiljø og dronens egenskaper (vekt, hastighet)
-- fGRC = iGRC justert ned basert på bakkemitigeringer (sperringer, ERP, fallskjerm) OG brukerens kommentarer
-- Brukerens kommentarer kan inneholde ytterligere mitigeringer som SKAL påvirke fGRC og/eller ARC
+- fGRC er systemberegnet fra iGRC og krediterte bakkemitigeringer; gjengi den
+- Brukerens kommentarer endrer ALDRI fGRC/ARC/SAIL — beskriv dem kun som mitigeringer
 - ARC bestemmes av luftromstype og trafikktetthet, justert av brukerens luftromsmitigeringer
 - SAIL = EKSAKT oppslag i matrisen basert på endelig fGRC og residual ARC
 - Vær konservativ, men anerkjenn dokumenterte mitigeringer fra brukerens kommentarer`;
@@ -1462,7 +1596,7 @@ If a comment is empty or only an acknowledgement ("ok"/"yes"/"fine"): treat the 
 
 If you are in doubt whether a factual claim has coverage in the input: DO NOT write it. Write "not specified" or omit the detail instead.
 
-IMPORTANT: The user's manual comments MAY contain additional mitigations that reduce fGRC and/or ARC — but ONLY when the comment concretely describes a measure. Adjust fGRC/ARC only then, and only for the category the comment applies to.
+IMPORTANT: fGRC, residual ARC and SAIL are system-calculated and given in the request. You must REPRODUCE them and only describe mitigations. NEVER adjust the numbers based on free text in the comments.
 
 ### CONSISTENCY BETWEEN SCORE AND RECOMMENDATION
 - overall_score 7.0-10.0 must give recommendation="go".
@@ -1471,7 +1605,7 @@ IMPORTANT: The user's manual comments MAY contain additional mitigations that re
 - A score of 5.0 is elevated risk requiring action, but is NOT no-go on its own.
 
 ### STEP 7: SAIL LOOKUP (EXACT MATRIX)
-Use the final fGRC (after all mitigations including pilot comments) and residual ARC to look up SAIL:
+SAIL is system-calculated from the given fGRC and residual ARC (matrix below is for reference only):
 
 fGRC\\ARC:   a      b      c      d
 ≤2           I      II     IV     VI
@@ -1603,8 +1737,8 @@ Return this JSON structure:
 
 ### ASSESSMENT PRINCIPLES
 - iGRC is determined by operating environment and drone properties (weight, speed)
-- fGRC = iGRC reduced based on ground mitigations (barriers, ERP, parachute) AND pilot comments
-- Pilot comments may contain additional mitigations that MUST affect fGRC and/or ARC
+- fGRC is system-calculated from iGRC and credited ground mitigations; reproduce it
+- Pilot comments NEVER change fGRC/ARC/SAIL — describe them only as mitigations
 - ARC is determined by airspace type and traffic density, adjusted by pilot's airspace mitigations
 - SAIL = EXACT lookup in the matrix based on final fGRC and residual ARC
 - Be conservative, but acknowledge documented mitigations from pilot comments`;
@@ -1676,10 +1810,11 @@ Droner på oppdraget (primærdrone først): ${JSON.stringify(facts.droneModels)}
   const overrideBlockEn = mo
     ? `
 
-### Operator manual overrides (BINDING — these values are already decided and MUST be used exactly)
+### System-determined fGRC / ARC / SAIL and operator overrides (BINDING — these values are already decided and MUST be used exactly)
 ${JSON.stringify(mo, null, 2)}
 
 Rules for these overrides:
+- If certified_category is true, SAIL is null: write "Certified category — not within specific/SORA" and never state a SAIL.
 - Use the given fGRC, residual ARC and SAIL as-is. Do NOT recompute, question or contradict them, and do not describe a different fGRC/ARC/SAIL anywhere in the narrative.
 - Only the mitigations marked as applied (with their robustness level) count as ground mitigations; describe the others as not applied.
 - If an atypical/segregated airspace declaration (AEC 12 / ARC-a) is present, treat it as an operator declaration requiring documentation and authority acceptance, not as a table reduction.
@@ -1690,10 +1825,11 @@ Rules for these overrides:
   const overrideBlockNo = mo
     ? `
 
-### Manuelle overstyringer fra operatør (BINDENDE — disse verdiene er allerede bestemt og SKAL brukes eksakt)
+### Systemberegnet fGRC / ARC / SAIL og operatørens overstyringer (BINDENDE — disse verdiene er allerede bestemt og SKAL brukes eksakt)
 ${JSON.stringify(mo, null, 2)}
 
 Regler for disse overstyringene:
+- Hvis certified_category er true, er SAIL null: skriv "Sertifisert kategori — ikke innenfor specific/SORA" og oppgi aldri en SAIL.
 - Bruk oppgitt fGRC, residual ARC og SAIL som de er. IKKE beregn på nytt, betvil eller motsi dem, og ikke beskriv en annen fGRC/ARC/SAIL noe sted i teksten.
 - Kun mitigeringer merket som anvendt (med sitt robusthetsnivå) teller som bakkemitigeringer; de øvrige beskrives som ikke anvendt.
 - Hvis atypisk/segregert luftrom (AEC 12 / ARC-a) er erklært, skal det behandles som en operatørerklæring som krever dokumentasjon og aksept fra myndighet, ikke som en tabellreduksjon.
@@ -1719,7 +1855,7 @@ ${JSON.stringify(pilotComments, null, 2)}
 
 For every category in the acknowledgement-only list, you MUST keep the original assessment's score, hard stops and concerns unchanged. Do not invent observers, training, equipment, drones, NOTAMs, clearances or any other facts to explain them away.
 
-IMPORTANT: Consider the pilot's comments carefully ONLY for the substantive categories. They may contain mitigations that reduce fGRC and/or ARC further. Adjust fGRC/ARC accordingly BEFORE computing SAIL from the matrix. Never introduce a drone model, equipment, crew member, training event, or operational fact that is not explicitly present in the initial assessment or a substantive comment.
+IMPORTANT: Consider the pilot's comments carefully ONLY for the substantive categories. Describe any mitigations they contain, but do NOT change the given fGRC, ARC or SAIL. Never introduce a drone model, equipment, crew member, training event, or operational fact that is not explicitly present in the initial assessment or a substantive comment.
 
 ${overrideBlockEn}
 
@@ -1740,7 +1876,7 @@ ${JSON.stringify(pilotComments, null, 2)}
 
 For hver kategori i bekreftelseslisten SKAL du beholde opprinnelig vurderings score, hard stops og bekymringer uendret. Ikke finn på observatører, trening, utstyr, droner, NOTAM, klareringer eller andre fakta for å bortforklare dem.
 
-VIKTIG: Vurder brukerens kommentarer nøye KUN for de substansielle kategoriene. De kan inneholde mitigeringer som reduserer fGRC og/eller ARC ytterligere. Juster fGRC/ARC deretter FØR du beregner SAIL fra matrisen. Du skal aldri introdusere en dronemodell, utstyr, mannskap, treningshendelse eller operativt faktum som ikke eksplisitt er til stede i den opprinnelige vurderingen eller en substansiell kommentar.
+VIKTIG: Vurder brukerens kommentarer nøye KUN for de substansielle kategoriene. Beskriv eventuelle mitigeringer de inneholder, men IKKE endre oppgitt fGRC, ARC eller SAIL. Du skal aldri introdusere en dronemodell, utstyr, mannskap, treningshendelse eller operativt faktum som ikke eksplisitt er til stede i den opprinnelige vurderingen eller en substansiell kommentar.
 
 ${overrideBlockNo}
 

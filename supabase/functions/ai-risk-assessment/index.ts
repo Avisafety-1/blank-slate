@@ -4,8 +4,10 @@ import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt,
 import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
 import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
+import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
+import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { deriveHardStops, joinHardStopReasons, preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
-import { buildCompetencyReason, bvlosAssumptionNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
+import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
 import { readMissionSoraDocument } from "./soraDocument.ts";
 
@@ -133,44 +135,6 @@ const formatLocaleNumber = (value: number, maximumFractionDigits = 0, lang: Lang
     minimumFractionDigits: maximumFractionDigits,
   });
 
-const derivePopulationDensityBand = (densityPerKm2: number, lang: Lang = 'no'): string => {
-  if (lang === 'en') {
-    if (densityPerKm2 <= 0) return 'Controlled ground area / uninhabited';
-    if (densityPerKm2 < 100) return 'Sparsely populated (<100/km²)';
-    if (densityPerKm2 < 500) return 'Populated (<500/km²)';
-    if (densityPerKm2 < 1500) return 'Densely populated (<1500/km²)';
-    return 'Gatherings of people / very densely populated (>1500/km²)';
-  }
-  if (densityPerKm2 <= 0) return 'Kontrollert bakkeområde / ubebodd';
-  if (densityPerKm2 < 100) return 'Tynt befolket (<100/km²)';
-  if (densityPerKm2 < 500) return 'Befolket (<500/km²)';
-  if (densityPerKm2 < 1500) return 'Tett befolket (<1500/km²)';
-  return 'Folkemengder / svært tett befolket (>1500/km²)';
-};
-
-const GRC_DIMENSION_LIMITS = [1, 3, 8, 20, 40];
-const GRC_SPEED_LIMITS = [25, 35, 75, 120, 200];
-const GRC_MATRIX = [
-  [[1, 2, 3, 4, 5], [1, 2, 3, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9]],
-  [[2, 3, 4, 5, 6], [2, 3, 4, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10]],
-  [[3, 4, 5, 6, 7], [3, 4, 5, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10]],
-  [[4, 5, 6, 7, 8], [4, 5, 6, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10]],
-  [[5, 6, 7, 8, 9], [5, 6, 7, 9, 10], [6, 7, 8, 10, 10], [7, 8, 9, 10, 10], [8, 9, 10, 10, 10]],
-] as const;
-
-const firstLimitIndex = (limits: number[], value: number): number => {
-  const index = limits.findIndex((limit) => value <= limit);
-  return index === -1 ? limits.length - 1 : index;
-};
-
-const populationClassIndex = (densityPerKm2: number): number => {
-  if (densityPerKm2 <= 0) return 0;
-  if (densityPerKm2 < 100) return 1;
-  if (densityPerKm2 < 500) return 2;
-  if (densityPerKm2 < 1500) return 3;
-  return 4;
-};
-
 const buildDeterministicGroundRisk = ({
   characteristicDimensionM,
   maxSpeedMps,
@@ -198,93 +162,61 @@ const buildDeterministicGroundRisk = ({
   controlledGroundSelected?: boolean;
   populationDensityUnknown?: boolean;
 }) => {
-  const dimensionIndex = firstLimitIndex(GRC_DIMENSION_LIMITS, characteristicDimensionM);
-  const speedIndex = firstLimitIndex(GRC_SPEED_LIMITS, maxSpeedMps);
-  const popIndex = populationClassIndex(populationDensityValue);
-  const igrc = weightKg !== null && weightKg <= 0.25 && maxSpeedMps <= 25 && popIndex < 4
-    ? 1
-    : GRC_MATRIX[dimensionIndex][speedIndex][popIndex];
-  const controlledGroundMinimum = GRC_MATRIX[dimensionIndex][speedIndex][0];
-
-  const parachuteEvidence = assignedEquipment.find((e: any) => {
-    const text = `${e?.navn ?? ''} ${e?.type ?? ''} ${e?.beskrivelse ?? ''}`.toLowerCase();
-    return /fallskjerm|parachute|moc\s*2512|dvr|design verification/.test(text);
+  const igrcResult = computeIgrc({
+    dimensionM: characteristicDimensionM,
+    speedMps: maxSpeedMps,
+    weightKg,
+    densityPerKm2: populationDensityValue,
+    controlled: controlledGroundSelected,
   });
-  const parachuteText = parachuteEvidence
-    ? `${parachuteEvidence.navn ?? parachuteEvidence.type ?? 'Dokumentert energi-/fallskjermsystem'}`.toLowerCase()
-    : '';
-  const m2Reduction = parachuteText.includes('dvr') || parachuteText.includes('design verification')
-    ? -2
-    : parachuteEvidence && /fallskjerm|parachute|moc\s*2512/.test(parachuteText)
-      ? -1
-      : 0;
-  // SORA robustness matrix (null = N/A for that mitigation)
-  const MITIGATION_MATRIX: Record<string, Record<string, number | null>> = {
-    m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
-    m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
-    m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
-    m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
-  };
-  const normalizeRobustness = (value?: string | null): string => {
-    const v = String(value ?? '').toLowerCase();
-    if (v.startsWith('high') || v.startsWith('høy')) return 'High';
-    if (v.startsWith('med')) return 'Medium';
-    if (v.startsWith('low') || v.startsWith('lav')) return 'Low';
-    return 'None';
-  };
+  const { igrc, controlledMinimum: controlledGroundMinimum } = igrcResult;
 
   const observers = Number.isFinite(Number(observerCount)) ? Math.max(0, Math.trunc(Number(observerCount))) : 0;
   const m1cAutoReduction = observers > 0 ? -1 : 0;
-
   const manualEntries = manualMitigations && typeof manualMitigations === 'object' ? manualMitigations : null;
-  const manualReduction = (key: string): number | null => {
-    if (!manualEntries) return null;
-    const entry = (manualEntries as any)[key];
-    if (!entry) return null;
-    if (!entry.applicable) return 0;
-    return MITIGATION_MATRIX[key]?.[normalizeRobustness(entry.robustness)] ?? 0;
-  };
+  const { totalReduction, fgrc } = applyGroundMitigations({
+    igrc,
+    controlledMinimum: controlledGroundMinimum,
+    manual: manualEntries,
+    autoM1c: m1cAutoReduction,
+  });
+  const outsideSora = igrcResult.outsideSora || (fgrc !== null && fgrc > 7);
 
-  const effective = {
-    m1a_sheltering: manualReduction('m1a_sheltering') ?? 0,
-    m1b_operational_restrictions: manualReduction('m1b_operational_restrictions') ?? 0,
-    m1c_ground_observation: manualReduction('m1c_ground_observation') ?? m1cAutoReduction,
-    m2_impact_reduction: manualReduction('m2_impact_reduction') ?? m2Reduction,
-  };
-  const totalReduction = Object.values(effective).reduce((sum, r) => sum + r, 0);
-  const fgrc = Math.max(controlledGroundMinimum, igrc + totalReduction);
-  const dimensionClass = `≤${GRC_DIMENSION_LIMITS[dimensionIndex]} m`;
-  const speedClass = `≤${GRC_SPEED_LIMITS[speedIndex]} m/s`;
-  const populationBand = derivePopulationDensityBand(populationDensityValue, lang);
-
+  const columnClass = columnLabel(igrcResult.column, lang);
+  const populationBand = populationBandLabel(igrcResult.row, lang);
   const fmt = (v: number, d = 0) => formatLocaleNumber(v, d, lang);
   const en = lang === 'en';
+  const parachuteHint = hasParachuteHint(assignedEquipment);
 
-  const outsideSoraNote = igrc > 7
+  const outsideSoraNote = igrcResult.outsideSora
+    ? ` ${outsideSpecificText(lang)}.`
+    : (fgrc !== null && fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : '');
+  const unknownNote = populationDensityUnknown
     ? (en
-        ? ' iGRC exceeds 7 and is outside the ordinary SORA matrix; this requires a special/certified assessment.'
-        : ' iGRC er over 7 og ligger utenfor ordinær SORA-matrise; dette krever særskilt/sertifisert vurdering.')
+        ? ' Population density is unknown — 5,000 people/km² (band < 50,000) is used as the basis.'
+        : ' Befolkningstettheten er ukjent — 5 000 personer/km² (bånd < 50 000) brukes som grunnlag.')
     : '';
 
   const footprintFallback = en
     ? 'Planned route with operational volume and ground risk buffer.'
     : 'Planlagt rute med operasjonsvolum og bakkerisikobuffer.';
   const grcCalcMethod = en
-    ? 'System-calculated using the fixed SORA iGRC matrix. AI output cannot modify iGRC/fGRC.'
-    : 'Systemberegnet etter fast SORA iGRC-matrise. AI-output kan ikke endre iGRC/fGRC.';
+    ? 'System-calculated using the SORA 2.5 iGRC table. AI output cannot modify iGRC/fGRC.'
+    : 'Systemberegnet etter SORA 2.5 iGRC-tabellen. AI-output kan ikke endre iGRC/fGRC.';
   const tableBasis = en
-    ? `Dimension class ${dimensionClass}, speed class ${speedClass}, population class ${populationBand}`
-    : `Dimensjonsklasse ${dimensionClass}, hastighetsklasse ${speedClass}, befolkningsklasse ${populationBand}`;
+    ? `Column ${columnClass} (strictest of dimension and speed), population band ${populationBand}`
+    : `Kolonne ${columnClass} (strengeste av dimensjon og fart), befolkningsbånd ${populationBand}`;
+  const igrcText = igrc === null ? (en ? 'N/A' : 'N/A') : String(igrc);
   const igrcReasoning = en
-    ? `System-calculated iGRC=${igrc} from the SORA table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), max speed ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${populationDensityUnknown ? ' Population density is unknown — the highest band is used as the basis.' : ''}${outsideSoraNote}`
-    : `Systemberegnet iGRC=${igrc} fra SORA-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m (${dimensionClass}), maks hastighet ${fmt(maxSpeedMps, 1)} m/s (${speedClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${populationDensityUnknown ? ' Befolkningstettheten er ukjent — det høyeste båndet brukes som grunnlag.' : ''}${outsideSoraNote}`;
+    ? `System-calculated iGRC=${igrcText} from the SORA 2.5 table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m, max speed ${fmt(maxSpeedMps, 1)} m/s (column ${columnClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${unknownNote}${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrcText} fra SORA 2.5-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m, maks hastighet ${fmt(maxSpeedMps, 1)} m/s (kolonne ${columnClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${unknownNote}${outsideSoraNote}`;
 
   const m1aReason = en
     ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
     : 'Ikke automatisk kreditert. Skjerming krever dokumentasjon på at eksponerte personer faktisk er beskyttet av strukturer.';
   const m1bReason = en
-    ? 'Not automatically credited. Time/location restrictions must document approx. 90–99% reduction of exposed people.'
-    : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere ca. 90–99 % reduksjon av eksponerte personer.';
+    ? 'Not automatically credited. Time/location restrictions must document the reduction of exposed people (Medium −1, High −2).'
+    : 'Ikke automatisk kreditert. Tid-/stedbegrensninger må dokumentere reduksjon av eksponerte personer (Middels −1, Høy −2).';
   const m1cReason = observers > 0
     ? (en
         ? `Automatically credited (Low): ${observers} observer(s) assigned to the mission monitor the overflown area and can alert the pilot so the flight pattern is changed. Assumes the observer's task and communication are described in the company's procedures.`
@@ -292,32 +224,31 @@ const buildDeterministicGroundRisk = ({
     : en
     ? 'Not automatically credited. Standard VLOS, pilot or airspace observer does not provide fGRC reduction without explicitly documented ground-based observation of the overflown area and the ability to alter the flight pattern.'
     : 'Ikke automatisk kreditert. Vanlig VLOS, pilot eller luftromsobservatør gir ikke fGRC-reduksjon uten eksplisitt dokumentert bakkebasert observasjon av overflyst område og evne til å endre flygemønster.';
-  const m2NoEvidence = en
-    ? 'No documented parachute, MoC 2512 or DVR-based energy/impact reduction found.'
-    : 'Ingen dokumentert fallskjerm, MoC 2512 eller DVR-basert energi-/treffenergidemping funnet.';
-  const m2WithEvidence = parachuteEvidence
-    ? (en
-        ? `Reduction based on documented equipment: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`
-        : `Reduksjon basert på dokumentert utstyr: ${parachuteEvidence?.navn ?? parachuteEvidence?.type}.`)
-    : m2NoEvidence;
+  const m2Reason = (en
+    ? 'Not automatically credited. Requires documented MoC/DVR basis.'
+    : 'Ikke automatisk kreditert. Krever dokumentert MoC/DVR-grunnlag.')
+    + (parachuteHint
+      ? (en
+          ? ' Parachute system registered on the mission — M2 can be considered manually with documentation.'
+          : ' Fallskjermsystem registrert på oppdraget — M2 kan vurderes manuelt med dokumentasjon.')
+      : '');
 
-  const fgrcReasoning = totalReduction < 0
+  const fgrcReasoning = fgrc === null
+    ? outsideSpecificText(lang)
+    : totalReduction < 0
     ? (en
-        ? `fGRC=${fgrc}: iGRC ${igrc} with documented reduction ${totalReduction}. The M1 limit is enforced so fGRC cannot fall below the controlled-ground-area value ${controlledGroundMinimum}.`
-        : `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.`)
+        ? `fGRC=${fgrc}: iGRC ${igrc} with documented reduction ${totalReduction}. The M1 limit is enforced so fGRC cannot fall below the controlled-ground-area value ${controlledGroundMinimum}.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`
+        : `fGRC=${fgrc}: iGRC ${igrc} med dokumentert reduksjon ${totalReduction}. M1-grensen er håndhevet slik at fGRC ikke kan bli lavere enn kontrollert-bakkeområde-verdien ${controlledGroundMinimum}.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`)
     : (en
-        ? `fGRC=${fgrc}: No documented GRC-reducing mitigations are credited, therefore fGRC equals iGRC. Observer/pilot does not automatically give -1 without explicit ground-based observation of the overflown area.`
-        : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC. Observatør/pilot gir ikke automatisk -1 uten eksplisitt bakkebasert observasjon av overflyst område.`);
+        ? `fGRC=${fgrc}: No documented GRC-reducing mitigations are credited, therefore fGRC equals iGRC.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`
+        : `fGRC=${fgrc}: Ingen dokumenterte GRC-reduserende mitigeringer er kreditert, derfor er fGRC lik iGRC.${fgrc > 7 ? ` ${certifiedCategoryText(lang)}.` : ''}`);
 
   const defaultSource = en
     ? 'SSB population on 250 m grid (2025)'
     : 'SSB befolkning på rutenett 250 m (2025)';
-
-  const manualReasonSuffix = en
-    ? ' Manually selected by the operator.'
-    : ' Manuelt valgt av operatøren.';
+  const manualReasonSuffix = en ? ' Manually selected by the operator.' : ' Manuelt valgt av operatøren.';
   const buildEntry = (
-    key: string,
+    key: MitigationKey,
     autoApplicable: boolean,
     autoRobustness: string | null,
     autoReduction: number,
@@ -332,8 +263,9 @@ const buildDeterministicGroundRisk = ({
   };
 
   return {
-    characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m (${dimensionClass})`,
-    max_speed_category: `${fmt(maxSpeedMps, 1)} m/s (${speedClass})`,
+    characteristic_dimension: `${fmt(characteristicDimensionM, 2)} m`,
+    max_speed_category: `${fmt(maxSpeedMps, 1)} m/s`,
+    igrc_column: columnClass,
     drone_weight_kg: weightKg,
     population_density_band: populationBand,
     population_density_value: populationDensityValue,
@@ -346,18 +278,23 @@ const buildDeterministicGroundRisk = ({
     ssb_grid_resolution_m: populationData?.gridResolutionM ?? 250,
     igrc,
     fgrc,
-    total_reduction: fgrc - igrc,
+    total_reduction: igrc !== null && fgrc !== null ? fgrc - igrc : null,
+    outside_sora: outsideSora,
+    outside_sora_note: outsideSora
+      ? (igrcResult.outsideSora ? outsideSpecificText(lang) : certifiedCategoryText(lang))
+      : null,
     controlled_ground_area: controlledGroundSelected,
     controlled_ground_minimum: controlledGroundMinimum,
     mitigations_manual_override: !!manualEntries,
     grc_calculation_method: grcCalcMethod,
     igrc_table_basis: tableBasis,
     igrc_reasoning: igrcReasoning,
+    m2_parachute_hint: parachuteHint,
     mitigations: {
       m1a_sheltering: buildEntry('m1a_sheltering', false, null, 0, m1aReason),
       m1b_operational_restrictions: buildEntry('m1b_operational_restrictions', false, null, 0, m1bReason),
       m1c_ground_observation: buildEntry('m1c_ground_observation', m1cAutoReduction < 0, m1cAutoReduction < 0 ? 'Low' : null, m1cAutoReduction, m1cReason),
-      m2_impact_reduction: buildEntry('m2_impact_reduction', m2Reduction < 0, m2Reduction === -2 ? 'High' : m2Reduction === -1 ? 'Medium' : null, m2Reduction, m2WithEvidence),
+      m2_impact_reduction: buildEntry('m2_impact_reduction', false, null, 0, m2Reason),
     },
     fgrc_reasoning: fgrcReasoning,
   };
@@ -689,7 +626,9 @@ serve(async (req) => {
     }
     user = authUser;
 
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAnalysis, pilotComments, language, manualGroundMitigations, manualAirRisk, manualOverrides } = await req.json();
+    // previousAnalysis/manualOverrides/manualAirRisk from the body are accepted for backward
+    // compatibility but ignored: a SORA re-assessment always loads the base assessment from the DB.
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -766,8 +705,86 @@ serve(async (req) => {
     const currentDateOslo = osloDateString(nowForAssessment)!;
 
     // Handle SORA re-assessment mode
-    if (soraReassessment && previousAnalysis && pilotComments) {
+    if (soraReassessment && pilotComments) {
       const soraLang = normalizeLang(language);
+
+      // Load the base assessment from the DB (caller RLS) — never trust the client copy.
+      const { data: assessmentRows, error: assessmentRowsErr } = await callerClient
+        .from('mission_risk_assessments')
+        .select('id, mission_id, created_at, sora_output, ai_analysis')
+        .eq('mission_id', missionId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (assessmentRowsErr) console.error('[ai-risk-assessment/SORA] assessment lookup error:', assessmentRowsErr);
+      const reassessCheck = checkReassessTarget((assessmentRows ?? []) as AssessmentRow[], previousAssessmentId, missionId);
+      if (!reassessCheck.ok || !(reassessCheck.row.ai_analysis && typeof reassessCheck.row.ai_analysis === 'object')) {
+        await finishJob('failed', `SORA reassessment rejected: ${reassessCheck.ok ? 'no analysis' : reassessCheck.reason}`);
+        return new Response(JSON.stringify({ error: reassessNotLatestMessage(soraLang) }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const previousAnalysis: any = reassessCheck.row.ai_analysis;
+
+      // fGRC / ARC / SAIL are decided in code, not by the AI.
+      const parseIntLoose = (v: unknown): number | null => {
+        if (typeof v === 'number' && Number.isFinite(v)) return Math.floor(v);
+        if (typeof v === 'string') { const m = v.match(/\d+/); if (m) return parseInt(m[0], 10); }
+        return null;
+      };
+      const parseArcLetter = (v: unknown): string | null => {
+        if (typeof v !== 'string') return null;
+        const t = v.toLowerCase();
+        const m = t.match(/arc[\s_-]*([abcd])/) ?? t.match(/^\s*([abcd])\s*$/);
+        return m ? m[1] : null;
+      };
+      const prevGround: any = previousAnalysis?.ground_risk_analysis ?? null;
+      const prevAir: any = previousAnalysis?.air_risk_analysis ?? null;
+      const groundManual = prevGround?.mitigations_manual_override === true;
+      const airManual = prevAir?.arc_manual_override === true;
+      const prevIgrc = parseIntLoose(prevGround?.igrc);
+      let fixedFgrc: number | null = parseIntLoose(prevGround?.fgrc);
+      if (groundManual && prevIgrc !== null && prevGround?.mitigations && typeof prevGround.mitigations === 'object' && !Array.isArray(prevGround.mitigations)) {
+        const prevM1c = Number(prevGround.mitigations?.m1c_ground_observation?.reduction);
+        fixedFgrc = applyGroundMitigations({
+          igrc: prevIgrc,
+          controlledMinimum: parseIntLoose(prevGround?.controlled_ground_minimum),
+          manual: prevGround.mitigations,
+          autoM1c: Number.isFinite(prevM1c) ? prevM1c : 0,
+        }).fgrc;
+      }
+      let fixedArc: string | null = parseArcLetter(prevAir?.residual_arc) ?? parseArcLetter(prevAir?.initial_arc);
+      if (airManual) {
+        if (prevAir?.arc_a_atypical === true) fixedArc = 'a';
+        else if (prevAir?.manual_density_rating != null) {
+          const aecNum = parseIntLoose(prevAir?.aec);
+          const reduced = aecNum !== null ? parseArcLetter(residualArcForDensity(aecNum, prevAir.manual_density_rating)) : null;
+          if (reduced) fixedArc = reduced;
+        }
+      }
+      const fixedSail = lookupSail(fixedFgrc, fixedArc);
+      const groundMitigationList = prevGround?.mitigations && typeof prevGround.mitigations === 'object' && !Array.isArray(prevGround.mitigations)
+        ? Object.entries(prevGround.mitigations).map(([key, m]: [string, any]) => ({
+            id: key,
+            applied: m?.applicable === true,
+            robustness: m?.robustness ?? null,
+            grc_adjustment: m?.reduction ?? 0,
+          }))
+        : null;
+      const soraFixed = {
+        ground_manual_override: groundManual,
+        igrc: prevIgrc,
+        fgrc: fixedFgrc,
+        mitigations: groundMitigationList,
+        air_manual_override: airManual,
+        aec: prevAir?.aec ?? null,
+        initial_arc: prevAir?.initial_arc ?? null,
+        residual_arc: fixedArc ? `ARC-${fixedArc}` : null,
+        arc_a_atypical: prevAir?.arc_a_atypical === true,
+        manual_density_rating: prevAir?.manual_density_rating ?? null,
+        arc_reduction_justification: prevAir?.arc_reduction_justification ?? null,
+        sail: fixedSail.sail ? `SAIL ${fixedSail.sail}` : null,
+        certified_category: fixedSail.certified,
+      };
       console.log('[ai-risk-assessment/SORA] Running SORA re-assessment with pilot comments, language:', soraLang);
 
       // Authoritative drone list from the mission itself (caller RLS), not from the AI text.
@@ -783,7 +800,7 @@ serve(async (req) => {
       }
 
       const soraSystemPrompt = buildSoraReassessSystemPrompt(soraLang);
-      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, manualOverrides ?? null, {
+      const soraUserPrompt = buildSoraReassessUserPrompt(soraLang, previousAnalysis, pilotComments, soraFixed, {
         currentDate: currentDateOslo,
         droneModels: Array.from(new Set(missionDroneModels)),
       });
@@ -863,92 +880,35 @@ serve(async (req) => {
         console.warn('Mitigation key scrub failed (non-fatal):', scrubErr);
       }
 
-      // Deterministic SAIL lookup — override AI's value to keep result consistent with the matrix
+      // Apply the code-determined fGRC/ARC/SAIL — AI values are always overridden.
       try {
-        const SAIL_MATRIX: Record<string, Record<string, string>> = {
-          '2': { a: 'I', b: 'II', c: 'IV', d: 'VI' },
-          '3': { a: 'II', b: 'II', c: 'IV', d: 'VI' },
-          '4': { a: 'III', b: 'III', c: 'IV', d: 'VI' },
-          '5': { a: 'IV', b: 'IV', c: 'IV', d: 'VI' },
-          '6': { a: 'V', b: 'V', c: 'V', d: 'VI' },
-          '7': { a: 'VI', b: 'VI', c: 'VI', d: 'VI' },
-        };
-        const parseFgrc = (v: unknown): number | null => {
-          if (typeof v === 'number') return Math.floor(v);
-          if (typeof v === 'string') {
-            const m = v.match(/\d+/);
-            if (m) return parseInt(m[0], 10);
-          }
-          return null;
-        };
-        const parseArc = (v: unknown): string | null => {
-          if (typeof v !== 'string') return null;
-          const s = v.toLowerCase();
-          const m = s.match(/arc[\s_-]*([abcd])/) ?? s.match(/^\s*([abcd])\s*$/);
-          return m ? m[1] : null;
-        };
-        const mo = (manualOverrides as any) ?? null;
-        const manualGround = (previousAnalysis as any)?.ground_risk_analysis;
-        const groundOverridden = manualGround?.mitigations_manual_override === true || mo?.ground_manual_override === true;
-        const manualFgrc = groundOverridden ? (parseFgrc(manualGround?.fgrc) ?? parseFgrc(mo?.fgrc)) : null;
-        const fgrcRaw = manualFgrc ?? parseFgrc(soraAnalysis.sail_lookup?.fgrc_used) ?? parseFgrc(soraAnalysis.fgrc);
-        if (manualFgrc !== null) {
-          soraAnalysis.fgrc = manualFgrc;
-          soraAnalysis.igrc = manualGround?.igrc ?? mo?.igrc ?? soraAnalysis.igrc;
+        if (fixedFgrc !== null) {
+          soraAnalysis.fgrc = fixedFgrc;
+          if (prevIgrc !== null) soraAnalysis.igrc = prevIgrc;
         }
-        const manualAir = (manualAirRisk as any)
-          ?? (mo?.air_manual_override === true
-            ? {
-                arc_manual_override: true,
-                arc_a_atypical: mo?.arc_a_atypical === true,
-                manual_density_rating: mo?.manual_density_rating ?? null,
-                aec: mo?.aec ?? null,
-                residual_arc: mo?.residual_arc ?? null,
-              }
-            : null);
-        // Manual ARC: use the explicit residual ARC when sent, otherwise re-derive it
-        // from the operator's declaration (atypical) or Annex C table 2 density rating.
-        let manualArcResidual: string | null = null;
-        if (manualAir?.arc_manual_override === true) {
-          manualArcResidual = parseArc(manualAir.residual_arc);
-          if (!manualArcResidual && manualAir.arc_a_atypical === true) manualArcResidual = 'a';
-          if (!manualArcResidual && manualAir.manual_density_rating != null) {
-            const aecNum = parseFgrc(manualAir.aec ?? (previousAnalysis as any)?.air_risk_analysis?.aec);
-            if (aecNum !== null) {
-              manualArcResidual = parseArc(residualArcForDensity(aecNum, manualAir.manual_density_rating));
-            }
-          }
-          if (!manualArcResidual) {
-            manualArcResidual = parseArc((previousAnalysis as any)?.air_risk_analysis?.residual_arc)
-              ?? parseArc((previousAnalysis as any)?.air_risk_analysis?.initial_arc);
-          }
-        }
-        const arc = manualArcResidual ?? parseArc(soraAnalysis.sail_lookup?.arc_used) ?? parseArc(soraAnalysis.arc_residual);
-        if (manualArcResidual) {
-          soraAnalysis.arc_residual = `ARC-${manualArcResidual}`;
-        }
-
-        if (fgrcRaw !== null && arc) {
-          const rowKey = fgrcRaw <= 2 ? '2' : String(Math.min(fgrcRaw, 7));
-          const computed = SAIL_MATRIX[rowKey]?.[arc];
-          if (computed) {
-            const aiSail = soraAnalysis.sail;
-            soraAnalysis.sail = `SAIL ${computed}`;
-            soraAnalysis.sail_lookup = {
-              ...(soraAnalysis.sail_lookup || {}),
-              fgrc_used: fgrcRaw,
-              arc_used: arc,
-              result: computed,
-            };
+        if (fixedArc) soraAnalysis.arc_residual = `ARC-${fixedArc}`;
+        if (fixedFgrc !== null && fixedArc) {
+          const aiSail = soraAnalysis.sail;
+          soraAnalysis.sail_lookup = {
+            ...(soraAnalysis.sail_lookup || {}),
+            fgrc_used: fixedFgrc,
+            arc_used: fixedArc,
+            result: fixedSail.sail,
+            certified_category: fixedSail.certified,
+          };
+          if (fixedSail.certified) {
+            soraAnalysis.sail = null;
+            soraAnalysis.certified_category = true;
+            soraAnalysis.certified_category_note = certifiedCategoryText(soraLang);
+          } else if (fixedSail.sail) {
+            soraAnalysis.sail = `SAIL ${fixedSail.sail}`;
             if (soraAnalysis.containment && typeof soraAnalysis.containment === 'object') {
-              const robustness = (computed === 'I' || computed === 'II')
-                ? 'Low'
-                : (computed === 'III' || computed === 'IV') ? 'Medium' : 'High';
-              soraAnalysis.containment.robustness_level = robustness;
+              const s = fixedSail.sail;
+              soraAnalysis.containment.robustness_level = (s === 'I' || s === 'II') ? 'Low' : (s === 'III' || s === 'IV') ? 'Medium' : 'High';
             }
-            if (aiSail && aiSail !== soraAnalysis.sail) {
-              console.log(`SAIL overridden: AI said "${aiSail}" → matrix says "${soraAnalysis.sail}" (fGRC=${fgrcRaw}, ARC=${arc})`);
-            }
+          }
+          if (aiSail && aiSail !== soraAnalysis.sail) {
+            console.log(`SAIL overridden: AI said "${aiSail}" → code says "${soraAnalysis.sail}" (fGRC=${fixedFgrc}, ARC=${fixedArc})`);
           }
         }
       } catch (e) {
@@ -958,7 +918,7 @@ serve(async (req) => {
       // Manual overrides must also be reflected in the narrative text — the AI
       // otherwise keeps writing "no reduction credited" while the numbers show one.
       try {
-        const mo2 = (manualOverrides as any) ?? null;
+        const mo2: any = null;
         const ga = (previousAnalysis as any)?.ground_risk_analysis;
         const aa = (previousAnalysis as any)?.air_risk_analysis;
         const en = normalizeLang(language) === 'en';
@@ -1130,6 +1090,15 @@ serve(async (req) => {
         soraAnalysis.hard_stop_triggered === true,
         previousAnalysis.recommendation
       );
+      if (soraAnalysis.certified_category === true && soraAnalysis.recommendation === 'go') {
+        soraAnalysis.recommendation = 'caution';
+      }
+      if (soraAnalysis.certified_category === true && typeof soraAnalysis.summary === 'string'
+        && !soraAnalysis.summary.includes(certifiedCategoryText(soraLang))) {
+        soraAnalysis.summary = `${certifiedCategoryText(soraLang)}. ${soraAnalysis.summary}`;
+      }
+      // Card warnings follow the DB row, not the client.
+      if (previousAnalysis?.approvalDecision) soraAnalysis.approvalDecision = previousAnalysis.approvalDecision;
 
       // Get user's profile for company_id
       const { data: profile } = await supabase
@@ -2204,6 +2173,7 @@ serve(async (req) => {
       rows: allCompetencies,
       pilotIds,
       droneClass: droneData?.klasse ?? null,
+      weightKg: Number.isFinite(Number(droneData?.vekt)) && Number(droneData?.vekt) > 0 ? Number(droneData?.vekt) : null,
       proximityToPeople: pilotInputs?.proximityToPeople ?? null,
       isVlos: pilotInputs?.isVlos !== false,
       now: today,
@@ -2854,7 +2824,7 @@ serve(async (req) => {
     if (controlledGroundSelected) {
       deterministicPopulationDensityValue = 0;
     } else if (populationData && deterministicPopulationDensityValue <= 0) {
-      deterministicPopulationDensityValue = 1; // lowest populated band (<100/km²)
+      deterministicPopulationDensityValue = 1; // lowest populated band (< 5/km²)
     }
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
     const grLang = resolveLang(language);
@@ -2909,8 +2879,8 @@ serve(async (req) => {
         ...(aiAnalysis.ground_risk_analysis || {}),
         ...deterministicGroundRisk,
         population_density_description: grEn
-          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. The highest population band (5000 people/km²) is used as the basis.'
-          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. Det høyeste befolkningsbåndet (5000 personer/km²) brukes som grunnlag.',
+          ? 'Population density is unknown: the lookup failed, or the mission has neither a route nor coordinates. 5,000 people/km² (band < 50,000) is used as the basis.'
+          : 'Befolkningstettheten er ukjent: oppslaget feilet, eller oppdraget verken har rute eller koordinater. 5 000 personer/km² (bånd < 50 000) brukes som grunnlag.',
       };
     }
 
@@ -3410,6 +3380,8 @@ serve(async (req) => {
         if (typeof pilotCat.experience_summary === 'string') pilotCat.experience_summary = scrubCompetencyText(pilotCat.experience_summary);
         if (pilotInputs?.isVlos === false) {
           pilotCat.notes = [bvlosAssumptionNote(assessmentLang)];
+        } else if (competencyAssessment.c0NoCertificate) {
+          pilotCat.notes = [c0ManualNote(assessmentLang)];
         }
       }
       if (pilotInputs?.isVlos === false) {
@@ -3444,6 +3416,10 @@ serve(async (req) => {
       aiAnalysis.hard_stop_triggered === true,
       aiAnalysis.recommendation
     );
+    // Outside specific/SORA (iGRC N/A or fGRC > 7): never a plain GO.
+    if (aiAnalysis.ground_risk_analysis?.outside_sora === true && aiAnalysis.recommendation === 'go') {
+      aiAnalysis.recommendation = 'caution';
+    }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
@@ -3531,6 +3507,12 @@ serve(async (req) => {
         let canWrite = (mission as any).user_id === user.id;
         if (!canWrite) {
           try {
+            const { data: isSuper } = await supabase.rpc('is_superadmin', { _user_id: user.id });
+            canWrite = isSuper === true;
+          } catch { /* fall through */ }
+        }
+        if (!canWrite) {
+          try {
             const [adminRes, leaderRes] = await Promise.all([
               supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
               supabase.rpc('has_role', { _user_id: user.id, _role: 'operativ_leder' }),
@@ -3580,6 +3562,7 @@ serve(async (req) => {
           hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
           hardStopReason: aiAnalysis.hard_stop_reason ?? null,
           noGoCategories,
+          overallNoGo: aiAnalysis.recommendation === 'no-go',
           weatherAssessed,
           dataAvailability,
           assessmentSaved: !saveError,

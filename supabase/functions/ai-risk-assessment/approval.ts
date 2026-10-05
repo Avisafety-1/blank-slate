@@ -19,6 +19,8 @@ export interface ApprovalDecisionInput {
   hardStopTriggered: boolean;
   hardStopReason: string | null;
   noGoCategories: string[];
+  /** Overall recommendation is NO-GO (e.g. score < 5) — treated like a NO-GO category. */
+  overallNoGo?: boolean;
   weatherAssessed: boolean;
   dataAvailability: DataAvailability;
   assessmentSaved: boolean;
@@ -124,33 +126,58 @@ const hardStopReasonText = (input: ApprovalDecisionInput) =>
  * The approval decision for one completed risk assessment.
  * status = null means the mission approval status is not changed.
  */
+/** Danger decision for hard stop / NO-GO, or null when none applies. */
+const dangerDecision = (
+  input: ApprovalDecisionInput,
+  mode: 'approved' | 'approver' | 'plain',
+): ApprovalDecision | null => {
+  const en = input.lang === 'en';
+  const suffix = mode === 'approver'
+    ? (en ? ' — the mission approver must decide.' : ' — godkjenner må ta stilling.')
+    : '';
+  let core: string | null = null;
+  if (input.hardStopTriggered === true) {
+    core = en ? `has a hard stop: ${hardStopReasonText(input)}` : `har hard stop: ${hardStopReasonText(input)}`;
+  } else if (input.noGoCategories.length > 0) {
+    core = en
+      ? `has NO-GO in ${noGoText(input.noGoCategories, 'en')}`
+      : `har NO-GO i ${noGoText(input.noGoCategories, 'no')}`;
+  } else if (input.overallNoGo === true) {
+    const score = input.score === null ? (en ? 'unavailable' : 'ikke tilgjengelig') : fmtScore(input.score);
+    core = en ? `recommends NO-GO (AI score ${score}/10)` : `anbefaler NO-GO (AI-score ${score}/10)`;
+    if (mode !== 'approved') {
+      return {
+        status: null,
+        severity: 'danger',
+        reason: en
+          ? `The latest assessment ${core} — the mission approver must decide`
+          : `Siste vurdering ${core} — godkjenner må ta stilling`,
+      };
+    }
+  }
+  if (!core) return null;
+  return {
+    status: null,
+    severity: 'danger',
+    reason: mode === 'approved'
+      ? (en ? `The mission is approved, but the latest assessment ${core}` : `Oppdraget er godkjent, men siste vurdering ${core}`)
+      : (en ? `The latest assessment ${core}${suffix}` : `Siste vurdering ${core}${suffix}`),
+  };
+};
+
+/**
+ * The approval decision for one completed risk assessment.
+ * status = null means the mission approval status is not changed.
+ */
 export const decideApproval = (input: ApprovalDecisionInput): ApprovalDecision => {
   const en = input.lang === 'en';
   const status = (input.currentStatus || 'not_approved') as string;
-  const hasHardStop = input.hardStopTriggered === true;
-  const hasNoGo = input.noGoCategories.length > 0;
   const scoreOk = input.score !== null && input.score >= input.threshold;
 
   // Approved missions are never changed by an assessment.
   if (status === 'approved') {
-    if (hasHardStop) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The mission is approved, but the latest assessment has a hard stop: ${hardStopReasonText(input)}`
-          : `Oppdraget er godkjent, men siste vurdering har hard stop: ${hardStopReasonText(input)}`,
-      };
-    }
-    if (hasNoGo) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The mission is approved, but the latest assessment has NO-GO in ${noGoText(input.noGoCategories, 'en')}`
-          : `Oppdraget er godkjent, men siste vurdering har NO-GO i ${noGoText(input.noGoCategories, 'no')}`,
-      };
-    }
+    const danger = dangerDecision(input, 'approved');
+    if (danger) return danger;
     return {
       status: null,
       severity: 'info',
@@ -164,84 +191,15 @@ export const decideApproval = (input: ApprovalDecisionInput): ApprovalDecision =
     };
   }
 
-  // Automatic approval off: never change the status, but still explain the latest findings.
-  if (!input.autoApprovalOn) {
-    if (hasHardStop) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The latest assessment has a hard stop: ${hardStopReasonText(input)} — the mission approver must decide.`
-          : `Siste vurdering har hard stop: ${hardStopReasonText(input)} — godkjenner må ta stilling.`,
-      };
-    }
-    if (hasNoGo) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The latest assessment has NO-GO in ${noGoText(input.noGoCategories, 'en')} — the mission approver must decide.`
-          : `Siste vurdering har NO-GO i ${noGoText(input.noGoCategories, 'no')} — godkjenner må ta stilling.`,
-      };
-    }
-    if (!scoreOk) {
-      return { status: null, severity: 'info', reason: scoreBelowThresholdReason(input) };
-    }
-    return { status: null, severity: 'info', reason: autoOffReason(input) };
-  }
-
-  // Pending approval: the approver decides; only a fully green assessment is auto-approved.
-  if (status === 'pending_approval') {
-    if (hasHardStop) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The latest assessment has a hard stop: ${hardStopReasonText(input)} — the mission approver must decide.`
-          : `Siste vurdering har hard stop: ${hardStopReasonText(input)} — godkjenner må ta stilling.`,
-      };
-    }
-    if (hasNoGo) {
-      return {
-        status: null,
-        severity: 'danger',
-        reason: en
-          ? `The latest assessment has NO-GO in ${noGoText(input.noGoCategories, 'en')} — the mission approver must decide.`
-          : `Siste vurdering har NO-GO i ${noGoText(input.noGoCategories, 'no')} — godkjenner må ta stilling.`,
-      };
-    }
-    if (!scoreOk) {
-      return { status: null, severity: 'info', reason: scoreBelowThresholdReason(input) };
-    }
-    const unmet = unmetRequirement(input);
-    if (unmet) return unmet;
-    if (!input.canWrite) {
-      return { status: null, severity: 'warning', reason: noAccessReason(input) };
-    }
-    return { status: 'approved', severity: 'info', reason: autoApprovedReason(input) };
-  }
-
-  // Not approved (and any other status): auto-approval can set it to approved.
-  if (hasHardStop) {
-    return {
-      status: null,
-      severity: 'danger',
-      reason: en
-        ? `The latest assessment has a hard stop: ${hardStopReasonText(input)}`
-        : `Siste vurdering har hard stop: ${hardStopReasonText(input)}`,
-    };
-  }
-  if (hasNoGo) {
-    return {
-      status: null,
-      severity: 'danger',
-      reason: en
-        ? `The latest assessment has NO-GO in ${noGoText(input.noGoCategories, 'en')}`
-        : `Siste vurdering har NO-GO i ${noGoText(input.noGoCategories, 'no')}`,
-    };
-  }
+  const isApproverFlow = !input.autoApprovalOn || status === 'pending_approval';
+  const danger = dangerDecision(input, isApproverFlow ? 'approver' : 'plain');
+  if (danger) return danger;
   if (!scoreOk) {
     return { status: null, severity: 'info', reason: scoreBelowThresholdReason(input) };
+  }
+  // Automatic approval off: never change the status.
+  if (!input.autoApprovalOn) {
+    return { status: null, severity: 'info', reason: autoOffReason(input) };
   }
   const unmet = unmetRequirement(input);
   if (unmet) return unmet;

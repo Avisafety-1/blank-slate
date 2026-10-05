@@ -56,7 +56,7 @@ export type RobustnessLevel = "None" | "Low" | "Medium" | "High";
 export const ROBUSTNESS_LEVELS: RobustnessLevel[] = ["None", "Low", "Medium", "High"];
 export const MITIGATION_MATRIX: Record<string, Record<RobustnessLevel, number | null>> = {
   m1a_sheltering: { None: 0, Low: -1, Medium: -2, High: null },
-  m1b_operational_restrictions: { None: 0, Low: null, Medium: null, High: null },
+  m1b_operational_restrictions: { None: 0, Low: null, Medium: -1, High: -2 },
   m1c_ground_observation: { None: 0, Low: -1, Medium: null, High: null },
   m2_impact_reduction: { None: 0, Low: null, Medium: -1, High: -2 },
 };
