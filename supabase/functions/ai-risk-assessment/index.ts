@@ -3531,6 +3531,12 @@ serve(async (req) => {
         let canWrite = (mission as any).user_id === user.id;
         if (!canWrite) {
           try {
+            const { data: isSuper } = await supabase.rpc('is_superadmin', { _user_id: user.id });
+            canWrite = isSuper === true;
+          } catch { /* fall through */ }
+        }
+        if (!canWrite) {
+          try {
             const [adminRes, leaderRes] = await Promise.all([
               supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }),
               supabase.rpc('has_role', { _user_id: user.id, _role: 'operativ_leder' }),
@@ -3580,6 +3586,7 @@ serve(async (req) => {
           hardStopTriggered: aiAnalysis.hard_stop_triggered === true,
           hardStopReason: aiAnalysis.hard_stop_reason ?? null,
           noGoCategories,
+          overallNoGo: aiAnalysis.recommendation === 'no-go',
           weatherAssessed,
           dataAvailability,
           assessmentSaved: !saveError,
