@@ -78,7 +78,8 @@ export interface CompetencyAssessment {
 export const requiredRank = (droneClass: string | null, nearPeople: boolean, isVlos: boolean): number | null => {
   if (!isVlos) return 1; // Specific/SORA: baseline certificate, rest via OSO #08
   switch (droneClass) {
-    case 'C0': case 'C1': case 'C3': case 'C4': return 1;
+    case 'C0': return 0; // UAS.OPEN.020: only read the user manual
+    case 'C1': case 'C3': case 'C4': return 1;
     case 'C2': return nearPeople ? 2 : 1;
     default: return null;
   }
@@ -128,6 +129,10 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
     recognised, expired, ignored, unclassified,
   };
 
+  // C0 / legacy < 250 g: no certificate required (UAS.OPEN.020), never a hard stop.
+  if (req === 0) {
+    return { ...base, requiredRank: null, requiredLabel: null, status: 'ok', coveredBy: 'operations_manual', reason: null, undeterminedWhy: null };
+  }
   if (req === null && input.isVlos) {
     return { ...base, status: 'undetermined', coveredBy: null, reason: null,
       undeterminedWhy: droneClass ? `unsupported_class:${droneClass}` : 'missing_class' };
@@ -149,6 +154,10 @@ export const evaluateCompetency = (input: CompetencyInput): CompetencyAssessment
   }
   return { ...base, status: 'missing', coveredBy: null, reason: null, undeterminedWhy: null };
 };
+
+export const c0ManualNote = (lang: 'no' | 'en') => lang === 'en'
+  ? 'C0: requires the pilot to have read the user manual.'
+  : 'C0: krever at piloten har lest brukerhåndboken.';
 
 export const bvlosAssumptionNote = (lang: 'no' | 'en') => lang === 'en'
   ? 'Requires training and approval according to the company\'s operations manual / SORA.'

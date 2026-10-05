@@ -628,7 +628,7 @@ serve(async (req) => {
 
     // previousAnalysis/manualOverrides/manualAirRisk from the body are accepted for backward
     // compatibility but ignored: a SORA re-assessment always loads the base assessment from the DB.
-    const { missionId, pilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations } = await req.json();
+    const { missionId, pilotInputs, droneId, soraReassessment, previousAssessmentId, pilotComments, language, manualGroundMitigations, manualAirRisk } = await req.json();
     console.log('[ai-risk-assessment] Received language from client:', JSON.stringify(language), '-> resolved:', getPrompts(language) === getPrompts('en') ? 'en' : 'no');
     prompts = getPrompts(language);
 
@@ -3413,6 +3413,10 @@ serve(async (req) => {
       aiAnalysis.hard_stop_triggered === true,
       aiAnalysis.recommendation
     );
+    // Outside specific/SORA (iGRC N/A or fGRC > 7): never a plain GO.
+    if (aiAnalysis.ground_risk_analysis?.outside_sora === true && aiAnalysis.recommendation === 'go') {
+      aiAnalysis.recommendation = 'caution';
+    }
 
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
     console.log('Air risk analysis present:', !!aiAnalysis.air_risk_analysis, aiAnalysis.air_risk_analysis ? JSON.stringify(aiAnalysis.air_risk_analysis).substring(0, 200) : 'MISSING');
