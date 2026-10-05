@@ -116,7 +116,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
 
   const [pilotInputs, setPilotInputs] = useState<PilotInputs>({
     flightHeight: 120,
-    operationType: 'inspection',
+    operationType: 'other',
     isVlos: true,
     observerCount: 0,
     atcRequired: false,
@@ -331,7 +331,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       setCategoryComments({});
       setPilotInputs({
         flightHeight: 120,
-        operationType: 'inspection',
+        operationType: 'other',
         isVlos: true,
         observerCount: 0,
         atcRequired: false,
@@ -407,15 +407,39 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   }, [currentMissionId, open]);
 
 
-  // Auto-set operation type from mission's oppdragstype
+  // Auto-set operation type from mission's oppdragstype; unknown → 'other'.
   useEffect(() => {
     const type = (soraMissionDetails as any)?.oppdragstype;
     if (!type) return;
     setPilotInputs(prev => ({
       ...prev,
-      operationType: type === 'Annet' ? 'other' : type,
+      operationType: missionTypeLabels.includes(type) ? type : 'other',
     }));
-  }, [soraMissionDetails?.oppdragstype]);
+  }, [soraMissionDetails?.oppdragstype, missionTypeLabels]);
+
+  // Prefill VLOS/BVLOS and flight height from the mission's NOTAM fields.
+  const [missionFlightDefaults, setMissionFlightDefaults] = useState<{ heightM: number | null; isVlos: boolean | null }>({ heightM: null, isVlos: null });
+  useEffect(() => {
+    setMissionFlightDefaults({ heightM: null, isVlos: null });
+    if (!open || !currentMissionId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from('missions')
+        .select('notam_operation_type, notam_max_agl_ft').eq('id', currentMissionId).maybeSingle();
+      if (cancelled || !data) return;
+      const ft = Number((data as any).notam_max_agl_ft);
+      const heightM = Number.isFinite(ft) && ft > 0 ? Math.round(ft * 0.3048) : null;
+      const opType = String((data as any).notam_operation_type ?? '').trim().toUpperCase();
+      const isVlos = opType ? opType !== 'BVLOS' : null;
+      setMissionFlightDefaults({ heightM, isVlos });
+      setPilotInputs(prev => ({
+        ...prev,
+        ...(heightM !== null ? { flightHeight: heightM } : {}),
+        ...(isVlos !== null ? { isVlos } : {}),
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, [currentMissionId, open]);
 
   // Auto-enable atypical/segregated airspace when the mission has NOTAM text
   useEffect(() => {
@@ -942,6 +966,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                             flightHeight: e.target.value === '' ? 0 : parseInt(e.target.value) 
                           }))}
                         />
+                        {missionFlightDefaults.heightM !== null && (
+                          pilotInputs.flightHeight === missionFlightDefaults.heightM ? (
+                            <p className="text-xs text-muted-foreground mt-1">{t('riskAssessment.fromMissionNotam')}</p>
+                          ) : (
+                            <p className="text-xs text-status-yellow mt-1">{t('riskAssessment.differsFromMissionHeight', { value: missionFlightDefaults.heightM })}</p>
+                          )
+                        )}
                       </div>
 
                       <div>
@@ -984,6 +1015,13 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           ? t('riskAssessment.vlosDesc', 'Visuell kontakt med dronen gjennom hele flygingen')
                           : t('riskAssessment.bvlosDesc', 'Flyging utenfor visuell rekkevidde — krever SORA, C2-link og DAA')}
                       </p>
+                      {missionFlightDefaults.isVlos !== null && (
+                        pilotInputs.isVlos === missionFlightDefaults.isVlos ? (
+                          <p className="text-xs text-muted-foreground">{t('riskAssessment.fromMissionNotam')}</p>
+                        ) : (
+                          <p className="text-xs text-status-yellow">{t('riskAssessment.differsFromMissionMode', { value: missionFlightDefaults.isVlos ? 'VLOS' : 'BVLOS' })}</p>
+                        )
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
