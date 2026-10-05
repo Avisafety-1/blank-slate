@@ -2427,21 +2427,6 @@ serve(async (req) => {
     const deterministicMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
     const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
 
-    if (deterministicAlos) {
-      aiAnalysis.ground_risk_analysis = {
-        ...(aiAnalysis.ground_risk_analysis || {}),
-        characteristic_dimension: `${primaryDroneCharacteristicDimensionM}m`,
-        max_speed_category: droneCatalogMatch?.max_speed_mps
-          ? `${droneCatalogMatch.max_speed_mps} m/s`
-          : aiAnalysis.ground_risk_analysis?.max_speed_category,
-        drone_weight_kg: droneCatalogMatch?.weight_kg ?? droneData?.vekt ?? aiAnalysis.ground_risk_analysis?.drone_weight_kg,
-      };
-      aiAnalysis.operation_classification = {
-        ...(aiAnalysis.operation_classification || {}),
-        alos_max_m: deterministicAlos.alosMaxM,
-        alos_calculation: deterministicAlos.alosCalculation,
-      };
-    }
 
     // Density basis: unknown population → highest band (5000). The `controlled`
     // proximity choice grants controlled ground area (density 0). A measured
@@ -3055,6 +3040,22 @@ serve(async (req) => {
       aiAnalysis.recommendation
     );
 
+
+    if (deterministicAlos) {
+      aiAnalysis.ground_risk_analysis = {
+        ...(aiAnalysis.ground_risk_analysis || {}),
+        characteristic_dimension: `${primaryDroneCharacteristicDimensionM}m`,
+        max_speed_category: droneCatalogMatch?.max_speed_mps
+          ? `${droneCatalogMatch.max_speed_mps} m/s`
+          : aiAnalysis.ground_risk_analysis?.max_speed_category,
+        drone_weight_kg: droneCatalogMatch?.weight_kg ?? droneData?.vekt ?? aiAnalysis.ground_risk_analysis?.drone_weight_kg,
+      };
+      aiAnalysis.operation_classification = {
+        ...(aiAnalysis.operation_classification || {}),
+        alos_max_m: deterministicAlos.alosMaxM,
+        alos_calculation: deterministicAlos.alosCalculation,
+      };
+    }
 
     if (populationData) {
       const populationDensityValue = Math.round(populationData.maxDensity);
