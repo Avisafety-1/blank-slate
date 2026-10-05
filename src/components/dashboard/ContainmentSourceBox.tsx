@@ -4,7 +4,9 @@ import { cn } from "@/lib/utils";
 
 export interface ContainmentSystemDecision {
   required: string;
-  source: "map" | "missing";
+  source: "map" | "missing" | "not_applicable";
+  operationCategory?: "open" | "specific" | null;
+  operationReasons?: string[];
   mapSail?: string | null;
   assessmentSail?: string | null;
   calculatedAt?: string | null;
@@ -15,8 +17,11 @@ export interface ContainmentSystemDecision {
   note?: string | null;
 }
 
-export const ContainmentSourceBox = ({ data }: { data: ContainmentSystemDecision }) => {
+export const ContainmentSourceBox = ({ data, showReasons = false }: { data: ContainmentSystemDecision; showReasons?: boolean }) => {
   const { t, i18n } = useTranslation();
+  if (data.source === "not_applicable" || data.required === "Ikke relevant") {
+    return <p className="text-xs text-muted-foreground">{t("sora.containment.notApplicableLine")}</p>;
+  }
   const missing = data.required === "Ikke beregnet";
   const warn = missing || data.warning || data.outOfScope;
   const date = data.calculatedAt
@@ -43,6 +48,11 @@ export const ContainmentSourceBox = ({ data }: { data: ContainmentSystemDecision
             radius: data.adjacentRadiusM != null ? Math.round(data.adjacentRadiusM) : "—",
             density: data.avgDensity != null ? Math.round(data.avgDensity) : "—",
           })}
+        </p>
+      )}
+      {showReasons && data.operationReasons && data.operationReasons.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t("sora.containment.specificReasons", { reasons: data.operationReasons.join(", ") })}
         </p>
       )}
       {data.note && <p className="text-xs">{data.note}</p>}

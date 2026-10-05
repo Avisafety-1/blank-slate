@@ -263,7 +263,7 @@ export const SoraResultView = ({ data }: SoraResultViewProps) => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-2">
-              {data.containment.system && <ContainmentSourceBox data={data.containment.system} />}
+              {data.containment.system && <ContainmentSourceBox data={data.containment.system} showReasons />}
               <Field label={t("sora.resultView.reasoningLabel")} value={data.containment.reasoning} />
 
               {data.containment.criteria && data.containment.criteria.length > 0 && (

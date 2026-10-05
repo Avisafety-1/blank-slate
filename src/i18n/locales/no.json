@@ -7254,7 +7254,9 @@
       "notCalculated": "Ikke beregnet",
       "outOfScope": "Utenfor specific-kategorien",
       "sourceMap": "Fra kartets tilstøtende område, beregnet {{date}}",
-      "adjacentFacts": "Tilstøtende radius {{radius}} m, snittetthet {{density}} pers/km²"
+      "adjacentFacts": "Tilstøtende radius {{radius}} m, snittetthet {{density}} pers/km²",
+      "notApplicableLine": "Inneslutning: Ikke relevant (åpen kategori)",
+      "specificReasons": "Specific-kategori fordi: {{reasons}}"
     }
   },
   "eccairs": {
