@@ -658,8 +658,9 @@ export function calculateContainmentRequirement(
     selectedColumn = outdoorAssemblies === "400k" ? "400k" : "40kTo400k";
   }
 
-  const values = CONTAINMENT_DATA[uaSize]?.[selectedColumn]?.[outdoorAssemblies]
-    ?? CONTAINMENT_DATA[uaSize]?.[populationDensity]?.[outdoorAssemblies];
+  const matrix: ContainmentMatrix = CONTAINMENT_DATA;
+  const values = matrix[uaSize]?.[selectedColumn]?.[outdoorAssemblies]
+    ?? matrix[uaSize]?.[populationDensity]?.[outdoorAssemblies];
 
   return values?.[sail] ?? "Error";
 }
