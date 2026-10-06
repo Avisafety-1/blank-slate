@@ -7,7 +7,7 @@ import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, resolveCharacteristics, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
-import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION, type SoraProfileResult } from "./systemDecisions.ts";
 import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
 import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
@@ -2617,25 +2617,46 @@ serve(async (req) => {
       controlled: controlledGroundSelected,
     });
     const adjDoc = (mission.route as any)?.adjacentAreaDocumentation;
-    const { result: soraProfileResult, profileReductions } = resolveSoraProfile(soraProfileRow, soraProfileDoc, {
-      lang: grEn ? 'en' : 'no',
-      drones: (assignedDrones as any[]).map((d) => ({ id: d.id, model: d.modell ?? null, weightKg: typeof d.vekt === 'number' ? d.vekt : null })),
-      heightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
-      isVlos: typeof flightInputs.isVlos === 'boolean' ? flightInputs.isVlos : null,
-      densityPerKm2: populationDataAvailable || controlledGroundSelected ? deterministicPopulationDensityValue : null,
-      m1cEligible: m1cObservers > 0,
-      equipmentIds: (assignedEquipment as any[]).map((e) => e.id).filter(Boolean),
-      igrc: preIgrc.igrc,
-      controlledMinimum: preIgrc.controlledMinimum,
-      residualArc: deterministicAirFields?.residual_arc ?? null,
-      declaredAec: deterministicAirFields?.aec_declared_atypical === true ? 12
-        : (Number.isFinite(Number((manualAirRisk as any)?.aec)) && (manualAirRisk as any)?.aec != null ? Number((manualAirRisk as any).aec) : null),
-      maxRouteDistanceM: maxDistanceFromFirstPoint(allRouteCoords),
-      adjacentAvgDensity: adjDoc?.enabled === true && typeof adjDoc?.avgDensity === 'number' ? adjDoc.avgDensity : null,
-      manual: manualGroundMitigations ?? null,
-      autoM1c: m1cObservers > 0 ? -1 : 0,
-    });
-    const profileApplied = (soraProfileResult?.appliedMitigations ?? []).filter((a) => profileReductions[a.key] !== undefined);
+    // Fail-safe: a broken profile must never crash the assessment — continue as without profile.
+    let soraProfileResult: SoraProfileResult | null = null;
+    let profileApplied: AppliedMitigation[] = [];
+    try {
+      const resolved = resolveSoraProfile(soraProfileRow, soraProfileDoc, {
+        lang: grEn ? 'en' : 'no',
+        drones: (assignedDrones as any[]).map((d) => ({ id: d.id, model: d.modell ?? null, weightKg: typeof d.vekt === 'number' ? d.vekt : null })),
+        heightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
+        isVlos: typeof flightInputs.isVlos === 'boolean' ? flightInputs.isVlos : null,
+        densityPerKm2: populationDataAvailable || controlledGroundSelected ? deterministicPopulationDensityValue : null,
+        m1cEligible: m1cObservers > 0,
+        equipmentIds: (assignedEquipment as any[]).map((e) => e.id).filter(Boolean),
+        igrc: preIgrc.igrc,
+        controlledMinimum: preIgrc.controlledMinimum,
+        residualArc: deterministicAirFields?.residual_arc ?? null,
+        declaredAec: deterministicAirFields?.aec_declared_atypical === true ? 12
+          : (Number.isFinite(Number((manualAirRisk as any)?.aec)) && (manualAirRisk as any)?.aec != null ? Number((manualAirRisk as any).aec) : null),
+        maxRouteDistanceM: maxDistanceFromFirstPoint(allRouteCoords),
+        adjacentAvgDensity: adjDoc?.enabled === true && typeof adjDoc?.avgDensity === 'number' ? adjDoc.avgDensity : null,
+        manual: manualGroundMitigations ?? null,
+        autoM1c: m1cObservers > 0 ? -1 : 0,
+      });
+      soraProfileResult = resolved.result;
+      profileApplied = (soraProfileResult?.appliedMitigations ?? []).filter((a) => resolved.profileReductions[a.key] !== undefined);
+    } catch (e) {
+      console.error('SORA profile evaluation failed, continuing without profile:', e);
+      soraProfileResult = {
+        used: false,
+        state: 'within_envelope',
+        deviations: [],
+        appliedMitigations: [],
+        notes: [grEn
+          ? 'SORA profile could not be evaluated – calculated without profile'
+          : 'SORA-profil kunne ikke vurderes – beregnet uten profil'],
+        profileId: soraProfileRow?.id ?? null,
+        documentId: soraProfileDoc?.id ?? null,
+        confirmedAt: soraProfileRow?.confirmed_at ?? null,
+      };
+      profileApplied = [];
+    }
     const deterministicGroundRisk = buildGroundRisk(profileApplied);
     if (soraProfileResult) console.log('SORA profile:', JSON.stringify({ used: soraProfileResult.used, state: soraProfileResult.state, deviations: soraProfileResult.deviations.map((d) => d.code), applied: profileApplied.map((a) => a.key) }));
 
