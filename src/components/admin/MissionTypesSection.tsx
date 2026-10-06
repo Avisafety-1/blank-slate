@@ -385,6 +385,12 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     [profileStatusByDocument],
   );
 
+  const pickerOpenFor = useMemo(
+    () => types.find((mt) => mt.id === pickerOpenForId) || null,
+    [types, pickerOpenForId]
+  );
+  const pickerDocIds = pickerOpenFor ? getDocIds(pickerOpenFor) : [];
+
   const filteredDocs = useMemo(() => {
     const q = pickerSearch.trim().toLowerCase();
     return docs.filter((doc) => {
@@ -400,11 +406,6 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     });
   }, [docs, pickerSearch, pickerFilter, profileStatusByDocument, pickerOpenFor, pickerDocIds]);
 
-  const pickerOpenFor = useMemo(
-    () => types.find((mt) => mt.id === pickerOpenForId) || null,
-    [types, pickerOpenForId]
-  );
-  const pickerDocIds = pickerOpenFor ? getDocIds(pickerOpenFor) : [];
   const selectedCount = pickerDocIds.length + (pickerOpenFor?.default_evaluation_template_id ? 1 : 0);
   const groupedPickerDocs = useMemo(() => {
     const rank: Record<SoraProfileStatus, number> = { confirmed: 0, draft: 1, outdated: 2, none: 3 };

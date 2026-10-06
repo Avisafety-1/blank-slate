@@ -39,7 +39,7 @@ export function SoraProfileBadge({ documentId, readOnly, className, statusOverri
         )}
         title={`${t("soraProfile.title")} — ${t(`soraProfile.status.${displayedStatus}`)}`}
       >
-        {t(`soraProfile.status.${displayedStatus}`)}
+        {statusOverride ? t(`soraProfile.status.${displayedStatus}`) : t("soraProfile.title")}
       </button>
       {open && (
         // Clicks inside the dialog must not bubble to clickable parents (e.g. the
