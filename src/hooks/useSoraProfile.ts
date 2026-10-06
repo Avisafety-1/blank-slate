@@ -140,11 +140,13 @@ export function useSoraDocumentIds() {
         supabase.from("missions").select("sora_document_id").not("sora_document_id", "is", null).limit(1000),
         (supabase.from("sora_document_profiles" as any).select("document_id") as any),
       ]);
+      // Return a plain array — React Query structural sharing JSON-serializes
+      // the result, which would silently destroy a Set.
       const ids = new Set<string>();
       for (const r of (types.data as any[]) || []) ids.add(r.sora_document_id);
       for (const r of (missions.data as any[]) || []) ids.add(r.sora_document_id);
       for (const r of (profiles.data as any[]) || []) ids.add(r.document_id);
-      return ids;
+      return Array.from(ids);
     },
   });
 }

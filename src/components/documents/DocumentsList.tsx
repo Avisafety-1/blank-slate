@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
 import { useSoraDocumentIds } from "@/hooks/useSoraProfile";
 import { format } from "date-fns";
@@ -113,7 +114,8 @@ const DocumentsList = ({
 }: DocumentsListProps) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
-  const { data: soraIds } = useSoraDocumentIds();
+  const { data: soraIdList } = useSoraDocumentIds();
+  const soraIds = useMemo(() => new Set(soraIdList ?? []), [soraIdList]);
 
   const handleOpenFile = async (filUrl: string) => {
     try {
