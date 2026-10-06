@@ -25,11 +25,13 @@ export interface ApprovalDecisionInput {
   dataAvailability: DataAvailability;
   assessmentSaved: boolean;
   canWrite: boolean;
+  /** A confirmed SORA profile has envelope deviations: never auto-approve (never a hard stop or NO-GO). */
+  soraEnvelopeDeviation?: boolean;
 }
 
 export interface ApprovalDecision {
   /** null = status unchanged */
-  status: 'approved' | 'not_approved' | null;
+  status: 'approved' | 'not_approved' | 'pending_approval' | null;
   reason: string;
   severity: ApprovalSeverity;
 }
@@ -205,6 +207,15 @@ export const decideApproval = (input: ApprovalDecisionInput): ApprovalDecision =
   if (unmet) return unmet;
   if (!input.canWrite) {
     return { status: null, severity: 'warning', reason: noAccessReason(input) };
+  }
+  if (input.soraEnvelopeDeviation === true) {
+    return {
+      status: status === 'pending_approval' ? null : 'pending_approval',
+      severity: 'warning',
+      reason: en
+        ? 'Outside the SORA envelope – requires manual approval'
+        : 'Utenfor SORA-rammene – krever manuell godkjenning',
+    };
   }
   return { status: 'approved', severity: 'info', reason: autoApprovedReason(input) };
 };
