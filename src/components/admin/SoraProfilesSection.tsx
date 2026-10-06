@@ -84,9 +84,10 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
     queryKey: ["sora-profile-doc-picker", companyId],
     enabled: !!companyId && enabled && pickerOpen,
     queryFn: async () => {
-      const { data: docs } = await supabase.from("documents").select("id, tittel, kategori")
-        .eq("company_id", companyId!).order("tittel").limit(500);
-      return (docs as any[]) || [];
+      const { data: docs } = await supabase.from("documents").select("id, tittel, kategori, fil_url")
+        .eq("company_id", companyId!).not("fil_url", "is", null).order("tittel").limit(500);
+      // Only PDFs can be read as SORA profiles.
+      return ((docs as any[]) || []).filter((d) => /\.pdf($|\?)/i.test(d.fil_url || ""));
     },
   });
 
