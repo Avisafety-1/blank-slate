@@ -39,7 +39,13 @@ export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
       >
         {loading ? "…" : t(`soraProfile.status.${status}`)}
       </button>
-      {open && <SoraProfileDialog documentId={documentId} open={open} onOpenChange={setOpen} readOnly={readOnly} />}
+      {open && (
+        // Clicks inside the dialog must not bubble to clickable parents (e.g. the
+        // document badge in MissionTypesSection, which opens the document picker).
+        <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          <SoraProfileDialog documentId={documentId} open={open} onOpenChange={setOpen} readOnly={readOnly} />
+        </span>
+      )}
     </>
   );
 }
