@@ -1,7 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { AlertTriangle, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { RegistryMultiSelect, type RegistryOption } from "./RegistryMultiSelect";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +22,7 @@ import {
   checkSoraProfileConsistency,
   emptyAircraft,
   emptySoraProfile,
+  suggestAircraftMatches,
   type SoraProfile,
 } from "@/lib/soraProfile";
 import { soraStatusClass } from "./SoraProfileBadge";
@@ -145,13 +150,77 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   const [extractedAt, setExtractedAt] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<null | "ai" | "save" | "confirm">(null);
+  const { companyId } = useAuth();
+  // Aircraft rows (by index) whose register links are unaccepted suggestions.
+  const [suggested, setSuggested] = useState<Set<number>>(new Set());
+
+  const { data: registry } = useQuery({
+    queryKey: ["sora-profile-registry", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const [d, e, c] = await Promise.all([
+        supabase.from("drones").select("id, modell, dji_aircraft_name, serienummer, registration_number").eq("company_id", companyId!).eq("aktiv", true).order("modell"),
+        supabase.from("equipment").select("id, navn, type, serienummer").eq("company_id", companyId!).eq("aktiv", true).order("navn"),
+        supabase.from("drone_models").select("id, name, characteristic_dimension_m, max_speed_mps, standard_takeoff_weight_kg, weight_kg").order("name"),
+      ]);
+      return { drones: d.data ?? [], equipment: e.data ?? [], catalog: c.data ?? [] };
+    },
+  });
+
+  const applySuggestions = (p: SoraProfile): { profile: SoraProfile; rows: Set<number> } => {
+    const rows = new Set<number>();
+    if (!registry) return { profile: p, rows };
+    const aircraft = p.aircraft.map((a, i) => {
+      if (a.droneIds.length > 0 || a.catalogModelId) return a;
+      const m = suggestAircraftMatches(a, registry.drones, registry.catalog);
+      if (m.confidence === "none") return a;
+      rows.add(i);
+      return { ...a, droneIds: m.droneIds, catalogModelId: m.catalogModelId };
+    });
+    return { profile: { ...p, aircraft }, rows };
+  };
 
   useEffect(() => {
     if (dirty) return;
-    setProfile(row?.profile ?? emptySoraProfile());
+    const base = row?.profile ?? emptySoraProfile();
+    const { profile: withSuggestions, rows } = canEdit && !readOnly ? applySuggestions(base) : { profile: base, rows: new Set<number>() };
+    setProfile(withSuggestions);
+    setSuggested(rows);
     setSource(row?.extraction_source ?? null);
     setExtractedAt(row?.extracted_at ?? null);
-  }, [row, dirty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row, dirty, registry, canEdit, readOnly]);
+
+  const droneOptions: RegistryOption[] = useMemo(() => (registry?.drones ?? []).map((d) => ({
+    id: d.id, label: d.modell, sub: [d.serienummer, d.registration_number].filter(Boolean).join(" · "),
+  })), [registry]);
+  const equipmentOptions: RegistryOption[] = useMemo(() => (registry?.equipment ?? []).map((e) => ({
+    id: e.id, label: e.navn, sub: [e.type, e.serienummer].filter(Boolean).join(" · "),
+  })), [registry]);
+  const catalogOptions: RegistryOption[] = useMemo(() => (registry?.catalog ?? []).map((c) => ({ id: c.id, label: c.name })), [registry]);
+
+  const unlinkedRows = profile.aircraft.map((a, i) => (a.droneIds.length === 0 ? i : -1)).filter((i) => i >= 0);
+  const confirmBlocked = unlinkedRows.length > 0 || suggested.size > 0;
+
+  const acceptSuggestion = (idx: number) => setSuggested((s) => { const n = new Set(s); n.delete(idx); return n; });
+
+  const fillFromCatalog = (idx: number) => {
+    const a = profile.aircraft[idx];
+    const c = registry?.catalog.find((x) => x.id === a.catalogModelId);
+    if (!c) return;
+    const next = { ...a };
+    if (next.maxDimensionM === null && c.characteristic_dimension_m != null) next.maxDimensionM = Number(c.characteristic_dimension_m);
+    if (next.maxSpeedMps === null && c.max_speed_mps != null) next.maxSpeedMps = Number(c.max_speed_mps);
+    const w = c.standard_takeoff_weight_kg ?? c.weight_kg;
+    if (next.mtomKg === null && w != null) next.mtomKg = Number(w);
+    if (!next.model) next.model = c.name;
+    update(`aircraft.${idx}`, next);
+  };
+
+  const removeAircraft = (idx: number) => {
+    update("aircraft", profile.aircraft.filter((__, i) => i !== idx));
+    setSuggested((s) => new Set([...s].filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))));
+  };
 
   const editable = canEdit && !readOnly;
   const issues = useMemo(() => checkSoraProfileConsistency(profile), [profile]);
@@ -176,7 +245,9 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         toast.warning(t("soraProfile.unreadable"));
         return;
       }
-      setProfile(result.profile);
+      const applied = applySuggestions(result.profile);
+      setProfile(applied.profile);
+      setSuggested(applied.rows);
       setSource("ai");
       setExtractedAt(new Date().toISOString());
       setDirty(true);
@@ -193,6 +264,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
     try {
       await save(profile, { confirm, extractionSource: source ?? "manual", extractedAt });
       setDirty(false);
+      setSuggested(new Set());
       toast.success(t(confirm ? "soraProfile.confirmed" : "soraProfile.saved"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("soraProfile.saveError"));
@@ -264,7 +336,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
                 <span>#{idx + 1}</span>
                 {editable && (
                   <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label={t("soraProfile.removeAircraft")}
-                    onClick={() => update("aircraft", profile.aircraft.filter((__, i) => i !== idx))}>
+                    onClick={() => removeAircraft(idx)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -277,6 +349,58 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
                 <NumField path={`aircraft.${idx}.maxSpeedMps`} />
                 <NumField path={`aircraft.${idx}.mtomKg`} />
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{t("soraProfile.registry.linkedDrones")}</Label>
+                  <RegistryMultiSelect
+                    options={droneOptions}
+                    value={profile.aircraft[idx].droneIds}
+                    onChange={(ids) => { update(`aircraft.${idx}.droneIds`, ids); acceptSuggestion(idx); }}
+                    disabled={!editable}
+                    placeholder={t("soraProfile.registry.selectDrones")}
+                    searchPlaceholder={t("soraProfile.registry.search")}
+                    emptyText={t("soraProfile.registry.noResults")}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">{t("soraProfile.registry.catalogModel")}</Label>
+                  <div className="flex gap-2">
+                    <div className="min-w-0 flex-1">
+                      <RegistryMultiSelect
+                        single
+                        options={catalogOptions}
+                        value={profile.aircraft[idx].catalogModelId ? [profile.aircraft[idx].catalogModelId!] : []}
+                        onChange={(ids) => { update(`aircraft.${idx}.catalogModelId`, ids[0] ?? null); acceptSuggestion(idx); }}
+                        disabled={!editable}
+                        placeholder={t("soraProfile.registry.selectCatalog")}
+                        searchPlaceholder={t("soraProfile.registry.search")}
+                        emptyText={t("soraProfile.registry.noResults")}
+                      />
+                    </div>
+                    {editable && (
+                      <Button type="button" variant="outline" size="sm" className="h-10 shrink-0" disabled={!profile.aircraft[idx].catalogModelId} onClick={() => fillFromCatalog(idx)}>
+                        <Wand2 className="h-4 w-4 mr-1" />{t("soraProfile.registry.fillFromCatalog")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {suggested.has(idx) && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/40 bg-primary/10 p-2 text-xs">
+                  <span className="rounded bg-primary/20 px-1.5 py-0.5 font-medium text-primary">{t("soraProfile.registry.suggestion")}</span>
+                  <span className="flex-1">{t("soraProfile.registry.suggestionHint")}</span>
+                  {editable && (
+                    <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => acceptSuggestion(idx)}>
+                      <Check className="h-3.5 w-3.5 mr-1" />{t("soraProfile.registry.accept")}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {profile.aircraft[idx].droneIds.length === 0 && (
+                <div className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />{t("soraProfile.registry.notLinked")}
+                </div>
+              )}
             </div>
           ))}
         </section>
@@ -292,6 +416,20 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
               <TextField path={`ground.mitigations.${m}.conditionText`} multiline wide />
               {m === "m1c" && <BoolField path="ground.mitigations.m1c.requiresObserver" />}
               {m === "m2" && <TextField path="ground.mitigations.m2.requiredEquipmentText" multiline wide />}
+              {m === "m2" && (profile.ground.mitigations.m2.robustness ?? "None") !== "None" && (
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs text-muted-foreground">{t("soraProfile.registry.m2Equipment")}</Label>
+                  <RegistryMultiSelect
+                    options={equipmentOptions}
+                    value={profile.ground.mitigations.m2.equipmentIds}
+                    onChange={(ids) => update("ground.mitigations.m2.equipmentIds", ids)}
+                    disabled={!editable}
+                    placeholder={t("soraProfile.registry.selectEquipment")}
+                    searchPlaceholder={t("soraProfile.registry.search")}
+                    emptyText={t("soraProfile.registry.noResults")}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </Section>
@@ -361,7 +499,8 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
           <Button type="button" variant="secondary" disabled={!!busy} onClick={() => persist(false)}>
             {busy === "save" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}{t("soraProfile.saveDraft")}
           </Button>
-          <Button type="button" disabled={!!busy} onClick={() => persist(true)}>
+          {confirmBlocked && <p className="w-full text-right text-xs text-muted-foreground">{t("soraProfile.registry.confirmBlocked")}</p>}
+          <Button type="button" disabled={!!busy || confirmBlocked} onClick={() => persist(true)}>
             {busy === "confirm" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}{t("soraProfile.confirm")}
           </Button>
         </div>
