@@ -512,7 +512,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
                       !editable && "opacity-60",
                     )}
                   >
-                    {(STRATEGIC_REDUCTIONS as readonly string[]).includes(opt) ? t(`soraProfile.strategicOptions.${opt}`) : opt}
+                    {(STRATEGIC_LABEL_KEYS as readonly string[]).includes(opt) ? t(`soraProfile.strategicOptions.${opt}`) : opt}
                   </button>
                 );
               })}
