@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, ArrowUp, ArrowDown, Lock, Paperclip, X, FileText, Search } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, ArrowUp, ArrowDown, Lock, Paperclip, X, FileText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -84,6 +84,38 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     const row = await ensureAnnetType();
     if (row) setPickerOpenForId(row.id);
   };
+
+  // SORA documents on propagated types that departments cannot read.
+  const [unsharedSoraIds, setUnsharedSoraIds] = useState<Set<string>>(new Set());
+  const soraIdsKey = useMemo(() => [...new Set(types.map((mt) => mt.sora_document_id).filter(Boolean) as string[])].sort().join(","), [types]);
+  const loadSoraSharing = async () => {
+    const ids = soraIdsKey ? soraIdsKey.split(",") : [];
+    if (!propagate || departments.length === 0 || ids.length === 0) { setUnsharedSoraIds(new Set()); return; }
+    const [docs, vis] = await Promise.all([
+      supabase.from("documents").select("id, visible_to_children").in("id", ids),
+      supabase.from("document_department_visibility").select("document_id").in("document_id", ids).in("company_id", departments.map((d) => d.id)),
+    ]);
+    const shared = new Set<string>(((vis.data as any[]) || []).map((r) => r.document_id));
+    for (const d of (docs.data as any[]) || []) if (d.visible_to_children) shared.add(d.id);
+    setUnsharedSoraIds(new Set(ids.filter((id) => !shared.has(id))));
+  };
+  useEffect(() => { loadSoraSharing(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [soraIdsKey, propagate, departments]);
+  const shareSoraWithDepartments = async (docId: string) => {
+    const { error } = await supabase.from("documents").update({ visible_to_children: true } as any).eq("id", docId);
+    if (error) { toast({ title: t("admin.missionTypes.toastDocumentShareError"), description: error.message, variant: "destructive" }); return; }
+    await loadSoraSharing();
+  };
+  const renderSoraShareWarning = (docId: string | null) => (docId && unsharedSoraIds.has(docId) ? (
+    <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+      <AlertTriangle className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 flex-1 break-words">{t("admin.missionTypes.soraNotShared")}</span>
+      {!isReadOnly && (
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => shareSoraWithDepartments(docId)}>
+          {t("admin.missionTypes.shareWithDepartments")}
+        </Button>
+      )}
+    </div>
+  ) : null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -439,6 +471,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   <span className="sm:hidden">{t("admin.missionTypes.attachDocumentShort")}</span>
                 </Button>
               </div>
+              {renderSoraShareWarning(mt.sora_document_id)}
 
               <div className="flex items-center gap-2">
                 <Label htmlFor={`active-${mt.id}`} className="text-xs text-muted-foreground">

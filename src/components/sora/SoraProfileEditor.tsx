@@ -173,7 +173,7 @@ interface Props {
 
 export function SoraProfileEditor({ documentId, readOnly }: Props) {
   const { t } = useTranslation();
-  const { loading, row, status, canEdit, isPdf, confirmerName, save, extract } = useSoraProfile(documentId);
+  const { loading, document: soraDoc, row, status, canEdit, isPdf, confirmerName, save, extract } = useSoraProfile(documentId);
   const [profile, setProfile] = useState<SoraProfile>(emptySoraProfile());
   const [source, setSource] = useState<"ai" | "manual" | null>(null);
   const [extractedAt, setExtractedAt] = useState<string | null>(null);
@@ -183,18 +183,34 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   // Aircraft rows (by index) whose register links are unaccepted suggestions.
   const [suggested, setSuggested] = useState<Set<number>>(new Set());
 
+  // The register covers the document owner and all its departments, so a parent
+  // company's SORA profile can link department drones and equipment.
+  const ownerCompanyId: string | null = soraDoc?.company_id ?? companyId ?? null;
   const { data: registry } = useQuery({
-    queryKey: ["sora-profile-registry", companyId],
-    enabled: !!companyId,
+    queryKey: ["sora-profile-registry", ownerCompanyId],
+    enabled: !!ownerCompanyId,
     queryFn: async () => {
+      const [owner, children] = await Promise.all([
+        supabase.from("companies").select("id, navn").eq("id", ownerCompanyId!).maybeSingle(),
+        supabase.from("companies").select("id, navn").eq("parent_company_id", ownerCompanyId!).order("navn"),
+      ]);
+      const childRows = (children.data as any[]) ?? [];
+      const ids = [ownerCompanyId!, ...childRows.map((c) => c.id)];
+      const groupNames = new Map<string, string>();
+      groupNames.set(ownerCompanyId!, childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? ""));
+      for (const c of childRows) groupNames.set(c.id, t("soraProfile.registry.department", { name: c.navn }));
       const [d, e, c] = await Promise.all([
-        supabase.from("drones").select("id, modell, dji_aircraft_name, serienummer, registration_number").eq("company_id", companyId!).eq("aktiv", true).order("modell"),
-        supabase.from("equipment").select("id, navn, type, serienummer").eq("company_id", companyId!).eq("aktiv", true).order("navn"),
+        supabase.from("drones").select("id, company_id, modell, dji_aircraft_name, serienummer, registration_number").in("company_id", ids).eq("aktiv", true).order("modell"),
+        supabase.from("equipment").select("id, company_id, navn, type, serienummer").in("company_id", ids).eq("aktiv", true).order("navn"),
         supabase.from("drone_models").select("id, name, characteristic_dimension_m, max_speed_mps, standard_takeoff_weight_kg, weight_kg").order("name"),
       ]);
-      return { drones: d.data ?? [], equipment: e.data ?? [], catalog: c.data ?? [] };
+      const order = (x: { company_id: string }) => ids.indexOf(x.company_id);
+      const drones = ((d.data as any[]) ?? []).sort((a, b) => order(a) - order(b));
+      const equipment = ((e.data as any[]) ?? []).sort((a, b) => order(a) - order(b));
+      return { drones, equipment, catalog: c.data ?? [], groupNames, hasDepartments: childRows.length > 0 };
     },
   });
+  const groupOf = (cid: string) => (registry?.hasDepartments ? registry.groupNames.get(cid) ?? "" : undefined);
 
   const applySuggestions = (p: SoraProfile): { profile: SoraProfile; rows: Set<number> } => {
     const rows = new Set<number>();
@@ -221,10 +237,12 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   }, [row, dirty, registry, canEdit, readOnly]);
 
   const droneOptions: RegistryOption[] = useMemo(() => (registry?.drones ?? []).map((d) => ({
-    id: d.id, label: d.modell, sub: [d.serienummer, d.registration_number].filter(Boolean).join(" · "),
+    id: d.id, label: d.modell, sub: [d.serienummer, d.registration_number].filter(Boolean).join(" · "), group: groupOf(d.company_id),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [registry]);
   const equipmentOptions: RegistryOption[] = useMemo(() => (registry?.equipment ?? []).map((e) => ({
-    id: e.id, label: e.navn, sub: [e.type, e.serienummer].filter(Boolean).join(" · "),
+    id: e.id, label: e.navn, sub: [e.type, e.serienummer].filter(Boolean).join(" · "), group: groupOf(e.company_id),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [registry]);
   const catalogOptions: RegistryOption[] = useMemo(() => (registry?.catalog ?? []).map((c) => ({ id: c.id, label: c.name })), [registry]);
 
@@ -254,6 +272,12 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   };
 
   const editable = canEdit && !readOnly;
+  // Department admins viewing a parent's profile see which of their own drones it covers.
+  const ownDepartmentDrones = useMemo(() => {
+    if (!registry || !companyId || !ownerCompanyId || companyId === ownerCompanyId) return [];
+    const linked = new Set(profile.aircraft.flatMap((a) => a.droneIds));
+    return registry.drones.filter((d) => d.company_id === companyId).map((d) => ({ ...d, covered: linked.has(d.id) }));
+  }, [registry, companyId, ownerCompanyId, profile.aircraft]);
   const issues = useMemo(() => checkSoraProfileConsistency(profile), [profile]);
   const shownStatus = dirty ? "draft" : status;
 
@@ -360,6 +384,23 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
               </Button>
             )}
           </div>
+          {ownDepartmentDrones.length > 0 && (
+            <div className="rounded-md border border-border/60 p-2 space-y-1">
+              <p className="text-xs font-medium">{t("soraProfile.registry.ownDronesCoverage")}</p>
+              <ul className="space-y-1">
+                {ownDepartmentDrones.map((d) => (
+                  <li key={d.id} className="flex min-w-0 items-center justify-between gap-2 text-xs">
+                    <span className="truncate">{d.modell}{d.serienummer ? ` · ${d.serienummer}` : ""}</span>
+                    <span className={d.covered
+                      ? "shrink-0 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-2 py-0.5 text-emerald-700 dark:text-emerald-300"
+                      : "shrink-0 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-amber-700 dark:text-amber-300"}>
+                      {d.covered ? t("soraProfile.registry.covered") : t("soraProfile.registry.notCovered")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {profile.aircraft.length === 0 && <p className="text-xs text-muted-foreground">{t("soraProfile.noAircraft")}</p>}
           {profile.aircraft.map((_, idx) => (
             <div key={idx} className="rounded-md border border-border/60 p-2 space-y-2">

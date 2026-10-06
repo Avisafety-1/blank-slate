@@ -2558,6 +2558,8 @@
       "toastDeleteError": "Could not delete",
       "toastGenericError": "Error",
       "toastDocumentSaveError": "Could not save document",
+      "soraNotShared": "The SORA document is not shared with the departments – department missions get no SORA reference or SORA profile.",
+      "shareWithDepartments": "Share with departments",
       "toastDocumentShareError": "Could not share the document",
       "shareDialogTitle": "Make document visible to departments",
       "shareDialogDescription": "Choose which departments should receive access to the document with the inherited mission type.",
@@ -9298,6 +9300,11 @@
       }
     },
     "registry": {
+      "parentCompany": "Parent company",
+      "department": "Department {{name}}",
+      "ownDronesCoverage": "Your drones in this SORA profile",
+      "covered": "Covered",
+      "notCovered": "Not covered",
       "linkedDrones": "Covers drones in the register",
       "selectDrones": "Select drones",
       "catalogModel": "Catalog model",
