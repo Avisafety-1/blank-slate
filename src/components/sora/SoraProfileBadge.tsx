@@ -5,10 +5,10 @@ import { useSoraProfile, type SoraProfileStatus } from "@/hooks/useSoraProfile";
 import { SoraProfileDialog } from "./SoraProfileDialog";
 
 const STATUS_CLASS: Record<SoraProfileStatus, string> = {
-  none: "border-border text-muted-foreground",
-  draft: "border-amber-500/50 text-amber-600 dark:text-amber-400",
-  confirmed: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400",
-  outdated: "border-destructive/50 text-destructive",
+  none: "bg-muted/60 border-border text-muted-foreground",
+  draft: "bg-amber-500/15 border-amber-500/50 text-amber-700 dark:text-amber-300",
+  confirmed: "bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300",
+  outdated: "bg-destructive/10 border-destructive/50 text-destructive",
 };
 
 export const soraStatusClass = (status: SoraProfileStatus) => STATUS_CLASS[status];
@@ -22,7 +22,7 @@ interface Props {
 /** Small status chip for a SORA document's profile; opens the profile dialog on click. */
 export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
   const { t } = useTranslation();
-  const { status, loading } = useSoraProfile(documentId);
+  const { status } = useSoraProfile(documentId);
   const [open, setOpen] = useState(false);
   if (!documentId) return null;
   return (
@@ -35,9 +35,9 @@ export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
           STATUS_CLASS[status],
           className,
         )}
-        title={t("soraProfile.title")}
+        title={`${t("soraProfile.title")} — ${t(`soraProfile.status.${status}`)}`}
       >
-        {loading ? "…" : t(`soraProfile.status.${status}`)}
+        {t("soraProfile.title")}
       </button>
       {open && (
         // Clicks inside the dialog must not bubble to clickable parents (e.g. the
