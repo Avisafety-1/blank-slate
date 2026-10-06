@@ -2551,6 +2551,17 @@
       "pickerTitle": "Tilknytt dokument til «{{label}}»",
       "pickerSearchPlaceholder": "Søk etter dokument...",
       "pickerEmpty": "Ingen dokumenter funnet",
+      "filterAll": "Alle",
+      "filterSoraProfile": "SORA-profil ({{count}})",
+      "filterSelected": "Valgt ({{count}})",
+      "withSoraProfile": "Med SORA-profil",
+      "otherDocuments": "Andre dokumenter",
+      "useAsSoraPrompt": "Bruk som SORA for denne oppdragstypen?",
+      "replaceSoraPrompt": "Erstatt SORA ({{title}})?",
+      "useAsSora": "Bruk som SORA",
+      "replaceSora": "Erstatt SORA",
+      "unconfirmedProfileHelp": "SORA-profilen er ikke bekreftet – verdiene brukes ikke i risikovurderingen før den er bekreftet.",
+      "openProfile": "Åpne profil",
       "removeLink": "Fjern tilknytning",
       "cancel": "Avbryt",
       "toastReserved": "Reservert",
@@ -9158,6 +9169,42 @@
     "noDocsFound": "Ingen dokumenter funnet.",
     "manageLink": "Administrer SORA-profiler",
     "soraLabel": "SORA-profil:",
+    "help": {
+      "title": "Slik fungerer SORA-profiler",
+      "steps": {
+        "1": {
+          "title": "Last opp SORA-en",
+          "body": "Legg SORA-dokumentet (PDF) i Dokumenter."
+        },
+        "2": {
+          "title": "Lag profilen",
+          "body": "Klikk «Legg til SORA-profil» og velg dokumentet. «Les SORA med AI» fyller ut skjemaet automatisk. Du kan også fylle det ut manuelt. Kontroller verdiene mot dokumentet. Sidetallene viser hvor hver verdi er hentet fra."
+        },
+        "3": {
+          "title": "Koble droner og utstyr",
+          "body": "Velg hvilke droner i registeret (også avdelingenes) hver drone i SORA-en dekker. Droner som ikke er koblet, regnes som ikke dekket."
+        },
+        "4": {
+          "title": "Bekreft",
+          "body": "En administrator bekrefter profilen. Bare bekreftede profiler brukes i risikovurderingen. Lastes en ny versjon av dokumentet opp, blir profilen «Utdatert» og må bekreftes på nytt."
+        },
+        "5": {
+          "title": "Knytt til oppdragstype",
+          "body": "Under Oppdragstyper velger du dokumentet og merker det som SORA. Oppdrag av typen arver SORA-en automatisk. Den kan også overstyres på det enkelte oppdraget."
+        }
+      },
+      "assessmentTitle": "Hva skjer i risikovurderingen?",
+      "assessment": {
+        "1": "Innenfor SORA-rammene (dekket drone, høyde, befolkningstetthet, avstand, VLOS/BVLOS) brukes SORA-ens reduksjoner (f.eks. M1(A), M1(C)), og dronens mål fra SORA-en brukes hvis de er større enn katalogens.",
+        "2": "M1(C) krever observatør på oppdraget hvis profilen sier det.",
+        "3": "Utenfor rammene vises avvikene som anbefalinger. Automatisk godkjenning stoppes, og oppdraget må sendes til godkjenning manuelt. Avvik gir aldri hard stop eller NO-GO.",
+        "4": "Manuelle valg i SORA-revurderingen går alltid foran profilen."
+      },
+      "departmentsTitle": "Avdelinger",
+      "departmentsBody": "Avdelinger som arver oppdragstyper bruker morselskapets SORA-profil, så lenge dokumentet er delt med avdelingene. Avdelingsadministratorer ser profilen, men kan ikke endre den.",
+      "importantTitle": "Viktig",
+      "importantBody": "En SORA-profil er et hjelpemiddel. Den erstatter ikke driftstillatelsen. Piloten og operatøren er fortsatt ansvarlige for at oppdraget er innenfor tillatelsen."
+    },
     "status": {
       "none": "Ingen profil",
       "draft": "Utkast",

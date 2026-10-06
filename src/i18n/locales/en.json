@@ -2549,6 +2549,17 @@
       "pickerTitle": "Attach document to «{{label}}»",
       "pickerSearchPlaceholder": "Search for document...",
       "pickerEmpty": "No documents found",
+      "filterAll": "All",
+      "filterSoraProfile": "SORA profile ({{count}})",
+      "filterSelected": "Selected ({{count}})",
+      "withSoraProfile": "With SORA profile",
+      "otherDocuments": "Other documents",
+      "useAsSoraPrompt": "Use as SORA for this mission type?",
+      "replaceSoraPrompt": "Replace SORA ({{title}})?",
+      "useAsSora": "Use as SORA",
+      "replaceSora": "Replace SORA",
+      "unconfirmedProfileHelp": "The SORA profile is not confirmed – its values are not used in the risk assessment until it is confirmed.",
+      "openProfile": "Open profile",
       "removeLink": "Remove link",
       "cancel": "Cancel",
       "toastReserved": "Reserved",
@@ -9156,6 +9167,42 @@
     "noDocsFound": "No documents found.",
     "manageLink": "Manage SORA profiles",
     "soraLabel": "SORA profile:",
+    "help": {
+      "title": "How SORA profiles work",
+      "steps": {
+        "1": {
+          "title": "Upload the SORA",
+          "body": "Add the SORA document (PDF) to Documents."
+        },
+        "2": {
+          "title": "Create the profile",
+          "body": "Click “Add SORA profile” and select the document. “Read SORA with AI” fills in the form automatically. You can also complete it manually. Check the values against the document. Page numbers show where each value was found."
+        },
+        "3": {
+          "title": "Link aircraft and equipment",
+          "body": "Select which registered aircraft (including department aircraft) each aircraft in the SORA covers. Aircraft that are not linked are considered not covered."
+        },
+        "4": {
+          "title": "Confirm",
+          "body": "An administrator confirms the profile. Only confirmed profiles are used in the risk assessment. If a new document version is uploaded, the profile becomes “Outdated” and must be confirmed again."
+        },
+        "5": {
+          "title": "Link to a mission type",
+          "body": "Under Mission types, select the document and mark it as SORA. Missions of that type inherit the SORA automatically. It can also be overridden on an individual mission."
+        }
+      },
+      "assessmentTitle": "What happens in the risk assessment?",
+      "assessment": {
+        "1": "Within the SORA envelope (covered aircraft, altitude, population density, distance, VLOS/BVLOS), the SORA mitigations (for example M1(A), M1(C)) are applied, and aircraft dimensions from the SORA are used when larger than the catalogue values.",
+        "2": "M1(C) requires an observer on the mission if the profile says so.",
+        "3": "Outside the envelope, deviations are shown as recommendations. Automatic approval is stopped and the mission must be submitted for approval manually. Deviations never cause a hard stop or NO-GO.",
+        "4": "Manual selections in a SORA reassessment always take priority over the profile."
+      },
+      "departmentsTitle": "Departments",
+      "departmentsBody": "Departments that inherit mission types use the parent company's SORA profile as long as the document is shared with the departments. Department administrators can view the profile but cannot change it.",
+      "importantTitle": "Important",
+      "importantBody": "A SORA profile is an aid. It does not replace the operational authorisation. The pilot and operator remain responsible for ensuring the mission is within the authorisation."
+    },
     "status": {
       "none": "No profile",
       "draft": "Draft",
