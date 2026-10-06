@@ -128,7 +128,19 @@ export interface DroneAggregateInput {
   status?: string | null;
 }
 
+/** A linked-item reason with the source item's id, so callers can filter by id. */
+export interface LinkedReason {
+  id: string | null;
+  kind: 'accessory' | 'equipment';
+  text: string;
+}
+
+/** Texts of linked reasons whose item is NOT selected on the mission (by equipment id). */
+export const linkedReasonsNotOnMission = (items: LinkedReason[], assignedEquipmentIds: Set<string>): string[] =>
+  (items || []).filter((r) => !(r.kind === 'equipment' && r.id && assignedEquipmentIds.has(r.id))).map((r) => r.text);
+
 export interface MaintenanceItem {
+  id?: string | null;
   navn?: string | null;
   neste_vedlikehold?: string | null;
   varsel_dager?: number | null;
@@ -148,9 +160,11 @@ export const calculateDroneAggregatedStatus = (
   reasons: string[];
   ownReasons: string[];
   linkedReasons: string[];
+  linkedReasonItems: LinkedReason[];
 } => {
   const ownReasons: string[] = [];
   const linkedReasons: string[] = [];
+  const linkedReasonItems: LinkedReason[] = [];
   const affectedItems: string[] = [];
 
   const dateS = calculateMaintenanceStatus(drone.neste_inspeksjon, drone.varsel_dager ?? 14);
@@ -182,7 +196,9 @@ export const calculateDroneAggregatedStatus = (
     const s = calculateMaintenanceStatus(acc.neste_vedlikehold, acc.varsel_dager ?? 14);
     if (s !== "Grønn") {
       affectedItems.push(acc.navn || "Tilbehør");
-      linkedReasons.push(`Tilbehør ${acc.navn ?? ""} → ${s}`);
+      const text = `Tilbehør ${acc.navn ?? ""} → ${s}`;
+      linkedReasons.push(text);
+      linkedReasonItems.push({ id: acc.id ?? null, kind: 'accessory', text });
     }
     worst = worstStatus(worst, s);
   }
@@ -193,7 +209,9 @@ export const calculateDroneAggregatedStatus = (
     );
     if (s !== "Grønn") {
       affectedItems.push(eq.navn || "Utstyr");
-      linkedReasons.push(`Koblet utstyr ${eq.navn ?? ""} → ${s}`);
+      const text = `Koblet utstyr ${eq.navn ?? ""} → ${s}`;
+      linkedReasons.push(text);
+      linkedReasonItems.push({ id: eq.id ?? null, kind: 'equipment', text });
     }
     worst = worstStatus(worst, s);
   }
@@ -205,6 +223,7 @@ export const calculateDroneAggregatedStatus = (
     reasons: [...ownReasons, ...linkedReasons],
     ownReasons,
     linkedReasons,
+    linkedReasonItems,
   };
 };
 
