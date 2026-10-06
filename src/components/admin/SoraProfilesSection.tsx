@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, FileText, Info, Plus, Search } from "lucide-react";
+import { ChevronDown, FileText, Info, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/GlassCard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { deriveSoraProfileStatus } from "@/hooks/useSoraProfile";
+import { deriveSoraProfileStatus, soraProfileKey } from "@/hooks/useSoraProfile";
 import { soraStatusClass } from "@/components/sora/SoraProfileBadge";
 import { SoraProfileDialog } from "@/components/sora/SoraProfileDialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -24,10 +26,29 @@ interface Props {
 /** SORA profile list + document picker, shared by company settings and /sora-profiler. */
 export function SoraProfilesSection({ companyId, disabled, enabled = true }: Props) {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; tittel: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await (supabase.from("sora_document_profiles" as any)
+      .delete().eq("document_id", deleteTarget.id) as any);
+    setDeleting(false);
+    if (error) {
+      toast.error(t("soraProfile.deleteError"));
+      return;
+    }
+    toast.success(t("soraProfile.deleteSuccess"));
+    setDeleteTarget(null);
+    await queryClient.invalidateQueries({ queryKey: ["sora-profile-list"] });
+    await queryClient.invalidateQueries({ queryKey: soraProfileKey(deleteTarget.id) });
+  };
   const helpStorageKey = `avisafe:sora-profile-help:${user?.id ?? "anonymous"}`;
   const [helpOpen, setHelpOpen] = useState(() => {
     try { return localStorage.getItem(helpStorageKey) === "open"; } catch { return false; }
@@ -127,6 +148,18 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
                   {t(`soraProfile.status.${d.status}`)}
                 </span>
                 <Button size="sm" variant="outline" className="shrink-0" onClick={() => setOpenId(d.id)}>{t("soraProfile.open")}</Button>
+                {isAdmin && d.status !== "none" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 text-destructive hover:text-destructive"
+                    disabled={disabled}
+                    aria-label={t("soraProfile.delete")}
+                    onClick={() => setDeleteTarget({ id: d.id, tittel: d.tittel })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -175,6 +208,27 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
       </Dialog>
 
       {openId && <SoraProfileDialog documentId={openId} open onOpenChange={(o) => !o && setOpenId(null)} />}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("soraProfile.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("soraProfile.deleteConfirmBody", { title: deleteTarget?.tittel ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+            >
+              {deleting ? t("common.loading") : t("soraProfile.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

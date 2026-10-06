@@ -9168,6 +9168,11 @@
     "searchDocuments": "Søk etter dokument …",
     "noDocsFound": "Ingen dokumenter funnet.",
     "manageLink": "Administrer SORA-profiler",
+    "delete": "Slett profil",
+    "deleteConfirmTitle": "Slett SORA-profil?",
+    "deleteConfirmBody": "Profilen for «{{title}}» slettes. Selve dokumentet og SORA-koblingen på oppdragstyper beholdes, men verdiene brukes ikke lenger i risikovurderingen.",
+    "deleteSuccess": "SORA-profilen er slettet.",
+    "deleteError": "Kunne ikke slette SORA-profilen.",
     "soraLabel": "SORA-profil:",
     "help": {
       "title": "Slik fungerer SORA-profiler",
