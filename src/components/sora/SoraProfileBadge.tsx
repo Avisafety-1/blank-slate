@@ -1,0 +1,45 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { useSoraProfile, type SoraProfileStatus } from "@/hooks/useSoraProfile";
+import { SoraProfileDialog } from "./SoraProfileDialog";
+
+const STATUS_CLASS: Record<SoraProfileStatus, string> = {
+  none: "border-border text-muted-foreground",
+  draft: "border-amber-500/50 text-amber-600 dark:text-amber-400",
+  confirmed: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400",
+  outdated: "border-destructive/50 text-destructive",
+};
+
+export const soraStatusClass = (status: SoraProfileStatus) => STATUS_CLASS[status];
+
+interface Props {
+  documentId: string | null | undefined;
+  readOnly?: boolean;
+  className?: string;
+}
+
+/** Small status chip for a SORA document's profile; opens the profile dialog on click. */
+export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
+  const { t } = useTranslation();
+  const { status, loading } = useSoraProfile(documentId);
+  const [open, setOpen] = useState(false);
+  if (!documentId) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
+        className={cn(
+          "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap hover:bg-muted/50",
+          STATUS_CLASS[status],
+          className,
+        )}
+        title={t("soraProfile.title")}
+      >
+        {loading ? "…" : t(`soraProfile.status.${status}`)}
+      </button>
+      {open && <SoraProfileDialog documentId={documentId} open={open} onOpenChange={setOpen} readOnly={readOnly} />}
+    </>
+  );
+}
