@@ -155,18 +155,22 @@ export const applyGroundMitigations = ({
   igrc,
   controlledMinimum,
   manual,
+  profile,
   autoM1c = 0,
 }: {
   igrc: number | null;
   controlledMinimum: number | null;
   manual?: ManualMitigations;
+  /** Defaults from a confirmed SORA profile (inside its envelope). Priority: manual > profile > auto-M1C. */
+  profile?: Partial<Record<MitigationKey, number>> | null;
   autoM1c?: number;
 }): MitigationResult => {
+  const pick = (key: MitigationKey, fallback: number) => manualReduction(manual, key) ?? profile?.[key] ?? fallback;
   const effective: Record<MitigationKey, number> = {
-    m1a_sheltering: manualReduction(manual, 'm1a_sheltering') ?? 0,
-    m1b_operational_restrictions: manualReduction(manual, 'm1b_operational_restrictions') ?? 0,
-    m1c_ground_observation: manualReduction(manual, 'm1c_ground_observation') ?? autoM1c,
-    m2_impact_reduction: manualReduction(manual, 'm2_impact_reduction') ?? 0,
+    m1a_sheltering: pick('m1a_sheltering', 0),
+    m1b_operational_restrictions: pick('m1b_operational_restrictions', 0),
+    m1c_ground_observation: pick('m1c_ground_observation', autoM1c),
+    m2_impact_reduction: pick('m2_impact_reduction', 0),
   };
   const totalReduction = Object.values(effective).reduce((sum, r) => sum + r, 0);
   if (igrc === null) return { effective, totalReduction, fgrc: null };
