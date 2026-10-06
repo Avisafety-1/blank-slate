@@ -26,7 +26,7 @@ interface Props {
 /** SORA profile list + document picker, shared by company settings and /sora-profiler. */
 export function SoraProfilesSection({ companyId, disabled, enabled = true }: Props) {
   const { t } = useTranslation();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
