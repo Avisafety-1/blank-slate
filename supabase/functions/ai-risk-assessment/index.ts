@@ -2492,11 +2492,20 @@ serve(async (req) => {
     const catalogMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
     // Confirmed, usable SORA profile: aircraft rows linked (droneIds) to drones on the mission
     // may only INCREASE dimension/speed (SORA uses the largest incl. propellers).
-    const profileAircraftRows = isProfileUsable(soraProfileRow, soraProfileDoc)
-      ? (sanitizeSoraProfile(soraProfileRow.profile).aircraft ?? []).filter((a) =>
-          (assignedDrones as any[]).some((d) => Array.isArray(a.droneIds) && a.droneIds.includes(d.id)))
-      : [];
-    const characteristics = resolveCharacteristics({ dimensionM: catalogCharacteristicDimensionM, speedMps: catalogMaxSpeedMps }, profileAircraftRows);
+    // Fail-safe: a broken profile must never crash the assessment — fall back to catalog values.
+    let profileAircraftRows: ReturnType<typeof sanitizeSoraProfile>['aircraft'] = [];
+    let characteristics = resolveCharacteristics({ dimensionM: catalogCharacteristicDimensionM, speedMps: catalogMaxSpeedMps }, []);
+    try {
+      profileAircraftRows = isProfileUsable(soraProfileRow, soraProfileDoc)
+        ? (sanitizeSoraProfile(soraProfileRow.profile).aircraft ?? []).filter((a) =>
+            (assignedDrones as any[]).some((d) => Array.isArray(a.droneIds) && a.droneIds.includes(d.id)))
+        : [];
+      characteristics = resolveCharacteristics({ dimensionM: catalogCharacteristicDimensionM, speedMps: catalogMaxSpeedMps }, profileAircraftRows);
+    } catch (e) {
+      console.error('SORA profile characteristics failed, using catalog values:', e);
+      profileAircraftRows = [];
+      characteristics = resolveCharacteristics({ dimensionM: catalogCharacteristicDimensionM, speedMps: catalogMaxSpeedMps }, []);
+    }
     const deterministicCharacteristicDimensionM = characteristics.dimension.value;
     const deterministicMaxSpeedMps = characteristics.speed.value;
     const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
