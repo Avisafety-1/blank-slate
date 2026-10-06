@@ -6,6 +6,43 @@ import { countBatteries, describeBatteries, type EquipmentLike } from './battery
 import { deriveFogAdvisory, type FogAdvisory } from './fog.ts';
 import { classifyOperation, type OperationClassification, type OperationClassificationInput } from './operationCategory.ts';
 import { resolveContainment, type ContainmentDecision } from './containment.ts';
+import { evaluateSoraProfile, isProfileUsable, type SoraProfileEvaluation, type SoraProfileFacts } from '../_shared/soraProfileEvaluation.ts';
+import { sanitizeSoraProfile } from '../_shared/soraProfile.ts';
+
+export interface SoraProfileResult extends Omit<SoraProfileEvaluation, 'profileReductions' | 'fgrc' | 'sail'> {
+  profileId: string | null;
+  documentId: string | null;
+  confirmedAt: string | null;
+  used: boolean;
+}
+
+/**
+ * SORA profile step (after iGRC, before fGRC/SAIL). Only a confirmed, current profile
+ * in the document's company has any effect; otherwise only a note is returned.
+ * Returns the reductions to pass to applyGroundMitigations (manual > profile > auto-M1C).
+ */
+export const resolveSoraProfile = (
+  row: { id?: string; status?: string | null; source_file_url?: string | null; company_id?: string | null; profile?: unknown; confirmed_at?: string | null } | null,
+  doc: { id?: string; fil_url?: string | null; company_id?: string | null } | null,
+  facts: SoraProfileFacts,
+): { result: SoraProfileResult | null; profileReductions: SoraProfileEvaluation['profileReductions'] } => {
+  if (!doc) return { result: null, profileReductions: {} };
+  const base = { profileId: row?.id ?? null, documentId: doc.id ?? null, confirmedAt: row?.confirmed_at ?? null };
+  if (!isProfileUsable(row, doc)) {
+    return {
+      result: {
+        ...base, used: false, state: 'within_envelope', deviations: [], appliedMitigations: [],
+        notes: [facts.lang === 'en'
+          ? 'SORA profile not confirmed / outdated – the values are not used'
+          : 'SORA-profil ikke bekreftet / utdatert – verdiene er ikke brukt'],
+      },
+      profileReductions: {},
+    };
+  }
+  const ev = evaluateSoraProfile(sanitizeSoraProfile(row!.profile), facts);
+  const { profileReductions, fgrc: _f, sail: _s, ...rest } = ev;
+  return { result: { ...base, used: true, ...rest }, profileReductions };
+};
 
 type HardStopInput = Parameters<typeof deriveHardStops>[0];
 
