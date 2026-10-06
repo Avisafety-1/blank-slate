@@ -374,7 +374,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <TextField path={`aircraft.${idx}.manufacturer`} />
                 <TextField path={`aircraft.${idx}.model`} />
-                <TextField path={`aircraft.${idx}.type`} />
+                <SelectField path={`aircraft.${idx}.type`} options={AIRCRAFT_TYPES} labels={(o) => t(`soraProfile.aircraftTypes.${o}`)} />
                 <NumField path={`aircraft.${idx}.maxDimensionM`} />
                 <NumField path={`aircraft.${idx}.maxSpeedMps`} />
                 <NumField path={`aircraft.${idx}.mtomKg`} />
@@ -487,12 +487,35 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         </Section>
 
         <Section title={t("soraProfile.sections.air")}>
-          <TextField path="air.scenario" wide />
+          <SelectField path="air.scenario" options={AIR_SCENARIOS} labels={(o) => t(`soraProfile.airScenarios.${o}`)} />
           <SelectField path="air.initialArc" options={ARC_LEVELS} />
           <NumSelectField path="air.aec" options={AEC_OPTIONS} />
           <Field path="air.strategicReductions" wide>
-            <Textarea rows={2} disabled={!editable} value={profile.air.strategicReductions.join("\n")}
-              onChange={(e) => update("air.strategicReductions", e.target.value.split("\n").filter((s, i, a) => s.trim() || i === a.length - 1))} />
+            <div className="flex flex-wrap gap-2">
+              {[...STRATEGIC_REDUCTIONS, ...profile.air.strategicReductions.filter((s) => !(STRATEGIC_REDUCTIONS as readonly string[]).includes(s))].map((opt) => {
+                const active = profile.air.strategicReductions.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    disabled={!editable}
+                    onClick={() =>
+                      update(
+                        "air.strategicReductions",
+                        active ? profile.air.strategicReductions.filter((s) => s !== opt) : [...profile.air.strategicReductions, opt],
+                      )
+                    }
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs",
+                      active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground",
+                      !editable && "opacity-60",
+                    )}
+                  >
+                    {(STRATEGIC_REDUCTIONS as readonly string[]).includes(opt) ? t(`soraProfile.strategicOptions.${opt}`) : opt}
+                  </button>
+                );
+              })}
+            </div>
           </Field>
           <SelectField path="air.residualArc" options={ARC_LEVELS} />
           <SelectField path="air.tmpr" options={ROBUSTNESS} labels={robustnessLabel} />
@@ -527,7 +550,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
           </div>
           {profile.oso.map((_, idx) => (
             <div key={idx} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
-              <TextField path={`oso.${idx}.id`} />
+              <SelectField path={`oso.${idx}.id`} options={OSO_IDS} />
               <SelectField path={`oso.${idx}.robustness`} options={ROBUSTNESS} labels={robustnessLabel} />
               {editable && (
                 <Button type="button" size="icon" variant="ghost" aria-label={t("soraProfile.removeOso")}
