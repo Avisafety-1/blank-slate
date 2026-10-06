@@ -113,6 +113,7 @@ const DocumentsList = ({
 }: DocumentsListProps) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
+  const { data: soraIds } = useSoraDocumentIds();
 
   const handleOpenFile = async (filUrl: string) => {
     try {
