@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createUniqueChannel } from "@/lib/realtimeChannel";
 import { Shield, LogOut, Trash2, Check, X, Menu, Settings, UserCog, Users, Building2, Mail, Key, Copy, ShieldCheck, ChevronRight, RefreshCw, MapPin, Calculator, Radio, Send, AlertTriangle, GraduationCap, Rss, UserX, UserCheck } from "lucide-react";
@@ -189,7 +189,8 @@ const Admin = () => {
   const [eccairsEnabled, setEccairsEnabled] = useState(false);
   const [isChildCompany, setIsChildCompany] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<string>("users");
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "users");
 
   // Allow guided tour (and other modules) to switch admin tab via custom event
   useEffect(() => {

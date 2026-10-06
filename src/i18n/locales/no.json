@@ -2892,6 +2892,7 @@
       "mapPublication": "Kartpublisering",
       "defaultMapLayers": "Standard kartlag",
       "missionTypes": "Oppdragstyper",
+      "soraProfiles": "SORA-profiler",
       "defaultSoraBuffer": "Standard SORA-buffer",
       "rolesTitle": "Roller",
       "flightLogAlerts": "Flylogg-varsler",
