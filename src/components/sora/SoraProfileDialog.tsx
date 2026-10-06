@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSoraProfile } from "@/hooks/useSoraProfile";
 import { SoraProfileEditor } from "./SoraProfileEditor";
+import { SoraProfileHelp } from "./SoraProfileHelp";
 
 interface Props {
   documentId: string;

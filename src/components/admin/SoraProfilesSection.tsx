@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, FileText, Info, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { deriveSoraProfileStatus, soraProfileKey } from "@/hooks/useSoraProfile";
 import { soraStatusClass } from "@/components/sora/SoraProfileBadge";
 import { SoraProfileDialog } from "@/components/sora/SoraProfileDialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SoraProfileHelp } from "@/components/sora/SoraProfileHelp";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
