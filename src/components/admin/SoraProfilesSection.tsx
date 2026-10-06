@@ -208,6 +208,27 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
       </Dialog>
 
       {openId && <SoraProfileDialog documentId={openId} open onOpenChange={(o) => !o && setOpenId(null)} />}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("soraProfile.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("soraProfile.deleteConfirmBody", { title: deleteTarget?.tittel ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+            >
+              {deleting ? t("common.loading") : t("soraProfile.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
