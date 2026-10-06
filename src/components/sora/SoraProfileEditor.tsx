@@ -43,7 +43,7 @@ const SORA_VERSIONS = ["2.0", "2.5"];
 
 const getPath = (obj: any, path: string) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
 const setPath = (obj: any, path: string, value: unknown) => {
-  const clone = structuredClone(obj);
+  const clone = JSON.parse(JSON.stringify(obj));
   const keys = path.split(".");
   let cur = clone;
   for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
