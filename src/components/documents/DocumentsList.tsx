@@ -115,7 +115,10 @@ const DocumentsList = ({
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
   const { data: soraIdList } = useSoraDocumentIds();
-  const soraIds = useMemo(() => new Set(soraIdList ?? []), [soraIdList]);
+  const soraIds = useMemo(
+    () => new Set<string>(Array.isArray(soraIdList) ? soraIdList : []),
+    [soraIdList],
+  );
 
   const handleOpenFile = async (filUrl: string) => {
     try {

@@ -132,7 +132,8 @@ export function useSoraProfile(documentId: string | null | undefined) {
 /** IDs of documents used as SORA on a mission type or mission visible to the caller. */
 export function useSoraDocumentIds() {
   return useQuery({
-    queryKey: ["sora-document-ids"],
+    // v2: older persisted cache entries stored a (serialized) Set under v1.
+    queryKey: ["sora-document-ids", "v2"],
     staleTime: 60_000,
     queryFn: async () => {
       const [types, missions, profiles] = await Promise.all([
