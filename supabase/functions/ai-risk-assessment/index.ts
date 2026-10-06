@@ -4,13 +4,14 @@ import { getPrompts, buildSoraReassessSystemPrompt, buildSoraReassessUserPrompt,
 import { countMissionObservers, daysUntilOslo, effectiveObserverCount, filterPilots, osloDateString, osloIsoWithOffset } from "./missionContext.ts";
 import { decideApproval } from "./approval.ts";
 import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
-import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
+import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, resolveCharacteristics, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
-import { maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
+import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
+import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
-import { buildDecisionSentence, enforceConsistency, withDecisionSentence } from "./consistency.ts";
+import { buildDecisionSentence, enforceConsistency, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
@@ -158,6 +159,8 @@ const buildDeterministicGroundRisk = ({
   controlledGroundSelected = false,
   populationDensityUnknown = false,
   profileApplied = [],
+  dimensionSource = null,
+  speedSource = null,
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -173,6 +176,9 @@ const buildDeterministicGroundRisk = ({
   populationDensityUnknown?: boolean;
   /** Reductions credited from a confirmed SORA profile (inside its envelope). */
   profileApplied?: AppliedMitigation[];
+  /** Catalog values when a SORA profile row increased dimension/speed. */
+  dimensionSource?: number | null;
+  speedSource?: number | null;
 }) => {
   const igrcResult = computeIgrc({
     dimensionM: characteristicDimensionM,
@@ -220,9 +226,13 @@ const buildDeterministicGroundRisk = ({
     ? `Column ${columnClass} (strictest of dimension and speed), population band ${populationBand}`
     : `Kolonne ${columnClass} (strengeste av dimensjon og fart), befolkningsbånd ${populationBand}`;
   const igrcText = igrc === null ? (en ? 'N/A' : 'N/A') : String(igrc);
+  const dimNote = dimensionSource != null
+    ? (en ? ` (from SORA profile, catalog ${fmt(dimensionSource, 2)} m)` : ` fra SORA-profil (katalog ${fmt(dimensionSource, 2)} m)`) : '';
+  const speedNote = speedSource != null
+    ? (en ? ` (from SORA profile, catalog ${fmt(speedSource, 1)} m/s)` : ` fra SORA-profil (katalog ${fmt(speedSource, 1)} m/s)`) : '';
   const igrcReasoning = en
-    ? `System-calculated iGRC=${igrcText} from the SORA 2.5 table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m, max speed ${fmt(maxSpeedMps, 1)} m/s (column ${columnClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${unknownNote}${outsideSoraNote}`
-    : `Systemberegnet iGRC=${igrcText} fra SORA 2.5-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m, maks hastighet ${fmt(maxSpeedMps, 1)} m/s (kolonne ${columnClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${unknownNote}${outsideSoraNote}`;
+    ? `System-calculated iGRC=${igrcText} from the SORA 2.5 table based on characteristic dimension ${fmt(characteristicDimensionM, 2)} m${dimNote}, max speed ${fmt(maxSpeedMps, 1)} m/s${speedNote} (column ${columnClass}) and dimensioning SSB 250 m population density ${fmt(populationDensityValue)} people/km² (${populationBand}).${unknownNote}${outsideSoraNote}`
+    : `Systemberegnet iGRC=${igrcText} fra SORA 2.5-tabellen basert på karakteristisk dimensjon ${fmt(characteristicDimensionM, 2)} m${dimNote}, maks hastighet ${fmt(maxSpeedMps, 1)} m/s${speedNote} (kolonne ${columnClass}) og dimensjonerende SSB 250 m-befolkningstetthet ${fmt(populationDensityValue)} personer/km² (${populationBand}).${unknownNote}${outsideSoraNote}`;
 
   const m1aReason = en
     ? 'Not automatically credited. Sheltering requires documentation that exposed people are actually protected by structures.'
@@ -2467,9 +2477,18 @@ serve(async (req) => {
 
     // ===== SYSTEM DECISIONS (computed BEFORE the AI call) =====
     // Nothing below depends on the AI response; the AI only reproduces it.
-    const deterministicCharacteristicDimensionM = primaryDroneCharacteristicDimensionM
+    const catalogCharacteristicDimensionM = primaryDroneCharacteristicDimensionM
       ?? (typeof droneData?.vekt === 'number' && droneData.vekt >= 5 ? 1.2 : typeof droneData?.vekt === 'number' && droneData.vekt >= 1 ? 0.6 : 0.3);
-    const deterministicMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
+    const catalogMaxSpeedMps = Number(droneCatalogMatch?.max_speed_mps ?? (droneCatalogMatch?.max_wind_mps ? droneCatalogMatch.max_wind_mps * 2 : null) ?? 25);
+    // Confirmed, usable SORA profile: aircraft rows linked (droneIds) to drones on the mission
+    // may only INCREASE dimension/speed (SORA uses the largest incl. propellers).
+    const profileAircraftRows = isProfileUsable(soraProfileRow, soraProfileDoc)
+      ? (sanitizeSoraProfile(soraProfileRow.profile).aircraft ?? []).filter((a) =>
+          (assignedDrones as any[]).some((d) => Array.isArray(a.droneIds) && a.droneIds.includes(d.id)))
+      : [];
+    const characteristics = resolveCharacteristics({ dimensionM: catalogCharacteristicDimensionM, speedMps: catalogMaxSpeedMps }, profileAircraftRows);
+    const deterministicCharacteristicDimensionM = characteristics.dimension.value;
+    const deterministicMaxSpeedMps = characteristics.speed.value;
     const deterministicWeightKg = Number.isFinite(Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt)) ? Number(droneCatalogMatch?.weight_kg ?? droneData?.vekt) : null;
 
 
@@ -2490,6 +2509,8 @@ serve(async (req) => {
     const grEn = grLang === 'en';
     const buildGroundRisk = (profileApplied: AppliedMitigation[]) => buildDeterministicGroundRisk({
       profileApplied,
+      dimensionSource: characteristics.dimension.fromProfile ? characteristics.dimension.catalog : null,
+      speedSource: characteristics.speed.fromProfile ? characteristics.speed.catalog : null,
       characteristicDimensionM: deterministicCharacteristicDimensionM,
       maxSpeedMps: deterministicMaxSpeedMps,
       weightKg: deterministicWeightKg,
@@ -2587,6 +2608,8 @@ serve(async (req) => {
       igrc: preIgrc.igrc,
       controlledMinimum: preIgrc.controlledMinimum,
       residualArc: deterministicAirFields?.residual_arc ?? null,
+      declaredAec: deterministicAirFields?.aec_declared_atypical === true ? 12
+        : (Number.isFinite(Number((manualAirRisk as any)?.aec)) && (manualAirRisk as any)?.aec != null ? Number((manualAirRisk as any).aec) : null),
       maxRouteDistanceM: maxDistanceFromFirstPoint(allRouteCoords),
       adjacentAvgDensity: adjDoc?.enabled === true && typeof adjDoc?.avgDensity === 'number' ? adjDoc.avgDensity : null,
       manual: manualGroundMitigations ?? null,
@@ -3620,6 +3643,7 @@ serve(async (req) => {
     // Consistency: hard-stop categories NO-GO (≤ 3.0), AI NO-GO without hard stop → BETINGET,
     // overall ≤ 4.9 with a hard stop.
     enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
+    if (systemDecisions.operationCategory?.category === 'specific') stripOpenCategoryCompetency(aiAnalysis);
 
     // Recompute recommendation after authoritative hard-stop derivation.
     aiAnalysis.recommendation = deriveRiskRecommendation(

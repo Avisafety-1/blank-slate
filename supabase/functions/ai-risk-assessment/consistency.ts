@@ -69,3 +69,16 @@ export const withDecisionSentence = (summary: unknown, sentence: string): string
   if (rest.startsWith(sentence)) return rest;
   return rest ? `${sentence} ${rest}` : sentence;
 };
+
+/** Open-category / C-class competency (A1/A3, A2, STS, C0–C6). */
+export const OPEN_CATEGORY_COMPETENCY_RE = /\b(A1\s*\/\s*A3|A2|C[0-6](?:-klasse|-class)?|STS-0[12]|open category|åpen kategori|C-klasse|C-class)\b/i;
+
+/** Specific category: drop recommendations that demand C-class/open-category competency. */
+export const stripOpenCategoryCompetency = (analysis: any): any => {
+  if (!analysis || !Array.isArray(analysis.recommendations)) return analysis;
+  analysis.recommendations = analysis.recommendations.filter((r: any) => {
+    const text = typeof r === 'string' ? r : `${r?.action ?? ''} ${r?.risk_addressed ?? ''}`;
+    return !OPEN_CATEGORY_COMPETENCY_RE.test(text);
+  });
+  return analysis;
+};

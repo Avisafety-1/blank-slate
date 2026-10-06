@@ -104,6 +104,27 @@ export const computeIgrc = (input: IgrcInput): IgrcResult => {
   return { igrc, column, row, controlledMinimum, outsideSora: igrc === null };
 };
 
+/**
+ * Characteristic dimension/speed: the larger of catalog/register and the matching
+ * rows of a confirmed SORA profile (SORA 2.5 uses the largest dimension incl.
+ * propellers). Profile values can only increase, never reduce.
+ */
+export interface CharacteristicValue { value: number; catalog: number; fromProfile: boolean }
+export const resolveCharacteristics = (
+  catalog: { dimensionM: number; speedMps: number },
+  profileRows: { maxDimensionM?: number | null; maxSpeedMps?: number | null }[] = [],
+): { dimension: CharacteristicValue; speed: CharacteristicValue } => {
+  const pick = (base: number, vals: (number | null | undefined)[]): CharacteristicValue => {
+    const nums = vals.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0);
+    const max = nums.length ? Math.max(...nums) : -Infinity;
+    return max > base ? { value: max, catalog: base, fromProfile: true } : { value: base, catalog: base, fromProfile: false };
+  };
+  return {
+    dimension: pick(catalog.dimensionM, profileRows.map((r) => r.maxDimensionM)),
+    speed: pick(catalog.speedMps, profileRows.map((r) => r.maxSpeedMps)),
+  };
+};
+
 // ---------- Ground mitigations ----------
 
 export type MitigationKey =

@@ -48,6 +48,8 @@ export interface SoraProfileFacts {
   igrc: number | null;
   controlledMinimum: number | null;
   residualArc: string | null;
+  /** AEC manually declared/overridden for the mission (e.g. 12 atypical); null when derived. */
+  declaredAec?: number | null;
   /** Max distance from the first route point; null without a route. */
   maxRouteDistanceM: number | null;
   /** Average density in the adjacent area; null without documentation. */
@@ -170,6 +172,14 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
   const profArc = arcLetter(profile.air?.residualArc);
   if (!arc || !profArc) unchecked('ARC');
   else if (arc > profArc) add('ARC_EXCEEDED', `Residual ARC-${arc} er over SORA-profilens ARC-${profArc}`, `Residual ARC-${arc} exceeds the SORA profile's ARC-${profArc}`, `ARC-${arc}`, `ARC-${profArc}`);
+
+  const profAec = fin(profile.air?.aec);
+  const decl = fin(facts.declaredAec);
+  if (decl !== null && profAec !== null && decl !== profAec) {
+    notes.push(en
+      ? `Air risk is based on declared AEC ${decl}, while the SORA profile assumes AEC ${profAec} – check that the declaration is covered by the SORA.`
+      : `Luftrisiko bygger på erklært AEC ${decl}, mens SORA-profilen forutsetter AEC ${profAec} – kontroller at erklæringen er dekket av SORA-en.`);
+  }
 
   const profFgrc = fin(profile.ground?.fgrc);
   if (fgrc === null || profFgrc === null) unchecked('fGRC');
