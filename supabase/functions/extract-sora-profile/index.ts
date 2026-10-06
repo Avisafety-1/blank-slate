@@ -106,6 +106,9 @@ Deno.serve(async (req) => {
     const choice = aiData.choices?.[0];
     const raw = parseAiJson(choice?.message?.content ?? '', choice?.finish_reason);
     const profile = sanitizeSoraProfile({ ...(raw.profile ?? raw), pages: raw.pages ?? raw.profile?.pages ?? {} });
+    // Register links are chosen by the administrator in the app, never by the AI.
+    profile.aircraft = profile.aircraft.map((a) => ({ ...a, droneIds: [], catalogModelId: null }));
+    profile.ground.mitigations.m2.equipmentIds = [];
     const consistency = checkSoraProfileConsistency(profile);
 
     return json({ readable: true, profile, pages: profile.pages, consistency, sourceFileUrl: doc.fil_url });

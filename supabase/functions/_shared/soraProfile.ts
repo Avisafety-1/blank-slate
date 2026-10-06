@@ -22,6 +22,10 @@ export interface SoraAircraft {
   maxDimensionM: number | null;
   maxSpeedMps: number | null;
   mtomKg: number | null;
+  /** Drones in the register (drones.id) covered by this SORA aircraft entry. */
+  droneIds: string[];
+  /** Catalog model (drone_models.id). */
+  catalogModelId: string | null;
 }
 export interface SoraProfile {
   soraVersion: string | null;
@@ -44,7 +48,7 @@ export interface SoraProfile {
       m1a: SoraMitigation;
       m1b: SoraMitigation;
       m1c: SoraMitigation & { requiresObserver: boolean | null };
-      m2: SoraMitigation & { requiredEquipmentText: string | null };
+      m2: SoraMitigation & { requiredEquipmentText: string | null; equipmentIds: string[] };
     };
   };
   air: {
@@ -77,7 +81,7 @@ export interface ConsistencyIssue {
 const emptyMitigation = (): SoraMitigation => ({ robustness: null, reduction: null, conditionText: null });
 
 export const emptyAircraft = (): SoraAircraft => ({
-  manufacturer: null, model: null, type: null, maxDimensionM: null, maxSpeedMps: null, mtomKg: null,
+  manufacturer: null, model: null, type: null, maxDimensionM: null, maxSpeedMps: null, mtomKg: null, droneIds: [], catalogModelId: null,
 });
 
 export const emptySoraProfile = (): SoraProfile => ({
@@ -96,7 +100,7 @@ export const emptySoraProfile = (): SoraProfile => ({
       m1a: emptyMitigation(),
       m1b: emptyMitigation(),
       m1c: { ...emptyMitigation(), requiresObserver: true },
-      m2: { ...emptyMitigation(), requiredEquipmentText: null },
+      m2: { ...emptyMitigation(), requiredEquipmentText: null, equipmentIds: [] },
     },
   },
   air: { scenario: null, initialArc: null, aec: null, strategicReductions: [], residualArc: null, tmpr: null },
@@ -136,6 +140,10 @@ export const normalizeSail = (v: unknown): string | null => {
   const n = parseInt(s, 10);
   return n >= 1 && n <= 6 ? SAIL_LEVELS[n - 1] : null;
 };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (v: unknown): v is string => typeof v === 'string' && UUID_RE.test(v);
+const uuidList = (v: unknown, max = 50): string[] =>
+  Array.from(new Set((Array.isArray(v) ? v : []).filter(isUuid).map((x) => x.toLowerCase()))).slice(0, max);
 const mitigation = (v: any): SoraMitigation => ({
   robustness: oneOf(v?.robustness, ROBUSTNESS),
   reduction: num(v?.reduction),
@@ -176,6 +184,8 @@ export const sanitizeSoraProfile = (raw: any): SoraProfile => {
       maxDimensionM: num(d?.maxDimensionM),
       maxSpeedMps: num(d?.maxSpeedMps),
       mtomKg: num(d?.mtomKg),
+      droneIds: uuidList(d?.droneIds),
+      catalogModelId: isUuid(d?.catalogModelId) ? d.catalogModelId.toLowerCase() : null,
     })),
     ground: {
       igrc: num(g.igrc),
@@ -184,7 +194,7 @@ export const sanitizeSoraProfile = (raw: any): SoraProfile => {
         m1a: mitigation(m.m1a),
         m1b: mitigation(m.m1b),
         m1c: { ...mitigation(m.m1c), requiresObserver: bool(m.m1c?.requiresObserver) ?? true },
-        m2: { ...mitigation(m.m2), requiredEquipmentText: str(m.m2?.requiredEquipmentText) },
+        m2: { ...mitigation(m.m2), requiredEquipmentText: str(m.m2?.requiredEquipmentText), equipmentIds: uuidList(m.m2?.equipmentIds) },
       },
     },
     air: {
@@ -308,4 +318,55 @@ export const checkSoraProfileConsistency = (profile: SoraProfile): ConsistencyIs
   }
 
   return issues;
+};
+
+// ---------- register matching (pure) ----------
+
+export interface RegisterDrone { id: string; modell: string | null; dji_aircraft_name?: string | null }
+export interface CatalogModel { id: string; name: string }
+export interface AircraftMatch { droneIds: string[]; catalogModelId: string | null; confidence: 'high' | 'medium' | 'none' }
+
+const SERIES_RE = /[\s-]*(series|serien|serie)\b/i;
+const normName = (s: string | null | undefined) =>
+  String(s ?? '').toLowerCase().replace(/\bdji\b/g, '').replace(/matrice/g, 'm').replace(/[\s\-_]+/g, '');
+
+/** Builds a matcher for a SORA aircraft name. "X Series" = prefix match not followed by a digit. */
+const nameMatcher = (aircraft: Pick<SoraAircraft, 'manufacturer' | 'model'>) => {
+  const raw = aircraft.model ?? '';
+  const series = SERIES_RE.test(raw);
+  const key = normName(raw.replace(SERIES_RE, ''));
+  if (!key) return null;
+  return (candidate: string | null | undefined): 'high' | 'medium' | null => {
+    const c = normName(candidate);
+    if (!c) return null;
+    if (c === key) return 'high';
+    if (series && c.startsWith(key) && !/^[0-9]/.test(c.slice(key.length))) return 'medium';
+    return null;
+  };
+};
+
+export const suggestAircraftMatches = (
+  aircraft: Pick<SoraAircraft, 'manufacturer' | 'model'>,
+  drones: RegisterDrone[],
+  catalog: CatalogModel[],
+): AircraftMatch => {
+  const match = nameMatcher(aircraft);
+  if (!match) return { droneIds: [], catalogModelId: null, confidence: 'none' };
+  const catalogHits = catalog.map((c) => ({ c, q: match(c.name) })).filter((x) => x.q);
+  const best = catalogHits.find((x) => x.q === 'high') ?? catalogHits[0];
+  const droneHits = drones
+    .map((d) => {
+      const qs = [match(d.modell), match(d.dji_aircraft_name)];
+      // Register name matching a matched catalog model name (e.g. "M4TD").
+      if (catalogHits.some((x) => normName(x.c.name) === normName(d.modell))) qs.push(catalogHits.find((x) => normName(x.c.name) === normName(d.modell))!.q);
+      const q = qs.includes('high') ? 'high' : qs.includes('medium') ? 'medium' : null;
+      return { d, q };
+    })
+    .filter((x) => x.q);
+  const all = [...droneHits.map((x) => x.q), best?.q].filter(Boolean);
+  return {
+    droneIds: droneHits.map((x) => x.d.id),
+    catalogModelId: best?.c.id ?? null,
+    confidence: all.length === 0 ? 'none' : all.every((q) => q === 'high') ? 'high' : 'medium',
+  };
 };
