@@ -9178,14 +9178,6 @@
       "fixedwing": "Fixed wing",
       "helicopter": "Helicopter"
     },
-    "airScenarios": {
-      "1a": "1(a) VLOS over controlled ground area, sparsely populated",
-      "1b": "1(b) BVLOS, sparsely populated",
-      "2": "2 BVLOS over populated area",
-      "3": "3 VLOS/BVLOS in controlled airspace",
-      "4": "4 VLOS near airport",
-      "5": "5 BVLOS near airport"
-    },
     "strategicOptions": {
       "m1_operational_restrictions": "M1 Operational restrictions",
       "m2_structures_rules": "M2 Structures and rules",

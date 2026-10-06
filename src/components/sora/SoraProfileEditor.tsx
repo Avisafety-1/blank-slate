@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { useSoraProfile } from "@/hooks/useSoraProfile";
 import {
   AIRCRAFT_TYPES,
-  AIR_SCENARIOS,
   ARC_LEVELS,
   OPERATION_TYPES,
   OSO_IDS,
@@ -487,7 +486,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         </Section>
 
         <Section title={t("soraProfile.sections.air")}>
-          <SelectField path="air.scenario" options={AIR_SCENARIOS} labels={(o) => t(`soraProfile.airScenarios.${o}`)} />
+          <TextField path="air.scenario" wide />
           <SelectField path="air.initialArc" options={ARC_LEVELS} />
           <NumSelectField path="air.aec" options={AEC_OPTIONS} />
           <Field path="air.strategicReductions" wide>

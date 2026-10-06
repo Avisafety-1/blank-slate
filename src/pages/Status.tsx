@@ -767,7 +767,10 @@ const Status = () => {
       ? await (supabase as any).from("company_mission_types").select("label, sort_order, is_active").eq("company_id", typeSource).order("sort_order").order("label")
       : { data: [] };
     // Vis kun aktive oppdragstyper – inaktive typer med logget data havner under "Annet/uten type"
-    const labels: string[] = (typeRows || []).filter((r: any) => r.is_active !== false).map((r: any) => r.label);
+    const labels: string[] = (typeRows || [])
+      // Den reserverte «annet»-raden bærer bare dokumentkoblinger og er ikke en egen kategori i statistikken.
+      .filter((r: any) => r.is_active !== false && r.label?.toLowerCase() !== "annet")
+      .map((r: any) => r.label);
     const counts = new Map<string, number>(labels.map((l) => [l, 0]));
     const other = t("status.missionTypes.other");
     const months: string[] = [];
