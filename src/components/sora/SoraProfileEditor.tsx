@@ -37,6 +37,8 @@ const validRobustness = (m: keyof typeof MITIGATION_KEY) =>
 const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
 const GRC_OPTIONS = range(1, 10);
 const AEC_OPTIONS = range(1, 12);
+// M3 kan ikke velges lenger, men lagrede profiler med verdien vises fortsatt som brikke.
+const STRATEGIC_LABEL_KEYS = ['m1_operational_restrictions', 'm2_structures_rules', 'm3_erp'] as const;
 const SORA_VERSIONS = ["2.0", "2.5"];
 
 const getPath = (obj: any, path: string) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
