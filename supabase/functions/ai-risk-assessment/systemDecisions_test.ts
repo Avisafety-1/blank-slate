@@ -121,3 +121,40 @@ Deno.test('summary starts with fixed decision sentence', () => {
   assert(summary.startsWith(s1));
   assertEquals(withDecisionSentence(summary, s1), summary);
 });
+
+import { resolveSoraProfile } from './systemDecisions.ts';
+import { emptySoraProfile } from '../_shared/soraProfile.ts';
+
+const sp = () => {
+  const p = emptySoraProfile();
+  p.envelope.maxHeightM = 120; p.envelope.maxPopulationDensity = 500;
+  p.aircraft = [{ manufacturer: null, model: 'M350', type: null, maxDimensionM: 1.43, maxSpeedMps: 23, mtomKg: 9.2, droneIds: ['11111111-1111-4111-8111-111111111111'], catalogModelId: null }];
+  p.ground.fgrc = 3; p.ground.mitigations.m1a = { robustness: 'Low', reduction: -1, conditionText: null };
+  return p;
+};
+const doc = { id: 'doc', fil_url: 'c/a.pdf', company_id: 'c' };
+const spFacts = {
+  lang: 'no' as const, drones: [{ id: '11111111-1111-4111-8111-111111111111', model: 'M350', weightKg: 9.2 }], heightM: 100, densityPerKm2: 400,
+  m1cEligible: false, equipmentIds: [], igrc: 5, controlledMinimum: 1, residualArc: 'ARC-b', maxRouteDistanceM: null, adjacentAvgDensity: null,
+};
+
+Deno.test('SORA profile: confirmed gives M1A, manual selection overrides it', () => {
+  const row = { id: 'p', status: 'confirmed', source_file_url: 'c/a.pdf', company_id: 'c', profile: sp() };
+  assertEquals(resolveSoraProfile(row, doc, spFacts).profileReductions, { m1a_sheltering: -1 });
+  const manual = resolveSoraProfile(row, doc, { ...spFacts, manual: { m1a_sheltering: { applicable: false } } });
+  // Profile still offers the default; manual wins inside applyGroundMitigations.
+  assertEquals(manual.profileReductions.m1a_sheltering, -1);
+});
+
+Deno.test('SORA profile: draft or outdated has no effect', () => {
+  for (const row of [
+    { id: 'p', status: 'draft', source_file_url: 'c/a.pdf', company_id: 'c', profile: sp() },
+    { id: 'p', status: 'confirmed', source_file_url: 'c/old.pdf', company_id: 'c', profile: sp() },
+    { id: 'p', status: 'confirmed', source_file_url: 'c/a.pdf', company_id: 'other', profile: sp() },
+  ]) {
+    const r = resolveSoraProfile(row, doc, spFacts);
+    assertEquals(r.profileReductions, {});
+    assertEquals(r.result?.used, false);
+    assertEquals(r.result?.notes, ['SORA-profil ikke bekreftet / utdatert – verdiene er ikke brukt']);
+  }
+});

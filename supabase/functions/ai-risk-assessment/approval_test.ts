@@ -162,3 +162,20 @@ Deno.test('not_approved + overall NO-GO never auto-approves (EN text)', () => {
   assertEquals(d.severity, 'danger');
   assertEquals(d.reason.startsWith('The latest assessment recommends NO-GO (AI score 9/10)'), true);
 });
+
+Deno.test('auto + SORA envelope deviation -> pending_approval, not danger', () => {
+  const d = decideApproval({ ...base(), soraEnvelopeDeviation: true });
+  assertEquals(d.status, 'pending_approval');
+  assertEquals(d.severity, 'warning');
+  assertEquals(d.reason, 'Utenfor SORA-rammene – krever manuell godkjenning');
+});
+
+Deno.test('approved + SORA envelope deviation -> stays approved', () => {
+  const d = decideApproval({ ...base(), currentStatus: 'approved', soraEnvelopeDeviation: true });
+  assertEquals(d.status, null);
+  assertEquals(d.severity, 'info');
+});
+
+Deno.test('no SORA envelope deviation -> unchanged auto-approval', () => {
+  assertEquals(decideApproval({ ...base(), soraEnvelopeDeviation: false }).status, 'approved');
+});
