@@ -191,9 +191,9 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
   const handleMove = async (index: number, dir: -1 | 1) => {
     const next = index + dir;
-    if (next < 0 || next >= types.length) return;
-    const a = types[index];
-    const b = types[next];
+    if (next < 0 || next >= visibleTypes.length) return;
+    const a = visibleTypes[index];
+    const b = visibleTypes[next];
     await (supabase.from("company_mission_types").update({ sort_order: b.sort_order } as any).eq("id", a.id) as any);
     await (supabase.from("company_mission_types").update({ sort_order: a.sort_order } as any).eq("id", b.id) as any);
     await reload();
