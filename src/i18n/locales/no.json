@@ -3292,7 +3292,8 @@
         "m1cObservers": "{{count}} observatør(er) oppgitt — gir automatisk -1 (Lav).",
         "m1cNone": "Legg til minst én observatør for å få automatisk reduksjon.",
         "m2ParachuteHint": "Fallskjermsystem registrert på oppdraget ({{equipment}}) — M2 kan vurderes manuelt med dokumentasjon.",
-        "m2None": "Krediteres ikke automatisk. Krever dokumentert MoC/DVR-grunnlag."
+        "m2None": "Krediteres ikke automatisk. Krever dokumentert MoC/DVR-grunnlag.",
+        "fromProfile": "Tas med fra den valgte, bekreftede SORA-profilen når oppdraget er innenfor profilens rammer."
       },
       "airRiskLabel": "Luftrisiko: Atypisk/segregert luftrom",
       "airRiskReason": "NOTAM-området er markert som segregert/atypisk luftrom — initiell ARC settes til ARC-a.",
