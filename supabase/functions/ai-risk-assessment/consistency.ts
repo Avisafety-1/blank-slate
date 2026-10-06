@@ -82,3 +82,37 @@ export const stripOpenCategoryCompetency = (analysis: any): any => {
   });
   return analysis;
 };
+
+const OPEN_RULES = {
+  no: ['VLOS', 'Flyhøyde ≤ 120 m', 'Intet SORA-dokument valgt på oppdraget', 'Selskapet krever ikke SORA'],
+  en: ['VLOS', 'Flight height ≤ 120 m', 'No SORA document selected on the mission', 'The company does not require SORA'],
+};
+
+/**
+ * Overwrites the AI's operation-category text ("Begrunnelse" / "Regler for kategorien")
+ * with text built only from classifyOperation(...).reasons, so the AI can never add
+ * its own reasons or drone classes.
+ */
+export const applyOperationCategoryText = (
+  analysis: any,
+  classification: { category: 'open' | 'specific'; reasons: string[] } | null | undefined,
+  lang: 'no' | 'en',
+): any => {
+  if (!analysis || !classification) return analysis;
+  const en = lang === 'en';
+  const specific = classification.category === 'specific';
+  const reasons = [...classification.reasons];
+  const prev = analysis.operation_classification && typeof analysis.operation_classification === 'object' ? analysis.operation_classification : {};
+  analysis.operation_classification = {
+    ...prev,
+    requires_sora: specific,
+    category: specific ? 'Specific' : 'Open',
+    subcategory: specific ? 'SORA' : prev.subcategory,
+    sts_applicable: null,
+    reasoning: specific
+      ? (en ? `Specific category because: ${reasons.join(', ')}.` : `Spesifikk kategori fordi: ${reasons.join(', ')}.`)
+      : (en ? 'Open category: no condition requires the specific category.' : 'Åpen kategori: ingen forhold krever spesifikk kategori.'),
+    open_category_rules: specific ? reasons : [...OPEN_RULES[en ? 'en' : 'no']],
+  };
+  return analysis;
+};
