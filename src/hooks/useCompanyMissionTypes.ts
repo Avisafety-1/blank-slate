@@ -75,7 +75,9 @@ export function useCompanyMissionTypes() {
     load();
   }, [load]);
 
-  const activeLabels = (types.filter((t) => t.is_active).map((t) => t.label));
+  // Den reserverte "annet"-raden bærer bare dokumentkoblinger og skal aldri
+  // vises som et valg i nedtrekkslisten (den har en egen hardkodet «Annet»-oppføring).
+  const activeLabels = (types.filter((t) => t.is_active && t.label.toLowerCase() !== "annet").map((t) => t.label));
   // Når listen er arvet fra morselskapet er en tom liste et reelt svar — da skal
   // vi ikke skjule det med den hardkodede standardlisten.
   const labels =

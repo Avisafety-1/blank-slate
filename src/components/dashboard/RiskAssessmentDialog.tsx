@@ -146,7 +146,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       const { data: missionRow } = await supabase.from("missions")
         .select("sora_document_id, oppdragstype").eq("id", currentMissionId).maybeSingle();
       if (cancelled) return;
-      const typeDocumentId = missionTypes.find((type) => type.label === missionRow?.oppdragstype)?.sora_document_id;
+      const typeDocumentId = missionTypes.find((type) => type.label.toLowerCase() === missionRow?.oppdragstype?.toLowerCase())?.sora_document_id;
       const linkedDocumentId = missionRow?.sora_document_id || typeDocumentId;
       // Only documents explicitly marked as SORA on a mission type are selectable.
       const markedIds = [...new Set(missionTypes.map((type) => type.sora_document_id).filter(Boolean))] as string[];

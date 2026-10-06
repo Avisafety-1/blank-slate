@@ -59,6 +59,32 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const isReadOnly = !!disabled || isInherited;
   const ownsList = effectiveCompanyId === companyId;
 
+  // Den reserverte "annet"-raden finnes bare for å bære dokumentkoblinger for
+  // den faste «Annet»-typen. Den skjules fra selve typelisten.
+  const annetType = useMemo(() => types.find((mt) => mt.label.toLowerCase() === "annet") || null, [types]);
+  const visibleTypes = useMemo(() => types.filter((mt) => mt.label.toLowerCase() !== "annet"), [types]);
+
+  const ensureAnnetType = async (): Promise<CompanyMissionType | null> => {
+    if (annetType) return annetType;
+    if (!effectiveCompanyId) return null;
+    const { data, error } = await (supabase
+      .from("company_mission_types")
+      .insert({ company_id: effectiveCompanyId, label: "annet", sort_order: 9999, is_active: true } as any)
+      .select("id, company_id, label, sort_order, is_active, default_document_id, default_document_ids, sora_document_id, default_evaluation_template_id")
+      .maybeSingle() as any);
+    if (error) {
+      toast({ title: t("admin.missionTypes.toastGenericError"), description: error.message, variant: "destructive" });
+      return null;
+    }
+    await reload();
+    return (data as CompanyMissionType) || null;
+  };
+
+  const openAnnetPicker = async () => {
+    const row = await ensureAnnetType();
+    if (row) setPickerOpenForId(row.id);
+  };
+
   useEffect(() => {
     if (!companyId) return;
     (supabase.from("companies").select("propagate_mission_types").eq("id", companyId).maybeSingle() as any)
@@ -165,9 +191,9 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
   const handleMove = async (index: number, dir: -1 | 1) => {
     const next = index + dir;
-    if (next < 0 || next >= types.length) return;
-    const a = types[index];
-    const b = types[next];
+    if (next < 0 || next >= visibleTypes.length) return;
+    const a = visibleTypes[index];
+    const b = visibleTypes[next];
     await (supabase.from("company_mission_types").update({ sort_order: b.sort_order } as any).eq("id", a.id) as any);
     await (supabase.from("company_mission_types").update({ sort_order: a.sort_order } as any).eq("id", b.id) as any);
     await reload();
@@ -331,7 +357,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
       </p>
 
       <div className="space-y-2">
-        {types.map((mt, i) => {
+        {visibleTypes.map((mt, i) => {
           const linkedIds = [...getDocIds(mt), ...(mt.default_evaluation_template_id ? [mt.default_evaluation_template_id] : [])];
           return (
             <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
@@ -350,7 +376,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   variant="ghost"
                   className="h-5 w-5"
                   onClick={() => handleMove(i, 1)}
-                  disabled={isReadOnly || i === types.length - 1}
+                  disabled={isReadOnly || i === visibleTypes.length - 1}
                 >
                   <ArrowDown className="h-3 w-3" />
                 </Button>
@@ -437,8 +463,54 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             </div>
           );
         })}
-        <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground">
-          <div className="flex-1">{t("admin.missionTypes.otherFixed")}</div>
+        <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground flex-wrap sm:flex-nowrap">
+          <div className="min-w-[100px]">{t("admin.missionTypes.otherFixed")}</div>
+          <div className="flex flex-1 items-center gap-1 flex-wrap">
+            {annetType && getDocIds(annetType).map((id) => {
+              const doc = docsById.get(id);
+              return doc ? (
+                <Badge
+                  key={id}
+                  variant="secondary"
+                  className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
+                  onClick={() => !isReadOnly && setPickerOpenForId(annetType.id)}
+                  title={doc.tittel}
+                >
+                  <FileText className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{doc.tittel}</span>
+                  {annetType.sora_document_id === id && <span className="text-xs text-primary">SORA</span>}
+                  {annetType.sora_document_id === id && <SoraProfileBadge documentId={id} />}
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      className="ml-1 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        saveDocuments(annetType.id, getDocIds(annetType).filter((x) => x !== id));
+                        if (annetType.sora_document_id === id) setSoraDocument(annetType, null);
+                      }}
+                      aria-label={t("admin.missionTypes.removeDocument")}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ) : null;
+            })}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs gap-1"
+              onClick={openAnnetPicker}
+              disabled={isReadOnly}
+            >
+              <Paperclip className="h-3 w-3" />
+              <span className="hidden sm:inline">
+                {annetType && getDocIds(annetType).length > 0 ? t("admin.missionTypes.addDocument") : t("admin.missionTypes.attachDocument")}
+              </span>
+              <span className="sm:hidden">{t("admin.missionTypes.attachDocumentShort")}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -496,7 +568,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
-              {t("admin.missionTypes.pickerTitle", { label: pickerOpenFor?.label })}
+              {t("admin.missionTypes.pickerTitle", { label: pickerOpenFor?.label.toLowerCase() === "annet" ? t("missions.missionTypes.Annet") : pickerOpenFor?.label })}
             </DialogTitle>
           </DialogHeader>
 
