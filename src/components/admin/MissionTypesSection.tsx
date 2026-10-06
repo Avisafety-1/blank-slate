@@ -59,6 +59,32 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const isReadOnly = !!disabled || isInherited;
   const ownsList = effectiveCompanyId === companyId;
 
+  // Den reserverte "annet"-raden finnes bare for å bære dokumentkoblinger for
+  // den faste «Annet»-typen. Den skjules fra selve typelisten.
+  const annetType = useMemo(() => types.find((mt) => mt.label.toLowerCase() === "annet") || null, [types]);
+  const visibleTypes = useMemo(() => types.filter((mt) => mt.label.toLowerCase() !== "annet"), [types]);
+
+  const ensureAnnetType = async (): Promise<CompanyMissionType | null> => {
+    if (annetType) return annetType;
+    if (!effectiveCompanyId) return null;
+    const { data, error } = await (supabase
+      .from("company_mission_types")
+      .insert({ company_id: effectiveCompanyId, label: "annet", sort_order: 9999, is_active: true } as any)
+      .select("id, company_id, label, sort_order, is_active, default_document_id, default_document_ids, sora_document_id, default_evaluation_template_id")
+      .maybeSingle() as any);
+    if (error) {
+      toast({ title: t("admin.missionTypes.toastGenericError"), description: error.message, variant: "destructive" });
+      return null;
+    }
+    await reload();
+    return (data as CompanyMissionType) || null;
+  };
+
+  const openAnnetPicker = async () => {
+    const row = await ensureAnnetType();
+    if (row) setPickerOpenForId(row.id);
+  };
+
   useEffect(() => {
     if (!companyId) return;
     (supabase.from("companies").select("propagate_mission_types").eq("id", companyId).maybeSingle() as any)
