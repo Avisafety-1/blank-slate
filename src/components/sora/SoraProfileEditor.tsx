@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { AlertTriangle, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
@@ -38,6 +38,98 @@ const hasAnyValue = (p: SoraProfile) => {
   return walk(p);
 };
 
+
+interface Ctx {
+  profile: SoraProfile;
+  editable: boolean;
+  update: (path: string, value: unknown) => void;
+  fieldLabel: (path: string) => string;
+  t: (key: string, opts?: any) => string;
+}
+const EditorCtx = createContext<Ctx | null>(null);
+const useCtx = () => useContext(EditorCtx)!;
+
+const PageMark = ({ path }: { path: string }) => {
+  const { profile, t } = useCtx();
+  return profile.pages[path] ? (
+    <span className="ml-1 rounded bg-primary/10 px-1 text-[10px] font-normal text-primary">{t("soraProfile.page", { page: profile.pages[path] })}</span>
+  ) : null;
+};
+const Field = ({ path, children, wide }: { path: string; children: ReactNode; wide?: boolean }) => {
+  const { profile, editable, update, t, fieldLabel } = useCtx();
+  return (
+    <div className={cn("space-y-1", wide && "sm:col-span-2")}>
+      <Label className="text-xs text-muted-foreground">{fieldLabel(path)}<PageMark path={path} /></Label>
+      {children}
+    </div>
+  );
+};
+
+const NumField = ({ path, step = "any" }: { path: string; step?: string }) => {
+  const { profile, editable, update, t, fieldLabel } = useCtx();
+  return (
+    <Field path={path}>
+      <Input
+        type="number"
+        inputMode="decimal"
+        step={step}
+        disabled={!editable}
+        value={getPath(profile, path) ?? ""}
+        onChange={(e) => update(path, e.target.value === "" ? null : Number(e.target.value))}
+      />
+    </Field>
+  );
+};
+const TextField = ({ path, multiline, wide }: { path: string; multiline?: boolean; wide?: boolean }) => {
+  const { profile, editable, update, t, fieldLabel } = useCtx();
+  return (
+    <Field path={path} wide={wide}>
+      {multiline ? (
+        <Textarea rows={2} disabled={!editable} value={getPath(profile, path) ?? ""} onChange={(e) => update(path, e.target.value || null)} />
+      ) : (
+        <Input disabled={!editable} value={getPath(profile, path) ?? ""} onChange={(e) => update(path, e.target.value || null)} />
+      )}
+    </Field>
+  );
+};
+  const SelectField = ({ path, options, labels }: { path: string; options: readonly string[]; labels?: (o: string) => string }) => (
+    <Field path={path}>
+      <Select disabled={!editable} value={getPath(profile, path) ?? "__none__"} onValueChange={(v) => update(path, v === "__none__" ? null : v)}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
+          {options.map((o) => <SelectItem key={o} value={o}>{labels ? labels(o) : o}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+};
+const BoolField = ({ path }: { path: string }) => {
+  const { profile, editable, update, t } = useCtx();
+    const v = getPath(profile, path);
+    return (
+      <Field path={path}>
+        <Select disabled={!editable} value={v === true ? "yes" : v === false ? "no" : "__none__"} onValueChange={(x) => update(path, x === "yes" ? true : x === "no" ? false : null)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
+            <SelectItem value="yes">{t("common.yes")}</SelectItem>
+            <SelectItem value="no">{t("common.no")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+    );
+};
+const Section = ({ title, children }: { title: string; children: ReactNode }) => {
+  const { profile, editable, update, t, fieldLabel } = useCtx();
+  return (
+    <section className="space-y-3 rounded-lg border border-border p-3">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+};
+
 interface Props {
   documentId: string;
   readOnly?: boolean;
@@ -63,79 +155,14 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   const issues = useMemo(() => checkSoraProfileConsistency(profile), [profile]);
   const shownStatus = dirty ? "draft" : status;
 
+  const fieldLabel = (path: string) => t(`soraProfile.fields.${path.replace(/^aircraft\.\d+\./, "aircraft.").replace(/^oso\.\d+\./, "oso.")}`);
+
   const update = (path: string, value: unknown) => {
     setProfile((p) => setPath(p, path, value));
     setDirty(true);
     if (!source) setSource("manual");
   };
 
-  const fieldLabel = (path: string) => t(`soraProfile.fields.${path.replace(/^aircraft\.\d+\./, "aircraft.").replace(/^oso\.\d+\./, "oso.")}`);
-
-  const PageMark = ({ path }: { path: string }) =>
-    profile.pages[path] ? (
-      <span className="ml-1 rounded bg-primary/10 px-1 text-[10px] font-normal text-primary">{t("soraProfile.page", { page: profile.pages[path] })}</span>
-    ) : null;
-
-  const Field = ({ path, children, wide }: { path: string; children: ReactNode; wide?: boolean }) => (
-    <div className={cn("space-y-1", wide && "sm:col-span-2")}>
-      <Label className="text-xs text-muted-foreground">{fieldLabel(path)}<PageMark path={path} /></Label>
-      {children}
-    </div>
-  );
-
-  const NumField = ({ path, step = "any" }: { path: string; step?: string }) => (
-    <Field path={path}>
-      <Input
-        type="number"
-        inputMode="decimal"
-        step={step}
-        disabled={!editable}
-        value={getPath(profile, path) ?? ""}
-        onChange={(e) => update(path, e.target.value === "" ? null : Number(e.target.value))}
-      />
-    </Field>
-  );
-  const TextField = ({ path, multiline, wide }: { path: string; multiline?: boolean; wide?: boolean }) => (
-    <Field path={path} wide={wide}>
-      {multiline ? (
-        <Textarea rows={2} disabled={!editable} value={getPath(profile, path) ?? ""} onChange={(e) => update(path, e.target.value || null)} />
-      ) : (
-        <Input disabled={!editable} value={getPath(profile, path) ?? ""} onChange={(e) => update(path, e.target.value || null)} />
-      )}
-    </Field>
-  );
-  const SelectField = ({ path, options, labels }: { path: string; options: readonly string[]; labels?: (o: string) => string }) => (
-    <Field path={path}>
-      <Select disabled={!editable} value={getPath(profile, path) ?? "__none__"} onValueChange={(v) => update(path, v === "__none__" ? null : v)}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
-          {options.map((o) => <SelectItem key={o} value={o}>{labels ? labels(o) : o}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </Field>
-  );
-  const BoolField = ({ path }: { path: string }) => {
-    const v = getPath(profile, path);
-    return (
-      <Field path={path}>
-        <Select disabled={!editable} value={v === true ? "yes" : v === false ? "no" : "__none__"} onValueChange={(x) => update(path, x === "yes" ? true : x === "no" ? false : null)}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
-            <SelectItem value="yes">{t("common.yes")}</SelectItem>
-            <SelectItem value="no">{t("common.no")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </Field>
-    );
-  };
-  const Section = ({ title, children }: { title: string; children: ReactNode }) => (
-    <section className="space-y-3 rounded-lg border border-border p-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
-    </section>
-  );
   const robustnessLabel = (o: string) => t(`soraProfile.robustness.${o}`);
 
   const runAi = async () => {
@@ -179,7 +206,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   const issueValue = (v: unknown) => (v === null || v === undefined ? "—" : v === "certified" ? t("soraProfile.certified") : String(v));
 
   return (
-    <>
+    <EditorCtx.Provider value={{ profile, editable, update, fieldLabel, t }}>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4 [touch-action:pan-y]">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className={cn("rounded-full border px-2 py-0.5 font-medium", soraStatusClass(shownStatus))}>{t(`soraProfile.status.${shownStatus}`)}</span>
@@ -337,6 +364,6 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
           </Button>
         </div>
       )}
-    </>
+    </EditorCtx.Provider>
   );
 }
