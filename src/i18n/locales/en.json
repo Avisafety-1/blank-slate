@@ -9273,6 +9273,22 @@
         "id": "OSO",
         "robustness": "Robustness"
       }
+    },
+    "registry": {
+      "linkedDrones": "Covers drones in the register",
+      "selectDrones": "Select drones",
+      "catalogModel": "Catalog model",
+      "selectCatalog": "Select model",
+      "fillFromCatalog": "Fill from catalog",
+      "search": "Search…",
+      "noResults": "No results",
+      "suggestion": "Suggestion",
+      "suggestionHint": "Links were suggested automatically. Accept or change them.",
+      "accept": "Accept",
+      "notLinked": "Not linked to a drone in the register",
+      "m2Equipment": "M2 equipment in the register",
+      "selectEquipment": "Select equipment",
+      "confirmBlocked": "All drones must be linked to the register and suggestions accepted before the profile can be confirmed."
     }
   }
 }

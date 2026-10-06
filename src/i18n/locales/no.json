@@ -9275,6 +9275,22 @@
         "id": "OSO",
         "robustness": "Robusthet"
       }
+    },
+    "registry": {
+      "linkedDrones": "Dekker droner i registeret",
+      "selectDrones": "Velg droner",
+      "catalogModel": "Katalogmodell",
+      "selectCatalog": "Velg modell",
+      "fillFromCatalog": "Fyll fra katalog",
+      "search": "Søk…",
+      "noResults": "Ingen treff",
+      "suggestion": "Forslag",
+      "suggestionHint": "Koblingene er foreslått automatisk. Godta eller endre dem.",
+      "accept": "Godta",
+      "notLinked": "Ikke koblet til drone i registeret",
+      "m2Equipment": "M2-utstyr i registeret",
+      "selectEquipment": "Velg utstyr",
+      "confirmBlocked": "Alle droner må være koblet til registeret og forslag godtatt før profilen kan bekreftes."
     }
   }
 }

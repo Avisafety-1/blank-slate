@@ -3,7 +3,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { extractText, getDocumentProxy } from 'npm:unpdf@1.8.1';
 import { z } from 'npm:zod@3.23.8';
 import { checkSoraProfileConsistency, sanitizeSoraProfile } from '../_shared/soraProfile.ts';
-import { parseAiJson } from '../ai-risk-assessment/aiJson.ts';
+import { parseAiJson } from '../_shared/aiJson.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -106,6 +106,9 @@ Deno.serve(async (req) => {
     const choice = aiData.choices?.[0];
     const raw = parseAiJson(choice?.message?.content ?? '', choice?.finish_reason);
     const profile = sanitizeSoraProfile({ ...(raw.profile ?? raw), pages: raw.pages ?? raw.profile?.pages ?? {} });
+    // Register links are chosen by the administrator in the app, never by the AI.
+    profile.aircraft = profile.aircraft.map((a) => ({ ...a, droneIds: [], catalogModelId: null }));
+    profile.ground.mitigations.m2.equipmentIds = [];
     const consistency = checkSoraProfileConsistency(profile);
 
     return json({ readable: true, profile, pages: profile.pages, consistency, sourceFileUrl: doc.fil_url });
