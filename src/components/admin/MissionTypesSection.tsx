@@ -376,7 +376,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                   variant="ghost"
                   className="h-5 w-5"
                   onClick={() => handleMove(i, 1)}
-                  disabled={isReadOnly || i === types.length - 1}
+                  disabled={isReadOnly || i === visibleTypes.length - 1}
                 >
                   <ArrowDown className="h-3 w-3" />
                 </Button>
