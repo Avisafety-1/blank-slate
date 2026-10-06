@@ -9175,6 +9175,24 @@
       "Medium": "Middels",
       "High": "Høy"
     },
+    "aircraftTypes": {
+      "multirotor": "Multirotor",
+      "fixedwing": "Fastvinge",
+      "helicopter": "Helikopter"
+    },
+    "airScenarios": {
+      "1a": "1(a) VLOS over kontrollert bakkeområde, spredt befolkning",
+      "1b": "1(b) BVLOS, spredt befolkning",
+      "2": "2 BVLOS over befolket område",
+      "3": "3 VLOS/BVLOS i kontrollert luftrom",
+      "4": "4 VLOS nær flyplass",
+      "5": "5 BVLOS nær flyplass"
+    },
+    "strategicOptions": {
+      "m1_operational_restrictions": "M1 Operative begrensninger",
+      "m2_structures_rules": "M2 Strukturer og regler",
+      "m3_erp": "M3 Beredskapsplan"
+    },
     "sections": {
       "envelope": "Rammer",
       "aircraft": "Droner",

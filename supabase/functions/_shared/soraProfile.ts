@@ -9,6 +9,12 @@ export const ROBUSTNESS: Robustness[] = ['None', 'Low', 'Medium', 'High'];
 export const OPERATION_TYPES = ['VLOS', 'EVLOS', 'BVLOS'] as const;
 export const ARC_LEVELS = ['ARC-a', 'ARC-b', 'ARC-c', 'ARC-d'] as const;
 export const SAIL_LEVELS = ['I', 'II', 'III', 'IV', 'V', 'VI'] as const;
+export const AIRCRAFT_TYPES = ['multirotor', 'fixedwing', 'helicopter'] as const;
+// SORA 2.5 Annex B air risk scenarios.
+export const AIR_SCENARIOS = ['1a', '1b', '2', '3', '4', '5'] as const;
+// SORA 2.5 strategic mitigations for air risk.
+export const STRATEGIC_REDUCTIONS = ['m1_operational_restrictions', 'm2_structures_rules', 'm3_erp'] as const;
+export const OSO_IDS = Array.from({ length: 24 }, (_, i) => `OSO#${String(i + 1).padStart(2, '0')}`);
 
 export interface SoraMitigation {
   robustness: Robustness | null;
