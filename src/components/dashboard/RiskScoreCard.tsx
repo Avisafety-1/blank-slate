@@ -9,6 +9,7 @@ import { AirRiskAnalysisSection } from "./AirRiskAnalysisSection";
 import { GroundRiskAnalysisSection } from "./GroundRiskAnalysisSection";
 import { OperationClassificationSection } from "./OperationClassificationSection";
 import { PreliminaryConclusionSection } from "./PreliminaryConclusionSection";
+import { SoraProfileResultSection, type SoraProfileResult } from "./SoraProfileResultSection";
 import { getCurrentLanguage, translatePersistedRiskText } from "@/lib/i18nHelpers";
 
 interface CategoryScore {
@@ -45,12 +46,13 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
-  approvalDecision?: { status: 'approved' | 'not_approved' | null; reason: string; severity: 'info' | 'warning' | 'danger'; missionStatus?: string | null } | null;
+  approvalDecision?: { status: 'approved' | 'not_approved' | 'pending_approval' | null; reason: string; severity: 'info' | 'warning' | 'danger'; missionStatus?: string | null } | null;
   airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
   groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
   operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];
   onGroundRiskChange?: ComponentProps<typeof GroundRiskAnalysisSection>["onChange"];
   onAirRiskChange?: ComponentProps<typeof AirRiskAnalysisSection>["onChange"];
+  soraProfile?: SoraProfileResult | null;
 
 }
 
@@ -73,7 +75,8 @@ export const RiskScoreCard = ({
   groundRiskAnalysis,
   operationClassification,
   onGroundRiskChange,
-  onAirRiskChange
+  onAirRiskChange,
+  soraProfile
 
 }: RiskScoreCardProps) => {
   const { t } = useTranslation();
@@ -231,6 +234,8 @@ export const RiskScoreCard = ({
           </div>
         </div>
       )}
+
+      <SoraProfileResultSection data={soraProfile} />
 
       {/* Mission Overview */}
       {missionOverview && (

@@ -11,6 +11,7 @@ interface MitigationEntry {
   robustness?: string | null;
   reduction: number;
   reasoning?: string;
+  source?: string;
 }
 
 interface GroundRiskAnalysis {
@@ -120,7 +121,7 @@ export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRi
     if (!onChange) return;
     const current = (data.mitigations || {}) as Record<string, MitigationEntry | undefined>;
     const existing = current[key] || { applicable: false, robustness: null, reduction: 0 };
-    const next: MitigationEntry = { ...existing, ...patch };
+    const next: MitigationEntry = { ...existing, ...patch, source: undefined };
     const level = normalizeRobustness(next.robustness);
     next.reduction = next.applicable ? (MITIGATION_MATRIX[key]?.[level] ?? 0) : 0;
     if (!next.applicable) next.robustness = null;
@@ -298,6 +299,11 @@ export const GroundRiskAnalysisSection = ({ data, editable, onChange }: GroundRi
                           <span className={cn("font-medium", entry.applicable ? "text-foreground" : "text-muted-foreground")}>
                             {mitigationLabels[key] || key}
                           </span>
+                          {entry.source === "sora_profile" && (
+                            <Badge variant="outline" className="ml-1.5 text-[9px] py-0 border-blue-500/30 text-blue-700 dark:text-blue-300 bg-blue-500/10">
+                              {t('riskAssessment.soraProfile.fromProfile')}
+                            </Badge>
+                          )}
                           {!editable && entry.applicable && entry.robustness && (
                             <Badge variant="outline" className="ml-1.5 text-[9px] py-0">{robustnessLabel(normalizeRobustness(entry.robustness))}</Badge>
                           )}

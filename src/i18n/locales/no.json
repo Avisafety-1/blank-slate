@@ -3318,6 +3318,13 @@
       "BETINGET": "BETINGET",
       "NO-GO": "NO-GO",
       "IKKE VURDERT": "IKKE VURDERT"
+    },
+    "soraProfile": {
+      "open": "Åpne SORA-profil",
+      "applied": "Brukte reduksjoner",
+      "appliedItem": "{{label}} {{robustness}} {{reduction}} fra SORA",
+      "deviations": "Utenfor SORA-rammene (anbefaling)",
+      "fromProfile": "fra SORA-profil"
     }
   },
   "riskAssessmentType": {
