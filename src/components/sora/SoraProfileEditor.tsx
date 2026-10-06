@@ -26,6 +26,15 @@ import {
   type SoraProfile,
 } from "@/lib/soraProfile";
 import { soraStatusClass } from "./SoraProfileBadge";
+import { MITIGATION_MATRIX } from "../../../supabase/functions/_shared/soraGroundRisk";
+
+const MITIGATION_KEY = { m1a: "m1a_sheltering", m1b: "m1b_operational_restrictions", m1c: "m1c_ground_observation", m2: "m2_impact_reduction" } as const;
+const validRobustness = (m: keyof typeof MITIGATION_KEY) =>
+  ROBUSTNESS.filter((r) => MITIGATION_MATRIX[MITIGATION_KEY[m]][r] != null);
+const range = (a: number, b: number) => Array.from({ length: b - a + 1 }, (_, i) => String(a + i));
+const GRC_OPTIONS = range(1, 10);
+const AEC_OPTIONS = range(1, 12);
+const SORA_VERSIONS = ["2.0", "2.5"];
 
 const getPath = (obj: any, path: string) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
 const setPath = (obj: any, path: string, value: unknown) => {
@@ -106,6 +115,21 @@ const SelectField = ({ path, options, labels }: { path: string; options: readonl
         <SelectContent>
           <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
           {options.map((o) => <SelectItem key={o} value={o}>{labels ? labels(o) : o}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </Field>
+  );
+};
+const NumSelectField = ({ path, options }: { path: string; options: readonly string[] }) => {
+  const { profile, editable, update, t } = useCtx();
+  const v = getPath(profile, path);
+  return (
+    <Field path={path}>
+      <Select disabled={!editable} value={v == null ? "__none__" : String(v)} onValueChange={(x) => update(path, x === "__none__" ? null : Number(x))}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
+          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
         </SelectContent>
       </Select>
     </Field>
@@ -200,7 +224,9 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
   const catalogOptions: RegistryOption[] = useMemo(() => (registry?.catalog ?? []).map((c) => ({ id: c.id, label: c.name })), [registry]);
 
   const unlinkedRows = profile.aircraft.map((a, i) => (a.droneIds.length === 0 ? i : -1)).filter((i) => i >= 0);
-  const confirmBlocked = unlinkedRows.length > 0 || suggested.size > 0;
+  // Register links are optional; unlinked rows only show a warning.
+  const confirmBlocked = false;
+  void unlinkedRows;
 
   const acceptSuggestion = (idx: number) => setSuggested((s) => { const n = new Set(s); n.delete(idx); return n; });
 
@@ -309,7 +335,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         )}
 
         <Section title={t("soraProfile.sections.envelope")}>
-          <TextField path="soraVersion" />
+          <SelectField path="soraVersion" options={SORA_VERSIONS} />
           <SelectField path="soraType" options={["generic", "specific"]} labels={(o) => t(`soraProfile.soraType.${o}`)} />
           <TextField path="operatingArea" multiline wide />
           <NumField path="envelope.maxHeightM" />
@@ -406,13 +432,35 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         </section>
 
         <Section title={t("soraProfile.sections.ground")}>
-          <NumField path="ground.igrc" step="1" />
-          <NumField path="ground.fgrc" step="1" />
+          <NumSelectField path="ground.igrc" options={GRC_OPTIONS} />
+          <NumSelectField path="ground.fgrc" options={GRC_OPTIONS} />
           {(["m1a", "m1b", "m1c", "m2"] as const).map((m) => (
             <div key={m} className="sm:col-span-2 grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-md border border-border/60 p-2">
               <div className="sm:col-span-2 text-xs font-semibold">{t(`soraProfile.mitigations.${m}`)}</div>
-              <SelectField path={`ground.mitigations.${m}.robustness`} options={ROBUSTNESS} labels={robustnessLabel} />
-              <NumField path={`ground.mitigations.${m}.reduction`} step="1" />
+              <Field path={`ground.mitigations.${m}.robustness`}>
+                <Select
+                  disabled={!editable}
+                  value={profile.ground.mitigations[m].robustness ?? "__none__"}
+                  onValueChange={(v) => {
+                    const r = v === "__none__" ? null : v;
+                    const red = r ? MITIGATION_MATRIX[MITIGATION_KEY[m]][r] ?? null : null;
+                    setProfile((p) => setPath(setPath(p, `ground.mitigations.${m}.robustness`, r), `ground.mitigations.${m}.reduction`, red));
+                    setDirty(true);
+                    if (!source) setSource("manual");
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
+                    {validRobustness(m).map((o) => (
+                      <SelectItem key={o} value={o}>{robustnessLabel(o)} ({MITIGATION_MATRIX[MITIGATION_KEY[m]][o]})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field path={`ground.mitigations.${m}.reduction`}>
+                <Input disabled readOnly value={profile.ground.mitigations[m].reduction ?? "–"} />
+              </Field>
               <TextField path={`ground.mitigations.${m}.conditionText`} multiline wide />
               {m === "m1c" && <BoolField path="ground.mitigations.m1c.requiresObserver" />}
               {m === "m2" && <TextField path="ground.mitigations.m2.requiredEquipmentText" multiline wide />}
@@ -437,7 +485,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
         <Section title={t("soraProfile.sections.air")}>
           <TextField path="air.scenario" wide />
           <SelectField path="air.initialArc" options={ARC_LEVELS} />
-          <NumField path="air.aec" step="1" />
+          <NumSelectField path="air.aec" options={AEC_OPTIONS} />
           <Field path="air.strategicReductions" wide>
             <Textarea rows={2} disabled={!editable} value={profile.air.strategicReductions.join("\n")}
               onChange={(e) => update("air.strategicReductions", e.target.value.split("\n").filter((s, i, a) => s.trim() || i === a.length - 1))} />
