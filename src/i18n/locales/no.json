@@ -9141,6 +9141,10 @@
     "adminOnly": "Kun administratorer har tilgang til denne siden.",
     "noDocuments": "Ingen dokumenter er valgt som SORA ennå.",
     "open": "Åpne",
+    "newProfile": "Ny SORA-profil",
+    "pickDocument": "Velg dokument",
+    "searchDocuments": "Søk etter dokument …",
+    "noDocsFound": "Ingen dokumenter funnet.",
     "manageLink": "Administrer SORA-profiler",
     "soraLabel": "SORA-profil:",
     "status": {
