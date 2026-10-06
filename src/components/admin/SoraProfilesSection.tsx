@@ -74,7 +74,9 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
       const { data: docs } = await supabase.from("documents").select("id, tittel, fil_url, company_id")
         .in("id", [...ids]).eq("company_id", companyId!).order("tittel");
       const byDoc = new Map(((profiles.data as any[]) || []).map((p) => [p.document_id, p]));
-      return ((docs as any[]) || []).map((d) => ({ ...d, status: deriveSoraProfileStatus(byDoc.get(d.id), d.fil_url) }));
+      return ((docs as any[]) || [])
+        .map((d) => ({ ...d, status: deriveSoraProfileStatus(byDoc.get(d.id), d.fil_url) }))
+        .filter((d) => d.status !== "none");
     },
   });
 
