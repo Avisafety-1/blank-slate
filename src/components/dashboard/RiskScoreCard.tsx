@@ -46,7 +46,7 @@ interface RiskScoreCardProps {
   approvalStatus?: 'approved' | 'not_approved' | null;
   approvalReason?: string | null;
   approvalThreshold?: number | null;
-  approvalDecision?: { status: 'approved' | 'not_approved' | 'pending_approval' | null; reason: string; severity: 'info' | 'warning' | 'danger'; missionStatus?: string | null } | null;
+  approvalDecision?: { status: 'approved' | 'not_approved' | null; reason: string; severity: 'info' | 'warning' | 'danger'; missionStatus?: string | null } | null;
   airRiskAnalysis?: ComponentProps<typeof AirRiskAnalysisSection>["data"];
   groundRiskAnalysis?: ComponentProps<typeof GroundRiskAnalysisSection>["data"];
   operationClassification?: ComponentProps<typeof OperationClassificationSection>["data"];

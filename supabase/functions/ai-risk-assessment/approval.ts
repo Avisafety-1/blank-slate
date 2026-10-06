@@ -25,13 +25,13 @@ export interface ApprovalDecisionInput {
   dataAvailability: DataAvailability;
   assessmentSaved: boolean;
   canWrite: boolean;
-  /** A confirmed SORA profile has envelope deviations: never auto-approve (never a hard stop or NO-GO). */
+  /** A confirmed SORA profile has envelope deviations: never auto-approve (status unchanged, never a hard stop or NO-GO). */
   soraEnvelopeDeviation?: boolean;
 }
 
 export interface ApprovalDecision {
   /** null = status unchanged */
-  status: 'approved' | 'not_approved' | 'pending_approval' | null;
+  status: 'approved' | 'not_approved' | null;
   reason: string;
   severity: ApprovalSeverity;
 }
@@ -210,11 +210,11 @@ export const decideApproval = (input: ApprovalDecisionInput): ApprovalDecision =
   }
   if (input.soraEnvelopeDeviation === true) {
     return {
-      status: status === 'pending_approval' ? null : 'pending_approval',
+      status: null,
       severity: 'warning',
       reason: en
-        ? 'Outside the SORA envelope – requires manual approval'
-        : 'Utenfor SORA-rammene – krever manuell godkjenning',
+        ? 'Outside the SORA envelope – automatic approval stopped. Submit the mission for approval manually.'
+        : 'Utenfor SORA-rammene – automatisk godkjenning er stoppet. Send oppdraget til godkjenning manuelt.',
     };
   }
   return { status: 'approved', severity: 'info', reason: autoApprovedReason(input) };
