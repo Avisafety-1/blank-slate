@@ -419,7 +419,7 @@ export const AddMissionDialog = ({
       syncSelectedDocuments();
       return;
     }
-    const matchType = missionTypes.find((t) => t.label === current);
+    const matchType = missionTypes.find((t) => t.label.toLowerCase() === current.toLowerCase());
     const ids = ((matchType as any)?.default_document_ids as string[] | null | undefined) ?? [];
     const defaultDocIds = ids.length > 0 ? ids : (matchType?.default_document_id ? [matchType.default_document_id] : []);
     const visibleDocumentIds = new Set(documents.map((document) => document.id));

@@ -61,7 +61,7 @@ const SoraProfiles = () => {
     navigate("/admin");
     // Open the company config tab (Operasjonstyper lives there) once Admin mounts
     setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("avisafe:set-admin-tab", { detail: { value: "company-config" } }));
+      window.dispatchEvent(new CustomEvent("avisafe:set-admin-tab", { detail: { value: "child-companies" } }));
     }, 300);
   };
 
@@ -70,14 +70,14 @@ const SoraProfiles = () => {
   return (
     <div className="container mx-auto max-w-4xl p-4 space-y-4">
       <GlassCard className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             <Button variant="ghost" size="icon" onClick={goBack} aria-label={t("common.back")} className="shrink-0 mt-0.5">
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-xl font-semibold">{t("soraProfile.pageTitle")}</h1>
-              <p className="text-sm text-muted-foreground">{t("soraProfile.pageDescription")}</p>
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold break-words">{t("soraProfile.pageTitle")}</h1>
+              <p className="text-sm text-muted-foreground break-words">{t("soraProfile.pageDescription")}</p>
             </div>
           </div>
           <Button size="sm" onClick={() => { setQuery(""); setPickerOpen(true); }} className="shrink-0 gap-1.5">
