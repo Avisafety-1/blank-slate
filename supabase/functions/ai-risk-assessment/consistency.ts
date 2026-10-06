@@ -73,12 +73,24 @@ export const withDecisionSentence = (summary: unknown, sentence: string): string
 /** Open-category / C-class competency (A1/A3, A2, STS, C0–C6). */
 export const OPEN_CATEGORY_COMPETENCY_RE = /\b(A1\s*\/\s*A3|A2|C[0-6](?:-klasse|-class)?|STS-0[12]|open category|åpen kategori|C-klasse|C-class)\b/i;
 
-/** Specific category: drop recommendations that demand C-class/open-category competency. */
+/** Competency/certification wording. */
+const COMPETENCY_RE = /kompetanse|sertifikat|kompetansebevis|opplæring|eksamen|competenc|certificat|training|exam/i;
+
+/** Never stripped: C2/C3 link (OSO#06), command-and-control, DJI Dock. */
+const NEVER_STRIP_RE = /C[23][\s-]*link|command and control|kommando og kontroll|Dock/i;
+
+/**
+ * Specific category: drop recommendations that demand C-class/open-category
+ * competency. A recommendation is removed only when it BOTH mentions
+ * competency/certification AND an open-category/C-class marker, and does not
+ * concern C2/C3 link, command-and-control or DJI Dock.
+ */
 export const stripOpenCategoryCompetency = (analysis: any): any => {
   if (!analysis || !Array.isArray(analysis.recommendations)) return analysis;
   analysis.recommendations = analysis.recommendations.filter((r: any) => {
     const text = typeof r === 'string' ? r : `${r?.action ?? ''} ${r?.risk_addressed ?? ''}`;
-    return !OPEN_CATEGORY_COMPETENCY_RE.test(text);
+    if (NEVER_STRIP_RE.test(text)) return true;
+    return !(COMPETENCY_RE.test(text) && OPEN_CATEGORY_COMPETENCY_RE.test(text));
   });
   return analysis;
 };
