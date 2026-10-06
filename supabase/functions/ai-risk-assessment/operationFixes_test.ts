@@ -52,8 +52,13 @@ Deno.test('unknown mission type → note, not deviation', () => {
 });
 Deno.test('OPERATION_TYPE_EXCEEDED stops auto-approval with status unchanged', () => {
   const r = evalOp('VLOS', false);
-  const d = decideApproval({ autoApprovalEnabled: true, soraEnvelopeDeviation: r.deviations.length > 0 } as any);
-  assert(d.status !== 'approved' && d.status !== 'pending_approval');
+  const d = decideApproval({
+    lang: 'no', currentStatus: 'not_approved', score: 7.5, threshold: 7.0, autoApprovalOn: true,
+    hardStopTriggered: false, hardStopReason: null, noGoCategories: [], weatherAssessed: true,
+    dataAvailability: { population: true, airspace: true, weather: true }, assessmentSaved: true, canWrite: true,
+    soraEnvelopeDeviation: r.deviations.length > 0,
+  } as any);
+  assertEquals(d.status, null);
 });
 
 Deno.test('battery linked to drone AND selected on mission → no linked-only note', () => {
