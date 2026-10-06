@@ -17,12 +17,14 @@ interface Props {
   documentId: string | null | undefined;
   readOnly?: boolean;
   className?: string;
+  statusOverride?: SoraProfileStatus;
 }
 
 /** Small status chip for a SORA document's profile; opens the profile dialog on click. */
-export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
+export function SoraProfileBadge({ documentId, readOnly, className, statusOverride }: Props) {
   const { t } = useTranslation();
-  const { status } = useSoraProfile(documentId);
+  const { status } = useSoraProfile(documentId, statusOverride === undefined);
+  const displayedStatus = statusOverride ?? status;
   const [open, setOpen] = useState(false);
   if (!documentId) return null;
   return (
@@ -32,12 +34,12 @@ export function SoraProfileBadge({ documentId, readOnly, className }: Props) {
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}
         className={cn(
           "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap hover:bg-muted/50",
-          STATUS_CLASS[status],
+          STATUS_CLASS[displayedStatus],
           className,
         )}
-        title={`${t("soraProfile.title")} — ${t(`soraProfile.status.${status}`)}`}
+        title={`${t("soraProfile.title")} — ${t(`soraProfile.status.${displayedStatus}`)}`}
       >
-        {t("soraProfile.title")}
+        {statusOverride ? t(`soraProfile.status.${displayedStatus}`) : t("soraProfile.title")}
       </button>
       {open && (
         // Clicks inside the dialog must not bubble to clickable parents (e.g. the

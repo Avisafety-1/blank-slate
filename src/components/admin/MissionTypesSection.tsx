@@ -20,6 +20,8 @@ import { useCompanyMissionTypes, CompanyMissionType } from "@/hooks/useCompanyMi
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
+import { SoraProfileDialog } from "@/components/sora/SoraProfileDialog";
+import { deriveSoraProfileStatus, type SoraProfileStatus } from "@/hooks/useSoraProfile";
 
 interface Props {
   companyId: string | null;
@@ -34,6 +36,14 @@ interface DocOption {
   nettside_url: string | null;
   isEvaluation?: boolean;
 }
+
+interface ProfileSummary {
+  document_id: string;
+  status: string;
+  source_file_url: string | null;
+}
+
+type PickerFilter = "all" | "profile" | "selected";
 
 
 export function MissionTypesSection({ companyId, disabled }: Props) {
@@ -52,6 +62,9 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
   const [docs, setDocs] = useState<DocOption[]>([]);
   const [pickerOpenForId, setPickerOpenForId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerFilter, setPickerFilter] = useState<PickerFilter>("all");
+  const [profileSummaries, setProfileSummaries] = useState<ProfileSummary[]>([]);
+  const [profileDialogDocumentId, setProfileDialogDocumentId] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareDepartmentIds, setShareDepartmentIds] = useState<string[]>([]);
   const [pendingDocumentLink, setPendingDocumentLink] = useState<{ typeId: string; documentId: string; nextIds: string[] } | null>(null);
@@ -138,17 +151,22 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     const source = effectiveCompanyId;
     if (!source) return;
     (async () => {
-      const [docRes, evalRes] = await Promise.all([
+      const sourceCompanyIds = [...new Set([source, companyId].filter((id): id is string => !!id))];
+      const [docRes, evalRes, profileRes] = await Promise.all([
         (supabase
           .from("documents")
           .select("id, tittel, kategori, fil_url, nettside_url")
-          .eq("company_id", source)
+          .in("company_id", sourceCompanyIds)
           .order("tittel") as any),
         (supabase
           .from("evaluation_templates")
           .select("id, title, description")
-          .eq("company_id", source)
+          .in("company_id", sourceCompanyIds)
           .order("title") as any),
+        (supabase
+          .from("sora_document_profiles" as any)
+          .select("document_id, status, source_file_url")
+          .in("company_id", sourceCompanyIds) as any),
       ]);
       const documents: DocOption[] = (docRes?.data || []) as DocOption[];
       const evaluations: DocOption[] = ((evalRes?.data || []) as any[]).map((e) => ({
@@ -160,8 +178,9 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
         isEvaluation: true,
       }));
       setDocs([...documents, ...evaluations].sort((a, b) => a.tittel.localeCompare(b.tittel)));
+      setProfileSummaries((profileRes?.data || []) as ProfileSummary[]);
     })();
-  }, [effectiveCompanyId]);
+  }, [companyId, effectiveCompanyId]);
 
 
   const docsById = useMemo(() => {
@@ -354,17 +373,58 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     if (mt.default_evaluation_template_id) await setEvaluationTemplate(mt.id, null);
   };
 
-  const filteredDocs = useMemo(() => {
-    const q = pickerSearch.trim().toLowerCase();
-    if (!q) return docs;
-    return docs.filter((d) => d.tittel.toLowerCase().includes(q) || d.kategori.toLowerCase().includes(q));
-  }, [docs, pickerSearch]);
+  const profileStatusByDocument = useMemo(() => {
+    const rows = new Map(profileSummaries.map((row) => [row.document_id, row]));
+    return new Map(docs.filter((doc) => !doc.isEvaluation).map((doc) => [
+      doc.id,
+      deriveSoraProfileStatus(rows.get(doc.id), doc.fil_url),
+    ]));
+  }, [docs, profileSummaries]);
+
+  const profileCount = useMemo(
+    () => [...profileStatusByDocument.values()].filter((status) => status !== "none").length,
+    [profileStatusByDocument],
+  );
 
   const pickerOpenFor = useMemo(
     () => types.find((mt) => mt.id === pickerOpenForId) || null,
     [types, pickerOpenForId]
   );
   const pickerDocIds = pickerOpenFor ? getDocIds(pickerOpenFor) : [];
+
+  const filteredDocs = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    return docs.filter((doc) => {
+      const matchesSearch = !q || doc.tittel.toLowerCase().includes(q) || doc.kategori.toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+      if (pickerFilter === "profile") return profileStatusByDocument.get(doc.id) !== "none" && !doc.isEvaluation;
+      if (pickerFilter === "selected") {
+        return doc.isEvaluation
+          ? pickerOpenFor?.default_evaluation_template_id === doc.id
+          : pickerDocIds.includes(doc.id);
+      }
+      return true;
+    });
+  }, [docs, pickerSearch, pickerFilter, profileStatusByDocument, pickerOpenFor, pickerDocIds]);
+
+  const selectedCount = pickerDocIds.length + (pickerOpenFor?.default_evaluation_template_id ? 1 : 0);
+  const groupedPickerDocs = useMemo(() => {
+    const rank: Record<SoraProfileStatus, number> = { confirmed: 0, draft: 1, outdated: 2, none: 3 };
+    const sorted = [...filteredDocs].sort((a, b) => {
+      if (pickerFilter === "profile") {
+        const statusDiff = rank[profileStatusByDocument.get(a.id) ?? "none"] - rank[profileStatusByDocument.get(b.id) ?? "none"];
+        if (statusDiff !== 0) return statusDiff;
+      }
+      return a.tittel.localeCompare(b.tittel);
+    });
+    if (pickerFilter !== "all") return [{ key: "all", title: null, docs: sorted }];
+    const confirmed = sorted.filter((doc) => profileStatusByDocument.get(doc.id) === "confirmed");
+    const others = sorted.filter((doc) => profileStatusByDocument.get(doc.id) !== "confirmed");
+    return [
+      ...(confirmed.length ? [{ key: "profile", title: t("admin.missionTypes.withSoraProfile"), docs: confirmed }] : []),
+      ...(others.length ? [{ key: "other", title: confirmed.length ? t("admin.missionTypes.otherDocuments") : null, docs: others }] : []),
+    ];
+  }, [filteredDocs, pickerFilter, profileStatusByDocument, t]);
 
   return (
     <div className="space-y-4">
@@ -594,10 +654,11 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           if (!open) {
             setPickerOpenForId(null);
             setPickerSearch("");
+            setPickerFilter("all");
           }
         }}
       >
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-lg max-h-[80vh] max-h-[80dvh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
@@ -615,46 +676,82 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             />
           </div>
 
-          <div className="flex-1 min-h-[200px] max-h-[400px] border rounded-lg overflow-y-auto">
+          <div className="flex shrink-0 gap-2 overflow-x-auto overscroll-x-contain pb-1 [touch-action:pan-x]">
+            <Button type="button" size="sm" variant={pickerFilter === "all" ? "secondary" : "outline"} className="shrink-0" onClick={() => setPickerFilter("all")}>
+              {t("admin.missionTypes.filterAll")}
+            </Button>
+            {profileCount > 0 && (
+              <Button type="button" size="sm" variant={pickerFilter === "profile" ? "secondary" : "outline"} className="shrink-0" onClick={() => setPickerFilter("profile")}>
+                {t("admin.missionTypes.filterSoraProfile", { count: profileCount })}
+              </Button>
+            )}
+            <Button type="button" size="sm" variant={pickerFilter === "selected" ? "secondary" : "outline"} className="shrink-0" onClick={() => setPickerFilter("selected")}>
+              {t("admin.missionTypes.filterSelected", { count: selectedCount })}
+            </Button>
+          </div>
+
+          <div className="flex-1 min-h-[200px] max-h-[400px] border rounded-lg overflow-y-auto overscroll-contain [touch-action:pan-y]">
             {filteredDocs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground text-sm">
                 <FileText className="h-8 w-8 mb-2" />
                 <p>{t("admin.missionTypes.pickerEmpty")}</p>
               </div>
             ) : (
-              <div className="p-2 space-y-1">
-                {filteredDocs.map((doc) => {
+              <div className="p-2 space-y-3">
+                {groupedPickerDocs.map((group) => (
+                  <div key={group.key} className="space-y-1">
+                    {group.title && <p className="px-2 pb-1 text-xs font-semibold text-muted-foreground">{group.title}</p>}
+                    {group.docs.map((doc) => {
                   const isSelected = doc.isEvaluation
                     ? pickerOpenFor?.default_evaluation_template_id === doc.id
                     : pickerDocIds.includes(doc.id);
+                  const profileStatus = profileStatusByDocument.get(doc.id) ?? "none";
+                  const isCurrentSora = pickerOpenFor?.sora_document_id === doc.id;
+                  const oldSoraTitle = pickerOpenFor?.sora_document_id ? docsById.get(pickerOpenFor.sora_document_id)?.tittel : null;
                   return (
-                    <button
-                      key={doc.id}
-                      type="button"
-                      onClick={async () => {
-                        if (!pickerOpenFor) return;
-                        await toggleDocument(pickerOpenFor, doc.id, !!doc.isEvaluation);
-                      }}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
-                        isSelected
-                          ? "bg-primary/10 border border-primary/30"
-                          : "hover:bg-muted/50 border border-transparent"
-                      }`}
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{doc.tittel}</p>
-                        <p className="text-xs text-muted-foreground">{doc.kategori}</p>
-                      </div>
-                      {isSelected && !doc.isEvaluation && /\.pdf$/i.test(doc.fil_url || "") && (
-                        <Button type="button" size="sm" variant={pickerOpenFor?.sora_document_id === doc.id ? "default" : "outline"}
-                          onClick={(event) => { event.stopPropagation(); if (pickerOpenFor) setSoraDocument(pickerOpenFor, pickerOpenFor.sora_document_id === doc.id ? null : doc.id); }}>
-                          {t("admin.missionTypes.markSora")}
+                    <div key={doc.id} className={`rounded-lg border ${isSelected ? "border-primary/30 bg-primary/10" : "border-transparent hover:bg-muted/50"}`}>
+                      <div className="flex min-w-0 items-center gap-2 p-2">
+                        <Button type="button" variant="ghost" className="h-auto min-w-0 flex-1 justify-start gap-3 p-1 text-left" onClick={() => pickerOpenFor && toggleDocument(pickerOpenFor, doc.id, !!doc.isEvaluation)}>
+                          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{doc.tittel}</span>
+                            <span className="block truncate text-xs text-muted-foreground">{doc.kategori}</span>
+                          </span>
                         </Button>
+                        {profileStatus !== "none" && !doc.isEvaluation && (
+                          <SoraProfileBadge documentId={doc.id} statusOverride={profileStatus} readOnly className="shrink-0" />
+                        )}
+                        {isSelected && !doc.isEvaluation && /\.pdf$/i.test(doc.fil_url || "") && (
+                          <Button type="button" size="sm" variant={isCurrentSora ? "default" : "outline"} className="shrink-0"
+                            onClick={() => pickerOpenFor && setSoraDocument(pickerOpenFor, isCurrentSora ? null : doc.id)}>
+                            {t("admin.missionTypes.markSora")}
+                          </Button>
+                        )}
+                      </div>
+                      {isSelected && profileStatus === "confirmed" && !isCurrentSora && !doc.isEvaluation && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                          <span>{oldSoraTitle
+                            ? t("admin.missionTypes.replaceSoraPrompt", { title: oldSoraTitle })
+                            : t("admin.missionTypes.useAsSoraPrompt")}</span>
+                          <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => pickerOpenFor && setSoraDocument(pickerOpenFor, doc.id)}>
+                            {oldSoraTitle ? t("admin.missionTypes.replaceSora") : t("admin.missionTypes.useAsSora")}
+                          </Button>
+                        </div>
                       )}
-                    </button>
+                      {isCurrentSora && (profileStatus === "draft" || profileStatus === "outdated") && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1">{t("admin.missionTypes.unconfirmedProfileHelp")}</span>
+                          <Button type="button" size="sm" variant="link" className="h-auto p-0 text-current" onClick={() => setProfileDialogDocumentId(doc.id)}>
+                            {t("admin.missionTypes.openProfile")}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   );
-                })}
+                    })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -675,6 +772,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
               onClick={() => {
                 setPickerOpenForId(null);
                 setPickerSearch("");
+                setPickerFilter("all");
               }}
             >
               {t("admin.missionTypes.done")}
@@ -682,6 +780,10 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {profileDialogDocumentId && (
+        <SoraProfileDialog documentId={profileDialogDocumentId} open onOpenChange={(open) => !open && setProfileDialogDocumentId(null)} readOnly />
+      )}
 
       <Dialog
         open={shareDialogOpen}

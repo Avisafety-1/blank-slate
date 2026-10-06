@@ -45,13 +45,13 @@ export const deriveSoraProfileStatus = (
 };
 
 /** Load, save and confirm the SORA profile of one document. Writes are admin-only (RLS enforced). */
-export function useSoraProfile(documentId: string | null | undefined) {
+export function useSoraProfile(documentId: string | null | undefined, enabled = true) {
   const { user, companyId, isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: soraProfileKey(documentId),
-    enabled: !!documentId,
+    enabled: !!documentId && enabled,
     staleTime: 30_000,
     queryFn: async () => {
       const [docRes, rowRes] = await Promise.all([
