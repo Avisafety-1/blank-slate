@@ -2890,6 +2890,7 @@
       "mapPublication": "Map publication",
       "defaultMapLayers": "Default map layers",
       "missionTypes": "Mission types",
+      "soraProfiles": "SORA profiles",
       "defaultSoraBuffer": "Default SORA buffer",
       "rolesTitle": "Roles",
       "flightLogAlerts": "Flight log alerts",

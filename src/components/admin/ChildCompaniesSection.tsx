@@ -23,7 +23,8 @@ import { FH2DevicesSection } from "./FH2DevicesSection";
 import { FH2AirspaceWebhookSection } from "./FH2AirspaceWebhookSection";
 import { FH2AirspaceFeedSection } from "./FH2AirspaceFeedSection";
 import { FH2LivePositionSection } from "./FH2LivePositionSection";
-import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock, Radio, Shield, Map as MapIcon } from "lucide-react";
+import { Plus, Pencil, Building2, Settings, Hash, ChevronDown, ChevronUp, Trash2, UserCog, Info, X, Bell, Send, AlertTriangle, Lock, Radio, Shield, ShieldCheck, Map as MapIcon } from "lucide-react";
+import { SoraProfilesSection } from "@/components/admin/SoraProfilesSection";
 import { DeviationCategoryTreeEditor } from "./DeviationCategoryTreeEditor";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -105,30 +106,47 @@ interface ChildCompaniesSectionProps {
 }
 
 interface SubSectionProps {
+  id?: string;
   title: string;
   icon?: React.ComponentType<{ className?: string }>;
   defaultOpen?: boolean;
-  children: React.ReactNode;
+  children: React.ReactNode | ((isOpen: boolean) => React.ReactNode);
 }
 
-const SubSection = ({ title, icon: Icon, defaultOpen, children }: SubSectionProps) => (
-  <Collapsible defaultOpen={defaultOpen}>
-    <div className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden">
-      <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
-        <div className="flex items-center gap-2 font-medium text-sm">
-          {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
-          <span>{title}</span>
-        </div>
-        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="px-3 pb-3 pt-1 space-y-3 border-t border-primary/20">
-          {children}
-        </div>
-      </CollapsibleContent>
-    </div>
-  </Collapsible>
-);
+const SubSection = ({ id, title, icon: Icon, defaultOpen, children }: SubSectionProps) => {
+  const [isOpen, setIsOpen] = useState(() => {
+    if (defaultOpen) return true;
+    if (!id || typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("section") === id;
+  });
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!id) return;
+    if (new URLSearchParams(window.location.search).get("section") !== id) return;
+    const timer = window.setTimeout(() => {
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [id]);
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div ref={rootRef} id={id ? `section-${id}` : undefined} className="rounded-lg border-2 border-primary/30 bg-muted/20 overflow-hidden scroll-mt-20">
+        <CollapsibleTrigger className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors group">
+          <div className="flex items-center gap-2 font-medium text-sm">
+            {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
+            <span>{title}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-3 pb-3 pt-1 space-y-3 border-t border-primary/20">
+            {typeof children === "function" ? children(isOpen) : children}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+};
 
 export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSectionProps) => {
   const { t } = useTranslation();
@@ -2047,6 +2065,10 @@ export const ChildCompaniesSection = ({ departmentsEnabled }: ChildCompaniesSect
 
               <SubSection title={t("admin.childCompanies.missionTypes")} icon={Settings}>
                 <MissionTypesSection companyId={companyId} disabled={savingSettings} />
+              </SubSection>
+
+              <SubSection id="sora-profiles" title={t("admin.childCompanies.soraProfiles")} icon={ShieldCheck}>
+                {(isOpen) => <SoraProfilesSection companyId={companyId} disabled={savingSettings} enabled={isOpen} />}
               </SubSection>
             </div>
           </CollapsibleContent>
