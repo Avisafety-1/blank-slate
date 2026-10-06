@@ -49,17 +49,6 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
     await queryClient.invalidateQueries({ queryKey: ["sora-profile-list"] });
     await queryClient.invalidateQueries({ queryKey: soraProfileKey(deleteTarget.id) });
   };
-  const helpStorageKey = `avisafe:sora-profile-help:${user?.id ?? "anonymous"}`;
-  const [helpOpen, setHelpOpen] = useState(() => {
-    try { return localStorage.getItem(helpStorageKey) === "open"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { setHelpOpen(localStorage.getItem(helpStorageKey) === "open"); } catch { setHelpOpen(false); }
-  }, [helpStorageKey]);
-  const setHelpOpenPersisted = (open: boolean) => {
-    setHelpOpen(open);
-    try { localStorage.setItem(helpStorageKey, open ? "open" : "closed"); } catch { /* storage may be unavailable */ }
-  };
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["sora-profile-list", companyId],
