@@ -9133,5 +9133,148 @@
     "howToPilot2": "Hjem-skjerm → Cloud Service → Custom Livestream → RTMP → lim inn adressen → Save.",
     "howToFh2Title": "FlightHub 2",
     "howToFh2": "Live Streaming → New Forwarding Channel → RTMP → lim inn adressen i Server Address → velg drone og kamerakilde → Confirm."
+  },
+  "soraProfile": {
+    "title": "SORA-profil",
+    "pageTitle": "SORA-profiler",
+    "pageDescription": "Strukturerte profiler av selskapets SORA-dokumenter. Profilene brukes ikke i risikovurderingen ennå.",
+    "adminOnly": "Kun administratorer har tilgang til denne siden.",
+    "noDocuments": "Ingen dokumenter er valgt som SORA ennå.",
+    "open": "Åpne",
+    "manageLink": "Administrer SORA-profiler",
+    "soraLabel": "SORA-profil:",
+    "status": {
+      "none": "Ingen profil",
+      "draft": "Utkast",
+      "confirmed": "Bekreftet",
+      "outdated": "Utdatert"
+    },
+    "source": {
+      "ai": "Lest med AI",
+      "manual": "Manuelt utfylt"
+    },
+    "confirmedBy": "Bekreftet av {{name}}, {{date}}",
+    "readOnly": "Skrivebeskyttet",
+    "outdatedHint": "Dokumentet har fått ny filversjon etter at profilen ble lagret. Les profilen på nytt eller kontroller den, og bekreft igjen.",
+    "issuesTitle": "Konsistensavvik",
+    "issueLine": "dokumentet sier {{doc}}, beregnet {{calc}}",
+    "certified": "sertifisert kategori",
+    "page": "s. {{page}}",
+    "unknown": "Ukjent",
+    "soraType": {
+      "generic": "Generisk",
+      "specific": "Spesifikk"
+    },
+    "robustness": {
+      "None": "Ingen",
+      "Low": "Lav",
+      "Medium": "Middels",
+      "High": "Høy"
+    },
+    "sections": {
+      "envelope": "Rammer",
+      "aircraft": "Droner",
+      "ground": "Bakkerisiko og reduksjoner",
+      "air": "Luftrisiko",
+      "sail": "SAIL",
+      "containment": "Containment",
+      "buffers": "Buffere",
+      "oso": "OSO"
+    },
+    "mitigations": {
+      "m1a": "M1(A) Skjerming",
+      "m1b": "M1(B) Operative begrensninger",
+      "m1c": "M1(C) Bakkeobservasjon",
+      "m2": "M2 Redusert treffenergi"
+    },
+    "addAircraft": "Legg til drone",
+    "removeAircraft": "Fjern drone",
+    "noAircraft": "Ingen droner lagt til.",
+    "addOso": "Legg til OSO",
+    "removeOso": "Fjern OSO",
+    "readWithAi": "Les SORA med AI",
+    "saveDraft": "Lagre utkast",
+    "confirm": "Bekreft profil",
+    "confirmOverwrite": "AI-uttrekket erstatter verdiene i skjemaet. Fortsette?",
+    "unreadable": "Filen kunne ikke leses automatisk. Fyll ut profilen manuelt.",
+    "aiDone": "Skjemaet er fylt ut. Kontroller verdiene før du lagrer.",
+    "aiError": "AI-uttrekket feilet.",
+    "saved": "Utkast lagret",
+    "confirmed": "Profilen er bekreftet",
+    "saveError": "Kunne ikke lagre profilen",
+    "fields": {
+      "soraVersion": "SORA-versjon",
+      "soraType": "SORA-type",
+      "operatingArea": "Operasjonsområde",
+      "envelope": {
+        "maxHeightM": "Maks høyde (m)",
+        "maxSpeedMps": "Maks fart (m/s)",
+        "maxPopulationDensity": "Maks befolkningstetthet (< pers/km²)",
+        "operationType": "Operasjonstype",
+        "maxDistanceFromPilotM": "Maks avstand fra pilot (m)",
+        "controlledGroundArea": "Kontrollert bakkeområde"
+      },
+      "aircraft": {
+        "manufacturer": "Produsent",
+        "model": "Modell",
+        "type": "Type",
+        "maxDimensionM": "Maks dimensjon (m)",
+        "maxSpeedMps": "Maks fart (m/s)",
+        "mtomKg": "MTOM (kg)"
+      },
+      "ground": {
+        "igrc": "iGRC",
+        "fgrc": "fGRC",
+        "mitigations": {
+          "m1a": {
+            "robustness": "M1A robusthet",
+            "reduction": "M1A reduksjon",
+            "conditionText": "Vilkår"
+          },
+          "m1b": {
+            "robustness": "M1B robusthet",
+            "reduction": "M1B reduksjon",
+            "conditionText": "Vilkår"
+          },
+          "m1c": {
+            "robustness": "M1C robusthet",
+            "reduction": "M1C reduksjon",
+            "conditionText": "Vilkår",
+            "requiresObserver": "Krever observatør"
+          },
+          "m2": {
+            "robustness": "M2 robusthet",
+            "reduction": "M2 reduksjon",
+            "conditionText": "Vilkår",
+            "requiredEquipmentText": "Påkrevd utstyr"
+          }
+        }
+      },
+      "air": {
+        "scenario": "Scenario",
+        "initialArc": "Initial ARC",
+        "aec": "AEC",
+        "strategicReductions": "Strategiske reduksjoner (én per linje)",
+        "residualArc": "Rest-ARC",
+        "tmpr": "TMPR"
+      },
+      "sail": "SAIL",
+      "containment": {
+        "robustness": "Containment-robusthet",
+        "adjacentAreaKm": "Tilstøtende område (km)",
+        "maxAdjacentDensity": "Maks tetthet tilstøtende (< pers/km²)",
+        "shelterApplicable": "Skjerming gjelder",
+        "maxAssembly": "Maks folkeansamling"
+      },
+      "buffers": {
+        "cvHorizontalM": "CV horisontal (m)",
+        "cvVerticalM": "CV vertikal (m)",
+        "groundRiskBufferM": "Bakkerisikobuffer (m)"
+      },
+      "oso": {
+        "id": "OSO",
+        "robustness": "Robusthet"
+      }
+    }
   }
 }

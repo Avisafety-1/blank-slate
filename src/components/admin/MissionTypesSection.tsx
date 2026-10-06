@@ -18,6 +18,8 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanyMissionTypes, CompanyMissionType } from "@/hooks/useCompanyMissionTypes";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
 
 interface Props {
   companyId: string | null;
@@ -37,6 +39,7 @@ interface DocOption {
 export function MissionTypesSection({ companyId, disabled }: Props) {
   const { parentCompanyId } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { types, isInherited, effectiveCompanyId, reload } = useCompanyMissionTypes();
   const [newLabel, setNewLabel] = useState("");
   const [propagate, setPropagate] = useState(false);
@@ -307,6 +310,13 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
 
   return (
     <div className="space-y-4">
+      {!isInherited && (
+        <div className="flex justify-end">
+          <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => navigate("/sora-profiler")}>
+            {t("soraProfile.manageLink")}
+          </Button>
+        </div>
+      )}
       {isInherited && (
         <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm flex items-center gap-2">
           <Lock className="h-4 w-4" />
@@ -362,6 +372,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
                       <FileText className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate">{doc.tittel}</span>
                       {mt.sora_document_id === id && <span className="text-xs text-primary">SORA</span>}
+                      {mt.sora_document_id === id && <SoraProfileBadge documentId={id} />}
                       {!isReadOnly && (
                         <button
                           type="button"

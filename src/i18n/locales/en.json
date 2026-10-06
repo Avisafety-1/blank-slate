@@ -9131,5 +9131,148 @@
     "howToPilot2": "Home screen → Cloud Service → Custom Livestream → RTMP → paste the address → Save.",
     "howToFh2Title": "FlightHub 2",
     "howToFh2": "Live Streaming → New Forwarding Channel → RTMP → paste the address in Server Address → pick device and stream source → Confirm."
+  },
+  "soraProfile": {
+    "title": "SORA profile",
+    "pageTitle": "SORA profiles",
+    "pageDescription": "Structured profiles of the company's SORA documents. Profiles are not used in the risk assessment yet.",
+    "adminOnly": "Only administrators can access this page.",
+    "noDocuments": "No documents have been selected as SORA yet.",
+    "open": "Open",
+    "manageLink": "Manage SORA profiles",
+    "soraLabel": "SORA profile:",
+    "status": {
+      "none": "No profile",
+      "draft": "Draft",
+      "confirmed": "Confirmed",
+      "outdated": "Outdated"
+    },
+    "source": {
+      "ai": "Read with AI",
+      "manual": "Filled in manually"
+    },
+    "confirmedBy": "Confirmed by {{name}}, {{date}}",
+    "readOnly": "Read-only",
+    "outdatedHint": "The document has a new file version since the profile was saved. Re-read or review the profile and confirm again.",
+    "issuesTitle": "Consistency deviations",
+    "issueLine": "document says {{doc}}, calculated {{calc}}",
+    "certified": "certified category",
+    "page": "p. {{page}}",
+    "unknown": "Unknown",
+    "soraType": {
+      "generic": "Generic",
+      "specific": "Specific"
+    },
+    "robustness": {
+      "None": "None",
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "High"
+    },
+    "sections": {
+      "envelope": "Envelope",
+      "aircraft": "Aircraft",
+      "ground": "Ground risk and mitigations",
+      "air": "Air risk",
+      "sail": "SAIL",
+      "containment": "Containment",
+      "buffers": "Buffers",
+      "oso": "OSO"
+    },
+    "mitigations": {
+      "m1a": "M1(A) Sheltering",
+      "m1b": "M1(B) Operational restrictions",
+      "m1c": "M1(C) Ground observation",
+      "m2": "M2 Impact reduction"
+    },
+    "addAircraft": "Add aircraft",
+    "removeAircraft": "Remove aircraft",
+    "noAircraft": "No aircraft added.",
+    "addOso": "Add OSO",
+    "removeOso": "Remove OSO",
+    "readWithAi": "Read SORA with AI",
+    "saveDraft": "Save draft",
+    "confirm": "Confirm profile",
+    "confirmOverwrite": "The AI extraction replaces the values in the form. Continue?",
+    "unreadable": "The file could not be read automatically. Please fill in the profile manually.",
+    "aiDone": "The form has been filled in. Review the values before saving.",
+    "aiError": "AI extraction failed.",
+    "saved": "Draft saved",
+    "confirmed": "Profile confirmed",
+    "saveError": "Could not save the profile",
+    "fields": {
+      "soraVersion": "SORA version",
+      "soraType": "SORA type",
+      "operatingArea": "Operating area",
+      "envelope": {
+        "maxHeightM": "Max height (m)",
+        "maxSpeedMps": "Max speed (m/s)",
+        "maxPopulationDensity": "Max population density (< people/km²)",
+        "operationType": "Operation type",
+        "maxDistanceFromPilotM": "Max distance from pilot (m)",
+        "controlledGroundArea": "Controlled ground area"
+      },
+      "aircraft": {
+        "manufacturer": "Manufacturer",
+        "model": "Model",
+        "type": "Type",
+        "maxDimensionM": "Max dimension (m)",
+        "maxSpeedMps": "Max speed (m/s)",
+        "mtomKg": "MTOM (kg)"
+      },
+      "ground": {
+        "igrc": "iGRC",
+        "fgrc": "fGRC",
+        "mitigations": {
+          "m1a": {
+            "robustness": "M1A robustness",
+            "reduction": "M1A reduction",
+            "conditionText": "Conditions"
+          },
+          "m1b": {
+            "robustness": "M1B robustness",
+            "reduction": "M1B reduction",
+            "conditionText": "Conditions"
+          },
+          "m1c": {
+            "robustness": "M1C robustness",
+            "reduction": "M1C reduction",
+            "conditionText": "Conditions",
+            "requiresObserver": "Requires observer"
+          },
+          "m2": {
+            "robustness": "M2 robustness",
+            "reduction": "M2 reduction",
+            "conditionText": "Conditions",
+            "requiredEquipmentText": "Required equipment"
+          }
+        }
+      },
+      "air": {
+        "scenario": "Scenario",
+        "initialArc": "Initial ARC",
+        "aec": "AEC",
+        "strategicReductions": "Strategic reductions (one per line)",
+        "residualArc": "Residual ARC",
+        "tmpr": "TMPR"
+      },
+      "sail": "SAIL",
+      "containment": {
+        "robustness": "Containment robustness",
+        "adjacentAreaKm": "Adjacent area (km)",
+        "maxAdjacentDensity": "Max adjacent density (< people/km²)",
+        "shelterApplicable": "Sheltering applicable",
+        "maxAssembly": "Max assembly"
+      },
+      "buffers": {
+        "cvHorizontalM": "CV horizontal (m)",
+        "cvVerticalM": "CV vertical (m)",
+        "groundRiskBufferM": "Ground risk buffer (m)"
+      },
+      "oso": {
+        "id": "OSO",
+        "robustness": "Robustness"
+      }
+    }
   }
 }

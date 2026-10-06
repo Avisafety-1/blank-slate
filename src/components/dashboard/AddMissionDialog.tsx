@@ -1,3 +1,4 @@
+import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMissionWeatherSnapshot } from "@/lib/missionWeatherSnapshot";
 import { Button } from "@/components/ui/button";
@@ -1501,6 +1502,15 @@ export const AddMissionDialog = ({
                   <SelectItem value="Annet">{t('missions.missionTypes.Annet')}</SelectItem>
                 </SelectContent>
               </Select>
+              {(() => {
+                const soraId = (mission && formData.oppdragstype === (mission as any).oppdragstype && (mission as any).sora_document_id)
+                  || missionTypes.find((type) => type.label === formData.oppdragstype)?.sora_document_id;
+                return soraId ? (
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{t('soraProfile.soraLabel')}</span><SoraProfileBadge documentId={soraId} />
+                  </div>
+                ) : null;
+              })()}
             </div>
             {formData.oppdragstype === "Annet" && (
               <div>

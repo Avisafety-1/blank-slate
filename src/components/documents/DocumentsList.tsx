@@ -1,3 +1,5 @@
+import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
+import { useSoraDocumentIds } from "@/hooks/useSoraProfile";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Document, DocumentStatusFilter } from "@/pages/Documents";
@@ -111,6 +113,7 @@ const DocumentsList = ({
 }: DocumentsListProps) => {
   const { t } = useTranslation();
   const { companyId, departmentsEnabled } = useAuth();
+  const { data: soraIds } = useSoraDocumentIds();
 
   const handleOpenFile = async (filUrl: string) => {
     try {
@@ -219,6 +222,7 @@ const DocumentsList = ({
                     </div>
 
                     <span className="truncate">{doc.tittel}</span>
+                    {soraIds?.has(doc.id) && <span onClick={(e) => e.stopPropagation()}><SoraProfileBadge documentId={doc.id} /></span>}
                   </div>
 
                 </TableCell>
