@@ -23,7 +23,7 @@ interface Props {
 /** Small status chip for a SORA document's profile; opens the profile dialog on click. */
 export function SoraProfileBadge({ documentId, readOnly, className, statusOverride }: Props) {
   const { t } = useTranslation();
-  const { status } = useSoraProfile(documentId);
+  const { status } = useSoraProfile(documentId, statusOverride === undefined);
   const displayedStatus = statusOverride ?? status;
   const [open, setOpen] = useState(false);
   if (!documentId) return null;
