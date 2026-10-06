@@ -163,11 +163,18 @@ Deno.test('not_approved + overall NO-GO never auto-approves (EN text)', () => {
   assertEquals(d.reason.startsWith('The latest assessment recommends NO-GO (AI score 9/10)'), true);
 });
 
-Deno.test('auto + SORA envelope deviation -> pending_approval, not danger', () => {
+Deno.test('auto + SORA envelope deviation -> status unchanged with stop reason', () => {
   const d = decideApproval({ ...base(), soraEnvelopeDeviation: true });
-  assertEquals(d.status, 'pending_approval');
+  assertEquals(d.status, null);
   assertEquals(d.severity, 'warning');
-  assertEquals(d.reason, 'Utenfor SORA-rammene – krever manuell godkjenning');
+  assertEquals(d.reason, 'Utenfor SORA-rammene – automatisk godkjenning er stoppet. Send oppdraget til godkjenning manuelt.');
+});
+
+Deno.test('pending_approval (manually submitted) + SORA envelope deviation -> unchanged', () => {
+  const d = decideApproval({ ...base(), currentStatus: 'pending_approval', soraEnvelopeDeviation: true });
+  assertEquals(d.status, null);
+  assertEquals(d.severity, 'warning');
+  assertEquals(d.reason.includes('automatisk godkjenning er stoppet'), true);
 });
 
 Deno.test('approved + SORA envelope deviation -> stays approved', () => {
@@ -178,4 +185,14 @@ Deno.test('approved + SORA envelope deviation -> stays approved', () => {
 
 Deno.test('no SORA envelope deviation -> unchanged auto-approval', () => {
   assertEquals(decideApproval({ ...base(), soraEnvelopeDeviation: false }).status, 'approved');
+});
+
+Deno.test('no SORA envelope deviation (undefined) -> unchanged auto-approval', () => {
+  assertEquals(decideApproval({ ...base() }).status, 'approved');
+});
+
+Deno.test('English stop reason', () => {
+  const d = decideApproval({ ...base(), lang: 'en', soraEnvelopeDeviation: true });
+  assertEquals(d.status, null);
+  assertEquals(d.reason, 'Outside the SORA envelope – automatic approval stopped. Submit the mission for approval manually.');
 });

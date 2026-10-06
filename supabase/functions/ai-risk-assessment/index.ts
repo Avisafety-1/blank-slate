@@ -3837,15 +3837,6 @@ serve(async (req) => {
           missionStatus: currentStatus,
         };
 
-        if (decision.status === 'pending_approval') {
-          const { error: pendErr } = await supabase
-            .from('missions')
-            .update({ approval_status: 'pending_approval' })
-            .eq('id', missionId)
-            .eq('approval_status', currentStatus)
-            .select('id');
-          if (pendErr) console.error('pending_approval write error:', pendErr);
-        }
         if (decision.status === 'approved') {
           // Conditional write: only approve if the status is unchanged since the
           // re-read, so a concurrent approval action is never overwritten.
