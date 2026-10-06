@@ -27,7 +27,7 @@ import {
 import { UNKNOWN_STATUS_TEXT } from "./maintenanceStatus.ts";
 import { normalizeCategoryDecisions } from "./decisionCodes.ts";
 import { resolveFlightInputs } from "./flightInputs.ts";
-import { isYellowStatus, unknownStatusText } from "./maintenanceStatus.ts";
+import { isYellowStatus, unknownStatusText, linkedReasonsNotOnMission, type LinkedReason } from "./maintenanceStatus.ts";
 import { evaluateCivilTwilight, POLAR_NIGHT_TEXT } from "./twilight.ts";
 import { isFixedWingDrone, modelSearchTerms } from "./catalogLookup.ts";
 import { osloDateString as osloDay } from "./missionContext.ts";
