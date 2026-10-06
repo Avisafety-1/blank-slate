@@ -196,9 +196,9 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
       ]);
       const childRows = (children.data as any[]) ?? [];
       const ids = [ownerCompanyId!, ...childRows.map((c) => c.id)];
-      const groupNames = new Map<string, string>();
-      groupNames.set(ownerCompanyId!, childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? ""));
-      for (const c of childRows) groupNames.set(c.id, t("soraProfile.registry.department", { name: c.navn }));
+      const groupNames: Record<string, string> = {};
+      groupNames[ownerCompanyId!] = (childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? "")));
+      for (const c of childRows) groupNames[c.id] = t("soraProfile.registry.department", { name: c.navn });
       const [d, e, c] = await Promise.all([
         supabase.from("drones").select("id, company_id, modell, dji_aircraft_name, serienummer, registration_number").in("company_id", ids).eq("aktiv", true).order("modell"),
         supabase.from("equipment").select("id, company_id, navn, type, serienummer").in("company_id", ids).eq("aktiv", true).order("navn"),
@@ -210,7 +210,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
       return { drones, equipment, catalog: c.data ?? [], groupNames, hasDepartments: childRows.length > 0 };
     },
   });
-  const groupOf = (cid: string) => (registry?.hasDepartments ? registry.groupNames.get(cid) ?? "" : undefined);
+  const groupOf = (cid: string) => (registry?.hasDepartments ? (registry.groupNames as Record<string, string>)?.[cid] ?? "" : undefined);
 
   const applySuggestions = (p: SoraProfile): { profile: SoraProfile; rows: Set<number> } => {
     const rows = new Set<number>();
