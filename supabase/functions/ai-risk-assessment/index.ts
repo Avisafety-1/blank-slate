@@ -11,7 +11,7 @@ import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION 
 import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
 import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
-import { buildDecisionSentence, enforceConsistency, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
+import { applyOperationCategoryText, buildDecisionSentence, enforceConsistency, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
@@ -110,6 +110,14 @@ const pickBestDroneModelMatch = <T extends { name: string }>(models: T[], droneM
 };
 
 
+
+// ALOS keeps the (stricter) catalog body dimension; explain when iGRC uses a larger profile value.
+export const alosProfileNote = (catalogM: number, profileM: number, en: boolean): string => {
+  const f = (v: number) => en ? String(v) : String(v).replace('.', ',');
+  return en
+    ? `ALOS calculated with the drone's body dimension ${f(catalogM)} m (catalog) – iGRC uses ${f(profileM)} m incl. propellers from the SORA profile`
+    : `ALOS beregnet med dronens kroppsmål ${f(catalogM)} m (katalog) – iGRC bruker ${f(profileM)} m inkl. propeller fra SORA-profilen`;
+};
 
 const calculateAlos = (characteristicDimensionM?: number | null, fixedWing = false) => {
   if (typeof characteristicDimensionM !== 'number' || !Number.isFinite(characteristicDimensionM) || characteristicDimensionM <= 0) {
@@ -3173,7 +3181,9 @@ serve(async (req) => {
       aiAnalysis.operation_classification = {
         ...(aiAnalysis.operation_classification || {}),
         alos_max_m: deterministicAlos.alosMaxM,
-        alos_calculation: deterministicAlos.alosCalculation,
+        alos_calculation: characteristics.dimension.fromProfile && primaryDroneCharacteristicDimensionM
+          ? `${deterministicAlos.alosCalculation} — ${alosProfileNote(primaryDroneCharacteristicDimensionM, characteristics.dimension.value, grEn)}`
+          : deterministicAlos.alosCalculation,
       };
     }
 
@@ -3643,6 +3653,7 @@ serve(async (req) => {
     // overall ≤ 4.9 with a hard stop.
     enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
     if (systemDecisions.operationCategory?.category === 'specific') stripOpenCategoryCompetency(aiAnalysis);
+    applyOperationCategoryText(aiAnalysis, systemDecisions.operationCategory, resolveLang(language) === 'en' ? 'en' : 'no');
 
     // Recompute recommendation after authoritative hard-stop derivation.
     aiAnalysis.recommendation = deriveRiskRecommendation(
