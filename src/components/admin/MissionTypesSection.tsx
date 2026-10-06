@@ -106,7 +106,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     await loadSoraSharing();
   };
   const renderSoraShareWarning = (docId: string | null) => (docId && unsharedSoraIds.has(docId) ? (
-    <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+    <div className="order-last flex basis-full flex-wrap items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="min-w-0 flex-1 break-words">{t("admin.missionTypes.soraNotShared")}</span>
       {!isReadOnly && (
@@ -392,7 +392,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
         {visibleTypes.map((mt, i) => {
           const linkedIds = [...getDocIds(mt), ...(mt.default_evaluation_template_id ? [mt.default_evaluation_template_id] : [])];
           return (
-            <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
+            <div key={mt.id} className={`flex items-center gap-2 rounded-md border p-2 flex-wrap ${mt.sora_document_id && unsharedSoraIds.has(mt.sora_document_id) ? "" : "sm:flex-nowrap"}`}>
               <div className="flex flex-col">
                 <Button
                   size="icon"
