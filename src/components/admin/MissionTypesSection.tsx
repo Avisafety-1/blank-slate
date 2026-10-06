@@ -151,21 +151,22 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
     const source = effectiveCompanyId;
     if (!source) return;
     (async () => {
+      const sourceCompanyIds = [...new Set([source, companyId].filter((id): id is string => !!id))];
       const [docRes, evalRes, profileRes] = await Promise.all([
         (supabase
           .from("documents")
           .select("id, tittel, kategori, fil_url, nettside_url")
-          .eq("company_id", source)
+          .in("company_id", sourceCompanyIds)
           .order("tittel") as any),
         (supabase
           .from("evaluation_templates")
           .select("id, title, description")
-          .eq("company_id", source)
+          .in("company_id", sourceCompanyIds)
           .order("title") as any),
         (supabase
           .from("sora_document_profiles" as any)
           .select("document_id, status, source_file_url")
-          .eq("company_id", source) as any),
+          .in("company_id", sourceCompanyIds) as any),
       ]);
       const documents: DocOption[] = (docRes?.data || []) as DocOption[];
       const evaluations: DocOption[] = ((evalRes?.data || []) as any[]).map((e) => ({
@@ -179,7 +180,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
       setDocs([...documents, ...evaluations].sort((a, b) => a.tittel.localeCompare(b.tittel)));
       setProfileSummaries((profileRes?.data || []) as ProfileSummary[]);
     })();
-  }, [effectiveCompanyId]);
+  }, [companyId, effectiveCompanyId]);
 
 
   const docsById = useMemo(() => {

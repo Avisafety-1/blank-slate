@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FileText, Info, Plus, Search } from "lucide-react";
@@ -32,6 +32,9 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
   const [helpOpen, setHelpOpen] = useState(() => {
     try { return localStorage.getItem(helpStorageKey) === "open"; } catch { return false; }
   });
+  useEffect(() => {
+    try { setHelpOpen(localStorage.getItem(helpStorageKey) === "open"); } catch { setHelpOpen(false); }
+  }, [helpStorageKey]);
   const setHelpOpenPersisted = (open: boolean) => {
     setHelpOpen(open);
     try { localStorage.setItem(helpStorageKey, open ? "open" : "closed"); } catch { /* storage may be unavailable */ }

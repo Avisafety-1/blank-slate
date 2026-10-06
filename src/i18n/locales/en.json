@@ -9157,11 +9157,11 @@
   "soraProfile": {
     "title": "SORA profile",
     "pageTitle": "SORA profiles",
-    "pageDescription": "Structured profiles of the company's SORA documents. Profiles are not used in the risk assessment yet.",
+    "pageDescription": "Structured profiles of the company's SORA documents used in the risk assessment.",
     "adminOnly": "Only administrators can access this page.",
     "noDocuments": "No documents have been selected as SORA yet.",
     "open": "Open",
-    "newProfile": "New SORA profile",
+    "newProfile": "Add SORA profile",
     "pickDocument": "Select document",
     "searchDocuments": "Search documents …",
     "noDocsFound": "No documents found.",

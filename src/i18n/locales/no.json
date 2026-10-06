@@ -9159,11 +9159,11 @@
   "soraProfile": {
     "title": "SORA-profil",
     "pageTitle": "SORA-profiler",
-    "pageDescription": "Strukturerte profiler av selskapets SORA-dokumenter. Profilene brukes ikke i risikovurderingen ennå.",
+    "pageDescription": "Strukturerte profiler av selskapets SORA-dokumenter som brukes i risikovurderingen.",
     "adminOnly": "Kun administratorer har tilgang til denne siden.",
     "noDocuments": "Ingen dokumenter er valgt som SORA ennå.",
     "open": "Åpne",
-    "newProfile": "Ny SORA-profil",
+    "newProfile": "Legg til SORA-profil",
     "pickDocument": "Velg dokument",
     "searchDocuments": "Søk etter dokument …",
     "noDocsFound": "Ingen dokumenter funnet.",
