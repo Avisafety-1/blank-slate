@@ -1283,7 +1283,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       operationClassification={currentAssessment.operation_classification}
                       onGroundRiskChange={handleGroundRiskChange}
                       onAirRiskChange={handleAirRiskChange}
-
+                      soraProfile={currentAssessment.soraProfile ?? null}
                     />
 
                     {/* Save comments button */}

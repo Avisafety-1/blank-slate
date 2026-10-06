@@ -7,7 +7,8 @@ import { deriveAec, residualArcForDensity } from "./soraAirRisk.ts";
 import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc, hasParachuteHint, lookupSail, MITIGATION_MATRIX, normalizeRobustness, outsideSpecificText, populationBandLabel, type MitigationKey } from "./soraGroundRisk.ts";
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
-import { buildSystemDecisions, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
+import { maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
 import { resolveContainment } from "./containment.ts";
 import { buildDecisionSentence, enforceConsistency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
@@ -156,6 +157,7 @@ const buildDeterministicGroundRisk = ({
   manualMitigations = null,
   controlledGroundSelected = false,
   populationDensityUnknown = false,
+  profileApplied = [],
 }: {
   characteristicDimensionM: number;
   maxSpeedMps: number;
@@ -169,6 +171,8 @@ const buildDeterministicGroundRisk = ({
   manualMitigations?: Record<string, { applicable?: boolean; robustness?: string | null }> | null;
   controlledGroundSelected?: boolean;
   populationDensityUnknown?: boolean;
+  /** Reductions credited from a confirmed SORA profile (inside its envelope). */
+  profileApplied?: AppliedMitigation[];
 }) => {
   const igrcResult = computeIgrc({
     dimensionM: characteristicDimensionM,
@@ -186,6 +190,7 @@ const buildDeterministicGroundRisk = ({
     igrc,
     controlledMinimum: controlledGroundMinimum,
     manual: manualEntries,
+    profile: Object.fromEntries(profileApplied.map((p) => [p.key, p.reduction])),
     autoM1c: m1cAutoReduction,
   });
   const outsideSora = igrcResult.outsideSora || (fgrc !== null && fgrc > 7);
@@ -263,6 +268,18 @@ const buildDeterministicGroundRisk = ({
     reasoning: string,
   ) => {
     const manual = manualEntries ? (manualEntries as any)[key] : null;
+    const fromProfile = profileApplied.find((p) => p.key === key);
+    if (!manual && fromProfile) {
+      return {
+        applicable: true,
+        robustness: fromProfile.robustness,
+        reduction: fromProfile.reduction,
+        source: 'sora_profile',
+        reasoning: en
+          ? `Credited from the confirmed SORA profile (${fromProfile.robustness} ${fromProfile.reduction}); the mission is within the profile's envelope and conditions.`
+          : `Kreditert fra bekreftet SORA-profil (${fromProfile.robustness} ${fromProfile.reduction}); oppdraget er innenfor profilens rammer og vilkår.`,
+      };
+    }
     if (!manual) return { applicable: autoApplicable, robustness: autoRobustness, reduction: autoReduction, reasoning };
     const applicable = !!manual.applicable;
     const robustness = applicable ? normalizeRobustness(manual.robustness) : null;
@@ -1218,6 +1235,22 @@ serve(async (req) => {
 
     const soraDocument = await readMissionSoraDocument(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') || '', authHeader.replace('Bearer ', ''), missionId)
       .catch(() => null);
+
+    // Confirmed SORA profile (caller RLS): mission → document → profile.
+    let soraProfileDoc: { id: string; fil_url: string | null; company_id: string | null } | null = null;
+    let soraProfileRow: any = null;
+    try {
+      const { data: m } = await callerClient.from('missions').select('sora_document_id').eq('id', missionId).maybeSingle();
+      if (m?.sora_document_id) {
+        const { data: d } = await callerClient.from('documents').select('id, fil_url, company_id').eq('id', m.sora_document_id).maybeSingle();
+        if (d) {
+          soraProfileDoc = d as any;
+          const { data: p } = await callerClient.from('sora_document_profiles')
+            .select('id, status, source_file_url, company_id, profile, confirmed_at').eq('document_id', d.id).maybeSingle();
+          soraProfileRow = p ?? null;
+        }
+      }
+    } catch (e) { console.error('SORA profile lookup failed (non-blocking):', e); }
 
     // 2. Fetch assigned personnel for the mission
     // GDPR: Only fetch non-personal data needed for risk assessment (no names, email, phone)
@@ -2455,7 +2488,8 @@ serve(async (req) => {
     const deterministicPopulationDensityAverage = populationData ? Number(populationData.avgDensity.toFixed(1)) : null;
     const grLang = resolveLang(language);
     const grEn = grLang === 'en';
-    const deterministicGroundRisk = buildDeterministicGroundRisk({
+    const buildGroundRisk = (profileApplied: AppliedMitigation[]) => buildDeterministicGroundRisk({
+      profileApplied,
       characteristicDimensionM: deterministicCharacteristicDimensionM,
       maxSpeedMps: deterministicMaxSpeedMps,
       weightKg: deterministicWeightKg,
@@ -2532,6 +2566,35 @@ serve(async (req) => {
     } catch (aecErr) {
       console.error('AEC deterministic guard error (non-blocking):', aecErr);
     }
+
+    // SORA profile: iGRC → envelope → reductions → fGRC/SAIL → FGRC/SAIL/ARC checks.
+    const m1cObservers = effectiveObserverCount(pilotInputs?.observerCount, missionObservers.m1cEligible);
+    const preIgrc = computeIgrc({
+      dimensionM: deterministicCharacteristicDimensionM,
+      speedMps: deterministicMaxSpeedMps,
+      weightKg: deterministicWeightKg,
+      densityPerKm2: deterministicPopulationDensityValue,
+      controlled: controlledGroundSelected,
+    });
+    const adjDoc = (mission.route as any)?.adjacentAreaDocumentation;
+    const { result: soraProfileResult, profileReductions } = resolveSoraProfile(soraProfileRow, soraProfileDoc, {
+      lang: grEn ? 'en' : 'no',
+      drones: (assignedDrones as any[]).map((d) => ({ id: d.id, model: d.modell ?? null, weightKg: typeof d.vekt === 'number' ? d.vekt : null })),
+      heightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
+      densityPerKm2: populationDataAvailable || controlledGroundSelected ? deterministicPopulationDensityValue : null,
+      m1cEligible: m1cObservers > 0,
+      equipmentIds: (assignedEquipment as any[]).map((e) => e.id).filter(Boolean),
+      igrc: preIgrc.igrc,
+      controlledMinimum: preIgrc.controlledMinimum,
+      residualArc: deterministicAirFields?.residual_arc ?? null,
+      maxRouteDistanceM: maxDistanceFromFirstPoint(allRouteCoords),
+      adjacentAvgDensity: adjDoc?.enabled === true && typeof adjDoc?.avgDensity === 'number' ? adjDoc.avgDensity : null,
+      manual: manualGroundMitigations ?? null,
+      autoM1c: m1cObservers > 0 ? -1 : 0,
+    });
+    const profileApplied = (soraProfileResult?.appliedMitigations ?? []).filter((a) => profileReductions[a.key] !== undefined);
+    const deterministicGroundRisk = buildGroundRisk(profileApplied);
+    if (soraProfileResult) console.log('SORA profile:', JSON.stringify({ used: soraProfileResult.used, state: soraProfileResult.state, deviations: soraProfileResult.deviations.map((d) => d.code), applied: profileApplied.map((a) => a.key) }));
 
     let deterministicEquipmentHardStopReason: string | null = null;
     const redDrones: { label: string; reasons: string[] }[] = [];
@@ -2693,6 +2756,15 @@ serve(async (req) => {
         equipment: systemDecisions.equipment,
         fog: systemDecisions.fog,
         airspace: systemDecisions.airspace,
+        soraProfile: soraProfileResult
+          ? {
+              used: soraProfileResult.used,
+              state: soraProfileResult.state,
+              appliedMitigations: soraProfileResult.appliedMitigations.map((a) => a.text),
+              deviations: soraProfileResult.deviations.map((d) => d.text),
+              notes: soraProfileResult.notes,
+            }
+          : null,
       },
       assessmentContext: {
         currentDate: currentDateOslo,
@@ -3576,6 +3648,13 @@ serve(async (req) => {
       hardStopCodes: systemDecisions.hardStops.map((r) => r.code),
       containment: systemDecisions.containment,
     };
+    aiAnalysis.soraProfile = soraProfileResult;
+    // SORA envelope deviations are system facts: add them as recommendations (never NO-GO).
+    if (soraProfileResult?.used && soraProfileResult.deviations.length > 0) {
+      const recs = Array.isArray(aiAnalysis.recommendations) ? aiAnalysis.recommendations : [];
+      const risk = assessmentLang === 'en' ? 'Outside the SORA envelope' : 'Utenfor SORA-rammene';
+      aiAnalysis.recommendations = [...recs, ...soraProfileResult.deviations.map((d) => ({ priority: 'medium', action: d.text, risk_addressed: risk }))];
+    }
 
     console.log(`Assessment duration before save: ${Date.now() - requestStartedAt} ms`);
     console.log('AI analysis complete:', aiAnalysis.recommendation, 'HARD STOP:', aiAnalysis.hard_stop_triggered, 'Overall score:', aiAnalysis.overall_score);
@@ -3724,6 +3803,7 @@ serve(async (req) => {
           dataAvailability,
           assessmentSaved: !saveError,
           canWrite,
+          soraEnvelopeDeviation: (soraProfileResult?.used === true) && soraProfileResult.deviations.length > 0,
         });
 
         aiAnalysis.approvalDecision = {
@@ -3733,6 +3813,15 @@ serve(async (req) => {
           missionStatus: currentStatus,
         };
 
+        if (decision.status === 'pending_approval') {
+          const { error: pendErr } = await supabase
+            .from('missions')
+            .update({ approval_status: 'pending_approval' })
+            .eq('id', missionId)
+            .eq('approval_status', currentStatus)
+            .select('id');
+          if (pendErr) console.error('pending_approval write error:', pendErr);
+        }
         if (decision.status === 'approved') {
           // Conditional write: only approve if the status is unchanged since the
           // re-read, so a concurrent approval action is never overwritten.

@@ -3316,6 +3316,13 @@
       "BETINGET": "CONDITIONAL",
       "NO-GO": "NO-GO",
       "IKKE VURDERT": "NOT ASSESSED"
+    },
+    "soraProfile": {
+      "open": "Open SORA profile",
+      "applied": "Applied reductions",
+      "appliedItem": "{{label}} {{robustness}} {{reduction}} from SORA",
+      "deviations": "Outside the SORA envelope (recommendation)",
+      "fromProfile": "from SORA profile"
     }
   },
   "riskAssessmentType": {
