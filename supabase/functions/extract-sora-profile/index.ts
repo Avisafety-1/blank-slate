@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     if (authError || !user) return json({ error: 'Unauthorized' }, 401);
 
     const { data: roles } = await client.from('user_roles').select('role').eq('user_id', user.id);
-    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === 'admin' || r.role === 'administrator' || r.role === 'superadmin');
+    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === 'admin' || r.role === 'administrator');
     if (!isAdmin) return json({ error: 'Forbidden' }, 403);
 
     // Document and file are read with the caller's JWT so RLS stays authoritative.
