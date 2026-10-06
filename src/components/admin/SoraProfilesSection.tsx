@@ -148,6 +148,18 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
                   {t(`soraProfile.status.${d.status}`)}
                 </span>
                 <Button size="sm" variant="outline" className="shrink-0" onClick={() => setOpenId(d.id)}>{t("soraProfile.open")}</Button>
+                {isAdmin && d.status !== "none" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 text-destructive hover:text-destructive"
+                    disabled={disabled}
+                    aria-label={t("soraProfile.delete")}
+                    onClick={() => setDeleteTarget({ id: d.id, tittel: d.tittel })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
