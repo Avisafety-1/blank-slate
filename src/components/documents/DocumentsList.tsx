@@ -224,10 +224,14 @@ const DocumentsList = ({
                           {t('evaluation.builder.adminOnlyBadge')}
                         </Badge>
                       )}
+                      {soraIds?.has(doc.id) && (
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <SoraProfileBadge documentId={doc.id} className="text-[10px] px-1 py-0" />
+                        </span>
+                      )}
                     </div>
 
                     <span className="truncate">{doc.tittel}</span>
-                    {soraIds?.has(doc.id) && <span onClick={(e) => e.stopPropagation()}><SoraProfileBadge documentId={doc.id} /></span>}
                   </div>
 
                 </TableCell>
