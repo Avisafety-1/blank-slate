@@ -5,17 +5,25 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ShieldCheck, CircleSlash, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeAutoMitigations, totalAutoReduction } from "@/lib/soraAutoMitigations";
+import type { AppliedMitigation } from "@/lib/soraProfileEvaluation";
 
 interface AutoMitigationsPreviewProps {
   observerCount: number;
   assignedEquipment?: Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>;
   atypicalSegregated?: boolean;
+  profileMitigations?: AppliedMitigation[];
 }
 
-export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], atypicalSegregated = false }: AutoMitigationsPreviewProps) => {
+export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], atypicalSegregated = false, profileMitigations = [] }: AutoMitigationsPreviewProps) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const mitigations = computeAutoMitigations({ observerCount, assignedEquipment });
+  const automaticMitigations = computeAutoMitigations({ observerCount, assignedEquipment });
+  const mitigations = automaticMitigations.map((mitigation) => {
+    const fromProfile = profileMitigations.find((entry) => entry.key === mitigation.key);
+    return fromProfile
+      ? { ...mitigation, applicable: true, robustness: fromProfile.robustness as typeof mitigation.robustness, reduction: fromProfile.reduction, fromProfile: true }
+      : { ...mitigation, fromProfile: false };
+  });
   const total = totalAutoReduction(mitigations);
 
   return (
@@ -93,9 +101,16 @@ export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], 
                     {t(`riskAssessment.autoMitigations.labels.${m.key}`)}
                   </span>
                   {m.applicable ? (
-                    <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-700">
-                      {t(`riskAssessment.autoMitigations.robustness.${(m.robustness || 'None').toLowerCase()}`)} · {m.reduction}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge variant="outline" className="text-[10px] border-green-500/40 text-green-700">
+                        {t(`riskAssessment.autoMitigations.robustness.${(m.robustness || 'None').toLowerCase()}`)} · {m.reduction}
+                      </Badge>
+                      {m.fromProfile && (
+                        <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-700 dark:text-blue-300 bg-blue-500/10">
+                          {t('riskAssessment.soraProfile.fromProfile')}
+                        </Badge>
+                      )}
+                    </div>
                   ) : (
                     <Badge variant="outline" className="text-[10px] text-muted-foreground">
                       {m.reduction}
@@ -103,7 +118,9 @@ export const AutoMitigationsPreview = ({ observerCount, assignedEquipment = [], 
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t(`riskAssessment.autoMitigations.reasons.${m.reasonKey}`, { ...(m.reasonParams || {}) }) as string}
+                  {m.fromProfile
+                    ? t('riskAssessment.autoMitigations.reasons.fromProfile')
+                    : t(`riskAssessment.autoMitigations.reasons.${m.reasonKey}`, { ...(m.reasonParams || {}) }) as string}
                 </p>
               </div>
             </div>

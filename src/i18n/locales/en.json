@@ -3290,7 +3290,8 @@
         "m1cObservers": "{{count}} observer(s) declared — automatically credited -1 (Low).",
         "m1cNone": "Add at least one observer to receive an automatic reduction.",
         "m2ParachuteHint": "Parachute system registered on the mission ({{equipment}}) — M2 can be considered manually with documentation.",
-        "m2None": "Not credited automatically. Requires documented MoC/DVR basis."
+        "m2None": "Not credited automatically. Requires documented MoC/DVR basis.",
+        "fromProfile": "Applied from the selected confirmed SORA profile when the mission is within the profile envelope."
       },
       "airRiskLabel": "Air risk: Atypical/segregated airspace",
       "airRiskReason": "NOTAM area marked as segregated/atypical airspace — initial ARC is set to ARC-a.",

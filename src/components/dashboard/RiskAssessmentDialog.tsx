@@ -1,5 +1,5 @@
 import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,8 @@ import { useCompanyMissionTypes } from "@/hooks/useCompanyMissionTypes";
 import { deriveSail } from "@/lib/soraSail";
 import { AutoMitigationsPreview } from "./AutoMitigationsPreview";
 import { ContainmentSourceBox } from "./ContainmentSourceBox";
+import { useSoraProfile } from "@/hooks/useSoraProfile";
+import { evaluateSoraProfile, maxDistanceFromFirstPoint } from "@/lib/soraProfileEvaluation";
 
 interface RiskAssessmentDialogProps {
   open: boolean;
@@ -89,7 +91,8 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [missions, setMissions] = useState<any[]>([]);
   const [selectedMissionId, setSelectedMissionId] = useState<string | undefined>(mission?.id);
   const [loadingMissions, setLoadingMissions] = useState(false);
-  const [missionEquipment, setMissionEquipment] = useState<Array<{ navn?: string | null; type?: string | null; beskrivelse?: string | null }>>([]);
+  const [missionEquipment, setMissionEquipment] = useState<Array<{ id?: string; navn?: string | null; type?: string | null; beskrivelse?: string | null }>>([]);
+  const [missionDrones, setMissionDrones] = useState<Array<{ id: string; model: string | null; weightKg: number | null }>>([]);
 
   // Manual SORA states
   const [soraFormData, setSoraFormData] = useState({
@@ -115,6 +118,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [soraMissionDetails, setSoraMissionDetails] = useState<any>(null);
   const [soraDocuments, setSoraDocuments] = useState<{ id: string; tittel: string }[]>([]);
   const [selectedSoraDocumentId, setSelectedSoraDocumentId] = useState<string>("");
+  const selectedSoraProfile = useSoraProfile(selectedSoraDocumentId || null);
 
   const [pilotInputs, setPilotInputs] = useState<PilotInputs>({
     flightHeight: 120,
@@ -420,11 +424,50 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
     (async () => {
       const { data } = await supabase
         .from('mission_equipment')
-        .select('equipment(navn, type, beskrivelse)')
+        .select('equipment(id, navn, type, beskrivelse)')
         .eq('mission_id', currentMissionId);
       setMissionEquipment(((data || []) as any[]).map((r) => r.equipment).filter(Boolean));
     })();
   }, [currentMissionId, open]);
+
+  useEffect(() => {
+    if (!currentMissionId || !open) { setMissionDrones([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('mission_drones')
+        .select('drones(id, modell, vekt)')
+        .eq('mission_id', currentMissionId);
+      if (cancelled) return;
+      setMissionDrones(((data || []) as any[]).map((row) => row.drones).filter(Boolean).map((drone) => ({
+        id: drone.id,
+        model: drone.modell ?? null,
+        weightKg: typeof drone.vekt === 'number' ? drone.vekt : null,
+      })));
+    })();
+    return () => { cancelled = true; };
+  }, [currentMissionId, open]);
+
+  const previewProfileEvaluation = useMemo(() => {
+    if (selectedSoraProfile.status !== 'confirmed' || !selectedSoraProfile.row) return null;
+    const routeCoordinates = Array.isArray((soraMissionDetails as any)?.route?.coordinates)
+      ? (soraMissionDetails as any).route.coordinates
+      : null;
+    return evaluateSoraProfile(selectedSoraProfile.row.profile, {
+      lang: i18n.language?.startsWith('en') ? 'en' : 'no',
+      drones: missionDrones,
+      heightM: Number.isFinite(pilotInputs.flightHeight) ? pilotInputs.flightHeight : null,
+      densityPerKm2: null,
+      m1cEligible: pilotInputs.observerCount > 0,
+      equipmentIds: missionEquipment.map((equipment) => equipment.id).filter((id): id is string => !!id),
+      igrc: null,
+      controlledMinimum: null,
+      residualArc: null,
+      maxRouteDistanceM: maxDistanceFromFirstPoint(routeCoordinates),
+      adjacentAvgDensity: null,
+      autoM1c: pilotInputs.observerCount > 0 ? -1 : 0,
+    });
+  }, [selectedSoraProfile.status, selectedSoraProfile.row, soraMissionDetails, i18n.language, missionDrones, pilotInputs.flightHeight, pilotInputs.observerCount, missionEquipment]);
 
   // Prefill observer count from mission personnel roles (user can still edit)
   const [missionObserverCount, setMissionObserverCount] = useState(0);
@@ -1170,6 +1213,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     observerCount={pilotInputs.observerCount}
                     assignedEquipment={missionEquipment}
                     atypicalSegregated={atypicalSegregated}
+                    profileMitigations={previewProfileEvaluation?.appliedMitigations ?? []}
                   />
 
                   <Button 
