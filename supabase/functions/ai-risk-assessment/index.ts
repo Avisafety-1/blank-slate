@@ -3652,8 +3652,8 @@ serve(async (req) => {
     // SORA envelope deviations are system facts: add them as recommendations (never NO-GO).
     if (soraProfileResult?.used && soraProfileResult.deviations.length > 0) {
       const recs = Array.isArray(aiAnalysis.recommendations) ? aiAnalysis.recommendations : [];
-      const prefix = assessmentLang === 'en' ? 'Outside the SORA envelope: ' : 'Utenfor SORA-rammene: ';
-      aiAnalysis.recommendations = [...recs, ...soraProfileResult.deviations.map((d) => `${prefix}${d.text}`)];
+      const risk = assessmentLang === 'en' ? 'Outside the SORA envelope' : 'Utenfor SORA-rammene';
+      aiAnalysis.recommendations = [...recs, ...soraProfileResult.deviations.map((d) => ({ priority: 'medium', action: d.text, risk_addressed: risk }))];
     }
 
     console.log(`Assessment duration before save: ${Date.now() - requestStartedAt} ms`);
