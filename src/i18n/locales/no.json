@@ -2560,6 +2560,8 @@
       "toastDeleteError": "Kunne ikke slette",
       "toastGenericError": "Feil",
       "toastDocumentSaveError": "Kunne ikke lagre dokument",
+      "soraNotShared": "SORA-dokumentet er ikke delt med avdelingene – avdelingenes oppdrag får ikke SORA-referanse eller SORA-profil.",
+      "shareWithDepartments": "Del med avdelinger",
       "toastDocumentShareError": "Kunne ikke dele dokumentet",
       "shareDialogTitle": "Gjør dokumentet synlig for avdelinger",
       "shareDialogDescription": "Velg hvilke avdelinger som skal få tilgang til dokumentet sammen med den arvede oppdragstypen.",
@@ -9300,6 +9302,11 @@
       }
     },
     "registry": {
+      "parentCompany": "Morselskap",
+      "department": "Avdeling {{name}}",
+      "ownDronesCoverage": "Dine droner i denne SORA-profilen",
+      "covered": "Dekket",
+      "notCovered": "Ikke dekket",
       "linkedDrones": "Dekker droner i registeret",
       "selectDrones": "Velg droner",
       "catalogModel": "Katalogmodell",

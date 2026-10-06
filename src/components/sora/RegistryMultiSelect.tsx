@@ -9,6 +9,8 @@ export interface RegistryOption {
   id: string;
   label: string;
   sub?: string | null;
+  /** Company/department heading; shown in the list and on selected items. */
+  group?: string;
 }
 
 interface Props {
@@ -27,7 +29,14 @@ interface Props {
 export function RegistryMultiSelect({ options, value, onChange, placeholder, searchPlaceholder, emptyText, disabled, single }: Props) {
   const [open, setOpen] = useState(false);
   const selected = options.filter((o) => value.includes(o.id));
-  const summary = selected.length === 0 ? placeholder : selected.map((o) => o.label).join(", ");
+  const summary = selected.length === 0 ? placeholder : selected.map((o) => (o.group ? `${o.label} (${o.group})` : o.label)).join(", ");
+
+  const groups: [string, RegistryOption[]][] = [];
+  for (const o of options) {
+    const key = o.group ?? "";
+    const g = groups.find(([k]) => k === key);
+    if (g) g[1].push(o); else groups.push([key, [o]]);
+  }
 
   const toggle = (id: string) => {
     if (single) {
@@ -51,17 +60,19 @@ export function RegistryMultiSelect({ options, value, onChange, placeholder, sea
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
             <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((o) => (
-                <CommandItem key={o.id} value={`${o.label} ${o.sub ?? ""} ${o.id}`} onSelect={() => toggle(o.id)}>
-                  <Check className={cn("mr-2 h-4 w-4", value.includes(o.id) ? "opacity-100" : "opacity-0")} />
-                  <div className="min-w-0">
-                    <div className="truncate">{o.label}</div>
-                    {o.sub && <div className="truncate text-xs text-muted-foreground">{o.sub}</div>}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {groups.map(([heading, items]) => (
+              <CommandGroup key={heading || "_"} heading={heading || undefined}>
+                {items.map((o) => (
+                  <CommandItem key={o.id} value={`${o.label} ${o.sub ?? ""} ${o.group ?? ""} ${o.id}`} onSelect={() => toggle(o.id)}>
+                    <Check className={cn("mr-2 h-4 w-4", value.includes(o.id) ? "opacity-100" : "opacity-0")} />
+                    <div className="min-w-0">
+                      <div className="truncate">{o.label}</div>
+                      {o.sub && <div className="truncate text-xs text-muted-foreground">{o.sub}</div>}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
