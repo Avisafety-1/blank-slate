@@ -1,8 +1,8 @@
 // SORA document profile: shared schema, sanitizer and deterministic consistency check.
 // Used by the app (via src/lib/soraProfile.ts) and the extract-sora-profile edge function.
 // Tables are imported from ai-risk-assessment so numbers never drift.
-import { computeIgrc, MITIGATION_MATRIX, lookupSail, type MitigationKey } from '../ai-risk-assessment/soraGroundRisk.ts';
-import { getAecRow } from '../ai-risk-assessment/soraAirRisk.ts';
+import { computeIgrc, MITIGATION_MATRIX, lookupSail, type MitigationKey } from './soraGroundRisk.ts';
+import { getAecRow } from './soraAirRisk.ts';
 
 export type Robustness = 'None' | 'Low' | 'Medium' | 'High';
 export const ROBUSTNESS: Robustness[] = ['None', 'Low', 'Medium', 'High'];
