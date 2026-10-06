@@ -56,3 +56,17 @@ Deno.test('fGRC 8 -> no SAIL, certified category', () => {
   assertEquals(lookupSail(7, 'b').sail, 'VI');
   assertEquals(lookupSail(2, 'b').sail, 'II');
 });
+
+Deno.test('SORA profile dimension increases catalog value: M350 0.90 m → 1.43 m, density 8 720 → iGRC 7', async () => {
+  const { resolveCharacteristics, computeIgrc } = await import('../_shared/soraGroundRisk.ts');
+  const c = resolveCharacteristics({ dimensionM: 0.9, speedMps: 23 }, [{ maxDimensionM: 1.43, maxSpeedMps: null }]);
+  if (c.dimension.value !== 1.43 || !c.dimension.fromProfile || c.dimension.catalog !== 0.9) throw new Error('dimension');
+  const r = computeIgrc({ dimensionM: c.dimension.value, speedMps: c.speed.value, weightKg: 6.3, densityPerKm2: 8720, controlled: false });
+  if (r.igrc !== 7) throw new Error(`iGRC ${r.igrc}`);
+});
+
+Deno.test('SORA profile never reduces catalog dimension', async () => {
+  const { resolveCharacteristics } = await import('../_shared/soraGroundRisk.ts');
+  const c = resolveCharacteristics({ dimensionM: 1.5, speedMps: 23 }, [{ maxDimensionM: 1.0, maxSpeedMps: 20 }]);
+  if (c.dimension.value !== 1.5 || c.dimension.fromProfile || c.speed.value !== 23) throw new Error('reduced');
+});

@@ -136,7 +136,8 @@ Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem.
 - groundRisk (iGRC/fGRC/mitigeringer), airRisk (AEC/ARC), sail, certifiedCategory, alosMaxM: SORA-tall — gjengi.
 - equipment.primaryDroneStatus = dronens EGEN status. aggregatedStatus og linkedOnlyIssues er kun informative og gir aldri hard stop eller trekk. equipment.batteries beskriver talte batterier.
 - fog: tåke meldt → værkategorien er minst BETINGET; bruk fog.text.
-- soraProfile: sjekk mot bekreftet SORA-profil. appliedMitigations er allerede med i fGRC. deviations er fakta: omtal dem som anbefaling, aldri som hard stop eller NO-GO, og ikke trekk score for dem. Beregn ingenting selv.
+- soraProfile: sjekk mot bekreftet SORA-profil. appliedMitigations er allerede med i fGRC. deviations er fakta: omtal dem som anbefaling, aldri som hard stop eller NO-GO, og ikke trekk score for dem. Beregn ingenting selv. Finnes deviations, skal oppsummeringen omtale de samme forholdene som avvik fra SORA-rammene — aldri som akseptable eller håndterbare.
+- Er systemDecisions.operationCategory specific: ikke krev kompetanse knyttet til C-klasser eller åpen kategori (A1/A3, A2, C3). Vurder pilotkompetanse mot selskapets driftstillatelse/operasjonsmanual og registrerte kompetanser.
 - dataAvailability og airspace (5 km, kontrollert luftrom, Ninox, ATC-bekreftelse): fakta.
 - Observatør: ikke skriv at observatør mangler når mission.observers.effective >= 1. Luftromsobservatør gir ikke M1(C).
 - Kompetansesjekken (pilotStats.competencyAssessment) er avgjort av systemet — gjengi den.
@@ -505,7 +506,8 @@ These are set by the system. Reproduce the values; do not calculate or change th
 - groundRisk (iGRC/fGRC/mitigations), airRisk (AEC/ARC), sail, certifiedCategory, alosMaxM: SORA numbers — reproduce.
 - equipment.primaryDroneStatus = the drone's OWN status. aggregatedStatus and linkedOnlyIssues are informational only and never cause a hard stop or deduction. equipment.batteries describes the counted batteries.
 - fog: fog forecast → the weather category is at least CONDITIONAL; use fog.text.
-- soraProfile: check against the confirmed SORA profile. appliedMitigations are already included in fGRC. deviations are facts: mention them as recommendations, never as a hard stop or NO-GO, and do not lower the score for them. Calculate nothing yourself.
+- soraProfile: check against the confirmed SORA profile. appliedMitigations are already included in fGRC. deviations are facts: mention them as recommendations, never as a hard stop or NO-GO, and do not lower the score for them. Calculate nothing yourself. If deviations exist, the summary must describe those same conditions as deviations from the SORA envelope — never as acceptable or manageable.
+- If systemDecisions.operationCategory is specific: do not require competency tied to C-classes or the open category (A1/A3, A2, C3). Assess pilot competency against the company's operational authorisation/operations manual and registered competencies.
 - dataAvailability and airspace (5 km, controlled airspace, Ninox, ATC confirmation): facts.
 - Observer: do not state that an observer is missing when mission.observers.effective >= 1. An airspace observer does not give M1(C).
 - The competency check (pilotStats.competencyAssessment) is decided by the system — reproduce it.

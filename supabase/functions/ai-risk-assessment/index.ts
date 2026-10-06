@@ -8,7 +8,8 @@ import { applyGroundMitigations, certifiedCategoryText, columnLabel, computeIgrc
 import { checkReassessTarget, reassessNotLatestMessage, type AssessmentRow } from "./reassessTarget.ts";
 import { preserveAuthoritativeHardStop, removeHardStopClaims } from "./hardStops.ts";
 import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION } from "./systemDecisions.ts";
-import { maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
+import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
+import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
 import { buildDecisionSentence, enforceConsistency, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
