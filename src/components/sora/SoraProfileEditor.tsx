@@ -15,8 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useSoraProfile } from "@/hooks/useSoraProfile";
 import {
+  AIRCRAFT_TYPES,
+  AIR_SCENARIOS,
   ARC_LEVELS,
   OPERATION_TYPES,
+  OSO_IDS,
+  STRATEGIC_REDUCTIONS,
   ROBUSTNESS,
   SAIL_LEVELS,
   checkSoraProfileConsistency,
