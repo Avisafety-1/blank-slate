@@ -65,14 +65,10 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
     queryKey: ["sora-profile-list", companyId],
     enabled: !!companyId && enabled,
     queryFn: async () => {
-      const [types, missions, profiles] = await Promise.all([
-        supabase.from("company_mission_types").select("sora_document_id").eq("company_id", companyId!).not("sora_document_id", "is", null),
-        supabase.from("missions").select("sora_document_id").eq("company_id", companyId!).not("sora_document_id", "is", null).limit(1000),
-        (supabase.from("sora_document_profiles" as any).select("document_id, status, source_file_url").eq("company_id", companyId!) as any),
-      ]);
+      // Only documents that actually have a profile; SORA references without a profile are not listed.
+      const profiles = await (supabase.from("sora_document_profiles" as any)
+        .select("document_id, status, source_file_url").eq("company_id", companyId!) as any);
       const ids = new Set<string>();
-      for (const r of (types.data as any[]) || []) ids.add(r.sora_document_id);
-      for (const r of (missions.data as any[]) || []) ids.add(r.sora_document_id);
       for (const r of (profiles.data as any[]) || []) ids.add(r.document_id);
       if (ids.size === 0) return [];
       const { data: docs } = await supabase.from("documents").select("id, tittel, fil_url, company_id")
