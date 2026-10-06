@@ -3,7 +3,7 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { extractText, getDocumentProxy } from 'npm:unpdf@1.8.1';
 import { z } from 'npm:zod@3.23.8';
 import { checkSoraProfileConsistency, sanitizeSoraProfile } from '../_shared/soraProfile.ts';
-import { parseAiJson } from '../ai-risk-assessment/aiJson.ts';
+import { parseAiJson } from '../_shared/aiJson.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
