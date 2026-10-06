@@ -197,7 +197,7 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
       const childRows = (children.data as any[]) ?? [];
       const ids = [ownerCompanyId!, ...childRows.map((c) => c.id)];
       const groupNames: Record<string, string> = {};
-      groupNames[ownerCompanyId!] = (childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? "")));
+      groupNames[ownerCompanyId!] = (childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? ""));
       for (const c of childRows) groupNames[c.id] = t("soraProfile.registry.department", { name: c.navn });
       const [d, e, c] = await Promise.all([
         supabase.from("drones").select("id, company_id, modell, dji_aircraft_name, serienummer, registration_number").in("company_id", ids).eq("aktiv", true).order("modell"),
