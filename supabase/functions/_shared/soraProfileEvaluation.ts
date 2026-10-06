@@ -21,7 +21,8 @@ export type SoraDeviationCode =
   | 'ARC_EXCEEDED'
   | 'FGRC_EXCEEDED'
   | 'SAIL_EXCEEDED'
-  | 'ADJACENT_DENSITY_EXCEEDED';
+  | 'ADJACENT_DENSITY_EXCEEDED'
+  | 'OPERATION_TYPE_EXCEEDED';
 
 export interface SoraDeviation {
   code: SoraDeviationCode;
@@ -41,6 +42,8 @@ export interface SoraProfileFacts {
   lang: Lang;
   drones: { id: string; model: string | null; weightKg: number | null }[];
   heightM: number | null;
+  /** From flightInputs.isVlos: true = VLOS, false = BVLOS; null/undefined = unknown. */
+  isVlos?: boolean | null;
   /** Max population density used for iGRC; null when unknown. */
   densityPerKm2: number | null;
   m1cEligible: boolean;
@@ -69,7 +72,9 @@ export interface SoraProfileEvaluation {
   sail: string | null;
 }
 
-const BLOCKING: SoraDeviationCode[] = ['DRONE_NOT_COVERED', 'HEIGHT_EXCEEDED', 'DENSITY_EXCEEDED'];
+const BLOCKING: SoraDeviationCode[] = ['DRONE_NOT_COVERED', 'HEIGHT_EXCEEDED', 'DENSITY_EXCEEDED', 'OPERATION_TYPE_EXCEEDED'];
+// Profile operation type covers every type at or below its rank.
+const OP_RANK: Record<string, number> = { VLOS: 0, EVLOS: 1, BVLOS: 2 };
 const SAILS = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 const arcLetter = (v: unknown): string | null => {
   const m = String(v ?? '').match(/arc[\s-]*([a-d])/i) ?? String(v ?? '').match(/^\s*([a-d])\s*$/i);
@@ -107,6 +112,11 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
       add('DRONE_NOT_COVERED', `${label} er ikke dekket av SORA-profilen`, `${label} is not covered by the SORA profile`, label, null);
     }
   }
+  const profOp = env.operationType ?? null;
+  const missionOp = facts.isVlos === true ? 'VLOS' : facts.isVlos === false ? 'BVLOS' : null;
+  if (!profOp || !missionOp) unchecked(en ? 'Operation type (VLOS/EVLOS/BVLOS)' : 'Operasjonstype (VLOS/EVLOS/BVLOS)');
+  else if (OP_RANK[missionOp] > OP_RANK[profOp]) add('OPERATION_TYPE_EXCEEDED', `${missionOp}-flyging er ikke dekket av ${profOp}-SORA-en`, `${missionOp} flight is not covered by the ${profOp} SORA`, missionOp, profOp);
+  else if (profOp === 'BVLOS' && missionOp === 'VLOS') notes.push(en ? 'VLOS flight is covered by the BVLOS SORA.' : 'VLOS-flyging er dekket av BVLOS-SORA-en.');
   const maxH = fin(env.maxHeightM);
   if (maxH === null || facts.heightM === null) unchecked(en ? 'Flight height' : 'Flyhøyde');
   else if (facts.heightM > maxH) add('HEIGHT_EXCEEDED', `Flyhøyde ${facts.heightM} m er over SORA-rammen ${maxH} m`, `Flight height ${facts.heightM} m exceeds the SORA limit ${maxH} m`, facts.heightM, maxH);
