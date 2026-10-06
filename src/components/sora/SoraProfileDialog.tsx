@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useSoraProfile } from "@/hooks/useSoraProfile";
 import { SoraProfileEditor } from "./SoraProfileEditor";
+import { SoraProfileHelp } from "./SoraProfileHelp";
 
 interface Props {
   documentId: string;
@@ -20,6 +21,9 @@ export function SoraProfileDialog({ documentId, open, onOpenChange, readOnly }: 
           <DialogTitle>{t("soraProfile.title")}</DialogTitle>
           <DialogDescription className="truncate">{document?.tittel ?? ""}</DialogDescription>
         </DialogHeader>
+        <div className="shrink-0 px-4 pt-3">
+          <SoraProfileHelp />
+        </div>
         <SoraProfileEditor documentId={documentId} readOnly={readOnly} />
       </DialogContent>
     </Dialog>

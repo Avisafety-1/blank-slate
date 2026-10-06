@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, FileText, Info, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { deriveSoraProfileStatus, soraProfileKey } from "@/hooks/useSoraProfile";
 import { soraStatusClass } from "@/components/sora/SoraProfileBadge";
 import { SoraProfileDialog } from "@/components/sora/SoraProfileDialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SoraProfileHelp } from "@/components/sora/SoraProfileHelp";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
@@ -26,7 +26,7 @@ interface Props {
 /** SORA profile list + document picker, shared by company settings and /sora-profiler. */
 export function SoraProfilesSection({ companyId, disabled, enabled = true }: Props) {
   const { t } = useTranslation();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [openId, setOpenId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -48,17 +48,6 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
     setDeleteTarget(null);
     await queryClient.invalidateQueries({ queryKey: ["sora-profile-list"] });
     await queryClient.invalidateQueries({ queryKey: soraProfileKey(deleteTarget.id) });
-  };
-  const helpStorageKey = `avisafe:sora-profile-help:${user?.id ?? "anonymous"}`;
-  const [helpOpen, setHelpOpen] = useState(() => {
-    try { return localStorage.getItem(helpStorageKey) === "open"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { setHelpOpen(localStorage.getItem(helpStorageKey) === "open"); } catch { setHelpOpen(false); }
-  }, [helpStorageKey]);
-  const setHelpOpenPersisted = (open: boolean) => {
-    setHelpOpen(open);
-    try { localStorage.setItem(helpStorageKey, open ? "open" : "closed"); } catch { /* storage may be unavailable */ }
   };
 
   const { data = [], isLoading } = useQuery({
@@ -97,35 +86,7 @@ export function SoraProfilesSection({ companyId, disabled, enabled = true }: Pro
 
   return (
     <div className="w-full min-w-0 space-y-3">
-      <Collapsible open={helpOpen} onOpenChange={setHelpOpenPersisted} className="rounded-md border border-border bg-muted/20">
-        <CollapsibleTrigger asChild>
-          <Button type="button" variant="ghost" className="h-auto w-full justify-start gap-2 px-3 py-3 text-left">
-            <Info className="h-4 w-4 shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 font-medium">{t("soraProfile.help.title")}</span>
-            <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", helpOpen && "rotate-180")} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-t border-border px-4 py-4">
-          <ol className="space-y-3 text-sm">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <li key={step} className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{step}</span>
-                <p className="min-w-0 break-words"><strong>{t(`soraProfile.help.steps.${step}.title`)}</strong> — {t(`soraProfile.help.steps.${step}.body`)}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-5 space-y-2 text-sm">
-            <h3 className="font-semibold">{t("soraProfile.help.assessmentTitle")}</h3>
-            <ul className="list-disc space-y-2 pl-5">
-              {[1, 2, 3, 4].map((item) => <li key={item}>{t(`soraProfile.help.assessment.${item}`)}</li>)}
-            </ul>
-          </div>
-          <p className="mt-4 text-sm"><strong>{t("soraProfile.help.departmentsTitle")}:</strong> {t("soraProfile.help.departmentsBody")}</p>
-          <p className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-            <strong>{t("soraProfile.help.importantTitle")}:</strong> {t("soraProfile.help.importantBody")}
-          </p>
-        </CollapsibleContent>
-      </Collapsible>
+      <SoraProfileHelp />
           <div className="flex justify-end">
             <Button size="sm" disabled={disabled} onClick={() => { setQuery(""); setPickerOpen(true); }} className="gap-1.5">
               <Plus className="h-4 w-4" />
