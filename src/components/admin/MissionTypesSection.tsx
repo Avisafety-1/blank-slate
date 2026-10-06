@@ -568,7 +568,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
-              {t("admin.missionTypes.pickerTitle", { label: pickerOpenFor?.label })}
+              {t("admin.missionTypes.pickerTitle", { label: pickerOpenFor?.label.toLowerCase() === "annet" ? t("missions.missionTypes.Annet") : pickerOpenFor?.label })}
             </DialogTitle>
           </DialogHeader>
 
