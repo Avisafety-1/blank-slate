@@ -2147,11 +2147,12 @@ serve(async (req) => {
       reasons: string[];
       ownReasons: string[];
       linkedReasons: string[];
+      linkedReasonItems: LinkedReason[];
       affectedItems: string[];
     }> => {
       const [accRes, eqRes] = await Promise.all([
-        supabase.from('drone_accessories').select('navn, neste_vedlikehold, varsel_dager').eq('drone_id', d.id),
-        supabase.from('drone_equipment').select('equipment(navn, neste_vedlikehold, varsel_dager, status)').eq('drone_id', d.id),
+        supabase.from('drone_accessories').select('id, navn, neste_vedlikehold, varsel_dager').eq('drone_id', d.id),
+        supabase.from('drone_equipment').select('equipment(id, navn, neste_vedlikehold, varsel_dager, status)').eq('drone_id', d.id),
       ]);
       const lookupFailed = !!(accRes.error || eqRes.error);
       if (lookupFailed) console.error(`Status lookup failed for drone ${d.id}:`, accRes.error?.message ?? eqRes.error?.message);
@@ -2195,6 +2196,7 @@ serve(async (req) => {
         reasons: allReasons,
         ownReasons: [...result.ownReasons, ...customReasons],
         linkedReasons: result.linkedReasons,
+        linkedReasonItems: result.linkedReasonItems,
         affectedItems: result.affectedItems,
       };
 
@@ -2241,10 +2243,10 @@ serve(async (req) => {
     };
 
     const primaryDroneStatusInfo = droneData ? await computeDroneStatus(droneData) : null;
-    const assignedDroneStatuses = new Map<string, { status: MaintStatus; ownStatus: MaintStatus; linkedReasons: string[] }>();
+    const assignedDroneStatuses = new Map<string, { status: MaintStatus; ownStatus: MaintStatus; linkedReasons: string[]; linkedReasonItems: LinkedReason[] }>();
     for (const d of assignedDrones as any[]) {
       const info = await computeDroneStatus(d);
-      assignedDroneStatuses.set(d.id, { status: info.status, ownStatus: info.ownStatus, linkedReasons: info.linkedReasons });
+      assignedDroneStatuses.set(d.id, { status: info.status, ownStatus: info.ownStatus, linkedReasons: info.linkedReasons, linkedReasonItems: info.linkedReasonItems });
     }
 
     const assignedEquipmentStatuses = new Map<string, MaintStatus>();
@@ -2602,6 +2604,7 @@ serve(async (req) => {
       lang: grEn ? 'en' : 'no',
       drones: (assignedDrones as any[]).map((d) => ({ id: d.id, model: d.modell ?? null, weightKg: typeof d.vekt === 'number' ? d.vekt : null })),
       heightM: Number.isFinite(Number(pilotInputs?.flightHeight)) ? Number(pilotInputs.flightHeight) : null,
+      isVlos: typeof flightInputs.isVlos === 'boolean' ? flightInputs.isVlos : null,
       densityPerKm2: populationDataAvailable || controlledGroundSelected ? deterministicPopulationDensityValue : null,
       m1cEligible: m1cObservers > 0,
       equipmentIds: (assignedEquipment as any[]).map((e) => e.id).filter(Boolean),
@@ -2625,10 +2628,9 @@ serve(async (req) => {
     // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
     // Disse trigger ikke hard stop — vises kun informativt i utstyrsseksjonen.
     const linkedOnlyNotes: string[] = [];
-    const assignedEqIds = new Set((assignedEquipment as any[]).map(e => e.id));
-
-    const addLinkedNotes = (droneLabel: string, linkedReasons: string[]) => {
-      for (const r of linkedReasons || []) {
+    const assignedEqIds = new Set<string>((assignedEquipment as any[]).map(e => e.id).filter(Boolean));
+    const addLinkedNotes = (droneLabel: string, items: LinkedReason[]) => {
+      for (const r of linkedReasonsNotOnMission(items, assignedEqIds)) {
         linkedOnlyNotes.push(`${droneLabel}: ${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt).`);
       }
     };
@@ -2638,7 +2640,7 @@ serve(async (req) => {
       const label = `${droneData?.modell ?? 'Primærdrone'}${droneData?.serienummer ? ` (SN ${droneData.serienummer})` : ''}`;
       if (primaryDroneStatusInfo.ownStatus === 'Rød') redDrones.push({ label, reasons: primaryDroneStatusInfo.ownReasons });
       else if (isYellowStatus(primaryDroneStatusInfo.ownStatus)) yellowDrones.push({ label, reasons: primaryDroneStatusInfo.ownStatus === 'Ukjent' ? [unknownStatusText(outLangYellow)] : primaryDroneStatusInfo.ownReasons });
-      if (primaryDroneStatusInfo.linkedReasons.length > 0) addLinkedNotes(label, primaryDroneStatusInfo.linkedReasons);
+      addLinkedNotes(label, primaryDroneStatusInfo.linkedReasonItems);
     }
     for (const d of assignedDrones as any[]) {
       if (droneData && d.id === droneData.id) continue;
@@ -2646,7 +2648,7 @@ serve(async (req) => {
       const label = `${d.modell ?? 'Drone'}${d.serienummer ? ` (SN ${d.serienummer})` : ''}`;
       if (info?.ownStatus === 'Rød') redDrones.push({ label, reasons: [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
       else if (isYellowStatus(info?.ownStatus)) yellowDrones.push({ label, reasons: info?.ownStatus === 'Ukjent' ? [unknownStatusText(outLangYellow)] : [`Neste inspeksjon: ${d.neste_inspeksjon ?? 'ukjent'}`] });
-      if (info?.linkedReasons?.length) addLinkedNotes(label, info.linkedReasons);
+      if (info) addLinkedNotes(label, info.linkedReasonItems);
     }
     const redEquipment: string[] = [];
     const yellowEquipment: string[] = [];
@@ -2656,9 +2658,6 @@ serve(async (req) => {
       if (s === 'Rød') redEquipment.push(label);
       else if (isYellowStatus(s)) yellowEquipment.push(s === 'Ukjent' ? `${label} — ${unknownStatusText(outLangYellow)}` : label);
     }
-    // Sikkerhet: dropp evt. duplikater fra linkedOnlyNotes som faktisk er i assignedEquipment.
-    // (linkedEquipment-listen er navnbasert, så vi kan ikke matche eksakt — beholder notene som de er.)
-    void assignedEqIds;
 
     if (redDrones.length > 0 || redEquipment.length > 0) {
       if (redDrones.length > 0 && redEquipment.length > 0) deterministicEquipmentHardStopReason = 'Forfalt vedlikehold/inspeksjon på drone og oppdragsutstyr';
@@ -2885,7 +2884,7 @@ serve(async (req) => {
           aggregatedStatus: info?.status ?? d.status,
           // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
           // skal ALDRI utløse hard stop eller senke utstyrs-score.
-          linkedOnlyIssues: (info?.linkedReasons ?? []).map((r: string) =>
+          linkedOnlyIssues: linkedReasonsNotOnMission(info?.linkedReasonItems ?? [], assignedEqIds).map((r: string) =>
             `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
           ),
           flightHours: d.flyvetimer,
@@ -2915,7 +2914,7 @@ serve(async (req) => {
         aggregatedStatus: primaryDroneStatusInfo?.status ?? droneData.status,
         // Koblet utstyr/tilbehør som IKKE er valgt på oppdraget — kun informativt,
         // skal ALDRI utløse hard stop eller senke utstyrs-score.
-        linkedOnlyIssues: (primaryDroneStatusInfo?.linkedReasons ?? []).map((r: string) =>
+        linkedOnlyIssues: linkedReasonsNotOnMission(primaryDroneStatusInfo?.linkedReasonItems ?? [], assignedEqIds).map((r: string) =>
           `${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt)`
         ),
         flightHours: droneData.flyvetimer,
