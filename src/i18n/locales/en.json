@@ -9166,6 +9166,11 @@
     "searchDocuments": "Search documents …",
     "noDocsFound": "No documents found.",
     "manageLink": "Manage SORA profiles",
+    "delete": "Delete profile",
+    "deleteConfirmTitle": "Delete SORA profile?",
+    "deleteConfirmBody": "The profile for \"{{title}}\" will be deleted. The document itself and the SORA link on mission types are kept, but the values will no longer be used in risk assessments.",
+    "deleteSuccess": "The SORA profile was deleted.",
+    "deleteError": "Could not delete the SORA profile.",
     "soraLabel": "SORA profile:",
     "help": {
       "title": "How SORA profiles work",
