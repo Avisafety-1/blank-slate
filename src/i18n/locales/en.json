@@ -9139,6 +9139,10 @@
     "adminOnly": "Only administrators can access this page.",
     "noDocuments": "No documents have been selected as SORA yet.",
     "open": "Open",
+    "newProfile": "New SORA profile",
+    "pickDocument": "Select document",
+    "searchDocuments": "Search documents …",
+    "noDocsFound": "No documents found.",
     "manageLink": "Manage SORA profiles",
     "soraLabel": "SORA profile:",
     "status": {
