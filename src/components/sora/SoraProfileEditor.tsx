@@ -92,7 +92,9 @@ const TextField = ({ path, multiline, wide }: { path: string; multiline?: boolea
     </Field>
   );
 };
-  const SelectField = ({ path, options, labels }: { path: string; options: readonly string[]; labels?: (o: string) => string }) => (
+const SelectField = ({ path, options, labels }: { path: string; options: readonly string[]; labels?: (o: string) => string }) => {
+  const { profile, editable, update, t } = useCtx();
+  return (
     <Field path={path}>
       <Select disabled={!editable} value={getPath(profile, path) ?? "__none__"} onValueChange={(v) => update(path, v === "__none__" ? null : v)}>
         <SelectTrigger><SelectValue /></SelectTrigger>
