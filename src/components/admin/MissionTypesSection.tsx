@@ -463,8 +463,54 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
             </div>
           );
         })}
-        <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground">
-          <div className="flex-1">{t("admin.missionTypes.otherFixed")}</div>
+        <div className="flex items-center gap-2 rounded-md border border-dashed p-2 text-sm text-muted-foreground flex-wrap sm:flex-nowrap">
+          <div className="min-w-[100px]">{t("admin.missionTypes.otherFixed")}</div>
+          <div className="flex flex-1 items-center gap-1 flex-wrap">
+            {annetType && getDocIds(annetType).map((id) => {
+              const doc = docsById.get(id);
+              return doc ? (
+                <Badge
+                  key={id}
+                  variant="secondary"
+                  className="gap-1 max-w-[180px] cursor-pointer hover:bg-secondary/80"
+                  onClick={() => !isReadOnly && setPickerOpenForId(annetType.id)}
+                  title={doc.tittel}
+                >
+                  <FileText className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{doc.tittel}</span>
+                  {annetType.sora_document_id === id && <span className="text-xs text-primary">SORA</span>}
+                  {annetType.sora_document_id === id && <SoraProfileBadge documentId={id} />}
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      className="ml-1 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        saveDocuments(annetType.id, getDocIds(annetType).filter((x) => x !== id));
+                        if (annetType.sora_document_id === id) setSoraDocument(annetType, null);
+                      }}
+                      aria-label={t("admin.missionTypes.removeDocument")}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ) : null;
+            })}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs gap-1"
+              onClick={openAnnetPicker}
+              disabled={isReadOnly}
+            >
+              <Paperclip className="h-3 w-3" />
+              <span className="hidden sm:inline">
+                {annetType && getDocIds(annetType).length > 0 ? t("admin.missionTypes.addDocument") : t("admin.missionTypes.attachDocument")}
+              </span>
+              <span className="sm:hidden">{t("admin.missionTypes.attachDocumentShort")}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
