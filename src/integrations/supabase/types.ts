@@ -7804,6 +7804,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sora_document_profiles: {
+        Row: {
+          company_id: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          consistency: Json | null
+          created_at: string
+          document_id: string
+          extracted_at: string | null
+          extraction_source: string | null
+          id: string
+          profile: Json
+          source_file_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          consistency?: Json | null
+          created_at?: string
+          document_id: string
+          extracted_at?: string | null
+          extraction_source?: string | null
+          id?: string
+          profile?: Json
+          source_file_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          consistency?: Json | null
+          created_at?: string
+          document_id?: string
+          extracted_at?: string | null
+          extraction_source?: string | null
+          id?: string
+          profile?: Json
+          source_file_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sora_document_profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sora_document_profiles_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: true
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
