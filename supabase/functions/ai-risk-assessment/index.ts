@@ -112,7 +112,7 @@ const pickBestDroneModelMatch = <T extends { name: string }>(models: T[], droneM
 
 
 // ALOS keeps the (stricter) catalog body dimension; explain when iGRC uses a larger profile value.
-export const alosProfileNote = (catalogM: number, profileM: number, en: boolean): string => {
+const alosProfileNote = (catalogM: number, profileM: number, en: boolean): string => {
   const f = (v: number) => en ? String(v) : String(v).replace('.', ',');
   return en
     ? `ALOS calculated with the drone's body dimension ${f(catalogM)} m (catalog) – iGRC uses ${f(profileM)} m incl. propellers from the SORA profile`
