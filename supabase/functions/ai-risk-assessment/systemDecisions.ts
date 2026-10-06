@@ -165,6 +165,6 @@ export const buildSystemDecisions = (input: SystemDecisionsInput): SystemDecisio
 };
 
 export const SYSTEM_DECISIONS_INSTRUCTION = {
-  no: 'Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem.',
-  en: 'These are set by the system. Reproduce the values; do not calculate or change them.',
+  no: 'Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem. soraProfile er resultatet av sjekken mot bekreftet SORA-profil: avvik er fakta som skal omtales som anbefaling (aldri hard stop eller NO-GO), og du beregner ingenting selv.',
+  en: 'These are set by the system. Reproduce the values; do not calculate or change them. soraProfile is the result of the check against the confirmed SORA profile: deviations are facts to mention as recommendations (never a hard stop or NO-GO); calculate nothing yourself.',
 };
