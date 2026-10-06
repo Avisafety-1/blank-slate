@@ -1,3 +1,4 @@
+import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -1012,6 +1013,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           {soraDocuments.map((doc) => <SelectItem key={doc.id} value={doc.id}>{doc.tittel}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      {selectedSoraDocumentId && <SoraProfileBadge documentId={selectedSoraDocumentId} />}
                       <p className="text-xs text-muted-foreground">{t("riskAssessment.soraDocumentInfo")}</p>
                     </div>
                   )}

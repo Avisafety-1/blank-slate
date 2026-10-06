@@ -50,6 +50,7 @@ const Installer = React.lazy(() => import("./pages/Installer"));
 const UserManualDownload = React.lazy(() => import("./pages/UserManualDownload"));
 const Statistikk = React.lazy(() => import("./pages/Statistikk"));
 const SoraProcess = React.lazy(() => import("./pages/SoraProcess"));
+const SoraProfiles = React.lazy(() => import("./pages/SoraProfiles"));
 const Changelog = React.lazy(() => import("./pages/Changelog"));
 const Marketing = React.lazy(() => import("./pages/Marketing"));
 const Priser = React.lazy(() => import("./pages/Priser"));
@@ -261,7 +262,8 @@ const App = () => {
                     <Route path="/ressurser" element={<DomainGuard><TrainingModuleRestricted moduleKey="resources"><Resources /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/vedlikehold" element={<DomainGuard><TrainingModuleRestricted moduleKey="resources"><Suspense fallback={<LoadingSpinner />}><Vedlikehold /></Suspense></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/kart" element={<DomainGuard><TrainingModuleRestricted moduleKey="map"><KartPage /></TrainingModuleRestricted></DomainGuard>} />
-                    <Route path="/dokumenter" element={<DomainGuard><TrainingModuleRestricted moduleKey="documents"><Documents /></TrainingModuleRestricted></DomainGuard>} />
+                    <Route path="/sora-profiler" element={<DomainGuard><SoraProfiles /></DomainGuard>} />
+                  <Route path="/dokumenter" element={<DomainGuard><TrainingModuleRestricted moduleKey="documents"><Documents /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/kalender" element={<DomainGuard><TrainingModuleRestricted moduleKey="calendar"><Kalender /></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/hendelser" element={<DomainGuard><TrainingModuleRestricted moduleKey="incidents"><PlanRestricted feature="incidents"><Hendelser /></PlanRestricted></TrainingModuleRestricted></DomainGuard>} />
                     <Route path="/status" element={<DomainGuard><TrainingModuleRestricted moduleKey="status"><PlanRestricted feature="status"><Status /></PlanRestricted></TrainingModuleRestricted></DomainGuard>} />
