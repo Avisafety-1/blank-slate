@@ -357,7 +357,7 @@ export function MissionTypesSection({ companyId, disabled }: Props) {
       </p>
 
       <div className="space-y-2">
-        {types.map((mt, i) => {
+        {visibleTypes.map((mt, i) => {
           const linkedIds = [...getDocIds(mt), ...(mt.default_evaluation_template_id ? [mt.default_evaluation_template_id] : [])];
           return (
             <div key={mt.id} className="flex items-center gap-2 rounded-md border p-2 flex-wrap sm:flex-nowrap">
