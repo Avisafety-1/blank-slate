@@ -1074,10 +1074,27 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">{t("riskAssessment.noSoraDocument")}</SelectItem>
-                          {soraDocuments.map((doc) => <SelectItem key={doc.id} value={doc.id}>{doc.tittel}</SelectItem>)}
+                          {soraDocuments.map((doc) => (
+                            <SelectItem key={doc.id} value={doc.id}>
+                              <span className="flex items-center gap-2">
+                                <span className="truncate">{doc.tittel}</span>
+                                {doc.status !== "none" && (
+                                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${soraStatusClass(doc.status)}`}>
+                                    {t(`soraProfile.status.${doc.status}`)}
+                                  </span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {selectedSoraDocumentId && <SoraProfileBadge documentId={selectedSoraDocumentId} />}
+                      {(() => {
+                        const st = soraDocuments.find((d) => d.id === selectedSoraDocumentId)?.status;
+                        return st === "draft" || st === "outdated"
+                          ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("riskAssessment.soraProfileNotConfirmed")}</p>
+                          : null;
+                      })()}
                       <p className="text-xs text-muted-foreground">{t("riskAssessment.soraDocumentInfo")}</p>
                     </div>
                   )}

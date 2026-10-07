@@ -3340,7 +3340,8 @@
       "appliedItem": "{{label}} {{robustness}} {{reduction}} fra SORA",
       "deviations": "Utenfor SORA-rammene (anbefaling)",
       "fromProfile": "fra SORA-profil"
-    }
+    },
+    "soraProfileNotConfirmed": "SORA-profilen er ikke bekreftet – verdiene brukes ikke i beregningen"
   },
   "riskAssessmentType": {
     "title": "Velg type risikovurdering",

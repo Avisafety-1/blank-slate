@@ -3338,7 +3338,8 @@
       "appliedItem": "{{label}} {{robustness}} {{reduction}} from SORA",
       "deviations": "Outside the SORA envelope (recommendation)",
       "fromProfile": "from SORA profile"
-    }
+    },
+    "soraProfileNotConfirmed": "The SORA profile is not confirmed – its values are not used in the calculation"
   },
   "riskAssessmentType": {
     "title": "Select risk assessment type",
