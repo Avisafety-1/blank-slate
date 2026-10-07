@@ -1,4 +1,4 @@
-import { defineTool } from "@lovable.dev/mcp-js";
+import { defineMcpTool as defineTool } from "./_tool";
 import { z } from "zod";
 import { supabaseForUser, notAuthed } from "./_shared";
 import { writeAudit } from "./_audit";

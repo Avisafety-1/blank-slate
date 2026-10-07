@@ -5,10 +5,15 @@
 // src/lib/mcp/index.ts
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
-// src/lib/mcp/tools/echo.ts
+// src/lib/mcp/tools/_tool.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
+function defineMcpTool(def) {
+  return defineTool(def);
+}
+
+// src/lib/mcp/tools/echo.ts
 import { z } from "npm:zod@^3.25.76";
-var echo_default = defineTool({
+var echo_default = defineMcpTool({
   name: "echo",
   title: "Echo",
   description: "Echo the input text back to the caller. Use to verify connectivity.",
@@ -18,7 +23,6 @@ var echo_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-missions.ts
-import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z2 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/tools/_shared.ts
@@ -36,7 +40,7 @@ function notAuthed() {
 }
 
 // src/lib/mcp/tools/list-missions.ts
-var list_missions_default = defineTool2({
+var list_missions_default = defineMcpTool({
   name: "list_missions",
   title: "List missions",
   description: "List the signed-in user's visible drone missions (oppdrag), most recent by planned time first. Respects company/department visibility via RLS.",
@@ -63,7 +67,6 @@ var list_missions_default = defineTool2({
 });
 
 // src/lib/mcp/tools/get-mission.ts
-import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z3 } from "npm:zod@^3.25.76";
 var FIELDS = [
   "id",
@@ -89,7 +92,7 @@ var FIELDS = [
   "opprettet_dato",
   "oppdatert_dato"
 ].join(", ");
-var get_mission_default = defineTool3({
+var get_mission_default = defineMcpTool({
   name: "get_mission",
   title: "Get mission",
   description: "Fetch a single mission (oppdrag) by id with its planning and approval metadata. Respects RLS visibility for the signed-in user.",
@@ -116,9 +119,8 @@ var get_mission_default = defineTool3({
 });
 
 // src/lib/mcp/tools/list-incidents.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z4 } from "npm:zod@^3.25.76";
-var list_incidents_default = defineTool4({
+var list_incidents_default = defineMcpTool({
   name: "list_incidents",
   title: "List incidents",
   description: "List the signed-in user's visible incidents (hendelser), most recent first. Respects company/department visibility via RLS.",
@@ -147,9 +149,8 @@ var list_incidents_default = defineTool4({
 });
 
 // src/lib/mcp/tools/list-drones.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z5 } from "npm:zod@^3.25.76";
-var list_drones_default = defineTool5({
+var list_drones_default = defineMcpTool({
   name: "list_drones",
   title: "List drones",
   description: "List the signed-in user's visible drones. Respects company/department visibility via RLS.",
@@ -174,9 +175,8 @@ var list_drones_default = defineTool5({
 });
 
 // src/lib/mcp/tools/search-drones.ts
-import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z6 } from "npm:zod@^3.25.76";
-var search_drones_default = defineTool6({
+var search_drones_default = defineMcpTool({
   name: "search_drones",
   title: "Search drones",
   description: "Search the signed-in user's visible drones by model, serial or registration. Returns a compact list intended for picking drone_ids when creating a mission.",
@@ -202,9 +202,8 @@ var search_drones_default = defineTool6({
 });
 
 // src/lib/mcp/tools/search-personnel.ts
-import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z7 } from "npm:zod@^3.25.76";
-var search_personnel_default = defineTool7({
+var search_personnel_default = defineMcpTool({
   name: "search_personnel",
   title: "Search personnel",
   description: "Search users (personnel) visible to the signed-in user by full_name or email. Returns id + display fields intended for picking personnel_ids when creating a mission.",
@@ -225,9 +224,8 @@ var search_personnel_default = defineTool7({
 });
 
 // src/lib/mcp/tools/list-upcoming-missions.ts
-import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z8 } from "npm:zod@^3.25.76";
-var list_upcoming_missions_default = defineTool8({
+var list_upcoming_missions_default = defineMcpTool({
   name: "list_upcoming_missions",
   title: "List upcoming missions",
   description: "List missions with tidspunkt in the future (or within the last hour), sorted by soonest first. Respects RLS visibility.",
@@ -255,9 +253,8 @@ var list_upcoming_missions_default = defineTool8({
 });
 
 // src/lib/mcp/tools/get-risk-assessment.ts
-import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z9 } from "npm:zod@^3.25.76";
-var get_risk_assessment_default = defineTool9({
+var get_risk_assessment_default = defineMcpTool({
   name: "get_risk_assessment",
   title: "Get risk assessment",
   description: "Fetch the most recent stored AI-generated risk assessment for a mission. Respects RLS visibility. The assessment is an AI draft \u2014 it is not an approval.",
@@ -288,7 +285,6 @@ var get_risk_assessment_default = defineTool9({
 });
 
 // src/lib/mcp/tools/create-mission.ts
-import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z10 } from "npm:zod@^3.25.76";
 
 // src/lib/mcp/tools/_audit.ts
@@ -321,7 +317,7 @@ function truncateJson(obj, max) {
 }
 
 // src/lib/mcp/tools/create-mission.ts
-var create_mission_default = defineTool10({
+var create_mission_default = defineMcpTool({
   name: "create_mission",
   title: "Create mission (draft)",
   description: "Create a new mission (oppdrag) as an unapproved draft (approval_status='not_approved'). Never publishes to the shared map and never marks the mission as approved. The signed-in user must belong to a company; the mission is created inside that company via RLS. Latitude/longitude must be provided by the user \u2014 do NOT guess coordinates.",
@@ -452,7 +448,6 @@ function summarize(input) {
 }
 
 // src/lib/mcp/tools/request-risk-assessment.ts
-import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@0.20.0";
 import { z as z11 } from "npm:zod@^3.25.76";
 var DEFAULT_PILOT_INPUTS = {
   flightHeight: 120,
@@ -465,7 +460,7 @@ var DEFAULT_PILOT_INPUTS = {
   backupLandingAvailable: true,
   skipWeatherEvaluation: false
 };
-var request_risk_assessment_default = defineTool11({
+var request_risk_assessment_default = defineMcpTool({
   name: "request_risk_assessment",
   title: "Request AI risk assessment",
   description: "Trigger the AviSafe AI risk assessment for an existing mission. The result is an AI-GENERATED DRAFT \u2014 it is guidance, NOT an approval. The pilot/mission approver is still responsible for the operation.",
