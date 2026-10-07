@@ -187,7 +187,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
     })();
     return () => { cancelled = true; };
-  }, [open, currentMissionId, missionTypes, missionTypesLoading, t]);
+  }, [open, currentMissionId, missionTypes, missionTypesLoading, companyId, t]);
 
   const chooseSoraDocument = async (value: string) => {
     if (!currentMissionId) return;
