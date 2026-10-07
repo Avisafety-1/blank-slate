@@ -1,4 +1,5 @@
-import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
+import { SoraProfileBadge, soraStatusClass } from "@/components/sora/SoraProfileBadge";
+import { deriveSoraProfileStatus, type SoraProfileStatus } from "@/hooks/useSoraProfile";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -116,7 +117,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
   const [preparedByProfile, setPreparedByProfile] = useState<{ email?: string; full_name?: string } | null>(null);
   const [soraSaving, setSoraSaving] = useState(false);
   const [soraMissionDetails, setSoraMissionDetails] = useState<any>(null);
-  const [soraDocuments, setSoraDocuments] = useState<{ id: string; tittel: string }[]>([]);
+  const [soraDocuments, setSoraDocuments] = useState<{ id: string; tittel: string; status: SoraProfileStatus }[]>([]);
   const [selectedSoraDocumentId, setSelectedSoraDocumentId] = useState<string>("");
   const selectedSoraProfile = useSoraProfile(selectedSoraDocumentId || null);
 
@@ -155,23 +156,34 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       // All documents with a SORA profile in the company are selectable, plus any
       // document marked as SORA on a mission type (may predate the profile feature).
       const markedIds = [...new Set(missionTypes.map((type) => type.sora_document_id).filter(Boolean))] as string[];
+      const profileRows: { document_id: string; status: string; source_file_url: string | null }[] = [];
       if (companyId) {
+        // Departments also see the parent company's SORA profiles; documents RLS still decides visibility.
+        const { data: company } = await supabase.from("companies").select("parent_company_id").eq("id", companyId).maybeSingle();
+        if (cancelled) return;
+        const companyIds = [companyId, (company as any)?.parent_company_id].filter(Boolean) as string[];
         const { data: profiles } = await supabase.from("sora_document_profiles" as any)
-          .select("document_id").eq("company_id", companyId);
+          .select("document_id, status, source_file_url").in("company_id", companyIds);
         if (cancelled) return;
         for (const row of (profiles as any[]) || []) {
-          if (row?.document_id && !markedIds.includes(row.document_id)) markedIds.push(row.document_id);
+          if (!row?.document_id) continue;
+          profileRows.push(row);
+          if (!markedIds.includes(row.document_id)) markedIds.push(row.document_id);
         }
       }
-      const available: { id: string; tittel: string }[] = [];
+      const available: { id: string; tittel: string; status: SoraProfileStatus }[] = [];
       if (markedIds.length > 0) {
         const { data: docs } = await supabase.from("documents")
           .select("id, tittel, fil_url").in("id", markedIds);
         if (cancelled) return;
         for (const doc of docs || []) {
-          if (/\.pdf$/i.test(doc.fil_url || "")) available.push({ id: doc.id, tittel: doc.tittel });
+          if (!/\.pdf$/i.test(doc.fil_url || "")) continue;
+          const row = profileRows.find((p) => p.document_id === doc.id);
+          available.push({ id: doc.id, tittel: doc.tittel, status: deriveSoraProfileStatus(row, doc.fil_url) });
         }
       }
+      const rank: Record<SoraProfileStatus, number> = { confirmed: 0, draft: 1, outdated: 2, none: 3 };
+      available.sort((a, b) => rank[a.status] - rank[b.status] || a.tittel.localeCompare(b.tittel));
       setSoraDocuments(available);
       if (linkedDocumentId && !available.some((doc) => doc.id === linkedDocumentId)) toast.error(t("riskAssessment.soraDocumentUnavailable"));
       const selectedId = available.some((doc) => doc.id === linkedDocumentId) ? linkedDocumentId || "" : "";
@@ -1062,10 +1074,27 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">{t("riskAssessment.noSoraDocument")}</SelectItem>
-                          {soraDocuments.map((doc) => <SelectItem key={doc.id} value={doc.id}>{doc.tittel}</SelectItem>)}
+                          {soraDocuments.map((doc) => (
+                            <SelectItem key={doc.id} value={doc.id}>
+                              <span className="flex items-center gap-2">
+                                <span className="truncate">{doc.tittel}</span>
+                                {doc.status !== "none" && (
+                                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${soraStatusClass(doc.status)}`}>
+                                    {t(`soraProfile.status.${doc.status}`)}
+                                  </span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {selectedSoraDocumentId && <SoraProfileBadge documentId={selectedSoraDocumentId} />}
+                      {(() => {
+                        const st = soraDocuments.find((d) => d.id === selectedSoraDocumentId)?.status;
+                        return st === "draft" || st === "outdated"
+                          ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("riskAssessment.soraProfileNotConfirmed")}</p>
+                          : null;
+                      })()}
                       <p className="text-xs text-muted-foreground">{t("riskAssessment.soraDocumentInfo")}</p>
                     </div>
                   )}
