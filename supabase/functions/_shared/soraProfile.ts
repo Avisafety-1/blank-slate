@@ -133,6 +133,17 @@ const oneOf = <T extends string>(v: unknown, values: readonly T[]): T | null => 
   if (!s) return null;
   return values.find((x) => x.toLowerCase() === s.toLowerCase()) ?? null;
 };
+/** Map any AI/document wording of robustness to the canonical value; only a missing value is null. */
+export const normalizeRobustness = (v: unknown): Robustness | null => {
+  const s = str(v);
+  if (!s) return null;
+  const k = s.toLowerCase().replace(/[._]/g, '').replace(/\s+/g, ' ').trim();
+  if (['l', 'low', 'lav'].includes(k)) return 'Low';
+  if (['m', 'medium', 'med', 'middels'].includes(k)) return 'Medium';
+  if (['h', 'high', 'høy', 'hoy'].includes(k)) return 'High';
+  if (['nr', 'n/a', 'na', 'none', 'not required', 'no requirement', 'ingen', 'ingen krav', 'ikke påkrevd', 'optional', 'o'].includes(k)) return 'None';
+  return null;
+};
 export const normalizeArc = (v: unknown): string | null => {
   const m = String(v ?? '').match(/(?:arc[\s-]*)?([a-d])\b/i);
   return m ? `ARC-${m[1].toLowerCase()}` : null;
@@ -149,7 +160,7 @@ export const isUuid = (v: unknown): v is string => typeof v === 'string' && UUID
 const uuidList = (v: unknown, max = 50): string[] =>
   Array.from(new Set((Array.isArray(v) ? v : []).filter(isUuid).map((x) => x.toLowerCase()))).slice(0, max);
 const mitigation = (v: any): SoraMitigation => ({
-  robustness: oneOf(v?.robustness, ROBUSTNESS),
+  robustness: normalizeRobustness(v?.robustness),
   reduction: num(v?.reduction),
   conditionText: str(v?.conditionText),
 });
@@ -208,11 +219,11 @@ export const sanitizeSoraProfile = (raw: any): SoraProfile => {
       strategicReductions: (Array.isArray(a.strategicReductions) ? a.strategicReductions : [])
         .map((s: unknown) => str(s, 500)).filter(Boolean).slice(0, 30) as string[],
       residualArc: normalizeArc(a.residualArc),
-      tmpr: oneOf(a.tmpr, ROBUSTNESS),
+      tmpr: normalizeRobustness(a.tmpr),
     },
     sail: normalizeSail(p.sail),
     containment: {
-      robustness: oneOf(c.robustness, ROBUSTNESS),
+      robustness: normalizeRobustness(c.robustness),
       adjacentAreaKm: num(c.adjacentAreaKm),
       maxAdjacentDensity: num(c.maxAdjacentDensity),
       shelterApplicable: bool(c.shelterApplicable),
@@ -224,7 +235,7 @@ export const sanitizeSoraProfile = (raw: any): SoraProfile => {
       groundRiskBufferM: num(b.groundRiskBufferM),
     },
     oso: (Array.isArray(p.oso) ? p.oso : []).slice(0, 40)
-      .map((o: any) => ({ id: str(o?.id, 20) ?? '', robustness: oneOf(o?.robustness, ROBUSTNESS) }))
+      .map((o: any) => ({ id: str(o?.id, 20) ?? '', robustness: normalizeRobustness(o?.robustness) }))
       .filter((o: { id: string }) => o.id),
     pages,
   };

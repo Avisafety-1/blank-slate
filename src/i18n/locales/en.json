@@ -9221,6 +9221,8 @@
     "confirmedBy": "Confirmed by {{name}}, {{date}}",
     "readOnly": "Read-only",
     "outdatedHint": "The document has a new file version since the profile was saved. Re-read or review the profile and confirm again.",
+    "acknowledgeIssues": "I have reviewed the deviations and confirm the values",
+    "invalidRobustness": "{{value}} (invalid)",
     "issuesTitle": "Consistency deviations",
     "issueLine": "document says {{doc}}, calculated {{calc}}",
     "certified": "certified category",

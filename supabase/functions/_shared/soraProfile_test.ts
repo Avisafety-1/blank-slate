@@ -88,3 +88,16 @@ Deno.test('sanitizer keeps only valid uuids', () => {
   assertEquals(p.aircraft[0].catalogModelId, null);
   assertEquals(p.ground.mitigations.m2.equipmentIds, [U(2)]);
 });
+
+Deno.test('OSO robustness "M" → Medium, "NR" → None', () => {
+  const p = sanitizeSoraProfile({ oso: [{ id: 'OSO#08', robustness: 'M' }, { id: 'OSO#01', robustness: 'NR' }] });
+  assertEquals(p.oso[0].robustness, 'Medium');
+  assertEquals(p.oso[1].robustness, 'None');
+});
+
+Deno.test('TMPR "No requirement" → None and flagged against ARC-b', () => {
+  const p = reference();
+  const s = sanitizeSoraProfile({ ...p, air: { ...p.air, tmpr: 'No requirement' } });
+  assertEquals(s.air.tmpr, 'None');
+  assertEquals(checkSoraProfileConsistency(s).some((i) => i.field === 'air.tmpr'), true);
+});

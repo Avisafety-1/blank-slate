@@ -9223,6 +9223,8 @@
     "confirmedBy": "Bekreftet av {{name}}, {{date}}",
     "readOnly": "Skrivebeskyttet",
     "outdatedHint": "Dokumentet har fått ny filversjon etter at profilen ble lagret. Les profilen på nytt eller kontroller den, og bekreft igjen.",
+    "acknowledgeIssues": "Jeg har kontrollert avvikene og bekrefter verdiene",
+    "invalidRobustness": "{{value}} (ugyldig)",
     "issuesTitle": "Konsistensavvik",
     "issueLine": "dokumentet sier {{doc}}, beregnet {{calc}}",
     "certified": "sertifisert kategori",
