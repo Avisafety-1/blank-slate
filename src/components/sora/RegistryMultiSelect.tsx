@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,9 +26,17 @@ interface Props {
   single?: boolean;
 }
 
-/** Searchable register picker in a popover with internal touch scrolling. */
+/**
+ * Searchable register picker in a popover with internal touch scrolling.
+ * The popover is height-limited to the visible space and has an explicit
+ * "Done" button, and taps outside always close it — inside modal dialogs on
+ * touch devices Radix' own outside-dismiss is not reliable.
+ */
 export function RegistryMultiSelect({ options, value, onChange, placeholder, searchPlaceholder, emptyText, disabled, single }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const selected = options.filter((o) => value.includes(o.id));
   const summary = selected.length === 0 ? placeholder : selected.map((o) => (o.group ? `${o.label} (${o.group})` : o.label)).join(", ");
 
@@ -37,6 +46,23 @@ export function RegistryMultiSelect({ options, value, onChange, placeholder, sea
     const g = groups.find(([k]) => k === key);
     if (g) g[1].push(o); else groups.push([key, [o]]);
   }
+
+  // Fallback outside-tap close (capture phase, so pointer-events locks can't swallow it).
+  useEffect(() => {
+    if (!open) return;
+    const onTap = (e: Event) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (contentRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("click", onTap, true);
+    document.addEventListener("touchend", onTap, true);
+    return () => {
+      document.removeEventListener("click", onTap, true);
+      document.removeEventListener("touchend", onTap, true);
+    };
+  }, [open]);
 
   const toggle = (id: string) => {
     if (single) {
@@ -50,15 +76,20 @@ export function RegistryMultiSelect({ options, value, onChange, placeholder, sea
   return (
     <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
-        <Button type="button" variant="outline" role="combobox" disabled={disabled} className="h-auto min-h-10 w-full justify-between whitespace-normal text-left font-normal">
+        <Button ref={triggerRef} type="button" variant="outline" role="combobox" disabled={disabled} className="h-auto min-h-10 w-full justify-between whitespace-normal text-left font-normal">
           <span className={cn("line-clamp-2", selected.length === 0 && "text-muted-foreground")}>{summary}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[16rem] p-0" align="start" collisionPadding={8}>
-        <Command>
+      <PopoverContent
+        ref={contentRef}
+        className="flex w-[--radix-popover-trigger-width] min-w-[16rem] flex-col p-0 max-h-[60vh] max-h-[min(60vh,var(--radix-popover-content-available-height))]"
+        align="start"
+        collisionPadding={8}
+      >
+        <Command className="min-h-0 flex-1">
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain [touch-action:pan-y]">
+          <CommandList className="min-h-0 flex-1 max-h-none overflow-y-auto overscroll-contain [touch-action:pan-y]">
             <CommandEmpty>{emptyText}</CommandEmpty>
             {groups.map(([heading, items]) => (
               <CommandGroup key={heading || "_"} heading={heading || undefined}>
@@ -75,6 +106,11 @@ export function RegistryMultiSelect({ options, value, onChange, placeholder, sea
             ))}
           </CommandList>
         </Command>
+        <div className="shrink-0 border-t border-border p-2">
+          <Button type="button" size="sm" className="w-full" onClick={() => setOpen(false)}>
+            {t("soraProfile.registry.done")}
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
