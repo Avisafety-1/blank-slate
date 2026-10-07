@@ -2666,10 +2666,13 @@ serve(async (req) => {
     // Notater om koblet utstyr/tilbehør som er Rødt/Gult men IKKE valgt på oppdraget.
     // Disse trigger ikke hard stop — vises kun informativt i utstyrsseksjonen.
     const linkedOnlyNotes: string[] = [];
+    const linkedOnlyTerms: string[] = [];
     const assignedEqIds = new Set<string>((assignedEquipment as any[]).map(e => e.id).filter(Boolean));
     const addLinkedNotes = (droneLabel: string, items: LinkedReason[]) => {
       for (const r of linkedReasonsNotOnMission(items, assignedEqIds)) {
         linkedOnlyNotes.push(`${droneLabel}: ${r} (knyttet til dronen, men ikke valgt på dette oppdraget — antas ikke brukt).`);
+        const name = r.match(/^(?:Tilbehør|Koblet utstyr)\s+(.+?)\s+→/)?.[1];
+        if (name) linkedOnlyTerms.push(name);
       }
     };
 
