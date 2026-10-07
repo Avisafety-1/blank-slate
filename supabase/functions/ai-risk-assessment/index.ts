@@ -11,7 +11,7 @@ import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION,
 import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
 import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
-import { applyOperationCategoryText, buildDecisionSentence, enforceConsistency, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
+import { applyLinkedOnlyEquipment, applyOperationCategoryText, buildDecisionSentence, enforceConsistency, stripInternalAndOperationTypeText, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
@@ -2784,6 +2784,7 @@ serve(async (req) => {
         ? { aec: deterministicAirFields.aec ?? null, initial_arc: deterministicAirFields.initial_arc ?? null, residual_arc: deterministicAirFields.residual_arc ?? null }
         : null,
       alos: deterministicAlos ? { alosMaxM: deterministicAlos.alosMaxM ?? null } : null,
+      maxRouteDistanceM: maxDistanceFromFirstPoint(allRouteCoords),
       equipment: {
         primaryDroneStatus: primaryDroneStatusInfo?.ownStatus ?? droneData?.status ?? null,
         redItems: [...redDrones.map((d) => d.label), ...redEquipment],
@@ -3686,6 +3687,18 @@ serve(async (req) => {
     // overall ≤ 4.9 with a hard stop.
     enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
     if (systemDecisions.operationCategory?.category === 'specific') stripOpenCategoryCompetency(aiAnalysis);
+    stripInternalAndOperationTypeText(aiAnalysis, flightInputs.isVlos === true);
+    applyLinkedOnlyEquipment(aiAnalysis, {
+      primaryDroneStatus: systemDecisions.equipment.primaryDroneStatus,
+      redItems: systemDecisions.equipment.redItems,
+      yellowItems: systemDecisions.equipment.yellowItems,
+      linkedOnlyTerms,
+    });
+    if (systemDecisions.alosRouteWarning && aiAnalysis?.categories?.mission_complexity && typeof aiAnalysis.categories.mission_complexity === 'object') {
+      const mc = aiAnalysis.categories.mission_complexity;
+      const concerns = Array.isArray(mc.concerns) ? mc.concerns : [];
+      if (!concerns.includes(systemDecisions.alosRouteWarning)) mc.concerns = [...concerns, systemDecisions.alosRouteWarning];
+    }
     applyOperationCategoryText(aiAnalysis, systemDecisions.operationCategory, resolveLang(language) === 'en' ? 'en' : 'no');
 
     // Recompute recommendation after authoritative hard-stop derivation.

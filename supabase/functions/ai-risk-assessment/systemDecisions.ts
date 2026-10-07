@@ -44,6 +44,24 @@ export const resolveSoraProfile = (
   return { result: { ...base, used: true, ...rest }, profileReductions };
 };
 
+/** VLOS route that leaves ALOS from the start point → advisory text, otherwise null. */
+export const buildAlosRouteWarning = (
+  isVlos: boolean | null | undefined,
+  maxRouteDistanceM: number | null,
+  alosMaxM: number | null,
+  lang: 'no' | 'en',
+): string | null => {
+  if (isVlos !== true || maxRouteDistanceM == null || alosMaxM == null) return null;
+  if (!Number.isFinite(maxRouteDistanceM) || !Number.isFinite(alosMaxM) || maxRouteDistanceM <= alosMaxM) return null;
+  const fmt = (n: number) => {
+    const r = String(Math.round(n));
+    return lang === 'en' ? r.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : r.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  };
+  return lang === 'en'
+    ? `The route reaches ${fmt(maxRouteDistanceM)} m from the start point, beyond ALOS ${fmt(alosMaxM)} m. Plan the pilot position or observers to maintain visual contact.`
+    : `Ruten går ${fmt(maxRouteDistanceM)} m fra startpunktet, over ALOS ${fmt(alosMaxM)} m. Planlegg pilotposisjon eller observatører slik at visuell kontakt opprettholdes.`;
+};
+
 type HardStopInput = Parameters<typeof deriveHardStops>[0];
 
 export interface SystemDecisionsInput {
@@ -66,6 +84,8 @@ export interface SystemDecisionsInput {
   } | null;
   airRisk: { aec: string | null; initial_arc: string | null; residual_arc: string | null } | null;
   alos: { alosMaxM: number | null } | null;
+  /** Max planar distance (m) from the first route point; null without a route. */
+  maxRouteDistanceM?: number | null;
   equipment: {
     primaryDroneStatus: string | null;
     redItems: string[];
@@ -96,6 +116,8 @@ export interface SystemDecisions {
   sail: string | null;
   certifiedCategory: boolean;
   alosMaxM: number | null;
+  /** VLOS route beyond ALOS: advisory only (no hard stop, no approval effect). */
+  alosRouteWarning: string | null;
   equipment: SystemDecisionsInput['equipment'] & {
     batteries: { required: boolean; count: number; description: string };
   };
@@ -145,6 +167,12 @@ export const buildSystemDecisions = (input: SystemDecisionsInput): SystemDecisio
     sail: sailLabel,
     certifiedCategory,
     alosMaxM: input.alos?.alosMaxM ?? null,
+    alosRouteWarning: buildAlosRouteWarning(
+      input.operation?.isVlos ?? input.hardStopInput.isVlos,
+      input.maxRouteDistanceM ?? null,
+      input.alos?.alosMaxM ?? null,
+      lang === 'en' ? 'en' : 'no',
+    ),
     equipment: {
       ...input.equipment,
       batteries: {
@@ -165,6 +193,6 @@ export const buildSystemDecisions = (input: SystemDecisionsInput): SystemDecisio
 };
 
 export const SYSTEM_DECISIONS_INSTRUCTION = {
-  no: 'Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem. soraProfile er resultatet av sjekken mot bekreftet SORA-profil: avvik er fakta som skal omtales som anbefaling (aldri hard stop eller NO-GO), og du beregner ingenting selv.',
-  en: 'These are set by the system. Reproduce the values; do not calculate or change them. soraProfile is the result of the check against the confirmed SORA profile: deviations are facts to mention as recommendations (never a hard stop or NO-GO); calculate nothing yourself.',
+  no: 'Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem. soraProfile er resultatet av sjekken mot bekreftet SORA-profil: avvik er fakta som skal omtales som anbefaling (aldri hard stop eller NO-GO), og du beregner ingenting selv. alosRouteWarning (når satt) skal gjengis i oppdragskompleksitet.',
+  en: 'These are set by the system. Reproduce the values; do not calculate or change them. soraProfile is the result of the check against the confirmed SORA profile: deviations are facts to mention as recommendations (never a hard stop or NO-GO); calculate nothing yourself. alosRouteWarning (when set) must be reproduced under mission complexity.',
 };
