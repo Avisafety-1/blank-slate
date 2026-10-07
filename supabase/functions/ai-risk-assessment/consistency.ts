@@ -131,7 +131,7 @@ export const applyOperationCategoryText = (
 
 /** Internal field names that must never appear in user-facing text. */
 export const INTERNAL_FIELD_RE = /\b(isVlos|pilotInputs|systemDecisions|soraProfile|missionFacts|dataAvailability)\b/;
-const BVLOS_RE = /\bBVLOS\b/i;
+const BVLOS_RE = /\bBVLOS\b(?![- ]SORA)/i;
 
 const splitSentences = (s: string): string[] => s.split(/(?<=[.!?])\s+/u).filter((x) => x.trim().length > 0);
 
