@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [ ] SORA-profildialog: la veiledning og profilfelt dele rulleområde, med synlige knapper
 - [x] Menyer: fjern lave lagoverstyringer og gi dropdown/undermenyer intern touch-rulling innenfor ledig skjermplass; behold modalitet og valg
 - [x] Verneområder: ett kartlag med røde forbudssoner og oransje observasjonssoner fra dronesoner.no; synkroniser data og vis kilde/regler
 - [x] Dashbord: én aktiv flytur i fast felt, intern rulling og pil for flere uten å skyve andre widgeter ned

@@ -21,10 +21,7 @@ export function SoraProfileDialog({ documentId, open, onOpenChange, readOnly }: 
           <DialogTitle>{t("soraProfile.title")}</DialogTitle>
           <DialogDescription className="truncate">{document?.tittel ?? ""}</DialogDescription>
         </DialogHeader>
-        <div className="shrink-0 px-4 pt-3">
-          <SoraProfileHelp />
-        </div>
-        <SoraProfileEditor documentId={documentId} readOnly={readOnly} />
+        <SoraProfileEditor documentId={documentId} readOnly={readOnly} introduction={<SoraProfileHelp />} />
       </DialogContent>
     </Dialog>
   );

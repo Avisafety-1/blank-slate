@@ -169,9 +169,10 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 interface Props {
   documentId: string;
   readOnly?: boolean;
+  introduction?: ReactNode;
 }
 
-export function SoraProfileEditor({ documentId, readOnly }: Props) {
+export function SoraProfileEditor({ documentId, readOnly, introduction }: Props) {
   const { t } = useTranslation();
   const { loading, document: soraDoc, row, status, canEdit, isPdf, confirmerName, save, extract } = useSoraProfile(documentId);
   const [profile, setProfile] = useState<SoraProfile>(emptySoraProfile());
@@ -336,7 +337,8 @@ export function SoraProfileEditor({ documentId, readOnly }: Props) {
 
   return (
     <EditorCtx.Provider value={{ profile, editable, update, fieldLabel, t }}>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4 [touch-action:pan-y]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]">
+        {introduction}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className={cn("rounded-full border px-2 py-0.5 font-medium", soraStatusClass(shownStatus))}>{t(`soraProfile.status.${shownStatus}`)}</span>
           {row?.status === "confirmed" && row.confirmed_at && !dirty && (
