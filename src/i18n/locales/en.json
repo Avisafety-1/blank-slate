@@ -9370,7 +9370,8 @@
       "notLinked": "Not linked to a drone in the register",
       "m2Equipment": "M2 equipment in the register",
       "selectEquipment": "Select equipment",
-      "confirmBlocked": "All drones must be linked to the register and suggestions accepted before the profile can be confirmed."
+      "confirmBlocked": "All drones must be linked to the register and suggestions accepted before the profile can be confirmed.",
+      "done": "Done"
     }
   }
 }

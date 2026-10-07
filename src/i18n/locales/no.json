@@ -9372,7 +9372,8 @@
       "notLinked": "Ikke koblet til drone i registeret",
       "m2Equipment": "M2-utstyr i registeret",
       "selectEquipment": "Velg utstyr",
-      "confirmBlocked": "Alle droner må være koblet til registeret og forslag godtatt før profilen kan bekreftes."
+      "confirmBlocked": "Alle droner må være koblet til registeret og forslag godtatt før profilen kan bekreftes.",
+      "done": "Ferdig"
     }
   }
 }
