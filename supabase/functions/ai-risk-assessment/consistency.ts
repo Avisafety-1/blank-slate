@@ -128,3 +128,77 @@ export const applyOperationCategoryText = (
   };
   return analysis;
 };
+
+/** Internal field names that must never appear in user-facing text. */
+export const INTERNAL_FIELD_RE = /\b(isVlos|pilotInputs|systemDecisions|soraProfile|missionFacts|dataAvailability)\b/;
+const BVLOS_RE = /\bBVLOS\b/i;
+
+const splitSentences = (s: string): string[] => s.split(/(?<=[.!?])\s+/u).filter((x) => x.trim().length > 0);
+
+const cleanText = (s: string, isVlos: boolean): string =>
+  splitSentences(s).filter((x) => !INTERNAL_FIELD_RE.test(x) && !(isVlos && BVLOS_RE.test(x))).join(' ');
+
+const textOfRec = (r: any): string => typeof r === 'string' ? r : `${r?.action ?? ''} ${r?.risk_addressed ?? ''}`;
+
+/**
+ * Removes sentences with internal field names and, for VLOS missions, any sentence
+ * calling the mission BVLOS / BVLOS-like (SORA deviations never change the operation type).
+ * Covers summary, category factors/concerns and recommendations.
+ */
+export const stripInternalAndOperationTypeText = (analysis: any, isVlos: boolean): any => {
+  if (!analysis || typeof analysis !== 'object') return analysis;
+  if (typeof analysis.summary === 'string') analysis.summary = cleanText(analysis.summary, isVlos);
+  const cats = analysis.categories;
+  if (cats && typeof cats === 'object') {
+    for (const key of Object.keys(cats)) {
+      const cat = cats[key];
+      if (!cat || typeof cat !== 'object') continue;
+      for (const field of ['factors', 'concerns']) {
+        if (!Array.isArray(cat[field])) continue;
+        cat[field] = cat[field]
+          .map((x: unknown) => typeof x === 'string' ? cleanText(x, isVlos) : x)
+          .filter((x: unknown) => typeof x !== 'string' || x.trim().length > 0);
+      }
+    }
+  }
+  if (Array.isArray(analysis.recommendations)) {
+    analysis.recommendations = analysis.recommendations.filter((r: any) => {
+      const t = textOfRec(r);
+      return !INTERNAL_FIELD_RE.test(t) && !(isVlos && BVLOS_RE.test(t));
+    });
+  }
+  return analysis;
+};
+
+export const LINKED_ONLY_EQUIPMENT_MIN = 8.0;
+
+/**
+ * Equipment linked to a drone but not selected on the mission never lowers the score:
+ * with a green primary drone and only linked-only issues, equipment is ≥ 8.0 and GO.
+ * Recommendations that only concern linked-only items get priority "low".
+ */
+export const applyLinkedOnlyEquipment = (
+  analysis: any,
+  input: { primaryDroneStatus: string | null; redItems: string[]; yellowItems: string[]; linkedOnlyTerms: string[] },
+): any => {
+  const terms = input.linkedOnlyTerms.map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3);
+  if (!analysis || terms.length === 0) return analysis;
+  const green = /^(grønn|green)$/i.test(String(input.primaryDroneStatus ?? '').trim());
+  if (green && input.redItems.length === 0 && input.yellowItems.length === 0) {
+    const eq = analysis.categories?.equipment;
+    if (eq && typeof eq === 'object') {
+      const s = Number(eq.score);
+      eq.score = Number.isFinite(s) ? Math.max(s, LINKED_ONLY_EQUIPMENT_MIN) : LINKED_ONLY_EQUIPMENT_MIN;
+      eq.go_decision = 'GO';
+    }
+  }
+  const others = [...input.redItems, ...input.yellowItems].map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3);
+  if (Array.isArray(analysis.recommendations)) {
+    for (const r of analysis.recommendations) {
+      if (!r || typeof r !== 'object') continue;
+      const t = textOfRec(r).toLowerCase();
+      if (terms.some((x) => t.includes(x)) && !others.some((x) => t.includes(x))) r.priority = 'low';
+    }
+  }
+  return analysis;
+};
