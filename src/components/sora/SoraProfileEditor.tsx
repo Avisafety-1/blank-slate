@@ -199,7 +199,7 @@ export function SoraProfileEditor({ documentId, readOnly, introduction }: Props)
       const ids = [ownerCompanyId!, ...childRows.map((c) => c.id)];
       const groupNames: Record<string, string> = {};
       groupNames[ownerCompanyId!] = (childRows.length > 0 ? t("soraProfile.registry.parentCompany") : ((owner.data as any)?.navn ?? ""));
-      for (const c of childRows) groupNames[c.id] = t("soraProfile.registry.department", { name: c.navn });
+      for (const c of childRows) groupNames[c.id] = /^avdeling\b/i.test((c.navn ?? "").trim()) ? c.navn : t("soraProfile.registry.department", { name: c.navn });
       const [d, e, c] = await Promise.all([
         supabase.from("drones").select("id, company_id, modell, dji_aircraft_name, serienummer, registration_number").in("company_id", ids).eq("aktiv", true).order("modell"),
         supabase.from("equipment").select("id, company_id, navn, type, serienummer").in("company_id", ids).eq("aktiv", true).order("navn"),
@@ -280,6 +280,8 @@ export function SoraProfileEditor({ documentId, readOnly, introduction }: Props)
     return registry.drones.filter((d) => d.company_id === companyId).map((d) => ({ ...d, covered: linked.has(d.id) }));
   }, [registry, companyId, ownerCompanyId, profile.aircraft]);
   const issues = useMemo(() => checkSoraProfileConsistency(profile), [profile]);
+  const [issuesAcknowledged, setIssuesAcknowledged] = useState(false);
+  useEffect(() => { setIssuesAcknowledged(false); }, [issues.length]);
   const shownStatus = dirty ? "draft" : status;
 
   const fieldLabel = (path: string) => t(`soraProfile.fields.${path.replace(/^aircraft\.\d+\./, "aircraft.").replace(/^oso\.\d+\./, "oso.")}`);
@@ -497,9 +499,14 @@ export function SoraProfileEditor({ documentId, readOnly, introduction }: Props)
                     if (!source) setSource("manual");
                   }}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={profile.ground.mitigations[m].robustness && !validRobustness(m).includes(profile.ground.mitigations[m].robustness as any) ? "border-destructive text-destructive" : undefined}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">{t("soraProfile.unknown")}</SelectItem>
+                    {profile.ground.mitigations[m].robustness && !validRobustness(m).includes(profile.ground.mitigations[m].robustness as any) && (
+                      <SelectItem value={profile.ground.mitigations[m].robustness as string} className="text-destructive">
+                        {t("soraProfile.invalidRobustness", { value: robustnessLabel(profile.ground.mitigations[m].robustness as string) })}
+                      </SelectItem>
+                    )}
                     {validRobustness(m).map((o) => (
                       <SelectItem key={o} value={o}>{robustnessLabel(o)} ({MITIGATION_MATRIX[MITIGATION_KEY[m]][o]})</SelectItem>
                     ))}
@@ -618,8 +625,14 @@ export function SoraProfileEditor({ documentId, readOnly, introduction }: Props)
           <Button type="button" variant="secondary" disabled={!!busy} onClick={() => persist(false)}>
             {busy === "save" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}{t("soraProfile.saveDraft")}
           </Button>
+          {issues.length > 0 && (
+            <label className="w-full flex items-start gap-2 text-xs text-warning cursor-pointer">
+              <input type="checkbox" className="mt-0.5" checked={issuesAcknowledged} onChange={(e) => setIssuesAcknowledged(e.target.checked)} />
+              <span>{t("soraProfile.acknowledgeIssues")}</span>
+            </label>
+          )}
           {confirmBlocked && <p className="w-full text-right text-xs text-muted-foreground">{t("soraProfile.registry.confirmBlocked")}</p>}
-          <Button type="button" disabled={!!busy || confirmBlocked} onClick={() => persist(true)}>
+          <Button type="button" disabled={!!busy || confirmBlocked || (issues.length > 0 && !issuesAcknowledged)} onClick={() => persist(true)}>
             {busy === "confirm" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}{t("soraProfile.confirm")}
           </Button>
         </div>

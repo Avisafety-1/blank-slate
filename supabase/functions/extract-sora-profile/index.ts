@@ -18,6 +18,7 @@ Rules:
 - Use null for anything not explicitly stated. Never guess, never compute values yourself.
 - Numbers as plain numbers in SI units (metres, m/s, kg, km). Population density: the band upper limit as a number (e.g. "< 500 people/km²" -> 500).
 - robustness values: "None" | "Low" | "Medium" | "High". operationType: "VLOS" | "EVLOS" | "BVLOS". soraType: "generic" | "specific".
+- Robustness mapping: L/Lav -> "Low", M/Middels -> "Medium", H/Høy -> "High", NR / Not required / No requirement / N/A / Ingen krav -> "None". Applies to OSO, TMPR, containment and mitigations. Use null only when no value is given.
 - ARC as "ARC-a".."ARC-d". SAIL as roman numeral "I".."VI". Reductions as negative integers (e.g. -1).
 - pages maps dotted field paths (e.g. "envelope.maxHeightM", "aircraft.0.mtomKg", "ground.mitigations.m1a.robustness", "sail") to the page number in [page N] markers where the value was found.
 Profile schema:
