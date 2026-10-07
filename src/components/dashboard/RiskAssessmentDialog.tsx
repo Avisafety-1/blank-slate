@@ -1,4 +1,4 @@
-import { SoraProfileBadge } from "@/components/sora/SoraProfileBadge";
+import { SoraProfileBadge, soraStatusClass } from "@/components/sora/SoraProfileBadge";
 import { deriveSoraProfileStatus, type SoraProfileStatus } from "@/hooks/useSoraProfile";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
