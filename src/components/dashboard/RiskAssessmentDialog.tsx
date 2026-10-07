@@ -152,8 +152,17 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       if (cancelled) return;
       const typeDocumentId = missionTypes.find((type) => type.label.toLowerCase() === missionRow?.oppdragstype?.toLowerCase())?.sora_document_id;
       const linkedDocumentId = missionRow?.sora_document_id || typeDocumentId;
-      // Only documents explicitly marked as SORA on a mission type are selectable.
+      // All documents with a SORA profile in the company are selectable, plus any
+      // document marked as SORA on a mission type (may predate the profile feature).
       const markedIds = [...new Set(missionTypes.map((type) => type.sora_document_id).filter(Boolean))] as string[];
+      if (companyId) {
+        const { data: profiles } = await supabase.from("sora_document_profiles" as any)
+          .select("document_id").eq("company_id", companyId);
+        if (cancelled) return;
+        for (const row of (profiles as any[]) || []) {
+          if (row?.document_id && !markedIds.includes(row.document_id)) markedIds.push(row.document_id);
+        }
+      }
       const available: { id: string; tittel: string }[] = [];
       if (markedIds.length > 0) {
         const { data: docs } = await supabase.from("documents")
@@ -178,7 +187,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
       }
     })();
     return () => { cancelled = true; };
-  }, [open, currentMissionId, missionTypes, missionTypesLoading, t]);
+  }, [open, currentMissionId, missionTypes, missionTypesLoading, companyId, t]);
 
   const chooseSoraDocument = async (value: string) => {
     if (!currentMissionId) return;
