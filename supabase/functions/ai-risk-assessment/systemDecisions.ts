@@ -58,8 +58,8 @@ export const buildAlosRouteWarning = (
     return lang === 'en' ? r.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : r.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
   };
   return lang === 'en'
-    ? `The route reaches ${fmt(maxRouteDistanceM)} m from the start point, beyond ALOS ${fmt(alosMaxM)} m. Plan the pilot position or observers to maintain visual contact.`
-    : `Ruten går ${fmt(maxRouteDistanceM)} m fra startpunktet, over ALOS ${fmt(alosMaxM)} m. Planlegg pilotposisjon eller observatører slik at visuell kontakt opprettholdes.`;
+    ? `The planned area extends ${fmt(maxRouteDistanceM)} m from the first point, beyond ALOS ${fmt(alosMaxM)} m. Make sure visual contact is maintained (pilot position/observers).`
+    : `Det planlagte området strekker seg ${fmt(maxRouteDistanceM)} m fra første punkt, over ALOS ${fmt(alosMaxM)} m. Sørg for at visuell kontakt opprettholdes (pilotposisjon/observatører).`;
 };
 
 type HardStopInput = Parameters<typeof deriveHardStops>[0];
