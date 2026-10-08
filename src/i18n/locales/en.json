@@ -3337,7 +3337,8 @@
       "applied": "Applied reductions",
       "appliedItem": "{{label}} {{robustness}} {{reduction}} from SORA",
       "deviations": "Outside the SORA envelope (recommendation)",
-      "fromProfile": "from SORA profile"
+      "fromProfile": "from SORA profile",
+      "maxDistance": "Max distance from pilot: {{value}} m"
     },
     "soraProfileNotConfirmed": "The SORA profile is not confirmed – its values are not used in the calculation"
   },

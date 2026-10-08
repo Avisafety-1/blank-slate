@@ -3339,7 +3339,8 @@
       "applied": "Brukte reduksjoner",
       "appliedItem": "{{label}} {{robustness}} {{reduction}} fra SORA",
       "deviations": "Utenfor SORA-rammene (anbefaling)",
-      "fromProfile": "fra SORA-profil"
+      "fromProfile": "fra SORA-profil",
+      "maxDistance": "Maks avstand fra pilot: {{value}} m"
     },
     "soraProfileNotConfirmed": "SORA-profilen er ikke bekreftet – verdiene brukes ikke i beregningen"
   },

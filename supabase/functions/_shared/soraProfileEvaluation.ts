@@ -17,7 +17,6 @@ export type SoraDeviationCode =
   | 'DRONE_NOT_COVERED'
   | 'HEIGHT_EXCEEDED'
   | 'DENSITY_EXCEEDED'
-  | 'DISTANCE_EXCEEDED'
   | 'ARC_EXCEEDED'
   | 'FGRC_EXCEEDED'
   | 'SAIL_EXCEEDED'
@@ -70,6 +69,8 @@ export interface SoraProfileEvaluation {
   notes: string[];
   fgrc: number | null;
   sail: string | null;
+  /** SORA limit for distance from pilot (shown as a pre-flight reminder). */
+  maxDistanceFromPilotM?: number | null;
 }
 
 const BLOCKING: SoraDeviationCode[] = ['DRONE_NOT_COVERED', 'HEIGHT_EXCEEDED', 'DENSITY_EXCEEDED', 'OPERATION_TYPE_EXCEEDED'];
@@ -125,9 +126,15 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
   if (maxD === null || facts.densityPerKm2 === null) unchecked(en ? 'Population density' : 'Befolkningstetthet');
   else if (facts.densityPerKm2 >= maxD) add('DENSITY_EXCEEDED', `Befolkningstetthet ${facts.densityPerKm2}/km² er ikke under SORA-rammen < ${maxD}/km²`, `Population density ${facts.densityPerKm2}/km² is not below the SORA limit < ${maxD}/km²`, facts.densityPerKm2, maxD);
 
+  // Distance from pilot is checked during flight; the route is often a drawn area, so never a deviation.
   const maxDist = fin(env.maxDistanceFromPilotM);
-  if (maxDist === null || facts.maxRouteDistanceM === null) unchecked(en ? 'Distance from pilot (no route or no limit)' : 'Avstand fra pilot (ingen rute eller ingen grense)');
-  else if (facts.maxRouteDistanceM > maxDist) add('DISTANCE_EXCEEDED', `Ruten går ${Math.round(facts.maxRouteDistanceM)} m fra startpunktet, over SORA-rammen ${maxDist} m`, `The route reaches ${Math.round(facts.maxRouteDistanceM)} m from the start point, above the SORA limit ${maxDist} m`, Math.round(facts.maxRouteDistanceM), maxDist);
+  if (maxDist !== null) {
+    notes.push(en ? `The SORA allows max ${maxDist} m from the pilot. Check the distance during flight.` : `SORA-en tillater maks ${maxDist} m fra pilot. Kontroller avstanden under flyging.`);
+    if (facts.maxRouteDistanceM !== null && facts.maxRouteDistanceM > maxDist) {
+      const x = Math.round(facts.maxRouteDistanceM);
+      notes.push(en ? `The planned area extends ${x} m from the first point – position the pilot so the limit is kept.` : `Det planlagte området strekker seg ${x} m fra første punkt – plasser piloten slik at grensen holdes.`);
+    }
+  }
 
   const maxAdj = fin(profile.containment?.maxAdjacentDensity);
   if (maxAdj === null || facts.adjacentAvgDensity === null) unchecked(en ? 'Adjacent area density' : 'Tetthet i tilstøtende område');
@@ -208,6 +215,7 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
     notes,
     fgrc,
     sail: sailRes.sail,
+    maxDistanceFromPilotM: maxDist,
   };
 };
 

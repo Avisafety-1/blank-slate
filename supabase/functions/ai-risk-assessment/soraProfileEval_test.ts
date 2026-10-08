@@ -75,8 +75,19 @@ Deno.test('density 600 → DENSITY_EXCEEDED', () => {
 
 Deno.test('no route → note, not deviation', () => {
   const e = evaluateSoraProfile(profile(), facts({ maxRouteDistanceM: null }));
-  assert(!codes(e).includes('DISTANCE_EXCEEDED'));
-  assert(e.notes.some((n) => n.includes('Avstand fra pilot')));
+  assertEquals(e.deviations.length, 0);
+  assert(e.notes.some((n) => n.includes('tillater maks 1500 m fra pilot')));
+});
+
+Deno.test('route 5238 m over limit 5000 m → notes, no deviation, reductions kept', () => {
+  const p = profile(); p.envelope.maxDistanceFromPilotM = 5000;
+  const e = evaluateSoraProfile(p, facts({ maxRouteDistanceM: 5238 }));
+  assertEquals(e.deviations.length, 0);
+  assertEquals(e.state, 'within_envelope');
+  assertEquals(e.maxDistanceFromPilotM, 5000);
+  assert(e.notes.includes('SORA-en tillater maks 5000 m fra pilot. Kontroller avstanden under flyging.'));
+  assert(e.notes.includes('Det planlagte området strekker seg 5238 m fra første punkt – plasser piloten slik at grensen holdes.'));
+  assert(e.appliedMitigations.length > 0);
 });
 
 Deno.test('M4 drone (iGRC 4) inside envelope → fGRC 2, no FGRC_EXCEEDED', () => {
