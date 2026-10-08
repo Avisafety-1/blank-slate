@@ -13,6 +13,7 @@ export interface SoraProfileResult {
   appliedMitigations: { key: string; robustness: string; reduction: number; text: string }[];
   deviations: { code: string; text: string }[];
   notes: string[];
+  maxDistanceFromPilotM?: number | null;
 }
 
 export const SoraProfileResultSection = ({ data }: { data?: SoraProfileResult | null }) => {
@@ -32,6 +33,9 @@ export const SoraProfileResultSection = ({ data }: { data?: SoraProfileResult | 
           </Button>
         )}
       </div>
+      {data.used && typeof data.maxDistanceFromPilotM === "number" && (
+        <p className="text-xs font-medium">{t("riskAssessment.soraProfile.maxDistance", { value: data.maxDistanceFromPilotM })}</p>
+      )}
       {data.appliedMitigations.length > 0 && (
         <div>
           <p className="text-xs font-medium text-muted-foreground">{t("riskAssessment.soraProfile.applied")}</p>

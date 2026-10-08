@@ -70,7 +70,7 @@ export interface SoraProfileEvaluation {
   fgrc: number | null;
   sail: string | null;
   /** SORA limit for distance from pilot (shown as a pre-flight reminder). */
-  maxDistanceFromPilotM: number | null;
+  maxDistanceFromPilotM?: number | null;
 }
 
 const BLOCKING: SoraDeviationCode[] = ['DRONE_NOT_COVERED', 'HEIGHT_EXCEEDED', 'DENSITY_EXCEEDED', 'OPERATION_TYPE_EXCEEDED'];
