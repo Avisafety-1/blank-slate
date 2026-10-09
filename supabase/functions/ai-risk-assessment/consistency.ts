@@ -166,12 +166,12 @@ export const applyCompetencyDecision = (analysis: any, status: string | null | u
   const drop = (s: string) => LACKING_COMPETENCY_RE.test(s) || MISSING_FORMAL_MATCH_RE.test(s);
   const removed = stripSentences(analysis, drop, 'pilot_experience');
   const pe = analysis.categories?.pilot_experience;
-  if (pe && typeof pe === 'object' && (removed.pilot_experience ?? 0) > 0) {
+  if (pe && typeof pe === 'object' && pe.go_decision !== 'NO-GO' && (removed.pilot_experience ?? 0) > 0) {
     const concerns = Array.isArray(pe.concerns) ? pe.concerns.filter((x: unknown) => typeof x === 'string' && x.trim()) : [];
     const s = Number(pe.score);
     if (concerns.length === 0 && (!Number.isFinite(s) || s < PILOT_COMPETENCY_OK_MIN)) {
       pe.score = PILOT_COMPETENCY_OK_MIN;
-      if (pe.go_decision !== 'NO-GO') pe.go_decision = 'GO';
+      pe.go_decision = 'GO';
     }
   }
   return analysis;
