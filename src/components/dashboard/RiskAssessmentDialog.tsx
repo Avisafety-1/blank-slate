@@ -1239,7 +1239,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <Label>{t('riskAssessment.atypicalSegregated', 'Segregert/atypisk luftrom (NOTAM-området)')}</Label>
+                      <Label>{t('riskAssessment.atypicalSegregated', 'Segregert/atypisk luftrom')}</Label>
                       <Switch
                         checked={atypicalSegregated}
                         onCheckedChange={(v) => setAtypicalSegregated(v)}

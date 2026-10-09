@@ -3311,7 +3311,7 @@
       "airRiskReason": "NOTAM area marked as segregated/atypical airspace — initial ARC is set to ARC-a.",
       "airRiskNotApplied": "Enable the toggle above if the mission should be treated as segregated/atypical airspace."
     },
-    "atypicalSegregated": "Segregated/atypical airspace (NOTAM area)",
+    "atypicalSegregated": "Segregated/atypical airspace",
     "observersFromPersonnelM1c": "Taken from the mission's personnel ({{n}} observer(s)). Gives M1(C) credit.",
     "fromRoutePlanner": "Taken from the route planner",
     "differsFromRouteHeight": "Differs from the route planner ({{value}} m AGL)",
