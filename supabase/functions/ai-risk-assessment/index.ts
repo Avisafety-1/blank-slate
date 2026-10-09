@@ -2641,6 +2641,14 @@ serve(async (req) => {
       });
       soraProfileResult = resolved.result;
       profileApplied = (soraProfileResult?.appliedMitigations ?? []).filter((a) => resolved.profileReductions[a.key] !== undefined);
+      if (soraProfileResult?.used && soraProfileResult.arcOverride && deterministicAirFields) {
+        const prevArc = deterministicAirFields.residual_arc;
+        deterministicAirFields.residual_arc = 'ARC-a';
+        deterministicAirFields.arc_from_sora_profile = true;
+        deterministicAirFields.arc_reduction_justification = grEn
+          ? `Residual ARC-a from the confirmed SORA profile (system calculated ${prevArc}). The conditions for ARC-a must be followed in accordance with the granted approval.`
+          : `Residual ARC-a fra bekreftet SORA-profil (systemet beregnet ${prevArc}). Forutsetningene for ARC-a må følges iht. gitt godkjenning.`;
+      }
     } catch (e) {
       console.error('SORA profile evaluation failed, continuing without profile:', e);
       soraProfileResult = {
