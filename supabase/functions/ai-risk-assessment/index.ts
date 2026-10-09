@@ -11,7 +11,7 @@ import { buildSystemDecisions, resolveSoraProfile, SYSTEM_DECISIONS_INSTRUCTION,
 import { isProfileUsable, maxDistanceFromFirstPoint, type AppliedMitigation } from "../_shared/soraProfileEvaluation.ts";
 import { sanitizeSoraProfile } from "../_shared/soraProfile.ts";
 import { resolveContainment } from "./containment.ts";
-import { applyLinkedOnlyEquipment, applyOperationCategoryText, buildDecisionSentence, enforceConsistency, stripInternalAndOperationTypeText, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
+import { applyCompetencyDecision, applyLinkedOnlyEquipment, applyOperationCategoryText, buildCompetencyForAi, buildDecisionSentence, enforceConsistency, stripInternalAndOperationTypeText, stripOpenCategoryCompetency, withDecisionSentence } from "./consistency.ts";
 import { parseAiJson } from "./aiJson.ts";
 import { buildCompetencyReason, bvlosAssumptionNote, c0ManualNote, evaluateCompetency, isCompetencyJargon, scrubCompetencyText } from "./competency.ts";
 import { deriveIpPrecipitationObservation } from "./ipPrecipitation.ts";
@@ -2901,19 +2901,10 @@ serve(async (req) => {
         expiredCompetencies: competencyAssessment.expired
           .filter((e) => e.code)
           .map((e) => ({ name: `${e.code} (${e.name})`, expired: e.expired })),
-        competencyAssessment: {
-          status: competencyAssessment.status,
-          droneClass: competencyAssessment.droneClass,
-          nearUninvolvedPeople: competencyAssessment.nearPeople,
-          requiredLevel: competencyAssessment.requiredLabel,
-          pilotLevel: competencyAssessment.pilotLabel,
-          coveredBy: competencyAssessment.coveredBy,
-          operatorApproval: competencyAssessment.operatorApproval,
-          recognised: competencyAssessment.recognised,
-          notFormalCompetency: competencyAssessment.ignored,
-          unclassified: pilotInputs?.isVlos === false ? [] : competencyAssessment.unclassified,
-          undeterminedWhy: competencyAssessment.undeterminedWhy,
-        },
+        competencyAssessment: buildCompetencyForAi(competencyAssessment, {
+          specific: systemDecisions.operationCategory?.category === 'specific',
+          isVlos: pilotInputs?.isVlos !== false,
+        }),
       },
       assignedDrones: assignedDrones.map((d: any) => {
         const info = assignedDroneStatuses.get(d.id);
@@ -3687,6 +3678,7 @@ serve(async (req) => {
     // overall ≤ 4.9 with a hard stop.
     enforceConsistency(aiAnalysis, categoriesWithHardStops, aiAnalysis.hard_stop_triggered === true);
     if (systemDecisions.operationCategory?.category === 'specific') stripOpenCategoryCompetency(aiAnalysis);
+    applyCompetencyDecision(aiAnalysis, competencyAssessment.status);
     stripInternalAndOperationTypeText(aiAnalysis, flightInputs.isVlos === true);
     applyLinkedOnlyEquipment(aiAnalysis, {
       primaryDroneStatus: systemDecisions.equipment.primaryDroneStatus,

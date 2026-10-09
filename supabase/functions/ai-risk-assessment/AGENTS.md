@@ -13,3 +13,4 @@
 - Linked drone equipment/accessory notes are filtered by id via `linkedReasonsNotOnMission` (maintenanceStatus.ts): items also selected on the mission are judged only as mission equipment, never as "linked but not selected".
 - SORA profile operation type is checked by rank (VLOS < EVLOS < BVLOS) against `flightInputs.isVlos`; a mission above the profile's type gives OPERATION_TYPE_EXCEEDED, which blocks profile reductions and auto-approval like the other blocking deviations.
 - ALOS always uses the catalog body dimension (strictest); when iGRC uses a larger SORA-profile dimension, the ALOS text names both.
+- Competency text: the AI receives only status/coveredBy/operatorApproval/recognised for specific or BVLOS operations (`buildCompetencyForAi`), and `applyCompetencyDecision` (consistency.ts) strips 'missing/lower competency' sentences and keeps the pilot score ≥ 7.0 when status is ok/assumed, so the AI cannot contradict the system's competency decision.

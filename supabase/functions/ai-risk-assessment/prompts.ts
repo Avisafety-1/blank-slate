@@ -145,6 +145,7 @@ Dette er fastsatt av systemet. Gjengi verdiene, ikke beregn eller endre dem.
 - dataAvailability og airspace (5 km, kontrollert luftrom, Ninox, ATC-bekreftelse): fakta.
 - Observatør: ikke skriv at observatør mangler når mission.observers.effective >= 1. Luftromsobservatør gir ikke M1(C).
 - Kompetansesjekken (pilotStats.competencyAssessment) er avgjort av systemet — gjengi den.
+- Kompetansevurderingen er avgjort av systemet (pilotStats.competencyAssessment.status). Er status ok eller assumed, skal du ikke skrive at kompetansen mangler eller er lavere enn kravet. I spesifikk kategori skal du ikke nevne krav knyttet til C-klasser eller åpen kategori.
 - Høy piloterfaring kompenserer aldri for brudd.
 
 ### MANGLER DATAGRUNNLAG (OBLIGATORISK)
@@ -519,6 +520,7 @@ These are set by the system. Reproduce the values; do not calculate or change th
 - dataAvailability and airspace (5 km, controlled airspace, Ninox, ATC confirmation): facts.
 - Observer: do not state that an observer is missing when mission.observers.effective >= 1. An airspace observer does not give M1(C).
 - The competency check (pilotStats.competencyAssessment) is decided by the system — reproduce it.
+- The competency assessment is decided by the system (pilotStats.competencyAssessment.status). If the status is ok or assumed, do not write that competency is missing or below the requirement. In the specific category, do not mention requirements tied to C-classes or the open category.
 - High pilot experience never compensates for breaches.
 
 ### MISSING DATA BASIS (MANDATORY)
