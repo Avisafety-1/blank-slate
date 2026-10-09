@@ -79,19 +79,101 @@ const COMPETENCY_RE = /kompetanse|sertifikat|kompetansebevis|opplæring|eksamen|
 /** Never stripped: C2/C3 link (OSO#06), command-and-control, DJI Dock. */
 const NEVER_STRIP_RE = /C[23][\s-]*link|command and control|kommando og kontroll|Dock/i;
 
+const isOpenCompetencyText = (text: string): boolean =>
+  !NEVER_STRIP_RE.test(text) && COMPETENCY_RE.test(text) && OPEN_CATEGORY_COMPETENCY_RE.test(text);
+
+const splitS = (s: string): string[] => s.split(/(?<=[.!?])\s+/u).filter((x) => x.trim().length > 0);
+
+/** Removes sentences matching `drop` from summary and all category texts. Returns removed count per category. */
+const stripSentences = (analysis: any, drop: (s: string) => boolean, onlyCategory?: string): Record<string, number> => {
+  const removed: Record<string, number> = {};
+  const clean = (s: string, key: string): string => {
+    const parts = splitS(s);
+    const kept = parts.filter((x) => !drop(x));
+    removed[key] = (removed[key] ?? 0) + (parts.length - kept.length);
+    return kept.join(' ');
+  };
+  if (typeof analysis.summary === 'string') analysis.summary = clean(analysis.summary, 'summary');
+  const cats = analysis.categories;
+  if (cats && typeof cats === 'object') {
+    for (const key of Object.keys(cats)) {
+      if (onlyCategory && key !== onlyCategory) continue;
+      const cat = cats[key];
+      if (!cat || typeof cat !== 'object') continue;
+      for (const field of Object.keys(cat)) {
+        const v = cat[field];
+        if (typeof v === 'string' && !['go_decision'].includes(field)) cat[field] = clean(v, key);
+        else if (Array.isArray(v)) {
+          cat[field] = v.map((x: unknown) => typeof x === 'string' ? clean(x, key) : x)
+            .filter((x: unknown) => typeof x !== 'string' || x.trim().length > 0);
+        }
+      }
+    }
+  }
+  return removed;
+};
+
 /**
- * Specific category: drop recommendations that demand C-class/open-category
- * competency. A recommendation is removed only when it BOTH mentions
- * competency/certification AND an open-category/C-class marker, and does not
- * concern C2/C3 link, command-and-control or DJI Dock.
+ * Specific category: drop recommendations and sentences (summary + category texts) that
+ * demand C-class/open-category competency. Removed only when text BOTH mentions
+ * competency/certification AND an open-category/C-class marker, and does not concern
+ * C2/C3 link, command-and-control or DJI Dock.
  */
 export const stripOpenCategoryCompetency = (analysis: any): any => {
-  if (!analysis || !Array.isArray(analysis.recommendations)) return analysis;
-  analysis.recommendations = analysis.recommendations.filter((r: any) => {
-    const text = typeof r === 'string' ? r : `${r?.action ?? ''} ${r?.risk_addressed ?? ''}`;
-    if (NEVER_STRIP_RE.test(text)) return true;
-    return !(COMPETENCY_RE.test(text) && OPEN_CATEGORY_COMPETENCY_RE.test(text));
-  });
+  if (!analysis || typeof analysis !== 'object') return analysis;
+  if (Array.isArray(analysis.recommendations)) {
+    analysis.recommendations = analysis.recommendations.filter((r: any) => {
+      const text = typeof r === 'string' ? r : `${r?.action ?? ''} ${r?.risk_addressed ?? ''}`;
+      return !isOpenCompetencyText(text);
+    });
+  }
+  stripSentences(analysis, isOpenCompetencyText);
+  return analysis;
+};
+
+/** What the AI gets about competency: open-category requirement omitted for specific/BVLOS. */
+export const buildCompetencyForAi = (a: any, opts: { specific: boolean; isVlos: boolean }): Record<string, unknown> => {
+  if (opts.specific || !opts.isVlos) {
+    return { status: a.status, coveredBy: a.coveredBy, operatorApproval: a.operatorApproval, recognised: a.recognised };
+  }
+  return {
+    status: a.status,
+    droneClass: a.droneClass,
+    nearUninvolvedPeople: a.nearPeople,
+    requiredLevel: a.requiredLabel,
+    pilotLevel: a.pilotLabel,
+    coveredBy: a.coveredBy,
+    operatorApproval: a.operatorApproval,
+    recognised: a.recognised,
+    notFormalCompetency: a.ignored,
+    unclassified: a.unclassified,
+    undeterminedWhy: a.undeterminedWhy,
+  };
+};
+
+const LACKING_COMPETENCY_RE = /(kompetanse|sertifikat|droneførerbevis|competenc|certificat)[^.!?]{0,80}(lavere|mangler|manglende|ikke tilstrekkelig|under kravet|insufficient|missing|below)/i;
+const MISSING_FORMAL_MATCH_RE = /(manglende|missing)[^.!?]{0,40}(formell|formal)[^.!?]{0,40}(matching|samsvar)/i;
+export const PILOT_COMPETENCY_OK_MIN = 7.0;
+
+/**
+ * When the system decided competency is ok/assumed: remove sentences claiming missing or
+ * insufficient competency (summary + pilot_experience) and never let competency lower the
+ * pilot score (≥ 7.0 when competency was the only stated concern).
+ */
+export const applyCompetencyDecision = (analysis: any, status: string | null | undefined): any => {
+  if (!analysis || typeof analysis !== 'object') return analysis;
+  if (status !== 'ok' && status !== 'assumed') return analysis;
+  const drop = (s: string) => LACKING_COMPETENCY_RE.test(s) || MISSING_FORMAL_MATCH_RE.test(s);
+  const removed = stripSentences(analysis, drop, 'pilot_experience');
+  const pe = analysis.categories?.pilot_experience;
+  if (pe && typeof pe === 'object' && (removed.pilot_experience ?? 0) > 0) {
+    const concerns = Array.isArray(pe.concerns) ? pe.concerns.filter((x: unknown) => typeof x === 'string' && x.trim()) : [];
+    const s = Number(pe.score);
+    if (concerns.length === 0 && (!Number.isFinite(s) || s < PILOT_COMPETENCY_OK_MIN)) {
+      pe.score = PILOT_COMPETENCY_OK_MIN;
+      if (pe.go_decision !== 'NO-GO') pe.go_decision = 'GO';
+    }
+  }
   return analysis;
 };
 
