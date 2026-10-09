@@ -58,3 +58,11 @@ Deno.test('broken profile does not throw in resolveSoraProfile', async () => {
   const { result } = resolveSoraProfile(row, doc, { lang: 'no', drones: [], heightM: null, densityPerKm2: null, m1cEligible: false, equipmentIds: [], igrc: null, controlledMinimum: null, residualArc: null, declaredAec: null, maxRouteDistanceM: null, adjacentAvgDensity: null });
   if (!result) throw new Error('no result');
 });
+
+Deno.test('SORA-profil ARC-a overstyrer systemets ARC-c uten avvik', () => {
+  const p = sanitizeSoraProfile({ air: { residualArc: 'ARC-a' } });
+  const ev = evaluateSoraProfile(p, { lang: 'no', drones: [], heightM: null, densityPerKm2: null, m1cEligible: false, equipmentIds: [], igrc: 3, controlledMinimum: null, residualArc: 'ARC-c', declaredAec: null, maxRouteDistanceM: null, adjacentAvgDensity: null });
+  if (ev.arcOverride !== true) throw new Error('expected override');
+  if (ev.deviations.some((d) => d.code === 'ARC_EXCEEDED')) throw new Error('no ARC deviation expected');
+  if (!ev.notes.some((n) => n.includes('Forutsetningene for ARC-a må følges iht. gitt godkjenning'))) throw new Error('note missing');
+});

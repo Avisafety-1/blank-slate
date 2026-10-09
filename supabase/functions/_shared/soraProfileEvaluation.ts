@@ -69,6 +69,8 @@ export interface SoraProfileEvaluation {
   notes: string[];
   fgrc: number | null;
   sail: string | null;
+  /** True when a confirmed profile's ARC-a replaces the system's higher residual ARC. */
+  arcOverride?: boolean;
   /** SORA limit for distance from pilot (shown as a pre-flight reminder). */
   maxDistanceFromPilotM?: number | null;
 }
@@ -183,10 +185,17 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
     profile: profileReductions,
     autoM1c: facts.autoM1c ?? 0,
   });
-  const arc = arcLetter(facts.residualArc);
-  const sailRes = lookupSail(fgrc, arc);
-
+  const calcArc = arcLetter(facts.residualArc);
   const profArc = arcLetter(profile.air?.residualArc);
+  // ARC-a in the approved SORA overrides the system's air-risk calculation (credit given).
+  const arcOverride = profArc === 'a' && calcArc !== null && calcArc > 'a';
+  const arc = arcOverride ? 'a' : calcArc;
+  const sailRes = lookupSail(fgrc, arc);
+  if (profArc === 'a') {
+    notes.push(en
+      ? `The SORA profile gives ARC-a${arcOverride ? ` (system calculated ARC-${calcArc})` : ''}. The conditions for ARC-a must be followed in accordance with the granted approval.`
+      : `SORA-profilen gir ARC-a${arcOverride ? ` (systemet beregnet ARC-${calcArc})` : ''}. Forutsetningene for ARC-a må følges iht. gitt godkjenning.`);
+  }
   if (!arc || !profArc) unchecked('ARC');
   else if (arc > profArc) add('ARC_EXCEEDED', `Residual ARC-${arc} er over SORA-profilens ARC-${profArc}`, `Residual ARC-${arc} exceeds the SORA profile's ARC-${profArc}`, `ARC-${arc}`, `ARC-${profArc}`);
 
@@ -215,6 +224,7 @@ export const evaluateSoraProfile = (profile: SoraProfile, facts: SoraProfileFact
     notes,
     fgrc,
     sail: sailRes.sail,
+    arcOverride,
     maxDistanceFromPilotM: maxDist,
   };
 };
