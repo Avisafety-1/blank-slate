@@ -153,3 +153,24 @@ describe("missions without flight log", () => {
     expect(byPilot.get("m")?.id).toBe("l");
   });
 });
+
+import { requiresRiskAssessment } from "../src/components/admin/audit/lib/operationsAnalysis";
+import { operationsValidator } from "../src/components/admin/audit/validators/index";
+
+describe("missing risk assessment scope", () => {
+  test("only Fullført and Pågående missions", () => {
+    expect(requiresRiskAssessment("Fullført")).toBe(true);
+    expect(requiresRiskAssessment("Pågående")).toBe(true);
+    expect(requiresRiskAssessment("Avbrutt")).toBe(false);
+    expect(requiresRiskAssessment("Planlagt")).toBe(false);
+  });
+});
+
+describe("stale active flight reminder target", () => {
+  test("targets the flight, not the mission, so the pilot gets the reminder", () => {
+    const issue = staleActiveFlightIssue({ id: "f1", mission_id: "m1", start_time: hoursAgo(13) } as any, "Oppdrag", now)!;
+    const [f] = operationsValidator({ operations: [issue], requireSoraOnMissions: false } as any);
+    expect(f.entityType).toBe("active_flight");
+    expect(f.entityId).toBe("f1");
+  });
+});
