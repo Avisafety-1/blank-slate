@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Pågående
+- [ ] Lesbarhet: kontraststerk gul tekst, felles WarningNote og kontroll i lys/mørk modus; kun visuelle endringer
 - [x] SORA-profildialog: la veiledning og profilfelt dele rulleområde, med synlige knapper
 - [x] Menyer: fjern lave lagoverstyringer og gi dropdown/undermenyer intern touch-rulling innenfor ledig skjermplass; behold modalitet og valg
 - [x] Verneområder: ett kartlag med røde forbudssoner og oransje observasjonssoner fra dronesoner.no; synkroniser data og vis kilde/regler

@@ -66,6 +66,7 @@ export default {
 			status: {
 				green: 'hsl(var(--status-green))',
 				yellow: 'hsl(var(--status-yellow))',
+				'yellow-text': 'hsl(var(--status-yellow-text))',
 				red: 'hsl(var(--status-red))'
 			},
 			success: {

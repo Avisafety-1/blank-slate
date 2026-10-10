@@ -13,3 +13,4 @@ Norwegian protected-area map classification comes from dronesoner.no's prohibiti
 - The mitigation preview reuses `_shared/soraProfileEvaluation.ts` through a frontend re-export, so profile credits shown before assessment follow the same deterministic conditions as the edge function.
 - SORA profile dialog help and fields share the editor's single flex-child scroller; keep the header and action footer outside it so expanded help cannot hide the form or buttons.
 - Reminder quick actions are defined only in `supabase/functions/_shared/reminderActions.ts` (re-exported to the app) and executed only from `ReminderActionCard` after confirmation; e-mail buttons are plain app links, because e-mail scanners follow links and inbox, e-mail and deep links must offer the same actions.
+Never use text-status-yellow for text; use text-status-yellow-text, or WarningNote for warning sentences. status-yellow is only for icons, borders and tinted backgrounds.
