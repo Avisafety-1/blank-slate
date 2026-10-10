@@ -74,7 +74,11 @@ serve(async (req) => {
 
     if (!recipients?.length) return json({ error: "no_recipients" }, 404);
 
-    const validRecipients = recipients.filter((r) => r.company_id === sender.company_id);
+    // Recipients must be in a company the sender can see (own company + departments).
+    const { data: visibleIds, error: visErr } = await admin.rpc("get_user_visible_company_ids", { _user_id: sender.id });
+    if (visErr) console.error("[send-reminder] visible companies error", visErr);
+    const visible = new Set<string>(((visibleIds as string[] | null) ?? []).concat(sender.company_id ? [sender.company_id] : []));
+    const validRecipients = recipients.filter((r) => !!r.company_id && visible.has(r.company_id));
     if (!validRecipients.length) return json({ error: "recipients_outside_company" }, 403);
 
     const channels = {
@@ -93,7 +97,8 @@ serve(async (req) => {
       const { data: msg, error: insErr } = await admin
         .from("internal_messages")
         .insert({
-          company_id: sender.company_id,
+          // Stored on the recipient's company so the department sees the case.
+          company_id: r.company_id,
           sender_id: sender.id,
           recipient_id: r.id,
           subject: payload.subject,
@@ -115,9 +120,10 @@ serve(async (req) => {
         { message_id: msg.id, channel: "inbox", status: "sent" },
       ];
 
-      const deepLinkAbs = payload.deep_link
-        ? `${APP_URL}${payload.deep_link.startsWith("/") ? "" : "/"}${payload.deep_link}${payload.deep_link.includes("?") ? "&" : "?"}msg=${msg.id}`
-        : `${APP_URL}/?msg=${msg.id}`;
+      const deepLinkRel = payload.deep_link
+        ? `${payload.deep_link.startsWith("/") ? "" : "/"}${payload.deep_link}${payload.deep_link.includes("?") ? "&" : "?"}msg=${msg.id}`
+        : `/?msg=${msg.id}`;
+      const deepLinkAbs = `${APP_URL}${deepLinkRel}`;
 
       // 2. Email
       if (channels.email) {
@@ -172,7 +178,7 @@ serve(async (req) => {
             title: payload.subject,
             body: payload.body.slice(0, 180),
             tag: `internal-message-${msg.id}`,
-            url: `/?msg=${msg.id}`,
+            url: deepLinkRel,
             data: { type: "internal_message", message_id: msg.id },
           },
         });
