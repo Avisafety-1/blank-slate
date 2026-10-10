@@ -19,9 +19,11 @@ interface Props {
   finding: ScannerFinding | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Optional: recipients chosen by the caller (e.g. responsible for an audit finding) instead of the resolver. */
+  presetRecipients?: RecipientSuggestion[];
 }
 
-export const SendReminderDialog = ({ finding, open, onOpenChange }: Props) => {
+export const SendReminderDialog = ({ finding, open, onOpenChange, presetRecipients }: Props) => {
   const { t } = useTranslation();
   const { companyId } = useAuth();
   const send = useSendReminder();
@@ -44,8 +46,9 @@ export const SendReminderDialog = ({ finding, open, onOpenChange }: Props) => {
         t("audit.reminder.bodyTemplate", { title, detail: detail || t("audit.reminder.noDetail") }) as string,
       );
     }
-    resolveRecipients(finding, companyId).then(setRecipients);
-  }, [open, finding, companyId, t]);
+    if (presetRecipients) setRecipients(presetRecipients);
+    else resolveRecipients(finding, companyId).then(setRecipients);
+  }, [open, finding, companyId, t, presetRecipients]);
 
   const removeRecipient = (id: string) =>
     setRecipients((prev) => prev.filter((r) => r.id !== id));

@@ -1355,7 +1355,9 @@
       "childDocumentExpiry": "Documents expiring in departments",
       "childDocumentExpiryDesc": "Receive email when document deadlines in departments are approaching.",
       "childMaintenance": "Maintenance in departments",
-      "childMaintenanceDesc": "Receive email when resources in departments require maintenance or inspection."
+      "childMaintenanceDesc": "Receive email when resources in departments require maintenance or inspection.",
+      "auditTasks": "Email about audit tasks",
+      "auditTasksDesc": "When you become responsible for findings or actions, on verification and at deadlines in internal audits"
     },
     "pushNotifications": "Push notifications",
     "enablePush": "Enable push notifications",
@@ -8730,7 +8732,9 @@
         "unassessed": "Not assessed",
         "missingReason": "Deviation without justification",
         "openCritical": "Open Level 1 finding"
-      }
+      },
+      "sendReminder": "Send reminder",
+      "reminderSubject": "Audit item: {{description}}"
     },
     "package": {
       "header": "Inspection package",

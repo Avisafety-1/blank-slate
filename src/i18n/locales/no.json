@@ -1357,7 +1357,9 @@
       "childDocumentExpiry": "Dokumenter som utløper i avdelinger",
       "childDocumentExpiryDesc": "Motta e-post når dokumentfrister i avdelinger nærmer seg.",
       "childMaintenance": "Vedlikehold i avdelinger",
-      "childMaintenanceDesc": "Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon."
+      "childMaintenanceDesc": "Motta e-post når ressurser i avdelinger krever vedlikehold eller inspeksjon.",
+      "auditTasks": "E-post om revisjonsoppgaver",
+      "auditTasksDesc": "Når du får ansvar for funn eller tiltak, ved verifisering og ved frister i internrevisjon"
     },
     "pushNotifications": "Push-varsler",
     "enablePush": "Aktiver push-varsler",
@@ -8732,7 +8734,9 @@
         "unassessed": "Ikke vurdert",
         "missingReason": "Avvik uten begrunnelse",
         "openCritical": "Åpent Nivå 1-funn"
-      }
+      },
+      "sendReminder": "Send påminnelse",
+      "reminderSubject": "Revisjonspunkt: {{description}}"
     },
     "package": {
       "header": "Tilsynspakke",
