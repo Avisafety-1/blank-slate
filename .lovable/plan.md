@@ -15,8 +15,8 @@ Ingen databaseendringer eller nye tilganger. Eksisterende tilgangsregler og dial
 | `OpenActionsTooLong` | Åpne tiltaket | Åpner `AuditTaskDialog` på funnet som tiltaket tilhører. Ingen direkte endring. Skjules når tiltaket er lukket. |
 | `FindingAwaitingVerification` og øvrige `Audit*`-koder | Åpne revisjonsoppgave | Åpner `AuditTaskDialog`; ingen direkte endring. |
 | `FlownWithNoGo` | Rapporter hendelse, Skriv forklaring | Første åpner eksisterende hendelsesskjema forhåndsutfylt med oppdraget. Forklaring bruker eksisterende oppdragsmerknad og krever bekreftelse før lagring. Handlingene følger eksisterende hendelses-/oppdragstilgang. |
-| `MissingRiskAssessment` | Start risikovurdering / Åpne risikovurdering | Åpner oppdragets eksisterende risikovurderingsdialog. Teksten og startfanen bestemmes av om en vurdering allerede finnes. Skjules når mangelen er løst. |
-| `SoraEnvelopeExceeded` | Åpne risikovurdering | Åpner eksisterende vurderingshistorikk/resultat for oppdraget; ingen direkte endring. Skjules når avviket ikke lenger finnes i aktuell vurdering. |
+| `MissingRiskAssessment` | Ikke fløyet: Start risikovurdering. Fløyet/fullført: Registrer avvik, Skriv forklaring | Før flyging åpnes eksisterende risikovurderingsdialog. Etter flyging tilbys aldri en ny vurdering som kan se ut som den ble gjort på forhånd: Registrer avvik åpner eksisterende hendelsesskjema forhåndsutfylt med oppdraget og «Manglende risikovurdering før flyging»; forklaring bruker eksisterende oppdragsmerknad og krever bekreftelse. Skjules når mangelen er løst. |
+| `SoraEnvelopeExceeded` | Ikke fløyet: Åpne risikovurdering. Fløyet/fullført: Registrer avvik, Åpne risikovurdering | Før flyging åpnes eksisterende risikovurdering. Etter flyging åpner Registrer avvik hendelsesskjemaet forhåndsutfylt med oppdraget og «Fløyet utenfor SORA-rammene», mens risikovurderingen åpnes kun for lesing. Skjules når avviket ikke lenger finnes i aktuell vurdering. |
 | `ExpiredCompetence`, `CompetenceExpiringSoon` | Oppdater kompetanse… | Åpner personens eksisterende kompetansedialog med den aktuelle raden i redigering når brukeren kan redigere; ellers samme dialog i lesemodus. Skjules når gyldigheten ikke lenger er utløpt/snart utløpt. |
 | `ExpiredDocument`, `DocumentReviewOverdue` | Last opp ny versjon… | Åpner eksisterende dokumentredigering med dokumentet valgt; ny fil bruker dagens versjonsøkning. Skjules når dokumentet ikke lenger er utløpt/snart utløpt. **«Marker som gjennomgått» tas ikke med:** dokumentene har bare `gyldig_til` og varslingsdager, ikke et lagret gjennomgangsintervall som kan beregne korrekt ny dato uten databaseendring. |
 | `MissingEmergencyPlan` | Last opp beredskapsplan… | Åpner eksisterende dokumentopplasting forhåndsutfylt med tittel «Beredskapsplan» og en eksisterende dokumentkategori; ingen ny kategori eller datamodell. Skjules når validatorens eksisterende søk finner en beredskapsplan. |
@@ -42,9 +42,9 @@ For alle gyldige `finding_key`-entiteter vises i tillegg en kort, entitetsspesif
 ## 3. Felles handlingsregister
 
 - Utvid `_shared/reminderActions.ts` til én deklarativ definisjon per kode med `kind: 'open' | 'mutate'`, etiketter, dialogmål/deep-link og statskrav.
-- `availableActions` mottar fersk entitetsstatus og bruker eksisterende tilgangssignaler, slik at løste eller utilgjengelige handlinger skjules. Databasens eksisterende tilgangsregler er fortsatt siste kontroll ved alle skriverier.
+- `availableActions` mottar fersk entitetsstatus og bruker eksisterende tilgangssignaler, slik at løste eller utilgjengelige handlinger skjules. For `MissingRiskAssessment` og `SoraEnvelopeExceeded` beregnes også «fløyet/fullført»: status er `Fullført`, eller oppdragstidspunktet er passert og det finnes flylogg eller den aktive flygingen er avsluttet. Databasens eksisterende tilgangsregler er fortsatt siste kontroll ved alle skriverier.
 - `ReminderActionCard` utfører bare endrehandlinger etter bekreftelsesdialog og legger deretter svar i tråden som i dag. Åpnehandlinger åpner riktig eksisterende dialog direkte, uten bekreftelse.
-- E-post genereres fra samme register. Knappene er alltid vanlige app-lenker med melding, entitet og ønsket åpnehandling; e-post utfører aldri en handling. Appen kontrollerer aktuell tilstand og tilgang når lenken åpnes.
+- E-post genereres fra samme register, men lenkene inneholder bare nok informasjon til å åpne riktig melding og dialog i appen. De utfører aldri en handling automatisk, verken direkte, etter innlogging eller når URL-parametrene behandles. E-postskannere kan derfor følge alle lenkene uten sideeffekt. En endrehandling krever alltid et nytt, eksplisitt klikk og deretter bekreftelse i appen. Appen kontrollerer aktuell tilstand og tilgang når meldingen/dialogen åpnes.
 
 ## 4. Små tilpasninger i eksisterende dialoger
 
@@ -56,8 +56,9 @@ For alle gyldige `finding_key`-entiteter vises i tillegg en kort, entitetsspesif
 
 - Oppdater `AGENTS.md`: åpnehandlinger åpner eksisterende dialog/skjema uten bekreftelse eller dataskrivning; endrehandlinger krever bekreftelse og trådsvar; e-post inneholder bare lenker til samme handlinger.
 - Utvid enhetstestene med nøyaktig handlingsliste for hver kode over, relevante/løste tilstander og tilgangsfiltrering.
+- Test begge tilstander for `MissingRiskAssessment` og `SoraEnvelopeExceeded`: ikke fløyet kontra fløyet/fullført, inkludert fullført status og passert tidspunkt med flylogg/avsluttet aktiv flyging.
 - Test at alle endrehandlinger går gjennom bekreftelse, mens åpnehandlinger ikke gjør det.
-- Test at innboks og e-post bygges fra samme register og gir samme handlings-ID-er, og at e-postlenker aldri muterer data.
+- Test at innboks og e-post bygges fra samme register og gir samme tilgjengelige innganger, men at åpning av enhver e-postlenke og behandling av URL-parametrene aldri kaller en mutasjon. Endrehandlinger må fortsatt utløses med eget klikk og bekreftelse i appen.
 - Test parsing/samlepurringer, én åpneknapp per entitet, audit_action→finding-oppslag og manuell ferdigprompt.
 - Kjør prosjektets tester, `npx tsgo --noEmit -p tsconfig.app.json` og `git diff --check`.
 - Fordi `_shared/reminderActions.ts` endres, kjør `deno check --node-modules-dir=auto` på `supabase/functions/send-reminder/index.ts`. Søk importgrafen på nytt etter endringen og kjør samme kontroll på eventuelle andre berørte `index.ts`.
