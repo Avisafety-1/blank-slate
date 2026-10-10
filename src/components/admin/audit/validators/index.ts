@@ -1,4 +1,5 @@
 import { auditDeepLink } from "../utils/auditDeepLink";
+import { isAwaitingVerification } from "../lib/auditTemplates";
 import type {
   CompetencyRow,
   DocumentRow,
