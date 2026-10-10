@@ -338,6 +338,18 @@ All colors MUST be HSL.
   }
 }
 
+/* Existing dark-theme cards are light surfaces; yellow text needs its own
+   surface-aware token rather than changing those cards or icon colours. */
+.dark .bg-card,
+.dark .bg-card\/90 {
+  --status-yellow-text: 32 95% 20%;
+}
+
+.dark .bg-card .warning-note,
+.dark .bg-card\/90 .warning-note {
+  --foreground: 210 24% 16%;
+}
+
 /* Use this class on pages that should not scroll (e.g., map page) */
 .no-scroll {
   @apply overflow-hidden;

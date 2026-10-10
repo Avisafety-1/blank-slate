@@ -1500,13 +1500,13 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
 
             {hasIncompleteChecklists && (
-              <WarningNote >
+              <WarningNote>
                   {t('flight.checklistNotCompleted')}
                 </WarningNote>
             )}
 
             {hasUnavailableChecklists && (
-              <WarningNote >
+              <WarningNote>
                   {t('flight.checklistUnavailableHint')}
                 </WarningNote>
             )}
