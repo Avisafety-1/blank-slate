@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, ShieldAlert, ListChecks, CheckCircle2, Clock, AlertOctagon } from "lucide-react";
 import { KpiCard } from "../components/KpiCard";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { InfoTip } from "../components/InfoTip";
 import { useAuditSafety } from "../hooks/useAuditData";
 
 const SEV_TINT: Record<string, string> = {
@@ -57,7 +58,7 @@ export const SafetyTab = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t("audit.safety.bySeverity")}</CardTitle>
+            <CardTitle className="text-base flex items-center gap-1.5">{t("audit.safety.bySeverity")} <InfoTip k="audit.sectionHelp.bySeverity" /></CardTitle>
           </CardHeader>
           <CardContent>
             {data.bySeverity.length === 0 ? (
@@ -82,7 +83,7 @@ export const SafetyTab = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t("audit.safety.byCategory")}</CardTitle>
+            <CardTitle className="text-base flex items-center gap-1.5">{t("audit.safety.byCategory")} <InfoTip k="audit.sectionHelp.byCategory" /></CardTitle>
           </CardHeader>
           <CardContent>
             {data.byCategory.length === 0 ? (
@@ -104,7 +105,7 @@ export const SafetyTab = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="w-4 h-4" /> {t("audit.safety.trend")}
+            <Clock className="w-4 h-4" /> {t("audit.safety.trend")} <InfoTip k="audit.sectionHelp.trend" />
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -13,6 +13,7 @@ import { useAuditOperations } from "../hooks/useAuditData";
 import { auditDeepLink } from "../utils/auditDeepLink";
 import type { OperationsIssue } from "../types";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "../components/InfoTip";
 import { MissingFlightLogsSection } from "../components/MissingFlightLogsSection";
 
 const ISSUE_ORDER: OperationsIssue["code"][] = [
@@ -116,7 +117,7 @@ export const OperationsTab = () => {
         {/* SORA profile vs system */}
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-medium">{t("audit.operations.sora.title")}</div>
+            <div className="text-sm font-medium">{t("audit.operations.sora.title")} <InfoTip k="audit.sectionHelp.sora" /></div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <Stat label={t("audit.operations.sora.assessed")} value={data.sora.assessed} />
               <Stat label={t("audit.operations.sora.within")} value={data.sora.within} cls="text-status-green" />
@@ -139,7 +140,7 @@ export const OperationsTab = () => {
         {/* Risk level on flown missions */}
         <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="text-sm font-medium">{t("audit.operations.risk.title")}</div>
+            <div className="text-sm font-medium">{t("audit.operations.risk.title")} <InfoTip k="audit.sectionHelp.risk" /></div>
             <div className="grid grid-cols-4 gap-2 text-center">
               {data.risk.distribution.map((d) => (
                 <Stat key={d.key} label={t(`audit.operations.risk.${d.key}`)} value={d.value} color={riskColors[d.key]} />
@@ -168,6 +169,7 @@ export const OperationsTab = () => {
             <div className="text-sm font-medium flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-status-green" />
               {t("audit.operations.approvedNoGo.title")}
+              <InfoTip k="audit.sectionHelp.approvedNoGo" />
               <Badge variant="outline">{data.approvedNoGo.length}</Badge>
             </div>
             <ul className="divide-y divide-border">

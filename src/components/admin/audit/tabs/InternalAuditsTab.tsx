@@ -67,9 +67,28 @@ export const InternalAuditsTab = () => {
           <Plus className="w-4 h-4 mr-2" /> {t("audit.internal.new")}
         </Button>
       </div>
-      <Card>
+      <div className="md:hidden space-y-2">
+        {sorted.map((a) => {
+          const openFindings = a.findings.filter((f) => f.status !== "closed").length;
+          return (
+            <Card key={a.id} role="button" tabIndex={0} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(a.id)}>
+              <CardContent className="p-3 space-y-1.5">
+                <div className="flex items-start gap-2">
+                  <span className="flex-1 min-w-0 font-medium text-sm">{a.title}</span>
+                  <Badge variant="outline">{statusLabel[a.status]}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t("audit.internal.nextReview")}: {new Date(a.date).toLocaleDateString(i18n.language)} · {t("audit.internal.responsible")}: {a.responsible || "—"}
+                </div>
+                <div className="text-xs">{t("audit.internal.openFindings")}: <span className={openFindings > 0 ? "font-semibold text-status-yellow" : "text-muted-foreground"}>{openFindings}</span></div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      <Card className="hidden md:block">
         <CardContent className="p-0 overflow-x-auto">
-          <Table>
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>{t("audit.internal.title")}</TableHead>

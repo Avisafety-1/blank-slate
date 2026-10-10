@@ -8938,6 +8938,74 @@
           }
         }
       }
+    },
+    "sectionHelp": {
+      "sora": {
+        "what": "Oppdrag der SORA-vurderingen viser avvik fra rammene i SORA-profilen.",
+        "threshold": "Ethvert avvik telles.",
+        "why": "Avvik betyr at oppdraget ligger utenfor det godkjente.",
+        "fix": "Juster oppdraget eller oppdater SORA-dokumentet."
+      },
+      "risk": {
+        "what": "Fordeling av siste risikovurdering per oppdrag (GO / forsiktighet / NO-GO).",
+        "threshold": "Ingen terskel – oversikt.",
+        "why": "Viser risikonivået i driften over tid.",
+        "fix": "Følg opp oppdrag med NO-GO før flyging."
+      },
+      "approvedNoGo": {
+        "what": "Oppdrag fløyet med NO-GO der en leder godkjente etter vurderingen.",
+        "threshold": "Godkjenning på eller etter vurderingstidspunktet.",
+        "why": "Dokumenterer bevisste beslutninger for tilsyn.",
+        "fix": "Ingen handling – sjekk at kommentaren begrunner valget."
+      },
+      "missingLogs": {
+        "what": "Fullførte oppdrag uten flylogg mer enn 48 timer etter slutt.",
+        "threshold": "Over 48 timer.",
+        "why": "Uten flylogg mangler sporbarhet for flytid og hendelser.",
+        "fix": "Be piloten laste opp eller knytte flyloggen."
+      },
+      "bySeverity": {
+        "what": "Hendelser fordelt på alvorlighetsgrad.",
+        "threshold": "Ingen terskel.",
+        "why": "Viser hvor alvorlige hendelsene er.",
+        "fix": "Prioriter høy og kritisk."
+      },
+      "byCategory": {
+        "what": "Hendelser fordelt på kategori.",
+        "threshold": "Ingen terskel.",
+        "why": "Avslører gjentakende årsaker.",
+        "fix": "Sett inn tiltak der det er flest."
+      },
+      "trend": {
+        "what": "Antall hendelser per måned.",
+        "threshold": "Ingen terskel.",
+        "why": "Viser om sikkerheten blir bedre eller verre.",
+        "fix": "Undersøk økninger."
+      },
+      "fleetRed": {
+        "what": "Droner som ikke er luftdyktige etter vedlikehold, inspeksjon eller avvik.",
+        "threshold": "Rød status.",
+        "why": "Rød drone skal ikke fly.",
+        "fix": "Utfør vedlikehold/inspeksjon eller lukk avviket."
+      },
+      "fleetYellow": {
+        "what": "Droner som snart forfaller til vedlikehold eller inspeksjon.",
+        "threshold": "Gul status.",
+        "why": "Gir tid til å planlegge før dronen blir rød.",
+        "fix": "Planlegg vedlikehold."
+      },
+      "competency": {
+        "what": "Kompetanse og sertifikater per person.",
+        "threshold": "Utløpt = kritisk, utløper innen 30 dager = advarsel.",
+        "why": "Piloter må ha gyldig kompetanse.",
+        "fix": "Forny eller registrer kompetansen."
+      },
+      "documentation": {
+        "what": "Dokumenter med revisjonsdato.",
+        "threshold": "Forfalt revisjon = avvik.",
+        "why": "Utdaterte dokumenter gir feil grunnlag.",
+        "fix": "Revider og oppdater dokumentet."
+      }
     }
   },
   "inbox": {
