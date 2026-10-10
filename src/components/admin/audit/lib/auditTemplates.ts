@@ -110,9 +110,9 @@ export function computeSectionStatus(results: ChecklistResult[]): SectionStatus 
   return "info";
 }
 
-/** A finding awaits verification only when work is done: in progress, ≥1 action, all actions closed. */
+/** A finding awaits verification only when work is done: open or in progress, ≥1 action, all actions closed. */
 export function isAwaitingVerification(status: string | null | undefined, actionStatuses: string[]): boolean {
-  return status === "in_progress" && actionStatuses.length > 0 && actionStatuses.every((s) => s === "closed");
+  return (status === "open" || status === "in_progress") && actionStatuses.length > 0 && actionStatuses.every((s) => s === "closed");
 }
 
 export type FindingSeverity = "critical" | "warning" | "info";

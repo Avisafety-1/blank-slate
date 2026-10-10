@@ -26,7 +26,10 @@ describe("auditTemplates", () => {
     expect(isAwaitingVerification("in_progress", [])).toBe(false);
     expect(isAwaitingVerification("in_progress", ["closed", "open"])).toBe(false);
     expect(isAwaitingVerification("in_progress", ["closed", "closed"])).toBe(true);
-    expect(isAwaitingVerification("open", ["closed"])).toBe(false);
+    expect(isAwaitingVerification("open", ["closed"])).toBe(true);
+    expect(isAwaitingVerification("open", [])).toBe(false);
+    expect(isAwaitingVerification("open", ["closed", "open"])).toBe(false);
+    expect(isAwaitingVerification("verified", ["closed"])).toBe(false);
   });
 });
 
@@ -47,8 +50,9 @@ describe("audit round A rules", () => {
     expect(findingDisplayStatus("in_progress", [])).toBe("in_progress");
     expect(findingDisplayStatus("in_progress", ["closed", "open"])).toBe("in_progress");
     expect(findingDisplayStatus("in_progress", ["closed", "closed"])).toBe("ready");
-    expect(findingDisplayStatus("closed", [])).toBe("verified");
+    expect(findingDisplayStatus("open", ["closed"])).toBe("ready");
     expect(findingDisplayStatus("open", [])).toBe("open");
+    expect(findingDisplayStatus("closed", [])).toBe("verified");
   });
   test("close blockers", () => {
     const b = closeBlockers(
