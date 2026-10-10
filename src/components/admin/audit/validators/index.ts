@@ -169,7 +169,7 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       titleParams: params,
       bodyParams: params,
       entityType: entityIsMission ? "mission" : "active_flight",
-      entityId: issue.missionId ?? issue.flightId ?? issue.id,
+      entityId: entityIsMission ? issue.missionId! : issue.flightId ?? issue.id,
       evidence: issue.details
         ? { deviations: issue.details, sail: issue.sail ?? null }
         : issue.code === "missionWithoutFlightLog"
