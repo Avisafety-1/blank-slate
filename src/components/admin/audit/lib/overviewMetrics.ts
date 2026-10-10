@@ -55,21 +55,26 @@ export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date =
       if (da !== db) return da - db;
       return (a.status === "in_progress" ? 0 : 1) - (b.status === "in_progress" ? 0 : 1);
     });
-  const hasUpcoming = new Set(upcoming.map((u) => u.unitId));
+  const hasUpcoming = internal.some((r) => r.status === "planned" || r.status === "in_progress");
   const yearAgo = addMonths(today, -12);
   const elevenAgo = addMonths(today, -11);
-  const coverage: CoverageWarning[] = [];
-  for (const u of units) {
-    if (hasUpcoming.has(u.id)) continue;
-    const last = internal
-      .filter((r) => r.audited_company_id === u.id && r.closed_at)
-      .map((r) => new Date(r.closed_at!))
-      .filter((d) => !isNaN(d.getTime()))
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-    if (!last || last < yearAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "danger" });
-    else if (last <= elevenAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "warning" });
+  const lastClosedReview = internal
+    .filter((r) => r.closed_at)
+    .map((r) => new Date(r.closed_at!))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const lastClosedReviewRow = lastClosedReview
+    ? internal.filter((r) => r.closed_at && new Date(r.closed_at).getTime() === lastClosedReview.getTime())[0]
+    : null;
+  const lastClosed: LastClosed | null = lastClosedReviewRow
+    ? { date: lastClosedReview, unitName: unitName.get(lastClosedReviewRow.audited_company_id) ?? "" }
+    : null;
+  let coverage: CoverageWarning | null = null;
+  if (!hasUpcoming) {
+    if (!lastClosedReview || lastClosedReview < yearAgo) coverage = { tone: "danger" };
+    else if (lastClosedReview <= elevenAgo) coverage = { tone: "warning" };
   }
-  return { upcoming, coverage };
+  return { upcoming, coverage, lastClosed };
 }
 
 export interface ShareResult { ok: number; total: number; pct: number | null; tone: MetricTone }
