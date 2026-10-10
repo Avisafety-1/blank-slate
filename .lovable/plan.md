@@ -23,7 +23,7 @@ Jeg viser full migrasjon og full test-SQL og stopper deretter.
 ## Steg 1 – Felles logikk `_shared/auditNotify.ts` (ren modul)
 - `getAuditReminderConfig(companyId)` gir `{ soonDays: 7, overdueAfterDays: 1 }`. All fristlogikk går gjennom denne.
 - `deadlineEvent(deadline, today, cfg)` bruker tidsvinduer:
-  - `deadline_soon` når 0 < (frist − i dag) ≤ soonDays.
+  - `deadline_soon` når 0 ≤ (frist − i dag) ≤ soonDays. Fristen i dag regnes som «snart», slik at testen for 0 dager har et entydig svar. Med «0 <» ville en frist i dag ikke gitt noe varsel før dagen etter.
   - `deadline_overdue` når (i dag − frist) ≥ overdueAfterDays.
   - Ellers gir den ingenting.
   
