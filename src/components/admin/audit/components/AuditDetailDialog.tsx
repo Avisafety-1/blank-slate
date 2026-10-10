@@ -38,8 +38,8 @@ const RESULTS: ChecklistResult[] = ["pass", "warn", "fail", "na"];
 const SEV_ORDER = { critical: 0, warning: 1, info: 2 } as const;
 
 /** Text field that saves on blur when the value changed. */
-const BlurText = ({ value, onSave, disabled, multiline, placeholder }: {
-  value: string | null; onSave: (v: string) => void; disabled?: boolean; multiline?: boolean; placeholder?: string;
+const BlurText = ({ value, onSave, disabled, multiline, placeholder, type }: {
+  value: string | null; onSave: (v: string) => void; disabled?: boolean; multiline?: boolean; placeholder?: string; type?: string;
 }) => {
   const [v, setV] = useState(value ?? "");
   useEffect(() => setV(value ?? ""), [value]);
@@ -48,7 +48,7 @@ const BlurText = ({ value, onSave, disabled, multiline, placeholder }: {
     onChange: (e: any) => setV(e.target.value),
     onBlur: () => { if (v !== (value ?? "")) onSave(v); },
   };
-  return multiline ? <Textarea rows={2} {...props} /> : <Input {...props} />;
+  return multiline ? <Textarea rows={2} {...props} /> : <Input type={type} {...props} />;
 };
 
 type Tab = "checklist" | "findings" | "summary";
@@ -81,7 +81,6 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
   const blockers = closeBlockers(allItems, findings);
   const overrideOnly = onlyCriticalBlocks(blockers);
   const sectionLabel = (key: string) => t(`audit.tpl.section.${key}`, { defaultValue: key });
-  const personName = (id: string | null) => persons.find((p) => p.id === id)?.full_name ?? "—";
 
   // Scroll to and briefly highlight a target after tab switch renders it.
   useEffect(() => {
@@ -154,7 +153,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
           onSave={(v) => run(m.updateAction.mutateAsync({ id: a.id, patch: { description: v } }))} />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {personPick(a.responsible_user_id, (v) => run(m.updateAction.mutateAsync({ id: a.id, patch: { responsible_user_id: v } })), !canEdit)}
-          <BlurText value={a.deadline} disabled={!canEdit}
+          <BlurText type="date" value={a.deadline} disabled={!canEdit}
             onSave={(v) => run(m.updateAction.mutateAsync({ id: a.id, patch: { deadline: v || null } }))} />
           <Select value={a.status} disabled={!canStatus}
             onValueChange={(v) => run(m.updateAction.mutateAsync({ id: a.id, patch: { status: v } }))}>
@@ -209,7 +208,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
             </SelectContent>
           </Select>
           {personPick(f.responsible_user_id, (v) => run(m.updateFinding.mutateAsync({ id: f.id, patch: { responsible_user_id: v } })), !canEdit || verified)}
-          <BlurText value={f.deadline} disabled={!canEdit || verified}
+          <BlurText type="date" value={f.deadline} disabled={!canEdit || verified}
             onSave={(v) => run(m.updateFinding.mutateAsync({ id: f.id, patch: { deadline: v || null } }))} />
           <Select value={statusValue} disabled={!canStatus && !(canEdit && verified)}
             onValueChange={(v) => run(m.updateFinding.mutateAsync({ id: f.id, patch: { status: v } }))}>
@@ -295,7 +294,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                 </div>
                 <div className="space-y-1">
                   <div className="text-xs text-muted-foreground">{t("audit.internal.date")}</div>
-                  <BlurText value={review.review_date} disabled={!editChecklist}
+                  <BlurText type="date" value={review.review_date} disabled={!editChecklist}
                     onSave={(v) => v && run(m.updateReview.mutateAsync({ id: review.id, patch: { review_date: v } }))} />
                 </div>
                 <div className="space-y-1">
@@ -457,7 +456,6 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                   </div>
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">{personName(review.responsible_user_id)}</p>
             </TabsContent>
           </div>
 
