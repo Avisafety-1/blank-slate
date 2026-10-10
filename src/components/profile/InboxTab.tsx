@@ -300,6 +300,7 @@ export const InboxTab = () => {
           </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+          <MyAuditTasksSection />
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : messages.length === 0 ? (
