@@ -1,6 +1,4 @@
 import { auditDeepLink } from "../utils/auditDeepLink";
-import { daysUntil } from "../utils/dates";
-import { UNPLANNED_THRESHOLD_PCT } from "../lib/operationsAnalysis";
 import type {
   CompetencyRow,
   DocumentRow,
@@ -24,7 +22,6 @@ export interface ValidatorContext {
   }[];
   findingsAwaitingVerification: { id: string; description: string }[];
   requireSoraOnMissions: boolean;
-  unplannedRecent?: { total: number; unplanned: number; pct: number } | null;
 }
 
 export type Validator = (ctx: ValidatorContext) => ScannerFinding[];
@@ -52,8 +49,9 @@ const competenceValidator: Validator = ({ competencies }) =>
           days: c.daysUntilExpiry ?? 0,
         },
         entityType: "competency",
-        entityId: c.profileId,
-        evidence: { validUntil: c.validUntil, daysUntilExpiry: c.daysUntilExpiry },
+        // Own competency id, so dismissing one finding does not hide others for the same person.
+        entityId: c.id,
+        evidence: { validUntil: c.validUntil, daysUntilExpiry: c.daysUntilExpiry, profileId: c.profileId },
         deepLink: auditDeepLink("profile", c.profileId),
       };
     });
@@ -105,32 +103,27 @@ const documentationValidator: Validator = ({ documents }) => {
 };
 
 // ---------- Fleet ----------
-const fleetValidator: Validator = ({ fleet }) => {
-  const findings: ScannerFinding[] = [];
-  for (const d of fleet) {
-    const isFail = d.service === "fail" || d.service === "expired";
-    const isWarn = d.service === "warn" || d.service === "expiring";
-    if (!isFail && !isWarn) continue;
-    findings.push({
-      code: isFail ? "ServiceExpired" : "ServiceDueSoon",
-      severity: isFail ? "critical" : "warning",
-      categoryKey: "fleet",
-      titleKey: isFail
-        ? "audit.scanner.serviceExpired.title"
-        : "audit.scanner.serviceDueSoon.title",
-      bodyKey: isFail
-        ? "audit.scanner.serviceExpired.body"
-        : "audit.scanner.serviceDueSoon.body",
-      titleParams: { drone: d.droneName },
-      bodyParams: { drone: d.droneName, days: daysUntil(d.nextInspection) ?? 0 },
-      entityType: "drone",
-      entityId: d.id,
-      evidence: { nextInspection: d.nextInspection },
-      deepLink: auditDeepLink("drone", d.id),
+const fleetValidator: Validator = ({ fleet }) =>
+  fleet
+    .filter((d) => d.status === "Rød" || d.status === "Gul")
+    .map((d) => {
+      const red = d.status === "Rød";
+      const reasons = d.reasons.map((r) => r.text).join("; ");
+      const params = { drone: d.droneName, reasons: reasons || "—", department: d.departmentName ?? "" };
+      return {
+        code: red ? "DroneStatusRed" : "DroneStatusYellow",
+        severity: (red ? "critical" : "warning") as ScannerFinding["severity"],
+        categoryKey: "fleet" as const,
+        titleKey: red ? "audit.scanner.droneStatusRed.title" : "audit.scanner.droneStatusYellow.title",
+        bodyKey: red ? "audit.scanner.droneStatusRed.body" : "audit.scanner.droneStatusYellow.body",
+        titleParams: params,
+        bodyParams: params,
+        entityType: "drone",
+        entityId: d.id,
+        evidence: { reasons: d.reasons, technicalResponsibleId: d.technicalResponsibleId, companyId: d.companyId },
+        deepLink: auditDeepLink("drone", d.id),
+      };
     });
-  }
-  return findings;
-};
 
 // ---------- Operations ----------
 const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
@@ -142,7 +135,7 @@ const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
   missingRiskAssessment: "MissingRiskAssessment",
 };
 
-const operationsValidator: Validator = ({ operations, requireSoraOnMissions, unplannedRecent }) => {
+const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
   const findings: ScannerFinding[] = [];
   for (const issue of operations) {
     if (issue.code === "missingRiskAssessment" && !requireSoraOnMissions) continue;
@@ -153,14 +146,19 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions, unp
       hours: issue.hours ?? 0,
       sail: issue.sail ?? "—",
       deviations: (issue.details ?? []).join("; "),
+      approvedBy: issue.approvedBefore?.by ?? "—",
+      approvedAt: issue.approvedBefore?.at ? issue.approvedBefore.at.slice(0, 10) : "",
     };
+    const bodyKey = issue.code === "flownWithNoGo" && issue.approvedBefore
+      ? "audit.scanner.flownWithNoGo.bodyApprovedBefore"
+      : `audit.scanner.${issue.code}.body`;
     const entityIsMission = !!issue.missionId;
     findings.push({
       code: OPS_FINDING_CODE[issue.code],
       severity: issue.severity ?? "warning",
       categoryKey: "operations",
       titleKey: `audit.scanner.${issue.code}.title`,
-      bodyKey: `audit.scanner.${issue.code}.body`,
+      bodyKey,
       titleParams: params,
       bodyParams: params,
       entityType: entityIsMission ? "mission" : "active_flight",
@@ -169,28 +167,27 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions, unp
       deepLink: entityIsMission ? auditDeepLink("mission", issue.missionId!) : auditDeepLink("audit", ""),
     });
   }
-  if (unplannedRecent && unplannedRecent.total > 0 && unplannedRecent.pct > UNPLANNED_THRESHOLD_PCT) {
-    const p = { count: unplannedRecent.unplanned, total: unplannedRecent.total, pct: Math.round(unplannedRecent.pct) };
-    findings.push({
-      code: "UnplannedFlightsHigh",
-      severity: "warning",
-      categoryKey: "operations",
-      titleKey: "audit.scanner.unplannedFlightsHigh.title",
-      bodyKey: "audit.scanner.unplannedFlightsHigh.body",
-      titleParams: p,
-      bodyParams: p,
-      entityType: "flight",
-      entityId: "unplanned-90d",
-      evidence: p,
-      deepLink: { path: "/oppdrag?tab=logs&unplanned=1" },
-    });
-  }
   return findings;
 };
 
 // ---------- Safety ----------
-const safetyValidator: Validator = ({ overdueAuditActions, findingsAwaitingVerification }) => {
+const safetyValidator: Validator = ({ overdueAuditActions, findingsAwaitingVerification, safety }) => {
   const findings: ScannerFinding[] = [];
+  for (const i of safety?.incidentIssues ?? []) {
+    const params = { title: i.title, days: i.days };
+    findings.push({
+      code: i.code === "incidentOpenTooLong" ? "IncidentOpenTooLong" : "IncidentNoResponsible",
+      severity: i.severity,
+      categoryKey: "safety",
+      titleKey: `audit.scanner.${i.code}.title`,
+      bodyKey: `audit.scanner.${i.code}.body`,
+      titleParams: params,
+      bodyParams: params,
+      entityType: "incident",
+      entityId: i.incidentId,
+      deepLink: auditDeepLink("incident", i.incidentId),
+    });
+  }
   for (const a of overdueAuditActions) {
     findings.push({
       code: "OpenActionsTooLong",
