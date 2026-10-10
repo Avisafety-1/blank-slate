@@ -37,6 +37,8 @@ interface IncidentDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   incident: Incident | null;
   onEditRequest?: (incident: Incident) => void;
+  /** Rendered under the header, e.g. a reminder quick-action card. */
+  topSlot?: React.ReactNode;
 }
 
 const severityColors = {
