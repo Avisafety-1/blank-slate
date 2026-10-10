@@ -1,62 +1,58 @@
-# Internrevisjon runde B1: årsak, tiltaksplan og «Mine revisjonsoppgaver»
+# Internrevisjon runde B2: varsling og fristpåminnelser
 
-Ingen varsling, ingen endring i compliance-motoren eller purringer.
+Compliance-motoren, `send-reminder` og eksisterende purringer endres ikke.
 
-## Steg 0 – SQL (vises i chatten, kjøres først etter eget godkjenningssvar)
-
-Jeg skriver full migrasjon og full test-SQL i chatten og stopper.
+## Steg 0 – SQL (vises i chatten, kjøres først etter et eget godkjenningssvar)
+Jeg viser full migrasjon og full test-SQL og stopper deretter.
 
 **Migrasjon (idempotent)**
-- `audit_findings.root_cause text NULL` (`ADD COLUMN IF NOT EXISTS`).
-- `audit_findings_guard` (`CREATE OR REPLACE`, resten uendret):
-  - Låsen for ikke-admin får `root_cause` i unntakslisten, men bare når brukeren er `responsible_user_id` på funnet. Feilmelding: «Som ansvarlig kan du bare endre status og årsak på funnet».
-  - `root_cause` låst når `OLD.status = 'verified'` og status står fast: «Årsaken kan ikke endres etter verifisering. Gjenåpne funnet først».
-- Ny hjelper `is_audit_finding_responsible(_finding_id)` (SECURITY DEFINER, `search_path=public`, REVOKE fra PUBLIC/anon, GRANT kun authenticated fordi policyene bruker den).
-- `audit_actions`-policyer (DROP IF EXISTS + CREATE):
-  - INSERT: eieradmin ELLER funnansvarlig på funn som ikke er `verified`/`closed`.
-  - UPDATE: eieradmin ELLER tiltaksansvarlig ELLER funnansvarlig (samme i USING og WITH CHECK).
-  - DELETE: eieradmin ELLER (funnansvarlig OG `status='open'` OG `created_by = auth.uid()`).
-- `audit_actions_guard` utvides med én regel per rolle:
-  - Admin i eierselskapet: alt som før.
-  - INSERT som funnansvarlig: avvises hvis funnet er verifisert/lukket («Funnet er lukket – nye tiltak kan ikke legges til»).
-  - UPDATE som funnansvarlig: kan endre `description`, `responsible_user_id`, `deadline` (pluss status/kommentar hvis også tiltaksansvarlig) så lenge tiltaket ikke er `closed` («Lukkede tiltak kan ikke endres»).
-  - UPDATE som tiltaksansvarlig: bare status og kommentar (dagens melding).
-  - DELETE-sjekk speiles i en BEFORE DELETE-del med norsk melding.
-  - Samme jsonb-sammenligning (`to_jsonb(NEW) - ARRAY[...]`) som i dag.
+- `audit_notification_log`: id, finding_id (cascade), action_id (null, cascade), kind, recipient_id, sent_at. Unik indeks på (finding_id, coalesce(action_id, nil-uuid), kind, recipient_id). Tilgangsregler er slått på, uten policyer. GRANT gis bare til service_role.
+- `notification_preferences.email_audit_tasks boolean NOT NULL DEFAULT true` (`ADD COLUMN IF NOT EXISTS`).
+- `cron.unschedule` hvis jobben finnes, deretter `cron.schedule('audit-deadline-reminders', '0 5 * * *', …)`. Den bruker `net.http_post` til funksjons-URL-en med headeren `x-cron-secret`, og verdien hentes ved kjøring med `(SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'audit_cron_secret')`. Hemmeligheten står ikke i migrasjonen eller i repoet.
+- Ingen nye triggere eller funksjoner trengs. Hvis det likevel blir nødvendig, får feilmeldingene `AUDIT_*`-prefiks.
 
-**Test-SQL** (bare `navn = 'Moderavdeling'`, to admins + én bruker uten admin-rolle, ellers `RAISE EXCEPTION 'Testoppsett: …'`; slutter med `RAISE EXCEPTION 'TESTRESULTAT: %', out;`, ingen ytre handler):
-1. Ansvarlig bruker skriver `root_cause` på eget funn.
-2. Ansvarlig oppretter tiltak på eget funn.
-3. Ansvarlig avvises ved tiltak på andres funn.
-4. Ansvarlig avvises ved endring av severity og deadline på funnet.
-5. Tiltaksansvarlig lukker sitt tiltak, men avvises ved endring av frist.
-6. `root_cause` låst etter verifisering.
-7. Funnansvarlig sletter eget åpent tiltak; avvises på tiltak opprettet av admin.
+**Test-SQL** (bare `navn = 'Moderavdeling'`, ellers `RAISE EXCEPTION 'Testoppsett: …'`; slutter med `RAISE EXCEPTION 'TESTRESULTAT: %', out;` uten ytre handler):
+1. Samme logglinje to ganger avvises av den unike indeksen, både med og uten action_id.
+2. Ulik mottaker for samme funn og type godtas.
+3. En ny `notification_preferences`-rad får `email_audit_tasks = true`.
 
-## Steg 1 – Innboks: «Mine revisjonsoppgaver»
-- Øverst i innboksen, en sammenleggbar seksjon som bare vises når brukeren har åpne funn eller tiltak. Leses direkte fra funn og tiltak.
-- Rad: nivåmerke, Funn/Tiltak, kort beskrivelse, revisjonstittel, frist (rød når passert, gul innen 7 dager).
-- Sortering: forfalte først, så Nivå 1, så frist.
-- Tellingen på Innboks-merket i menyen = uleste tråder + åpne revisjonsoppgaver (egen query-nøkkel, invalideres etter alle revisjonsendringer).
+**Hemmeligheten:** Jeg lager den med `generate_secret` som `AUDIT_CRON_SECRET` til funksjonen. Verdien kan ikke vises etterpå, og den samme verdien må også ligge i Vault. Derfor ber jeg deg i stedet lage én tilfeldig verdi og legge den inn to steder:
+1. Under Project Settings → Secrets som `AUDIT_CRON_SECRET`.
+2. I Supabase SQL Editor: `select vault.create_secret('<verdi>', 'audit_cron_secret');`
 
-## Steg 2 – Ny oppgavedialog
-- Åpnes fra raden eller med `?auditFinding=<id>` hvor som helst i appen (global vert som fjerner parameteren ved lukking).
-- Viser revisjon, revidert enhet, punkt og referanse, beskrivelse, nivå, frist og status (skrivebeskyttet for ikke-admin).
-- Funnansvarlig: felt «Årsak (hvorfor oppsto avviket?)» og tiltaksliste (legg til med arvet frist, endre åpne, slette egne åpne).
-- Tiltaksansvarlig: status, kommentar og «Marker som utført».
-- Når alle tiltak er lukket: «Klar for verifisering – revisor kontrollerer og lukker funnet.»
-- Samme lagringsstatus og «vent på lagring før lukking» som revisjonsdialogen.
-- Lenker for funn og tiltak i revisjonsmodulen peker til denne dialogen (tiltak → funnet det tilhører).
-- Revisjonsdialogen for admin viser årsaken under funnet.
+## Steg 1 – Felles logikk `_shared/auditNotify.ts` (ren modul)
+- `getAuditReminderConfig(companyId)` gir `{ soonDays: 7, overdueAfterDays: 1 }`. All fristlogikk går gjennom denne.
+- `deadlineEvent(deadline, today, cfg)` gir `deadline_soon` når fristen er nøyaktig `today + soonDays`, `deadline_overdue` når fristen er nøyaktig `today - overdueAfterDays`, og ellers ingenting. Ett varsel per type, siden loggen hindrer dobbelvarsling.
+- `recipientsFor(event, state, actorId)` bruker databasetilstand: ansvarlige for funn og tiltak, revisjonens ansvarlige og administratorer i eierselskapet. Den som utførte handlingen, fjernes alltid fra mottakerne, og mottakerlisten er uten duplikater. Reglene a–e følger kravene dine (forfalt Nivå 1-funn varsler også revisjonens ansvarlige).
+- `buildAuditMessage(event, ctx, lang)` gir emne og brødtekst på nb/en med revisjonstittel, kort beskrivelse, nivå («Nivå 1 / Nivå 2 / Observasjon» / «Level 1 / Level 2 / Observation») og frist.
+- `auditFindingKey(kind, entity, id)` gir for eksempel `AuditDeadlineSoon:audit_action:<id>`. Lenken er `/?auditFinding=<finding_id>`, i samme format som `auditDeepLink`, som appen re-eksporterer.
+- I `reminderActions` får `Audit*`-kodene ingen hurtighandlinger, bare «Åpne». En test sjekker dette.
 
-## Steg 3 – Generelt
-- Dialog etter prosjektreglene: vh før dvh, én scroller med `[touch-action:pan-y]`, header/knapper utenfor, fungerer med tastatur på iOS/Android/DJI RC Pro.
-- Alle tekster i no.json og en.json.
+## Steg 2 – Felles levering `_shared/auditDeliver.ts`
+- For hver mottaker sjekkes først om varselet allerede er logget. Først når loggraden er satt inn (konflikt betyr «allerede sendt», og da hoppes mottakeren over), lages varselet: rader i `internal_messages` og `internal_message_recipients`, med samme felter som systemmeldingene fra `send-reminder`. `sender_id` er den som handlet, eller null ved cron. `company_id` er mottakerens selskap.
+- E-post sendes via `getEmailConfig` og `sendEmail` med selskapets avsender, men bare når `email_audit_tasks` ikke er false. Mangler raden, sendes e-post. Det sendes aldri SMS.
+- For tildeling inngår mottakeren i hva som regnes som samme varsel, slik at en ny ansvarlig alltid varsles én gang.
+
+## Steg 3 – Funksjonen `audit-notify`
+- JWT-validering, deretter lesing av funnet med brukerens tilgangsregler (403 hvis brukeren ikke får lest det). Etterpå leses tilstanden med service role.
+- Hendelsen må stemme med tilstanden: ansvarlig er satt ved tildeling, ≥1 tiltak og alle lukket ved «klar for verifisering», og status `verified` ved verifisering. Hvis ikke, svarer funksjonen `{ sent: 0, skipped: "state_mismatch" }`.
+- Zod-validering av input, CORS og try/catch per mottaker.
+
+## Steg 4 – Funksjonen `audit-deadline-reminders`
+- Uten riktig `x-cron-secret` (sammenlignet med `AUDIT_CRON_SECRET`) svarer den 401.
+- Den henter åpne tiltak og funn som ikke er verifisert, med frist i vinduet, og bruker selskapets konfig. Funksjonen tåler å kjøres flere ganger samme dag, og en feil per element logges uten at kjøringen stopper. Svaret er antall sendt per type.
+
+## Steg 5 – Appen
+- Ny `notifyAudit(event, ids)` kalles etter vellykket lagring i `useInternalAuditMutations` (funn eller tiltak med ansvarlig, endret ansvarlig, lukket tiltak og verifisert funn). Feil i varslingen ruller aldri tilbake lagringen, og det vises bare en diskret melding.
+- «Send påminnelse» (bare admin) på funn og tiltak i revisjonsvinduet åpner det eksisterende purrevinduet med ansvarlig forhåndsvalgt og lenke til funnet. Purrevinduet får en valgfri mulighet for forhåndsvalgte mottakere og lenke. Selve purrefunksjonen på serveren er uendret.
+- Ny bryter «E-post om revisjonsoppgaver» står sammen med de andre e-postbryterne i varslingsinnstillingene.
+- Alle tekster finnes i `no.json` og `en.json`.
+
+## Steg 6 – Tester og kontroll
+- `tests/auditNotify.test.ts`: mottakere per hendelse (den som handler varsles ikke, og administratorer i eierselskapet får «klar for verifisering»), tekst på nb og en, og tidsvinduene med standardkonfig.
+- Utvidet test for reminderActions (Audit*-koder gir bare «Åpne»), og `auditI18n` skal fortsatt bestå.
+- `deno check --node-modules-dir=auto` på `audit-notify`, `audit-deadline-reminders`, `send-reminder` og alle andre funksjoner som importerer endrede `_shared`-filer (`reminderActions.ts`). Resultatet rapporteres.
 
 ## Tekniske detaljer
-- Ny ren modul `audit/lib/auditTasks.ts`: `selectMyAuditTasks(findings, actions, userId)`, `sortAuditTasks`, `deadlineTone(deadline, today) → "overdue" | "soon" | "normal"`. Enhetstester i `tests/auditTasks.test.ts` (utvalg: ikke verifisert/lukket, både funn- og tiltaksansvar; sortering; fargegrenser ved 0 og 7 dager).
-- Hook `useMyAuditTasks` med nøkkel `["audit","myTasks",userId]`; `useInvalidate` i `useInternalAudits.ts` får med `"myTasks"`. `useUnreadMessagesCount` brukes uendret; summen gjøres der merket tegnes.
-- Mutasjoner for årsak/tiltak gjenbruker `useInternalAuditMutations` (`createAction` utvides med valgfri beskrivelse/ansvarlig/frist).
-- `AuditTaskHost` monteres én gang i app-skallet og leser `auditFinding` fra URL.
-- `auditDeepLink("audit_finding"|"audit_action")` → `?auditFinding=<findingId>`; validatoren sender funn-id for tiltak. `tests/auditDeepLink.test.ts` oppdateres.
-- `FindingRow` får `root_cause`. Regel om ansvarsfordeling legges i `src/components/admin/audit/AGENTS.md`.
+- Begge funksjonene har `verify_jwt = false` i config, og autentiseringen skjer i koden.
+- AGENTS.md (revisjon) får én regel: varsler beregnes på serveren fra tilstand via `_shared/auditNotify.ts`, og dupliseringen hindres av `audit_notification_log`.
