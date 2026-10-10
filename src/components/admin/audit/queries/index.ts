@@ -798,7 +798,7 @@ export async function fetchFindingsAwaitingVerification(userId: string, companyI
     .from("audit_findings")
     .select("id, description, status, audit_actions(status)")
     .in("company_id", ids)
-    .eq("status", "in_progress");
+    .in("status", ["open", "in_progress"]);
   if (error) throw error;
   return (data ?? [])
     .map((r: any) => ({
