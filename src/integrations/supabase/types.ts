@@ -699,8 +699,10 @@ export type Database = {
           created_at: string
           evidence_path: string | null
           id: string
+          item_key: string | null
           label: string
           order_index: number
+          reference: string | null
           result: string
           section_id: string
           updated_at: string
@@ -711,8 +713,10 @@ export type Database = {
           created_at?: string
           evidence_path?: string | null
           id?: string
+          item_key?: string | null
           label: string
           order_index?: number
+          reference?: string | null
           result?: string
           section_id: string
           updated_at?: string
@@ -723,8 +727,10 @@ export type Database = {
           created_at?: string
           evidence_path?: string | null
           id?: string
+          item_key?: string | null
           label?: string
           order_index?: number
+          reference?: string | null
           result?: string
           section_id?: string
           updated_at?: string
@@ -820,51 +826,67 @@ export type Database = {
       }
       audit_reviews: {
         Row: {
+          audited_company_id: string
           closed_at: string | null
           company_id: string
           created_at: string
           created_by: string | null
           id: string
           override_reason: string | null
+          reopen_reason: string | null
           responsible_user_id: string | null
           review_date: string
           review_type: string
           scope: Json
           status: string
+          template_key: string
           title: string
           updated_at: string
         }
         Insert: {
+          audited_company_id: string
           closed_at?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
           id?: string
           override_reason?: string | null
+          reopen_reason?: string | null
           responsible_user_id?: string | null
           review_date?: string
           review_type?: string
           scope?: Json
           status?: string
+          template_key?: string
           title: string
           updated_at?: string
         }
         Update: {
+          audited_company_id?: string
           closed_at?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
           override_reason?: string | null
+          reopen_reason?: string | null
           responsible_user_id?: string | null
           review_date?: string
           review_type?: string
           scope?: Json
           status?: string
+          template_key?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "audit_reviews_audited_company_id_fkey"
+            columns: ["audited_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audit_reviews_company_id_fkey"
             columns: ["company_id"]
@@ -8956,6 +8978,10 @@ export type Database = {
           source: string
         }[]
       }
+      audit_section_review_id: {
+        Args: { _section_id: string }
+        Returns: string
+      }
       bulk_upsert_airspace_zones: { Args: { p_features: Json }; Returns: Json }
       bulk_upsert_caa_zones: {
         Args: { p_features: Json; p_layer_id: string }
@@ -8996,6 +9022,11 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      can_view_audit_finding: {
+        Args: { _finding_id: string }
+        Returns: boolean
+      }
+      can_view_audit_review: { Args: { _review_id: string }; Returns: boolean }
       can_view_drone_video: {
         Args: { _drone_id: string; _user_id: string }
         Returns: boolean
@@ -9137,6 +9168,17 @@ export type Database = {
       cleanup_pending_dji_logs: {
         Args: { p_batch_size?: number; p_max_batches?: number }
         Returns: Json
+      }
+      create_internal_audit: {
+        Args: {
+          _audited_company_id: string
+          _responsible_user_id: string
+          _review_date: string
+          _sections: Json
+          _template_key: string
+          _title: string
+        }
+        Returns: string
       }
       deactivate_stale_airspace_zones: {
         Args: {
@@ -9682,6 +9724,15 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_audit_admin_role: { Args: never; Returns: boolean }
+      is_audit_finding_owner_admin: {
+        Args: { _finding_id: string }
+        Returns: boolean
+      }
+      is_audit_owner_admin: {
+        Args: { _company_id: string; _review_id: string }
         Returns: boolean
       }
       is_avisafe_superadmin: { Args: { _user_id: string }; Returns: boolean }
