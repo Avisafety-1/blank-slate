@@ -8245,6 +8245,34 @@
         "criticalCount_other": "{{count}} kritiske",
         "warningCount_one": "{{count}} advarsel",
         "warningCount_other": "{{count}} advarsler"
+      },
+      "metrics": {
+        "title": "Nøkkeltall",
+        "of": "av",
+        "nextAudit": {
+          "label": "Neste internrevisjon",
+          "none": "Ingen gjennomført",
+          "daysLeft_one": "{{count}} dag igjen · {{date}}",
+          "daysLeft_other": "{{count}} dager igjen · {{date}}",
+          "overdue_one": "Forfalt for {{count}} dag siden",
+          "overdue_other": "Forfalt for {{count}} dager siden",
+          "planned": "Planlagt {{date}}",
+          "what": "12 måneder etter siste lukkede internrevisjon for valgt enhet.",
+          "threshold": "Rød når forfalt eller ingen er gjennomført, gul innen 30 dager.",
+          "fix": "Klikk for å åpne Internrevisjon."
+        },
+        "airworthy": {
+          "label": "Luftdyktig flåte",
+          "what": "Andel aktive droner med grønn status, samme statuslogikk som Flåte-fanen.",
+          "threshold": "Rød under 80 %, gul under 100 %.",
+          "fix": "Klikk for å åpne Flåte."
+        },
+        "logCoverage": {
+          "label": "Flylogg-dekning",
+          "what": "Andel fullførte oppdrag siste 12 måneder (avsluttet for over 48 timer siden) som har minst én flylogg.",
+          "threshold": "Rød under 80 %, gul under 95 %.",
+          "fix": "Klikk for å åpne Drift."
+        }
       }
     },
     "kpi": {
