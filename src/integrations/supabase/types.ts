@@ -766,6 +766,7 @@ export type Database = {
           reference: string | null
           responsible_user_id: string | null
           review_id: string | null
+          root_cause: string | null
           self_verified: boolean
           severity: string
           source_scanner_code: string | null
@@ -787,6 +788,7 @@ export type Database = {
           reference?: string | null
           responsible_user_id?: string | null
           review_id?: string | null
+          root_cause?: string | null
           self_verified?: boolean
           severity?: string
           source_scanner_code?: string | null
@@ -808,6 +810,7 @@ export type Database = {
           reference?: string | null
           responsible_user_id?: string | null
           review_id?: string | null
+          root_cause?: string | null
           self_verified?: boolean
           severity?: string
           source_scanner_code?: string | null
@@ -9744,6 +9747,10 @@ export type Database = {
       }
       is_audit_admin_role: { Args: never; Returns: boolean }
       is_audit_finding_owner_admin: {
+        Args: { _finding_id: string }
+        Returns: boolean
+      }
+      is_audit_finding_responsible: {
         Args: { _finding_id: string }
         Returns: boolean
       }
