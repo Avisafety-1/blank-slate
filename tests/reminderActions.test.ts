@@ -36,7 +36,7 @@ describe("actions hidden once status has changed", () => {
   });
   test("incident with an owner offers nothing", () => {
     expect(availableActions("IncidentNoResponsible", { incidentResponsibleId: "u1" })).toEqual([]);
-    expect(availableActions("IncidentNoResponsible", { incidentResponsibleId: null })).toEqual(["takeResponsibility"]);
+    expect(availableActions("IncidentNoResponsible", { incidentResponsibleId: null, canWrite: true })).toEqual(["takeResponsibility", "selectResponsible"]);
   });
   test("open incident offers only currently relevant actions", () => {
     expect(availableActions("IncidentOpenTooLong", { incidentClosed: false, canWrite: true })).toEqual(["takeResponsibility", "addIncidentComment", "closeIncident"]);
@@ -51,6 +51,20 @@ describe("actions hidden once status has changed", () => {
   test("SORA deviation changes after flight", () => {
     expect(availableActions("SoraEnvelopeExceeded", { soraEnvelopeExceeded: true, missionTimePassed: false })).toEqual(["openRiskAssessment"]);
     expect(availableActions("SoraEnvelopeExceeded", { soraEnvelopeExceeded: true, missionStatus: "Fullført" })).toEqual(["reportIncident", "openRiskAssessment"]);
+  });
+  test("remaining finding codes have exact relevant and resolved actions", () => {
+    expect(availableActions("OpenActionsTooLong", { auditActionClosed: false })).toEqual(["openAuditTask"]);
+    expect(availableActions("OpenActionsTooLong", { auditActionClosed: true })).toEqual([]);
+    expect(availableActions("FindingAwaitingVerification", {})).toEqual(["openAuditTask"]);
+    expect(availableActions("FlownWithNoGo", { canWrite: true })).toEqual(["reportIncident", "writeMissionExplanation"]);
+    expect(availableActions("ExpiredCompetence", { competencyRelevant: true })).toEqual(["editCompetency"]);
+    expect(availableActions("ExpiredCompetence", { competencyRelevant: false })).toEqual([]);
+    expect(availableActions("CompetenceExpiringSoon", { competencyRelevant: true })).toEqual(["editCompetency"]);
+    expect(availableActions("ExpiredDocument", { documentRelevant: true })).toEqual(["uploadDocumentVersion"]);
+    expect(availableActions("DocumentReviewOverdue", { documentRelevant: false })).toEqual([]);
+    expect(availableActions("MissingEmergencyPlan", { emergencyPlanMissing: true })).toEqual(["uploadEmergencyPlan"]);
+    expect(availableActions("DroneStatusRed", { droneNeedsAttention: true })).toEqual(["openDroneMaintenance"]);
+    expect(availableActions("DroneStatusYellow", { droneNeedsAttention: false })).toEqual([]);
   });
   test("all mutating actions are classified", () => {
     expect(ACTION_KIND.takeResponsibility).toBe("mutate");
