@@ -97,10 +97,10 @@ async function loadEntity(k: ParsedFindingKey, ctx: Ctx): Promise<Loaded | null>
   }
   if (k.entityType === "document") {
     if (k.entityId === "emergency-plan") return { title: "—", allowed: true, state: { emergencyPlanMissing: true, canWrite: ctx.isAdmin } };
-    const { data } = await supabase.from("documents").select("id, tittel, gyldig_til, varsel_dager_for_utløp").eq("id", k.entityId).maybeSingle();
-    if (!data) return null;
-    const expiry = data.gyldig_til ? new Date(data.gyldig_til).getTime() : Number.POSITIVE_INFINITY;
-    return { title: data.tittel ?? "—", allowed: true, state: { documentRelevant: expiry <= Date.now() + (data.varsel_dager_for_utløp ?? 30) * 86_400_000, canWrite: ctx.isAdmin } };
+    const { data: documentData } = await supabase.from("documents").select("*").eq("id", k.entityId).maybeSingle();
+    if (!documentData) return null;
+    const expiry = documentData.gyldig_til ? new Date(documentData.gyldig_til).getTime() : Number.POSITIVE_INFINITY;
+    return { title: documentData.tittel ?? "—", allowed: true, state: { documentRelevant: expiry <= Date.now() + (documentData.varsel_dager_for_utløp ?? 30) * 86_400_000, canWrite: ctx.isAdmin } };
   }
   if (k.entityType === "drone") {
     const { data } = await supabase.from("drones").select("id, modell, status").eq("id", k.entityId).maybeSingle();
