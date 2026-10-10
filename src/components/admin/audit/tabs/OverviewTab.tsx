@@ -9,7 +9,9 @@ import { KpiCard } from "../components/KpiCard";
 import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
 import { InfoTip } from "../components/InfoTip";
 import { ActionList, type ActionItem } from "../components/ActionList";
-import { useAuditDepartments, useAuditOverview, useFollowUpSignals } from "../hooks/useAuditData";
+import { useAuditDepartments, useAuditFleet, useAuditOperations, useAuditOverview, useAuditReviews, useFollowUpSignals } from "../hooks/useAuditData";
+import { airworthyFleet, flightLogCoverage, formatShare, nextInternalAudit, type MetricTone } from "../lib/overviewMetrics";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAuditDepartment } from "../hooks/useAuditDepartment";
 import {
   buildFollowUp, followUpRate, matchesActionFilter, sortActionItems, type ActionFilter,
@@ -26,7 +28,7 @@ interface OverviewTabProps {
   onNavigate: (tab: AuditTabValue) => void;
 }
 
-export const OverviewTab = (_props: OverviewTabProps) => {
+export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
   const { t } = useTranslation();
   const { dept, setDept } = useAuditDepartment();
   const o = useAuditOverview(dept);
@@ -86,17 +88,42 @@ export const OverviewTab = (_props: OverviewTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* a) Requires action now */}
-      <ActionList
-        items={listed}
-        filter={filter}
-        onFilterChange={(f) => { setFilter(f); setPreset(null); }}
-        presetLabel={preset ? t(`audit.overview.kpi.${preset}.label`) : null}
-        onClearPreset={() => setPreset(null)}
-        showDepartment={!dept && departments.length > 1}
-      />
+      {/* a) Score and follow-up */}
+      <Card>
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                {t("audit.overview.scoreTitle")} <InfoTip k="audit.overview.scoreHelp" />
+              </div>
+              <ComplianceScoreRing score={score} label={t("audit.overview.scoreSub")} />
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setExplainOpen(true)}>
+                {t("audit.overview.howCalculated")}
+              </Button>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                {t("audit.overview.followUpTitle")} <InfoTip k="audit.overview.followUpHelp" />
+              </div>
+              <ComplianceScoreRing score={followRate} label={t("audit.overview.followUpSub")} />
+              <span className="text-xs text-muted-foreground text-center">
+                {t("audit.overview.followUpCount", {
+                  handled: followUpBase.filter((f) => (f.severity === "critical" || f.severity === "warning") && followState(f).handled).length,
+                  total: followUpBase.filter((f) => f.severity === "critical" || f.severity === "warning").length,
+                })}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-center text-muted-foreground border-t border-border pt-3">
+            {t(`audit.overview.interpret.${interpretation}`)}
+          </p>
+        </CardContent>
+      </Card>
 
-      {/* b) KPIs */}
+      {/* b) Key metrics */}
+      <KeyMetrics dept={dept} onNavigate={onNavigate} />
+
+      {/* c) KPIs (filter the list) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           icon={AlertOctagon}
@@ -136,39 +163,17 @@ export const OverviewTab = (_props: OverviewTabProps) => {
         />
       </div>
 
-      {/* c) Two measures */}
-      <Card>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-1.5 text-sm font-medium">
-                {t("audit.overview.scoreTitle")} <InfoTip k="audit.overview.scoreHelp" />
-              </div>
-              <ComplianceScoreRing score={score} label={t("audit.overview.scoreSub")} />
-              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setExplainOpen(true)}>
-                {t("audit.overview.howCalculated")}
-              </Button>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-1.5 text-sm font-medium">
-                {t("audit.overview.followUpTitle")} <InfoTip k="audit.overview.followUpHelp" />
-              </div>
-              <ComplianceScoreRing score={followRate} label={t("audit.overview.followUpSub")} />
-              <span className="text-xs text-muted-foreground text-center">
-                {t("audit.overview.followUpCount", {
-                  handled: followUpBase.filter((f) => (f.severity === "critical" || f.severity === "warning") && followState(f).handled).length,
-                  total: followUpBase.filter((f) => f.severity === "critical" || f.severity === "warning").length,
-                })}
-              </span>
-            </div>
-          </div>
-          <p className="text-sm text-center text-muted-foreground border-t border-border pt-3">
-            {t(`audit.overview.interpret.${interpretation}`)}
-          </p>
-        </CardContent>
-      </Card>
+      {/* d) Requires action now */}
+      <ActionList
+        items={listed}
+        filter={filter}
+        onFilterChange={(f) => { setFilter(f); setPreset(null); }}
+        presetLabel={preset ? t(`audit.overview.kpi.${preset}.label`) : null}
+        onClearPreset={() => setPreset(null)}
+        showDepartment={!dept && departments.length > 1}
+      />
 
-      {/* d) Departments */}
+      {/* e) Departments */}
       {!dept && departments.length > 1 && (
         <DepartmentTable
           rows={departments.map((d) => {
@@ -214,6 +219,62 @@ export const OverviewTab = (_props: OverviewTabProps) => {
     </div>
   );
 };
+
+const toneCls = (tone: MetricTone) =>
+  tone === "danger" ? "text-status-red" : tone === "warning" ? "text-status-yellow-text" : "text-foreground";
+
+/** Compact key-metrics row; follows the department picker, each value opens the relevant tab. */
+function KeyMetrics({ dept, onNavigate }: { dept: string | null | undefined; onNavigate: (tab: AuditTabValue) => void }) {
+  const { t, i18n } = useTranslation();
+  const { companyId } = useAuth();
+  const reviews = useAuditReviews();
+  const fleet = useAuditFleet();
+  const ops = useAuditOperations();
+  const unit = dept && dept !== "all" ? dept : companyId ?? null;
+  const fmt = (d: Date) => d.toLocaleDateString(i18n.language?.startsWith("en") ? "en-GB" : "nb-NO", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+  const next = nextInternalAudit((reviews.data ?? []) as any[], unit);
+  const air = airworthyFleet(fleet.data ?? []);
+  const base = ops.data?.logCoverageBase ?? {};
+  const eligible = dept && dept !== "all" ? base[dept] ?? 0 : Object.values(base).reduce((a, b) => a + b, 0);
+  const missing = (ops.data?.issues ?? []).filter((i) => i.code === "missionWithoutFlightLog").length;
+  const cov = flightLogCoverage(eligible, missing);
+  const of = t("audit.overview.metrics.of");
+
+  const nextValue = !next.due ? t("audit.overview.metrics.nextAudit.none")
+    : next.daysLeft! < 0 ? t("audit.overview.metrics.nextAudit.overdue", { count: -next.daysLeft! })
+      : t("audit.overview.metrics.nextAudit.daysLeft", { count: next.daysLeft!, date: fmt(next.due) });
+
+  const items: { key: string; tab: AuditTabValue; value: string; tone: MetricTone; sub?: string | null; loading: boolean }[] = [
+    { key: "nextAudit", tab: "internal", value: nextValue, tone: next.tone, loading: reviews.isLoading,
+      sub: next.planned ? t("audit.overview.metrics.nextAudit.planned", { date: fmt(next.planned) }) : null },
+    { key: "airworthy", tab: "fleet", value: formatShare(air, of), tone: air.tone, loading: fleet.isLoading },
+    { key: "logCoverage", tab: "operations", value: formatShare(cov, of), tone: cov.tone, loading: ops.isLoading },
+  ];
+
+  return (
+    <section className="space-y-2" aria-label={t("audit.overview.metrics.title")}>
+      <h3 className="text-sm font-semibold">{t("audit.overview.metrics.title")}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {items.map((m) => (
+          <div key={m.key} className="relative rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-6">
+              <span className="flex-1 min-w-0 truncate">{t(`audit.overview.metrics.${m.key}.label`)}</span>
+            </div>
+            <div className="absolute right-2 top-2"><InfoTip k={`audit.overview.metrics.${m.key}`} /></div>
+            {m.loading ? <Skeleton className="h-6 w-32 mt-1" /> : (
+              <button type="button" onClick={() => onNavigate(m.tab)}
+                className={cn("mt-1 block text-left text-lg font-semibold tabular-nums hover:underline", toneCls(m.tone))}>
+                {m.value}
+              </button>
+            )}
+            {m.sub && <div className="text-xs text-muted-foreground">{m.sub}</div>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function interpret(score: number | null, follow: number | null): "none" | "goodGood" | "lowHigh" | "highLow" | "lowLow" | "noFindings" {
   if (score == null) return "none";

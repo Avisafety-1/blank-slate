@@ -8243,6 +8243,34 @@
         "criticalCount_other": "{{count}} critical",
         "warningCount_one": "{{count}} warning",
         "warningCount_other": "{{count}} warnings"
+      },
+      "metrics": {
+        "title": "Key figures",
+        "of": "of",
+        "nextAudit": {
+          "label": "Next internal audit",
+          "none": "None completed",
+          "daysLeft_one": "{{count}} day left · {{date}}",
+          "daysLeft_other": "{{count}} days left · {{date}}",
+          "overdue_one": "Overdue by {{count}} day",
+          "overdue_other": "Overdue by {{count}} days",
+          "planned": "Planned {{date}}",
+          "what": "12 months after the latest closed internal audit for the selected unit.",
+          "threshold": "Red when overdue or none completed, yellow within 30 days.",
+          "fix": "Click to open Internal audit."
+        },
+        "airworthy": {
+          "label": "Airworthy fleet",
+          "what": "Share of active drones with green status, same status logic as the Fleet tab.",
+          "threshold": "Red below 80 %, yellow below 100 %.",
+          "fix": "Click to open Fleet."
+        },
+        "logCoverage": {
+          "label": "Flight log coverage",
+          "what": "Share of completed missions in the last 12 months (ended over 48 hours ago) with at least one flight log.",
+          "threshold": "Red below 80 %, yellow below 95 %.",
+          "fix": "Click to open Operations."
+        }
       }
     },
     "kpi": {

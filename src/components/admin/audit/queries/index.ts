@@ -581,9 +581,18 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     missionsByCompany[k] = (missionsByCompany[k] ?? 0) + 1;
   }
 
+  // Flight-log coverage base: same candidates as MissionWithoutFlightLog (Fullført, ended >48h, last 12 months).
+  const logCoverageBase: Record<string, number> = {};
+  for (const m of windowMissions as any[]) {
+    if (!missionWithoutFlightLogIssue(m, false, now)) continue;
+    const k = m.company_id ?? "";
+    logCoverageBase[k] = (logCoverageBase[k] ?? 0) + 1;
+  }
+
   return {
     issues,
     missionsByCompany,
+    logCoverageBase,
     total: missions.length,
     unplanned,
     approvedNoGo,
