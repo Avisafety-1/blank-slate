@@ -4,14 +4,14 @@ import { AlertOctagon, AlertTriangle, CalendarClock, Hourglass } from "lucide-re
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { KpiCard } from "../components/KpiCard";
 import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
 import { InfoTip } from "../components/InfoTip";
 import { ActionList, type ActionItem } from "../components/ActionList";
 import { useAuditDepartments, useAuditFleet, useAuditOperations, useAuditOverview, useAuditReviews, useFollowUpSignals } from "../hooks/useAuditData";
-import { airworthyFleet, flightLogCoverage, formatShare, nextInternalAudit, type MetricTone } from "../lib/overviewMetrics";
-import { useAuth } from "@/contexts/AuthContext";
+import { airworthyFleet, flightLogCoverage, formatShare, auditProgramme, type MetricTone } from "../lib/overviewMetrics";
 import { useAuditDepartment } from "../hooks/useAuditDepartment";
 import {
   buildFollowUp, followUpRate, matchesActionFilter, sortActionItems, type ActionFilter,
@@ -25,7 +25,7 @@ type Preset = "untreatedCritical" | "noResponse" | "warnings" | "overdue" | null
 const CATEGORIES: ComplianceCategoryKey[] = ["competence", "documentation", "fleet", "operations", "safety"];
 
 interface OverviewTabProps {
-  onNavigate: (tab: AuditTabValue) => void;
+  onNavigate: (tab: AuditTabValue, opts?: { auditId?: string }) => void;
 }
 
 export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
@@ -223,17 +223,11 @@ export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
 const toneCls = (tone: MetricTone) =>
   tone === "danger" ? "text-status-red" : tone === "warning" ? "text-status-yellow-text" : "text-foreground";
 
-/** Compact key-metrics row; follows the department picker, each value opens the relevant tab. */
-function KeyMetrics({ dept, onNavigate }: { dept: string | null | undefined; onNavigate: (tab: AuditTabValue) => void }) {
-  const { t, i18n } = useTranslation();
-  const { companyId } = useAuth();
-  const reviews = useAuditReviews();
+/** Key-metrics row; follows the department picker, each value opens the relevant tab. */
+function KeyMetrics({ dept, onNavigate }: { dept: string | null | undefined; onNavigate: (tab: AuditTabValue, opts?: { auditId?: string }) => void }) {
+  const { t } = useTranslation();
   const fleet = useAuditFleet();
   const ops = useAuditOperations();
-  const unit = dept && dept !== "all" ? dept : companyId ?? null;
-  const fmt = (d: Date) => d.toLocaleDateString(i18n.language?.startsWith("en") ? "en-GB" : "nb-NO", { day: "2-digit", month: "2-digit", year: "numeric" });
-
-  const next = nextInternalAudit((reviews.data ?? []) as any[], unit);
   const air = airworthyFleet(fleet.data ?? []);
   const base = ops.data?.logCoverageBase ?? {};
   const eligible = dept && dept !== "all" ? base[dept] ?? 0 : Object.values(base).reduce((a, b) => a + b, 0);
@@ -241,13 +235,7 @@ function KeyMetrics({ dept, onNavigate }: { dept: string | null | undefined; onN
   const cov = flightLogCoverage(eligible, missing);
   const of = t("audit.overview.metrics.of");
 
-  const nextValue = !next.due ? t("audit.overview.metrics.nextAudit.none")
-    : next.daysLeft! < 0 ? t("audit.overview.metrics.nextAudit.overdue", { count: -next.daysLeft! })
-      : t("audit.overview.metrics.nextAudit.daysLeft", { count: next.daysLeft!, date: fmt(next.due) });
-
-  const items: { key: string; tab: AuditTabValue; value: string; tone: MetricTone; sub?: string | null; loading: boolean }[] = [
-    { key: "nextAudit", tab: "internal", value: nextValue, tone: next.tone, loading: reviews.isLoading,
-      sub: next.planned ? t("audit.overview.metrics.nextAudit.planned", { date: fmt(next.planned) }) : null },
+  const items: { key: string; tab: AuditTabValue; value: string; tone: MetricTone; loading: boolean }[] = [
     { key: "airworthy", tab: "fleet", value: formatShare(air, of), tone: air.tone, loading: fleet.isLoading },
     { key: "logCoverage", tab: "operations", value: formatShare(cov, of), tone: cov.tone, loading: ops.isLoading },
   ];
@@ -256,23 +244,79 @@ function KeyMetrics({ dept, onNavigate }: { dept: string | null | undefined; onN
     <section className="space-y-2" aria-label={t("audit.overview.metrics.title")}>
       <h3 className="text-sm font-semibold">{t("audit.overview.metrics.title")}</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {items.map((m) => (
-          <div key={m.key} className="relative rounded-lg border border-border bg-card p-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pr-6">
-              <span className="flex-1 min-w-0 truncate">{t(`audit.overview.metrics.${m.key}.label`)}</span>
+        <AuditProgrammeCard dept={dept} onNavigate={onNavigate} />
+        <div className="grid grid-cols-1 gap-3 content-start">
+          {items.map((m) => (
+            <div key={m.key} className="relative rounded-lg border border-border bg-card p-3">
+              <div className="text-xs text-muted-foreground pr-6 truncate">{t(`audit.overview.metrics.${m.key}.label`)}</div>
+              <div className="absolute right-2 top-2"><InfoTip k={`audit.overview.metrics.${m.key}`} /></div>
+              {m.loading ? <Skeleton className="h-6 w-32 mt-1" /> : (
+                <button type="button" onClick={() => onNavigate(m.tab)}
+                  className={cn("mt-1 block text-left text-lg font-semibold tabular-nums hover:underline", toneCls(m.tone))}>
+                  {m.value}
+                </button>
+              )}
             </div>
-            <div className="absolute right-2 top-2"><InfoTip k={`audit.overview.metrics.${m.key}`} /></div>
-            {m.loading ? <Skeleton className="h-6 w-32 mt-1" /> : (
-              <button type="button" onClick={() => onNavigate(m.tab)}
-                className={cn("mt-1 block text-left text-lg font-semibold tabular-nums hover:underline", toneCls(m.tone))}>
-                {m.value}
-              </button>
-            )}
-            {m.sub && <div className="text-xs text-muted-foreground">{m.sub}</div>}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
+  );
+}
+
+const PROGRAMME_MAX = 5;
+
+function AuditProgrammeCard({ dept, onNavigate }: { dept: string | null | undefined; onNavigate: (tab: AuditTabValue, opts?: { auditId?: string }) => void }) {
+  const { t, i18n } = useTranslation();
+  const reviews = useAuditReviews();
+  const { data: departments = [], isLoading: deptLoading } = useAuditDepartments();
+  const units = dept && dept !== "all" ? departments.filter((d) => d.id === dept) : departments;
+  const prog = auditProgramme((reviews.data ?? []) as any[], units);
+  const fmt = (d: Date) => d.toLocaleDateString(i18n.language?.startsWith("en") ? "en-GB" : "nb-NO", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const total = prog.upcoming.length + prog.coverage.length;
+  const shownReviews = prog.upcoming.slice(0, PROGRAMME_MAX);
+  const shownCoverage = prog.coverage.slice(0, Math.max(0, PROGRAMME_MAX - shownReviews.length));
+
+  return (
+    <div className="relative rounded-lg border border-border bg-card p-3 md:col-span-2 space-y-2">
+      <div className="text-xs text-muted-foreground pr-6">{t("audit.overview.metrics.programme.label")}</div>
+      <div className="absolute right-2 top-2"><InfoTip k="audit.overview.metrics.programme" /></div>
+      {reviews.isLoading || deptLoading ? <Skeleton className="h-16 w-full" /> : total === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("audit.overview.metrics.programme.empty")}</p>
+      ) : (
+        <>
+          <ul className="divide-y divide-border">
+            {shownReviews.map((r) => (
+              <li key={r.id}>
+                <button type="button" onClick={() => onNavigate("internal", { auditId: r.id })}
+                  className="w-full flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5 text-left text-sm hover:bg-muted/50 rounded">
+                  <span className="font-medium min-w-0 truncate flex-1">{r.title}</span>
+                  <span className="text-xs text-muted-foreground">{r.unitName} · {t(`audit.tpl.template.${r.templateKey}`)} · {r.date ? fmt(r.date) : "—"}</span>
+                  <Badge variant="outline" className={cn("text-xs", r.overdue && "border-status-red text-status-red")}>
+                    {r.overdue ? t("audit.overview.metrics.programme.overdue")
+                      : r.status === "in_progress" ? t("audit.internal.statusInProgress") : t("audit.internal.statusPlanned")}
+                  </Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {shownCoverage.length > 0 && (
+            <ul className="space-y-0.5 text-sm">
+              {shownCoverage.map((c) => (
+                <li key={c.unitId} className={c.tone === "danger" ? "text-status-red" : "text-status-yellow-text"}>
+                  {t(c.tone === "danger" ? "audit.overview.metrics.programme.noAudit" : "audit.overview.metrics.programme.dueSoon", { unit: c.unitName })}
+                </li>
+              ))}
+            </ul>
+          )}
+          {total > PROGRAMME_MAX && (
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => onNavigate("internal")}>
+              {t("audit.overview.metrics.programme.showAll", { count: total })}
+            </Button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
