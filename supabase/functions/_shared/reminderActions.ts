@@ -118,3 +118,13 @@ export function emailActionLinks(findingKey: string | null | undefined, msgId: s
     actions: (REMINDER_ACTIONS[k.code] ?? []).map((a) => ({ action: a, label: EMAIL_LABELS[l][a], path: actionDeepLink(k, a, msgId) })),
   })).filter((r) => r.actions.length > 0);
 }
+
+/** Deep link without a message: infer the mission finding from its current status. */
+export function missionCodeForStatus(status: string | null | undefined): string | null {
+  if (status === PLANNED) return "MissionPlannedPastDue";
+  if (status === IN_PROGRESS) return "MissionInProgressStale";
+  if (status === COMPLETED) return "MissionWithoutFlightLog";
+  return null;
+}
+
+export const INCIDENT_CLOSED_STATUSES = ["Ferdigbehandlet", "Lukket"];

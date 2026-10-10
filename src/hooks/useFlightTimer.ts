@@ -17,6 +17,39 @@ const LEGACY_KEYS = ['active_flight_start_time', 'active_flight_mission_id', 'ac
 
 export type PublishMode = 'none' | 'advisory' | 'live_uav';
 
+
+/**
+ * Ends the flight record for a pilot: SafeSky advisory, local timer keys and the active_flights row.
+ * Shared by the flight timer and reminder quick actions so ending a flight has one implementation.
+ */
+export async function clearActiveFlight(opts: { profileId: string; missionId: string | null; publishMode: PublishMode | string | null }): Promise<void> {
+  const { profileId, missionId, publishMode } = opts;
+  if (publishMode === 'advisory' && missionId) {
+    try {
+      await supabase.functions.invoke('safesky-advisory', { body: { action: 'delete_advisory', missionId } });
+    } catch (err) {
+      console.error('Failed to end SafeSky advisory:', err);
+    }
+  }
+  localStorage.removeItem(getStorageKey(profileId));
+  localStorage.removeItem(getMissionKey(profileId));
+  localStorage.removeItem(getPublishModeKey(profileId));
+  localStorage.removeItem(getChecklistsKey(profileId));
+  if (navigator.onLine) {
+    const { error } = await supabase.from('active_flights').delete().eq('profile_id', profileId);
+    if (error) throw error;
+  } else {
+    addToQueue({
+      table: 'active_flights',
+      operation: 'delete',
+      matchColumn: 'profile_id',
+      matchValue: profileId,
+      data: {},
+      description: 'End flight (offline)',
+    });
+  }
+}
+
 interface FlightTimerState {
   isActive: boolean;
   startTime: Date | null;
@@ -531,36 +564,8 @@ export const useFlightTimer = () => {
     // Stop GPS watch if active
     stopGpsWatch();
 
-    // End SafeSky advisory if it was published
-    if (state.publishMode === 'advisory' && state.missionId) {
-      await endAdvisory(state.missionId);
-    }
-
-    // Clear user-specific localStorage
     if (user) {
-      localStorage.removeItem(getStorageKey(user.id));
-      localStorage.removeItem(getMissionKey(user.id));
-      localStorage.removeItem(getPublishModeKey(user.id));
-      localStorage.removeItem(getChecklistsKey(user.id));
-    }
-
-    // Clear database
-    if (user) {
-      if (navigator.onLine) {
-        await supabase
-          .from('active_flights')
-          .delete()
-          .eq('profile_id', user.id);
-      } else {
-        addToQueue({
-          table: 'active_flights',
-          operation: 'delete',
-          matchColumn: 'profile_id',
-          matchValue: user.id,
-          data: {},
-          description: 'End flight (offline)',
-        });
-      }
+      await clearActiveFlight({ profileId: user.id, missionId: state.missionId, publishMode: state.publishMode });
     }
 
     setState({
@@ -572,7 +577,7 @@ export const useFlightTimer = () => {
       completedChecklistIds: [],
       dronetagDeviceId: null,
     });
-  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, endAdvisory, stopGpsWatch]);
+  }, [state.isActive, state.startTime, state.publishMode, state.missionId, user, stopGpsWatch]);
 
   const formatElapsedTime = useCallback((seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
