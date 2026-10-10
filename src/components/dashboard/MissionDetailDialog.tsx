@@ -59,6 +59,8 @@ interface MissionDetailDialogProps {
   mission: Mission | null;
   onMissionUpdated?: () => void;
   onEditRoute?: (mission: any) => void;
+  /** Optional content rendered at the top of the card body (e.g. a follow-up prompt). */
+  topSlot?: React.ReactNode;
 }
 
 export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
@@ -229,6 +231,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           </DialogHeader>
         
         <div className="space-y-4">
+          {topSlot}
           <AirspaceConflictWarning
             missionId={currentMission.id}
             tidspunkt={currentMission.tidspunkt}
