@@ -37,7 +37,7 @@ export const NewInternalAuditDialog = ({ open, onOpenChange, persons, department
         audited_company_id: unit || companyId, sections: buildTemplatePayload(template, t),
       });
       onOpenChange(false);
-      onCreated(id);
+      onCreated(id as string);
     } catch (e: any) {
       toast.error(e?.message ?? t("audit.internal.saveError"));
     }
