@@ -164,6 +164,8 @@ type Step = 'method' | 'upload' | 'dji-login' | 'dji-logs' | 'result' | 'bulk-re
 interface UploadDroneLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Link uploaded/selected logs to this mission (preselected). */
+  defaultMissionId?: string;
 }
 
 // Antall DJI-logger som hentes i én batch (samme som nattsynken).
@@ -275,7 +277,7 @@ const isApiLimitError = (error: any): boolean => {
 
 // ── Component ──
 
-export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
+export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: UploadDroneLogDialogProps) => {
   const { t } = useTranslation();
   const { user, companyId, companyName } = useAuth();
   const { hasAddon } = usePlanGating();
@@ -1823,13 +1825,23 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
 
     console.log('[DroneLog] Searching missions between', rangeStart, 'and', rangeEnd);
 
-    const { data: missions } = await supabase
+    const { data: dayMissions } = await supabase
       .from('missions')
       .select('id, tittel, tidspunkt, status, lokasjon')
       .eq('company_id', companyId)
       .gte('tidspunkt', rangeStart)
       .lte('tidspunkt', rangeEnd)
       .order('tidspunkt', { ascending: true });
+    let missions = dayMissions ?? [];
+    // Opened from a specific mission: always offer it, even on another day.
+    if (defaultMissionId && !missions.some(m => m.id === defaultMissionId)) {
+      const { data: dm } = await supabase
+        .from('missions')
+        .select('id, tittel, tidspunkt, status, lokasjon')
+        .eq('id', defaultMissionId)
+        .maybeSingle();
+      if (dm) missions = [...missions, dm];
+    }
 
     if (missions && missions.length > 0) {
       // Second rule: when several missions match on date, prefer the one that has
@@ -1853,7 +1865,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialo
       console.log('[DroneLog] Found', sorted.length, 'matching missions;', droneMatchIds.length, 'match on drone');
       setMatchedMissions(sorted);
       setDroneMatchedMissionIds(droneMatchIds);
-      if (bestId) setSelectedMissionId(bestId);
+      if (defaultMissionId && sorted.some(m => m.id === defaultMissionId)) setSelectedMissionId(defaultMissionId);
+      else if (bestId) setSelectedMissionId(bestId);
 
       // Fetch all existing flight logs for matched missions so user can choose
       const missionIds = sorted.map(m => m.id);

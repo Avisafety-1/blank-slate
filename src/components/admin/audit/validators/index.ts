@@ -136,7 +136,7 @@ const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
   missionWithoutFlightLog: "MissionWithoutFlightLog",
 };
 
-const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
+export const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
   const findings: ScannerFinding[] = [];
   for (const issue of operations) {
     if (issue.code === "missingRiskAssessment" && !requireSoraOnMissions) continue;
@@ -158,7 +158,8 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       : issue.code === "missionWithoutFlightLog" && issue.possibleLog
         ? "audit.scanner.missionWithoutFlightLog.bodyPossibleLog"
         : `audit.scanner.${issue.code}.body`;
-    const entityIsMission = !!issue.missionId;
+    // Stale active flights target the flight itself so reminders reach its pilot.
+    const entityIsMission = !!issue.missionId && issue.code !== "activeFlightStale";
     findings.push({
       code: OPS_FINDING_CODE[issue.code],
       severity: issue.severity ?? "warning",
@@ -168,7 +169,7 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       titleParams: params,
       bodyParams: params,
       entityType: entityIsMission ? "mission" : "active_flight",
-      entityId: issue.missionId ?? issue.flightId ?? issue.id,
+      entityId: entityIsMission ? issue.missionId! : issue.flightId ?? issue.id,
       evidence: issue.details
         ? { deviations: issue.details, sail: issue.sail ?? null }
         : issue.code === "missionWithoutFlightLog"

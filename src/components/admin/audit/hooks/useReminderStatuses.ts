@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { splitFindingKeys } from "../lib/operationsAnalysis";
+import { fetchReminderRowsForUser } from "../queries";
 
 export type ReminderState = "not_sent" | "sent_open" | "sent_closed";
 
@@ -27,14 +28,7 @@ export function useReminderStatuses() {
     enabled: !!user?.id && !!companyId,
     staleTime: 15_000,
     queryFn: async (): Promise<Record<string, ReminderStatus>> => {
-      const { data, error } = await supabase
-        .from("internal_messages")
-        .select("finding_key,status,created_at")
-        .eq("company_id", companyId!)
-        .not("finding_key", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(2000);
-      if (error) throw error;
+      const data = await fetchReminderRowsForUser(user!.id, companyId!);
 
       const map: Record<string, ReminderStatus> = {};
       for (const row of data ?? []) {
@@ -58,13 +52,12 @@ export function useReminderStatuses() {
   // Realtime — pick up new reminders / done-marks company-wide.
   useEffect(() => {
     if (!companyId) return;
+    const refresh = () => qc.invalidateQueries({ queryKey: ["audit", "reminder-statuses", companyId] });
     const channel = supabase
       .channel(`reminder-status-${companyId}-${Math.random().toString(36).slice(2, 8)}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "internal_messages", filter: `company_id=eq.${companyId}` },
-        () => qc.invalidateQueries({ queryKey: ["audit", "reminder-statuses", companyId] }),
-      )
+      // No company filter: reminders stored on departments must refresh too (RLS scopes events).
+      .on("postgres_changes", { event: "*", schema: "public", table: "internal_messages" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "internal_message_recipients" }, refresh)
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
