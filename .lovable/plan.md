@@ -22,15 +22,24 @@ Jeg viser full migrasjon og full test-SQL og stopper deretter.
 
 ## Steg 1 – Felles logikk `_shared/auditNotify.ts` (ren modul)
 - `getAuditReminderConfig(companyId)` gir `{ soonDays: 7, overdueAfterDays: 1 }`. All fristlogikk går gjennom denne.
-- `deadlineEvent(deadline, today, cfg)` gir `deadline_soon` når fristen er nøyaktig `today + soonDays`, `deadline_overdue` når fristen er nøyaktig `today - overdueAfterDays`, og ellers ingenting. Ett varsel per type, siden loggen hindrer dobbelvarsling.
+- `deadlineEvent(deadline, today, cfg)` bruker tidsvinduer:
+  - `deadline_soon` når 0 < (frist − i dag) ≤ soonDays.
+  - `deadline_overdue` når (i dag − frist) ≥ overdueAfterDays.
+  - Ellers gir den ingenting.
+  
+  Loggen sikrer at hver type sendes bare én gang per element og mottaker. Dermed får også elementer med kortere frist enn soonDays en påminnelse, og ingen påminnelser går tapt hvis cron-jobben feiler en dag.
 - `recipientsFor(event, state, actorId)` bruker databasetilstand: ansvarlige for funn og tiltak, revisjonens ansvarlige og administratorer i eierselskapet. Den som utførte handlingen, fjernes alltid fra mottakerne, og mottakerlisten er uten duplikater. Reglene a–e følger kravene dine (forfalt Nivå 1-funn varsler også revisjonens ansvarlige).
+- `deadlineTargets(finding, actions, today, cfg)` hindrer doble fristpåminnelser:
+  - Fristpåminnelser for selve funnet sendes bare når funnet ikke har noen åpne tiltak (tiltaksplan mangler). Ellers sendes de bare per åpent tiltak.
+  - Unntak: Et forfalt Nivå 1-funn varsler alltid revisjonens ansvarlige én gang, uavhengig av tiltak.
 - `buildAuditMessage(event, ctx, lang)` gir emne og brødtekst på nb/en med revisjonstittel, kort beskrivelse, nivå («Nivå 1 / Nivå 2 / Observasjon» / «Level 1 / Level 2 / Observation») og frist.
 - `auditFindingKey(kind, entity, id)` gir for eksempel `AuditDeadlineSoon:audit_action:<id>`. Lenken er `/?auditFinding=<finding_id>`, i samme format som `auditDeepLink`, som appen re-eksporterer.
 - I `reminderActions` får `Audit*`-kodene ingen hurtighandlinger, bare «Åpne». En test sjekker dette.
 
 ## Steg 2 – Felles levering `_shared/auditDeliver.ts`
 - For hver mottaker sjekkes først om varselet allerede er logget. Først når loggraden er satt inn (konflikt betyr «allerede sendt», og da hoppes mottakeren over), lages varselet: rader i `internal_messages` og `internal_message_recipients`, med samme felter som systemmeldingene fra `send-reminder`. `sender_id` er den som handlet, eller null ved cron. `company_id` er mottakerens selskap.
-- E-post sendes via `getEmailConfig` og `sendEmail` med selskapets avsender, men bare når `email_audit_tasks` ikke er false. Mangler raden, sendes e-post. Det sendes aldri SMS.
+- Kan ikke innboksmeldingen opprettes etter at loggraden er satt inn, slettes loggraden igjen (og en eventuell halvferdig melding), slik at neste kjøring prøver på nytt.
+- E-post sendes via `getEmailConfig` og `sendEmail` med selskapets avsender, men bare når `email_audit_tasks` ikke er false. Mangler raden, sendes e-post. Det sendes aldri SMS. Feil i e-posten logges bare og fører ikke til ny sending, siden innboksen er hovedkanalen.
 - For tildeling inngår mottakeren i hva som regnes som samme varsel, slik at en ny ansvarlig alltid varsles én gang.
 
 ## Steg 3 – Funksjonen `audit-notify`
@@ -49,7 +58,11 @@ Jeg viser full migrasjon og full test-SQL og stopper deretter.
 - Alle tekster finnes i `no.json` og `en.json`.
 
 ## Steg 6 – Tester og kontroll
-- `tests/auditNotify.test.ts`: mottakere per hendelse (den som handler varsles ikke, og administratorer i eierselskapet får «klar for verifisering»), tekst på nb og en, og tidsvinduene med standardkonfig.
+- `tests/auditNotify.test.ts`:
+  - Mottakere per hendelse: Den som handler, varsles ikke, og administratorer i eierselskapet får «klar for verifisering».
+  - Tekst på nb og en.
+  - Tidsvinduer med standardkonfig: frist om 7, 3 og 0 dager gir «snart», frist i går og for 10 dager siden gir «forfalt», og frist om 8 dager gir ingenting.
+  - Funn og tiltak med samme frist og samme ansvarlige gir én påminnelse (for tiltaket), ikke to.
 - Utvidet test for reminderActions (Audit*-koder gir bare «Åpne»), og `auditI18n` skal fortsatt bestå.
 - `deno check --node-modules-dir=auto` på `audit-notify`, `audit-deadline-reminders`, `send-reminder` og alle andre funksjoner som importerer endrede `_shared`-filer (`reminderActions.ts`). Resultatet rapporteres.
 
