@@ -17,7 +17,9 @@ import { segmentsFromRouteData } from "@/lib/routeSegments";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
-import { NoFlightPromptCard } from "@/components/oppdrag/NoFlightPromptCard";
+import { ReminderActionCard } from "@/components/reminders/ReminderActionCard";
+import { normalizeActionParam, parseFindingKeys, type ParsedFindingKey, type ReminderActionId } from "@/components/reminders/reminderActions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
@@ -145,7 +147,8 @@ const Oppdrag = () => {
 
   const handledDeepLinkRef = useRef<string | null>(null);
   const [detailMission, setDetailMission] = useState<any | null>(null);
-  const [noFlightPrompt, setNoFlightPrompt] = useState<{ missionId: string; messageId: string | null } | null>(null);
+  const [reminderPrompt, setReminderPrompt] = useState<{ key: ParsedFindingKey; messageId: string | null; preselect: ReminderActionId | null } | null>(null);
+  const [flightPrompt, setFlightPrompt] = useState<{ key: ParsedFindingKey; messageId: string | null } | null>(null);
   const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
     const evaluationId = searchParams.get("evaluation");
@@ -155,14 +158,39 @@ const Oppdrag = () => {
       setSearchParams({}, { replace: true });
       return;
     }
-    // ?mission=<id> opens the read-only mission card; legacy ?id=...&action=noFlight does too.
+    // ?flight=<active_flight id>&action=endFlight → quick-action card for a stale flight.
+    const flightParam = searchParams.get("flight");
+    if (flightParam && handledDeepLinkRef.current !== flightParam) {
+      handledDeepLinkRef.current = flightParam;
+      setFlightPrompt({ key: { code: "ActiveFlightStale", entityType: "active_flight", entityId: flightParam }, messageId: searchParams.get("msg") });
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    // ?mission=<id> opens the read-only mission card; ?action=<quick action>&msg=<id> adds the reminder card
+    // (legacy ?id=...&action=noFlight too). The link never performs the action — the card asks for confirmation.
     const missionParam = searchParams.get("mission");
     const id = missionParam ?? searchParams.get("id");
     if (!id || handledDeepLinkRef.current === id) return;
     handledDeepLinkRef.current = id;
-    const isNoFlight = searchParams.get("action") === "noFlight";
-    const openDetail = !!missionParam || isNoFlight;
-    setNoFlightPrompt(isNoFlight ? { missionId: id, messageId: searchParams.get("msg") } : null);
+    const action = normalizeActionParam(searchParams.get("action"));
+    const openDetail = !!missionParam || !!action;
+    const msgId = searchParams.get("msg");
+    if (action) {
+      // Code "" = inferred from mission status (or from the message's finding_key below).
+      setReminderPrompt({
+        key: { code: action === "noFlight" ? "MissionWithoutFlightLog" : "", entityType: "mission", entityId: id },
+        messageId: msgId,
+        preselect: action === "noFlight" ? null : action,
+      });
+      if (msgId && action !== "noFlight") {
+        supabase.from("internal_messages").select("finding_key").eq("id", msgId).maybeSingle().then(({ data }) => {
+          const k = parseFindingKeys(data?.finding_key).find((x) => x.entityType === "mission" && x.entityId === id);
+          if (k) setReminderPrompt((p) => (p && p.key.entityId === id ? { ...p, key: k } : p));
+        });
+      }
+    } else {
+      setReminderPrompt(null);
+    }
     (async () => {
       const { data: missionData } = await supabase
         .from('missions')
@@ -624,18 +652,27 @@ const Oppdrag = () => {
           onOpenChange={(open) => {
             if (!open) {
               setDetailMission(null);
-              setNoFlightPrompt(null);
+              setReminderPrompt(null);
             }
           }}
           mission={detailMission}
           onMissionUpdated={() => data.fetchMissions()}
           topSlot={
-            noFlightPrompt && detailMission?.id === noFlightPrompt.missionId ? (
-              <NoFlightPromptCard
-                missionId={noFlightPrompt.missionId}
-                messageId={noFlightPrompt.messageId}
+            reminderPrompt && detailMission?.id === reminderPrompt.key.entityId ? (
+              <ReminderActionCard
+                key={`${reminderPrompt.key.code}:${reminderPrompt.key.entityId}`}
+                className="mx-4 sm:mx-6 mb-2"
+                findingKey={reminderPrompt.key}
+                messageId={reminderPrompt.messageId}
+                preselect={reminderPrompt.preselect}
+                onEditMission={(missionId) => {
+                  const m = detailMission;
+                  setReminderPrompt(null);
+                  setDetailMission(null);
+                  if (m && m.id === missionId) { setEditingMission(m); setEditDialogOpen(true); }
+                }}
                 onDone={() => {
-                  setNoFlightPrompt(null);
+                  setReminderPrompt(null);
                   setDetailMission(null);
                   data.fetchMissions();
                 }}
@@ -643,6 +680,23 @@ const Oppdrag = () => {
             ) : null
           }
         />
+
+        <Dialog open={!!flightPrompt} onOpenChange={(o) => !o && setFlightPrompt(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{t("reminders.flightDialogTitle")}</DialogTitle></DialogHeader>
+            {flightPrompt && (
+              <>
+                <ReminderActionCard
+                  findingKey={flightPrompt.key}
+                  messageId={flightPrompt.messageId}
+                  preselect="endFlight"
+                  onDone={() => setFlightPrompt(null)}
+                />
+                <p className="text-xs text-muted-foreground">{t("reminders.flightDialogHint")}</p>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <OppdragDialogs
           addDialogOpen={addDialogOpen}

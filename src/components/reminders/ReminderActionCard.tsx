@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { clearActiveFlight } from "@/hooks/useFlightTimer";
 import {
-  INCIDENT_CLOSED_STATUSES, MUTATING_ACTIONS, availableActions, missionCodeForStatus, parseFindingKeys,
+  INCIDENT_CLOSED_STATUSES, availableActions, missionCodeForStatus, parseFindingKeys,
   targetMissionStatus, type ParsedFindingKey, type ReminderActionId, type ReminderEntityState,
 } from "./reminderActions";
 
@@ -234,8 +234,9 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
       qc.invalidateQueries({ queryKey: ["audit"] });
       qc.invalidateQueries({ queryKey: ["inbox"] });
       setPending(null);
+      setHidden(true);
       if (action === "flown") setUploadOpen(true);
-      else { setHidden(true); onDone?.(); }
+      else onDone?.();
     } catch (e) {
       toast.error(t("reminders.failed"), { description: String((e as Error).message ?? e) });
     } finally {
@@ -304,4 +305,3 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
   );
 };
 
-export { MUTATING_ACTIONS };
