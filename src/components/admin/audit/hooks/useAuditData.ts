@@ -20,6 +20,8 @@ import { runScanner } from "../services/ComplianceScanner";
 import { evaluateCompliance } from "../services/ComplianceEngine";
 import { getAuditInsights } from "../services/AuditInsightService";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuditDepartment } from "./useAuditDepartment";
+import type { OperationsData, SafetyAggregate } from "../types";
 
 const STALE = 30_000;
 
@@ -40,51 +42,61 @@ export function useAuditKpis() {
 
 export function useAuditCompetencies() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "competencies", companyId],
     queryFn: () => fetchCompetencies(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
 export function useAuditFleet() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "fleet", companyId],
     queryFn: () => fetchFleet(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
 export function useAuditOperations() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "operations", companyId],
     queryFn: () => fetchOperations(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (d: OperationsData) => (dept ? { ...d, issues: d.issues.filter((i) => i.companyId === dept), total: d.missionsByCompany?.[dept] ?? 0 } : d),
   });
 }
 
 export function useAuditSafety() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "safety", companyId],
     queryFn: () => fetchSafety(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (d: SafetyAggregate) => (dept ? { ...d, incidentIssues: d.incidentIssues.filter((i) => i.companyId === dept) } : d),
   });
 }
 
 export function useAuditDocuments() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "documents", companyId],
     queryFn: () => fetchAuditDocuments(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
