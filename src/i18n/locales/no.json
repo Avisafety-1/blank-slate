@@ -69,7 +69,8 @@
     "save": "Lagre",
     "saving": "Lagrer...",
     "edit": "Rediger",
-    "search": "Søk"
+    "search": "Søk",
+    "close": "Lukk"
   },
   "auth": {
     "signIn": "Logg inn",
@@ -8111,13 +8112,15 @@
     "disclaimer": "Intern støtteindikator. Ikke en godkjenning fra Luftfartstilsynet.",
     "tabs": {
       "overview": "Oversikt",
-      "documentation": "Dokumentasjon",
+      "documentation": "Dokumenter",
       "competency": "Kompetanse",
       "fleet": "Flåte",
-      "operations": "Operasjoner",
+      "operations": "Drift",
       "safety": "Safety",
-      "internal": "Internrevisjoner",
-      "package": "Tilsynspakke"
+      "internal": "Internrevisjon",
+      "package": "Inspeksjonspakke",
+      "people": "Personell og dokumenter",
+      "incidents": "Hendelser"
     },
     "states": {
       "loading": "Laster …",
@@ -8141,6 +8144,105 @@
         "body": "Samle alle dokumenter, funn og bevis for et myndighetsbesøk.",
         "button": "Generer pakke",
         "criticalWarning": "{{count}} kritiske funn må lukkes først"
+      },
+      "kpi": {
+        "untreatedCritical": {
+          "label": "Ubehandlede kritiske avvik",
+          "what": "Kritiske avvik der ingen handling er tatt.",
+          "threshold": "Ingen purring siste 14 dager, ikke utsatt/akseptert med begrunnelse og ikke registrert som revisjonsfunn.",
+          "why": "Kritiske avvik uten oppfølging er det et tilsyn ser etter først.",
+          "fix": "Send purring, registrer et tiltak eller aksepter med begrunnelse."
+        },
+        "noResponse": {
+          "label": "Påminnelser uten respons",
+          "what": "Påminnelser som ikke er markert ferdig, der avviket fortsatt finnes.",
+          "threshold": "Sendt for mer enn 7 dager siden.",
+          "why": "Viser hvor oppfølgingen har stoppet opp.",
+          "fix": "Ta direkte kontakt med mottakeren eller velg en annen ansvarlig."
+        },
+        "warnings": {
+          "label": "Advarsler totalt",
+          "what": "Alle åpne advarsler (ikke kritiske).",
+          "threshold": "Alle åpne advarsler teller.",
+          "why": "Advarsler blir ofte kritiske hvis de får ligge.",
+          "fix": "Gå gjennom listen og rett eller planlegg tiltak."
+        },
+        "overdue": {
+          "label": "Forfalte revisjonstiltak",
+          "what": "Tiltak fra internrevisjon som har passert fristen.",
+          "threshold": "Fristen er passert og tiltaket er ikke lukket.",
+          "why": "Lukking av revisjonsfunn innen frist er et krav i kvalitetssystemet.",
+          "fix": "Lukk tiltaket eller sett ny frist med begrunnelse i Internrevisjon."
+        }
+      },
+      "scoreTitle": "Compliance-score",
+      "scoreSub": "tilstand",
+      "howCalculated": "Hvordan beregnes dette?",
+      "scoreHelp": {
+        "what": "Hvor godt virksomheten oppfyller kravene akkurat nå, beregnet av avvikene.",
+        "why": "Gir et raskt bilde av tilstanden – men sier ikke noe om dere jobber med avvikene.",
+        "fix": "Rett avvikene i «Krever handling nå»."
+      },
+      "followUpTitle": "Oppfølgingsgrad",
+      "followUpSub": "handling",
+      "followUpHelp": {
+        "what": "Andel åpne kritiske avvik og advarsler der det er tatt handling.",
+        "threshold": "Handling = påminnelse sendt siste 14 dager, utsatt/akseptert med begrunnelse, eller registrert som revisjonsfunn med ansvarlig og frist.",
+        "why": "Viser at avvik håndteres systematisk, selv om de ikke er rettet ennå."
+      },
+      "followUpCount": "{{handled}} av {{total}} saker er fulgt opp",
+      "interpret": {
+        "none": "Ikke nok data til å beregne score ennå.",
+        "noFindings": "Ingen åpne avvik – bra!",
+        "goodGood": "God tilstand og god oppfølging – fortsett slik.",
+        "lowHigh": "Lav score + høy oppfølging = dere har kontroll på avvikene. Fortsett å lukke dem.",
+        "highLow": "God tilstand, men flere avvik er ikke fulgt opp. Send purring eller ta stilling til dem.",
+        "lowLow": "Lav score + lav oppfølging = avvikene får ligge. Start med de ubehandlede kritiske."
+      },
+      "explain": {
+        "title": "Slik beregnes compliance-score",
+        "intro": "Scoren er et vektet snitt av fem områder. Hvert område teller 20 %. Områder uten data teller ikke med.",
+        "points": "Hver kontroll gir poeng: OK = 1, advarsel = 0,6, kritisk = 0. Områdets score er snittet av kontrollene.",
+        "excluded": "Utsatte og aksepterte saker skjules fra listen, men endrer ikke selve beregningen. Uplanlagte flyturer og planlagte oppdrag som ikke er startet påvirker ikke scoren.",
+        "followUp": "Oppfølgingsgrad beregnes separat og påvirker ikke compliance-score.",
+        "cat": {
+          "competence": {
+            "name": "Kompetanse",
+            "counts": "Hvert kompetansebevis: utløpt = kritisk, utløper snart = advarsel."
+          },
+          "documentation": {
+            "name": "Dokumenter",
+            "counts": "Påkrevde dokumenter (operasjonsmanual, beredskap, forsikring o.l.): utløpt = kritisk, revisjon nær = advarsel."
+          },
+          "fleet": {
+            "name": "Flåte",
+            "counts": "Hver drone med samme status som ellers i appen: rød = kritisk, gul = advarsel."
+          },
+          "operations": {
+            "name": "Drift",
+            "counts": "Hvert oppdrag: henger i Pågående, aktiv flytur uten avslutning, SORA-avvik eller fløyet med NO-GO = kritisk; fullført uten flylogg = advarsel."
+          },
+          "safety": {
+            "name": "Hendelser",
+            "counts": "Åpne hendelser over 30 dager, hendelser uten ansvarlig og forfalte revisjonstiltak."
+          }
+        }
+      },
+      "departments": {
+        "title": "Avdelinger",
+        "help": {
+          "what": "Compliance-score og antall åpne saker per avdeling.",
+          "why": "Viser hvor oppfølgingen trengs mest.",
+          "fix": "Klikk en avdeling for å se bare dens saker."
+        },
+        "department": "Avdeling",
+        "score": "Score",
+        "critical": "Kritiske",
+        "warnings": "Advarsler",
+        "criticalCount_one": "{{count}} kritisk",
+        "criticalCount_other": "{{count}} kritiske",
+        "warningCount_one": "{{count}} advarsel",
+        "warningCount_other": "{{count}} advarsler"
       }
     },
     "kpi": {
@@ -8633,7 +8735,8 @@
     "tabTitle": "Revisjon",
     "developmentBanner": {
       "title": "Under utvikling",
-      "body": "Revisjon- og compliance-modulen er under aktiv utvikling. Data og beregninger kan endre seg — bruk foreløpig kun til intern testing og gi oss gjerne tilbakemelding."
+      "body": "Revisjon- og compliance-modulen er under aktiv utvikling. Data og beregninger kan endre seg — bruk foreløpig kun til intern testing og gi oss gjerne tilbakemelding.",
+      "short": "Compliance-modulen er under utvikling – tall og funn kan endre seg."
     },
     "actionKpi": {
       "documentsExpiring": "Dokumenter som utløper",
@@ -8663,6 +8766,91 @@
       "notConfigured": "Ikke konfigurert",
       "notReviewed": "Ikke vurdert",
       "pending": "Venter"
+    },
+    "department": {
+      "label": "Avdeling",
+      "all": "Alle avdelinger"
+    },
+    "intro": {
+      "title": "Slik bruker du compliance-modulen",
+      "step1": "Start med «Krever handling nå» – de viktigste sakene står øverst.",
+      "step2": "Send purring til ansvarlig, eller utsett/aksepter saken med en begrunnelse.",
+      "step3": "Følg med på compliance-score (tilstand) og oppfølgingsgrad (handling), og bruk avdelingsvelgeren for å se hver avdeling.",
+      "dismiss": "Skjul"
+    },
+    "help": {
+      "open": "Vis forklaring",
+      "labels": {
+        "what": "Hva måles",
+        "threshold": "Terskel",
+        "why": "Hvorfor det er viktig",
+        "fix": "Hvordan rette det"
+      },
+      "actionList": {
+        "what": "Alle åpne avvik og advarsler fra drift, flåte, personell, dokumenter og hendelser, samlet i én liste.",
+        "why": "Operatøren skal kunne vise at avvik oppdages og følges opp (EU 2019/947, UAS.SPEC.050 og eget operasjonsmanual).",
+        "fix": "Åpne saken og rett den, send purring til ansvarlig, eller utsett/aksepter med begrunnelse. Ubehandlede kritiske står alltid øverst."
+      }
+    },
+    "action": {
+      "title": "Krever handling nå",
+      "empty": "Ingenting krever handling – bra!",
+      "remind": "Send purring",
+      "more": "Flere valg",
+      "snooze": "Utsett",
+      "accept": "Aksepter",
+      "age_one": "{{count}} dag",
+      "age_other": "{{count}} dager",
+      "showAll": "Vis alle ({{count}})",
+      "showLess": "Vis færre",
+      "filters": {
+        "all": "Alle",
+        "untreated": "Ubehandlet",
+        "waiting": "Purret – venter",
+        "noResponse": "Purret uten respons"
+      },
+      "cols": {
+        "severity": "Alvorlighet",
+        "finding": "Sak",
+        "department": "Avdeling",
+        "responsible": "Ansvarlig",
+        "age": "Alder",
+        "reminder": "Påminnelse"
+      },
+      "reminder": {
+        "none": "Ikke purret",
+        "waiting": "Purret – venter",
+        "noResponse": "Ingen respons",
+        "done": "Ferdig"
+      },
+      "snoozeTitle": "Utsett sak",
+      "acceptTitle": "Aksepter sak",
+      "snoozeExplain": "Saken skjules fra listen til valgt dato, og teller som fulgt opp.",
+      "acceptExplain": "Saken skjules fra listen og teller som fulgt opp. Begrunnelsen lagres og vises i revisjonssporet.",
+      "snoozeUntil": "Utsett til",
+      "reason": "Begrunnelse",
+      "reasonPlaceholder": "Hvorfor utsettes eller aksepteres saken?",
+      "save": "Lagre"
+    },
+    "why": {
+      "ExpiredCompetence": "Piloten kan ikke fly operasjoner som krever dette beviset.",
+      "CompetenceExpiringSoon": "Forny i tide så piloten ikke må settes på bakken.",
+      "ExpiredDocument": "Utløpte styringsdokumenter er et avvik ved tilsyn.",
+      "DocumentReviewOverdue": "Dokumentet må revideres for å være gyldig.",
+      "MissingEmergencyPlan": "Beredskapsplan er påkrevd for operasjoner i spesifikk kategori.",
+      "DroneStatusRed": "Dronen skal ikke brukes før feilen er rettet.",
+      "DroneStatusYellow": "Vedlikehold nærmer seg – planlegg før dronen blir rød.",
+      "MissionPlannedPastDue": "Oppdraget er passert, men står fortsatt som planlagt.",
+      "MissionInProgressStale": "Oppdraget står som pågående lenge etter planlagt slutt – status og logg er ufullstendig.",
+      "ActiveFlightStale": "En flytur er aldri avsluttet – live-oversikten blir feil.",
+      "SoraEnvelopeExceeded": "Oppdraget gikk utenfor rammene i godkjent SORA.",
+      "FlownWithNoGo": "Oppdraget ble fløyet selv om risikovurderingen sa NO-GO.",
+      "MissingRiskAssessment": "Selskapet krever risikovurdering på alle oppdrag.",
+      "MissionWithoutFlightLog": "Uten flylogg mangler dokumentasjon av gjennomført flyging.",
+      "IncidentOpenTooLong": "Hendelser skal behandles og lukkes innen rimelig tid.",
+      "IncidentNoResponsible": "Uten ansvarlig blir hendelsen ikke fulgt opp.",
+      "OpenActionsTooLong": "Revisjonstiltaket har passert fristen.",
+      "FindingAwaitingVerification": "Tiltaket er gjennomført og venter på verifisering."
     }
   },
   "inbox": {

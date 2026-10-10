@@ -69,7 +69,8 @@
     "save": "Save",
     "saving": "Saving...",
     "edit": "Edit",
-    "search": "Search"
+    "search": "Search",
+    "close": "Close"
   },
   "auth": {
     "signIn": "Sign in",
@@ -8109,13 +8110,15 @@
     "disclaimer": "Internal support indicator. Not an approval from the aviation authority.",
     "tabs": {
       "overview": "Overview",
-      "documentation": "Documentation",
+      "documentation": "Documents",
       "competency": "Competency",
       "fleet": "Fleet",
       "operations": "Operations",
       "safety": "Safety",
-      "internal": "Internal audits",
-      "package": "Inspection package"
+      "internal": "Internal audit",
+      "package": "Inspection package",
+      "people": "People and documents",
+      "incidents": "Incidents"
     },
     "states": {
       "loading": "Loading …",
@@ -8139,6 +8142,105 @@
         "body": "Bundle all documents, findings and evidence for an authority visit.",
         "button": "Generate package",
         "criticalWarning": "{{count}} critical finding(s) must be closed first"
+      },
+      "kpi": {
+        "untreatedCritical": {
+          "label": "Untreated critical deviations",
+          "what": "Critical deviations where no action has been taken.",
+          "threshold": "No reminder in the last 14 days, not snoozed/accepted with a reason and not registered as an audit finding.",
+          "why": "Critical deviations without follow-up are the first thing an inspector looks for.",
+          "fix": "Send a reminder, register an action or accept with a reason."
+        },
+        "noResponse": {
+          "label": "Reminders without response",
+          "what": "Reminders not marked done where the deviation still exists.",
+          "threshold": "Sent more than 7 days ago.",
+          "why": "Shows where follow-up has stalled.",
+          "fix": "Contact the recipient directly or choose someone else."
+        },
+        "warnings": {
+          "label": "Warnings total",
+          "what": "All open warnings (not critical).",
+          "threshold": "All open warnings count.",
+          "why": "Warnings often become critical if left alone.",
+          "fix": "Go through the list and fix or plan actions."
+        },
+        "overdue": {
+          "label": "Overdue audit actions",
+          "what": "Internal audit actions past their deadline.",
+          "threshold": "Deadline has passed and the action is not closed.",
+          "why": "Closing audit findings on time is a quality system requirement.",
+          "fix": "Close the action or set a new deadline with a reason in Internal audit."
+        }
+      },
+      "scoreTitle": "Compliance score",
+      "scoreSub": "state",
+      "howCalculated": "How is this calculated?",
+      "scoreHelp": {
+        "what": "How well the organisation meets the requirements right now, calculated from the deviations.",
+        "why": "A quick picture of the state – but it says nothing about whether you are working on the deviations.",
+        "fix": "Fix the items in “Requires action now”."
+      },
+      "followUpTitle": "Follow-up rate",
+      "followUpSub": "action",
+      "followUpHelp": {
+        "what": "Share of open critical deviations and warnings where action has been taken.",
+        "threshold": "Action = reminder sent in the last 14 days, snoozed/accepted with a reason, or registered as an audit finding with owner and deadline.",
+        "why": "Shows that deviations are handled systematically, even before they are fixed."
+      },
+      "followUpCount": "{{handled}} of {{total}} items followed up",
+      "interpret": {
+        "none": "Not enough data to calculate a score yet.",
+        "noFindings": "No open deviations – well done!",
+        "goodGood": "Good state and good follow-up – keep it up.",
+        "lowHigh": "Low score + high follow-up = you are in control of the deviations. Keep closing them.",
+        "highLow": "Good state, but several deviations have not been followed up. Send reminders or decide on them.",
+        "lowLow": "Low score + low follow-up = deviations are being left alone. Start with the untreated critical ones."
+      },
+      "explain": {
+        "title": "How the compliance score is calculated",
+        "intro": "The score is a weighted average of five areas. Each area weighs 20 %. Areas without data are left out.",
+        "points": "Each check gives points: OK = 1, warning = 0.6, critical = 0. The area score is the average of its checks.",
+        "excluded": "Snoozed and accepted items are hidden from the list but do not change the calculation itself. Unplanned flights and planned missions that have not started do not affect the score.",
+        "followUp": "The follow-up rate is calculated separately and does not affect the compliance score.",
+        "cat": {
+          "competence": {
+            "name": "Competency",
+            "counts": "Each certificate: expired = critical, expiring soon = warning."
+          },
+          "documentation": {
+            "name": "Documents",
+            "counts": "Required documents (operations manual, emergency plan, insurance etc.): expired = critical, review due = warning."
+          },
+          "fleet": {
+            "name": "Fleet",
+            "counts": "Each drone with the same status as elsewhere in the app: red = critical, yellow = warning."
+          },
+          "operations": {
+            "name": "Operations",
+            "counts": "Each mission: stuck in progress, active flight never ended, SORA deviation or flown with NO-GO = critical; completed without flight log = warning."
+          },
+          "safety": {
+            "name": "Incidents",
+            "counts": "Open incidents older than 30 days, incidents without an owner and overdue audit actions."
+          }
+        }
+      },
+      "departments": {
+        "title": "Departments",
+        "help": {
+          "what": "Compliance score and number of open items per department.",
+          "why": "Shows where follow-up is needed most.",
+          "fix": "Click a department to see only its items."
+        },
+        "department": "Department",
+        "score": "Score",
+        "critical": "Critical",
+        "warnings": "Warnings",
+        "criticalCount_one": "{{count}} critical",
+        "criticalCount_other": "{{count}} critical",
+        "warningCount_one": "{{count}} warning",
+        "warningCount_other": "{{count}} warnings"
       }
     },
     "kpi": {
@@ -8631,7 +8733,8 @@
     "tabTitle": "Audit",
     "developmentBanner": {
       "title": "Under development",
-      "body": "The audit & compliance module is under active development. Data and calculations may change — use for internal testing only for now and share any feedback with us."
+      "body": "The audit & compliance module is under active development. Data and calculations may change — use for internal testing only for now and share any feedback with us.",
+      "short": "The compliance module is under development – numbers and findings may change."
     },
     "actionKpi": {
       "documentsExpiring": "Documents expiring",
@@ -8661,6 +8764,91 @@
       "notConfigured": "Not configured",
       "notReviewed": "Not reviewed",
       "pending": "Pending"
+    },
+    "department": {
+      "label": "Department",
+      "all": "All departments"
+    },
+    "intro": {
+      "title": "How to use the compliance module",
+      "step1": "Start with “Requires action now” – the most important items are at the top.",
+      "step2": "Send a reminder to the person responsible, or snooze/accept the item with a reason.",
+      "step3": "Track the compliance score (state) and follow-up rate (action), and use the department picker to look at each department.",
+      "dismiss": "Hide"
+    },
+    "help": {
+      "open": "Show explanation",
+      "labels": {
+        "what": "What is measured",
+        "threshold": "Threshold",
+        "why": "Why it matters",
+        "fix": "How to fix it"
+      },
+      "actionList": {
+        "what": "All open deviations and warnings from operations, fleet, people, documents and incidents in one list.",
+        "why": "The operator must be able to show that deviations are detected and followed up (EU 2019/947, UAS.SPEC.050 and your operations manual).",
+        "fix": "Open the item and fix it, send a reminder, or snooze/accept with a reason. Untreated critical items always stay on top."
+      }
+    },
+    "action": {
+      "title": "Requires action now",
+      "empty": "Nothing requires action – well done!",
+      "remind": "Send reminder",
+      "more": "More options",
+      "snooze": "Snooze",
+      "accept": "Accept",
+      "age_one": "{{count}} day",
+      "age_other": "{{count}} days",
+      "showAll": "Show all ({{count}})",
+      "showLess": "Show less",
+      "filters": {
+        "all": "All",
+        "untreated": "Untreated",
+        "waiting": "Reminded – waiting",
+        "noResponse": "Reminded – no response"
+      },
+      "cols": {
+        "severity": "Severity",
+        "finding": "Item",
+        "department": "Department",
+        "responsible": "Responsible",
+        "age": "Age",
+        "reminder": "Reminder"
+      },
+      "reminder": {
+        "none": "Not reminded",
+        "waiting": "Reminded – waiting",
+        "noResponse": "No response",
+        "done": "Done"
+      },
+      "snoozeTitle": "Snooze item",
+      "acceptTitle": "Accept item",
+      "snoozeExplain": "The item is hidden from the list until the chosen date and counts as followed up.",
+      "acceptExplain": "The item is hidden from the list and counts as followed up. The reason is stored in the audit trail.",
+      "snoozeUntil": "Snooze until",
+      "reason": "Reason",
+      "reasonPlaceholder": "Why is the item snoozed or accepted?",
+      "save": "Save"
+    },
+    "why": {
+      "ExpiredCompetence": "The pilot cannot fly operations that require this certificate.",
+      "CompetenceExpiringSoon": "Renew in time so the pilot is not grounded.",
+      "ExpiredDocument": "Expired management documents are a finding in an inspection.",
+      "DocumentReviewOverdue": "The document must be reviewed to remain valid.",
+      "MissingEmergencyPlan": "An emergency response plan is required for specific category operations.",
+      "DroneStatusRed": "The drone must not be used until the fault is fixed.",
+      "DroneStatusYellow": "Maintenance is coming up – plan it before the drone turns red.",
+      "MissionPlannedPastDue": "The mission date has passed but it is still marked as planned.",
+      "MissionInProgressStale": "The mission is still in progress long after its planned end – status and log are incomplete.",
+      "ActiveFlightStale": "A flight was never ended – the live view is wrong.",
+      "SoraEnvelopeExceeded": "The mission went outside the limits of the approved SORA.",
+      "FlownWithNoGo": "The mission was flown although the risk assessment said NO-GO.",
+      "MissingRiskAssessment": "The company requires a risk assessment on every mission.",
+      "MissionWithoutFlightLog": "Without a flight log there is no record of the flight.",
+      "IncidentOpenTooLong": "Incidents should be handled and closed within reasonable time.",
+      "IncidentNoResponsible": "Without an owner the incident will not be followed up.",
+      "OpenActionsTooLong": "The audit action is past its deadline.",
+      "FindingAwaitingVerification": "The action is done and awaiting verification."
     }
   },
   "inbox": {
