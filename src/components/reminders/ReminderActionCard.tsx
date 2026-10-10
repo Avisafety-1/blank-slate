@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { BellRing, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { addIncidentComment, addMissionNote, commentTargetFor } from "@/lib/reminderCaseNotes";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -124,7 +126,7 @@ interface Props {
 }
 
 export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath, onEditMission, onDone, onAvailabilityChange, className }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, isAdmin, userRole } = useAuth();
   const qc = useQueryClient();
