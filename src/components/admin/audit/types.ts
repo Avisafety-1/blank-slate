@@ -180,6 +180,13 @@ export interface FleetRow {
   openDeviations: number;
   deviations: FleetDeviation[];
   lastInspectionAt: string | null;
+  companyId: string | null;
+  departmentName: string | null;
+  /** Same aggregated status as the rest of the app (Grønn/Gul/Rød). */
+  status: "Grønn" | "Gul" | "Rød";
+  reasons: { status: string; text: string }[];
+  technicalResponsibleId: string | null;
+  technicalResponsibleName: string | null;
 }
 
 export type OperationsIssueCode =
@@ -202,6 +209,17 @@ export interface OperationsIssue {
   hours?: number;
   details?: string[];
   sail?: string | null;
+  /** Approval given before the NO-GO assessment (FlownWithNoGo only). */
+  approvedBefore?: { by: string | null; at: string | null } | null;
+}
+
+export interface ApprovedNoGoMission {
+  missionId: string;
+  missionTitle: string;
+  missionDate: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalComment: string | null;
 }
 
 export interface OperationsRiskMonth {
@@ -221,12 +239,22 @@ export interface OperationsData {
     pct: number;
     byMonth: { month: string; planned: number; unplanned: number }[];
   };
-  unplannedRecent: { total: number; unplanned: number; pct: number };
+  approvedNoGo: ApprovedNoGoMission[];
   sora: { assessed: number; within: number; deviating: number; bySail: Record<string, number> };
   risk: {
     distribution: { key: "go" | "caution" | "no-go" | "not-assessed"; value: number }[];
     byMonth: OperationsRiskMonth[];
   };
+}
+
+export interface IncidentIssue {
+  id: string;
+  incidentId: string;
+  title: string;
+  incidentDate: string | null;
+  code: "incidentOpenTooLong" | "incidentNoResponsible";
+  severity: FindingSeverity;
+  days: number;
 }
 
 export interface SafetySeverityBucket {
@@ -251,6 +279,8 @@ export interface SafetyAggregate {
   bySeverity: SafetySeverityBucket[];
   byCategory: SafetyCategoryBucket[];
   trend: SafetyTrendPoint[];
+  /** Open incidents (any age) that need follow-up. */
+  incidentIssues: IncidentIssue[];
   // Legacy field, kept so existing consumers don't break; always 0.
   nearMiss: number;
 }
