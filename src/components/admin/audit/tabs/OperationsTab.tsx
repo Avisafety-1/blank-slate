@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock, PlaneTakeoff } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock, PlaneTakeoff, ShieldCheck } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuditOperations } from "../hooks/useAuditData";
@@ -159,6 +159,39 @@ export const OperationsTab = () => {
         </Card>
       </div>
 
+      {data.approvedNoGo.length > 0 && (
+        <Card className="border-l-4 border-l-status-green/60">
+          <CardContent className="p-4 space-y-2">
+            <div className="text-sm font-medium flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-status-green" />
+              {t("audit.operations.approvedNoGo.title")}
+              <Badge variant="outline">{data.approvedNoGo.length}</Badge>
+            </div>
+            <ul className="divide-y divide-border">
+              {data.approvedNoGo.map((m) => (
+                <li key={m.missionId} className="flex items-start gap-2 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{m.missionTitle}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {m.missionDate ? new Date(m.missionDate).toLocaleDateString(i18n.language) : "—"}
+                      {" · "}
+                      {t("audit.operations.approvedNoGo.approvedBy", {
+                        name: m.approvedBy ?? "—",
+                        date: m.approvedAt ? new Date(m.approvedAt).toLocaleString(i18n.language) : "—",
+                      })}
+                    </div>
+                    {m.approvalComment && <div className="text-xs mt-0.5 italic">«{m.approvalComment}»</div>}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("mission", m.missionId).path)}>
+                    {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {visibleIssues.length === 0 ? (
         <Card>
           <CardContent className="p-6 flex flex-col items-center gap-2 text-sm text-muted-foreground">
@@ -199,6 +232,14 @@ export const OperationsTab = () => {
                             {i.code === "activeFlightStale" ? ` · ${t("audit.operations.hoursActive", { count: i.hours ?? 0 })}` : null}
                             {i.code === "soraEnvelopeExceeded" ? ` · ${t("audit.operations.systemSail", { sail: i.sail ?? "—" })}` : null}
                           </div>
+                          {i.approvedBefore && (
+                            <div className="mt-1 text-xs text-status-yellow">
+                              {t("audit.operations.approvedBeforeNoGo", {
+                                name: i.approvedBefore.by ?? "—",
+                                date: i.approvedBefore.at ? new Date(i.approvedBefore.at).toLocaleString(i18n.language) : "—",
+                              })}
+                            </div>
+                          )}
                           {i.details && i.details.length > 0 && (
                             <ul className="mt-1 text-xs text-status-yellow list-disc pl-4">
                               {i.details.map((d, k) => <li key={k}>{d}</li>)}

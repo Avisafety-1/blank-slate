@@ -1,5 +1,5 @@
 import { resolveCheckBucket } from "../utils/statusMapping";
-import { isScoredIssue, operationsCheckResults } from "../lib/operationsAnalysis";
+import { droneStatusCheck, isScoredIssue, operationsCheckResults } from "../lib/operationsAnalysis";
 import type {
   CategoryScore,
   CheckResult,
@@ -82,13 +82,9 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
     warnings: docResults.map(resolveCheckBucket).filter((b) => b === "warn").length,
   };
 
-  // ---- Fleet (compliance-critical only: service + open deviations) ----
-  // We treat >0 open log deviations as "warn" and overdue service as "fail".
-  const fleetResults: CheckResult[] = [];
-  for (const f of input.fleet) {
-    fleetResults.push(f.service);
-    fleetResults.push(f.openDeviations > 0 ? "warn" : "pass");
-  }
+  // ---- Fleet: same aggregated drone status as the rest of the app ----
+  // (Log entries are not open deviations and do not count.)
+  const fleetResults: CheckResult[] = input.fleet.map((f) => droneStatusCheck(f.status));
 
   const fleet: CategoryScore = {
     key: "fleet",
@@ -110,19 +106,26 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
     warnings: input.operations.filter((i) => !isScoredIssue(i, requireSora) && i.severity === "warning" && (i.code !== "missingRiskAssessment" || requireSora)).length,
   };
 
-  // ---- Safety ----
+  // ---- Safety: open incident issues + overdue audit actions ----
   const safetyResults: CheckResult[] = [];
+  const incidentIssues = input.safety?.incidentIssues ?? [];
+  const worstByIncident = new Map<string, CheckResult>();
+  for (const i of incidentIssues) {
+    const r: CheckResult = i.severity === "critical" ? "fail" : "warn";
+    if (worstByIncident.get(i.incidentId) !== "fail") worstByIncident.set(i.incidentId, r);
+  }
+  safetyResults.push(...worstByIncident.values());
+  for (let i = 0; i < input.overdueAuditActions; i++) safetyResults.push("fail");
   if (input.safety) {
-    for (let i = 0; i < input.safety.openActions; i++) safetyResults.push("warn");
-    for (let i = 0; i < input.safety.closedActions; i++) safetyResults.push("pass");
-    for (let i = 0; i < input.overdueAuditActions; i++) safetyResults.push("fail");
+    const okIncidents = Math.max(0, input.safety.openIncidents + input.safety.closedIncidents - worstByIncident.size);
+    for (let i = 0; i < okIncidents; i++) safetyResults.push("pass");
   }
   const safety: CategoryScore = {
     key: "safety",
     score: scoreFromChecks(safetyResults),
     ...tally(safetyResults),
-    critical: input.overdueAuditActions,
-    warnings: input.safety?.openActions ?? 0,
+    critical: safetyResults.filter((r) => r === "fail").length,
+    warnings: safetyResults.filter((r) => r === "warn").length,
   };
 
   const categories: ComplianceEvaluation["categories"] = {
