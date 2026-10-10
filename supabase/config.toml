@@ -279,3 +279,9 @@ verify_jwt = false
 [functions.live-video-event]
 verify_jwt = false
 
+
+[functions.audit-notify]
+verify_jwt = false
+
+[functions.audit-deadline-reminders]
+verify_jwt = false
