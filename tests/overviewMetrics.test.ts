@@ -14,10 +14,12 @@ describe("next internal audit", () => {
   });
   test("closed 11 months ago → ~1 month left, neutral", () => {
     const r = nextInternalAudit([closed(11)], "c1", now);
-    expect(r.daysLeft).toBe(30); expect(r.tone).toBe("warning");
+    expect(r.daysLeft).toBe(31); expect(r.tone).toBe("neutral");
   });
-  test("closed 10 months ago → neutral", () => {
-    expect(nextInternalAudit([closed(10)], "c1", now).tone).toBe("neutral");
+  test("due within 30 days → yellow", () => {
+    const c = { ...closed(11), closed_at: new Date(2026, 9 - 12, 30, 9).toISOString() };
+    const r = nextInternalAudit([c], "c1", now);
+    expect(r.daysLeft).toBe(20); expect(r.tone).toBe("warning");
   });
   test("closed 13 months ago → overdue, red", () => {
     const r = nextInternalAudit([closed(13)], "c1", now);
