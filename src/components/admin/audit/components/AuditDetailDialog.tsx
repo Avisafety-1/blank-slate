@@ -23,7 +23,7 @@ const SECTION_ITEMS: Record<AuditSectionKey, string[]> = {
   organization: ["Roller definert", "Ansvarsfordeling dokumentert", "Kontaktinfo oppdatert"],
   documentation: ["Operasjonsmanual gyldig", "SOP oppdatert", "Endringslogg ført"],
   competency: ["Piloter sertifisert", "Årlig gjennomgang utført"],
-  operations: ["Sjekklister brukt", "Risikovurderinger utført", "Debrief gjennomført"],
+  operations: ["Oppdrag avsluttet i tide", "Innenfor SORA-rammene", "Risikovurderinger utført"],
   technical: ["Vedlikehold à jour", "Firmware oppdatert"],
   safety: ["Hendelser rapportert", "Tiltak lukket i tide"],
 };
