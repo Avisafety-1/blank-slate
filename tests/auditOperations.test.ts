@@ -106,3 +106,50 @@ describe("fleet score", () => {
     expect(droneStatusCheck("Grønn")).toBe("pass");
   });
 });
+
+import { missionWithoutFlightLogIssue, groupMissingLogsByRecipient } from "../src/components/admin/audit/lib/operationsAnalysis";
+import { matchPossibleLogs } from "../src/components/admin/audit/lib/missingFlightLogs";
+
+describe("missions without flight log", () => {
+  test("Fullført ended more than 48h ago without log is a warning", () => {
+    const i = missionWithoutFlightLogIssue({ id: "m", status: "Fullført", tidspunkt: hoursAgo(49) }, false, now);
+    expect(i?.code).toBe("missionWithoutFlightLog");
+    expect(i?.severity).toBe("warning");
+  });
+  test("ended 47h ago is not flagged", () => {
+    expect(missionWithoutFlightLogIssue({ id: "m", status: "Fullført", tidspunkt: hoursAgo(47) }, false, now)).toBeNull();
+  });
+  test("uses slutt_tidspunkt as end time", () => {
+    expect(missionWithoutFlightLogIssue({ id: "m", status: "Fullført", tidspunkt: hoursAgo(100), slutt_tidspunkt: hoursAgo(10) }, false, now)).toBeNull();
+  });
+  test("Avbrutt never counts", () => {
+    expect(missionWithoutFlightLogIssue({ id: "m", status: "Avbrutt", tidspunkt: hoursAgo(100) }, false, now)).toBeNull();
+  });
+  test("disappears once a flight log is linked", () => {
+    expect(missionWithoutFlightLogIssue({ id: "m", status: "Fullført", tidspunkt: hoursAgo(100) }, true, now)).toBeNull();
+  });
+  test("counts as warn, not fail, in the operations score", () => {
+    const r = operationsCheckResults([{ id: "1", missionId: "m", missionTitle: "", missionDate: null, code: "missionWithoutFlightLog" }], 3, false);
+    expect(r.filter((x) => x === "warn").length).toBe(1);
+    expect(r.includes("fail")).toBe(false);
+  });
+  test("bulk groups one message per pilot", () => {
+    const g = groupMissingLogsByRecipient([
+      { missionId: "a", recipientIds: ["p1", "p2"] },
+      { missionId: "b", recipientIds: ["p1"] },
+    ]);
+    expect(g.get("p1")?.map((x) => x.missionId)).toEqual(["a", "b"]);
+    expect(g.get("p2")?.length).toBe(1);
+  });
+  test("possible log matches same day and same drone or pilot only", () => {
+    const missions = [{ id: "m", tidspunkt: "2026-10-01T10:00:00", droneIds: ["d1"], pilotIds: ["p1"] }];
+    const hit = matchPossibleLogs(missions, [{ id: "l", flight_date: "2026-10-01", drone_id: "d1", user_id: null, flight_duration_minutes: 12 }]);
+    expect(hit.get("m")?.id).toBe("l");
+    const otherDay = matchPossibleLogs(missions, [{ id: "l", flight_date: "2026-10-02", drone_id: "d1", user_id: null, flight_duration_minutes: 12 }]);
+    expect(otherDay.size).toBe(0);
+    const noMatch = matchPossibleLogs(missions, [{ id: "l", flight_date: "2026-10-01", drone_id: "d9", user_id: "p9", flight_duration_minutes: 12 }]);
+    expect(noMatch.size).toBe(0);
+    const byPilot = matchPossibleLogs(missions, [{ id: "l", flight_date: "2026-10-01", drone_id: null, user_id: "p1", flight_duration_minutes: 12 }]);
+    expect(byPilot.get("m")?.id).toBe("l");
+  });
+});
