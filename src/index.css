@@ -342,7 +342,7 @@ All colors MUST be HSL.
    surface-aware token rather than changing those cards or icon colours. */
 .dark .bg-card,
 .dark .bg-card\/90 {
-  --status-yellow-text: 32 95% 20%;
+  --status-yellow-text: 32 95% 18%;
 }
 
 .dark .bg-card .warning-note,
