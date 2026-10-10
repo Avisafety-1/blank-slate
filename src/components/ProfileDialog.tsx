@@ -106,6 +106,7 @@ interface NotificationPreferences {
   email_document_expiry: boolean;
   email_new_user_pending: boolean;
   email_followup_assigned: boolean;
+  email_audit_tasks?: boolean;
   email_child_incidents: boolean;
   email_child_missions: boolean;
   email_child_new_user_pending: boolean;
@@ -2094,6 +2095,23 @@ export const ProfileDialog = () => {
                           checked={notificationPrefs?.email_followup_assigned ?? true}
                           onCheckedChange={(checked) => 
                             updateNotificationPref('email_followup_assigned', checked)
+                          }
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                        <div className="space-y-0.5 flex-1">
+                          <label className="text-sm font-medium">
+                            {t('profile.notificationOptions.auditTasks')}
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            {t('profile.notificationOptions.auditTasksDesc')}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs?.email_audit_tasks ?? true}
+                          onCheckedChange={(checked) =>
+                            updateNotificationPref('email_audit_tasks' as never, checked)
                           }
                         />
                       </div>

@@ -1,6 +1,8 @@
 // Delivery of internal audit notifications (inbox always, e-mail when allowed, never SMS).
 // The log row is inserted first; a unique violation means "already sent" and the recipient is skipped.
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+// Structural client type so callers using either supabase-js import (esm.sh / npm:) are accepted.
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = { from: (table: string) => any };
 import { sendEmail } from "./resend-email.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "./email-config.ts";
 import {
