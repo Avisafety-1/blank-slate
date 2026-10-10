@@ -8119,8 +8119,8 @@
       "safety": "Safety",
       "internal": "Internal audit",
       "package": "Inspection package",
-      "people": "People and documents",
-      "incidents": "Incidents"
+      "incidents": "Incidents",
+      "personnel": "Personnel"
     },
     "states": {
       "loading": "Loading …",
@@ -9007,19 +9007,6 @@
             "why": "Provides background and trends, not separate findings."
           }
         },
-        "people": {
-          "help": {
-            "what": "Expired or missing competencies and documents due for renewal.",
-            "threshold": "Critical first, then warnings.",
-            "why": "This is what inspectors look at first.",
-            "fix": "Open, remind or snooze/accept with a reason."
-          },
-          "empty": "Competencies and documents are in order – great!",
-          "statsHelp": {
-            "what": "Competency per person and document overview.",
-            "why": "Provides background and trends, not separate findings."
-          }
-        },
         "incidents": {
           "help": {
             "what": "Incidents open too long or missing a follow-up owner.",
@@ -9031,6 +9018,32 @@
           "statsHelp": {
             "what": "Incidents over time and overdue audit actions.",
             "why": "Provides background and trends, not separate findings."
+          }
+        },
+        "competency": {
+          "help": {
+            "what": "Expired or missing competencies that must be renewed.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look for first.",
+            "fix": "Open, send a reminder or postpone/accept with a reason."
+          },
+          "empty": "Competencies are in order – great!",
+          "statsHelp": {
+            "what": "Competencies per person.",
+            "why": "Background only, not findings."
+          }
+        },
+        "documentation": {
+          "help": {
+            "what": "Expired or missing documents that must be renewed.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look for first.",
+            "fix": "Open, send a reminder or postpone/accept with a reason."
+          },
+          "empty": "Documents are in order – great!",
+          "statsHelp": {
+            "what": "Document overview.",
+            "why": "Background only, not findings."
           }
         }
       }

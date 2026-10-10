@@ -19,15 +19,18 @@ interface Props {
   /** i18n key segment, e.g. "operations" → audit.frame.tabs.operations.* */
   tabKey: string;
   categories: ComplianceCategoryKey[];
+  /** Registers/lists — always visible below "Requires action". */
   children: ReactNode;
+  /** Charts/trends in the collapsible "Statistics and trends" (closed by default). Omitted → section hidden. */
+  stats?: ReactNode;
 }
 
 /**
- * Shared presentation frame for each tab: KPI strip → "Requires action" → collapsible
- * "Statistics and trends" wrapping the tab's existing content. Uses the same findings
+ * Shared presentation frame for each tab: KPI strip → "Requires action" → the tab's
+ * registers (children) → optional collapsible "Statistics and trends" (stats). Uses the same findings
  * and follow-up signals as the overview, filtered by category only.
  */
-export const TabFrame = ({ tabKey, categories, children }: Props) => {
+export const TabFrame = ({ tabKey, categories, children, stats }: Props) => {
   const { t } = useTranslation();
   const { dept } = useAuditDepartment();
   const o = useAuditOverview(dept);
@@ -114,7 +117,9 @@ export const TabFrame = ({ tabKey, categories, children }: Props) => {
         </>
       )}
 
-      <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
+      {children}
+
+      {stats && <Collapsible open={statsOpen} onOpenChange={setStatsOpen}>
         <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
           <CollapsibleTrigger className="flex flex-1 min-w-0 items-center gap-2 text-left text-base font-semibold">
             <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
@@ -123,8 +128,8 @@ export const TabFrame = ({ tabKey, categories, children }: Props) => {
           </CollapsibleTrigger>
           <InfoTip k={`audit.frame.tabs.${tabKey}.statsHelp`} />
         </div>
-        <CollapsibleContent className="pt-4">{children}</CollapsibleContent>
-      </Collapsible>
+        <CollapsibleContent className="pt-4">{stats}</CollapsibleContent>
+      </Collapsible>}
     </div>
   );
 };

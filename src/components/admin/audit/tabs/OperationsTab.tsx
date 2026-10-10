@@ -28,7 +28,8 @@ const ISSUE_ORDER: OperationsIssue["code"][] = [
 
 const SAIL_LEVELS = ["I", "II", "III", "IV", "V", "VI"];
 
-export const OperationsTab = () => {
+/** part="main": KPIs and actionable lists; part="stats": charts and trends. */
+export const OperationsTab = ({ part = "main" }: { part?: "main" | "stats" }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const settings = useCompanySettings();
@@ -71,20 +72,7 @@ export const OperationsTab = () => {
     "not-assessed": "hsl(var(--muted-foreground))",
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard icon={ClipboardCheck} label={t("audit.operations.summary.evaluated")} value={data.total} tone="neutral" />
-        <KpiCard icon={AlertOctagon} label={t("audit.operations.summary.critical")} value={critical} tone={critical > 0 ? "red" : "green"} />
-        <KpiCard icon={Clock} label={t("audit.operations.summary.hanging")} value={hanging} tone={hanging > 0 ? "yellow" : "green"} />
-        <KpiCard
-          icon={PlaneTakeoff}
-          label={t("audit.operations.summary.unplannedShort")}
-          value={u.total > 0 ? `${unplannedPct}%` : "—"}
-          tone={u.total === 0 ? "neutral" : unplannedPct > 10 ? "yellow" : "green"}
-        />
-      </div>
-
+  if (part === "stats") return <div className="space-y-4">
       {/* Unplanned flights */}
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -162,6 +150,22 @@ export const OperationsTab = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+    </div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard icon={ClipboardCheck} label={t("audit.operations.summary.evaluated")} value={data.total} tone="neutral" />
+        <KpiCard icon={AlertOctagon} label={t("audit.operations.summary.critical")} value={critical} tone={critical > 0 ? "red" : "green"} />
+        <KpiCard icon={Clock} label={t("audit.operations.summary.hanging")} value={hanging} tone={hanging > 0 ? "yellow" : "green"} />
+        <KpiCard
+          icon={PlaneTakeoff}
+          label={t("audit.operations.summary.unplannedShort")}
+          value={u.total > 0 ? `${unplannedPct}%` : "—"}
+          tone={u.total === 0 ? "neutral" : unplannedPct > 10 ? "yellow" : "green"}
+        />
       </div>
 
       {data.approvedNoGo.length > 0 && (
