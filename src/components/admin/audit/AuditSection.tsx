@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ const tabDefs = [
   { value: "overview", key: "overview", icon: LayoutDashboard },
   { value: "operations", key: "operations", icon: Activity },
   { value: "fleet", key: "fleet", icon: Plane },
-  { value: "competency", key: "competency", icon: Users },
+  { value: "competency", key: "personnel", icon: Users },
   { value: "documentation", key: "documentation", icon: FileText },
   { value: "safety", key: "incidents", icon: ShieldAlert },
   { value: "internal", key: "internal", icon: ClipboardCheck },
@@ -51,6 +51,16 @@ export const AuditSection = () => {
   const [introHidden, setIntroHidden] = useState(() => readFlag("local", INTRO_KEY));
   const { dept, setDept } = useAuditDepartment();
   const { data: departments = [] } = useAuditDepartments();
+
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  // Keep the active tab visible in the horizontally scrolling tab row (mobile/DJI).
+  useEffect(() => {
+    const row = tabsScrollRef.current;
+    const el = row?.querySelector<HTMLElement>('[data-state="active"]');
+    if (!row || !el) return;
+    const left = el.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
+    row.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [tab]);
 
   const goto = (value: AuditTabValue) => {
     setTab(value);
@@ -120,7 +130,7 @@ export const AuditSection = () => {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as AuditTabValue)} className="w-full">
-        <div className="-mx-1 overflow-x-auto [touch-action:pan-x] px-1 pb-1">
+        <div ref={tabsScrollRef} className="relative -mx-1 overflow-x-auto [touch-action:pan-x] px-1 pb-1">
           <TabsList className="inline-flex h-auto w-max gap-1 p-1.5 bg-secondary rounded-xl">
             {tabDefs.map(({ value, key, icon: Icon }) => (
               <TabsTrigger
