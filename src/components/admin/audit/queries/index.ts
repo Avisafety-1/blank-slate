@@ -22,7 +22,9 @@ import {
   staleMissionIssue,
   type ActiveFlightLike,
   type MissionLike,
+  missionWithoutFlightLogIssue,
 } from "../lib/operationsAnalysis";
+import { matchPossibleLogs, type UnlinkedLog } from "../lib/missingFlightLogs";
 import type {
   AuditKpis,
   CompetencyRow,
@@ -32,6 +34,7 @@ import type {
   FleetRow,
   OperationsData,
   OperationsIssue,
+  PossibleFlightLog,
   SafetyAggregate,
 } from "../types";
 
