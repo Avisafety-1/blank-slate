@@ -1,42 +1,62 @@
-# Internrevisjon runde A: tydelig lagring, bedre funnflyt og lukking
+# Internrevisjon runde B1: årsak, tiltaksplan og «Mine revisjonsoppgaver»
 
-Bare fanen «Internrevisjon» endres. Andre faner, compliance-motoren og purringer røres ikke.
+Ingen varsling, ingen endring i compliance-motoren eller purringer.
 
-## Steg 0: SQL vises først, ingenting kjøres
-- Jeg leser gjeldende definisjon av `audit_findings_guard` og `audit_reviews_guard` (bare lesing) og skriver migrasjonen som `CREATE OR REPLACE` på dem, slik at dagens regler beholdes.
-- Full migrasjon og full test-SQL vises i chatten. Deretter STOPPER jeg. Ingenting kjøres før du har godkjent i et eget svar.
+## Steg 0 – SQL (vises i chatten, kjøres først etter eget godkjenningssvar)
 
-## Steg 1: Migrasjon (idempotent)
-- `audit_findings.checklist_item_id` (uuid, kan være tom, peker på sjekklistepunktet, settes til tom hvis punktet slettes). Unik delindeks: ett funn per punkt.
-- `audit_findings_guard`: `checklist_item_id` kan ikke endres etter at funnet er opprettet.
-- Ny trigger etter endring av result/comment på sjekklistepunkter (SECURITY DEFINER, search_path=public, REVOKE EXECUTE fra PUBLIC/anon/authenticated): en planlagt revisjon settes til «in_progress».
-- `audit_reviews_guard` ved lukking, i tillegg til regelen om kritiske funn:
-  - avvis hvis noen punkter har result 'unknown' («X punkter er ikke vurdert»)
-  - avvis hvis punkter med 'warn'/'fail' mangler kommentar («X punkter med avvik mangler begrunnelse»)
-  - override_reason opphever ikke disse to reglene.
+Jeg skriver full migrasjon og full test-SQL i chatten og stopper.
 
-## Steg 2: Test-SQL (kjøres bare etter godkjenning, alt rulles tilbake)
-- Et nytt funn på et punkt som allerede har funn avvises.
-- Første resultat på et punkt setter revisjonen til in_progress.
-- Lukking avvises når punkter ikke er vurdert, og når avvik mangler begrunnelse, også med override_reason.
-- Blokken avsluttes med `RAISE EXCEPTION 'TESTRESULTAT: %', out;` uten ytre exception-handler.
+**Migrasjon (idempotent)**
+- `audit_findings.root_cause text NULL` (`ADD COLUMN IF NOT EXISTS`).
+- `audit_findings_guard` (`CREATE OR REPLACE`, resten uendret):
+  - Låsen for ikke-admin får `root_cause` i unntakslisten, men bare når brukeren er `responsible_user_id` på funnet. Feilmelding: «Som ansvarlig kan du bare endre status og årsak på funnet».
+  - `root_cause` låst når `OLD.status = 'verified'` og status står fast: «Årsaken kan ikke endres etter verifisering. Gjenåpne funnet først».
+- Ny hjelper `is_audit_finding_responsible(_finding_id)` (SECURITY DEFINER, `search_path=public`, REVOKE fra PUBLIC/anon, GRANT kun authenticated fordi policyene bruker den).
+- `audit_actions`-policyer (DROP IF EXISTS + CREATE):
+  - INSERT: eieradmin ELLER funnansvarlig på funn som ikke er `verified`/`closed`.
+  - UPDATE: eieradmin ELLER tiltaksansvarlig ELLER funnansvarlig (samme i USING og WITH CHECK).
+  - DELETE: eieradmin ELLER (funnansvarlig OG `status='open'` OG `created_by = auth.uid()`).
+- `audit_actions_guard` utvides med én regel per rolle:
+  - Admin i eierselskapet: alt som før.
+  - INSERT som funnansvarlig: avvises hvis funnet er verifisert/lukket («Funnet er lukket – nye tiltak kan ikke legges til»).
+  - UPDATE som funnansvarlig: kan endre `description`, `responsible_user_id`, `deadline` (pluss status/kommentar hvis også tiltaksansvarlig) så lenge tiltaket ikke er `closed` («Lukkede tiltak kan ikke endres»).
+  - UPDATE som tiltaksansvarlig: bare status og kommentar (dagens melding).
+  - DELETE-sjekk speiles i en BEFORE DELETE-del med norsk melding.
+  - Samme jsonb-sammenligning (`to_jsonb(NEW) - ARRAY[...]`) som i dag.
 
-## Steg 3: Frontend (`AuditDetailDialog` og nye små komponenter)
-- **Lagringslinje** øverst, utenfor scrolleren: «Endringer lagres automatisk» + «Lagrer…» / «Lagret kl. HH:MM» / «Kunne ikke lagre – prøv igjen» (rødt). Status hentes fra et felles lagringsstatus-objekt i `useInternalAuditMutations`.
-- **Lukking av dialogen**: aktivt felt blurres, og dialogen venter til pågående lagring er ferdig før den lukkes.
-- **Faner**: Sjekkliste | Funn (antall) | Oppsummering. Fanelisten ligger utenfor scrolleren, innholdet i den ene scrolleren med `[touch-action:pan-y]`.
-- **Sjekkliste**: knappene Bestått / Delvis / merknad / Ikke bestått / Ikke relevant. Ved Delvis/Ikke bestått heter kommentarfeltet «Begrunnelse (påkrevd)», og «Lag funn» vises. Har punktet allerede et funn, vises «Funn opprettet» + «Gå til funn» (bytter fane, scroller til funnet og markerer det kort).
-- **Ny dialog `NewFindingDialog`** (fra punkt og fra «Legg til funn»): beskrivelse (forhåndsutfylt med punkt og kommentar), nivå (Nivå 1 (kritisk) / Nivå 2 / Observasjon), ansvarlig (forslag: revisjonens ansvarlige), frist (foreslått fra nivået til brukeren endrer den selv). Forhåndsvalg: Ikke bestått → Nivå 2, Delvis → Observasjon. Knappen er deaktivert mens lagring pågår. Toast «Funn opprettet» med «Vis».
-- **Funn-fanen**: Nivå 1 først, deretter frist. Statusene Åpen / Tiltak pågår / Klar for verifisering (beregnet) / Lukket (verifisert) (også for gamle 'closed'). 'closed' fjernes fra nedtrekkslisten. Nytt tiltak arver ansvarlig og frist fra funnet. «Verifiser og lukk» vises bare for admin når funnet er klart, krever bekreftelse, setter 'verified' og har hjelpeteksten «Bekreft at tiltakene er gjennomført og har virket.»
-- **Oppsummering-fanen**: vurderte punkter per seksjon (f.eks. 3/4), funn per nivå, åpne funn. Liste over det som hindrer lukking, med lenke til punktet eller funnet. «Lukk revisjon» flyttes hit. Feltet for overstyringsbegrunnelse vises bare når åpne Nivå 1-funn er det eneste hinderet.
-- **Bunnlinjen**: bare «Slett» (planlagte revisjoner) og «Lukk».
-- Dialoglayout følger AGENTS.md: vh før dvh, `.dialog-max-h`, header/faner/knapper utenfor scrolleren.
-- Alle nye tekster i både no.json og en.json.
+**Test-SQL** (bare `navn = 'Moderavdeling'`, to admins + én bruker uten admin-rolle, ellers `RAISE EXCEPTION 'Testoppsett: …'`; slutter med `RAISE EXCEPTION 'TESTRESULTAT: %', out;`, ingen ytre handler):
+1. Ansvarlig bruker skriver `root_cause` på eget funn.
+2. Ansvarlig oppretter tiltak på eget funn.
+3. Ansvarlig avvises ved tiltak på andres funn.
+4. Ansvarlig avvises ved endring av severity og deadline på funnet.
+5. Tiltaksansvarlig lukker sitt tiltak, men avvises ved endring av frist.
+6. `root_cause` låst etter verifisering.
+7. Funnansvarlig sletter eget åpent tiltak; avvises på tiltak opprettet av admin.
 
-## Steg 4: Tester
-- Rene hjelpefunksjoner i `auditTemplates.ts` (eller ny `auditReviewLogic.ts`): `suggestDeadline(level, today)`, `findingDisplayStatus(finding)`, `closeBlockers(review)`.
-- Enhetstester i `tests/`: frist per nivå (+7 / +60 / ingen), «Klar for verifisering» (uten tiltak / med åpent tiltak / bare lukkede tiltak), og hinderlisten (ikke vurdert, avvik uten begrunnelse, åpne Nivå 1-funn, og at overstyring bare tilbys når kritiske funn er eneste hinder).
-- Typesjekk og eksisterende audit-tester skal fortsatt bestå. AGENTS.md får én regel om at lukkeregler håndheves av serveren og vises med samme hjelpefunksjon i appen.
+## Steg 1 – Innboks: «Mine revisjonsoppgaver»
+- Øverst i innboksen, en sammenleggbar seksjon som bare vises når brukeren har åpne funn eller tiltak. Leses direkte fra funn og tiltak.
+- Rad: nivåmerke, Funn/Tiltak, kort beskrivelse, revisjonstittel, frist (rød når passert, gul innen 7 dager).
+- Sortering: forfalte først, så Nivå 1, så frist.
+- Tellingen på Innboks-merket i menyen = uleste tråder + åpne revisjonsoppgaver (egen query-nøkkel, invalideres etter alle revisjonsendringer).
 
-## Teknisk merknad
-Ingen edge-funksjoner endres. Hinderlisten i appen speiler serverens regler. Det er serveren som avgjør.
+## Steg 2 – Ny oppgavedialog
+- Åpnes fra raden eller med `?auditFinding=<id>` hvor som helst i appen (global vert som fjerner parameteren ved lukking).
+- Viser revisjon, revidert enhet, punkt og referanse, beskrivelse, nivå, frist og status (skrivebeskyttet for ikke-admin).
+- Funnansvarlig: felt «Årsak (hvorfor oppsto avviket?)» og tiltaksliste (legg til med arvet frist, endre åpne, slette egne åpne).
+- Tiltaksansvarlig: status, kommentar og «Marker som utført».
+- Når alle tiltak er lukket: «Klar for verifisering – revisor kontrollerer og lukker funnet.»
+- Samme lagringsstatus og «vent på lagring før lukking» som revisjonsdialogen.
+- Lenker for funn og tiltak i revisjonsmodulen peker til denne dialogen (tiltak → funnet det tilhører).
+- Revisjonsdialogen for admin viser årsaken under funnet.
+
+## Steg 3 – Generelt
+- Dialog etter prosjektreglene: vh før dvh, én scroller med `[touch-action:pan-y]`, header/knapper utenfor, fungerer med tastatur på iOS/Android/DJI RC Pro.
+- Alle tekster i no.json og en.json.
+
+## Tekniske detaljer
+- Ny ren modul `audit/lib/auditTasks.ts`: `selectMyAuditTasks(findings, actions, userId)`, `sortAuditTasks`, `deadlineTone(deadline, today) → "overdue" | "soon" | "normal"`. Enhetstester i `tests/auditTasks.test.ts` (utvalg: ikke verifisert/lukket, både funn- og tiltaksansvar; sortering; fargegrenser ved 0 og 7 dager).
+- Hook `useMyAuditTasks` med nøkkel `["audit","myTasks",userId]`; `useInvalidate` i `useInternalAudits.ts` får med `"myTasks"`. `useUnreadMessagesCount` brukes uendret; summen gjøres der merket tegnes.
+- Mutasjoner for årsak/tiltak gjenbruker `useInternalAuditMutations` (`createAction` utvides med valgfri beskrivelse/ansvarlig/frist).
+- `AuditTaskHost` monteres én gang i app-skallet og leser `auditFinding` fra URL.
+- `auditDeepLink("audit_finding"|"audit_action")` → `?auditFinding=<findingId>`; validatoren sender funn-id for tiltak. `tests/auditDeepLink.test.ts` oppdateres.
+- `FindingRow` får `root_cause`. Regel om ansvarsfordeling legges i `src/components/admin/audit/AGENTS.md`.
