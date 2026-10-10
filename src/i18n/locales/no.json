@@ -1048,6 +1048,20 @@
       "medium": "Middels",
       "high": "Høy",
       "critical": "Kritisk"
+    },
+    "noFlight": {
+      "prompt": "Du har fått påminnelse om manglende flylogg. Ble oppdraget fløyet?",
+      "upload": "Last opp / knytt flylogg",
+      "notFlown": "Oppdraget ble ikke fløyet",
+      "confirmTitle": "Oppdraget ble ikke fløyet",
+      "confirmBody": "Oppdraget «{{title}}» endres fra Fullført til Avbrutt. Avsender av påminnelsen ({{name}}) får beskjed, og påminnelsen markeres som ferdig.",
+      "confirmBodyNoReminder": "Oppdraget «{{title}}» endres fra Fullført til Avbrutt.",
+      "commentPlaceholder": "Kommentar (valgfritt)",
+      "commentLabel": "Kommentar",
+      "confirm": "Bekreft",
+      "replyBody": "{{pilot}} har bekreftet at oppdraget «{{title}}» ikke ble fløyet. Status er endret til Avbrutt automatisk.",
+      "toast": "Oppdraget er satt til Avbrutt og {{name}} er varslet.",
+      "failed": "Kunne ikke oppdatere oppdraget"
     }
   },
   "incidents": {
@@ -8179,7 +8193,8 @@
       "failed": "Kunne ikke sende påminnelse",
       "subjectPrefix": "Handling nødvendig:",
       "bodyTemplate": "Hei,\n\nDette er en påminnelse fra compliance-verktøyet i AviSafe.\n\nFunn: {{title}}\nDetaljer: {{detail}}\n\nVennligst følg opp så snart som mulig.",
-      "noDetail": "(ingen ytterligere detaljer)"
+      "noDetail": "(ingen ytterligere detaljer)",
+      "missingLogBody": "Oppdraget «{{title}}» ({{date}}) er fullført, men har ingen flylogg. Last opp eller knytt flyloggen til oppdraget."
     },
     "competency": {
       "header": "Pilotkompetanse",
@@ -8239,7 +8254,8 @@
         "activeFlightStale": "Aktiv flygning ikke avsluttet",
         "soraEnvelopeExceeded": "Utenfor SORA-rammene",
         "flownWithNoGo": "Fløyet med NO-GO",
-        "missionPlannedPastDue": "Planlagt oppdrag passert"
+        "missionPlannedPastDue": "Planlagt oppdrag passert",
+        "missionWithoutFlightLog": "Oppdrag uten flylogg"
       },
       "noIssues": "Ingen operative avvik",
       "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag",
@@ -8289,7 +8305,31 @@
         "title": "Fløyet med NO-GO – godkjent",
         "approvedBy": "Godkjent av {{name}}, {{date}}"
       },
-      "approvedBeforeNoGo": "Godkjent av {{name}} {{date}} – godkjenningen ble gitt før NO-GO-vurderingen."
+      "approvedBeforeNoGo": "Godkjent av {{name}} {{date}} – godkjenningen ble gitt før NO-GO-vurderingen.",
+      "missingLogs": {
+        "title": "Oppdrag uten flylogg",
+        "request": "Be om flylogg",
+        "requestAll": "Be om alle manglende flylogger",
+        "noPilot": "Ingen pilot",
+        "daysAgo_one": "{{count}} dag siden",
+        "daysAgo_other": "{{count}} dager siden",
+        "possibleLog": "Mulig flylogg funnet ({{date}}, {{drone}}, {{minutes}} min) – piloten må bare knytte den.",
+        "status": {
+          "not_sent": "Ikke sendt",
+          "sent_open": "Sendt",
+          "sent_closed": "Ferdig"
+        },
+        "bulkSubject_one": "Påminnelse: {{count}} oppdrag mangler flylogg",
+        "bulkSubject_other": "Påminnelse: {{count}} oppdrag mangler flylogg",
+        "bulkIntro_one": "Følgende oppdrag er fullført, men har ingen flylogg. Last opp eller knytt flyloggen til oppdraget:",
+        "bulkIntro_other": "Følgende {{count}} oppdrag er fullført, men har ingen flylogg. Last opp eller knytt flyloggene til oppdragene:",
+        "bulkLine": "• {{title}} ({{date}}): {{link}}",
+        "bulkSent_one": "Påminnelse sendt til {{count}} pilot",
+        "bulkSent_other": "Påminnelser sendt til {{count}} piloter",
+        "bulkFailed_one": "{{count}} påminnelse feilet",
+        "bulkFailed_other": "{{count}} påminnelser feilet",
+        "noRecipients": "Fant ingen mottakere for oppdragene"
+      }
     },
     "safety": {
       "reported": "Rapporterte",
@@ -8422,6 +8462,11 @@
       "incidentNoResponsible": {
         "title": "Hendelse uten oppfølgingsansvarlig: {{title}}",
         "body": "Sett en oppfølgingsansvarlig for hendelsen."
+      },
+      "missionWithoutFlightLog": {
+        "title": "Oppdrag uten flylogg: {{mission}}",
+        "body": "Oppdraget «{{mission}}» ({{date}}) er fullført for {{days}} dager siden, men har ingen flylogg.",
+        "bodyPossibleLog": "Oppdraget «{{mission}}» ({{date}}) har ingen flylogg. Mulig flylogg funnet ({{logDate}}, {{logDrone}}, {{logMinutes}} min) – piloten må bare knytte den til oppdraget."
       }
     },
     "insight": {

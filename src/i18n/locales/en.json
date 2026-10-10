@@ -1046,6 +1046,20 @@
       "medium": "Medium",
       "high": "High",
       "critical": "Critical"
+    },
+    "noFlight": {
+      "prompt": "You have received a reminder about a missing flight log. Was the mission flown?",
+      "upload": "Upload / link flight log",
+      "notFlown": "The mission was not flown",
+      "confirmTitle": "The mission was not flown",
+      "confirmBody": "The mission “{{title}}” will change from Completed to Cancelled. The sender of the reminder ({{name}}) will be notified, and the reminder will be marked as done.",
+      "confirmBodyNoReminder": "The mission “{{title}}” will change from Completed to Cancelled.",
+      "commentPlaceholder": "Comment (optional)",
+      "commentLabel": "Comment",
+      "confirm": "Confirm",
+      "replyBody": "{{pilot}} has confirmed that the mission “{{title}}” was not flown. The status has been changed to Cancelled automatically.",
+      "toast": "The mission has been set to Cancelled and {{name}} has been notified.",
+      "failed": "Could not update the mission"
     }
   },
   "incidents": {
@@ -8177,7 +8191,8 @@
       "failed": "Could not send reminder",
       "subjectPrefix": "Action required:",
       "bodyTemplate": "Hi,\n\nThis is a reminder from the AviSafe compliance tool.\n\nFinding: {{title}}\nDetails: {{detail}}\n\nPlease follow up as soon as possible.",
-      "noDetail": "(no further details)"
+      "noDetail": "(no further details)",
+      "missingLogBody": "The mission “{{title}}” ({{date}}) is completed but has no flight log. Upload or link the flight log to the mission."
     },
     "competency": {
       "header": "Pilot competency",
@@ -8237,7 +8252,8 @@
         "activeFlightStale": "Active flight not ended",
         "soraEnvelopeExceeded": "Outside SORA envelope",
         "flownWithNoGo": "Flown with NO-GO",
-        "missionPlannedPastDue": "Planned mission past due"
+        "missionPlannedPastDue": "Planned mission past due",
+        "missionWithoutFlightLog": "Missions without flight log"
       },
       "noIssues": "No operational deviations",
       "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions",
@@ -8287,7 +8303,31 @@
         "title": "Flown with NO-GO – approved",
         "approvedBy": "Approved by {{name}}, {{date}}"
       },
-      "approvedBeforeNoGo": "Approved by {{name}} {{date}} – the approval was given before the NO-GO assessment."
+      "approvedBeforeNoGo": "Approved by {{name}} {{date}} – the approval was given before the NO-GO assessment.",
+      "missingLogs": {
+        "title": "Missions without flight log",
+        "request": "Request flight log",
+        "requestAll": "Request all missing flight logs",
+        "noPilot": "No pilot",
+        "daysAgo_one": "{{count}} day ago",
+        "daysAgo_other": "{{count}} days ago",
+        "possibleLog": "Possible flight log found ({{date}}, {{drone}}, {{minutes}} min) – the pilot only needs to link it.",
+        "status": {
+          "not_sent": "Not sent",
+          "sent_open": "Sent",
+          "sent_closed": "Done"
+        },
+        "bulkSubject_one": "Reminder: {{count}} mission is missing a flight log",
+        "bulkSubject_other": "Reminder: {{count}} missions are missing flight logs",
+        "bulkIntro_one": "The following mission is completed but has no flight log. Upload or link the flight log to the mission:",
+        "bulkIntro_other": "The following {{count}} missions are completed but have no flight log. Upload or link the flight logs to the missions:",
+        "bulkLine": "• {{title}} ({{date}}): {{link}}",
+        "bulkSent_one": "Reminder sent to {{count}} pilot",
+        "bulkSent_other": "Reminders sent to {{count}} pilots",
+        "bulkFailed_one": "{{count}} reminder failed",
+        "bulkFailed_other": "{{count}} reminders failed",
+        "noRecipients": "No recipients found for the missions"
+      }
     },
     "safety": {
       "reported": "Reported",
@@ -8420,6 +8460,11 @@
       "incidentNoResponsible": {
         "title": "Incident without follow-up owner: {{title}}",
         "body": "Assign a follow-up owner to the incident."
+      },
+      "missionWithoutFlightLog": {
+        "title": "Mission without flight log: {{mission}}",
+        "body": "The mission “{{mission}}” ({{date}}) was completed {{days}} days ago but has no flight log.",
+        "bodyPossibleLog": "The mission “{{mission}}” ({{date}}) has no flight log. Possible flight log found ({{logDate}}, {{logDrone}}, {{logMinutes}} min) – the pilot only needs to link it to the mission."
       }
     },
     "insight": {
