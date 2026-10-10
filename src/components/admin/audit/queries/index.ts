@@ -8,7 +8,9 @@ import {
   COMPLETED_STATUS,
   IN_PROGRESS_STATUS,
   PLANNED_STATUS,
-  UNPLANNED_WINDOW_DAYS,
+  noGoApprovalState,
+  incidentIssues as buildIncidentIssues,
+  type IncidentLike,
   normalizeSail,
   readSoraProfile,
   soraEnvelopeIssue,
@@ -288,7 +290,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
   const since = iso12moAgo();
   const now = new Date();
   const activeCutoff = new Date(now.getTime() - ACTIVE_FLIGHT_STALE_HOURS * 3_600_000).toISOString();
-  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status";
+  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status, approval_status, approved_at, approved_by, approval_comment";
 
   const [windowMissions, openMissions, activeFlights, logs, soraRows] = await Promise.all([
     fetchAllPages<MissionLike>((a, b) =>
@@ -313,8 +315,9 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     ),
   ]);
 
+  type MissionRow = MissionLike & { approval_status?: string | null; approved_at?: string | null; approved_by?: string | null; approval_comment?: string | null };
   const windowIds = new Set(windowMissions.map((m) => m.id));
-  const missionById = new Map<string, MissionLike>();
+  const missionById = new Map<string, MissionRow>();
   for (const m of [...windowMissions, ...openMissions]) missionById.set(m.id, m);
   const missions = [...missionById.values()];
 
@@ -366,6 +369,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     if (i) issues.push(i);
   }
 
+  const noGo: { m: MissionRow; state: ReturnType<typeof noGoApprovalState> }[] = [];
   const sora = { assessed: 0, within: 0, deviating: 0, bySail: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 } as Record<string, number> };
   for (const m of missions) {
     const a = latest.get(m.id);
@@ -385,8 +389,32 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     }
     const env = soraEnvelopeIssue(m, profile, sail, flownMonth.has(m.id));
     if (env) issues.push(env);
-    if (m.status === COMPLETED_STATUS && a.recommendation?.toLowerCase() === "no-go") {
-      issues.push({ id: `${m.id}-nogo`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null, code: "flownWithNoGo", severity: "critical" });
+    if ((m.status === COMPLETED_STATUS || flownMonth.has(m.id)) && a.recommendation?.toLowerCase() === "no-go") {
+      noGo.push({ m, state: noGoApprovalState(m, a.created_at) });
+    }
+  }
+
+  // Approver names for NO-GO missions
+  const approverIds = [...new Set(noGo.map((n) => n.m.approved_by).filter((x): x is string => !!x))];
+  const approverName = new Map<string, string>();
+  if (approverIds.length) {
+    const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", approverIds);
+    for (const p of (profs ?? []) as any[]) approverName.set(p.id, p.full_name ?? "—");
+  }
+  const approvedNoGo: OperationsData["approvedNoGo"] = [];
+  for (const { m, state } of noGo) {
+    const by = m.approved_by ? approverName.get(m.approved_by) ?? null : null;
+    if (state === "approved") {
+      approvedNoGo.push({
+        missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null,
+        approvedBy: by, approvedAt: m.approved_at ?? null, approvalComment: m.approval_comment ?? null,
+      });
+    } else {
+      issues.push({
+        id: `${m.id}-nogo`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null,
+        code: "flownWithNoGo", severity: "critical",
+        approvedBefore: state === "approvedBefore" ? { by, at: m.approved_at ?? null } : null,
+      });
     }
   }
 
@@ -396,13 +424,6 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     monthOrder.push(monthKeyOf(new Date(now.getFullYear(), now.getMonth() - i, 1)));
   }
   const unplanned = summarizeUnplanned(logs, monthKeyOf, monthOrder);
-  const recentCutoff = now.getTime() - UNPLANNED_WINDOW_DAYS * 86_400_000;
-  const recentLogs = logs.filter((l) => {
-    const raw = l.start_time_utc || l.flight_date;
-    return raw ? new Date(raw).getTime() >= recentCutoff : false;
-  });
-  const recent = summarizeUnplanned(recentLogs);
-
   // Risk distribution on flown missions (shared helper with Status page)
   const assessList = [...latest.values()];
   const labels = { go: { name: "go", scoreRange: "" }, caution: { name: "caution", scoreRange: "" }, "no-go": { name: "no-go", scoreRange: "" }, "not-assessed": { name: "not-assessed", scoreRange: "" } };
@@ -419,7 +440,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     issues,
     total: missions.length,
     unplanned,
-    unplannedRecent: { total: recent.total, unplanned: recent.unplanned, pct: recent.pct },
+    approvedNoGo,
     sora,
     risk: { distribution, byMonth },
   };

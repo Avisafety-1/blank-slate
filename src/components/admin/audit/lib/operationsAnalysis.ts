@@ -168,3 +168,58 @@ export function operationsCheckResults(
   for (let k = 0; k < orphanFails; k++) results.push("fail");
   return results;
 }
+
+/**
+ * A flown NO-GO mission is OK when it was approved AFTER (or at) the NO-GO assessment.
+ * Returns "approved" (no finding), "approvedBefore" (finding, show old approval) or "notApproved".
+ */
+export function noGoApprovalState(
+  m: { approval_status?: string | null; approved_at?: string | null },
+  assessmentCreatedAt: string,
+): "approved" | "approvedBefore" | "notApproved" {
+  if (m.approval_status !== "approved" || !m.approved_at) return "notApproved";
+  const approved = new Date(m.approved_at).getTime();
+  const assessed = new Date(assessmentCreatedAt).getTime();
+  if (isNaN(approved) || isNaN(assessed)) return "notApproved";
+  return approved >= assessed ? "approved" : "approvedBefore";
+}
+
+// ---------- Incidents ----------
+export const INCIDENT_OPEN_DAYS = 30;
+const CLOSED_INCIDENT = /^(lukket|ferdigbehandlet|closed)$/i;
+const HIGH_SEVERITY = /(h[øo]y|kritisk|high|critical)/i;
+
+export interface IncidentLike {
+  id: string;
+  tittel?: string | null;
+  status?: string | null;
+  alvorlighetsgrad?: string | null;
+  hendelsestidspunkt?: string | null;
+  opprettet_dato?: string | null;
+  oppfolgingsansvarlig_id?: string | null;
+}
+
+export const isClosedIncident = (status: string | null | undefined) => CLOSED_INCIDENT.test((status ?? "").trim());
+
+export function incidentIssues(r: IncidentLike, now: Date = new Date()) {
+  if (isClosedIncident(r.status)) return [];
+  const out: {
+    id: string; incidentId: string; title: string; incidentDate: string | null;
+    code: "incidentOpenTooLong" | "incidentNoResponsible"; severity: "critical" | "warning"; days: number;
+  }[] = [];
+  const raw = r.opprettet_dato || r.hendelsestidspunkt;
+  const d = raw ? new Date(raw) : null;
+  const days = d && !isNaN(d.getTime()) ? Math.floor((now.getTime() - d.getTime()) / 86_400_000) : 0;
+  const base = { incidentId: r.id, title: r.tittel ?? "—", incidentDate: r.hendelsestidspunkt ?? null, days };
+  if (days > INCIDENT_OPEN_DAYS) {
+    out.push({ ...base, id: `${r.id}-open`, code: "incidentOpenTooLong", severity: HIGH_SEVERITY.test(r.alvorlighetsgrad ?? "") ? "critical" : "warning" });
+  }
+  if (!r.oppfolgingsansvarlig_id) {
+    out.push({ ...base, id: `${r.id}-noresp`, code: "incidentNoResponsible", severity: "warning" });
+  }
+  return out;
+}
+
+/** Drone status (Grønn/Gul/Rød) → scoring bucket. */
+export const droneStatusCheck = (status: string): CheckResult =>
+  status === "Rød" ? "fail" : status === "Gul" ? "warn" : "pass";
