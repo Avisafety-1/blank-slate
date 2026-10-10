@@ -35,7 +35,8 @@ function severityLabel(t: (k: string) => string, sev: string): string {
   return t(map[key] ?? "audit.safety.severity.ukjent");
 }
 
-export const SafetyTab = () => {
+/** part="main": incident KPIs; part="stats": breakdowns and trend. */
+export const SafetyTab = ({ part = "main" }: { part?: "main" | "stats" }) => {
   const { t } = useTranslation();
   const { data, isLoading, isError, error } = useAuditSafety();
 
@@ -45,16 +46,7 @@ export const SafetyTab = () => {
 
   const totalSev = data.bySeverity.reduce((s, b) => s + b.count, 0) || 1;
 
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <KpiCard label={t("audit.safety.reported")} value={data.reported} icon={AlertTriangle} tone="warning" />
-        <KpiCard label={t("audit.safety.criticalIncidents")} value={data.critical} icon={AlertOctagon} tone={data.critical > 0 ? "danger" : "success"} />
-        <KpiCard label={t("audit.safety.openIncidents")} value={data.openIncidents} icon={ShieldAlert} tone={data.openIncidents > 0 ? "warning" : "success"} />
-        <KpiCard label={t("audit.safety.openActions")} value={data.openActions} icon={ListChecks} tone={data.openActions > 0 ? "warning" : "success"} />
-        <KpiCard label={t("audit.safety.closedOnTime")} value={data.closedOnTimePct === null ? "—" : `${data.closedOnTimePct}%`} icon={CheckCircle2} tone={data.closedOnTimePct !== null && data.closedOnTimePct >= 80 ? "success" : "warning"} />
-      </div>
-
+  if (part === "stats") return <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -124,6 +116,18 @@ export const SafetyTab = () => {
           </div>
         </CardContent>
       </Card>
+    </div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <KpiCard label={t("audit.safety.reported")} value={data.reported} icon={AlertTriangle} tone="warning" />
+        <KpiCard label={t("audit.safety.criticalIncidents")} value={data.critical} icon={AlertOctagon} tone={data.critical > 0 ? "danger" : "success"} />
+        <KpiCard label={t("audit.safety.openIncidents")} value={data.openIncidents} icon={ShieldAlert} tone={data.openIncidents > 0 ? "warning" : "success"} />
+        <KpiCard label={t("audit.safety.openActions")} value={data.openActions} icon={ListChecks} tone={data.openActions > 0 ? "warning" : "success"} />
+        <KpiCard label={t("audit.safety.closedOnTime")} value={data.closedOnTimePct === null ? "—" : `${data.closedOnTimePct}%`} icon={CheckCircle2} tone={data.closedOnTimePct !== null && data.closedOnTimePct >= 80 ? "success" : "warning"} />
+      </div>
+
     </div>
   );
 };
