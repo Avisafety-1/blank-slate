@@ -40,6 +40,7 @@ interface IncidentDetailDialogProps {
   onEditRequest?: (incident: Incident) => void;
   /** Rendered under the header, e.g. a reminder quick-action card. */
   topSlot?: ReactNode;
+  initialView?: "detail" | "incident-close" | "incident-responsible" | string;
 }
 
 const severityColors = {
@@ -59,7 +60,7 @@ const statusColors = {
   Ferdigbehandlet: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30",
 };
 
-export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest, topSlot }: IncidentDetailDialogProps) => {
+export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest, topSlot, initialView = "detail" }: IncidentDetailDialogProps) => {
   const { user, companyId, parentCompanyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
@@ -76,6 +77,13 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
   const [selectedResponsibleId, setSelectedResponsibleId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [localStatus, setLocalStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || initialView === "detail") return;
+    requestAnimationFrame(() => {
+      document.getElementById(initialView === "incident-close" ? "status-select" : "responsible-select")?.scrollIntoView({ block: "center" });
+    });
+  }, [open, initialView]);
 
   // Sync local status from prop
   useEffect(() => {

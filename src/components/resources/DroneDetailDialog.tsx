@@ -95,9 +95,10 @@ interface DroneDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   drone: Drone | null;
   onDroneUpdated: () => void;
+  initialSection?: "maintenance";
 }
 
-export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated }: DroneDetailDialogProps) => {
+export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onDroneUpdated, initialSection }: DroneDetailDialogProps) => {
   const { t } = useTranslation();
   const tt = (k: string, opts?: any) => t(`resourceDialogs.droneDetail.${k}`, opts) as string;
   const { user, companyId, isAdmin } = useAuth();
@@ -107,6 +108,12 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
   const { checklists } = useChecklists();
   const deptVis = useDepartmentVisibility("drone", initialDrone?.id, companyId || undefined, open);
   const [drone, setDrone] = useState<Drone | null>(initialDrone);
+  const maintenanceRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open || initialSection !== "maintenance") return;
+    requestAnimationFrame(() => maintenanceRef.current?.scrollIntoView({ block: "center" }));
+  }, [open, initialSection, initialDrone?.id]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ackComment, setAckComment] = useState("");
@@ -1257,6 +1264,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                 </div>
               )}
 
+              <div ref={maintenanceRef}>
               {drone.company_id && (
                 <InspectionOverview
                   kind="droner"
@@ -1317,6 +1325,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                   })()}
                 />
               )}
+              </div>
 
 
               {drone.merknader && (

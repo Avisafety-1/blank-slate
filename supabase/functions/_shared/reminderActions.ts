@@ -12,7 +12,30 @@ export type ReminderActionId =
   | "finishMission"
   | "endFlight"
   | "uploadLog"
-  | "takeResponsibility";
+  | "takeResponsibility"
+  | "addIncidentComment"
+  | "closeIncident"
+  | "selectResponsible"
+  | "openAuditTask"
+  | "reportIncident"
+  | "writeMissionExplanation"
+  | "startRiskAssessment"
+  | "openRiskAssessment"
+  | "editCompetency"
+  | "uploadDocumentVersion"
+  | "uploadEmergencyPlan"
+  | "openDroneMaintenance";
+
+export type ReminderActionKind = "open" | "mutate";
+
+export const ACTION_KIND: Record<ReminderActionId, ReminderActionKind> = {
+  notFlown: "mutate", flown: "mutate", changeDate: "open", finishMission: "mutate",
+  endFlight: "mutate", uploadLog: "open", takeResponsibility: "mutate",
+  addIncidentComment: "mutate", closeIncident: "open", selectResponsible: "open",
+  openAuditTask: "open", reportIncident: "open", writeMissionExplanation: "mutate",
+  startRiskAssessment: "open", openRiskAssessment: "open", editCompetency: "open",
+  uploadDocumentVersion: "open", uploadEmergencyPlan: "open", openDroneMaintenance: "open",
+};
 
 export const PLANNED = "Planlagt";
 export const IN_PROGRESS = "Pågående";
@@ -25,11 +48,27 @@ export const REMINDER_ACTIONS: Record<string, ReminderActionId[]> = {
   MissionInProgressStale: ["finishMission", "notFlown"],
   ActiveFlightStale: ["endFlight"],
   MissionWithoutFlightLog: ["uploadLog", "notFlown"],
-  IncidentNoResponsible: ["takeResponsibility"],
+  IncidentNoResponsible: ["takeResponsibility", "selectResponsible"],
+  IncidentOpenTooLong: ["takeResponsibility", "addIncidentComment", "closeIncident"],
+  OpenActionsTooLong: ["openAuditTask"],
+  FindingAwaitingVerification: ["openAuditTask"],
+  FlownWithNoGo: ["reportIncident", "writeMissionExplanation"],
+  MissingRiskAssessment: ["startRiskAssessment", "reportIncident", "writeMissionExplanation"],
+  SoraEnvelopeExceeded: ["openRiskAssessment", "reportIncident"],
+  ExpiredCompetence: ["editCompetency"],
+  CompetenceExpiringSoon: ["editCompetency"],
+  ExpiredDocument: ["uploadDocumentVersion"],
+  DocumentExpired: ["uploadDocumentVersion"],
+  DocumentReviewOverdue: ["uploadDocumentVersion"],
+  MissingEmergencyPlan: ["uploadEmergencyPlan"],
+  DroneStatusRed: ["openDroneMaintenance"],
+  DroneStatusYellow: ["openDroneMaintenance"],
 };
 
 /** Actions that change data and therefore need a confirmation dialog + thread reply. */
-export const MUTATING_ACTIONS: ReminderActionId[] = ["notFlown", "flown", "finishMission", "endFlight", "takeResponsibility"];
+export const MUTATING_ACTIONS: ReminderActionId[] = Object.entries(ACTION_KIND)
+  .filter(([, kind]) => kind === "mutate")
+  .map(([action]) => action as ReminderActionId);
 
 export interface ParsedFindingKey { code: string; entityType: string; entityId: string }
 
@@ -53,7 +92,21 @@ export interface ReminderEntityState {
   flightIsMine?: boolean;
   incidentResponsibleId?: string | null;
   incidentClosed?: boolean;
+  isCurrentUserResponsible?: boolean;
+  canWrite?: boolean;
+  auditActionClosed?: boolean;
+  missionTimePassed?: boolean;
+  activeFlightEnded?: boolean;
+  riskAssessmentMissing?: boolean;
+  soraEnvelopeExceeded?: boolean;
+  competencyRelevant?: boolean;
+  documentRelevant?: boolean;
+  emergencyPlanMissing?: boolean;
+  droneNeedsAttention?: boolean;
 }
+
+export const missionWasFlownOrCompleted = (s: ReminderEntityState): boolean =>
+  s.missionStatus === COMPLETED || (!!s.missionTimePassed && (!!s.hasFlightLog || !!s.activeFlightEnded));
 
 /** Which actions are still relevant now — hides e.g. "not flown" once the mission is already Avbrutt. */
 export function availableActions(code: string, s: ReminderEntityState): ReminderActionId[] {
@@ -68,9 +121,43 @@ export function availableActions(code: string, s: ReminderEntityState): Reminder
     case "ActiveFlightStale":
       return s.flightActive && s.flightIsMine ? ["endFlight"] : [];
     case "IncidentNoResponsible":
-      return !s.incidentResponsibleId && !s.incidentClosed ? ["takeResponsibility"] : [];
+      return !s.incidentResponsibleId && !s.incidentClosed
+        ? ["takeResponsibility", ...(s.canWrite ? ["selectResponsible" as const] : [])]
+        : [];
+    case "IncidentOpenTooLong":
+      return s.incidentClosed ? [] : [
+        ...(!s.isCurrentUserResponsible && s.canWrite ? ["takeResponsibility" as const] : []),
+        ...(s.canWrite ? ["addIncidentComment" as const] : []),
+        "closeIncident" as const,
+      ];
+    case "OpenActionsTooLong":
+      return s.auditActionClosed ? [] : ["openAuditTask"];
+    case "FindingAwaitingVerification":
+      return ["openAuditTask"];
+    case "FlownWithNoGo":
+      return s.canWrite === false ? ["reportIncident"] : ["reportIncident", "writeMissionExplanation"];
+    case "MissingRiskAssessment":
+      if (!s.riskAssessmentMissing) return [];
+      return missionWasFlownOrCompleted(s)
+        ? ["reportIncident", ...(s.canWrite === false ? [] : ["writeMissionExplanation" as const])]
+        : ["startRiskAssessment"];
+    case "SoraEnvelopeExceeded":
+      if (!s.soraEnvelopeExceeded) return [];
+      return missionWasFlownOrCompleted(s) ? ["reportIncident", "openRiskAssessment"] : ["openRiskAssessment"];
+    case "ExpiredCompetence":
+    case "CompetenceExpiringSoon":
+      return s.competencyRelevant ? ["editCompetency"] : [];
+    case "ExpiredDocument":
+    case "DocumentExpired":
+    case "DocumentReviewOverdue":
+      return s.documentRelevant ? ["uploadDocumentVersion"] : [];
+    case "MissingEmergencyPlan":
+      return s.emergencyPlanMissing ? ["uploadEmergencyPlan"] : [];
+    case "DroneStatusRed":
+    case "DroneStatusYellow":
+      return s.droneNeedsAttention ? ["openDroneMaintenance"] : [];
     default:
-      return [];
+      return code.startsWith("Audit") ? ["openAuditTask"] : [];
   }
 }
 
@@ -85,16 +172,14 @@ export function targetMissionStatus(action: ReminderActionId): string | null {
 export function normalizeActionParam(v: string | null | undefined): ReminderActionId | "noFlight" | null {
   if (!v) return null;
   if (v === "noFlight") return "noFlight";
-  const all: ReminderActionId[] = ["notFlown", "flown", "changeDate", "finishMission", "endFlight", "uploadLog", "takeResponsibility"];
+  const all = Object.keys(ACTION_KIND) as ReminderActionId[];
   return (all as string[]).includes(v) ? (v as ReminderActionId) : null;
 }
 
 /** App path that opens the card with the action pre-selected. Never performs the action itself. */
 export function actionDeepLink(k: ParsedFindingKey, action: ReminderActionId, msgId: string): string {
-  const q = `action=${action}&msg=${encodeURIComponent(msgId)}`;
-  if (k.entityType === "incident") return `/hendelser?id=${encodeURIComponent(k.entityId)}&${q}`;
-  if (k.entityType === "active_flight") return `/oppdrag?flight=${encodeURIComponent(k.entityId)}&${q}`;
-  return `/oppdrag?mission=${encodeURIComponent(k.entityId)}&${q}`;
+  void action;
+  return `/?msg=${encodeURIComponent(msgId)}&entity=${encodeURIComponent(k.entityType)}&entityId=${encodeURIComponent(k.entityId)}`;
 }
 
 const EMAIL_LABELS: Record<"no" | "en", Record<ReminderActionId, string>> = {
@@ -102,11 +187,21 @@ const EMAIL_LABELS: Record<"no" | "en", Record<ReminderActionId, string>> = {
     notFlown: "Ble ikke fløyet", flown: "Ble fløyet", changeDate: "Endre dato",
     finishMission: "Avslutt oppdraget", endFlight: "Avslutt flygingen",
     uploadLog: "Last opp flylogg", takeResponsibility: "Jeg tar ansvaret",
+    addIncidentComment: "Skriv kommentar", closeIncident: "Lukk hendelse…", selectResponsible: "Velg ansvarlig…",
+    openAuditTask: "Åpne revisjonsoppgave", reportIncident: "Registrer avvik", writeMissionExplanation: "Skriv forklaring",
+    startRiskAssessment: "Start risikovurdering", openRiskAssessment: "Åpne risikovurdering", editCompetency: "Oppdater kompetanse…",
+    uploadDocumentVersion: "Last opp ny versjon…", uploadEmergencyPlan: "Last opp beredskapsplan…",
+    openDroneMaintenance: "Registrer inspeksjon/vedlikehold…",
   },
   en: {
     notFlown: "Not flown", flown: "Was flown", changeDate: "Change date",
     finishMission: "Complete mission", endFlight: "End flight",
     uploadLog: "Upload flight log", takeResponsibility: "I'll take responsibility",
+    addIncidentComment: "Write comment", closeIncident: "Close incident…", selectResponsible: "Choose responsible…",
+    openAuditTask: "Open audit task", reportIncident: "Register deviation", writeMissionExplanation: "Write explanation",
+    startRiskAssessment: "Start risk assessment", openRiskAssessment: "Open risk assessment", editCompetency: "Update competency…",
+    uploadDocumentVersion: "Upload new version…", uploadEmergencyPlan: "Upload emergency plan…",
+    openDroneMaintenance: "Register inspection/maintenance…",
   },
 };
 

@@ -12,6 +12,10 @@ import { DocumentDetailDialog } from "@/components/dashboard/DocumentDetailDialo
 import { DroneDetailDialog } from "@/components/resources/DroneDetailDialog";
 import { EquipmentDetailDialog } from "@/components/resources/EquipmentDetailDialog";
 import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyDialog";
+import { AuditTaskDialog } from "./AuditTaskDialog";
+import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
+import DocumentCardModal from "@/components/documents/DocumentCardModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { auditDeepLink } from "../utils/auditDeepLink";
 
 /**
@@ -20,12 +24,18 @@ import { auditDeepLink } from "../utils/auditDeepLink";
  * navigating away. auditDeepLink stays for reminders (recipients are elsewhere).
  */
 
-type Kind = "mission" | "incident" | "document" | "drone" | "equipment" | "person";
-type Open = { kind: Kind; row: any } | null;
+type Kind = "mission" | "incident" | "document" | "drone" | "equipment" | "person" | "audit_task";
+export type EntityOpenTarget =
+  | "detail" | "incident-close" | "incident-responsible" | "incident-report"
+  | "incident-report-missing-risk" | "incident-report-sora" | "incident-report-no-go"
+  | "risk-start" | "risk-readonly" | "mission-notes" | "competency-edit"
+  | "document-version" | "emergency-plan" | "drone-maintenance";
+type Open = { kind: Kind; row: any; target: EntityOpenTarget; sourceEntityId?: string } | null;
 
 interface Ctx {
-  openEntity: (entityType: string, entityId: string) => Promise<void>;
+  openEntity: (entityType: string, entityId: string, target?: EntityOpenTarget) => Promise<void>;
   pendingKey: string | null;
+  closeRevision: number;
 }
 
 const AuditEntityContext = createContext<Ctx | null>(null);
@@ -39,7 +49,7 @@ export const useAuditEntityDialog = (): Ctx => {
 /** Entity types that have a detail dialog. Others (audit findings/actions) have none. */
 export const canOpenEntity = (entityType: string) =>
   ["mission", "active_flight", "activeFlight", "flight", "incident", "action", "document", "drone", "equipment",
-    "profile", "person", "personnel", "competency"].includes(entityType);
+    "profile", "person", "personnel", "competency", "audit_finding", "audit_action"].includes(entityType);
 
 const documentStatus = (doc: any): string => {
   if (!doc?.gyldig_til) return "Grønn";
@@ -49,11 +59,11 @@ const documentStatus = (doc: any): string => {
   return "Grønn";
 };
 
-async function fetchEntity(entityType: string, id: string): Promise<Open> {
+async function fetchEntity(entityType: string, id: string, target: EntityOpenTarget): Promise<Open> {
   switch (entityType) {
     case "mission": {
       const { data } = await supabase.from("missions").select("*").eq("id", id).maybeSingle();
-      return data ? { kind: "mission", row: data } : null;
+      return data ? { kind: "mission", row: data, target } : null;
     }
     case "active_flight":
     case "activeFlight":
@@ -61,24 +71,25 @@ async function fetchEntity(entityType: string, id: string): Promise<Open> {
       const { data: af } = await (supabase as any).from("active_flights").select("mission_id").eq("id", id).maybeSingle();
       const missionId = af?.mission_id ?? id;
       const { data } = await supabase.from("missions").select("*").eq("id", missionId).maybeSingle();
-      return data ? { kind: "mission", row: data } : null;
+      return data ? { kind: "mission", row: data, target } : null;
     }
     case "incident":
     case "action": {
       const { data } = await supabase.from("incidents").select("*").eq("id", id).maybeSingle();
-      return data ? { kind: "incident", row: data } : null;
+      return data ? { kind: "incident", row: data, target } : null;
     }
     case "document": {
+      if (target === "emergency-plan") return { kind: "document", row: {}, target };
       const { data } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
-      return data ? { kind: "document", row: data } : null;
+      return data ? { kind: "document", row: data, target } : null;
     }
     case "drone": {
       const { data } = await supabase.from("drones").select("*").eq("id", id).maybeSingle();
-      return data ? { kind: "drone", row: data } : null;
+      return data ? { kind: "drone", row: data, target } : null;
     }
     case "equipment": {
       const { data } = await supabase.from("equipment").select("*").eq("id", id).maybeSingle();
-      return data ? { kind: "equipment", row: data } : null;
+      return data ? { kind: "equipment", row: data, target } : null;
     }
     case "competency":
     case "profile":
@@ -94,7 +105,13 @@ async function fetchEntity(entityType: string, id: string): Promise<Open> {
         .select("id, full_name, personnel_competencies(*)")
         .eq("id", profileId)
         .maybeSingle();
-      return data ? { kind: "person", row: data } : null;
+      return data ? { kind: "person", row: data, target, sourceEntityId: entityType === "competency" ? id : undefined } : null;
+    }
+    case "audit_finding":
+      return { kind: "audit_task", row: { id }, target };
+    case "audit_action": {
+      const { data } = await supabase.from("audit_actions").select("finding_id").eq("id", id).maybeSingle();
+      return data?.finding_id ? { kind: "audit_task", row: { id: data.finding_id }, target } : null;
     }
     default:
       return null;
@@ -108,27 +125,34 @@ const FULL_PAGE_KEY: Record<Kind, string> = {
   drone: "audit.openEntity.inResources",
   equipment: "audit.openEntity.inResources",
   person: "audit.openEntity.inResources",
+  audit_task: "audit.alerts.open",
 };
 
 const DEEP_LINK_TYPE: Record<Kind, string> = {
   mission: "mission", incident: "incident", document: "document", drone: "drone", equipment: "equipment", person: "person",
+  audit_task: "audit_finding",
 };
 
 export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { isAdmin, companyId } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [closeRevision, setCloseRevision] = useState(0);
 
   const refresh = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["audit"] });
+    qc.invalidateQueries({ queryKey: ["inbox"] });
+    qc.invalidateQueries({ queryKey: ["inbox-thread"] });
+    qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
   }, [qc]);
 
-  const openEntity = useCallback(async (entityType: string, entityId: string) => {
+  const openEntity = useCallback(async (entityType: string, entityId: string, target: EntityOpenTarget = "detail") => {
     const key = `${entityType}:${entityId}`;
     setPendingKey(key);
     try {
-      const res = await fetchEntity(entityType, entityId);
+      const res = await fetchEntity(entityType, entityId, target);
       if (!res) {
         toast.error(t("audit.openEntity.notFound"));
         return;
@@ -144,11 +168,12 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
   const close = (v: boolean) => {
     if (!v) {
       setOpen(null);
+      setCloseRevision((value) => value + 1);
       refresh();
     }
   };
 
-  const value = useMemo(() => ({ openEntity, pendingKey }), [openEntity, pendingKey]);
+  const value = useMemo(() => ({ openEntity, pendingKey, closeRevision }), [openEntity, pendingKey, closeRevision]);
   const row = open?.row ?? null;
   const fullPageLink = open ? (
     <div className="flex justify-end">
@@ -170,15 +195,16 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
         mission={open?.kind === "mission" ? row : null}
         onMissionUpdated={refresh}
         topSlot={open?.kind === "mission" ? fullPageLink : null}
+        initialView={open?.kind === "mission" ? open.target : undefined}
       />
-      <IncidentDetailDialog open={open?.kind === "incident"} onOpenChange={close} incident={open?.kind === "incident" ? row : null} />
+      <IncidentDetailDialog open={open?.kind === "incident"} onOpenChange={close} incident={open?.kind === "incident" ? row : null} initialView={open?.kind === "incident" ? open.target : undefined} />
       <DocumentDetailDialog
         open={open?.kind === "document"}
         onOpenChange={close}
         document={open?.kind === "document" ? row : null}
         status={open?.kind === "document" ? documentStatus(row) : "Grønn"}
       />
-      <DroneDetailDialog open={open?.kind === "drone"} onOpenChange={close} drone={open?.kind === "drone" ? row : null} onDroneUpdated={refresh} />
+      <DroneDetailDialog open={open?.kind === "drone"} onOpenChange={close} drone={open?.kind === "drone" ? row : null} onDroneUpdated={refresh} initialSection={open?.kind === "drone" && open.target === "drone-maintenance" ? "maintenance" : undefined} />
       <EquipmentDetailDialog
         open={open?.kind === "equipment"}
         onOpenChange={close}
@@ -190,6 +216,22 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
         onOpenChange={close}
         person={open?.kind === "person" ? row : null}
         onCompetencyUpdated={refresh}
+        initialCompetencyId={open?.kind === "person" ? open.sourceEntityId : undefined}
+      />
+      {open?.kind === "audit_task" && <AuditTaskDialog findingId={row.id} onClose={() => close(false)} />}
+      <AddIncidentDialog
+        open={open?.kind === "mission" && open.target.startsWith("incident-report")}
+        onOpenChange={close}
+        defaultMissionId={open?.kind === "mission" ? row.id : undefined}
+        defaultTitle={open?.kind === "mission" && open.target.startsWith("incident-report") ? t(`reminders.incidentDefaults.${open.target}.title`) : undefined}
+        defaultDescription={open?.kind === "mission" && open.target.startsWith("incident-report") ? t(`reminders.incidentDefaults.${open.target}.description`) : undefined}
+      />
+      <DocumentCardModal
+        document={open?.kind === "document" && open.target === "document-version" ? row : null}
+        isOpen={open?.kind === "document" && (open.target === "document-version" || open.target === "emergency-plan")}
+        onClose={() => close(false)} onSaveSuccess={() => close(false)} onDeleteSuccess={() => close(false)}
+        isAdmin={isAdmin} isCreating={open?.kind === "document" && open.target === "emergency-plan"}
+        isOwnerCompany={open?.kind === "document" ? !row.company_id || row.company_id === companyId : false}
       />
     </AuditEntityContext.Provider>
   );

@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect } from "react";
 import { AuditTaskHost } from "@/components/admin/audit/components/AuditTaskHost";
+import { AuditEntityDialogHost } from "@/components/admin/audit/components/AuditEntityDialogHost";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -244,6 +245,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <KeyboardDismissButton />
+              <AuditEntityDialogHost>
               <AuditTaskHost />
                 <Routes>
                   {/* Public routes - login domain */}
@@ -281,6 +283,7 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+              </AuditEntityDialogHost>
               </GuidedTourProvider>
             </BrowserRouter>
           </AuthProvider>

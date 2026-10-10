@@ -20,7 +20,6 @@ import { useAuditDepartment } from "./hooks/useAuditDepartment";
 import { ALL_DEPARTMENTS } from "./lib/complianceView";
 import { InfoTip } from "./components/InfoTip";
 import { TabFrame } from "./components/TabFrame";
-import { AuditEntityDialogHost } from "./components/AuditEntityDialogHost";
 
 const tabDefs = [
   { value: "overview", key: "overview", icon: LayoutDashboard },
@@ -58,7 +57,6 @@ export const AuditSection = () => {
   };
 
   return (
-    <AuditEntityDialogHost>
     <div className="space-y-5">
       {!bannerHidden && (
         <div className="flex items-center gap-2 rounded-md border border-status-yellow/50 bg-status-yellow/10 px-3 py-1.5 text-xs">
@@ -157,6 +155,5 @@ export const AuditSection = () => {
         <TabsContent value="package" className="mt-4 sm:mt-6"><InspectionPackageTab /></TabsContent>
       </Tabs>
     </div>
-    </AuditEntityDialogHost>
   );
 };

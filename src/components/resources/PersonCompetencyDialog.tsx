@@ -46,6 +46,7 @@ interface PersonCompetencyDialogProps {
   onOpenChange: (open: boolean) => void;
   person: Person | null;
   onCompetencyUpdated: () => void;
+  initialCompetencyId?: string;
 }
 
 export function PersonCompetencyDialog({
@@ -53,6 +54,7 @@ export function PersonCompetencyDialog({
   onOpenChange,
   person: initialPerson,
   onCompetencyUpdated,
+  initialCompetencyId,
 }: PersonCompetencyDialogProps) {
   const { t } = useTranslation();
   const { companyId, isAdmin, user } = useAuth();
@@ -98,6 +100,12 @@ export function PersonCompetencyDialog({
   useEffect(() => {
     setPerson(initialPerson);
   }, [initialPerson]);
+
+  useEffect(() => {
+    if (!open || !initialCompetencyId || !canEdit) return;
+    const competency = initialPerson?.personnel_competencies?.find((item) => item.id === initialCompetencyId);
+    if (competency) handleStartEdit(competency);
+  }, [open, initialCompetencyId, initialPerson?.id, canEdit]);
 
   // Fetch available courses for this person
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
@@ -51,6 +51,7 @@ import { ComposeMessageDialog } from "./ComposeMessageDialog";
 import { ReminderActionCard } from "@/components/reminders/ReminderActionCard";
 import { hasQuickActions, parseFindingKeys } from "@/components/reminders/reminderActions";
 import { auditDeepLink } from "@/components/admin/audit/utils/auditDeepLink";
+import { canOpenEntity, useAuditEntityDialog } from "@/components/admin/audit/components/AuditEntityDialogHost";
 import { AttachmentLightbox } from "./AttachmentLightbox";
 import { MyAuditTasksSection } from "@/components/admin/audit/components/MyAuditTasksSection";
 
@@ -78,6 +79,7 @@ export const InboxTab = () => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<"all" | "unread" | "done" | "sent">("unread");
   const [selected, setSelected] = useState<InboxMessage | null>(null);
+  const [availableByKey, setAvailableByKey] = useState<Record<string, number>>({});
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
   const threadEndRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +87,7 @@ export const InboxTab = () => {
   const mark = useMarkMessage();
   const send = useSendMessage();
   const dateLocale = i18n.language?.startsWith("en") ? enUS : nb;
+  const { openEntity } = useAuditEntityDialog();
 
   const threadRoot = selected?.thread_root_id ?? selected?.id ?? null;
   const { data: threadData } = useMessageThread(threadRoot);
@@ -100,6 +103,19 @@ export const InboxTab = () => {
   useEffect(() => {
     setLightboxIndex(null);
   }, [selected?.id]);
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("msg");
+    if (!id || messages.length === 0) return;
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    openMessage(message);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("msg");
+    url.searchParams.delete("entity");
+    url.searchParams.delete("entityId");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [messages]);
   const invalidateAttachments = useInvalidateAttachments();
   const toggleReaction = useToggleReaction();
   const [replyEmail, setReplyEmail] = useState(false);
@@ -175,11 +191,16 @@ export const InboxTab = () => {
   }, [selected?.id]);
 
   const openMessage = (m: InboxMessage) => {
+    setAvailableByKey({});
     setSelected(m);
     if (filter !== "sent" && (m.status === "unread" || (m.thread_unread_count ?? 0) > 0)) {
       mark.mutate({ id: m.id, ids: m.thread_message_ids, status: "read" });
     }
   };
+
+  const reportAvailability = useCallback((key: string, count: number) => {
+    setAvailableByKey((current) => current[key] === count ? current : { ...current, [key]: count });
+  }, []);
 
   const openCompose = () => setComposeOpen(true);
 
@@ -393,7 +414,8 @@ export const InboxTab = () => {
                   </p>
                 )}
                 {selected.finding_key && selected.recipient_id === user?.id && filter !== "sent" && (() => {
-                  const keys = parseFindingKeys(selected.finding_key).filter((k) => hasQuickActions(k.code));
+                  const allKeys = parseFindingKeys(selected.finding_key);
+                  const keys = allKeys.filter((k) => hasQuickActions(k.code));
                   return keys.length > 0 ? (
                     <div className="space-y-2 pt-1">
                       {keys.map((k) => (
@@ -401,15 +423,21 @@ export const InboxTab = () => {
                           key={`${k.code}:${k.entityId}`}
                           findingKey={k}
                           messageId={selected.id}
-                          openPath={keys.length > 1 ? auditDeepLink(k.entityType, k.entityId).path : null}
-                          onDone={() => { if (keys.length === 1) setSelected(null); }}
+                          openPath={auditDeepLink(k.entityType, k.entityId).path}
+                          onAvailabilityChange={reportAvailability}
                         />
                       ))}
                     </div>
                   ) : null;
                 })()}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {selected.deep_link && (
+                  {selected.finding_key && parseFindingKeys(selected.finding_key).map((key) => canOpenEntity(key.entityType) ? (
+                    <Button key={`${key.entityType}:${key.entityId}`} size="sm" variant="outline" onClick={() => openEntity(key.entityType, key.entityId)}>
+                      {t(`inbox.openEntity.${key.entityType}`, { defaultValue: t("inbox.open") })}
+                      <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : null)}
+                  {!selected.finding_key && selected.deep_link && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -419,10 +447,15 @@ export const InboxTab = () => {
                         setSelected(null);
                       }}
                     >
-                      {t("inbox.goToModule")} <ArrowRight className="w-4 h-4 ml-1" />
+                      {t("inbox.open")} <ArrowRight className="w-4 h-4 ml-1" />
                     </Button>
                   )}
-                  {selected.status !== "done" && filter !== "sent" && (
+                  {selected.status !== "done" && filter !== "sent" && (() => {
+                    const keys = parseFindingKeys(selected.finding_key);
+                    const resolved = keys.length > 0 && keys.every((key) => availableByKey[`${key.code}:${key.entityType}:${key.entityId}`] === 0);
+                    return resolved ? (
+                    <div className="w-full rounded-md border border-border bg-muted/40 p-3 space-y-2">
+                      <p className="text-sm">{t("inbox.resolvedPrompt")}</p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -434,7 +467,9 @@ export const InboxTab = () => {
                       <CheckCircle2 className="w-4 h-4 mr-1" />
                       {t("inbox.markDone")}
                     </Button>
-                  )}
+                    </div>
+                    ) : null;
+                  })()}
                 </div>
               </SheetHeader>
 

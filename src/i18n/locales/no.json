@@ -9225,6 +9225,20 @@
     "empty": "Ingen meldinger",
     "systemSender": "AviSafe",
     "goToModule": "Gå til modul",
+    "open": "Åpne",
+    "resolvedPrompt": "Saken ser løst ut – marker som ferdig?",
+    "openEntity": {
+      "mission": "Åpne oppdrag",
+      "incident": "Åpne hendelse",
+      "document": "Åpne dokument",
+      "drone": "Åpne drone",
+      "profile": "Åpne person",
+      "person": "Åpne person",
+      "personnel": "Åpne person",
+      "competency": "Åpne person",
+      "audit_finding": "Åpne revisjonsoppgave",
+      "audit_action": "Åpne revisjonsoppgave"
+    },
     "react": "Reager",
     "markDone": "Marker som ferdig",
     "newMessage": "Ny melding",
@@ -10062,6 +10076,18 @@
       "endFlight": "Avslutt flygingen",
       "uploadLog": "Last opp / knytt flylogg",
       "takeResponsibility": "Jeg tar ansvaret"
+      ,"addIncidentComment": "Skriv kommentar",
+      "closeIncident": "Lukk hendelse…",
+      "selectResponsible": "Velg ansvarlig…",
+      "openAuditTask": "Åpne revisjonsoppgave",
+      "reportIncident": "Registrer avvik",
+      "writeMissionExplanation": "Skriv forklaring",
+      "startRiskAssessment": "Start risikovurdering",
+      "openRiskAssessment": "Åpne risikovurdering",
+      "editCompetency": "Oppdater kompetanse…",
+      "uploadDocumentVersion": "Last opp ny versjon…",
+      "uploadEmergencyPlan": "Last opp beredskapsplan…",
+      "openDroneMaintenance": "Registrer inspeksjon/vedlikehold…"
     },
     "prompt": {
       "MissionPlannedPastDue": "«{{title}}» er passert, men står som planlagt. Hva skjedde?",
@@ -10069,6 +10095,19 @@
       "ActiveFlightStale": "En flyging på «{{title}}» er aldri avsluttet.",
       "MissionWithoutFlightLog": "«{{title}}» mangler flylogg. Ble oppdraget fløyet?",
       "IncidentNoResponsible": "Hendelsen «{{title}}» har ingen oppfølgingsansvarlig."
+      ,"IncidentOpenTooLong": "Hendelsen «{{title}}» har stått åpen lenge.",
+      "OpenActionsTooLong": "Tiltaket «{{title}}» har passert fristen.",
+      "FindingAwaitingVerification": "Funnet er klart for verifisering.",
+      "FlownWithNoGo": "Oppdraget «{{title}}» ble fløyet med NO-GO.",
+      "MissingRiskAssessment": "Oppdraget «{{title}}» mangler risikovurdering.",
+      "SoraEnvelopeExceeded": "Oppdraget «{{title}}» har avvik fra SORA-rammene.",
+      "ExpiredCompetence": "Kompetansen «{{title}}» er utløpt.",
+      "CompetenceExpiringSoon": "Kompetansen «{{title}}» utløper snart.",
+      "ExpiredDocument": "Dokumentet «{{title}}» er utløpt.",
+      "DocumentReviewOverdue": "Dokumentet «{{title}}» må gjennomgås.",
+      "MissingEmergencyPlan": "Beredskapsplan mangler.",
+      "DroneStatusRed": "Dronen «{{title}}» krever handling.",
+      "DroneStatusYellow": "Dronen «{{title}}» bør følges opp."
     },
     "confirm": {
       "notFlown": "Oppdraget «{{title}}» settes til Avbrutt.",
@@ -10076,6 +10115,13 @@
       "finishMission": "Oppdraget «{{title}}» settes til Fullført.",
       "endFlight": "Flygingen avsluttes og fjernes fra live-oversikten.",
       "takeResponsibility": "Du settes som oppfølgingsansvarlig for «{{title}}»."
+      ,"addIncidentComment": "Kommentaren legges til på hendelsen «{{title}}».",
+      "writeMissionExplanation": "Forklaringen legges til som merknad på oppdraget «{{title}}»."
+    },
+    "incidentDefaults": {
+      "incident-report-missing-risk": { "title": "Manglende risikovurdering før flyging", "description": "Oppdraget ble gjennomført uten registrert risikovurdering før flyging." },
+      "incident-report-sora": { "title": "Fløyet utenfor SORA-rammene", "description": "Oppdraget ble gjennomført utenfor de dokumenterte SORA-rammene." },
+      "incident-report-no-go": { "title": "Oppdrag gjennomført med NO-GO", "description": "Oppdraget ble gjennomført til tross for NO-GO i risikovurderingen." }
     },
     "confirmNotify": "Avsender av påminnelsen ({{name}}) får svar i tråden, og påminnelsen markeres som ferdig.",
     "confirmButton": "Bekreft",

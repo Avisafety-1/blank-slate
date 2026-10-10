@@ -37,9 +37,11 @@ interface AddIncidentDialogProps {
   defaultDate?: Date;
   incidentToEdit?: any | null;
   defaultMissionId?: string;
+  defaultTitle?: string;
+  defaultDescription?: string;
 }
 
-export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId }: AddIncidentDialogProps) => {
+export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToEdit, defaultMissionId, defaultTitle, defaultDescription }: AddIncidentDialogProps) => {
   const { companyId } = useAuth();
   const companySettings = useCompanySettings();
   const { canAccess } = usePlanGating();
@@ -136,7 +138,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
         }
       } else {
         // Set defaults for new incident
-        const updates: Partial<typeof formData> = {};
+        const updates: Partial<typeof formData> = { tittel: defaultTitle ?? "", beskrivelse: defaultDescription ?? "" };
         if (defaultDate) {
           const year = defaultDate.getFullYear();
           const month = String(defaultDate.getMonth() + 1).padStart(2, '0');
@@ -205,7 +207,7 @@ export const AddIncidentDialog = ({ open, onOpenChange, defaultDate, incidentToE
       setResourcesOpen(false);
       setReportAnonymously(false);
     }
-  }, [open, defaultDate, incidentToEdit, defaultMissionId]);
+  }, [open, defaultDate, incidentToEdit, defaultMissionId, defaultTitle, defaultDescription]);
 
   const fetchResourceData = async () => {
     if (!companyId) return;
