@@ -16,6 +16,7 @@ import type { MapBasemap } from "@/lib/mapSnapshotUtils";
 import { segmentsFromRouteData } from "@/lib/routeSegments";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
+import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { NoFlightPromptCard } from "@/components/oppdrag/NoFlightPromptCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
@@ -143,6 +144,7 @@ const Oppdrag = () => {
   );
 
   const handledDeepLinkRef = useRef<string | null>(null);
+  const [detailMission, setDetailMission] = useState<any | null>(null);
   const [noFlightPrompt, setNoFlightPrompt] = useState<{ missionId: string; messageId: string | null } | null>(null);
   const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
@@ -153,12 +155,14 @@ const Oppdrag = () => {
       setSearchParams({}, { replace: true });
       return;
     }
-    const id = searchParams.get("id");
+    // ?mission=<id> opens the read-only mission card; legacy ?id=...&action=noFlight does too.
+    const missionParam = searchParams.get("mission");
+    const id = missionParam ?? searchParams.get("id");
     if (!id || handledDeepLinkRef.current === id) return;
     handledDeepLinkRef.current = id;
-    setNoFlightPrompt(
-      searchParams.get("action") === "noFlight" ? { missionId: id, messageId: searchParams.get("msg") } : null,
-    );
+    const isNoFlight = searchParams.get("action") === "noFlight";
+    const openDetail = !!missionParam || isNoFlight;
+    setNoFlightPrompt(isNoFlight ? { missionId: id, messageId: searchParams.get("msg") } : null);
     (async () => {
       const { data: missionData } = await supabase
         .from('missions')
@@ -166,8 +170,12 @@ const Oppdrag = () => {
         .eq('id', id)
         .maybeSingle();
       if (missionData) {
-        setEditingMission(missionData as any);
-        setEditDialogOpen(true);
+        if (openDetail) {
+          setDetailMission(missionData as any);
+        } else {
+          setEditingMission(missionData as any);
+          setEditDialogOpen(true);
+        }
       } else {
         toast.error(t('common.notFound', { defaultValue: 'Could not find the requested item' }));
       }
@@ -611,6 +619,31 @@ const Oppdrag = () => {
           </div>
         </main>
 
+        <MissionDetailDialog
+          open={!!detailMission}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDetailMission(null);
+              setNoFlightPrompt(null);
+            }
+          }}
+          mission={detailMission}
+          onMissionUpdated={() => data.fetchMissions()}
+          topSlot={
+            noFlightPrompt && detailMission?.id === noFlightPrompt.missionId ? (
+              <NoFlightPromptCard
+                missionId={noFlightPrompt.missionId}
+                messageId={noFlightPrompt.messageId}
+                onDone={() => {
+                  setNoFlightPrompt(null);
+                  setDetailMission(null);
+                  data.fetchMissions();
+                }}
+              />
+            ) : null
+          }
+        />
+
         <OppdragDialogs
           addDialogOpen={addDialogOpen}
           setAddDialogOpen={setAddDialogOpen}
@@ -628,19 +661,6 @@ const Oppdrag = () => {
           setEditDialogOpen={setEditDialogOpen}
           onMissionUpdated={handleMissionUpdated}
           editingMission={editingMission}
-          editTopSlot={
-            noFlightPrompt && editDialogOpen && editingMission?.id === noFlightPrompt.missionId ? (
-              <NoFlightPromptCard
-                missionId={noFlightPrompt.missionId}
-                messageId={noFlightPrompt.messageId}
-                onDone={() => {
-                  setNoFlightPrompt(null);
-                  setEditDialogOpen(false);
-                  data.fetchMissions();
-                }}
-              />
-            ) : null
-          }
           
           incidentDialogOpen={incidentDialogOpen}
           setIncidentDialogOpen={setIncidentDialogOpen}
