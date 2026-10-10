@@ -1761,7 +1761,7 @@ export const ProfileDialog = () => {
                               </div>
                               {expired && (
                                 <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
-                                  <AlertCircle className={cn("h-3 w-3", expiring && !expired && "text-status-yellow")} />
+                                  <AlertCircle className="h-3 w-3" />
                                   {t('profile.expiredLabel')}
                                 </div>
                               )}

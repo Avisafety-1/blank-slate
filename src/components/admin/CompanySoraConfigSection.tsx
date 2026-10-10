@@ -1124,12 +1124,9 @@ export const CompanySoraConfigSection = () => {
                 <Label className="text-sm font-medium">
                   {t("sora.companyConfig.policyNotesLabel")}
                 </Label>
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <WarningNote className="text-xs">
+                <WarningNote className="text-xs">
                     {t("sora.companyConfig.policyNotesWarning")}
                   </WarningNote>
-                </div>
                 <Textarea
                   value={config.policy_notes}
                   onChange={(e) =>

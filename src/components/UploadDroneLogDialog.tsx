@@ -3347,7 +3347,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   Ukjent batteri: {unmatchedBatterySN}
                 </p>
-                <p className="text-xs text-status-yellow-text mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   Batteriet ble ikke funnet i ressursene. Opprett nytt eller knytt til eksisterende.
                 </p>
               </div>
@@ -3403,9 +3403,9 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   {t('uploadLog.battery2.unknown', { sn: unmatchedBattery2SN })}
                 </p>
-                <WarningNote className="text-xs mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   {t('uploadLog.battery2.unknownHelp')}
-                </WarningNote>
+                </p>
               </div>
             </div>
             <div className="flex gap-2 ml-6 flex-wrap">
@@ -3479,7 +3479,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   Ukjent {terminology.vehicleLower}: {unmatchedDroneSN}
                 </p>
-                <p className="text-xs text-status-yellow-text mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   {terminology.vehicle} ble ikke funnet i ressursene. Opprett ny eller knytt til eksisterende.
                 </p>
               </div>

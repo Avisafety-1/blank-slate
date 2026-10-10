@@ -1500,21 +1500,15 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             )}
 
             {hasIncompleteChecklists && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
-                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                <WarningNote className="">
+              <WarningNote >
                   {t('flight.checklistNotCompleted')}
                 </WarningNote>
-              </div>
             )}
 
             {hasUnavailableChecklists && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
-                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                <WarningNote className="">
+              <WarningNote >
                   {t('flight.checklistUnavailableHint')}
                 </WarningNote>
-              </div>
             )}
 
             {/* SORA requirement warning */}
