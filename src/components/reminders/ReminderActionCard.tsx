@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { BellRing, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { addIncidentComment, addMissionNote, commentTargetFor } from "@/lib/reminderCaseNotes";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -124,7 +126,7 @@ interface Props {
 }
 
 export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath, onEditMission, onDone, onAvailabilityChange, className }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, isAdmin, userRole } = useAuth();
   const qc = useQueryClient();
@@ -227,31 +229,34 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
     const action = pending;
     setSaving(true);
     try {
+      const { data: me } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+      const author = { userId: user.id, name: me?.full_name ?? user.email ?? "—" };
+      const noteOpts = { now: new Date(), locale: i18n.language?.startsWith("en") ? "en-GB" : "nb-NO" };
+      const actionPrefix = t("reminders.notePrefix", { action: label(action) });
       const status = targetMissionStatus(action);
       if (status) {
-        const { error } = await supabase.from("missions").update({ status }).eq("id", findingKey.entityId);
-        if (error) throw error;
+        // Status and note in one update, so a failing note never reports the action as done.
+        await addMissionNote(supabase, findingKey.entityId, comment, { ...noteOpts, prefix: actionPrefix, extra: { status } });
       } else if (action === "endFlight") {
         if (!loaded.flight) throw new Error("flight_not_found");
+        if (comment.trim()) {
+          if (!loaded.flight.mission_id) throw new Error(t("reminders.noMissionForNote"));
+          await addMissionNote(supabase, loaded.flight.mission_id, comment, { ...noteOpts, prefix: actionPrefix });
+        }
         await clearActiveFlight({ profileId: loaded.flight.profile_id, missionId: loaded.flight.mission_id, publishMode: loaded.flight.publish_mode });
       } else if (action === "takeResponsibility") {
         const { error } = await supabase.from("incidents")
           .update({ oppfolgingsansvarlig_id: user.id, oppdatert_dato: new Date().toISOString() })
           .eq("id", findingKey.entityId);
         if (error) throw error;
+        await addIncidentComment(supabase, findingKey.entityId, comment, author);
       } else if (action === "addIncidentComment") {
-        const { data: me } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
-        const { error } = await supabase.from("incident_comments").insert({ incident_id: findingKey.entityId, user_id: user.id, comment_text: comment.trim(), created_by_name: me?.full_name ?? user.email ?? "—" });
-        if (error) throw error;
+        await addIncidentComment(supabase, findingKey.entityId, comment, author);
       } else if (action === "writeMissionExplanation") {
-        const { data: mission } = await supabase.from("missions").select("merknader").eq("id", findingKey.entityId).single();
-        const note = `[${new Date().toLocaleString("nb-NO")}] ${comment.trim()}`;
-        const { error } = await supabase.from("missions").update({ merknader: [mission?.merknader, note].filter(Boolean).join("\n\n") }).eq("id", findingKey.entityId);
-        if (error) throw error;
+        await addMissionNote(supabase, findingKey.entityId, comment, noteOpts);
       }
 
       // Audit trail: reply in the reminder thread with action, who and when.
-      const { data: me } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
       const who = me?.full_name ?? user.email ?? "—";
       const when = new Date().toLocaleString("nb-NO", { dateStyle: "short", timeStyle: "short" });
       if (reminder?.sender_id && reminder.sender_id !== user.id) {
@@ -336,7 +341,16 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t("reminders.commentPlaceholder")} />
+          {(() => {
+            const target = pending ? commentTargetFor(pending) : null;
+            const fieldLabel = t(target === "mission" ? "reminders.commentFieldMission" : target === "incident" ? "reminders.commentFieldIncident" : "reminders.commentFieldThread");
+            return (
+              <div className="space-y-1.5">
+                <Label htmlFor="reminder-action-comment">{fieldLabel}</Label>
+                <Textarea id="reminder-action-comment" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+              </div>
+            );
+          })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={(e) => { e.preventDefault(); execute(); }} disabled={saving || ((pending === "addIncidentComment" || pending === "writeMissionExplanation") && !comment.trim())}>

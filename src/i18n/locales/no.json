@@ -10075,8 +10075,8 @@
       "finishMission": "Avslutt oppdraget",
       "endFlight": "Avslutt flygingen",
       "uploadLog": "Last opp / knytt flylogg",
-      "takeResponsibility": "Jeg tar ansvaret"
-      ,"addIncidentComment": "Skriv kommentar",
+      "takeResponsibility": "Jeg tar ansvaret",
+      "addIncidentComment": "Skriv kommentar",
       "closeIncident": "Lukk hendelse…",
       "selectResponsible": "Velg ansvarlig…",
       "openAuditTask": "Åpne revisjonsoppgave",
@@ -10094,8 +10094,8 @@
       "MissionInProgressStale": "«{{title}}» står fortsatt som pågående.",
       "ActiveFlightStale": "En flyging på «{{title}}» er aldri avsluttet.",
       "MissionWithoutFlightLog": "«{{title}}» mangler flylogg. Ble oppdraget fløyet?",
-      "IncidentNoResponsible": "Hendelsen «{{title}}» har ingen oppfølgingsansvarlig."
-      ,"IncidentOpenTooLong": "Hendelsen «{{title}}» har stått åpen lenge.",
+      "IncidentNoResponsible": "Hendelsen «{{title}}» har ingen oppfølgingsansvarlig.",
+      "IncidentOpenTooLong": "Hendelsen «{{title}}» har stått åpen lenge.",
       "OpenActionsTooLong": "Tiltaket «{{title}}» har passert fristen.",
       "FindingAwaitingVerification": "Funnet er klart for verifisering.",
       "FlownWithNoGo": "Oppdraget «{{title}}» ble fløyet med NO-GO.",
@@ -10114,14 +10114,23 @@
       "flown": "Oppdraget «{{title}}» settes til Fullført. Deretter kan du laste opp flyloggen.",
       "finishMission": "Oppdraget «{{title}}» settes til Fullført.",
       "endFlight": "Flygingen avsluttes og fjernes fra live-oversikten.",
-      "takeResponsibility": "Du settes som oppfølgingsansvarlig for «{{title}}»."
-      ,"addIncidentComment": "Kommentaren legges til på hendelsen «{{title}}».",
+      "takeResponsibility": "Du settes som oppfølgingsansvarlig for «{{title}}».",
+      "addIncidentComment": "Kommentaren legges til på hendelsen «{{title}}».",
       "writeMissionExplanation": "Forklaringen legges til som merknad på oppdraget «{{title}}»."
     },
     "incidentDefaults": {
-      "incident-report-missing-risk": { "title": "Manglende risikovurdering før flyging", "description": "Oppdraget ble gjennomført uten registrert risikovurdering før flyging." },
-      "incident-report-sora": { "title": "Fløyet utenfor SORA-rammene", "description": "Oppdraget ble gjennomført utenfor de dokumenterte SORA-rammene." },
-      "incident-report-no-go": { "title": "Oppdrag gjennomført med NO-GO", "description": "Oppdraget ble gjennomført til tross for NO-GO i risikovurderingen." }
+      "incident-report-missing-risk": {
+        "title": "Manglende risikovurdering før flyging",
+        "description": "Oppdraget ble gjennomført uten registrert risikovurdering før flyging."
+      },
+      "incident-report-sora": {
+        "title": "Fløyet utenfor SORA-rammene",
+        "description": "Oppdraget ble gjennomført utenfor de dokumenterte SORA-rammene."
+      },
+      "incident-report-no-go": {
+        "title": "Oppdrag gjennomført med NO-GO",
+        "description": "Oppdraget ble gjennomført til tross for NO-GO i risikovurderingen."
+      }
     },
     "confirmNotify": "Avsender av påminnelsen ({{name}}) får svar i tråden, og påminnelsen markeres som ferdig.",
     "confirmButton": "Bekreft",
@@ -10133,6 +10142,11 @@
     "failed": "Kunne ikke utføre handlingen",
     "open": "Åpne",
     "flightDialogTitle": "Påminnelse om flyging",
-    "flightDialogHint": "Bare piloten som startet flygingen kan avslutte den herfra."
+    "flightDialogHint": "Bare piloten som startet flygingen kan avslutte den herfra.",
+    "notePrefix": "{{action}} (via påminnelse)",
+    "noMissionForNote": "Flygingen er ikke knyttet til et oppdrag, så kommentaren kan ikke lagres på saken.",
+    "commentFieldMission": "Kommentar (lagres på oppdraget og i tråden)",
+    "commentFieldIncident": "Kommentar (lagres på hendelsen og i tråden)",
+    "commentFieldThread": "Kommentar (lagres i tråden)"
   }
 }
