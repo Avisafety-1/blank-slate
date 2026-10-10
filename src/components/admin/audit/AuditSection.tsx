@@ -18,6 +18,7 @@ import { InspectionPackageTab } from "./tabs/InspectionPackageTab";
 import { useAuditDepartments } from "./hooks/useAuditData";
 import { useAuditDepartment } from "./hooks/useAuditDepartment";
 import { ALL_DEPARTMENTS } from "./lib/complianceView";
+import { InfoTip } from "./components/InfoTip";
 import { TabFrame } from "./components/TabFrame";
 
 const tabDefs = [
@@ -139,11 +140,11 @@ export const AuditSection = () => {
           <TabFrame tabKey="people" categories={["competence", "documentation"]}>
             <div className="space-y-8">
               <section className="space-y-3">
-                <h3 className="text-lg font-semibold">{t("audit.tabs.competency")}</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-1.5">{t("audit.tabs.competency")} <InfoTip k="audit.sectionHelp.competency" /></h3>
                 <CompetencyTab />
               </section>
               <section className="space-y-3">
-                <h3 className="text-lg font-semibold">{t("audit.tabs.documentation")}</h3>
+                <h3 className="text-lg font-semibold flex items-center gap-1.5">{t("audit.tabs.documentation")} <InfoTip k="audit.sectionHelp.documentation" /></h3>
                 <DocumentationTab />
               </section>
             </div>

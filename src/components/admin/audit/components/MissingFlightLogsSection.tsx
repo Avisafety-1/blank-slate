@@ -13,6 +13,7 @@ import { SendReminderDialog } from "../SendReminderDialog";
 import { useReminderStatuses } from "../hooks/useReminderStatuses";
 import { MISSING_LOG_CODE, groupMissingLogsByRecipient, missingLogFindingKey } from "../lib/operationsAnalysis";
 import { auditDeepLink, noFlightDeepLink } from "../utils/auditDeepLink";
+import { InfoTip } from "./InfoTip";
 import type { OperationsIssue, ScannerFinding } from "../types";
 
 const toFinding = (i: OperationsIssue): ScannerFinding => {
@@ -92,6 +93,7 @@ export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[]
           <div className="text-sm font-medium flex items-center gap-2 flex-1 min-w-0">
             <FileQuestion className="w-4 h-4 text-status-yellow shrink-0" />
             <span className="truncate">{t("audit.operations.missingLogs.title")}</span>
+            <InfoTip k="audit.sectionHelp.missingLogs" />
             <Badge variant="outline">{issues.length}</Badge>
           </div>
           <Button size="sm" variant="outline" onClick={sendAll} disabled={bulkSending}>

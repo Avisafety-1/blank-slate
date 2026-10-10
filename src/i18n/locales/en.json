@@ -8936,6 +8936,74 @@
           }
         }
       }
+    },
+    "sectionHelp": {
+      "sora": {
+        "what": "Missions where the SORA assessment deviates from the SORA profile limits.",
+        "threshold": "Any deviation counts.",
+        "why": "Deviations mean the mission is outside what is approved.",
+        "fix": "Adjust the mission or update the SORA document."
+      },
+      "risk": {
+        "what": "Distribution of the latest risk assessment per mission (GO / caution / NO-GO).",
+        "threshold": "No threshold – overview.",
+        "why": "Shows the risk level of operations over time.",
+        "fix": "Follow up NO-GO missions before flight."
+      },
+      "approvedNoGo": {
+        "what": "Missions flown with NO-GO where a manager approved after the assessment.",
+        "threshold": "Approval at or after the assessment time.",
+        "why": "Documents deliberate decisions for inspections.",
+        "fix": "No action – check the comment justifies the decision."
+      },
+      "missingLogs": {
+        "what": "Completed missions without a flight log more than 48 hours after end.",
+        "threshold": "Over 48 hours.",
+        "why": "Without a flight log, flight time and events are not traceable.",
+        "fix": "Ask the pilot to upload or link the flight log."
+      },
+      "bySeverity": {
+        "what": "Incidents by severity.",
+        "threshold": "No threshold.",
+        "why": "Shows how serious incidents are.",
+        "fix": "Prioritise high and critical."
+      },
+      "byCategory": {
+        "what": "Incidents by category.",
+        "threshold": "No threshold.",
+        "why": "Reveals recurring causes.",
+        "fix": "Target measures where there are most."
+      },
+      "trend": {
+        "what": "Incidents per month.",
+        "threshold": "No threshold.",
+        "why": "Shows whether safety is improving.",
+        "fix": "Investigate increases."
+      },
+      "fleetRed": {
+        "what": "Drones not airworthy due to maintenance, inspection or deviations.",
+        "threshold": "Red status.",
+        "why": "A red drone must not fly.",
+        "fix": "Carry out maintenance/inspection or close the deviation."
+      },
+      "fleetYellow": {
+        "what": "Drones soon due for maintenance or inspection.",
+        "threshold": "Yellow status.",
+        "why": "Gives time to plan before the drone turns red.",
+        "fix": "Schedule maintenance."
+      },
+      "competency": {
+        "what": "Competencies and certificates per person.",
+        "threshold": "Expired = critical, expiring within 30 days = warning.",
+        "why": "Pilots must hold valid competencies.",
+        "fix": "Renew or register the competency."
+      },
+      "documentation": {
+        "what": "Documents with review dates.",
+        "threshold": "Overdue review = finding.",
+        "why": "Outdated documents give wrong guidance.",
+        "fix": "Review and update the document."
+      }
     }
   },
   "inbox": {

@@ -13,6 +13,7 @@ import { auditDeepLink } from "../utils/auditDeepLink";
 import { cn } from "@/lib/utils";
 import { SendReminderDialog } from "../SendReminderDialog";
 import { BellRing } from "lucide-react";
+import { InfoTip } from "../components/InfoTip";
 import type { FleetRow, ScannerFinding } from "../types";
 
 const droneFinding = (d: FleetRow): ScannerFinding => {
@@ -70,6 +71,7 @@ export const FleetTab = () => {
                 <AlertOctagon className={cn("w-4 h-4", g.tone === "red" ? "text-status-red" : "text-status-yellow")} />
                 {g.title}
                 <Badge variant="outline" className="ml-1">{g.list.length}</Badge>
+                <InfoTip k={`audit.sectionHelp.${g.tone === "red" ? "fleetRed" : "fleetYellow"}`} />
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
