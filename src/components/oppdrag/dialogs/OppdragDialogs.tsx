@@ -38,6 +38,7 @@ export interface OppdragDialogsProps {
   setEditDialogOpen: (open: boolean) => void;
   onMissionUpdated: () => void;
   editingMission: Mission | null;
+  editTopSlot?: React.ReactNode;
 
 
   // Incident detail
@@ -153,6 +154,7 @@ export const OppdragDialogs = (props: OppdragDialogsProps) => {
         }}
         onMissionAdded={props.onMissionUpdated}
         mission={props.editingMission}
+        topSlot={props.editTopSlot}
         initialRouteData={props.initialRouteData}
         initialFormData={props.initialFormData}
         initialSelectedPersonnel={props.initialSelectedPersonnel}

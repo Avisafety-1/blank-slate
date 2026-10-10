@@ -16,6 +16,7 @@ import type { MapBasemap } from "@/lib/mapSnapshotUtils";
 import { segmentsFromRouteData } from "@/lib/routeSegments";
 import { OppdragFilterBar } from "@/components/oppdrag/OppdragFilterBar";
 import { MissionCard } from "@/components/oppdrag/MissionCard";
+import { NoFlightPromptCard } from "@/components/oppdrag/NoFlightPromptCard";
 import { OppdragDialogs } from "@/components/oppdrag/dialogs/OppdragDialogs";
 import { FlightHub2SendDialog } from "@/components/FlightHub2SendDialog";
 import { NotamDialog } from "@/components/dashboard/NotamDialog";
@@ -142,6 +143,7 @@ const Oppdrag = () => {
   );
 
   const handledDeepLinkRef = useRef<string | null>(null);
+  const [noFlightPrompt, setNoFlightPrompt] = useState<{ missionId: string; messageId: string | null } | null>(null);
   const [deepLinkEvaluationId, setDeepLinkEvaluationId] = useState<string | null>(null);
   useEffect(() => {
     const evaluationId = searchParams.get("evaluation");
@@ -154,6 +156,9 @@ const Oppdrag = () => {
     const id = searchParams.get("id");
     if (!id || handledDeepLinkRef.current === id) return;
     handledDeepLinkRef.current = id;
+    setNoFlightPrompt(
+      searchParams.get("action") === "noFlight" ? { missionId: id, messageId: searchParams.get("msg") } : null,
+    );
     (async () => {
       const { data: missionData } = await supabase
         .from('missions')
@@ -623,6 +628,19 @@ const Oppdrag = () => {
           setEditDialogOpen={setEditDialogOpen}
           onMissionUpdated={handleMissionUpdated}
           editingMission={editingMission}
+          editTopSlot={
+            noFlightPrompt && editDialogOpen && editingMission?.id === noFlightPrompt.missionId ? (
+              <NoFlightPromptCard
+                missionId={noFlightPrompt.missionId}
+                messageId={noFlightPrompt.messageId}
+                onDone={() => {
+                  setNoFlightPrompt(null);
+                  setEditDialogOpen(false);
+                  data.fetchMissions();
+                }}
+              />
+            ) : null
+          }
           
           incidentDialogOpen={incidentDialogOpen}
           setIncidentDialogOpen={setIncidentDialogOpen}

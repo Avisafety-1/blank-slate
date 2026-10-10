@@ -64,6 +64,8 @@ interface AddMissionDialogProps {
   initialSelectedDrones?: string[];
   initialSelectedCustomer?: string;
   initialSelectedDocuments?: string[];
+  /** Optional content shown above the form (e.g. reminder prompt). */
+  topSlot?: React.ReactNode;
 }
 
 type Document = {
@@ -121,7 +123,8 @@ export const AddMissionDialog = ({
   initialSelectedEquipment,
   initialSelectedDrones,
   initialSelectedCustomer,
-  initialSelectedDocuments
+  initialSelectedDocuments,
+  topSlot
 }: AddMissionDialogProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -1252,6 +1255,7 @@ export const AddMissionDialog = ({
         <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 pr-12">
           <DialogTitle>{mission ? t('missions.editMission') : t('missions.addMission')}</DialogTitle>
         </DialogHeader>
+        {topSlot && <div className="shrink-0">{topSlot}</div>}
 
         <div
           className="flex-1 min-h-0 overflow-y-auto [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 sm:px-6"
