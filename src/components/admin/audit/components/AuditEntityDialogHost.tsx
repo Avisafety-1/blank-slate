@@ -15,6 +15,7 @@ import { PersonCompetencyDialog } from "@/components/resources/PersonCompetencyD
 import { AuditTaskDialog } from "./AuditTaskDialog";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import DocumentCardModal from "@/components/documents/DocumentCardModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { auditDeepLink } from "../utils/auditDeepLink";
 
 /**
@@ -132,6 +133,7 @@ const DEEP_LINK_TYPE: Record<Kind, string> = {
 export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { isAdmin, companyId } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
@@ -190,14 +192,14 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
         topSlot={open?.kind === "mission" ? fullPageLink : null}
         initialView={open?.kind === "mission" ? open.target : undefined}
       />
-      <IncidentDetailDialog open={open?.kind === "incident"} onOpenChange={close} incident={open?.kind === "incident" ? row : null} />
+      <IncidentDetailDialog open={open?.kind === "incident"} onOpenChange={close} incident={open?.kind === "incident" ? row : null} initialView={open?.kind === "incident" ? open.target : undefined} />
       <DocumentDetailDialog
         open={open?.kind === "document"}
         onOpenChange={close}
         document={open?.kind === "document" ? row : null}
         status={open?.kind === "document" ? documentStatus(row) : "Grønn"}
       />
-      <DroneDetailDialog open={open?.kind === "drone"} onOpenChange={close} drone={open?.kind === "drone" ? row : null} onDroneUpdated={refresh} />
+      <DroneDetailDialog open={open?.kind === "drone"} onOpenChange={close} drone={open?.kind === "drone" ? row : null} onDroneUpdated={refresh} initialSection={open?.kind === "drone" && open.target === "drone-maintenance" ? "maintenance" : undefined} />
       <EquipmentDetailDialog
         open={open?.kind === "equipment"}
         onOpenChange={close}
@@ -216,15 +218,15 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
         open={open?.kind === "mission" && open.target === "incident-report"}
         onOpenChange={close}
         defaultMissionId={open?.kind === "mission" ? row.id : undefined}
-        defaultTitle={open?.kind === "mission" ? row.__incidentTitle : undefined}
-        defaultDescription={open?.kind === "mission" ? row.__incidentDescription : undefined}
+        defaultTitle={open?.kind === "mission" && open.target === "incident-report" ? (row.__incidentTitle ?? t("reminders.incidentDefaults.genericTitle")) : undefined}
+        defaultDescription={open?.kind === "mission" && open.target === "incident-report" ? (row.__incidentDescription ?? t("reminders.incidentDefaults.genericDescription")) : undefined}
       />
       <DocumentCardModal
-        document={open?.kind === "document" ? row : null}
-        isOpen={open?.kind === "document" && open.target === "document-version"}
+        document={open?.kind === "document" && open.target === "document-version" ? row : null}
+        isOpen={open?.kind === "document" && (open.target === "document-version" || open.target === "emergency-plan")}
         onClose={() => close(false)} onSaveSuccess={() => close(false)} onDeleteSuccess={() => close(false)}
-        isAdmin={true} isCreating={false}
-        isOwnerCompany={true}
+        isAdmin={isAdmin} isCreating={open?.kind === "document" && open.target === "emergency-plan"}
+        isOwnerCompany={open?.kind === "document" ? !row.company_id || row.company_id === companyId : false}
       />
     </AuditEntityContext.Provider>
   );

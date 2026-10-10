@@ -61,9 +61,10 @@ interface MissionDetailDialogProps {
   onEditRoute?: (mission: any) => void;
   /** Optional content rendered at the top of the card body (e.g. a follow-up prompt). */
   topSlot?: ReactNode;
+  initialView?: "detail" | "risk-start" | "risk-readonly" | "mission-notes" | string;
 }
 
-export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute, topSlot }: MissionDetailDialogProps) => {
+export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute, topSlot, initialView = "detail" }: MissionDetailDialogProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { companyId } = useAuth();
@@ -93,6 +94,19 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
   const [notamDialogOpen, setNotamDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [uploadLogOpen, setUploadLogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || !mission?.id) return;
+    if (initialView === "risk-start") {
+      setRiskDialogInitialTab("input");
+      setRiskDialogOpen(true);
+    } else if (initialView === "risk-readonly") {
+      setRiskDialogInitialTab("history");
+      setRiskDialogOpen(true);
+    } else if (initialView === "mission-notes") {
+      setNotesDialogOpen(true);
+    }
+  }, [open, mission?.id, initialView]);
 
   // Reset cached warnings when mission changes
   useEffect(() => {
