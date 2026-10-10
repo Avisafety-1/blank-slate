@@ -6,103 +6,160 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ShieldCheck, ClipboardCheck, FileWarning } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock, PlaneTakeoff } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuditOperations } from "../hooks/useAuditData";
 import { auditDeepLink } from "../utils/auditDeepLink";
 import type { OperationsIssue } from "../types";
 import { cn } from "@/lib/utils";
 
-const ISSUE_META: Record<
-  OperationsIssue["code"],
-  { severity: "critical" | "warning"; icon: typeof AlertOctagon; textCls: string }
-> = {
-  flightNotClosed: { severity: "critical", icon: AlertOctagon, textCls: "text-status-red" },
-  missingRiskAssessment: { severity: "warning", icon: AlertTriangle, textCls: "text-status-yellow" },
-  missingChecklist: { severity: "warning", icon: AlertTriangle, textCls: "text-status-yellow" },
-  missingApproval: { severity: "warning", icon: AlertTriangle, textCls: "text-status-yellow" },
-};
+const ISSUE_ORDER: OperationsIssue["code"][] = [
+  "activeFlightStale",
+  "missionInProgressStale",
+  "flownWithNoGo",
+  "soraEnvelopeExceeded",
+  "missionPlannedPastDue",
+  "missingRiskAssessment",
+];
+
+const SAIL_LEVELS = ["I", "II", "III", "IV", "V", "VI"];
 
 export const OperationsTab = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const settings = useCompanySettings();
+  const requireSora = !!(settings as any)?.require_sora_on_missions;
   const { data, isLoading, isError, error } = useAuditOperations();
 
   const grouped = useMemo(() => {
-    const g: Record<OperationsIssue["code"], OperationsIssue[]> = {
-      flightNotClosed: [],
-      missingRiskAssessment: [],
-      missingChecklist: [],
-      missingApproval: [],
-    };
-    for (const i of data?.issues ?? []) g[i.code].push(i);
+    const g = new Map<OperationsIssue["code"], OperationsIssue[]>();
+    for (const i of data?.issues ?? []) {
+      if (i.code === "missingRiskAssessment" && !requireSora) continue;
+      g.set(i.code, [...(g.get(i.code) ?? []), i]);
+    }
     return g;
-  }, [data]);
+  }, [data, requireSora]);
+
+  const monthLabel = (key: string) => {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString(i18n.language, { month: "short", year: "2-digit" });
+  };
 
   if (isLoading) return <Skeleton className="h-40" />;
-  if (isError) return <p className="text-sm text-status-red">{t("audit.states.error")}: {error?.message}</p>;
+  if (isError || !data) return <p className="text-sm text-status-red">{t("audit.states.error")}: {error?.message}</p>;
 
-  const total = data?.total ?? 0;
-  const totalIssues = data?.issues.length ?? 0;
-  const withoutRA = grouped.missingRiskAssessment.length;
-  const withoutApproval = grouped.missingApproval.length;
+  const visibleIssues = [...grouped.values()].flat();
+  const critical = visibleIssues.filter((i) => i.severity === "critical").length;
+  const hanging = (grouped.get("missionInProgressStale")?.length ?? 0) + (grouped.get("missionPlannedPastDue")?.length ?? 0) + (grouped.get("activeFlightStale")?.length ?? 0);
+  const u = data.unplanned;
+  const unplannedPct = Math.round(u.pct);
+  const codes = ISSUE_ORDER.filter((c) => (grouped.get(c)?.length ?? 0) > 0);
 
-  // Missions with at least one RA or approval issue = non-compliant
-  const nonCompliantIds = new Set<string>();
-  for (const i of grouped.missingRiskAssessment) nonCompliantIds.add(i.missionId);
-  for (const i of grouped.missingApproval) nonCompliantIds.add(i.missionId);
-  const nonCompliant = nonCompliantIds.size;
-  const compliant = Math.max(0, total - nonCompliant);
-  const compliancePct = total > 0 ? Math.round((compliant / total) * 100) : null;
-
-  const codes = (Object.keys(grouped) as OperationsIssue["code"][])
-    .filter((k) => grouped[k].length > 0)
-    .sort((a, b) => (ISSUE_META[a].severity === "critical" ? -1 : 1));
-
-  const pieData = [
-    { name: t("audit.operations.summary.compliantSlice"), value: compliant, color: "hsl(var(--status-green))" },
-    { name: t("audit.operations.summary.nonCompliantSlice"), value: nonCompliant, color: "hsl(var(--status-red))" },
-  ];
+  const unplannedChart = u.byMonth.map((m) => ({ ...m, label: monthLabel(m.month) }));
+  const riskChart = data.risk.byMonth.map((m) => ({ ...m, label: monthLabel(m.month) }));
+  const sailChart = SAIL_LEVELS.map((s) => ({ sail: s, value: data.sora.bySail[s] ?? 0 }));
+  const riskColors: Record<string, string> = {
+    go: "hsl(var(--status-green))",
+    caution: "hsl(var(--status-yellow))",
+    "no-go": "hsl(var(--status-red))",
+    "not-assessed": "hsl(var(--muted-foreground))",
+  };
 
   return (
     <div className="space-y-4">
-      {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard icon={ClipboardCheck} label={t("audit.operations.summary.completed")} value={total} tone="neutral" />
-        <KpiCard icon={ShieldCheck} label={t("audit.operations.summary.compliant")} value={compliant} tone="green" />
-        <KpiCard icon={FileWarning} label={t("audit.operations.summary.withoutRA")} value={withoutRA} tone="yellow" />
-        <KpiCard icon={AlertTriangle} label={t("audit.operations.summary.withoutApproval")} value={withoutApproval} tone="yellow" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard icon={ClipboardCheck} label={t("audit.operations.summary.evaluated")} value={data.total} tone="neutral" />
+        <KpiCard icon={AlertOctagon} label={t("audit.operations.summary.critical")} value={critical} tone={critical > 0 ? "red" : "green"} />
+        <KpiCard icon={Clock} label={t("audit.operations.summary.hanging")} value={hanging} tone={hanging > 0 ? "yellow" : "green"} />
         <KpiCard
-          icon={ShieldCheck}
-          label={t("audit.operations.summary.complianceRate")}
-          value={compliancePct === null ? "—" : `${compliancePct}%`}
-          tone={compliancePct !== null && compliancePct >= 90 ? "green" : compliancePct !== null && compliancePct >= 70 ? "yellow" : "red"}
+          icon={PlaneTakeoff}
+          label={t("audit.operations.summary.unplannedShort")}
+          value={u.total > 0 ? `${unplannedPct}%` : "—"}
+          tone={u.total === 0 ? "neutral" : unplannedPct > 10 ? "yellow" : "green"}
         />
       </div>
 
-      {/* Donut chart */}
-      {total > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm font-medium mb-2">{t("audit.operations.summary.chartTitle")}</div>
-            <div className="h-56">
+      {/* Unplanned flights */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-sm font-medium flex-1 min-w-0">
+              {t("audit.operations.unplanned.kpi", { count: u.unplanned, total: u.total, pct: unplannedPct })}
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate("/oppdrag?tab=logs&unplanned=1")}>
+              {t("audit.operations.unplanned.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+            </Button>
+          </div>
+          {u.total > 0 && (
+            <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
+                <BarChart data={unplannedChart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
                   <Tooltip />
                   <Legend />
-                </PieChart>
+                  <Bar dataKey="planned" stackId="a" name={t("audit.operations.unplanned.planned")} fill="hsl(var(--status-green))" />
+                  <Bar dataKey="unplanned" stackId="a" name={t("audit.operations.unplanned.unplanned")} fill="hsl(var(--status-yellow))" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* SORA profile vs system */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="text-sm font-medium">{t("audit.operations.sora.title")}</div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <Stat label={t("audit.operations.sora.assessed")} value={data.sora.assessed} />
+              <Stat label={t("audit.operations.sora.within")} value={data.sora.within} cls="text-status-green" />
+              <Stat label={t("audit.operations.sora.deviating")} value={data.sora.deviating} cls={data.sora.deviating > 0 ? "text-status-red" : ""} />
+            </div>
+            <div className="text-xs text-muted-foreground">{t("audit.operations.sora.bySail")}</div>
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sailChart}>
+                  <XAxis dataKey="sail" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip />
+                  <Bar dataKey="value" name={t("audit.operations.sora.missions")} fill="hsl(var(--primary))" />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {totalIssues === 0 ? (
+        {/* Risk level on flown missions */}
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="text-sm font-medium">{t("audit.operations.risk.title")}</div>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {data.risk.distribution.map((d) => (
+                <Stat key={d.key} label={t(`audit.operations.risk.${d.key}`)} value={d.value} color={riskColors[d.key]} />
+              ))}
+            </div>
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={riskChart}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip />
+                  <Bar dataKey="go" stackId="r" name={t("audit.operations.risk.go")} fill={riskColors.go} />
+                  <Bar dataKey="caution" stackId="r" name={t("audit.operations.risk.caution")} fill={riskColors.caution} />
+                  <Bar dataKey="noGo" stackId="r" name={t("audit.operations.risk.no-go")} fill={riskColors["no-go"]} />
+                  <Bar dataKey="notAssessed" stackId="r" name={t("audit.operations.risk.not-assessed")} fill={riskColors["not-assessed"]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {visibleIssues.length === 0 ? (
         <Card>
           <CardContent className="p-6 flex flex-col items-center gap-2 text-sm text-muted-foreground">
             <CheckCircle2 className="w-8 h-8 text-status-green" />
@@ -112,18 +169,18 @@ export const OperationsTab = () => {
       ) : (
         <Accordion type="multiple" className="space-y-2">
           {codes.map((code) => {
-            const items = grouped[code];
-            const meta = ISSUE_META[code];
-            const Icon = meta.icon;
+            const items = grouped.get(code) ?? [];
+            const isCritical = items.some((i) => i.severity === "critical");
+            const Icon = isCritical ? AlertOctagon : AlertTriangle;
             return (
               <AccordionItem
                 key={code}
                 value={code}
-                className={cn("border rounded-lg border-l-4 px-3", meta.severity === "critical" ? "border-l-status-red/60" : "border-l-status-yellow/60")}
+                className={cn("border rounded-lg border-l-4 px-3", isCritical ? "border-l-status-red/60" : "border-l-status-yellow/60")}
               >
                 <AccordionTrigger className="hover:no-underline py-3">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Icon className={cn("w-4 h-4", meta.textCls)} />
+                    <Icon className={cn("w-4 h-4 shrink-0", isCritical ? "text-status-red" : "text-status-yellow")} />
                     <span className="text-sm font-medium truncate">{t(`audit.operations.codes.${code}`)}</span>
                     <Badge variant="outline" className="ml-auto mr-2">{items.length}</Badge>
                   </div>
@@ -136,15 +193,23 @@ export const OperationsTab = () => {
                           <div className="text-sm font-medium truncate">{i.missionTitle}</div>
                           <div className="text-xs text-muted-foreground">
                             {i.missionDate ? new Date(i.missionDate).toLocaleDateString(i18n.language) : "—"}
+                            {i.code === "missionInProgressStale" || i.code === "missionPlannedPastDue"
+                              ? ` · ${t("audit.operations.daysOverdue", { count: i.days ?? 0 })}`
+                              : null}
+                            {i.code === "activeFlightStale" ? ` · ${t("audit.operations.hoursActive", { count: i.hours ?? 0 })}` : null}
+                            {i.code === "soraEnvelopeExceeded" ? ` · ${t("audit.operations.systemSail", { sail: i.sail ?? "—" })}` : null}
                           </div>
+                          {i.details && i.details.length > 0 && (
+                            <ul className="mt-1 text-xs text-status-yellow list-disc pl-4">
+                              {i.details.map((d, k) => <li key={k}>{d}</li>)}
+                            </ul>
+                          )}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => navigate(auditDeepLink("mission", i.missionId).path)}
-                        >
-                          {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                        </Button>
+                        {i.missionId && (
+                          <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("mission", i.missionId!).path)}>
+                            {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -155,11 +220,20 @@ export const OperationsTab = () => {
         </Accordion>
       )}
       <p className="text-xs text-muted-foreground text-right">
-        {t("audit.operations.evaluatedFootnote", { total, issues: totalIssues })}
+        {t("audit.operations.evaluatedFootnote", { total: data.total, issues: visibleIssues.length })}
       </p>
     </div>
   );
 };
+
+function Stat({ label, value, cls, color }: { label: string; value: number; cls?: string; color?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className={cn("text-lg font-semibold", cls)} style={color ? { color } : undefined}>{value}</div>
+      <div className="text-[11px] text-muted-foreground truncate">{label}</div>
+    </div>
+  );
+}
 
 function KpiCard({
   icon: Icon,
