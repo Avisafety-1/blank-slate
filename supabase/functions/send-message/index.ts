@@ -316,7 +316,7 @@ serve(async (req) => {
           results.push({ recipient_id: r.id, ok: false, error: insErr?.message });
           continue;
         }
-        await admin.from("internal_message_recipients").insert({ message_id: msg.id, recipient_id: r.id });
+        await admin.from("internal_message_recipients").upsert({ message_id: msg.id, recipient_id: r.id }, { onConflict: "message_id,recipient_id", ignoreDuplicates: true });
         await deliver(msg.id, [r]);
         results.push({ recipient_id: r.id, message_id: msg.id, ok: true });
       }
@@ -342,7 +342,7 @@ serve(async (req) => {
 
       const { error: junErr } = await admin
         .from("internal_message_recipients")
-        .insert(allowed.map((r) => ({ message_id: msg.id, recipient_id: r.id })));
+        .upsert(allowed.map((r) => ({ message_id: msg.id, recipient_id: r.id })), { onConflict: "message_id,recipient_id", ignoreDuplicates: true });
       if (junErr) console.error("[send-message] junction insert failed", junErr);
 
       await deliver(msg.id, allowed);

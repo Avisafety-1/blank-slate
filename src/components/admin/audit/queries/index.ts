@@ -799,7 +799,7 @@ export interface FollowUpSignals {
 
 /**
  * One row per reminder recipient. Done-status comes from internal_message_recipients
- * (what the inbox shows); falls back to the message row for legacy messages without one.
+ * (what the inbox shows); undelivered messages without one are ignored.
  */
 export async function fetchReminderRows(ids: string[], since?: string): Promise<{ finding_key: string | null; status: string; created_at: string }[]> {
   const rows = await fetchAllPages<any>((a, b) => {
@@ -809,11 +809,16 @@ export async function fetchReminderRows(ids: string[], since?: string): Promise<
     if (since) q = q.gte("created_at", since);
     return q.order("id").range(a, b);
   });
+  return reminderRowsFromMessages(rows);
+}
+
+/** Messages without a recipient row were never delivered: they are left out (finding stays "not sent"). */
+export function reminderRowsFromMessages(rows: any[]): { finding_key: string | null; status: string; created_at: string }[] {
   const out: { finding_key: string | null; status: string; created_at: string }[] = [];
   for (const r of rows) {
-    const recs = (r.internal_message_recipients ?? []) as { status: string }[];
-    if (!recs.length) out.push({ finding_key: r.finding_key, status: r.status, created_at: r.created_at });
-    else for (const rec of recs) out.push({ finding_key: r.finding_key, status: rec.status, created_at: r.created_at });
+    for (const rec of (r.internal_message_recipients ?? []) as { status: string }[]) {
+      out.push({ finding_key: r.finding_key, status: rec.status, created_at: r.created_at });
+    }
   }
   return out;
 }
