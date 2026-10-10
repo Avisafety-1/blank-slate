@@ -13,6 +13,7 @@ import { useAuditOperations } from "../hooks/useAuditData";
 import { auditDeepLink } from "../utils/auditDeepLink";
 import type { OperationsIssue } from "../types";
 import { cn } from "@/lib/utils";
+import { MissingFlightLogsSection } from "../components/MissingFlightLogsSection";
 
 const ISSUE_ORDER: OperationsIssue["code"][] = [
   "activeFlightStale",
@@ -36,6 +37,7 @@ export const OperationsTab = () => {
     const g = new Map<OperationsIssue["code"], OperationsIssue[]>();
     for (const i of data?.issues ?? []) {
       if (i.code === "missingRiskAssessment" && !requireSora) continue;
+      if (i.code === "missionWithoutFlightLog") continue; // own section
       g.set(i.code, [...(g.get(i.code) ?? []), i]);
     }
     return g;
@@ -50,6 +52,7 @@ export const OperationsTab = () => {
   if (isError || !data) return <p className="text-sm text-status-red">{t("audit.states.error")}: {error?.message}</p>;
 
   const visibleIssues = [...grouped.values()].flat();
+  const missingLogs = data.issues.filter((i) => i.code === "missionWithoutFlightLog");
   const critical = visibleIssues.filter((i) => i.severity === "critical").length;
   const hanging = (grouped.get("missionInProgressStale")?.length ?? 0) + (grouped.get("missionPlannedPastDue")?.length ?? 0) + (grouped.get("activeFlightStale")?.length ?? 0);
   const u = data.unplanned;
@@ -191,6 +194,8 @@ export const OperationsTab = () => {
           </CardContent>
         </Card>
       )}
+
+      <MissingFlightLogsSection issues={missingLogs} />
 
       {visibleIssues.length === 0 ? (
         <Card>
