@@ -28,15 +28,19 @@ const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDat
 const addMonths = (d: Date, m: number) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
 
 /**
- * Upcoming internal audits (planned/in progress) for the given units, sorted by date (in progress first on ties),
- * plus coverage warnings: red = no closed audit in 12 months and nothing upcoming; yellow = last closed 11–12 months ago and nothing upcoming.
+ * Upcoming internal audits (planned/in progress) for the given units, sorted by date (in progress first on ties).
+ * Coverage is organisation-wide: an audit of the parent OR any department counts for the whole organisation
+ * (departments normally operate under the parent's operations manual). At most one coverage warning:
+ * red = no closed internal audit in the organisation in 12 months and nothing upcoming;
+ * yellow = last closed 11–12 months ago and nothing upcoming.
+ * `filterUnitId` narrows the upcoming list to one department; coverage stays organisation-wide.
  */
-export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date = new Date()): AuditProgramme {
+export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date = new Date(), filterUnitId?: string | null): AuditProgramme {
   const today = startOfDay(now);
   const unitName = new Map(units.map((u) => [u.id, u.name]));
   const internal = reviews.filter((r) => r.review_type === "internal" && unitName.has(r.audited_company_id));
   const upcoming: ProgrammeReview[] = internal
-    .filter((r) => r.status === "planned" || r.status === "in_progress")
+    .filter((r) => (r.status === "planned" || r.status === "in_progress") && (!filterUnitId || r.audited_company_id === filterUnitId))
     .map((r) => {
       const d = r.review_date ? startOfDay(new Date(r.review_date)) : null;
       const date = d && !isNaN(d.getTime()) ? d : null;
