@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +25,7 @@ export interface FindingRow {
   reference: string | null; responsible_user_id: string | null; deadline: string | null;
   severity: "critical" | "warning" | "info"; status: "open" | "in_progress" | "verified" | "closed";
   verified_by: string | null; verified_at: string | null; audit_actions: ActionRow[];
+  checklist_item_id: string | null; closure_comment: string | null; self_verified: boolean;
 }
 export interface ReviewRow {
   id: string; company_id: string; audited_company_id: string; title: string; review_date: string;
@@ -51,9 +53,38 @@ function useInvalidate() {
   };
 }
 
-function useDbMutation<T>(fn: (input: T) => Promise<unknown>) {
+// ---- Save status shared by all internal-audit mutations ----
+export interface SaveStatus { pending: number; savedAt: Date | null; error: boolean }
+let saveState: SaveStatus = { pending: 0, savedAt: null, error: false };
+const saveListeners = new Set<() => void>();
+const inflight = new Set<Promise<unknown>>();
+const setSave = (patch: Partial<SaveStatus>) => {
+  saveState = { ...saveState, ...patch };
+  saveListeners.forEach((l) => l());
+};
+export function trackSave<R>(p: Promise<R>): Promise<R> {
+  setSave({ pending: saveState.pending + 1 });
+  inflight.add(p);
+  p.then(
+    () => setSave({ pending: saveState.pending - 1, savedAt: new Date(), error: false }),
+    () => setSave({ pending: saveState.pending - 1, error: true }),
+  ).finally(() => inflight.delete(p));
+  return p;
+}
+export function waitForSaves(): Promise<unknown> {
+  return Promise.allSettled([...inflight]);
+}
+export function useSaveStatus(): SaveStatus {
+  return useSyncExternalStore(
+    (l) => { saveListeners.add(l); return () => { saveListeners.delete(l); }; },
+    () => saveState,
+  );
+}
+
+function useDbMutation<T, R = unknown>(fn: (input: T) => Promise<R>) {
   const invalidate = useInvalidate();
-  return useMutation({ mutationFn: fn, onSuccess: invalidate, onError: invalidate });
+  const m = useMutation({ mutationFn: fn, onSuccess: invalidate, onError: invalidate });
+  return { ...m, mutateAsync: (input: T) => trackSave(m.mutateAsync(input)) };
 }
 
 const check = ({ error }: { error: any }) => { if (error) throw error; };
@@ -82,15 +113,25 @@ export function useInternalAuditMutations() {
     }),
     createFinding: useDbMutation(async (i: {
       review: ReviewRow; category: string; description: string; reference?: string | null; severity?: FindingRow["severity"];
-    }) => check(await db.from("audit_findings").insert({
-      review_id: i.review.id, company_id: i.review.audited_company_id, category: i.category,
-      description: i.description, reference: i.reference ?? null, severity: i.severity ?? "warning",
-    }))),
+      responsible_user_id?: string | null; deadline?: string | null; checklist_item_id?: string | null;
+    }) => {
+      const { data, error } = await db.from("audit_findings").insert({
+        review_id: i.review.id, company_id: i.review.audited_company_id, category: i.category,
+        description: i.description, reference: i.reference ?? null, severity: i.severity ?? "warning",
+        responsible_user_id: i.responsible_user_id ?? null, deadline: i.deadline ?? null,
+        checklist_item_id: i.checklist_item_id ?? null,
+      }).select("id").single();
+      if (error) throw error;
+      return data.id as string;
+    }),
     updateFinding: useDbMutation(async (i: { id: string; patch: Record<string, unknown> }) =>
       check(await db.from("audit_findings").update(i.patch).eq("id", i.id))),
     deleteFinding: useDbMutation(async (id: string) => check(await db.from("audit_findings").delete().eq("id", id))),
     createAction: useDbMutation(async (i: { finding: FindingRow; description: string }) =>
-      check(await db.from("audit_actions").insert({ finding_id: i.finding.id, company_id: i.finding.company_id, description: i.description }))),
+      check(await db.from("audit_actions").insert({
+        finding_id: i.finding.id, company_id: i.finding.company_id, description: i.description,
+        responsible_user_id: i.finding.responsible_user_id, deadline: i.finding.deadline,
+      }))),
     updateAction: useDbMutation(async (i: { id: string; patch: Record<string, unknown> }) =>
       check(await db.from("audit_actions").update(i.patch).eq("id", i.id))),
     deleteAction: useDbMutation(async (id: string) => check(await db.from("audit_actions").delete().eq("id", id))),
