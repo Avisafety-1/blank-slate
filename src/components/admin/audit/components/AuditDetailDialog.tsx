@@ -219,7 +219,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                   <AccordionTrigger className="text-sm">
                     <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
                       <span className="truncate">{sectionLabel(s.section_key)}</span>
-                      <StatusPill status={s.status as any} />
+                      <StatusPill status={s.status as any} labelOverride={t(`audit.internal.sectionStatus.${s.status}`)} />
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3">

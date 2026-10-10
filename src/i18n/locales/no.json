@@ -8600,7 +8600,7 @@
       "statusPlanned": "Planlagt",
       "statusInProgress": "Pågår",
       "statusClosed": "Lukket",
-      "closeBlocked": "Kan ikke lukkes: åpne kritiske funn.",
+      "closeBlocked": "Kan ikke lukkes: åpne kritiske funn. Oppgi en overstyringsbegrunnelse (minst 10 tegn) for å lukke likevel.",
       "overrideReason": "Begrunnelse for overstyring",
       "newTitle": "Årlig internrevisjon {{year}}",
       "department": "Avdeling",
@@ -8638,7 +8638,57 @@
       "cancel": "Avbryt",
       "save": "Lagre",
       "openFindings": "Åpne funn",
-      "nextReview": "Dato"
+      "nextReview": "Dato",
+      "template": "Mal",
+      "auditedUnit": "Revidert enhet",
+      "create": "Opprett",
+      "selectPerson": "Velg person",
+      "searchPerson": "Søk person...",
+      "noPersons": "Ingen personer funnet.",
+      "none": "Ingen",
+      "saveError": "Kunne ikke lagre",
+      "loading": "Laster revisjoner...",
+      "empty": "Ingen internrevisjoner ennå.",
+      "readOnly": "Kun lesetilgang",
+      "start": "Start revisjon",
+      "comment": "Kommentar",
+      "makeFinding": "Lag funn",
+      "generalCategory": "Generelt",
+      "newFinding": "Nytt funn",
+      "newAction": "Nytt tiltak",
+      "actionComment": "Kommentar",
+      "verify": "Verifiser",
+      "delete": "Slett",
+      "deleteConfirm": "Slette denne planlagte revisjonen?",
+      "closeDialog": "Lukk",
+      "closeReview": "Lukk revisjon",
+      "reopen": "Gjenåpne",
+      "reopenReason": "Begrunnelse for gjenåpning (minst 10 tegn)",
+      "closedAt": "Lukket {{date}}",
+      "verifiedAt": "Verifisert {{date}}",
+      "result": {
+        "pass": "Bestått",
+        "warn": "Avvik",
+        "fail": "Ikke bestått",
+        "na": "Ikke relevant"
+      },
+      "findingStatus": {
+        "open": "Åpen",
+        "in_progress": "Pågår",
+        "verified": "Verifisert",
+        "closed": "Lukket"
+      },
+      "reviewStatus": {
+        "planned": "Planlagt",
+        "in_progress": "Pågår",
+        "closed": "Lukket"
+      },
+      "sectionStatus": {
+        "ok": "OK",
+        "warning": "Avvik",
+        "danger": "Ikke bestått",
+        "info": "Ikke vurdert"
+      }
     },
     "package": {
       "header": "Tilsynspakke",
@@ -9014,6 +9064,58 @@
       "inIncidents": "Åpne i Hendelser",
       "inDocuments": "Åpne i Dokumenter",
       "inResources": "Åpne i Ressurser"
+    },
+    "tpl": {
+      "template": {
+        "open": "Åpen kategori / generelt",
+        "specific": "Spesifikk kategori – SORA/OSO",
+        "luc": "LUC"
+      },
+      "section": {
+        "organization": "Organisasjon",
+        "competency": "Kompetanse",
+        "technical": "Teknisk",
+        "operations": "Operasjoner",
+        "incidents": "Hendelser",
+        "permit": "Tillatelse",
+        "documentation": "Dokumentasjon",
+        "luc_sms": "Organisasjon og SMS"
+      },
+      "item": {
+        "open_operator_registered": "Operatør registrert og operatør-ID merket på alle droner",
+        "open_insurance_valid": "Ansvarsforsikring gyldig",
+        "open_pilot_competency": "Alle piloter har gyldig kompetansebevis for underkategorien",
+        "open_class_marking": "Klassemerking/legacy-status registrert per drone",
+        "open_remote_id": "Remote ID aktiv der det kreves",
+        "open_maintenance_firmware": "Vedlikehold og firmware iht. produsent",
+        "open_max_height_vlos": "Maks 120 m og VLOS overholdt",
+        "open_distance_uninvolved": "Avstand til uinvolverte iht. underkategori",
+        "open_geozones_checked": "Geografiske soner sjekket før flyging",
+        "open_incidents_reported": "Hendelser rapportert",
+        "open_incident_actions_closed": "Tiltak fra hendelser lukket",
+        "spec_authorisation_valid": "Operasjonstillatelse gyldig",
+        "spec_within_authorisation": "Operasjoner innenfor tillatelsens rammer",
+        "spec_manual_updated": "Operasjonsmanual/ConOps oppdatert og samsvarer med praksis",
+        "spec_changes_notified": "Endringer meldt til Luftfartstilsynet ved behov",
+        "spec_training_recurrent": "Opplæring og gjentrening iht. tillatelsen",
+        "spec_crew_fit": "Mannskap skikket til tjeneste",
+        "spec_operator_competent": "Operatøren kompetent",
+        "spec_maintenance_programme": "Vedlikeholdsprogram fulgt og logget",
+        "spec_c2_link_checked": "Kommandolink og utstyr kontrollert",
+        "spec_procedures_followed": "Prosedyrer fulgt, inkl. sjekklister",
+        "spec_risk_assessment_each": "Risikovurdering for hvert oppdrag",
+        "spec_volumes_respected": "Flygeområde, beredskapsvolum og bakkerisikobuffer respektert",
+        "spec_erp_exercised": "Nødprosedyrer (ERP) øvd",
+        "spec_incidents_reported": "Hendelser rapportert",
+        "spec_actions_closed_deadline": "Tiltak lukket innen frist",
+        "spec_flight_logs_archived": "Flygelogger arkivert",
+        "luc_accountable_manager": "Ansvarlig leder og safety manager utpekt",
+        "luc_sms": "SMS med sikkerhetspolicy, risikostyring og intern rapportering",
+        "luc_manual_updated": "LUC-manual oppdatert",
+        "luc_terms_complied": "Vilkår for LUC overholdt",
+        "luc_self_approved_documented": "Egengodkjente operasjoner dokumentert med risikovurdering",
+        "luc_changes_handled": "Endringer håndtert iht. UAS.LUC.070"
+      }
     }
   },
   "inbox": {
