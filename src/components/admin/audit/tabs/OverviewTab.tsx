@@ -270,12 +270,12 @@ function AuditProgrammeCard({ dept, onNavigate }: { dept: string | null | undefi
   const { t, i18n } = useTranslation();
   const reviews = useAuditReviews();
   const { data: departments = [], isLoading: deptLoading } = useAuditDepartments();
-  const units = dept && dept !== "all" ? departments.filter((d) => d.id === dept) : departments;
-  const prog = auditProgramme((reviews.data ?? []) as any[], units);
+  const filterUnitId = dept && dept !== "all" ? dept : null;
+  const prog = auditProgramme((reviews.data ?? []) as any[], departments, new Date(), filterUnitId);
   const fmt = (d: Date) => d.toLocaleDateString(i18n.language?.startsWith("en") ? "en-GB" : "nb-NO", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const total = prog.upcoming.length + prog.coverage.length;
-  const shownReviews = prog.upcoming.slice(0, PROGRAMME_MAX);
-  const shownCoverage = prog.coverage.slice(0, Math.max(0, PROGRAMME_MAX - shownReviews.length));
+  const total = prog.upcoming.length + (prog.coverage ? 1 : 0);
+  // The coverage warning is always shown; upcoming audits fill the remaining lines.
+  const shownReviews = prog.upcoming.slice(0, PROGRAMME_MAX - (prog.coverage ? 1 : 0));
 
   return (
     <div className="relative rounded-lg border border-border bg-card p-3 md:col-span-2 space-y-2">
@@ -300,14 +300,15 @@ function AuditProgrammeCard({ dept, onNavigate }: { dept: string | null | undefi
               </li>
             ))}
           </ul>
-          {shownCoverage.length > 0 && (
-            <ul className="space-y-0.5 text-sm">
-              {shownCoverage.map((c) => (
-                <li key={c.unitId} className={c.tone === "danger" ? "text-status-red" : "text-status-yellow-text"}>
-                  {t(c.tone === "danger" ? "audit.overview.metrics.programme.noAudit" : "audit.overview.metrics.programme.dueSoon", { unit: c.unitName })}
-                </li>
-              ))}
-            </ul>
+          {prog.coverage && (
+            <p className={cn("text-sm", prog.coverage.tone === "danger" ? "text-status-red" : "text-status-yellow-text")}>
+              {t(prog.coverage.tone === "danger" ? "audit.overview.metrics.programme.noAudit" : "audit.overview.metrics.programme.dueSoon")}
+            </p>
+          )}
+          {!prog.coverage && filterUnitId && prog.lastClosed && (
+            <p className="text-xs text-muted-foreground">
+              {t("audit.overview.metrics.programme.coveredByOrg", { date: fmt(prog.lastClosed.date), unit: prog.lastClosed.unitName })}
+            </p>
           )}
           {total > PROGRAMME_MAX && (
             <Button variant="link" size="sm" className="h-auto p-0" onClick={() => onNavigate("internal")}>

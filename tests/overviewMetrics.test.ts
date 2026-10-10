@@ -21,23 +21,41 @@ describe("audit programme", () => {
     expect(p.upcoming.find((r) => r.id === "a")!.overdue).toBe(true);
     expect(p.upcoming.find((r) => r.id === "b")!.overdue).toBe(false);
   });
-  test("coverage: none → red", () => {
-    expect(auditProgramme([], [units[0]], now).coverage).toEqual([{ unitId: "c1", unitName: "Mor", tone: "danger" }]);
+  test("coverage: none → red, organisation-wide", () => {
+    const p = auditProgramme([], units, now);
+    expect(p.coverage).toEqual({ tone: "danger" });
+    expect(p.lastClosed).toBeNull();
   });
   test("coverage: closed 11.5 months ago → yellow", () => {
-    expect(auditProgramme([closedAgo("c1", 2025, 9, 25)], [units[0]], now).coverage[0].tone).toBe("warning");
+    expect(auditProgramme([closedAgo("c1", 2025, 9, 25)], units, now).coverage?.tone).toBe("warning");
   });
   test("coverage: closed 13 months ago → red", () => {
-    expect(auditProgramme([closedAgo("c1", 2025, 8, 10)], [units[0]], now).coverage[0].tone).toBe("danger");
+    expect(auditProgramme([closedAgo("c1", 2025, 8, 10)], units, now).coverage?.tone).toBe("danger");
   });
   test("coverage: closed 6 months ago or upcoming → no warning", () => {
-    expect(auditProgramme([closedAgo("c1", 2026, 3, 10)], [units[0]], now).coverage).toEqual([]);
-    expect(auditProgramme([rev({})], [units[0]], now).coverage).toEqual([]);
+    expect(auditProgramme([closedAgo("c1", 2026, 3, 10)], units, now).coverage).toBeNull();
+    expect(auditProgramme([rev({})], units, now).coverage).toBeNull();
   });
-  test("filters by unit", () => {
-    const p = auditProgramme([rev({ id: "a" }), rev({ id: "b", audited_company_id: "c2" }), rev({ id: "z", review_type: "external" })], [units[1]], now);
+  test("coverage: an audit of one department covers the whole organisation", () => {
+    const p = auditProgramme([closedAgo("c2", 2026, 3, 10)], units, now);
+    expect(p.coverage).toBeNull();
+    expect(p.lastClosed?.unitName).toBe("Avd");
+  });
+  test("coverage: never per-department warnings", () => {
+    // c2 audited recently, c1 never → still no warning (org covered by c2)
+    const p = auditProgramme([closedAgo("c2", 2026, 8, 10)], units, now, "c1");
+    expect(p.coverage).toBeNull();
+    expect(p.lastClosed?.unitName).toBe("Avd");
+  });
+  test("upcoming filters by selected department, coverage stays org-wide", () => {
+    const p = auditProgramme([rev({ id: "a" }), rev({ id: "b", audited_company_id: "c2" })], units, now, "c2");
     expect(p.upcoming.map((r) => r.id)).toEqual(["b"]);
-    expect(p.upcoming[0].unitName).toBe("Avd");
+    expect(p.coverage).toBeNull(); // c1's planned audit covers the org
+  });
+  test("external reviews never count", () => {
+    const p = auditProgramme([rev({ id: "z", review_type: "external" })], units, now);
+    expect(p.upcoming).toEqual([]);
+    expect(p.coverage?.tone).toBe("danger");
   });
 });
 

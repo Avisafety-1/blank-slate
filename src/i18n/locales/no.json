@@ -8264,13 +8264,14 @@
         "programme": {
           "label": "Revisjonsprogram",
           "overdue": "Forfalt",
-          "noAudit": "{{unit}}: ingen revisjon siste 12 mnd",
-          "dueSoon": "{{unit}}: revisjon forfaller innen 30 dager",
+          "noAudit": "Organisasjonen: ingen internrevisjon siste 12 mnd",
+          "dueSoon": "Organisasjonen: internrevisjon forfaller innen 30 dager",
           "showAll": "Vis alle ({{count}})",
           "empty": "Ingen kommende revisjoner – alle enheter er revidert siste 12 mnd",
-          "what": "Planlagte og påbegynte internrevisjoner for valgt utvalg, sortert etter dato. Under listen vises enheter uten revisjon siste 12 måneder og uten planlagt revisjon.",
+          "what": "Planlagte og påbegynte internrevisjoner for valgt utvalg, sortert etter dato. Dekning regnes for organisasjonen samlet, fordi avdelingene normalt følger samme styringssystem – en revisjon av morselskapet eller en avdeling teller for alle.",
           "threshold": "Rødt: planlagt revisjon med passert dato, eller ingen lukket revisjon siste 12 mnd. Gult: siste revisjon for 11–12 mnd siden og ingen planlagt.",
-          "fix": "Klikk en revisjon for å åpne den i Internrevisjon."
+          "fix": "Klikk en revisjon for å åpne den i Internrevisjon.",
+          "coveredByOrg": "Dekkes av organisasjonens revisjonsprogram – sist revidert {{date}} ({{unit}})"
         }
       }
     },

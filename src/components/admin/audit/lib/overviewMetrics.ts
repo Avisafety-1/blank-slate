@@ -20,22 +20,27 @@ export interface ProgrammeReview {
   id: string; title: string; unitId: string; unitName: string; templateKey: string;
   date: Date | null; status: "planned" | "in_progress"; overdue: boolean;
 }
-export interface CoverageWarning { unitId: string; unitName: string; tone: "danger" | "warning" }
-export interface AuditProgramme { upcoming: ProgrammeReview[]; coverage: CoverageWarning[] }
+export interface LastClosed { date: Date; unitName: string }
+export interface CoverageWarning { tone: "danger" | "warning" }
+export interface AuditProgramme { upcoming: ProgrammeReview[]; coverage: CoverageWarning | null; lastClosed: LastClosed | null }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const addMonths = (d: Date, m: number) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
 
 /**
- * Upcoming internal audits (planned/in progress) for the given units, sorted by date (in progress first on ties),
- * plus coverage warnings: red = no closed audit in 12 months and nothing upcoming; yellow = last closed 11–12 months ago and nothing upcoming.
+ * Upcoming internal audits (planned/in progress) for the given units, sorted by date (in progress first on ties).
+ * Coverage is organisation-wide: an audit of the parent OR any department counts for the whole organisation
+ * (departments normally operate under the parent's operations manual). At most one coverage warning:
+ * red = no closed internal audit in the organisation in 12 months and nothing upcoming;
+ * yellow = last closed 11–12 months ago and nothing upcoming.
+ * `filterUnitId` narrows the upcoming list to one department; coverage stays organisation-wide.
  */
-export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date = new Date()): AuditProgramme {
+export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date = new Date(), filterUnitId?: string | null): AuditProgramme {
   const today = startOfDay(now);
   const unitName = new Map(units.map((u) => [u.id, u.name]));
   const internal = reviews.filter((r) => r.review_type === "internal" && unitName.has(r.audited_company_id));
   const upcoming: ProgrammeReview[] = internal
-    .filter((r) => r.status === "planned" || r.status === "in_progress")
+    .filter((r) => (r.status === "planned" || r.status === "in_progress") && (!filterUnitId || r.audited_company_id === filterUnitId))
     .map((r) => {
       const d = r.review_date ? startOfDay(new Date(r.review_date)) : null;
       const date = d && !isNaN(d.getTime()) ? d : null;
@@ -50,21 +55,26 @@ export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date =
       if (da !== db) return da - db;
       return (a.status === "in_progress" ? 0 : 1) - (b.status === "in_progress" ? 0 : 1);
     });
-  const hasUpcoming = new Set(upcoming.map((u) => u.unitId));
+  const hasUpcoming = internal.some((r) => r.status === "planned" || r.status === "in_progress");
   const yearAgo = addMonths(today, -12);
   const elevenAgo = addMonths(today, -11);
-  const coverage: CoverageWarning[] = [];
-  for (const u of units) {
-    if (hasUpcoming.has(u.id)) continue;
-    const last = internal
-      .filter((r) => r.audited_company_id === u.id && r.closed_at)
-      .map((r) => new Date(r.closed_at!))
-      .filter((d) => !isNaN(d.getTime()))
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-    if (!last || last < yearAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "danger" });
-    else if (last <= elevenAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "warning" });
+  const lastClosedReview = internal
+    .filter((r) => r.closed_at)
+    .map((r) => new Date(r.closed_at!))
+    .filter((d) => !isNaN(d.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const lastClosedReviewRow = lastClosedReview
+    ? internal.filter((r) => r.closed_at && new Date(r.closed_at).getTime() === lastClosedReview.getTime())[0]
+    : null;
+  const lastClosed: LastClosed | null = lastClosedReviewRow
+    ? { date: lastClosedReview, unitName: unitName.get(lastClosedReviewRow.audited_company_id) ?? "" }
+    : null;
+  let coverage: CoverageWarning | null = null;
+  if (!hasUpcoming) {
+    if (!lastClosedReview || lastClosedReview < yearAgo) coverage = { tone: "danger" };
+    else if (lastClosedReview <= elevenAgo) coverage = { tone: "warning" };
   }
-  return { upcoming, coverage };
+  return { upcoming, coverage, lastClosed };
 }
 
 export interface ShareResult { ok: number; total: number; pct: number | null; tone: MetricTone }
