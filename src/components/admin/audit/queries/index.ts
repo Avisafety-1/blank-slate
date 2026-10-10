@@ -797,12 +797,36 @@ export interface FollowUpSignals {
   registered: { source_scanner_code: string | null; responsible_user_id: string | null; deadline: string | null; status: string }[];
 }
 
+/**
+ * One row per reminder recipient. Done-status comes from internal_message_recipients
+ * (what the inbox shows); falls back to the message row for legacy messages without one.
+ */
+export async function fetchReminderRows(ids: string[], since?: string): Promise<{ finding_key: string | null; status: string; created_at: string }[]> {
+  const rows = await fetchAllPages<any>((a, b) => {
+    let q = supabase.from("internal_messages")
+      .select("finding_key, status, created_at, internal_message_recipients(status)")
+      .in("company_id", ids).not("finding_key", "is", null);
+    if (since) q = q.gte("created_at", since);
+    return q.order("id").range(a, b);
+  });
+  const out: { finding_key: string | null; status: string; created_at: string }[] = [];
+  for (const r of rows) {
+    const recs = (r.internal_message_recipients ?? []) as { status: string }[];
+    if (!recs.length) out.push({ finding_key: r.finding_key, status: r.status, created_at: r.created_at });
+    else for (const rec of recs) out.push({ finding_key: r.finding_key, status: rec.status, created_at: r.created_at });
+  }
+  return out;
+}
+
+export async function fetchReminderRowsForUser(userId: string, companyId: string) {
+  return fetchReminderRows(await visibleCompanyIds(userId, companyId));
+}
+
 export async function fetchFollowUpSignals(userId: string, companyId: string): Promise<FollowUpSignals> {
   const ids = await visibleCompanyIds(userId, companyId);
   const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
   const [rem, disp, reg] = await Promise.all([
-    fetchAllPages<any>((a, b) => supabase.from("internal_messages").select("finding_key, status, created_at")
-      .in("company_id", ids).not("finding_key", "is", null).gte("created_at", since).order("id").range(a, b)),
+    fetchReminderRows(ids, since),
     fetchAllPages<any>((a, b) => supabase.from("compliance_finding_dispositions")
       .select("finding_code, entity_type, entity_id, disposition, reason, snooze_until, company_id").in("company_id", ids).order("id").range(a, b)),
     fetchAllPages<any>((a, b) => supabase.from("audit_findings").select("source_scanner_code, responsible_user_id, deadline, status")
