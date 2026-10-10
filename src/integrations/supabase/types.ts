@@ -843,6 +843,48 @@ export type Database = {
           },
         ]
       }
+      audit_notification_log: {
+        Row: {
+          action_id: string | null
+          finding_id: string
+          id: string
+          kind: string
+          recipient_id: string
+          sent_at: string
+        }
+        Insert: {
+          action_id?: string | null
+          finding_id: string
+          id?: string
+          kind: string
+          recipient_id: string
+          sent_at?: string
+        }
+        Update: {
+          action_id?: string | null
+          finding_id?: string
+          id?: string
+          kind?: string
+          recipient_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_notification_log_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "audit_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_notification_log_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "audit_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_reviews: {
         Row: {
           audited_company_id: string
@@ -7098,6 +7140,7 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string
+          email_audit_tasks: boolean
           email_child_document_expiry: boolean
           email_child_incidents: boolean
           email_child_maintenance_reminder: boolean
@@ -7133,6 +7176,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_audit_tasks?: boolean
           email_child_document_expiry?: boolean
           email_child_incidents?: boolean
           email_child_maintenance_reminder?: boolean
@@ -7168,6 +7212,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_audit_tasks?: boolean
           email_child_document_expiry?: boolean
           email_child_incidents?: boolean
           email_child_maintenance_reminder?: boolean
