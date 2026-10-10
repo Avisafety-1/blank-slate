@@ -11,7 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
-import { Plus, Trash2, ShieldCheck, ArrowRight } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, ArrowRight, BellRing } from "lucide-react";
+import { SendReminderDialog } from "../SendReminderDialog";
+import type { RecipientSuggestion } from "../services/ReminderRecipientResolver";
+import type { ScannerFinding } from "../types";
+import { auditDeepLink } from "../utils/auditDeepLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { StatusPill } from "./StatusPill";
@@ -141,6 +145,29 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
     if (ok) { setClosing(null); setClosureComment(""); }
   };
 
+  const [reminder, setReminder] = useState<{ finding: ScannerFinding; recipients: RecipientSuggestion[] } | null>(null);
+  const openReminder = (f: FindingRow, a?: ActionRow) => {
+    const rid = a ? a.responsible_user_id : f.responsible_user_id;
+    if (!rid) return;
+    const p = (persons as Array<{ id: string; full_name?: string | null; email?: string | null }> | undefined)?.find((x) => x.id === rid);
+    setReminder({
+      finding: {
+        code: "AuditReminder", severity: f.severity, categoryKey: "operations" as ScannerFinding["categoryKey"],
+        titleKey: "audit.internal.reminderSubject",
+        titleParams: { description: (a?.description ?? f.description).slice(0, 80) },
+        entityType: a ? "audit_action" : "audit_finding", entityId: a?.id ?? f.id,
+        deepLink: auditDeepLink("audit_finding", f.id),
+      },
+      recipients: [{ id: rid, full_name: p?.full_name ?? null, email: p?.email ?? null, reason: t("audit.internal.responsible") }],
+    });
+  };
+  const reminderButton = (f: FindingRow, a?: ActionRow) =>
+    canEdit && (a ? a.responsible_user_id && a.status !== "closed" : f.responsible_user_id) ? (
+      <Button size="sm" variant="ghost" onClick={() => openReminder(f, a)}>
+        <BellRing className="w-4 h-4 mr-1" />{t("audit.internal.sendReminder")}
+      </Button>
+    ) : null;
+
   const personPick = (value: string | null, onChange: (v: string | null) => void, disabled?: boolean) => (
     <SearchablePersonSelect persons={persons} value={value} onValueChange={onChange} allowNone disabled={disabled}
       placeholder={t("audit.internal.selectPerson")} searchPlaceholder={t("audit.internal.searchPerson")}
@@ -171,7 +198,8 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
           onSave={(v) => run(m.updateAction.mutateAsync({ id: a.id, patch: { comment: v || null } }))} />
         {a.closed_at && <p className="text-xs text-muted-foreground">{t("audit.internal.closedAt", { date: new Date(a.closed_at).toLocaleDateString(i18n.language) })}</p>}
         {canEdit && (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {(() => { const f = review.audit_findings.find((x) => x.id === a.finding_id); return f ? reminderButton(f, a) : null; })()}
             <Button size="sm" variant="ghost" onClick={() => run(m.deleteAction.mutateAsync(a.id))} aria-label={t("audit.internal.delete")}><Trash2 className="w-4 h-4" /></Button>
           </div>
         )}
@@ -248,6 +276,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                 <ShieldCheck className="w-4 h-4 mr-1" />{t("audit.internal.verifyAndClose")}
               </Button>
             )}
+            {!verified && reminderButton(f)}
             <Button size="sm" variant="ghost" onClick={() => run(m.deleteFinding.mutateAsync(f.id))} aria-label={t("audit.internal.delete")}><Trash2 className="w-4 h-4" /></Button>
           </div>
         )}
@@ -474,6 +503,9 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
           <NewFindingDialog open onOpenChange={(o) => !o && setNewFinding(null)} review={review} preset={newFinding}
             persons={persons} onShow={goToFinding} />
         )}
+
+        <SendReminderDialog finding={reminder?.finding ?? null} open={!!reminder}
+          onOpenChange={(o) => !o && setReminder(null)} presetRecipients={reminder?.recipients} />
 
         <Dialog open={!!closing} onOpenChange={(o) => !o && setClosing(null)}>
           <DialogContent className="dialog-vv-center dialog-max-h max-h-[90vh] max-h-[90dvh] flex flex-col p-0 overflow-hidden max-w-md">
