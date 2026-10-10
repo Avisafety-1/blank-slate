@@ -9223,6 +9223,13 @@
     "empty": "No messages",
     "systemSender": "AviSafe",
     "goToModule": "Go to module",
+    "open": "Open",
+    "resolvedPrompt": "This case appears resolved – mark as done?",
+    "openEntity": {
+      "mission": "Open mission", "incident": "Open incident", "document": "Open document", "drone": "Open drone",
+      "profile": "Open person", "person": "Open person", "personnel": "Open person", "competency": "Open person",
+      "audit_finding": "Open audit task", "audit_action": "Open audit task"
+    },
     "react": "React",
     "markDone": "Mark as done",
     "newMessage": "New message",
@@ -10060,6 +10067,10 @@
       "endFlight": "End flight",
       "uploadLog": "Upload / link flight log",
       "takeResponsibility": "I'll take responsibility"
+      ,"addIncidentComment": "Write comment", "closeIncident": "Close incident…", "selectResponsible": "Choose responsible…",
+      "openAuditTask": "Open audit task", "reportIncident": "Register deviation", "writeMissionExplanation": "Write explanation",
+      "startRiskAssessment": "Start risk assessment", "openRiskAssessment": "Open risk assessment", "editCompetency": "Update competency…",
+      "uploadDocumentVersion": "Upload new version…", "uploadEmergencyPlan": "Upload emergency plan…", "openDroneMaintenance": "Register inspection/maintenance…"
     },
     "prompt": {
       "MissionPlannedPastDue": "“{{title}}” has passed but is still planned. What happened?",
@@ -10067,6 +10078,12 @@
       "ActiveFlightStale": "A flight on “{{title}}” was never ended.",
       "MissionWithoutFlightLog": "“{{title}}” has no flight log. Was it flown?",
       "IncidentNoResponsible": "The incident “{{title}}” has no follow-up owner."
+      ,"IncidentOpenTooLong": "The incident “{{title}}” has remained open for a long time.", "OpenActionsTooLong": "The action “{{title}}” is overdue.",
+      "FindingAwaitingVerification": "The finding is ready for verification.", "FlownWithNoGo": "The mission “{{title}}” was flown with NO-GO.",
+      "MissingRiskAssessment": "The mission “{{title}}” has no risk assessment.", "SoraEnvelopeExceeded": "The mission “{{title}}” deviates from its SORA envelope.",
+      "ExpiredCompetence": "The competency “{{title}}” has expired.", "CompetenceExpiringSoon": "The competency “{{title}}” expires soon.",
+      "ExpiredDocument": "The document “{{title}}” has expired.", "DocumentReviewOverdue": "The document “{{title}}” needs review.",
+      "MissingEmergencyPlan": "The emergency plan is missing.", "DroneStatusRed": "The drone “{{title}}” requires action.", "DroneStatusYellow": "The drone “{{title}}” needs follow-up."
     },
     "confirm": {
       "notFlown": "The mission “{{title}}” will be set to Cancelled.",
@@ -10074,6 +10091,12 @@
       "finishMission": "The mission “{{title}}” will be set to Completed.",
       "endFlight": "The flight will be ended and removed from the live view.",
       "takeResponsibility": "You will be set as follow-up owner for “{{title}}”."
+      ,"addIncidentComment": "The comment will be added to “{{title}}”.", "writeMissionExplanation": "The explanation will be added as a mission note on “{{title}}”."
+    },
+    "incidentDefaults": {
+      "incident-report-missing-risk": { "title": "Missing risk assessment before flight", "description": "The mission was completed without a recorded pre-flight risk assessment." },
+      "incident-report-sora": { "title": "Flown outside the SORA envelope", "description": "The mission was completed outside the documented SORA envelope." },
+      "incident-report-no-go": { "title": "Mission completed with NO-GO", "description": "The mission was completed despite a NO-GO risk assessment." }
     },
     "confirmNotify": "The reminder sender ({{name}}) gets a reply in the thread, and the reminder is marked done.",
     "confirmButton": "Confirm",

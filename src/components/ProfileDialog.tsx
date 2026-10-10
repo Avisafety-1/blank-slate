@@ -920,6 +920,12 @@ export const ProfileDialog = () => {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).get("msg")) return;
+    setProfileDialogOpen(true);
+    setActiveTab("inbox");
+  }, [location.search]);
+
   // Close profile dialog when navigating to another page
   useEffect(() => {
     if (profileDialogOpen) {
