@@ -8222,11 +8222,13 @@
       "total": "Missions evaluated",
       "codes": {
         "missingRiskAssessment": "Missing risk assessment",
-        "missingChecklist": "Missing checklist",
-        "missingApproval": "Missing approval",
-        "flightNotClosed": "Flight not closed"
+        "missionInProgressStale": "In-progress mission not closed",
+        "activeFlightStale": "Active flight not ended",
+        "soraEnvelopeExceeded": "Outside SORA envelope",
+        "flownWithNoGo": "Flown with NO-GO",
+        "missionPlannedPastDue": "Planned mission past due"
       },
-      "noIssues": "No operational issues in the last 12 months",
+      "noIssues": "No operational deviations",
       "evaluatedFootnote": "{{issues}} issue(s) found in {{total}} evaluated missions",
       "expandGroup": "Show {{count}}",
       "collapseGroup": "Hide",
@@ -8238,7 +8240,37 @@
         "complianceRate": "Compliance rate",
         "chartTitle": "Compliance on completed missions",
         "compliantSlice": "Compliant",
-        "nonCompliantSlice": "Non-compliant"
+        "nonCompliantSlice": "Non-compliant",
+        "evaluated": "Evaluated missions",
+        "critical": "Critical deviations",
+        "hanging": "Hanging missions/flights",
+        "unplannedShort": "Unplanned flights"
+      },
+      "daysOverdue_one": "{{count}} day overdue",
+      "daysOverdue_other": "{{count}} days overdue",
+      "hoursActive_one": "active for {{count}} hour",
+      "hoursActive_other": "active for {{count}} hours",
+      "systemSail": "System-calculated SAIL {{sail}}",
+      "unplanned": {
+        "kpi": "Unplanned flights: {{count}} of {{total}} imported ({{pct}} %)",
+        "open": "Show flights",
+        "planned": "Planned",
+        "unplanned": "Unplanned"
+      },
+      "sora": {
+        "title": "SORA profile vs. system calculation",
+        "assessed": "Assessed against profile",
+        "within": "Within",
+        "deviating": "With deviations",
+        "bySail": "Distribution by system-calculated SAIL",
+        "missions": "Missions"
+      },
+      "risk": {
+        "title": "Risk level on flown missions (12 mo)",
+        "go": "GO",
+        "caution": "Caution",
+        "no-go": "NO-GO",
+        "not-assessed": "Not assessed"
       }
     },
     "safety": {
@@ -8328,18 +8360,6 @@
         "title": "{{mission}} missing risk assessment",
         "body": "No SORA/risk assessment recorded."
       },
-      "missingChecklist": {
-        "title": "{{mission}}: checklist not complete",
-        "body": "One or more required checklists are not complete."
-      },
-      "missingApproval": {
-        "title": "{{mission}} missing approval",
-        "body": "Mission requires approval."
-      },
-      "flightNotClosed": {
-        "title": "{{mission}}: flight not closed",
-        "body": "A flight has no end timestamp."
-      },
       "overdueAction": {
         "title": "Action is overdue",
         "body": "{{desc}} — deadline: {{deadline}}"
@@ -8347,6 +8367,30 @@
       "awaitingVerification": {
         "title": "Finding awaiting verification",
         "body": "{{desc}}"
+      },
+      "missionPlannedPastDue": {
+        "title": "{{mission}}: planned mission is past due",
+        "body": "The mission is still planned {{days}} days after its end time."
+      },
+      "missionInProgressStale": {
+        "title": "{{mission}}: in progress for {{days}} days",
+        "body": "The mission has been in progress {{days}} days past its end time and is not closed."
+      },
+      "activeFlightStale": {
+        "title": "{{mission}}: flight active for {{hours}} hours",
+        "body": "A flight has been active for more than 12 hours and has not been ended."
+      },
+      "soraEnvelopeExceeded": {
+        "title": "{{mission}}: outside the SORA envelope",
+        "body": "Deviations: {{deviations}}. System-calculated SAIL {{sail}}."
+      },
+      "flownWithNoGo": {
+        "title": "{{mission}}: flown with NO-GO",
+        "body": "The mission was completed although the latest risk assessment was NO-GO."
+      },
+      "unplannedFlightsHigh": {
+        "title": "Many unplanned flights",
+        "body": "{{count}} of {{total}} imported flights in the last 90 days ({{pct}} %) were not planned in advance."
       }
     },
     "insight": {
