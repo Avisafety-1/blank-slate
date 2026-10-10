@@ -277,3 +277,7 @@ export function incidentIssues(r: IncidentLike, now: Date = new Date()) {
 /** Drone status (Grønn/Gul/Rød) → scoring bucket. */
 export const droneStatusCheck = (status: string): CheckResult =>
   status === "Rød" ? "fail" : status === "Gul" ? "warn" : "pass";
+
+/** A missing risk assessment is only a finding once the mission is flying or flown. */
+export const requiresRiskAssessment = (status: string | null | undefined) =>
+  status === "Fullført" || status === "Pågående";

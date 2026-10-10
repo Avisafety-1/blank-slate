@@ -136,7 +136,7 @@ const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
   missionWithoutFlightLog: "MissionWithoutFlightLog",
 };
 
-const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
+export const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
   const findings: ScannerFinding[] = [];
   for (const issue of operations) {
     if (issue.code === "missingRiskAssessment" && !requireSoraOnMissions) continue;

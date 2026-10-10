@@ -504,7 +504,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
   for (const m of missions) {
     const a = latest.get(m.id);
     if (!a) {
-      if (windowIds.has(m.id) && !soraSet.has(m.id)) {
+      if (windowIds.has(m.id) && !soraSet.has(m.id) && requiresRiskAssessment(m.status)) {
         issues.push({ id: `${m.id}-ra`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null, code: "missingRiskAssessment", severity: "warning" });
       }
       continue;
