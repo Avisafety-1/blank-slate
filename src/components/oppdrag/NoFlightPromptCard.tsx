@@ -118,7 +118,7 @@ export const NoFlightPromptCard = ({ missionId, messageId, onDone }: Props) => {
           t("missions.noFlight.replyBody", { pilot, title }),
           comment.trim() ? `\n${t("missions.noFlight.commentLabel")}: ${comment.trim()}` : "",
         ].join("");
-        const { error: msgErr } = await supabase.from("internal_messages").insert({
+        const { data: reply, error: msgErr } = await supabase.from("internal_messages").insert({
           company_id: reminder.company_id,
           sender_id: user.id,
           recipient_id: reminder.sender_id,
@@ -128,14 +128,23 @@ export const NoFlightPromptCard = ({ missionId, messageId, onDone }: Props) => {
           parent_id: reminder.id,
           thread_root_id: reminder.thread_root_id ?? reminder.id,
           severity: "info",
-        });
+        }).select("id").single();
         if (msgErr) console.warn("[NoFlightPromptCard] reply failed", msgErr);
+        else if (reply) {
+          // The inbox reads from internal_message_recipients.
+          const { error: recErr } = await supabase.from("internal_message_recipients")
+            .insert({ message_id: reply.id, recipient_id: reminder.sender_id });
+          if (recErr) console.warn("[NoFlightPromptCard] reply recipient failed", recErr);
+        }
       }
 
       if (reminder && reminder.recipient_id === user.id && !(await othersStillOpen(reminder.finding_key))) {
-        await supabase.from("internal_messages")
-          .update({ status: "done", done_at: new Date().toISOString() })
-          .eq("id", reminder.id);
+        const doneAt = new Date().toISOString();
+        await Promise.all([
+          supabase.from("internal_messages").update({ status: "done", done_at: doneAt }).eq("id", reminder.id),
+          supabase.from("internal_message_recipients").update({ status: "done", done_at: doneAt })
+            .eq("message_id", reminder.id).eq("recipient_id", user.id),
+        ]);
       }
 
       toast.success(t("missions.noFlight.toast", { name: senderName }));

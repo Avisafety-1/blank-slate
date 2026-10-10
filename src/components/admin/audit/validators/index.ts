@@ -158,7 +158,8 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       : issue.code === "missionWithoutFlightLog" && issue.possibleLog
         ? "audit.scanner.missionWithoutFlightLog.bodyPossibleLog"
         : `audit.scanner.${issue.code}.body`;
-    const entityIsMission = !!issue.missionId;
+    // Stale active flights target the flight itself so reminders reach its pilot.
+    const entityIsMission = !!issue.missionId && issue.code !== "activeFlightStale";
     findings.push({
       code: OPS_FINDING_CODE[issue.code],
       severity: issue.severity ?? "warning",
