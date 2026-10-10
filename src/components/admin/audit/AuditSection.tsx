@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  LayoutDashboard, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package, Construction, X, Building2, Lightbulb,
+  LayoutDashboard, Users, Plane, Activity, ShieldAlert, ClipboardCheck, Package, Construction, X, Building2, Lightbulb, FileText,
 } from "lucide-react";
 import { OverviewTab } from "./tabs/OverviewTab";
 import { DocumentationTab } from "./tabs/DocumentationTab";
@@ -25,7 +25,8 @@ const tabDefs = [
   { value: "overview", key: "overview", icon: LayoutDashboard },
   { value: "operations", key: "operations", icon: Activity },
   { value: "fleet", key: "fleet", icon: Plane },
-  { value: "people", key: "people", icon: Users },
+  { value: "competency", key: "competency", icon: Users },
+  { value: "documentation", key: "documentation", icon: FileText },
   { value: "safety", key: "incidents", icon: ShieldAlert },
   { value: "internal", key: "internal", icon: ClipboardCheck },
   { value: "package", key: "package", icon: Package },
@@ -134,23 +135,11 @@ export const AuditSection = () => {
           </TabsList>
         </div>
         <TabsContent value="overview" className="mt-4 sm:mt-6"><OverviewTab onNavigate={goto} /></TabsContent>
-        <TabsContent value="operations" className="mt-4 sm:mt-6"><TabFrame tabKey="operations" categories={["operations"]}><OperationsTab /></TabFrame></TabsContent>
+        <TabsContent value="operations" className="mt-4 sm:mt-6"><TabFrame tabKey="operations" categories={["operations"]} stats={<OperationsTab part="stats" />}><OperationsTab /></TabFrame></TabsContent>
         <TabsContent value="fleet" className="mt-4 sm:mt-6"><TabFrame tabKey="fleet" categories={["fleet"]}><FleetTab /></TabFrame></TabsContent>
-        <TabsContent value="people" className="mt-4 sm:mt-6">
-          <TabFrame tabKey="people" categories={["competence", "documentation"]}>
-            <div className="space-y-8">
-              <section className="space-y-3">
-                <h3 className="text-lg font-semibold flex items-center gap-1.5">{t("audit.tabs.competency")} <InfoTip k="audit.sectionHelp.competency" /></h3>
-                <CompetencyTab />
-              </section>
-              <section className="space-y-3">
-                <h3 className="text-lg font-semibold flex items-center gap-1.5">{t("audit.tabs.documentation")} <InfoTip k="audit.sectionHelp.documentation" /></h3>
-                <DocumentationTab />
-              </section>
-            </div>
-          </TabFrame>
-        </TabsContent>
-        <TabsContent value="safety" className="mt-4 sm:mt-6"><TabFrame tabKey="incidents" categories={["safety"]}><SafetyTab /></TabFrame></TabsContent>
+        <TabsContent value="competency" className="mt-4 sm:mt-6"><TabFrame tabKey="competency" categories={["competence"]}><CompetencyTab /></TabFrame></TabsContent>
+        <TabsContent value="documentation" className="mt-4 sm:mt-6"><TabFrame tabKey="documentation" categories={["documentation"]}><DocumentationTab /></TabFrame></TabsContent>
+        <TabsContent value="safety" className="mt-4 sm:mt-6"><TabFrame tabKey="incidents" categories={["safety"]} stats={<SafetyTab part="stats" />}><SafetyTab /></TabFrame></TabsContent>
         <TabsContent value="internal" className="mt-4 sm:mt-6"><InternalAuditsTab /></TabsContent>
         <TabsContent value="package" className="mt-4 sm:mt-6"><InspectionPackageTab /></TabsContent>
       </Tabs>
