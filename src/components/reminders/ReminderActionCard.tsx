@@ -17,8 +17,9 @@ import { UploadDroneLogDialog } from "@/components/UploadDroneLogDialog";
 import { clearActiveFlight } from "@/hooks/useFlightTimer";
 import {
   INCIDENT_CLOSED_STATUSES, availableActions, missionCodeForStatus, parseFindingKeys,
-  targetMissionStatus, type ParsedFindingKey, type ReminderActionId, type ReminderEntityState,
+  ACTION_KIND, targetMissionStatus, type ParsedFindingKey, type ReminderActionId, type ReminderEntityState,
 } from "./reminderActions";
+import { canOpenEntity, useAuditEntityDialog, type EntityOpenTarget } from "@/components/admin/audit/components/AuditEntityDialogHost";
 
 interface Reminder {
   id: string;
@@ -42,14 +43,23 @@ type Ctx = { userId: string; isAdmin: boolean; isCaseHandler: boolean };
 /** Loads the current state of the entity so actions are only offered while still relevant. */
 async function loadEntity(k: ParsedFindingKey, ctx: Ctx): Promise<Loaded | null> {
   if (k.entityType === "mission") {
-    const [{ data: m }, { count }, { data: personnel }] = await Promise.all([
-      supabase.from("missions").select("id, tittel, status, user_id").eq("id", k.entityId).maybeSingle(),
+    const [{ data: m }, { count }, { data: personnel }, { count: riskCount }, { data: latestRisk }, { count: activeCount }] = await Promise.all([
+      supabase.from("missions").select("id, tittel, status, user_id, tidspunkt").eq("id", k.entityId).maybeSingle(),
       supabase.from("flight_logs").select("id", { count: "exact", head: true }).eq("mission_id", k.entityId),
       supabase.from("mission_personnel").select("profile_id").eq("mission_id", k.entityId),
+      supabase.from("mission_risk_assessments").select("id", { count: "exact", head: true }).eq("mission_id", k.entityId),
+      supabase.from("mission_risk_assessments").select("ai_analysis").eq("mission_id", k.entityId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      (supabase as any).from("active_flights").select("id", { count: "exact", head: true }).eq("mission_id", k.entityId),
     ]);
     if (!m) return null;
     const allowed = ctx.isAdmin || m.user_id === ctx.userId || (personnel ?? []).some((p) => p.profile_id === ctx.userId);
-    return { title: m.tittel ?? "—", allowed, state: { missionStatus: m.status, hasFlightLog: (count ?? 0) > 0 } };
+    const analysis = latestRisk?.ai_analysis as any;
+    const deviations = analysis?.soraProfile?.deviations ?? analysis?.sora_profile?.deviations ?? [];
+    return { title: m.tittel ?? "—", allowed, state: {
+      missionStatus: m.status, hasFlightLog: (count ?? 0) > 0, missionTimePassed: !!m.tidspunkt && new Date(m.tidspunkt).getTime() < Date.now(),
+      activeFlightEnded: (activeCount ?? 0) === 0 && (count ?? 0) > 0, riskAssessmentMissing: (riskCount ?? 0) === 0,
+      soraEnvelopeExceeded: Array.isArray(deviations) && deviations.length > 0, canWrite: allowed,
+    } };
   }
   if (k.entityType === "active_flight") {
     const { data: f } = await (supabase as any).from("active_flights")
@@ -70,8 +80,31 @@ async function loadEntity(k: ParsedFindingKey, ctx: Ctx): Promise<Loaded | null>
     return {
       title: i.tittel ?? "—",
       allowed: ctx.isAdmin || ctx.isCaseHandler,
-      state: { incidentResponsibleId: i.oppfolgingsansvarlig_id, incidentClosed: INCIDENT_CLOSED_STATUSES.includes(i.status ?? "") },
+      state: { incidentResponsibleId: i.oppfolgingsansvarlig_id, incidentClosed: INCIDENT_CLOSED_STATUSES.includes(i.status ?? ""), isCurrentUserResponsible: i.oppfolgingsansvarlig_id === ctx.userId, canWrite: ctx.isAdmin || ctx.isCaseHandler },
     };
+  }
+  if (k.entityType === "audit_action") {
+    const { data: action } = await supabase.from("audit_actions").select("id, description, status").eq("id", k.entityId).maybeSingle();
+    return action ? { title: action.description ?? "—", allowed: true, state: { auditActionClosed: action.status === "closed" } } : null;
+  }
+  if (k.entityType === "audit_finding") return { title: "—", allowed: true, state: {} };
+  if (k.entityType === "competency") {
+    const { data } = await supabase.from("personnel_competencies").select("id, navn, utloper_dato, varsel_dager").eq("id", k.entityId).maybeSingle();
+    if (!data) return null;
+    const expiry = data.utloper_dato ? new Date(data.utloper_dato).getTime() : Number.POSITIVE_INFINITY;
+    const relevant = expiry <= Date.now() + (data.varsel_dager ?? 30) * 86_400_000;
+    return { title: data.navn ?? "—", allowed: true, state: { competencyRelevant: relevant } };
+  }
+  if (k.entityType === "document") {
+    if (k.entityId === "emergency-plan") return { title: "—", allowed: true, state: { emergencyPlanMissing: true, canWrite: ctx.isAdmin } };
+    const { data } = await supabase.from("documents").select("id, tittel, gyldig_til, varsel_dager_for_utløp").eq("id", k.entityId).maybeSingle();
+    if (!data) return null;
+    const expiry = data.gyldig_til ? new Date(data.gyldig_til).getTime() : Number.POSITIVE_INFINITY;
+    return { title: data.tittel ?? "—", allowed: true, state: { documentRelevant: expiry <= Date.now() + (data.varsel_dager_for_utløp ?? 30) * 86_400_000, canWrite: ctx.isAdmin } };
+  }
+  if (k.entityType === "drone") {
+    const { data } = await supabase.from("drones").select("id, modell, status").eq("id", k.entityId).maybeSingle();
+    return data ? { title: data.modell ?? "—", allowed: true, state: { droneNeedsAttention: data.status !== "Grønn" } } : null;
   }
   return null;
 }
@@ -86,14 +119,16 @@ interface Props {
   /** Mission page: open the edit dialog in place. Otherwise navigates to the edit link. */
   onEditMission?: (missionId: string) => void;
   onDone?: () => void;
+  onAvailabilityChange?: (key: string, count: number) => void;
   className?: string;
 }
 
-export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath, onEditMission, onDone, className }: Props) => {
+export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath, onEditMission, onDone, onAvailabilityChange, className }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isAdmin, userRole } = useAuth();
   const qc = useQueryClient();
+  const { openEntity, closeRevision } = useAuditEntityDialog();
   const ctx: Ctx | null = user?.id ? { userId: user.id, isAdmin, isCaseHandler: userRole === "saksbehandler" } : null;
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -140,9 +175,13 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyStr, messageId, user?.id, isAdmin, userRole]);
+  }, [keyStr, messageId, user?.id, isAdmin, userRole, closeRevision]);
 
   const actions = loaded?.allowed ? availableActions(code, loaded.state) : [];
+
+  useEffect(() => {
+    onAvailabilityChange?.(keyStr, actions.length);
+  }, [keyStr, actions.length, onAvailabilityChange]);
 
   /** Bulk reminders: mark done only when no other entity in the same message still needs action. */
   const othersStillOpen = useCallback(async (key: string | null): Promise<boolean> => {
@@ -165,6 +204,20 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
       else navigate(`/oppdrag?id=${findingKey.entityId}`);
       return;
     }
+    if (ACTION_KIND[a] === "open") {
+      const targetByAction: Partial<Record<ReminderActionId, EntityOpenTarget>> = {
+        closeIncident: "incident-close", selectResponsible: "incident-responsible", openAuditTask: "detail",
+        startRiskAssessment: "risk-start", openRiskAssessment: "risk-readonly", editCompetency: "competency-edit",
+        uploadDocumentVersion: "document-version", uploadEmergencyPlan: "emergency-plan", openDroneMaintenance: "drone-maintenance",
+      };
+      if (a === "reportIncident") {
+        const target = code === "MissingRiskAssessment" ? "incident-report-missing-risk" : code === "SoraEnvelopeExceeded" ? "incident-report-sora" : "incident-report-no-go";
+        void openEntity(findingKey.entityType, findingKey.entityId, target);
+      } else if (canOpenEntity(findingKey.entityType)) {
+        void openEntity(findingKey.entityType, findingKey.entityId, targetByAction[a] ?? "detail");
+      } else if (openPath) navigate(openPath);
+      return;
+    }
     setComment("");
     setPending(a);
   };
@@ -185,6 +238,15 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
         const { error } = await supabase.from("incidents")
           .update({ oppfolgingsansvarlig_id: user.id, oppdatert_dato: new Date().toISOString() })
           .eq("id", findingKey.entityId);
+        if (error) throw error;
+      } else if (action === "addIncidentComment") {
+        const { data: me } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+        const { error } = await supabase.from("incident_comments").insert({ incident_id: findingKey.entityId, user_id: user.id, comment_text: comment.trim(), created_by_name: me?.full_name ?? user.email ?? "—" });
+        if (error) throw error;
+      } else if (action === "writeMissionExplanation") {
+        const { data: mission } = await supabase.from("missions").select("merknader").eq("id", findingKey.entityId).single();
+        const note = `[${new Date().toLocaleString("nb-NO")}] ${comment.trim()}`;
+        const { error } = await supabase.from("missions").update({ merknader: [mission?.merknader, note].filter(Boolean).join("\n\n") }).eq("id", findingKey.entityId);
         if (error) throw error;
       }
 
@@ -217,15 +279,6 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
           await supabase.from("internal_message_recipients")
             .upsert({ message_id: reply.id, recipient_id: reminder.sender_id }, { onConflict: "message_id,recipient_id", ignoreDuplicates: true });
         }
-      }
-
-      if (reminder && reminder.recipient_id === user.id && !(await othersStillOpen(reminder.finding_key))) {
-        const doneAt = new Date().toISOString();
-        await Promise.all([
-          supabase.from("internal_messages").update({ status: "done", done_at: doneAt }).eq("id", reminder.id),
-          supabase.from("internal_message_recipients").update({ status: "done", done_at: doneAt })
-            .eq("message_id", reminder.id).eq("recipient_id", user.id),
-        ]);
       }
 
       toast.success(reminder?.sender_id && reminder.sender_id !== user.id
@@ -286,7 +339,7 @@ export const ReminderActionCard = ({ findingKey, messageId, preselect, openPath,
           <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={t("reminders.commentPlaceholder")} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={saving}>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); execute(); }} disabled={saving}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); execute(); }} disabled={saving || ((pending === "addIncidentComment" || pending === "writeMissionExplanation") && !comment.trim())}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {t("reminders.confirmButton")}
             </AlertDialogAction>

@@ -27,6 +27,7 @@ import { auditDeepLink } from "../utils/auditDeepLink";
 type Kind = "mission" | "incident" | "document" | "drone" | "equipment" | "person" | "audit_task";
 export type EntityOpenTarget =
   | "detail" | "incident-close" | "incident-responsible" | "incident-report"
+  | "incident-report-missing-risk" | "incident-report-sora" | "incident-report-no-go"
   | "risk-start" | "risk-readonly" | "mission-notes" | "competency-edit"
   | "document-version" | "emergency-plan" | "drone-maintenance";
 type Open = { kind: Kind; row: any; target: EntityOpenTarget; sourceEntityId?: string } | null;
@@ -34,6 +35,7 @@ type Open = { kind: Kind; row: any; target: EntityOpenTarget; sourceEntityId?: s
 interface Ctx {
   openEntity: (entityType: string, entityId: string, target?: EntityOpenTarget) => Promise<void>;
   pendingKey: string | null;
+  closeRevision: number;
 }
 
 const AuditEntityContext = createContext<Ctx | null>(null);
@@ -77,6 +79,7 @@ async function fetchEntity(entityType: string, id: string, target: EntityOpenTar
       return data ? { kind: "incident", row: data, target } : null;
     }
     case "document": {
+      if (target === "emergency-plan") return { kind: "document", row: {}, target };
       const { data } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
       return data ? { kind: "document", row: data, target } : null;
     }
@@ -136,6 +139,7 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
   const { isAdmin, companyId } = useAuth();
   const [open, setOpen] = useState<Open>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [closeRevision, setCloseRevision] = useState(0);
 
   const refresh = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["audit"] });
@@ -164,11 +168,12 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
   const close = (v: boolean) => {
     if (!v) {
       setOpen(null);
+      setCloseRevision((value) => value + 1);
       refresh();
     }
   };
 
-  const value = useMemo(() => ({ openEntity, pendingKey }), [openEntity, pendingKey]);
+  const value = useMemo(() => ({ openEntity, pendingKey, closeRevision }), [openEntity, pendingKey, closeRevision]);
   const row = open?.row ?? null;
   const fullPageLink = open ? (
     <div className="flex justify-end">
@@ -215,11 +220,11 @@ export const AuditEntityDialogHost = ({ children }: { children: ReactNode }) => 
       />
       {open?.kind === "audit_task" && <AuditTaskDialog findingId={row.id} onClose={() => close(false)} />}
       <AddIncidentDialog
-        open={open?.kind === "mission" && open.target === "incident-report"}
+        open={open?.kind === "mission" && open.target.startsWith("incident-report")}
         onOpenChange={close}
         defaultMissionId={open?.kind === "mission" ? row.id : undefined}
-        defaultTitle={open?.kind === "mission" && open.target === "incident-report" ? (row.__incidentTitle ?? t("reminders.incidentDefaults.genericTitle")) : undefined}
-        defaultDescription={open?.kind === "mission" && open.target === "incident-report" ? (row.__incidentDescription ?? t("reminders.incidentDefaults.genericDescription")) : undefined}
+        defaultTitle={open?.kind === "mission" && open.target.startsWith("incident-report") ? t(`reminders.incidentDefaults.${open.target}.title`) : undefined}
+        defaultDescription={open?.kind === "mission" && open.target.startsWith("incident-report") ? t(`reminders.incidentDefaults.${open.target}.description`) : undefined}
       />
       <DocumentCardModal
         document={open?.kind === "document" && open.target === "document-version" ? row : null}

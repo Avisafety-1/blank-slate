@@ -48,7 +48,7 @@ export const REMINDER_ACTIONS: Record<string, ReminderActionId[]> = {
   MissionInProgressStale: ["finishMission", "notFlown"],
   ActiveFlightStale: ["endFlight"],
   MissionWithoutFlightLog: ["uploadLog", "notFlown"],
-  IncidentNoResponsible: ["takeResponsibility"],
+  IncidentNoResponsible: ["takeResponsibility", "selectResponsible"],
   IncidentOpenTooLong: ["takeResponsibility", "addIncidentComment", "closeIncident"],
   OpenActionsTooLong: ["openAuditTask"],
   FindingAwaitingVerification: ["openAuditTask"],
@@ -121,7 +121,9 @@ export function availableActions(code: string, s: ReminderEntityState): Reminder
     case "ActiveFlightStale":
       return s.flightActive && s.flightIsMine ? ["endFlight"] : [];
     case "IncidentNoResponsible":
-      return !s.incidentResponsibleId && !s.incidentClosed ? ["takeResponsibility"] : [];
+      return !s.incidentResponsibleId && !s.incidentClosed
+        ? ["takeResponsibility", ...(s.canWrite ? ["selectResponsible" as const] : [])]
+        : [];
     case "IncidentOpenTooLong":
       return s.incidentClosed ? [] : [
         ...(!s.isCurrentUserResponsible && s.canWrite ? ["takeResponsibility" as const] : []),
