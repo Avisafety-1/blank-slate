@@ -271,7 +271,7 @@ function AuditProgrammeCard({ dept, onNavigate }: { dept: string | null | undefi
   const reviews = useAuditReviews();
   const { data: departments = [], isLoading: deptLoading } = useAuditDepartments();
   const filterUnitId = dept && dept !== "all" ? dept : null;
-  const prog = auditProgramme((reviews.data ?? []) as any[], departments, filterUnitId);
+  const prog = auditProgramme((reviews.data ?? []) as any[], departments, new Date(), filterUnitId);
   const fmt = (d: Date) => d.toLocaleDateString(i18n.language?.startsWith("en") ? "en-GB" : "nb-NO", { day: "2-digit", month: "2-digit", year: "numeric" });
   const total = prog.upcoming.length + (prog.coverage ? 1 : 0);
   // The coverage warning is always shown; upcoming audits fill the remaining lines.
