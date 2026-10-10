@@ -561,7 +561,7 @@ const Index = () => {
                     trackingStatus === 'recording' 
                       ? 'text-green-700 dark:text-green-400' 
                       : trackingStatus === 'not_recording'
-                      ? 'text-yellow-700 dark:text-yellow-400'
+                      ? 'text-status-yellow-text'
                       : 'text-muted-foreground'
                   }`}>
                     {trackingStatus === 'recording' ? (
@@ -713,7 +713,7 @@ const Index = () => {
                               trackingStatus === 'recording' 
                                 ? 'text-green-700 dark:text-green-400' 
                                 : trackingStatus === 'not_recording'
-                                ? 'text-yellow-700 dark:text-yellow-400'
+                                ? 'text-status-yellow-text'
                                 : 'text-muted-foreground'
                             }`}>
                               {trackingStatus === 'recording' ? (

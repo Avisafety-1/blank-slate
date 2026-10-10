@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { isBatteryType } from "@/config/equipmentCategories";
 import { buildMissionWeatherSnapshot } from "@/lib/missionWeatherSnapshot";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -2791,10 +2792,8 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                       if (!parsedSn) return null;
                       if (ambiguousDroneMatch) {
                         return (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1">
-                            <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
-                            {t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
-                          </p>
+                          <WarningNote className="text-xs">{t('uploadLog.sn.ambiguousMatch', { sn: parsedSn })}
+                          </WarningNote>
                         );
                       }
                       if (!selectedDroneId || !selectedDrone) return null;
@@ -3348,7 +3347,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   Ukjent batteri: {unmatchedBatterySN}
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   Batteriet ble ikke funnet i ressursene. Opprett nytt eller knytt til eksisterende.
                 </p>
               </div>
@@ -3404,7 +3403,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   {t('uploadLog.battery2.unknown', { sn: unmatchedBattery2SN })}
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   {t('uploadLog.battery2.unknownHelp')}
                 </p>
               </div>
@@ -3480,7 +3479,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   Ukjent {terminology.vehicleLower}: {unmatchedDroneSN}
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                <p className="text-xs text-foreground mt-0.5">
                   {terminology.vehicle} ble ikke funnet i ressursene. Opprett ny eller knytt til eksisterende.
                 </p>
               </div>
@@ -4148,7 +4147,7 @@ export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: U
                         {r.status === 'pending' && <span className="text-xs text-muted-foreground">Venter</span>}
                         {r.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin mx-auto text-primary" />}
                         {r.status === 'done' && <span className="text-xs text-primary">✅ Til behandling</span>}
-                        {r.status === 'duplicate' && <span className="text-xs text-yellow-600 dark:text-yellow-400">⚠️ Duplikat</span>}
+                        {r.status === 'duplicate' && <span className="text-xs text-status-yellow-text">⚠️ Duplikat</span>}
                         {r.status === 'error' && (
                           <span className="text-xs text-destructive" title={r.error}>❌ Feil</span>
                         )}

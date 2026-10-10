@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -661,9 +662,9 @@ export const BatteryHealthSettingsDialog = ({
                   {t("resourceDialogs.batteryHealthSettings.paramsHint")}
                 </p>
                 {hasOverrides && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                  <WarningNote className="text-xs">
                     {t("resourceDialogs.batteryHealthSettings.overrideActive")}
-                  </p>
+                  </WarningNote>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">

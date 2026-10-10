@@ -50,7 +50,7 @@ export const AuditTaskDialog = ({ findingId, onClose }: Props) => {
   const isFindingResp = !!f && f.responsible_user_id === user?.id;
   const ownsPlan = (isFindingResp || admin) && !verified;
   const tone = deadlineTone(f?.deadline ?? null);
-  const toneClass = tone === "overdue" ? "text-destructive font-medium" : tone === "soon" ? "text-status-yellow font-medium" : "";
+  const toneClass = tone === "overdue" ? "text-destructive font-medium" : tone === "soon" ? "text-status-yellow-text font-medium" : "";
   const personList = persons.data ?? [];
 
   const personPick = (value: string | null, onChange: (v: string | null) => void, disabled?: boolean) => (

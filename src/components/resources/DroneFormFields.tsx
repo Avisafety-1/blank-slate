@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useIsTouchDevice } from "@/hooks/use-is-touch-device";
@@ -167,7 +168,7 @@ export const DroneFormFields = ({
     <div className="mt-2 space-y-1">
       {unavailableOps.map((id) => (
         <div key={id} className="flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm">
-          <span className="min-w-0 flex-1 break-words text-amber-700 dark:text-amber-400">
+          <span className="min-w-0 flex-1 break-words text-status-yellow-text">
             {tt("checklists.unavailable")}
           </span>
           <Button
@@ -355,7 +356,7 @@ export const DroneFormFields = ({
               placeholder={tt("form.weightPlaceholder")}
             />
             {isManualSpecs && !values.vekt && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{tt("specs.weightRequiredHint")}</p>
+              <WarningNote className="text-xs mt-1">{tt("specs.weightRequiredHint")}</WarningNote>
             )}
           </div>
           <div>
@@ -519,7 +520,7 @@ export const DroneFormFields = ({
               <p className="text-xs text-muted-foreground mt-1">{tt("checklists.postFlightHint")}</p>
               {postFlightUnavailable && (
                 <div className="mt-2 flex items-center gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm">
-                  <span className="min-w-0 flex-1 break-words text-amber-700 dark:text-amber-400">
+                  <span className="min-w-0 flex-1 break-words text-status-yellow-text">
                     {tt("checklists.unavailableHint")}
                   </span>
                   <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ post_flight_checklist_id: "none" })}>

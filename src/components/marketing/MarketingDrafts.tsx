@@ -202,7 +202,7 @@ export const MarketingDrafts = () => {
 
   const statusColors: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",
-    review: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+    review: "bg-yellow-500/10 text-status-yellow-text",
     approved: "bg-green-500/10 text-green-700 dark:text-green-400",
     scheduled: "bg-orange-500/10 text-orange-700 dark:text-orange-400",
     published: "bg-blue-500/10 text-blue-700 dark:text-blue-400",

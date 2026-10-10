@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -374,29 +375,23 @@ export const FlightSummaryPanel = ({ summary, events = [], onReassigned }: Fligh
                   {/* In drone logbook */}
                   <div className="flex items-start justify-between gap-3 text-xs">
                     <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceInDroneLogbook')}</span>
-                    <span className={`font-medium text-right ${s.inDroneLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    <span className={`font-medium text-right ${s.inDroneLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-status-yellow-text'}`}>
                       {s.inDroneLogbook ? t('common.yes') : t('common.no')}
                     </span>
                   </div>
                   {!s.inDroneLogbook && (
-                    <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoDroneHint')}</span>
-                    </div>
+                    <WarningNote className="text-xs"><span>{t('dashboard.flightAnalysis.logDetails.traceNoDroneHint')}</span></WarningNote>
                   )}
 
                   {/* In pilot logbook */}
                   <div className="flex items-start justify-between gap-3 text-xs">
                     <span className="text-muted-foreground">{t('dashboard.flightAnalysis.logDetails.traceInPilotLogbook')}</span>
-                    <span className={`font-medium text-right ${s.inPilotLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                    <span className={`font-medium text-right ${s.inPilotLogbook ? 'text-emerald-600 dark:text-emerald-400' : 'text-status-yellow-text'}`}>
                       {s.inPilotLogbook ? t('common.yes') : t('common.no')}
                     </span>
                   </div>
                   {!s.inPilotLogbook && (
-                    <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      <span>{t('dashboard.flightAnalysis.logDetails.traceNoPilotHint')}</span>
-                    </div>
+                    <WarningNote className="text-xs"><span>{t('dashboard.flightAnalysis.logDetails.traceNoPilotHint')}</span></WarningNote>
                   )}
 
                   <div className="h-px bg-border/60 my-1" />

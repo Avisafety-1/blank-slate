@@ -287,9 +287,9 @@ export const AddEquipmentToDroneDialog = ({
                       <div className={`flex items-center gap-2 mt-2 p-2 rounded text-xs ${
                         weightStatus === "exceeded" 
                           ? "bg-destructive/10 text-destructive" 
-                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          : "bg-amber-500/10 text-status-yellow-text"
                       }`}>
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                        <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${weightStatus === "exceeded" ? "" : "text-status-yellow"}`} />
                         <span>
                           {weightStatus === "exceeded"
                             ? t('resourceDialogs.addEquipmentToDrone.exceedsPayload', { w: newTotalWeight.toFixed(2) })

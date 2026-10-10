@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { FRESH_THRESHOLD_SEC, type LiveDrone } from '@/hooks/useLiveDroneSources';
@@ -39,10 +40,7 @@ export function LiveDroneList({
 
   if (drones.length === 0) {
     return (
-      <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-        <span>{emptyHint ?? t('flight.liveDronesEmpty', 'Ingen droner sender posisjon akkurat nå.')}</span>
-      </div>
+      <WarningNote className="text-sm"><span>{emptyHint ?? t('flight.liveDronesEmpty', 'Ingen droner sender posisjon akkurat nå.')}</span></WarningNote>
     );
   }
 

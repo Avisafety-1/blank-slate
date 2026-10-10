@@ -88,7 +88,7 @@ export const FleetTab = () => {
                       {d.reasons.length > 0 && (
                         <ul className="mt-1 text-xs list-disc pl-4">
                           {d.reasons.map((r, k) => (
-                            <li key={k} className={r.status === "Rød" ? "text-status-red" : "text-status-yellow"}>{r.text}</li>
+                            <li key={k} className={r.status === "Rød" ? "text-status-red" : "text-status-yellow-text"}>{r.text}</li>
                           ))}
                         </ul>
                       )}

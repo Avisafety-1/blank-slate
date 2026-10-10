@@ -257,7 +257,7 @@ export function levelColorClass(level: BatteryStatusLevel): string {
     case "critical":
       return "text-destructive";
     case "warn":
-      return "text-yellow-600 dark:text-yellow-400";
+      return "text-status-yellow-text";
     case "ok":
       return "text-emerald-600 dark:text-emerald-400";
     default:

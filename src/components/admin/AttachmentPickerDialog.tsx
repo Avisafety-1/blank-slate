@@ -174,7 +174,7 @@ export const AttachmentPickerDialog = ({
                     />
                     <FileText className={`h-5 w-5 flex-shrink-0 ${isLargeFile ? "text-amber-600" : "text-muted-foreground"}`} />
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium text-sm truncate ${isLargeFile ? "text-amber-700 dark:text-amber-400" : ""}`}>{doc.tittel}</p>
+                      <p className={`font-medium text-sm truncate ${isLargeFile ? "text-status-yellow-text" : ""}`}>{doc.tittel}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="bg-muted px-1.5 py-0.5 rounded">
                           {getCategoryLabel(doc.kategori)}

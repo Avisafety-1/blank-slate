@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "../components/AuditEntityDialogHost";
@@ -238,17 +239,17 @@ export const OperationsTab = () => {
                             {i.code === "soraEnvelopeExceeded" ? ` · ${t("audit.operations.systemSail", { sail: i.sail ?? "—" })}` : null}
                           </div>
                           {i.approvedBefore && (
-                            <div className="mt-1 text-xs text-status-yellow">
+                            <WarningNote className="mt-1 text-xs">
                               {t("audit.operations.approvedBeforeNoGo", {
                                 name: i.approvedBefore.by ?? "—",
                                 date: i.approvedBefore.at ? new Date(i.approvedBefore.at).toLocaleString(i18n.language) : "—",
                               })}
-                            </div>
+                            </WarningNote>
                           )}
                           {i.details && i.details.length > 0 && (
-                            <ul className="mt-1 text-xs text-status-yellow list-disc pl-4">
+                            <WarningNote className="mt-1 text-xs"><ul className="list-disc pl-4">
                               {i.details.map((d, k) => <li key={k}>{d}</li>)}
-                            </ul>
+                            </ul></WarningNote>
                           )}
                         </div>
                         {i.missionId && (
@@ -293,13 +294,13 @@ function KpiCard({
   const toneCls = {
     neutral: "text-foreground",
     green: "text-status-green",
-    yellow: "text-status-yellow",
+    yellow: "text-status-yellow-text",
     red: "text-status-red",
   }[tone];
   return (
     <Card>
       <CardContent className="p-3 flex items-center gap-3">
-        <Icon className={cn("w-5 h-5 shrink-0", toneCls)} />
+        <Icon className={cn("w-5 h-5 shrink-0", tone === "yellow" ? "text-status-yellow" : toneCls)} />
         <div className="min-w-0">
           <div className={cn("text-xl font-semibold leading-tight", toneCls)}>{value}</div>
           <div className="text-xs text-muted-foreground truncate">{label}</div>

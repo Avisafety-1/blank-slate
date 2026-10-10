@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -228,13 +229,11 @@ export const PendingDjiLogsSection = forwardRef<PendingDjiLogsSectionRef, Pendin
         </div>
       </div>
       {backlog && backlog.count > 0 && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-400 -mt-1 break-words flex items-center gap-1">
-          <AlertTriangle className="w-3 h-3 shrink-0" />
-          <span>
+        <WarningNote className="text-[11px] -mt-1 break-words items-center"><span>
             {t('dronelog.backlogTotal', { count: backlog.count })}
             {backlog.oldest ? ` – ${t('dronelog.backlogOldest', { date: format(new Date(backlog.oldest), "d. MMM yyyy", { locale: dateLocale }) })}` : ''}
           </span>
-        </p>
+        </WarningNote>
       )}
       <p className="text-[11px] text-muted-foreground -mt-1 break-words">
         {t('dronelog.cantFindLog')}

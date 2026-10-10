@@ -235,7 +235,7 @@ function DepartmentTable({
     sortKey === "name" ? a.name.localeCompare(b.name)
       : sortKey === "score" ? (a.score ?? 101) - (b.score ?? 101)
         : b[sortKey] - a[sortKey]);
-  const scoreCls = (s: number | null) => (s == null ? "text-muted-foreground" : s >= 85 ? "text-status-green" : s >= 65 ? "text-status-yellow" : "text-status-red");
+  const scoreCls = (s: number | null) => (s == null ? "text-muted-foreground" : s >= 85 ? "text-status-green" : s >= 65 ? "text-status-yellow-text" : "text-status-red");
   const Head = ({ k, label, right }: { k: typeof sortKey; label: string; right?: boolean }) => (
     <th className={cn("px-3 py-2 text-xs font-medium text-muted-foreground", right ? "text-right" : "text-left")}>
       <button type="button" className={cn("hover:text-foreground", sortKey === k && "text-foreground underline")} onClick={() => setSortKey(k)}>{label}</button>
@@ -263,7 +263,7 @@ function DepartmentTable({
                 <td className="px-3 py-2 font-medium">{r.name}</td>
                 <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", scoreCls(r.score))}>{r.score == null ? "—" : `${r.score}%`}</td>
                 <td className={cn("px-3 py-2 text-right tabular-nums", r.critical > 0 && "text-status-red font-semibold")}>{r.critical}</td>
-                <td className={cn("px-3 py-2 text-right tabular-nums", r.warnings > 0 && "text-status-yellow")}>{r.warnings}</td>
+                <td className={cn("px-3 py-2 text-right tabular-nums", r.warnings > 0 && "text-status-yellow-text")}>{r.warnings}</td>
               </tr>
             ))}
           </tbody>
@@ -278,7 +278,7 @@ function DepartmentTable({
                 </div>
                 <div className="mt-1 flex gap-3 text-xs">
                   <span className={r.critical > 0 ? "text-status-red" : "text-muted-foreground"}>{t("audit.overview.departments.criticalCount", { count: r.critical })}</span>
-                  <span className={r.warnings > 0 ? "text-status-yellow" : "text-muted-foreground"}>{t("audit.overview.departments.warningCount", { count: r.warnings })}</span>
+                  <span className={r.warnings > 0 ? "text-status-yellow-text" : "text-muted-foreground"}>{t("audit.overview.departments.warningCount", { count: r.warnings })}</span>
                 </div>
               </button>
             </li>

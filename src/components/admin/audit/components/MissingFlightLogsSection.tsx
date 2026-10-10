@@ -129,7 +129,7 @@ export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[]
                     className={cn(
                       "mt-1 text-[10px]",
                       st === "sent_closed" && "text-status-green border-status-green/40",
-                      st === "sent_open" && "text-status-yellow border-status-yellow/40",
+                      st === "sent_open" && "text-status-yellow-text border-status-yellow/40",
                     )}
                   >
                     {t(`audit.operations.missingLogs.status.${st}`)}

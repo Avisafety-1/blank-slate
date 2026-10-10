@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
 import { useState } from "react";
@@ -190,13 +191,13 @@ export const RiskScoreCard = ({
             <div>
               <h3 className={cn(
                 "font-bold",
-                approvalDecision.severity === 'danger' ? "text-red-700 dark:text-red-300" : "text-yellow-700 dark:text-yellow-300"
+                approvalDecision.severity === 'danger' ? "text-red-700 dark:text-red-300" : "text-foreground"
               )}>
                 {t('riskAssessment.approvalDecisionWarning', 'Godkjenningsvarsel')}
               </h3>
               <p className={cn(
                 "text-sm mt-1",
-                approvalDecision.severity === 'danger' ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"
+                approvalDecision.severity === 'danger' ? "text-red-600 dark:text-red-400" : "text-foreground"
               )}>
                 {approvalDecision.reason}
               </p>
@@ -220,19 +221,10 @@ export const RiskScoreCard = ({
         </div>
       )}
       {approvalStatus === 'not_approved' && (
-        <div className="p-4 rounded-lg border-2 border-yellow-500 bg-yellow-500/10">
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-yellow-700 dark:text-yellow-300">
-                {t('riskAssessment.requiresApproval', 'Oppdraget krever manuell godkjenning')}
-              </h3>
-              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-                {approvalReason}
-              </p>
-            </div>
-          </div>
-        </div>
+        <WarningNote>
+          <h3 className="font-bold">{t('riskAssessment.requiresApproval', 'Oppdraget krever manuell godkjenning')}</h3>
+          <p className="text-sm mt-1">{approvalReason}</p>
+        </WarningNote>
       )}
 
       <SoraProfileResultSection data={soraProfile} />
@@ -341,10 +333,9 @@ export const RiskScoreCard = ({
                           </p>
                         ))}
                         {category.notes?.map((note, i) => (
-                          <p key={`note-${i}`} className="text-xs text-yellow-600 dark:text-yellow-400 flex items-start gap-1">
-                            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <WarningNote key={`note-${i}`} className="text-xs">
                             <span className="break-words">{displayRiskText(note)}</span>
-                          </p>
+                          </WarningNote>
                         ))}
                       </div>
                     )}

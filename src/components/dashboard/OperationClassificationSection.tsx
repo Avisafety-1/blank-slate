@@ -115,7 +115,7 @@ export const OperationClassificationSection = ({ data }: OperationClassification
                   <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                     {t('riskAssessment.opClassification.buffersNotCalculated', 'SORA-buffersoner ikke beregnet')}
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  <p className="text-xs text-foreground mt-0.5">
                     {data.sora_buffers_recommendation || t('riskAssessment.opClassification.buffersRecommendation', 'Anbefaler å utføre SORA-bufferberegning på kartet før flyging.')}
                   </p>
                 </div>

@@ -246,7 +246,7 @@ export const DocumentSection = ({ abortSignal }: { abortSignal?: AbortSignal }) 
                   {status !== "Grønn" && doc.gyldig_til && (
                     <div className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-xs flex-shrink-0">
                       <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
-                      <span className={status === "Rød" ? "text-destructive font-medium" : "text-status-yellow"}>
+                      <span className={status === "Rød" ? "text-destructive font-medium" : "text-status-yellow-text"}>
                         {status === "Rød" ? t('dashboard.documents.expired') : t('dashboard.documents.expiresSoon')}
                       </span>
                     </div>

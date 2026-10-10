@@ -182,7 +182,7 @@ export function PersonnelFlightKpi({ personId }: Props) {
     if (!rule) return "";
     const required = rule.hours * 60;
     if (minutes < required) return "text-status-red";
-    if (minutes < required * 1.2) return "text-status-yellow";
+    if (minutes < required * 1.2) return "text-status-yellow-text";
     return "text-status-green";
   };
 

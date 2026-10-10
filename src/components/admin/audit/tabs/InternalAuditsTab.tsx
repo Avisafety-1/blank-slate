@@ -54,7 +54,7 @@ export const InternalAuditsTab = () => {
               <div className="text-xs text-muted-foreground">
                 {new Date(a.review_date).toLocaleDateString(i18n.language)} · {personName(a.responsible_user_id)}
               </div>
-              <div className="text-xs">{t("audit.internal.openFindings")}: <span className={openCount(a) > 0 ? "font-semibold text-status-yellow" : "text-muted-foreground"}>{openCount(a)}</span></div>
+              <div className="text-xs">{t("audit.internal.openFindings")}: <span className={openCount(a) > 0 ? "font-semibold text-status-yellow-text" : "text-muted-foreground"}>{openCount(a)}</span></div>
             </CardContent>
           </Card>
         ))}
