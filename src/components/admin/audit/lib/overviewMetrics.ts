@@ -20,8 +20,9 @@ export interface ProgrammeReview {
   id: string; title: string; unitId: string; unitName: string; templateKey: string;
   date: Date | null; status: "planned" | "in_progress"; overdue: boolean;
 }
-export interface CoverageWarning { unitId: string; unitName: string; tone: "danger" | "warning" }
-export interface AuditProgramme { upcoming: ProgrammeReview[]; coverage: CoverageWarning[] }
+export interface LastClosed { date: Date; unitName: string }
+export interface CoverageWarning { tone: "danger" | "warning" }
+export interface AuditProgramme { upcoming: ProgrammeReview[]; coverage: CoverageWarning | null; lastClosed: LastClosed | null }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const addMonths = (d: Date, m: number) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
