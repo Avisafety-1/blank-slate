@@ -28,6 +28,8 @@ export function useSendReminder() {
       toast.success(t("audit.reminder.sent", { count: ok }));
       qc.invalidateQueries({ queryKey: ["inbox"] });
       qc.invalidateQueries({ queryKey: ["inbox-unread-count"] });
+      qc.invalidateQueries({ queryKey: ["audit", "followup"] });
+      qc.invalidateQueries({ queryKey: ["audit", "reminder-statuses"] });
     },
     onError: (e) => {
       toast.error(t("audit.reminder.failed"), { description: String((e as Error).message ?? e) });

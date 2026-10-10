@@ -12,11 +12,16 @@ import {
   fetchDispositions,
   fetchOverdueAuditActions,
   fetchFindingsAwaitingVerification,
+  fetchFollowUpSignals,
+  fetchDepartments,
 } from "../queries";
+import { buildFindingContext, filterInputsByDepartment, type ViewInputs } from "../lib/complianceView";
 import { runScanner } from "../services/ComplianceScanner";
 import { evaluateCompliance } from "../services/ComplianceEngine";
 import { getAuditInsights } from "../services/AuditInsightService";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuditDepartment } from "./useAuditDepartment";
+import type { OperationsData, SafetyAggregate } from "../types";
 
 const STALE = 30_000;
 
@@ -37,51 +42,61 @@ export function useAuditKpis() {
 
 export function useAuditCompetencies() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "competencies", companyId],
     queryFn: () => fetchCompetencies(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
 export function useAuditFleet() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "fleet", companyId],
     queryFn: () => fetchFleet(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
 export function useAuditOperations() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "operations", companyId],
     queryFn: () => fetchOperations(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (d: OperationsData) => (dept ? { ...d, issues: d.issues.filter((i) => i.companyId === dept), total: d.missionsByCompany?.[dept] ?? 0 } : d),
   });
 }
 
 export function useAuditSafety() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "safety", companyId],
     queryFn: () => fetchSafety(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (d: SafetyAggregate) => (dept ? { ...d, incidentIssues: d.incidentIssues.filter((i) => i.companyId === dept) } : d),
   });
 }
 
 export function useAuditDocuments() {
   const { userId, companyId, enabled } = baseArgs();
+  const { dept } = useAuditDepartment();
   return useQuery({
     queryKey: ["audit", "documents", companyId],
     queryFn: () => fetchAuditDocuments(userId!, companyId!),
     enabled,
     staleTime: STALE,
+    select: (rows) => (dept ? rows.filter((r) => r.companyId === dept) : rows),
   });
 }
 
@@ -95,10 +110,11 @@ export function useAuditReviews() {
   });
 }
 
-/** Combined data + engine + scanner for the Overview tab. */
-export function useAuditOverview() {
+/** Combined data + engine + scanner. `dept` filters every input to one department (presentation only). */
+export function useAuditOverview(dept?: string | null) {
   const { user, companyId } = useAuth();
   const settings = useCompanySettings();
+  const requireSora = !!(settings as any)?.require_sora_on_missions;
 
   const enabled = !!user?.id && !!companyId;
   const q = useQueries({
@@ -119,39 +135,46 @@ export function useAuditOverview() {
   const isLoading = q.some((x) => x.isLoading);
   const isError = q.some((x) => x.isError);
   const error = q.find((x) => x.isError)?.error as Error | undefined;
+  const ready = !isLoading && !isError;
 
-  const scannerFindings =
-    !isLoading && !isError
-      ? runScanner(
-          {
-            companyId: companyId!,
-            competencies: competencies.data ?? [],
-            documents: documents.data ?? [],
-            fleet: fleet.data ?? [],
-            operations: operations.data?.issues ?? [],
-            safety: safety.data ?? null,
-            overdueAuditActions: (overdue.data as any[]) ?? [],
-            findingsAwaitingVerification: (awaiting.data as any[]) ?? [],
-            requireSoraOnMissions: !!(settings as any)?.require_sora_on_missions,
-          },
-          (dispositions.data as any[]) ?? [],
-        )
-      : [];
+  const allInputs: ViewInputs = {
+    competencies: competencies.data ?? [],
+    documents: documents.data ?? [],
+    fleet: fleet.data ?? [],
+    operations: operations.data?.issues ?? [],
+    operationsTotal: operations.data?.total ?? 0,
+    missionsByCompany: operations.data?.missionsByCompany,
+    safety: safety.data ?? null,
+    overdueAuditActions: (overdue.data as any[]) ?? [],
+    findingsAwaitingVerification: (awaiting.data as any[]) ?? [],
+  };
 
-  const evaluation = !isLoading && !isError
-    ? evaluateCompliance({
-        competencies: competencies.data ?? [],
-        documents: documents.data ?? [],
-        fleet: fleet.data ?? [],
-        operations: operations.data?.issues ?? [],
-        operationsTotal: operations.data?.total ?? 0,
-        safety: safety.data ?? null,
-        openAuditActions: kpis.data?.openActions ?? 0,
-        overdueAuditActions: ((overdue.data as any[]) ?? []).length,
-        requireSoraOnMissions: !!(settings as any)?.require_sora_on_missions,
-      })
-    : null;
+  const evaluate = (inputs: ViewInputs, disp: any[]) => {
+    const findings = runScanner(
+      { companyId: companyId!, ...inputs, requireSoraOnMissions: requireSora },
+      disp,
+    );
+    const evaluation = evaluateCompliance({
+      competencies: inputs.competencies,
+      documents: inputs.documents,
+      fleet: inputs.fleet,
+      operations: inputs.operations,
+      operationsTotal: inputs.operationsTotal,
+      safety: inputs.safety,
+      openAuditActions: kpis.data?.openActions ?? 0,
+      overdueAuditActions: inputs.overdueAuditActions.length,
+      requireSoraOnMissions: requireSora,
+    } as any);
+    return { findings, evaluation };
+  };
 
+  const inputs = filterInputsByDepartment(allInputs, dept);
+  const main = ready ? evaluate(inputs, (dispositions.data as any[]) ?? []) : null;
+  // Same findings without dispositions: accepted/snoozed ones still count in the follow-up rate.
+  const undisposed = ready ? runScanner({ companyId: companyId!, ...inputs, requireSoraOnMissions: requireSora }, []) : [];
+
+  const scannerFindings = main?.findings ?? [];
+  const evaluation = main?.evaluation ?? null;
   const insights = getAuditInsights(scannerFindings, kpis.data);
 
   return {
@@ -159,16 +182,43 @@ export function useAuditOverview() {
     isError,
     error,
     kpis: kpis.data,
-    competencies: competencies.data ?? [],
-    documents: documents.data ?? [],
-    fleet: fleet.data ?? [],
-    operationsIssues: operations.data?.issues ?? [],
-    operationsTotal: operations.data?.total ?? 0,
-    safety: safety.data,
+    competencies: inputs.competencies,
+    documents: inputs.documents,
+    fleet: inputs.fleet,
+    operationsIssues: inputs.operations,
+    operationsTotal: inputs.operationsTotal,
+    safety: inputs.safety ?? undefined,
+    overdueAuditActions: inputs.overdueAuditActions,
     scannerFindings,
+    undisposedFindings: undisposed,
+    dispositions: (dispositions.data as any[]) ?? [],
     evaluation,
     insights,
+    allInputs,
+    /** Score + findings for one department, used by the department table. */
+    evaluateDepartment: (id: string) => (ready ? evaluate(filterInputsByDepartment(allInputs, id), (dispositions.data as any[]) ?? []) : null),
+    contextFor: buildFindingContext(allInputs),
   };
+}
+
+export function useFollowUpSignals() {
+  const { userId, companyId, enabled } = baseArgs();
+  return useQuery({
+    queryKey: ["audit", "followup", companyId],
+    queryFn: () => fetchFollowUpSignals(userId!, companyId!),
+    enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useAuditDepartments() {
+  const { userId, companyId, enabled } = baseArgs();
+  return useQuery({
+    queryKey: ["audit", "departments", companyId],
+    queryFn: () => fetchDepartments(userId!, companyId!),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
 }
 
 // ---------- Mutations for audit_reviews CRUD ----------

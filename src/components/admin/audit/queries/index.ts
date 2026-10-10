@@ -177,7 +177,7 @@ export async function fetchCompetencies(userId: string, companyId: string): Prom
   const ids = await visibleCompanyIds(userId, companyId);
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, personnel_competencies(id, type, navn, utloper_dato, varsel_dager)")
+    .select("id, full_name, company_id, personnel_competencies(id, type, navn, utloper_dato, varsel_dager)")
     .in("company_id", ids)
     .eq("approved", true);
   if (error) throw error;
@@ -189,6 +189,7 @@ export async function fetchCompetencies(userId: string, companyId: string): Prom
         id: c.id,
         profileId: p.id,
         pilotName: p.full_name ?? "—",
+        companyId: p.company_id ?? null,
         competency: c.navn ?? c.type ?? "—",
         validUntil: c.utloper_dato ?? null,
         daysUntilExpiry: daysUntil(c.utloper_dato),
@@ -418,7 +419,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
   const since = iso12moAgo();
   const now = new Date();
   const activeCutoff = new Date(now.getTime() - ACTIVE_FLIGHT_STALE_HOURS * 3_600_000).toISOString();
-  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status, approval_status, approved_at, approved_by, approval_comment, user_id, companies(navn)";
+  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status, approval_status, approved_at, approved_by, approval_comment, user_id, company_id, companies(navn)";
 
   const [windowMissions, openMissions, activeFlights, logs, soraRows] = await Promise.all([
     fetchAllPages<MissionLike>((a, b) =>
@@ -430,7 +431,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
         .in("status", [PLANNED_STATUS, IN_PROGRESS_STATUS]).order("id").range(a, b),
     ),
     fetchAllPages<ActiveFlightLike>((a, b) =>
-      supabase.from("active_flights").select("id, mission_id, start_time, pilot_name")
+      supabase.from("active_flights").select("id, mission_id, start_time, pilot_name, company_id")
         .in("company_id", ids).lt("start_time", activeCutoff).order("id").range(a, b),
     ),
     fetchAllPages<UnplannedFlightLog>((a, b) =>
@@ -565,8 +566,21 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     return { month, go: v("go"), caution: v("caution"), noGo: v("no-go"), notAssessed: v("not-assessed") };
   });
 
+  // Department of each issue (presentation filter only).
+  const flightCompany = new Map(activeFlights.map((f: any) => [f.id, f.company_id ?? null]));
+  for (const i of issues) {
+    i.companyId = (i.missionId ? (missionById.get(i.missionId) as any)?.company_id : null)
+      ?? (i.flightId ? flightCompany.get(i.flightId) : null) ?? null;
+  }
+  const missionsByCompany: Record<string, number> = {};
+  for (const m of missions as any[]) {
+    const k = m.company_id ?? "";
+    missionsByCompany[k] = (missionsByCompany[k] ?? 0) + 1;
+  }
+
   return {
     issues,
+    missionsByCompany,
     total: missions.length,
     unplanned,
     approvedNoGo,
@@ -583,7 +597,7 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
   const since = iso12moAgo();
   const { data, error } = await supabase
     .from("incidents")
-    .select("id, kategori, alvorlighetsgrad, hendelsestidspunkt, status, opprettet_dato, oppdatert_dato")
+    .select("id, kategori, alvorlighetsgrad, hendelsestidspunkt, status, opprettet_dato, oppdatert_dato, company_id")
     .in("company_id", ids)
     .gte("hendelsestidspunkt", since);
   if (error) throw error;
@@ -596,11 +610,19 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
   // Open incidents regardless of age → follow-up issues.
   const openAny = await fetchAllPages<IncidentLike>((a, b) =>
     supabase.from("incidents")
-      .select("id, tittel, status, alvorlighetsgrad, hendelsestidspunkt, opprettet_dato, oppfolgingsansvarlig_id")
+      .select("id, tittel, status, alvorlighetsgrad, hendelsestidspunkt, opprettet_dato, oppfolgingsansvarlig_id, company_id")
       .in("company_id", ids).not("status", "in", "(Lukket,Ferdigbehandlet)").order("id").range(a, b),
   );
   const now = new Date();
-  const incidentIssueList = openAny.flatMap((r) => buildIncidentIssues(r, now));
+  const incidentIssueList = openAny.flatMap((r) =>
+    buildIncidentIssues(r, now).map((i) => ({ ...i, companyId: (r as any).company_id ?? null })));
+  const byCompany: Record<string, { open: number; closed: number }> = {};
+  for (const r of rows) {
+    const k = r.company_id ?? "";
+    byCompany[k] ??= { open: 0, closed: 0 };
+    if (/lukket|closed/i.test(r.status ?? "")) byCompany[k].closed++;
+    else byCompany[k].open++;
+  }
 
   // Action stats come from audit_actions.
   const [openActRes, closedActRes] = await Promise.all([
@@ -683,6 +705,7 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
     byCategory,
     trend,
     incidentIssues: incidentIssueList,
+    byCompany,
     nearMiss: 0,
   };
 }
@@ -695,7 +718,7 @@ export async function fetchAuditDocuments(userId: string, companyId: string): Pr
   const ids = await visibleCompanyIds(userId, companyId);
   const { data, error } = await supabase
     .from("documents")
-    .select("id, tittel, kategori, gyldig_til, varsel_dager_for_utløp, opprettet_av")
+    .select("id, tittel, kategori, gyldig_til, varsel_dager_for_utløp, opprettet_av, company_id")
     .in("company_id", ids);
   if (error) throw error;
   return (data ?? []).map((d: any) => {
@@ -704,6 +727,7 @@ export async function fetchAuditDocuments(userId: string, companyId: string): Pr
     return {
       id: d.id,
       title: d.tittel ?? "—",
+      companyId: d.company_id ?? null,
       category: d.kategori ?? "—",
       nextReview: d.gyldig_til ?? null,
       responsible: d.opprettet_av ?? null,
@@ -744,12 +768,12 @@ export async function fetchOverdueAuditActions(userId: string, companyId: string
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("audit_actions")
-    .select("id, description, deadline, status")
+    .select("id, description, deadline, status, company_id")
     .in("company_id", ids)
     .neq("status", "closed")
     .lt("deadline", today);
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ id: r.id, description: r.description, deadline: r.deadline }));
+  return (data ?? []).map((r: any) => ({ id: r.id, description: r.description, deadline: r.deadline, companyId: r.company_id ?? null }));
 }
 
 export async function fetchFindingsAwaitingVerification(userId: string, companyId: string) {
@@ -761,4 +785,34 @@ export async function fetchFindingsAwaitingVerification(userId: string, companyI
     .eq("status", "in_progress");
   if (error) throw error;
   return (data ?? []).map((r: any) => ({ id: r.id, description: r.description }));
+}
+
+// ============================================================
+// Follow-up signals (presentation: "Oppfølgingsgrad")
+// ============================================================
+export interface FollowUpSignals {
+  reminders: { finding_key: string | null; status: string; created_at: string }[];
+  dispositions: { finding_code: string; entity_type: string; entity_id: string; disposition: string; reason: string | null; snooze_until: string | null; company_id: string }[];
+  registered: { source_scanner_code: string | null; responsible_user_id: string | null; deadline: string | null; status: string }[];
+}
+
+export async function fetchFollowUpSignals(userId: string, companyId: string): Promise<FollowUpSignals> {
+  const ids = await visibleCompanyIds(userId, companyId);
+  const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+  const [rem, disp, reg] = await Promise.all([
+    fetchAllPages<any>((a, b) => supabase.from("internal_messages").select("finding_key, status, created_at")
+      .in("company_id", ids).not("finding_key", "is", null).gte("created_at", since).order("id").range(a, b)),
+    fetchAllPages<any>((a, b) => supabase.from("compliance_finding_dispositions")
+      .select("finding_code, entity_type, entity_id, disposition, reason, snooze_until, company_id").in("company_id", ids).order("id").range(a, b)),
+    fetchAllPages<any>((a, b) => supabase.from("audit_findings").select("source_scanner_code, responsible_user_id, deadline, status")
+      .in("company_id", ids).not("source_scanner_code", "is", null).neq("status", "closed").order("id").range(a, b)),
+  ]);
+  return { reminders: rem, dispositions: disp, registered: reg };
+}
+
+export async function fetchDepartments(userId: string, companyId: string): Promise<{ id: string; name: string }[]> {
+  const ids = await visibleCompanyIds(userId, companyId);
+  const { data } = await supabase.from("companies").select("id, navn").in("id", ids);
+  return ((data ?? []) as any[]).map((c) => ({ id: c.id, name: c.navn ?? "—" }))
+    .sort((a, b) => (a.id === companyId ? -1 : b.id === companyId ? 1 : a.name.localeCompare(b.name)));
 }

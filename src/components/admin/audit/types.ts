@@ -109,6 +109,8 @@ export interface ScannerFinding {
   entityId: string;
   evidence?: Record<string, unknown>;
   deepLink?: DeepLink;
+  /** Presentation-only enrichment (department filter / action list). */
+  companyId?: string | null;
 }
 
 export interface CategoryScore {
@@ -157,6 +159,7 @@ export interface CompetencyRow {
   id: string;
   profileId: string;
   pilotName: string;
+  companyId?: string | null;
   competency: string;
   validUntil: string | null;
   daysUntilExpiry: number | null;
@@ -225,6 +228,7 @@ export interface OperationsIssue {
   /** Reminder recipients: mission personnel, fallback creator. */
   recipientIds?: string[];
   possibleLog?: PossibleFlightLog | null;
+  companyId?: string | null;
 }
 
 export interface ApprovedNoGoMission {
@@ -246,6 +250,8 @@ export interface OperationsRiskMonth {
 
 export interface OperationsData {
   issues: OperationsIssue[];
+  /** Evaluated missions per company id (department filter). */
+  missionsByCompany?: Record<string, number>;
   total: number;
   unplanned: {
     total: number;
@@ -269,6 +275,7 @@ export interface IncidentIssue {
   code: "incidentOpenTooLong" | "incidentNoResponsible";
   severity: FindingSeverity;
   days: number;
+  companyId?: string | null;
 }
 
 export interface SafetySeverityBucket {
@@ -295,6 +302,7 @@ export interface SafetyAggregate {
   trend: SafetyTrendPoint[];
   /** Open incidents (any age) that need follow-up. */
   incidentIssues: IncidentIssue[];
+  byCompany?: Record<string, { open: number; closed: number }>;
   // Legacy field, kept so existing consumers don't break; always 0.
   nearMiss: number;
 }
@@ -303,6 +311,7 @@ export interface SafetyAggregate {
 export interface DocumentRow {
   id: string;
   title: string;
+  companyId?: string | null;
   category: string;
   nextReview: string | null;
   responsible: string | null;

@@ -1,251 +1,306 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { AlertOctagon, AlertTriangle, CalendarClock, Hourglass } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Users,
-  Plane,
-  Activity,
-  AlertTriangle,
-  ListChecks,
-  ClipboardCheck,
-  ClipboardList,
-  ChevronDown,
-  ChevronUp,
-  FileWarning,
-  UserX,
-  Wrench,
-  CalendarClock,
-  Package,
-  AlertOctagon,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { KpiCard } from "../components/KpiCard";
 import { ComplianceScoreRing } from "../components/ComplianceScoreRing";
-import { ComplianceAlertsPanel } from "../components/ComplianceAlertsPanel";
-import { CategoryScoreGrid } from "../components/CategoryScoreGrid";
-import { useAuditOverview } from "../hooks/useAuditData";
+import { InfoTip } from "../components/InfoTip";
+import { ActionList, type ActionItem } from "../components/ActionList";
+import { useAuditDepartments, useAuditOverview, useFollowUpSignals } from "../hooks/useAuditData";
+import { useAuditDepartment } from "../hooks/useAuditDepartment";
+import {
+  buildFollowUp, followUpRate, matchesActionFilter, sortActionItems, type ActionFilter,
+} from "../lib/complianceView";
 import type { ComplianceCategoryKey } from "../types";
 import type { AuditTabValue } from "../AuditSection";
+import { cn } from "@/lib/utils";
 
+type Preset = "untreatedCritical" | "noResponse" | "warnings" | "overdue" | null;
 
-// Which top-level Audit tab each score-ring category maps to.
-const CATEGORY_TO_TAB: Record<ComplianceCategoryKey, AuditTabValue> = {
-  competence: "competency",
-  documentation: "documentation",
-  fleet: "fleet",
-  operations: "operations",
-  safety: "safety",
-};
+const CATEGORIES: ComplianceCategoryKey[] = ["competence", "documentation", "fleet", "operations", "safety"];
 
 interface OverviewTabProps {
   onNavigate: (tab: AuditTabValue) => void;
 }
 
-export const OverviewTab = ({ onNavigate }: OverviewTabProps) => {
+export const OverviewTab = (_props: OverviewTabProps) => {
   const { t } = useTranslation();
-  const o = useAuditOverview();
-  const [showActivity, setShowActivity] = useState(false);
+  const { dept, setDept } = useAuditDepartment();
+  const o = useAuditOverview(dept);
+  const follow = useFollowUpSignals();
+  const { data: departments = [] } = useAuditDepartments();
+  const [filter, setFilter] = useState<ActionFilter>("all");
+  const [preset, setPreset] = useState<Preset>(null);
+  const [explainOpen, setExplainOpen] = useState(false);
 
-  if (o.isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
-      </div>
-    );
-  }
-  if (o.isError) {
-    return <p className="text-sm text-status-red">{t("audit.states.error")}: {o.error?.message}</p>;
-  }
+  const deptName = useMemo(() => new Map(departments.map((d) => [d.id, d.name])), [departments]);
+  const followState = useMemo(
+    () => buildFollowUp(follow.data ?? { reminders: [], dispositions: [], registered: [] }),
+    [follow.data],
+  );
 
+  const items: ActionItem[] = useMemo(
+    () =>
+      sortActionItems(
+        o.scannerFindings.map((f) => {
+          const ctx = o.contextFor(f);
+          return { finding: f, ctx, follow: followState(f), departmentName: ctx.companyId ? deptName.get(ctx.companyId) ?? null : null };
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [o.scannerFindings, followState, deptName],
+  );
 
-  const score = o.evaluation?.overall ?? 0;
-  const dq = o.evaluation?.dataQuality;
-  const coveragePct = dq && (dq.covered + dq.unknown) > 0
-    ? Math.round((dq.covered / (dq.covered + dq.unknown)) * 100)
-    : 0;
-  const computedAt = o.evaluation ? new Date(o.evaluation.computedAt).toLocaleString() : "—";
+  if (o.isLoading || follow.isLoading) return <OverviewSkeleton />;
+  if (o.isError) return <p className="text-sm text-status-red">{t("audit.states.error")}: {o.error?.message}</p>;
 
-  const k = o.kpis;
-  const criticalOpen = k?.criticalFindings ?? 0;
+  // Accepted/snoozed findings are hidden from the list but still count as followed up.
+  const dismissed = new Set(
+    o.dispositions.filter((d: any) => d.disposition === "dismissed").map((d: any) => `${d.finding_code}:${d.entity_type}:${d.entity_id}`),
+  );
+  const followUpBase = o.undisposedFindings.filter((f) => !dismissed.has(`${f.code}:${f.entityType}:${f.entityId}`));
+  const followRate = followUpRate(followUpBase, followState);
+  const score = o.evaluation?.overall ?? null;
+
+  const untreatedCritical = items.filter((i) => i.finding.severity === "critical" && !i.follow.handled).length;
+  const noResponse = items.filter((i) => i.follow.reminder === "noResponse").length;
+  const warnings = items.filter((i) => i.finding.severity === "warning").length;
+  const overdue = o.overdueAuditActions.length;
+
+  const presetMatch = (i: ActionItem) => {
+    switch (preset) {
+      case "untreatedCritical": return i.finding.severity === "critical" && !i.follow.handled;
+      case "noResponse": return i.follow.reminder === "noResponse";
+      case "warnings": return i.finding.severity === "warning";
+      case "overdue": return i.finding.code === "OpenActionsTooLong";
+      default: return matchesActionFilter(i.follow, filter);
+    }
+  };
+  const listed = items.filter(presetMatch);
+  const togglePreset = (p: Preset) => setPreset((cur) => (cur === p ? null : p));
+
+  const interpretation = interpret(score, followRate);
 
   return (
     <div className="space-y-6">
-      {/* --- Score + primary CTA row --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <Card className="lg:col-span-1">
-          <CardContent className="p-6 flex flex-col items-center gap-3">
-            <ComplianceScoreRing score={score} label={t("audit.overview.compliance")} />
-            <div className="w-full space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{t("audit.overview.dataQuality")}</span>
-                <span>{coveragePct}%</span>
-              </div>
-              <Progress value={coveragePct} />
-            </div>
-            <p className="text-[11px] text-muted-foreground text-center">
-              {t("audit.overview.lastComputed")}: {computedAt}
-            </p>
-          </CardContent>
-        </Card>
-
-        <div className="lg:col-span-3 flex flex-col gap-4">
-          {/* Inspection package CTA */}
-          <Card>
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/15 text-primary">
-                  <Package className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">{t("audit.overview.inspectionCta.title")}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t("audit.overview.inspectionCta.body")}
-                  </div>
-                  {criticalOpen > 0 && (
-                    <div className="text-xs text-status-red mt-1 flex items-center gap-1">
-                      <AlertOctagon className="w-3.5 h-3.5" />
-                      {t("audit.overview.inspectionCta.criticalWarning", { count: criticalOpen })}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <Button size="lg" onClick={() => onNavigate("package" as AuditTabValue)}>
-                {t("audit.overview.inspectionCta.button")}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Action-oriented KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <KpiCard
-              label={t("audit.actionKpi.documentsExpiring")}
-              value={k?.documentsExpiring30d ?? 0}
-              icon={FileWarning}
-              tone={(k?.documentsExpiring30d ?? 0) > 0 ? "warning" : "success"}
-              actionHint={
-                (k?.documentsExpiring30d ?? 0) > 0
-                  ? t("audit.actionKpi.documentsExpiringHint")
-                  : t("audit.actionKpi.noActionNeeded")
-              }
-              onClick={() => onNavigate("documentation" as AuditTabValue)}
-            />
-            <KpiCard
-              label={t("audit.actionKpi.competencyExpiring")}
-              value={k?.competenciesExpiring60d ?? 0}
-              icon={UserX}
-              tone={(k?.competenciesExpiring60d ?? 0) > 0 ? "warning" : "success"}
-              actionHint={
-                (k?.pilotsWithExpiringSoon ?? 0) > 0
-                  ? t("audit.actionKpi.competencyExpiringHint", { pilots: k?.pilotsWithExpiringSoon ?? 0 })
-                  : t("audit.actionKpi.noActionNeeded")
-              }
-              onClick={() => onNavigate("competency" as AuditTabValue)}
-            />
-            <KpiCard
-              label={t("audit.actionKpi.dronesOverdue")}
-              value={k?.dronesOverdue ?? 0}
-              icon={Wrench}
-              tone={(k?.dronesOverdue ?? 0) > 0 ? "danger" : "success"}
-              actionHint={
-                (k?.dronesRequiringMaintenance ?? 0) > 0
-                  ? t("audit.actionKpi.dronesRequiringHint", { count: k?.dronesRequiringMaintenance ?? 0 })
-                  : t("audit.actionKpi.noActionNeeded")
-              }
-              onClick={() => onNavigate("fleet" as AuditTabValue)}
-            />
-            <KpiCard
-              label={t("audit.actionKpi.openFindings")}
-              value={k?.openFindings ?? 0}
-              icon={AlertTriangle}
-              tone={(k?.criticalFindings ?? 0) > 0 ? "danger" : (k?.openFindings ?? 0) > 0 ? "warning" : "success"}
-              actionHint={
-                (k?.criticalFindings ?? 0) > 0
-                  ? t("audit.actionKpi.criticalOpen", { count: k?.criticalFindings ?? 0 })
-                  : t("audit.actionKpi.noActionNeeded")
-              }
-              onClick={() => onNavigate("internal" as AuditTabValue)}
-            />
-            <KpiCard
-              label={t("audit.actionKpi.overdueActions")}
-              value={k?.openActions ?? 0}
-              icon={ListChecks}
-              tone={(k?.openActions ?? 0) > 0 ? "warning" : "success"}
-              onClick={() => onNavigate("internal" as AuditTabValue)}
-            />
-            <KpiCard
-              label={t("audit.actionKpi.plannedReviews")}
-              value={k?.plannedReviews ?? 0}
-              icon={CalendarClock}
-              tone="default"
-              actionHint={
-                (k?.plannedReviews ?? 0) > 0
-                  ? t("audit.actionKpi.plannedReviewsHint")
-                  : t("audit.actionKpi.plannedReviewsNone")
-              }
-              onClick={() => onNavigate("internal" as AuditTabValue)}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* --- Score per category --- */}
-      <CategoryScoreGrid
-        evaluation={o.evaluation}
-        onSelect={(key) => onNavigate(CATEGORY_TO_TAB[key] as AuditTabValue)}
+      {/* a) Requires action now */}
+      <ActionList
+        items={listed}
+        filter={filter}
+        onFilterChange={(f) => { setFilter(f); setPreset(null); }}
+        presetLabel={preset ? t(`audit.overview.kpi.${preset}.label`) : null}
+        onClearPreset={() => setPreset(null)}
+        showDepartment={!dept && departments.length > 1}
       />
 
-      {/* --- Grouped alerts --- */}
-      <ComplianceAlertsPanel findings={o.scannerFindings} />
+      {/* b) KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard
+          icon={AlertOctagon}
+          label={t("audit.overview.kpi.untreatedCritical.label")}
+          value={untreatedCritical}
+          tone={untreatedCritical > 0 ? "danger" : "success"}
+          active={preset === "untreatedCritical"}
+          onClick={() => togglePreset("untreatedCritical")}
+          info={<InfoTip k="audit.overview.kpi.untreatedCritical" />}
+        />
+        <KpiCard
+          icon={Hourglass}
+          label={t("audit.overview.kpi.noResponse.label")}
+          value={noResponse}
+          tone={noResponse > 0 ? "warning" : "success"}
+          active={preset === "noResponse"}
+          onClick={() => togglePreset("noResponse")}
+          info={<InfoTip k="audit.overview.kpi.noResponse" />}
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          label={t("audit.overview.kpi.warnings.label")}
+          value={warnings}
+          tone={warnings > 0 ? "warning" : "success"}
+          active={preset === "warnings"}
+          onClick={() => togglePreset("warnings")}
+          info={<InfoTip k="audit.overview.kpi.warnings" />}
+        />
+        <KpiCard
+          icon={CalendarClock}
+          label={t("audit.overview.kpi.overdue.label")}
+          value={overdue}
+          tone={overdue > 0 ? "danger" : "success"}
+          active={preset === "overdue"}
+          onClick={() => togglePreset("overdue")}
+          info={<InfoTip k="audit.overview.kpi.overdue" />}
+        />
+      </div>
 
-      {/* --- Optional: activity stats (collapsed by default) --- */}
-      <Collapsible open={showActivity} onOpenChange={setShowActivity}>
-        <Card>
-          <CardHeader className="pb-2">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="justify-between px-0 hover:bg-transparent">
-                <CardTitle className="text-sm text-muted-foreground font-medium">
-                  {t("audit.overview.activityHeader")}
-                </CardTitle>
-                {showActivity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      {/* c) Two measures */}
+      <Card>
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                {t("audit.overview.scoreTitle")} <InfoTip k="audit.overview.scoreHelp" />
+              </div>
+              <ComplianceScoreRing score={score} label={t("audit.overview.scoreSub")} />
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setExplainOpen(true)}>
+                {t("audit.overview.howCalculated")}
               </Button>
-            </CollapsibleTrigger>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <KpiCard label={t("audit.kpi.activePilots")} value={k?.activePilots ?? 0} icon={Users} />
-                <KpiCard label={t("audit.kpi.activeDrones")} value={k?.activeDrones ?? 0} icon={Plane} />
-                <KpiCard label={t("audit.kpi.flights12mo")} value={k?.flights12mo ?? 0} icon={Activity} />
-                <KpiCard label={t("audit.kpi.incidents12mo")} value={k?.incidents12mo ?? 0} icon={AlertTriangle} tone="warning" />
-                <KpiCard label={t("audit.kpi.internalAudits")} value={k?.internalAuditsDone ?? 0} icon={ClipboardCheck} />
-                <KpiCard label={t("audit.kpi.riskAssessments")} value={k?.riskAssessments12mo ?? 0} icon={ClipboardList} />
-                <KpiCard label={t("audit.kpi.completedChecklists")} value={k?.completedChecklists12mo ?? 0} icon={ListChecks} />
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                {t("audit.overview.followUpTitle")} <InfoTip k="audit.overview.followUpHelp" />
               </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+              <ComplianceScoreRing score={followRate} label={t("audit.overview.followUpSub")} />
+              <span className="text-xs text-muted-foreground text-center">
+                {t("audit.overview.followUpCount", {
+                  handled: followUpBase.filter((f) => (f.severity === "critical" || f.severity === "warning") && followState(f).handled).length,
+                  total: followUpBase.filter((f) => f.severity === "critical" || f.severity === "warning").length,
+                })}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-center text-muted-foreground border-t border-border pt-3">
+            {t(`audit.overview.interpret.${interpretation}`)}
+          </p>
+        </CardContent>
+      </Card>
 
-      {o.insights.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("audit.overview.aiInsights")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {o.insights.map((i) => (
-              <div key={i.id} className="rounded-md border p-3">
-                <div className="text-sm font-medium">{t(i.titleKey, i.params as any) as string}</div>
-                <div className="text-xs text-muted-foreground">{t(i.bodyKey, i.params as any) as string}</div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      {/* d) Departments */}
+      {!dept && departments.length > 1 && (
+        <DepartmentTable
+          rows={departments.map((d) => {
+            const ev = o.evaluateDepartment(d.id);
+            return {
+              id: d.id,
+              name: d.name,
+              score: ev?.evaluation.overall ?? null,
+              critical: ev?.findings.filter((f) => f.severity === "critical").length ?? 0,
+              warnings: ev?.findings.filter((f) => f.severity === "warning").length ?? 0,
+            };
+          })}
+          onSelect={setDept}
+        />
       )}
 
-      <p className="text-xs text-muted-foreground">{t("audit.disclaimer")}</p>
+      <Dialog open={explainOpen} onOpenChange={setExplainOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] max-h-[85dvh] overflow-y-auto [touch-action:pan-y]">
+          <DialogHeader>
+            <DialogTitle>{t("audit.overview.explain.title")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <p>{t("audit.overview.explain.intro")}</p>
+            <ul className="space-y-2">
+              {CATEGORIES.map((c) => (
+                <li key={c} className="rounded-md border border-border p-2">
+                  <div className="flex justify-between font-medium">
+                    <span>{t(`audit.overview.explain.cat.${c}.name`)}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {o.evaluation?.categories[c].score ?? "—"}{o.evaluation?.categories[c].score != null ? "%" : ""} · 20 %
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{t(`audit.overview.explain.cat.${c}.counts`)}</div>
+                </li>
+              ))}
+            </ul>
+            <p>{t("audit.overview.explain.points")}</p>
+            <p className="text-muted-foreground">{t("audit.overview.explain.excluded")}</p>
+            <p className="text-muted-foreground">{t("audit.overview.explain.followUp")}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
+
+function interpret(score: number | null, follow: number | null): "none" | "goodGood" | "lowHigh" | "highLow" | "lowLow" | "noFindings" {
+  if (score == null) return "none";
+  if (follow == null) return "noFindings";
+  const highScore = score >= 85;
+  const highFollow = follow >= 70;
+  if (highScore && highFollow) return "goodGood";
+  if (!highScore && highFollow) return "lowHigh";
+  if (highScore && !highFollow) return "highLow";
+  return "lowLow";
+}
+
+function DepartmentTable({
+  rows, onSelect,
+}: { rows: { id: string; name: string; score: number | null; critical: number; warnings: number }[]; onSelect: (id: string) => void }) {
+  const { t } = useTranslation();
+  const [sortKey, setSortKey] = useState<"name" | "score" | "critical" | "warnings">("critical");
+  const sorted = [...rows].sort((a, b) =>
+    sortKey === "name" ? a.name.localeCompare(b.name)
+      : sortKey === "score" ? (a.score ?? 101) - (b.score ?? 101)
+        : b[sortKey] - a[sortKey]);
+  const scoreCls = (s: number | null) => (s == null ? "text-muted-foreground" : s >= 85 ? "text-status-green" : s >= 65 ? "text-status-yellow" : "text-status-red");
+  const Head = ({ k, label, right }: { k: typeof sortKey; label: string; right?: boolean }) => (
+    <th className={cn("px-3 py-2 text-xs font-medium text-muted-foreground", right ? "text-right" : "text-left")}>
+      <button type="button" className={cn("hover:text-foreground", sortKey === k && "text-foreground underline")} onClick={() => setSortKey(k)}>{label}</button>
+    </th>
+  );
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-semibold">{t("audit.overview.departments.title")}</h3>
+          <InfoTip k="audit.overview.departments.help" />
+        </div>
+        <table className="hidden md:table w-full text-sm">
+          <thead className="border-b border-border">
+            <tr>
+              <Head k="name" label={t("audit.overview.departments.department")} />
+              <Head k="score" label={t("audit.overview.departments.score")} right />
+              <Head k="critical" label={t("audit.overview.departments.critical")} right />
+              <Head k="warnings" label={t("audit.overview.departments.warnings")} right />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sorted.map((r) => (
+              <tr key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onSelect(r.id)}>
+                <td className="px-3 py-2 font-medium">{r.name}</td>
+                <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", scoreCls(r.score))}>{r.score == null ? "—" : `${r.score}%`}</td>
+                <td className={cn("px-3 py-2 text-right tabular-nums", r.critical > 0 && "text-status-red font-semibold")}>{r.critical}</td>
+                <td className={cn("px-3 py-2 text-right tabular-nums", r.warnings > 0 && "text-status-yellow")}>{r.warnings}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <ul className="md:hidden space-y-2">
+          {sorted.map((r) => (
+            <li key={r.id}>
+              <button type="button" onClick={() => onSelect(r.id)} className="w-full rounded-lg border border-border p-3 text-left hover:bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{r.name}</span>
+                  <span className={cn("font-semibold tabular-nums", scoreCls(r.score))}>{r.score == null ? "—" : `${r.score}%`}</span>
+                </div>
+                <div className="mt-1 flex gap-3 text-xs">
+                  <span className={r.critical > 0 ? "text-status-red" : "text-muted-foreground"}>{t("audit.overview.departments.criticalCount", { count: r.critical })}</span>
+                  <span className={r.warnings > 0 ? "text-status-yellow" : "text-muted-foreground"}>{t("audit.overview.departments.warningCount", { count: r.warnings })}</span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OverviewSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card><CardContent className="p-4 space-y-3">
+        <Skeleton className="h-5 w-48" />
+        <div className="flex gap-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-24" />)}</div>
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+      </CardContent></Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}</div>
+      <Card><CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
+        <Skeleton className="h-40 w-40 rounded-full" /><Skeleton className="h-40 w-40 rounded-full" />
+      </CardContent></Card>
+    </div>
+  );
+}
