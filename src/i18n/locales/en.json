@@ -8849,6 +8849,93 @@
       "IncidentNoResponsible": "Without an owner the incident will not be followed up.",
       "OpenActionsTooLong": "The audit action is past its deadline.",
       "FindingAwaitingVerification": "The action is done and awaiting verification."
+    },
+    "frame": {
+      "stats": "Statistics and trends",
+      "kpi": {
+        "critical": {
+          "label": "Critical findings",
+          "what": "Number of critical findings in this area.",
+          "threshold": "All critical findings count; the goal is 0.",
+          "why": "Critical findings can stop operations or lead to orders at inspection.",
+          "fix": "Open the finding, fix the cause or send a reminder to the responsible person."
+        },
+        "warnings": {
+          "label": "Warnings",
+          "what": "Number of warnings in this area.",
+          "threshold": "All open warnings count.",
+          "why": "Warnings often become critical if not followed up.",
+          "fix": "Plan a fix or accept with a reason."
+        },
+        "untreated": {
+          "label": "Untreated",
+          "what": "Findings where no action has been taken yet.",
+          "threshold": "Action = reminder in the last 14 days, snoozed/accepted with a reason, or registered as an audit finding.",
+          "why": "Shows what nobody has picked up.",
+          "fix": "Send a reminder, snooze/accept or register as an audit finding."
+        },
+        "noResponse": {
+          "label": "Reminded, no response",
+          "what": "Reminders sent more than 7 days ago that are not marked done.",
+          "threshold": "More than 7 days without response.",
+          "why": "Shows cases that have stalled.",
+          "fix": "Contact the recipient directly or choose another responsible person."
+        }
+      },
+      "tabs": {
+        "operations": {
+          "help": {
+            "what": "Stale missions, flown with NO-GO, missing flight logs and SORA deviations.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look at first.",
+            "fix": "Open, remind or snooze/accept with a reason."
+          },
+          "empty": "No operational findings – great!",
+          "statsHelp": {
+            "what": "Unplanned flights, risk distribution, missions without flight log and NO-GO overview.",
+            "why": "Provides background and trends, not separate findings."
+          }
+        },
+        "fleet": {
+          "help": {
+            "what": "Drones with red or yellow status from maintenance, inspection and deviations.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look at first.",
+            "fix": "Open, remind or snooze/accept with a reason."
+          },
+          "empty": "All drones are green – great!",
+          "statsHelp": {
+            "what": "Full fleet with status, inspections and log entries.",
+            "why": "Provides background and trends, not separate findings."
+          }
+        },
+        "people": {
+          "help": {
+            "what": "Expired or missing competencies and documents due for renewal.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look at first.",
+            "fix": "Open, remind or snooze/accept with a reason."
+          },
+          "empty": "Competencies and documents are in order – great!",
+          "statsHelp": {
+            "what": "Competency per person and document overview.",
+            "why": "Provides background and trends, not separate findings."
+          }
+        },
+        "incidents": {
+          "help": {
+            "what": "Incidents open too long or missing a follow-up owner.",
+            "threshold": "Critical first, then warnings.",
+            "why": "This is what inspectors look at first.",
+            "fix": "Open, remind or snooze/accept with a reason."
+          },
+          "empty": "No incidents need follow-up – great!",
+          "statsHelp": {
+            "what": "Incidents over time and overdue audit actions.",
+            "why": "Provides background and trends, not separate findings."
+          }
+        }
+      }
     }
   },
   "inbox": {

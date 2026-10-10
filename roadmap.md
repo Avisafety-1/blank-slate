@@ -22,7 +22,7 @@
 - [x] iOS Safari og Android-PWA: hold oppdragsdialogenes header og X synlige ved tastatur og etter lagring
 
 - [x] Compliance-redesign trinn 1: færre faner, avdelingsvelger (?dept=), Oversikt med «Krever handling nå», nye KPI-er, compliance-score + oppfølgingsgrad, avdelingstabell, introkort, mindre banner
-- [ ] Compliance-redesign trinn 2: samme oppsett i Drift/Flåte/Personell og dokumenter/Hendelser (KPI-stripe → Krever handling → sammenleggbar «Statistikk og trender»), (i) på alle KPI-er/seksjoner, positive tomtilstander, layout-skeletons, tabeller→kort <768px
+- [x] Compliance-redesign trinn 2: samme oppsett i Drift/Flåte/Personell og dokumenter/Hendelser (KPI-stripe → Krever handling → sammenleggbar «Statistikk og trender»), (i) på alle KPI-er/seksjoner, positive tomtilstander, layout-skeletons, tabeller→kort <768px
 
 ## Ferdig
 - [x] DJI RC Pro portrett: loggbehandling viser loggliste og detaljer under hverandre i ett rullbart vindu; landskap uendret
