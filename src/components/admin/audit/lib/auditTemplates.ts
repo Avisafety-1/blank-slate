@@ -167,3 +167,18 @@ export function closeBlockers(
 export function onlyCriticalBlocks(blockers: CloseBlocker[]): boolean {
   return blockers.length > 0 && blockers.every((b) => b.kind === "openCritical");
 }
+
+const KNOWN_ITEM_KEYS = new Set(Object.values(AUDIT_TEMPLATES).flatMap((s) => s.flatMap((x) => x.items.map((i) => i.key))));
+const KNOWN_SECTION_KEYS = new Set(Object.values(AUDIT_TEMPLATES).flatMap((s) => s.map((x) => x.key)));
+
+/** Item text via i18n when the key belongs to a template; stored label is the fallback. */
+export function templateItemLabel(itemKey: string | null | undefined, stored: string | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string {
+  if (itemKey && KNOWN_ITEM_KEYS.has(itemKey)) return t(`audit.tpl.item.${itemKey}`, { defaultValue: stored ?? itemKey });
+  return stored ?? itemKey ?? "";
+}
+
+/** Section name via i18n when the key belongs to a template; stored label/key is the fallback. */
+export function templateSectionLabel(sectionKey: string | null | undefined, stored: string | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string {
+  if (sectionKey && KNOWN_SECTION_KEYS.has(sectionKey)) return t(`audit.tpl.section.${sectionKey}`, { defaultValue: stored ?? sectionKey });
+  return stored ?? sectionKey ?? "";
+}

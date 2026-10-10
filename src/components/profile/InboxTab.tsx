@@ -52,6 +52,7 @@ import { ReminderActionCard } from "@/components/reminders/ReminderActionCard";
 import { hasQuickActions, parseFindingKeys } from "@/components/reminders/reminderActions";
 import { auditDeepLink } from "@/components/admin/audit/utils/auditDeepLink";
 import { AttachmentLightbox } from "./AttachmentLightbox";
+import { MyAuditTasksSection } from "@/components/admin/audit/components/MyAuditTasksSection";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
   if (s === "critical") return <AlertCircle className="w-4 h-4 text-status-red" />;
@@ -299,6 +300,7 @@ export const InboxTab = () => {
           </div>
         </CardHeader>
         <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+          <MyAuditTasksSection />
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : messages.length === 0 ? (

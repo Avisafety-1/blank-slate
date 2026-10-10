@@ -784,12 +784,12 @@ export async function fetchOverdueAuditActions(userId: string, companyId: string
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from("audit_actions")
-    .select("id, description, deadline, status, company_id")
+    .select("id, finding_id, description, deadline, status, company_id")
     .in("company_id", ids)
     .neq("status", "closed")
     .lt("deadline", today);
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ id: r.id, description: r.description, deadline: r.deadline, companyId: r.company_id ?? null }));
+  return (data ?? []).map((r: any) => ({ id: r.id, findingId: r.finding_id ?? null, description: r.description, deadline: r.deadline, companyId: r.company_id ?? null }));
 }
 
 export async function fetchFindingsAwaitingVerification(userId: string, companyId: string) {

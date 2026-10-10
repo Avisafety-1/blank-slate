@@ -211,7 +211,7 @@ const safetyValidator: Validator = ({ overdueAuditActions, findingsAwaitingVerif
       bodyParams: { desc: a.description, deadline: a.deadline ?? "" },
       entityType: "audit_action",
       entityId: a.id,
-      deepLink: auditDeepLink("audit_action", a.id),
+      deepLink: auditDeepLink("audit_action", (a as { findingId?: string | null }).findingId ?? a.id),
     });
   }
   for (const f of findingsAwaitingVerification) {

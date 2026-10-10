@@ -18,8 +18,9 @@ import { StatusPill } from "./StatusPill";
 import { NewFindingDialog, type NewFindingPreset } from "./NewFindingDialog";
 import {
   computeSectionStatus, closeBlockers, onlyCriticalBlocks, findingDisplayStatus, defaultSeverityForResult,
-  type ChecklistResult,
+  templateItemLabel, templateSectionLabel, type ChecklistResult,
 } from "../lib/auditTemplates";
+import { auditErrorMessage } from "../lib/auditErrors";
 import {
   useInternalAuditMutations, useSaveStatus, waitForSaves,
   type ReviewRow, type FindingRow, type ActionRow, type ChecklistItemRow, type SectionRow,
@@ -38,7 +39,7 @@ const RESULTS: ChecklistResult[] = ["pass", "warn", "fail", "na"];
 const SEV_ORDER = { critical: 0, warning: 1, info: 2 } as const;
 
 /** Text field that saves on blur when the value changed. */
-const BlurText = ({ value, onSave, disabled, multiline, placeholder, type }: {
+export const BlurText = ({ value, onSave, disabled, multiline, placeholder, type }: {
   value: string | null; onSave: (v: string) => void; disabled?: boolean; multiline?: boolean; placeholder?: string; type?: string;
 }) => {
   const [v, setV] = useState(value ?? "");
@@ -80,7 +81,8 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
     SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999")), [review]);
   const blockers = closeBlockers(allItems, findings);
   const overrideOnly = onlyCriticalBlocks(blockers);
-  const sectionLabel = (key: string) => t(`audit.tpl.section.${key}`, { defaultValue: key });
+  const sectionLabel = (key: string) => templateSectionLabel(key, key, t);
+  const itemLabel = (it: { item_key: string | null; label: string }) => templateItemLabel(it.item_key, it.label, t);
 
   // Scroll to and briefly highlight a target after tab switch renders it.
   useEffect(() => {
@@ -103,7 +105,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
   const setRef = (id: string) => (el: HTMLElement | null) => { if (el) refs.current.set(id, el); else refs.current.delete(id); };
 
   const run = async (p: Promise<unknown>) => {
-    try { await p; return true; } catch (e: any) { toast.error(e?.message ?? t("audit.internal.saveError")); return false; }
+    try { await p; return true; } catch (e: any) { toast.error(auditErrorMessage(e, t)); return false; }
   };
 
   const handleOpenChange = async (o: boolean) => {
@@ -220,6 +222,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
             </SelectContent>
           </Select>
         </div>
+        <p className="text-xs text-muted-foreground whitespace-pre-wrap">{t("audit.task.rootCause")}: {f.root_cause || t("audit.task.noRootCause")}</p>
         {f.closure_comment && (
           <p className="text-xs text-muted-foreground">{t("audit.internal.closureComment")}: {f.closure_comment}</p>
         )}
@@ -322,7 +325,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                             <div key={it.id} ref={setRef(it.id)}
                               className={cn("rounded-md border p-2 space-y-2 transition-colors", highlight === it.id && "ring-2 ring-primary bg-primary/5")}>
                               <div>
-                                <div className="text-sm">{it.label}</div>
+                                <div className="text-sm">{itemLabel(it)}</div>
                                 {it.reference && <div className="text-xs text-muted-foreground">{it.reference}</div>}
                               </div>
                               <div className="flex flex-wrap gap-1">
@@ -350,7 +353,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                               ) : editChecklist && deviation && (
                                 <Button size="sm" variant="outline" onClick={() => setNewFinding({
                                   category: sectionLabel(s.section_key),
-                                  description: [it.label, it.comment].filter(Boolean).join("\n"),
+                                  description: [itemLabel(it), it.comment].filter(Boolean).join("\n"),
                                   reference: it.reference, severity: defaultSeverityForResult(it.result), checklistItemId: it.id,
                                 })}>
                                   <Plus className="w-4 h-4 mr-1" />{t("audit.internal.makeFinding")}
@@ -414,7 +417,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                       const id = b.kind === "openCritical" ? b.findingId : b.itemId;
                       const label = b.kind === "openCritical"
                         ? findings.find((f) => f.id === id)?.description
-                        : allItems.find((i) => i.id === id)?.label;
+                        : (() => { const it = allItems.find((i) => i.id === id); return it ? itemLabel(it) : undefined; })();
                       return (
                         <li key={`${b.kind}-${id}`}>
                           <button type="button" className="text-left text-sm underline-offset-2 hover:underline text-primary"
