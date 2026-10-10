@@ -3,6 +3,10 @@ import { expiryStatus, daysUntil, monthsAgo } from "../utils/dates";
 import { resolveCheckBucket } from "../utils/statusMapping";
 import { summarizeUnplanned, type UnplannedFlightLog } from "@/lib/unplannedFlights";
 import { buildFlownMissionRiskDistribution } from "@/lib/statusRiskDistribution";
+import { calculateDroneAggregatedStatus, getDroneStatusReasons, worstStatus } from "@/lib/maintenanceStatus";
+import { countUniqueMissionsSinceInspection } from "@/lib/droneInspection";
+import { pickLatestRelevantWarning } from "@/lib/resourceWarnings";
+import type { Status } from "@/types";
 import {
   ACTIVE_FLIGHT_STALE_HOURS,
   COMPLETED_STATUS,
@@ -197,35 +201,46 @@ export async function fetchCompetencies(userId: string, companyId: string): Prom
 // ============================================================
 export async function fetchFleet(userId: string, companyId: string): Promise<FleetRow[]> {
   const ids = await visibleCompanyIds(userId, companyId);
+  // Same inputs as the drone dialog / status page: accessories, linked equipment, drones.status.
   const { data, error } = await supabase
     .from("drones")
-    .select("id, modell, registration_number, neste_inspeksjon, varsel_dager")
+    .select(`
+      id, modell, registration_number, company_id, status, technical_responsible_id,
+      neste_inspeksjon, varsel_dager, sist_inspeksjon, flyvetimer, hours_at_last_inspection,
+      inspection_interval_hours, varsel_timer, inspection_interval_missions, varsel_oppdrag,
+      companies(navn),
+      drone_accessories(navn, neste_vedlikehold, varsel_dager),
+      drone_equipment(equipment:equipment_id(id, navn, status, neste_vedlikehold, varsel_dager))
+    `)
     .in("company_id", ids)
     .eq("aktiv", true);
   if (error) throw error;
   const drones = (data ?? []) as any[];
-
-  // Fetch open log deviations (merknad/hendelse/reparasjon) per drone in one round-trip.
   const droneIds = drones.map((d) => d.id);
   const twelveMoAgo = iso12moAgo();
-  let deviationsByDrone = new Map<string, any[]>();
-  let lastInspByDrone = new Map<string, string>();
+
+  const deviationsByDrone = new Map<string, any[]>();
+  const lastInspByDrone = new Map<string, string>();
+  const techName = new Map<string, string>();
   if (droneIds.length) {
-    const [logsRes, inspRes] = await Promise.all([
+    const techIds = [...new Set(drones.map((d) => d.technical_responsible_id).filter(Boolean))] as string[];
+    const [logsRes, inspRes, techRes] = await Promise.all([
       supabase
         .from("drone_log_entries")
-        .select("id, drone_id, entry_type, title, description, entry_date")
+        .select("id, drone_id, entry_type, title, description, entry_date, created_at")
         .in("drone_id", droneIds)
-        .in("entry_type", ["merknad", "hendelse", "reparasjon", "Merknad", "Hendelse", "Reparasjon"])
         .gte("entry_date", twelveMoAgo)
-        .order("entry_date", { ascending: false })
-        .limit(500),
+        .order("created_at", { ascending: false })
+        .limit(1000),
       supabase
         .from("drone_inspections")
         .select("drone_id, inspection_date")
         .in("drone_id", droneIds)
         .order("inspection_date", { ascending: false })
-        .limit(500),
+        .limit(1000),
+      techIds.length
+        ? supabase.from("profiles").select("id, full_name").in("id", techIds)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     for (const r of (logsRes.data ?? []) as any[]) {
       const arr = deviationsByDrone.get(r.drone_id) ?? [];
@@ -235,10 +250,38 @@ export async function fetchFleet(userId: string, companyId: string): Promise<Fle
     for (const r of (inspRes.data ?? []) as any[]) {
       if (!lastInspByDrone.has(r.drone_id)) lastInspByDrone.set(r.drone_id, r.inspection_date);
     }
+    for (const p of (techRes.data ?? []) as any[]) techName.set(p.id, p.full_name ?? "—");
   }
 
-  return drones.map((d: any) => {
-    const devs = deviationsByDrone.get(d.id) ?? [];
+  return Promise.all(drones.map(async (d: any) => {
+    const accessories = d.drone_accessories ?? [];
+    const linkedEquipment = (d.drone_equipment ?? []).map((l: any) => l.equipment).filter(Boolean);
+    const missionsSince = d.inspection_interval_missions
+      ? await countUniqueMissionsSinceInspection(d.id, d.sist_inspeksjon)
+      : 0;
+    const droneInput = {
+      neste_inspeksjon: d.neste_inspeksjon,
+      varsel_dager: d.varsel_dager,
+      flyvetimer: d.flyvetimer,
+      hours_at_last_inspection: d.hours_at_last_inspection ?? 0,
+      inspection_interval_hours: d.inspection_interval_hours,
+      varsel_timer: d.varsel_timer,
+      missions_since_inspection: missionsSince,
+      inspection_interval_missions: d.inspection_interval_missions,
+      varsel_oppdrag: d.varsel_oppdrag,
+    };
+    const logs = deviationsByDrone.get(d.id) ?? [];
+    const dbStatus = ((d.status as Status) || "Grønn") as Status;
+    const { status: maint } = calculateDroneAggregatedStatus(droneInput, accessories, linkedEquipment);
+    const { reasons } = getDroneStatusReasons({
+      drone: droneInput,
+      accessories,
+      linkedEquipment,
+      dbStatus,
+      latestWarningTitle: pickLatestRelevantWarning(logs as any)?.title ?? null,
+    });
+    const status = worstStatus(maint, dbStatus);
+    const devs = logs.filter((r) => /^(merknad|hendelse|reparasjon)$/i.test(r.entry_type ?? ""));
     return {
       id: d.id,
       droneName: d.modell ?? "—",
@@ -254,8 +297,14 @@ export async function fetchFleet(userId: string, companyId: string): Promise<Fle
         entryDate: r.entry_date ?? null,
       })),
       lastInspectionAt: lastInspByDrone.get(d.id) ?? null,
+      companyId: d.company_id ?? null,
+      departmentName: d.companies?.navn ?? null,
+      status: (status === "Rød" || status === "Gul" ? status : "Grønn") as FleetRow["status"],
+      reasons: reasons.map((r) => ({ status: r.status, text: r.text })),
+      technicalResponsibleId: d.technical_responsible_id ?? null,
+      technicalResponsibleName: d.technical_responsible_id ? techName.get(d.technical_responsible_id) ?? null : null,
     } satisfies FleetRow;
-  });
+  }));
 }
 
 
@@ -464,6 +513,15 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
   const openIncidents = reported - closedRows.length;
   const closedIncidents = closedRows.length;
 
+  // Open incidents regardless of age → follow-up issues.
+  const openAny = await fetchAllPages<IncidentLike>((a, b) =>
+    supabase.from("incidents")
+      .select("id, tittel, status, alvorlighetsgrad, hendelsestidspunkt, opprettet_dato, oppfolgingsansvarlig_id")
+      .in("company_id", ids).not("status", "in", "(Lukket,Ferdigbehandlet)").order("id").range(a, b),
+  );
+  const now = new Date();
+  const incidentIssueList = openAny.flatMap((r) => buildIncidentIssues(r, now));
+
   // Action stats come from audit_actions.
   const [openActRes, closedActRes] = await Promise.all([
     supabase.from("audit_actions").select("id", { count: "exact", head: true }).in("company_id", ids).neq("status", "closed"),
@@ -544,6 +602,7 @@ export async function fetchSafety(userId: string, companyId: string): Promise<Sa
     bySeverity,
     byCategory,
     trend,
+    incidentIssues: incidentIssueList,
     nearMiss: 0,
   };
 }
