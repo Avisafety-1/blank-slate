@@ -28,7 +28,11 @@ export const isProductionDomain = (): boolean => {
  */
 export const isDevelopment = (): boolean => {
   const hostname = window.location.hostname;
-  return hostname === 'localhost' || hostname.includes('lovableproject.com');
+  return (
+    hostname === 'localhost' ||
+    hostname.includes('lovableproject.com') ||
+    hostname.includes('lovable.app')
+  );
 };
 
 /**
