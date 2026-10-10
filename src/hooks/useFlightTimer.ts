@@ -565,7 +565,8 @@ export const useFlightTimer = () => {
     stopGpsWatch();
 
     if (user) {
-      await clearActiveFlight({ profileId: user.id, missionId: state.missionId, publishMode: state.publishMode });
+      await clearActiveFlight({ profileId: user.id, missionId: state.missionId, publishMode: state.publishMode })
+        .catch((e) => console.error('Failed to clear active flight:', e));
     }
 
     setState({
