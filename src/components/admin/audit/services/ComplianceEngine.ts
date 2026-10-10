@@ -1,4 +1,5 @@
 import { resolveCheckBucket } from "../utils/statusMapping";
+import { isScoredIssue, operationsCheckResults } from "../lib/operationsAnalysis";
 import type {
   CategoryScore,
   CheckResult,
@@ -54,6 +55,7 @@ export interface ComplianceInput {
   safety: SafetyAggregate | null;
   openAuditActions: number;
   overdueAuditActions: number;
+  requireSoraOnMissions?: boolean;
 }
 
 export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation {
@@ -97,27 +99,15 @@ export function evaluateCompliance(input: ComplianceInput): ComplianceEvaluation
   };
 
   // ---- Operations ----
-  const opsResults: CheckResult[] = [];
-  if (input.operationsTotal > 0) {
-    const issueCountByMission = new Map<string, number>();
-    for (const i of input.operations) {
-      issueCountByMission.set(i.missionId, (issueCountByMission.get(i.missionId) ?? 0) + 1);
-    }
-    for (let i = 0; i < input.operationsTotal; i++) opsResults.push("pass");
-    let idx = 0;
-    for (const _ of issueCountByMission.keys()) {
-      if (idx < opsResults.length) {
-        opsResults[idx] = "fail";
-        idx++;
-      }
-    }
-  }
+  // Only real operational deviations; one mission with several deviations fails once.
+  const requireSora = input.requireSoraOnMissions === true;
+  const opsResults: CheckResult[] = operationsCheckResults(input.operations, input.operationsTotal, requireSora);
   const operations: CategoryScore = {
     key: "operations",
     score: scoreFromChecks(opsResults),
     ...tally(opsResults),
-    critical: input.operations.length,
-    warnings: 0,
+    critical: opsResults.filter((r) => r === "fail").length,
+    warnings: input.operations.filter((i) => !isScoredIssue(i, requireSora) && i.severity === "warning" && (i.code !== "missingRiskAssessment" || requireSora)).length,
   };
 
   // ---- Safety ----

@@ -313,6 +313,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     ),
   ]);
 
+  const windowIds = new Set(windowMissions.map((m) => m.id));
   const missionById = new Map<string, MissionLike>();
   for (const m of [...windowMissions, ...openMissions]) missionById.set(m.id, m);
   const missions = [...missionById.values()];
@@ -369,7 +370,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
   for (const m of missions) {
     const a = latest.get(m.id);
     if (!a) {
-      if (windowMissions.some((w) => w.id === m.id) && !soraSet.has(m.id)) {
+      if (windowIds.has(m.id) && !soraSet.has(m.id)) {
         issues.push({ id: `${m.id}-ra`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null, code: "missingRiskAssessment", severity: "warning" });
       }
       continue;
