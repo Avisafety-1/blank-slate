@@ -755,6 +755,8 @@ export type Database = {
       audit_findings: {
         Row: {
           category: string
+          checklist_item_id: string | null
+          closure_comment: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -764,6 +766,7 @@ export type Database = {
           reference: string | null
           responsible_user_id: string | null
           review_id: string | null
+          self_verified: boolean
           severity: string
           source_scanner_code: string | null
           status: string
@@ -773,6 +776,8 @@ export type Database = {
         }
         Insert: {
           category: string
+          checklist_item_id?: string | null
+          closure_comment?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -782,6 +787,7 @@ export type Database = {
           reference?: string | null
           responsible_user_id?: string | null
           review_id?: string | null
+          self_verified?: boolean
           severity?: string
           source_scanner_code?: string | null
           status?: string
@@ -791,6 +797,8 @@ export type Database = {
         }
         Update: {
           category?: string
+          checklist_item_id?: string | null
+          closure_comment?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -800,6 +808,7 @@ export type Database = {
           reference?: string | null
           responsible_user_id?: string | null
           review_id?: string | null
+          self_verified?: boolean
           severity?: string
           source_scanner_code?: string | null
           status?: string
@@ -808,6 +817,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "audit_findings_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "audit_checklist_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audit_findings_company_id_fkey"
             columns: ["company_id"]
