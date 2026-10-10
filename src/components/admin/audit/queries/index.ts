@@ -24,6 +24,7 @@ import {
   type MissionLike,
   missionWithoutFlightLogIssue,
   requiresRiskAssessment,
+  reminderRowsFromMessages,
 } from "../lib/operationsAnalysis";
 import { matchPossibleLogs, type UnlinkedLog } from "../lib/missingFlightLogs";
 import type {
@@ -810,17 +811,6 @@ export async function fetchReminderRows(ids: string[], since?: string): Promise<
     return q.order("id").range(a, b);
   });
   return reminderRowsFromMessages(rows);
-}
-
-/** Messages without a recipient row were never delivered: they are left out (finding stays "not sent"). */
-export function reminderRowsFromMessages(rows: any[]): { finding_key: string | null; status: string; created_at: string }[] {
-  const out: { finding_key: string | null; status: string; created_at: string }[] = [];
-  for (const r of rows) {
-    for (const rec of (r.internal_message_recipients ?? []) as { status: string }[]) {
-      out.push({ finding_key: r.finding_key, status: rec.status, created_at: r.created_at });
-    }
-  }
-  return out;
 }
 
 export async function fetchReminderRowsForUser(userId: string, companyId: string) {
