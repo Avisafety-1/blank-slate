@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ interface IncidentDetailDialogProps {
   incident: Incident | null;
   onEditRequest?: (incident: Incident) => void;
   /** Rendered under the header, e.g. a reminder quick-action card. */
-  topSlot?: React.ReactNode;
+  topSlot?: ReactNode;
 }
 
 const severityColors = {
@@ -58,7 +59,7 @@ const statusColors = {
   Ferdigbehandlet: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30",
 };
 
-export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest }: IncidentDetailDialogProps) => {
+export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditRequest, topSlot }: IncidentDetailDialogProps) => {
   const { user, companyId, parentCompanyId, ensureValidToken, isAdmin, departmentsEnabled } = useAuth();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith('en') ? enUS : nb;
@@ -408,6 +409,7 @@ export const IncidentDetailDialog = ({ open, onOpenChange, incident, onEditReque
             </Button>
           </div>
         </DialogHeader>
+        {topSlot}
         
         <div className="space-y-4">
           {isAdmin && (

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmail } from "../_shared/resend-email.ts";
 import { sendGatewaySms } from "../_shared/sms.ts";
+import { emailActionLinks } from "../_shared/reminderActions.ts";
 import { getEmailConfig, sanitizeSubject, formatSenderAddress } from "../_shared/email-config.ts";
 
 const corsHeaders = {
@@ -139,10 +140,17 @@ serve(async (req) => {
           receipts.push({ message_id: msg.id, channel: "email", status: "failed", error: "missing_email" });
         } else {
           try {
+            // Quick-action buttons are plain links into the app: they open a confirmation card and never act on open.
+            const actionRows = emailActionLinks(payload.finding_key, msg.id, r.preferred_language);
+            const actionsHtml = actionRows.map((row) => `
+                <p style="margin:12px 0 0">${row.actions.map((a) =>
+                  `<a href="${APP_URL}${a.path}" style="display:inline-block;margin:0 8px 8px 0;border:1px solid #0f172a;color:#0f172a;padding:8px 14px;border-radius:6px;text-decoration:none">${esc(a.label)}</a>`
+                ).join("")}</p>`).join("");
             const html = `
               <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:auto;padding:24px;color:#0f172a">
                 <h2 style="margin:0 0 12px">${esc(payload.subject)}</h2>
                 <p style="white-space:pre-wrap;line-height:1.5">${esc(payload.body)}</p>
+                ${actionsHtml}
                 <p style="margin-top:24px">
                   <a href="${deepLinkAbs}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Åpne i AviSafe</a>
                 </p>
