@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Pågående
-- [ ] Innboks: åpne og behandle saker i dialog over innboksen; sikre hurtighandlinger og e-postlenker uten automatisk mutasjon
+- [x] Innboks: åpne og behandle saker i dialog over innboksen; sikre hurtighandlinger og e-postlenker uten automatisk mutasjon
 - [x] Lesbarhet: kontraststerk gul tekst, felles WarningNote og kontroll i lys/mørk modus; kun visuelle endringer
 - [x] SORA-profildialog: la veiledning og profilfelt dele rulleområde, med synlige knapper
 - [x] Menyer: fjern lave lagoverstyringer og gi dropdown/undermenyer intern touch-rulling innenfor ledig skjermplass; behold modalitet og valg
