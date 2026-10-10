@@ -300,14 +300,15 @@ function AuditProgrammeCard({ dept, onNavigate }: { dept: string | null | undefi
               </li>
             ))}
           </ul>
-          {shownCoverage.length > 0 && (
-            <ul className="space-y-0.5 text-sm">
-              {shownCoverage.map((c) => (
-                <li key={c.unitId} className={c.tone === "danger" ? "text-status-red" : "text-status-yellow-text"}>
-                  {t(c.tone === "danger" ? "audit.overview.metrics.programme.noAudit" : "audit.overview.metrics.programme.dueSoon", { unit: c.unitName })}
-                </li>
-              ))}
-            </ul>
+          {prog.coverage && (
+            <p className={cn("text-sm", prog.coverage.tone === "danger" ? "text-status-red" : "text-status-yellow-text")}>
+              {t(prog.coverage.tone === "danger" ? "audit.overview.metrics.programme.noAudit" : "audit.overview.metrics.programme.dueSoon")}
+            </p>
+          )}
+          {!prog.coverage && filterUnitId && prog.lastClosed && (
+            <p className="text-xs text-muted-foreground">
+              {t("audit.overview.metrics.programme.coveredByOrg", { date: fmt(prog.lastClosed.date), unit: prog.lastClosed.unitName })}
+            </p>
           )}
           {total > PROGRAMME_MAX && (
             <Button variant="link" size="sm" className="h-auto p-0" onClick={() => onNavigate("internal")}>

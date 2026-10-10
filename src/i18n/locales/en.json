@@ -8262,13 +8262,14 @@
         "programme": {
           "label": "Audit programme",
           "overdue": "Overdue",
-          "noAudit": "{{unit}}: no audit in the last 12 months",
-          "dueSoon": "{{unit}}: audit due within 30 days",
+          "noAudit": "Organisation: no internal audit in the last 12 months",
+          "dueSoon": "Organisation: internal audit due within 30 days",
           "showAll": "Show all ({{count}})",
           "empty": "No upcoming audits – all units audited in the last 12 months",
-          "what": "Planned and started internal audits for the selected scope, sorted by date. Units without an audit in the last 12 months and nothing planned are listed below.",
+          "what": "Planned and started internal audits for the selected scope, sorted by date. Coverage is assessed for the organisation as a whole, because departments normally follow the same management system – an audit of the parent or any department counts for everyone.",
           "threshold": "Red: planned audit past its date, or no closed audit in 12 months. Yellow: last audit 11–12 months ago and nothing planned.",
-          "fix": "Click an audit to open it in Internal audit."
+          "fix": "Click an audit to open it in Internal audit.",
+          "coveredByOrg": "Covered by the organisation's audit programme – last audited {{date}} ({{unit}})"
         }
       }
     },
