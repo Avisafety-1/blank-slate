@@ -402,7 +402,7 @@ export const MoveDroneDialog = ({ open, onOpenChange, drone, onTransferred }: Mo
                 <div className="min-w-0">
                   <div className="text-sm font-medium truncate">{item.name}</div>
                   {item.crossLinked && (
-                    <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                    <div className="text-[11px] text-status-yellow-text">
                       {t(item.crossReason || 'resourceDialogs.moveDrone.crossLinked')}
                     </div>
                   )}

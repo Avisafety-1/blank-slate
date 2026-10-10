@@ -29,7 +29,7 @@ export const StatusReasonList = ({ reasons, className }: StatusReasonListProps) 
             <li
               key={`${r.source}-${i}`}
               className={`flex items-start gap-1.5 text-xs ${
-                isRed ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                isRed ? "text-red-600 dark:text-red-400" : "text-status-yellow-text"
               }`}
             >
               <Icon className="w-3.5 h-3.5 mt-0.5 shrink-0" />

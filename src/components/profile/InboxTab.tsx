@@ -64,7 +64,7 @@ const sevClass = (s: InboxMessage["severity"]) =>
   s === "critical"
     ? "text-status-red border-status-red/40 bg-status-red/10"
     : s === "warning"
-      ? "text-status-yellow border-status-yellow/40 bg-status-yellow/10"
+      ? "text-status-yellow-text border-status-yellow/40 bg-status-yellow/10"
       : "text-primary border-primary/40 bg-primary/10";
 
 const partyLabel = (p: MessageParty) =>

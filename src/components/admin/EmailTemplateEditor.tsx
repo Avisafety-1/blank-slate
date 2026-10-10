@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1206,9 +1207,9 @@ export const EmailTemplateEditor = ({ onOpenEmailSettings }: EmailTemplateEditor
                 </SelectContent>
               </Select>
               {isAllCompaniesMode && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+                <WarningNote className="text-xs">
                   {t("admin.emailTemplate.saveAllWarning", { count: companies.length })}
-                </p>
+                </WarningNote>
               )}
             </div>
           )}

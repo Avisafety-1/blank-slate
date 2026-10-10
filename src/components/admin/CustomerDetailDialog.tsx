@@ -124,7 +124,7 @@ export const CustomerDetailDialog = ({
       case "Planlagt":
         return "bg-blue-500/20 text-blue-500";
       case "Pågår":
-        return "bg-yellow-500/20 text-yellow-500";
+        return "bg-yellow-500/20 text-status-yellow-text";
       case "Fullført":
         return "bg-green-500/20 text-green-500";
       case "Avbrutt":
@@ -132,7 +132,7 @@ export const CustomerDetailDialog = ({
       case "Åpen":
         return "bg-orange-500/20 text-orange-500";
       case "Under behandling":
-        return "bg-yellow-500/20 text-yellow-500";
+        return "bg-yellow-500/20 text-status-yellow-text";
       case "Lukket":
         return "bg-gray-500/20 text-gray-500";
       default:
@@ -147,7 +147,7 @@ export const CustomerDetailDialog = ({
       case "Høy":
         return "bg-orange-500/20 text-orange-500";
       case "Medium":
-        return "bg-yellow-500/20 text-yellow-500";
+        return "bg-yellow-500/20 text-status-yellow-text";
       case "Lav":
         return "bg-green-500/20 text-green-500";
       default:
@@ -160,7 +160,7 @@ export const CustomerDetailDialog = ({
       case "Høy":
         return "bg-red-500/20 text-red-500";
       case "Medium":
-        return "bg-yellow-500/20 text-yellow-500";
+        return "bg-yellow-500/20 text-status-yellow-text";
       case "Lav":
         return "bg-green-500/20 text-green-500";
       default:

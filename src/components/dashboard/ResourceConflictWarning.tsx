@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { AlertTriangle, Info } from "lucide-react";
 import { format } from "date-fns";
 import { nb, enGB } from "date-fns/locale";
@@ -23,14 +24,11 @@ export const ResourceConflictWarning = ({ conflicts, compact = false }: Resource
     const title = conflict.conflictingMission.tittel;
     const time = format(new Date(conflict.conflictingMission.tidspunkt), "dd.MM HH:mm", { locale });
     return (
-      <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1">
-        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-        <span>
+      <WarningNote className="text-xs mt-1"><span>
           {compact
             ? t("conflicts.resource.usedInCompact", { title })
             : t("conflicts.resource.usedIn", { title, time })}
-        </span>
-      </div>
+        </span></WarningNote>
     );
   }
 

@@ -196,7 +196,7 @@ export const RiskScoreCard = ({
               </h3>
               <p className={cn(
                 "text-sm mt-1",
-                approvalDecision.severity === 'danger' ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"
+                approvalDecision.severity === 'danger' ? "text-red-600 dark:text-red-400" : "text-status-yellow-text"
               )}>
                 {approvalDecision.reason}
               </p>
@@ -227,7 +227,7 @@ export const RiskScoreCard = ({
               <h3 className="font-bold text-yellow-700 dark:text-yellow-300">
                 {t('riskAssessment.requiresApproval', 'Oppdraget krever manuell godkjenning')}
               </h3>
-              <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+              <p className="text-sm text-status-yellow-text mt-1">
                 {approvalReason}
               </p>
             </div>
@@ -341,7 +341,7 @@ export const RiskScoreCard = ({
                           </p>
                         ))}
                         {category.notes?.map((note, i) => (
-                          <p key={`note-${i}`} className="text-xs text-yellow-600 dark:text-yellow-400 flex items-start gap-1">
+                          <p key={`note-${i}`} className="text-xs text-status-yellow-text flex items-start gap-1">
                             <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
                             <span className="break-words">{displayRiskText(note)}</span>
                           </p>

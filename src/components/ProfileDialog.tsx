@@ -1751,17 +1751,17 @@ export const ProfileDialog = () => {
                                     expired
                                       ? "text-destructive font-semibold"
                                       : expiring
-                                      ? "text-yellow-600 dark:text-yellow-400 font-semibold"
+                                      ? "text-status-yellow-text font-semibold"
                                       : ""
                                   }`}>
-                                    {(expired || expiring) && <AlertCircle className="h-3 w-3" />}
+                                    {(expired || expiring) && <AlertCircle className={cn("h-3 w-3", expiring && !expired && "text-status-yellow")} />}
                                     <span>{t('profile.expires')}: {formatDate(comp.utloper_dato)}</span>
                                   </div>
                                 )}
                               </div>
                               {expired && (
                                 <div className="mt-2 flex items-center gap-1 text-xs text-destructive font-medium">
-                                  <AlertCircle className="h-3 w-3" />
+                                  <AlertCircle className={cn("h-3 w-3", expiring && !expired && "text-status-yellow")} />
                                   {t('profile.expiredLabel')}
                                 </div>
                               )}

@@ -714,7 +714,7 @@ export default function KartPage() {
                         currentRoute.areaKm2 <= 50
                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                           : currentRoute.areaKm2 <= 150
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            ? "bg-amber-100 text-status-yellow-text dark:bg-amber-900/30"
                             : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                       )}
                     >
@@ -841,7 +841,7 @@ export default function KartPage() {
                   currentRoute.areaKm2 <= 50
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                     : currentRoute.areaKm2 <= 150
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      ? "bg-amber-100 text-status-yellow-text dark:bg-amber-900/30"
                       : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                 )}>
                   {currentRoute.areaKm2 <= 50 ? (
@@ -1050,7 +1050,7 @@ export default function KartPage() {
                     : adjacentResult.requiredContainment === "Low"
                       ? "text-green-600 dark:text-green-400"
                       : adjacentResult.requiredContainment === "Medium"
-                        ? "text-amber-600 dark:text-amber-400"
+                        ? "text-status-yellow-text"
                         : "text-red-600 dark:text-red-400"
                 )}>{t('pages.map.adjacent')}</span>
                 <Switch

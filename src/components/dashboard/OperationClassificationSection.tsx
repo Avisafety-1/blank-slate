@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Plane, AlertTriangle, CheckCircle, MapPin, Info } from "lucide-react";
@@ -115,9 +116,9 @@ export const OperationClassificationSection = ({ data }: OperationClassification
                   <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                     {t('riskAssessment.opClassification.buffersNotCalculated', 'SORA-buffersoner ikke beregnet')}
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  <WarningNote className="text-xs mt-0.5">
                     {data.sora_buffers_recommendation || t('riskAssessment.opClassification.buffersRecommendation', 'Anbefaler å utføre SORA-bufferberegning på kartet før flyging.')}
-                  </p>
+                  </WarningNote>
                 </div>
               </div>
             </div>

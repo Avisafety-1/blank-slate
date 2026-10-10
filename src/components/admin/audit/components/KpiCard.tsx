@@ -22,7 +22,7 @@ export const KpiCard = ({ label, value, icon: Icon, hint, actionHint, tone = "de
   const toneClass = {
     default: "text-foreground",
     success: "text-status-green",
-    warning: "text-status-yellow",
+    warning: "text-status-yellow-text",
     danger: "text-status-red",
   }[tone];
   return (
@@ -39,7 +39,7 @@ export const KpiCard = ({ label, value, icon: Icon, hint, actionHint, tone = "de
     >
       <CardContent className="p-4 space-y-1">
         <div className="flex items-center gap-1.5">
-          {Icon && <Icon className={cn("h-4 w-4 shrink-0", toneClass)} />}
+          {Icon && <Icon className={cn("h-4 w-4 shrink-0", tone === "warning" ? "text-status-yellow" : toneClass)} />}
           <span className="text-xs text-muted-foreground leading-tight flex-1 min-w-0">{label}</span>
           {info}
         </div>

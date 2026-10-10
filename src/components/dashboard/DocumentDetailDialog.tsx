@@ -386,7 +386,7 @@ export const DocumentDetailDialog = ({ open, onOpenChange, document, status, can
                       daysUntilExpiry < 0 
                         ? "text-destructive font-medium"
                         : daysUntilExpiry <= document.varsel_dager_for_utløp
-                        ? "text-status-yellow"
+                        ? "text-status-yellow-text"
                         : "text-muted-foreground"
                     }`}>
                       {daysUntilExpiry < 0 

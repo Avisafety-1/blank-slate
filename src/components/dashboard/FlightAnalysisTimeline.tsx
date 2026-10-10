@@ -368,7 +368,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                       const color = e.type === 'RTH' || e.type === 'app_warning_critical'
                         ? 'text-destructive'
                         : e.type === 'LOW_BATTERY' || e.type === 'app_warning_important'
-                    ? 'text-amber-600 dark:text-amber-400'
+                    ? 'text-status-yellow-text'
                     : 'text-orange-600 dark:text-orange-400';
                   return (
                     <button
@@ -378,7 +378,7 @@ export const FlightAnalysisTimeline = ({ positions, currentIndex, onIndexChange,
                       onClick={() => { onIndexChange(e.index); setSelectedEventIdx(i); }}
                     >
                       <span className="font-mono text-muted-foreground shrink-0 mt-0.5 tabular-nums">{time}</span>
-                      <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${color}`} />
+                      <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${color === 'text-status-yellow-text' ? 'text-amber-600 dark:text-amber-400' : color}`} />
                       <div className="min-w-0">
                         <span className={`font-medium ${color}`}>{e.type}</span>
                         <p className="text-muted-foreground break-words leading-snug">{e.message}</p>

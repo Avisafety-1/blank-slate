@@ -33,7 +33,7 @@ const sectionMeta: Record<
   warning: {
     icon: AlertTriangle,
     ringCls: "border-status-yellow/60",
-    textCls: "text-status-yellow",
+    textCls: "text-status-yellow-text",
     titleKey: "audit.alerts.groupWarning",
   },
   info: {
@@ -179,7 +179,7 @@ export const ComplianceAlertsPanel = ({ findings, initialPerGroup = 5 }: Props) 
             return (
               <section key={sev} className={cn("rounded-lg border-l-4 pl-3", meta.ringCls)}>
                 <header className={cn("flex items-center gap-2 mb-1 sticky top-0 bg-card z-10 py-1", meta.textCls)}>
-                  <Icon className="w-4 h-4" />
+                  <Icon className={cn("w-4 h-4", sev === "warning" && "text-status-yellow")} />
                   <span className="text-sm font-semibold uppercase tracking-wide">
                     {t(meta.titleKey)}
                   </span>

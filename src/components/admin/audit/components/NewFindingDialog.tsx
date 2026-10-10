@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -90,7 +91,7 @@ export const NewFindingDialog = ({ open, onOpenChange, review, preset, persons, 
               emptyText={t("audit.internal.noPersons")} />
             <p className="text-xs text-muted-foreground">{t("audit.internal.responsibleHelp")}</p>
             {responsible && responsible === review.responsible_user_id && (
-              <p className="text-xs text-status-yellow">{t("audit.internal.auditorOwnsFinding")}</p>
+              <WarningNote className="text-xs">{t("audit.internal.auditorOwnsFinding")}</WarningNote>
             )}
           </div>
           <div className="space-y-1">

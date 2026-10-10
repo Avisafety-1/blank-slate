@@ -861,8 +861,8 @@ export const EquipmentLogbookDialog = ({
                     const latestHealthValue = computeHealth(latest);
                     const firstHealthValue = computeHealth(first);
                     const healthColor = levelColorClass(batteryHealthLevel(latestHealthValue, batteryConfig));
-                    const tempColor = latestTempMax == null ? '' : latestTempMax > 50 ? 'text-destructive' : latestTempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
-                    const voltageColor = latestVoltageMin == null ? '' : latestVoltageMin < 3.0 ? 'text-destructive' : latestVoltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : 'text-emerald-600 dark:text-emerald-400';
+                    const tempColor = latestTempMax == null ? '' : latestTempMax > 50 ? 'text-destructive' : latestTempMax > 40 ? 'text-status-yellow-text' : 'text-emerald-600 dark:text-emerald-400';
+                    const voltageColor = latestVoltageMin == null ? '' : latestVoltageMin < 3.0 ? 'text-destructive' : latestVoltageMin < 3.3 ? 'text-status-yellow-text' : 'text-emerald-600 dark:text-emerald-400';
 
                     return (
                       <div className="space-y-4">
@@ -978,12 +978,12 @@ export const EquipmentLogbookDialog = ({
                                   {rowHealth != null ? `${rowHealth}%` : '—'}
                                 </span>
 
-                                <span className={entry.tempMax != null ? (entry.tempMax > 50 ? 'text-destructive' : entry.tempMax > 40 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                <span className={entry.tempMax != null ? (entry.tempMax > 50 ? 'text-destructive' : entry.tempMax > 40 ? 'text-status-yellow-text' : '') : ''}>
                                   {entry.tempMin != null || entry.tempMax != null
                                     ? `${entry.tempMin ?? '?'}–${entry.tempMax ?? '?'}°C`
                                     : '—'}
                                 </span>
-                                <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-yellow-600 dark:text-yellow-400' : '') : ''}>
+                                <span className={entry.voltageMin != null ? (entry.voltageMin < 3.0 ? 'text-destructive' : entry.voltageMin < 3.3 ? 'text-status-yellow-text' : '') : ''}>
                                   {entry.voltageMin != null ? `${entry.voltageMin.toFixed(2)}V` : '—'}
                                 </span>
                                 <span className={levelColorClass(cellDeviationLevel(entry.cellDeviation, batteryConfig))}>

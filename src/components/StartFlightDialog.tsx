@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { getCachedData, setCachedData } from "@/lib/offlineCache";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useSoraApprovalEnabled } from "@/hooks/useSoraApprovalEnabled";
@@ -1006,7 +1007,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                           </span>
                           <div className="flex items-center gap-2">
                             {unavailable ? (
-                              <span className="text-xs text-amber-600 dark:text-amber-400">
+                              <span className="text-xs text-status-yellow-text">
                                 {t('flight.checklistUnavailableShort')}
                               </span>
                             ) : isCompleted ? (
@@ -1258,7 +1259,7 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
                         {unavailable ? t('flight.checklistUnavailable') : (missionChecklistTitles[id] || '…')}
                       </span>
                       {unavailable ? (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                        <span className="text-xs text-status-yellow-text">
                           {t('flight.checklistUnavailableShort')}
                         </span>
                       ) : done ? (
@@ -1501,29 +1502,26 @@ export function StartFlightDialog({ open, onOpenChange, onStartFlight }: StartFl
             {hasIncompleteChecklists && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                <p className="text-amber-600 dark:text-amber-400">
+                <WarningNote className="">
                   {t('flight.checklistNotCompleted')}
-                </p>
+                </WarningNote>
               </div>
             )}
 
             {hasUnavailableChecklists && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
                 <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                <p className="text-amber-600 dark:text-amber-400">
+                <WarningNote className="">
                   {t('flight.checklistUnavailableHint')}
-                </p>
+                </WarningNote>
               </div>
             )}
 
             {/* SORA requirement warning */}
             {missingSora && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm">
-                <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                <p className="text-amber-600 dark:text-amber-400">
+              <WarningNote>
                   SORA-analyse mangler. Gjennomfør SORA før du starter flyging.
-                </p>
-              </div>
+                </WarningNote>
             )}
 
             {/* Ninox approval warning */}

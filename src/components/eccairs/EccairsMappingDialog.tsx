@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -634,10 +635,7 @@ export function EccairsMappingDialog({
             </div>
 
             {!requiredFieldsFilled && (
-              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm">
-                <AlertTriangle className="w-4 h-4" />
-                <span>{t("eccairs.mappingDialog.requiredFieldsWarning")}</span>
-              </div>
+              <WarningNote className="text-sm"><span>{t("eccairs.mappingDialog.requiredFieldsWarning")}</span></WarningNote>
             )}
           </div>
         )}

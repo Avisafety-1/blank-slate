@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -221,7 +222,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
           <Badge variant={f.severity === "critical" ? "destructive" : "outline"}>{t(`audit.internal.levelLabel.${f.severity}`)}</Badge>
           <Badge variant="outline">{f.category}</Badge>
           <Badge variant="secondary">{t(`audit.internal.displayStatus.${display}`)}</Badge>
-          {verified && f.self_verified && <Badge variant="outline" className="border-status-yellow text-status-yellow">{t("audit.internal.selfVerified")}</Badge>}
+          {verified && f.self_verified && <Badge variant="outline" className="border-status-yellow text-status-yellow-text">{t("audit.internal.selfVerified")}</Badge>}
           {f.reference && <span className="text-xs text-muted-foreground">{f.reference}</span>}
           {f.verified_at && <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />{t("audit.internal.verifiedAt", { date: new Date(f.verified_at).toLocaleDateString(i18n.language) })}</span>}
         </div>
@@ -422,7 +423,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
                     return (
                       <li key={s.id} className="flex justify-between gap-2">
                         <span>{sectionLabel(s.section_key)}</span>
-                        <span className={done < items.length ? "text-status-yellow" : "text-muted-foreground"}>{done}/{items.length}</span>
+                        <span className={done < items.length ? "text-status-yellow-text" : "text-muted-foreground"}>{done}/{items.length}</span>
                       </li>
                     );
                   })}
@@ -514,7 +515,7 @@ export const AuditDetailDialog = ({ review, open, onOpenChange, canEdit, persons
             </DialogHeader>
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [touch-action:pan-y] px-4 sm:px-6 py-2 space-y-2">
               {closing?.severity !== "info" && <p className="text-sm text-muted-foreground">{t("audit.internal.verifyHelp")}</p>}
-              {closing && isSelf(closing) && <p className="text-sm text-status-yellow">{t("audit.internal.selfVerifyWarning")}</p>}
+              {closing && isSelf(closing) && <WarningNote className="text-sm">{t("audit.internal.selfVerifyWarning")}</WarningNote>}
               <Label>{closing && commentRequired(closing) ? t("audit.internal.closureCommentRequired") : t("audit.internal.closureCommentOptional")}</Label>
               <Textarea rows={3} value={closureComment} onChange={(e) => setClosureComment(e.target.value)} />
             </div>

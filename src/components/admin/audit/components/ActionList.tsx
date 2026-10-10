@@ -49,14 +49,14 @@ export const ReminderPhaseBadge = ({ phase }: { phase: ReminderPhase }) => {
   const { t } = useTranslation();
   const meta = {
     none: { icon: MailX, cls: "text-muted-foreground border-border" },
-    waiting: { icon: Clock, cls: "text-status-yellow border-status-yellow/50" },
+    waiting: { icon: Clock, cls: "text-status-yellow-text border-status-yellow/50" },
     noResponse: { icon: Hourglass, cls: "text-status-red border-status-red/50" },
     done: { icon: CheckCircle2, cls: "text-status-green border-status-green/50" },
   }[phase];
   const Icon = meta.icon;
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs whitespace-nowrap", meta.cls)}>
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className={cn("h-3.5 w-3.5", phase === "waiting" && "text-status-yellow")} />
       {t(`audit.action.reminder.${phase}`)}
     </span>
   );

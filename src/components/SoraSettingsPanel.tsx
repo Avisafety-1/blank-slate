@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { SoraSettings } from "@/types/map";
 import type { SoraPopulationDensityResult } from "@/lib/adjacentAreaCalculator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -358,9 +359,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
           </p>
         )}
         {selectedDrone && !catalogSpecs?.characteristic_dimension_m && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400">
-            {t("soraPanel.cdMissing")}
-          </p>
+          <WarningNote className="text-[11px]">{t("soraPanel.cdMissing")}</WarningNote>
         )}
       </div>
 
@@ -527,7 +526,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
               <p className="text-[10px] text-muted-foreground">{t("soraPanel.flightGeo")}</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{suggestion.suggested_contingency_buffer_m}m</p>
+              <p className="text-lg font-bold text-status-yellow-text">{suggestion.suggested_contingency_buffer_m}m</p>
               <p className="text-[10px] text-muted-foreground">SCV</p>
             </div>
             <div>
@@ -580,7 +579,7 @@ export function SoraSettingsPanel({ settings, onChange, onDroneSelected, initial
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className="text-xs text-muted-foreground">{t("soraPanel.contingencyArea")}</Label>
-          <span className="text-xs font-mono text-amber-600 dark:text-amber-400">{settings.contingencyDistance}m</span>
+          <span className="text-xs font-mono text-status-yellow-text">{settings.contingencyDistance}m</span>
         </div>
         <Slider
           min={1}

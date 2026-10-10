@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1125,9 +1126,9 @@ export const CompanySoraConfigSection = () => {
                 </Label>
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
                   <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                  <WarningNote className="text-xs">
                     {t("sora.companyConfig.policyNotesWarning")}
-                  </p>
+                  </WarningNote>
                 </div>
                 <Textarea
                   value={config.policy_notes}

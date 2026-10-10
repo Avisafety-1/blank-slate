@@ -1318,7 +1318,7 @@ const Status = () => {
                     unplannedPct >= 50
                       ? "text-destructive"
                       : unplannedPct >= 20
-                        ? "text-status-yellow"
+                        ? "text-status-yellow-text"
                         : "text-foreground"
                   )}
                 >

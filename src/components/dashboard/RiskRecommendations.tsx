@@ -119,7 +119,7 @@ export const RiskRecommendations = ({
             )}
             {mediumPriority.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 uppercase mb-2">
+                <p className="text-xs font-semibold text-status-yellow-text uppercase mb-2">
                   {t('riskAssessment.priority.medium', 'Medium prioritet')}
                 </p>
                 {renderRecommendationGroup(mediumPriority, 'medium')}

@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { SoraProfileBadge, soraStatusClass } from "@/components/sora/SoraProfileBadge";
 import { deriveSoraProfileStatus, type SoraProfileStatus } from "@/hooks/useSoraProfile";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -1092,7 +1093,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                       {(() => {
                         const st = soraDocuments.find((d) => d.id === selectedSoraDocumentId)?.status;
                         return st === "draft" || st === "outdated"
-                          ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("riskAssessment.soraProfileNotConfirmed")}</p>
+                          ? <WarningNote className="text-xs">{t("riskAssessment.soraProfileNotConfirmed")}</WarningNote>
                           : null;
                       })()}
                       <p className="text-xs text-muted-foreground">{t("riskAssessment.soraDocumentInfo")}</p>
@@ -1117,7 +1118,7 @@ export const RiskAssessmentDialog = ({ open, onOpenChange, mission, droneId, ini
                           pilotInputs.flightHeight === routeHeightM ? (
                             <p className="text-xs text-muted-foreground mt-1">{t('riskAssessment.fromRoutePlanner')}</p>
                           ) : (
-                            <p className="text-xs text-status-yellow mt-1">{t('riskAssessment.differsFromRouteHeight', { value: routeHeightM })}</p>
+                            <WarningNote className="text-xs mt-1">{t('riskAssessment.differsFromRouteHeight', { value: routeHeightM })}</WarningNote>
                           )
                         )}
                       </div>

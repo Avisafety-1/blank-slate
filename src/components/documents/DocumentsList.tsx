@@ -93,8 +93,8 @@ const ExpiryCell = ({ doc, status, t }: { doc: Document; status: DocumentStatusF
 
   if (status === "expiring_soon") {
     return (
-      <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium text-sm">
-        <Clock className="h-3.5 w-3.5 shrink-0" />
+      <span className="flex items-center gap-1 text-status-yellow-text font-medium text-sm">
+        <Clock className="h-3.5 w-3.5 shrink-0 text-status-yellow" />
         {formatted}
       </span>
     );

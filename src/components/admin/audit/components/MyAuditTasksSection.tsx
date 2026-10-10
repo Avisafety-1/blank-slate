@@ -45,7 +45,7 @@ export const MyAuditTasksSection = () => {
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     {task.reviewTitle && <span>{task.reviewTitle}</span>}
-                    <span className={cn(tone === "overdue" && "text-destructive font-medium", tone === "soon" && "text-status-yellow font-medium")}>
+                    <span className={cn(tone === "overdue" && "text-destructive font-medium", tone === "soon" && "text-status-yellow-text font-medium")}>
                       {task.deadline ? t("audit.task.deadlineShort", { date: new Date(task.deadline).toLocaleDateString(i18n.language) }) : t("audit.task.noDeadline")}
                     </span>
                   </div>

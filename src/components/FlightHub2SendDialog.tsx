@@ -1,3 +1,4 @@
+import { WarningNote } from "@/components/ui/warning-note";
 import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -345,16 +346,10 @@ export const FlightHub2SendDialog = ({
             ) : (
               <div className="space-y-1.5">
                 {!droneModelName && (
-                  <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>{t('fh2Dialog.noDroneSelected')}</span>
-                  </div>
+                  <WarningNote className="text-xs"><span>{t('fh2Dialog.noDroneSelected')}</span></WarningNote>
                 )}
                 {droneModelName && !autoMatch && (
-                  <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>{t('fh2Dialog.couldNotMatch', { model: droneModelName })}</span>
-                  </div>
+                  <WarningNote className="text-xs"><span>{t('fh2Dialog.couldNotMatch', { model: droneModelName })}</span></WarningNote>
                 )}
                 <Select value={manualDjiModel || "__default"} onValueChange={(v) => setManualDjiModel(v === "__default" ? "" : v)}>
                   <SelectTrigger className="text-sm">

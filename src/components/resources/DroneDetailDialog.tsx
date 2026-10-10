@@ -777,7 +777,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
     const daysUntil = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysUntil < 0) return "text-red-600 dark:text-red-400";
-    if (daysUntil <= 14) return "text-amber-600 dark:text-amber-400";
+    if (daysUntil <= 14) return "text-status-yellow-text";
     return "text-green-600 dark:text-green-400";
   };
 
@@ -1043,7 +1043,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
             </div>
           )}
           {!isEditing && payloadStatus !== "ok" && drone.payload !== null && (
-            <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
+            <p className={`text-xs mt-1 ${payloadStatus === "exceeded" ? "text-destructive" : "text-status-yellow-text"}`}>
               {payloadStatus === "exceeded"
                 ? tt("payloadExceeded", { weight: totalEquipmentWeight.toFixed(2), payload: drone.payload })
                 : tt("payloadNearLimit", { weight: totalEquipmentWeight.toFixed(2), payload: drone.payload })
@@ -1378,7 +1378,7 @@ export const DroneDetailDialog = ({ open, onOpenChange, drone: initialDrone, onD
                             </div>
                             <p className="text-xs text-muted-foreground">{eq.type} • {tt("linkedEquipment.snPrefix")}: {eq.serienummer}</p>
                             {eqHint && (
-                              <p className={`text-xs ${eqStatus === "Rød" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                              <p className={`text-xs ${eqStatus === "Rød" ? "text-red-600 dark:text-red-400" : "text-status-yellow-text"}`}>
                                 {eqHint}
                               </p>
                             )}

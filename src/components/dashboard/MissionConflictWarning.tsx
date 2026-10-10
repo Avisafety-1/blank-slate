@@ -30,7 +30,7 @@ export const MissionConflictWarning = ({ conflicts }: Props) => {
   return (
     <Alert className="border-amber-500/50 bg-amber-500/5 text-foreground">
       <AlertTriangle className="h-4 w-4 text-amber-500" />
-      <AlertTitle className="text-amber-700 dark:text-amber-400">
+      <AlertTitle className="text-status-yellow-text">
         {t("conflicts.mission.title")}
       </AlertTitle>
       <AlertDescription className="space-y-2 mt-2">
