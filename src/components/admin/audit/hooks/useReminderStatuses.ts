@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { splitFindingKeys } from "../lib/operationsAnalysis";
 
 export type ReminderState = "not_sent" | "sent_open" | "sent_closed";
 
@@ -37,12 +38,14 @@ export function useReminderStatuses() {
 
       const map: Record<string, ReminderStatus> = {};
       for (const row of data ?? []) {
-        const key = row.finding_key as string;
+        // Bulk reminders carry several keys (one per mission), comma-separated.
+        for (const key of splitFindingKeys(row.finding_key as string)) {
         if (!map[key]) map[key] = { state: "not_sent", total: 0, done: 0, lastSentAt: null };
         const s = map[key];
         s.total += 1;
         if (row.status === "done") s.done += 1;
         if (!s.lastSentAt || row.created_at > s.lastSentAt) s.lastSentAt = row.created_at as string;
+        }
       }
       for (const key of Object.keys(map)) {
         const s = map[key];
