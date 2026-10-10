@@ -68,3 +68,41 @@ describe("operations score", () => {
     expect(operationsCheckResults(issues, 2, true).includes("fail")).toBe(false);
   });
 });
+
+import { incidentIssues, noGoApprovalState, droneStatusCheck } from "../src/components/admin/audit/lib/operationsAnalysis";
+
+describe("flown with NO-GO", () => {
+  const assessed = "2026-10-01T10:00:00Z";
+  test("approved after the NO-GO assessment is OK", () => {
+    expect(noGoApprovalState({ approval_status: "approved", approved_at: "2026-10-01T11:00:00Z" }, assessed)).toBe("approved");
+  });
+  test("approved before the NO-GO assessment is still a finding", () => {
+    expect(noGoApprovalState({ approval_status: "approved", approved_at: "2026-09-30T11:00:00Z" }, assessed)).toBe("approvedBefore");
+  });
+  test("not approved is a finding", () => {
+    expect(noGoApprovalState({ approval_status: "pending_approval", approved_at: null }, assessed)).toBe("notApproved");
+  });
+});
+
+describe("incidents", () => {
+  const now = new Date("2026-10-10T12:00:00Z");
+  test("open more than 30 days is warning, critical when high severity", () => {
+    const base = { id: "i", status: "Åpen", opprettet_dato: "2026-09-01T00:00:00Z", oppfolgingsansvarlig_id: "p" };
+    expect(incidentIssues({ ...base, alvorlighetsgrad: "Lav" }, now)[0]).toMatchObject({ code: "incidentOpenTooLong", severity: "warning" });
+    expect(incidentIssues({ ...base, alvorlighetsgrad: "Høy" }, now)[0].severity).toBe("critical");
+    expect(incidentIssues({ ...base, alvorlighetsgrad: "Kritisk" }, now)[0].severity).toBe("critical");
+  });
+  test("open without follow-up owner is a warning; closed incidents are ignored", () => {
+    expect(incidentIssues({ id: "i", status: "Under behandling", opprettet_dato: "2026-10-09T00:00:00Z" }, now).map((x) => x.code)).toEqual(["incidentNoResponsible"]);
+    expect(incidentIssues({ id: "i", status: "Lukket", opprettet_dato: "2026-01-01T00:00:00Z" }, now)).toEqual([]);
+    expect(incidentIssues({ id: "i", status: "Ferdigbehandlet", opprettet_dato: "2026-01-01T00:00:00Z" }, now)).toEqual([]);
+  });
+});
+
+describe("fleet score", () => {
+  test("red fails, yellow warns, green passes", () => {
+    expect(droneStatusCheck("Rød")).toBe("fail");
+    expect(droneStatusCheck("Gul")).toBe("warn");
+    expect(droneStatusCheck("Grønn")).toBe("pass");
+  });
+});
