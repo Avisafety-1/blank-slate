@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "./AuditEntityDialogHost";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowDown, ArrowRight, ArrowUp, CheckCircle2, Clock, Hourglass, MailX, MoreHorizontal, Send, ShieldCheck,
@@ -111,11 +112,7 @@ export const ActionList = ({
 
   const Actions = ({ f }: { f: ScannerFinding }) => (
     <div className="flex items-center gap-1.5 justify-end">
-      {f.deepLink?.path && (
-        <Button size="sm" variant="outline" onClick={() => navigate(f.deepLink!.path)}>
-          {t("audit.alerts.open")} <ArrowRight className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      )}
+      <OpenEntityButton entityType={f.entityType} entityId={f.entityId} />
       <Button size="sm" variant="outline" onClick={() => setReminderFor(f)}>
         <Send className="mr-1 h-3.5 w-3.5" /> {t("audit.action.remind")}
       </Button>

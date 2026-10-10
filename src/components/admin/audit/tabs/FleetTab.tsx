@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "../components/AuditEntityDialogHost";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,9 +99,7 @@ export const FleetTab = () => {
                       <Button size="sm" variant="outline" onClick={() => setReminder(droneFinding(d))}>
                         <BellRing className="w-3.5 h-3.5 mr-1.5" /> {t("audit.fleet.sendReminder")}
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => navigate(auditDeepLink("drone", d.id).path)}>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Button>
+                      <OpenEntityButton entityType="drone" entityId={d.id} variant="ghost" />
                     </div>
                   </li>
                 ))}
@@ -180,9 +179,7 @@ export const FleetTab = () => {
                       )}
                     </div>
                     <div className="flex justify-end">
-                      <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("drone", f.id).path)}>
-                        {t("audit.fleet.openDrone")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                      </Button>
+                      <OpenEntityButton entityType="drone" entityId={f.id} label={t("audit.fleet.openDrone")} />
                     </div>
                   </CardContent>
                 )}

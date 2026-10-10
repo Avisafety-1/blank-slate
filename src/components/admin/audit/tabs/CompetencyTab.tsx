@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "../components/AuditEntityDialogHost";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,9 +110,7 @@ export const CompetencyTab = () => {
                       ))}
                     </ul>
                     <div className="flex justify-end pt-2">
-                      <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("person", g.profileId).path)}>
-                        {t("audit.competency.openPerson")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                      </Button>
+                      <OpenEntityButton entityType="person" entityId={g.profileId} label={t("audit.competency.openPerson")} />
                     </div>
                   </CardContent>
                 )}

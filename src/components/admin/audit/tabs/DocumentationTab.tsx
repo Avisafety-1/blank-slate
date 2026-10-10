@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "../components/AuditEntityDialogHost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,9 +91,7 @@ export const DocumentationTab = () => {
                 <div className="text-muted-foreground text-xs mt-2">{t("audit.documents.nextReview")}</div>
                 <div>{d.nextReview ? new Date(d.nextReview).toLocaleDateString(i18n.language) : "—"}</div>
                 <div className="pt-2 flex justify-end">
-                  <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("document", d.id).path)}>
-                    {t("audit.documents.open")}
-                  </Button>
+                  <OpenEntityButton entityType="document" entityId={d.id} label={t("audit.documents.open")} />
                 </div>
               </CardContent>
             </Card>
