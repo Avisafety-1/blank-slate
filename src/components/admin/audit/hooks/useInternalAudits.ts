@@ -91,6 +91,14 @@ function useDbMutation<T, R = unknown>(fn: (input: T) => Promise<R>) {
 
 const check = ({ error }: { error: any }) => { if (error) throw error; };
 
+export type AuditNotifyEvent = "assigned" | "ready_for_verification" | "verified";
+/** Fire-and-forget: the server derives recipients from state. A failure never rolls back the save. */
+export function notifyAudit(event: AuditNotifyEvent, findingId: string, actionId?: string | null) {
+  void supabase.functions.invoke("audit-notify", { body: { event, findingId, actionId: actionId ?? null } })
+    .then(({ error }) => { if (error) console.warn("[audit-notify]", error); })
+    .catch((e) => console.warn("[audit-notify]", e));
+}
+
 export function useInternalAuditMutations() {
   return {
     createReview: useDbMutation(async (i: {
@@ -124,22 +132,36 @@ export function useInternalAuditMutations() {
         checklist_item_id: i.checklist_item_id ?? null,
       }).select("id").single();
       if (error) throw error;
+      if (i.responsible_user_id) notifyAudit("assigned", data.id);
       return data.id as string;
     }),
-    updateFinding: useDbMutation(async (i: { id: string; patch: Record<string, unknown> }) =>
-      check(await db.from("audit_findings").update(i.patch).eq("id", i.id))),
+    updateFinding: useDbMutation(async (i: { id: string; patch: Record<string, unknown> }) => {
+      check(await db.from("audit_findings").update(i.patch).eq("id", i.id));
+      if (i.patch.responsible_user_id) notifyAudit("assigned", i.id);
+      if (i.patch.status === "verified") notifyAudit("verified", i.id);
+    }),
     deleteFinding: useDbMutation(async (id: string) => check(await db.from("audit_findings").delete().eq("id", id))),
     createAction: useDbMutation(async (i: {
       finding: Pick<FindingRow, "id" | "company_id" | "responsible_user_id" | "deadline">; description: string;
       responsible_user_id?: string | null; deadline?: string | null;
-    }) =>
-      check(await db.from("audit_actions").insert({
+    }) => {
+      const responsible = i.responsible_user_id !== undefined ? i.responsible_user_id : i.finding.responsible_user_id;
+      const { data, error } = await db.from("audit_actions").insert({
         finding_id: i.finding.id, company_id: i.finding.company_id, description: i.description,
-        responsible_user_id: i.responsible_user_id !== undefined ? i.responsible_user_id : i.finding.responsible_user_id,
+        responsible_user_id: responsible,
         deadline: i.deadline !== undefined ? i.deadline : i.finding.deadline,
-      }))),
-    updateAction: useDbMutation(async (i: { id: string; patch: Record<string, unknown> }) =>
-      check(await db.from("audit_actions").update(i.patch).eq("id", i.id))),
+      }).select("id").single();
+      if (error) throw error;
+      if (responsible) notifyAudit("assigned", i.finding.id, data.id);
+    }),
+    updateAction: useDbMutation(async (i: { id: string; findingId?: string; patch: Record<string, unknown> }) => {
+      const { data, error } = await db.from("audit_actions").update(i.patch).eq("id", i.id).select("finding_id").maybeSingle();
+      if (error) throw error;
+      const findingId = i.findingId ?? data?.finding_id;
+      if (!findingId) return;
+      if (i.patch.responsible_user_id) notifyAudit("assigned", findingId, i.id);
+      if (i.patch.status === "closed") notifyAudit("ready_for_verification", findingId);
+    }),
     deleteAction: useDbMutation(async (id: string) => check(await db.from("audit_actions").delete().eq("id", id))),
   };
 }
