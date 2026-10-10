@@ -9848,5 +9848,41 @@
       "confirmBlocked": "Alle droner må være koblet til registeret og forslag godtatt før profilen kan bekreftes.",
       "done": "Ferdig"
     }
+  },
+  "reminders": {
+    "actions": {
+      "notFlown": "Ble ikke fløyet",
+      "flown": "Ble fløyet",
+      "changeDate": "Endre dato",
+      "finishMission": "Avslutt oppdraget",
+      "endFlight": "Avslutt flygingen",
+      "uploadLog": "Last opp / knytt flylogg",
+      "takeResponsibility": "Jeg tar ansvaret"
+    },
+    "prompt": {
+      "MissionPlannedPastDue": "«{{title}}» er passert, men står som planlagt. Hva skjedde?",
+      "MissionInProgressStale": "«{{title}}» står fortsatt som pågående.",
+      "ActiveFlightStale": "En flyging på «{{title}}» er aldri avsluttet.",
+      "MissionWithoutFlightLog": "«{{title}}» mangler flylogg. Ble oppdraget fløyet?",
+      "IncidentNoResponsible": "Hendelsen «{{title}}» har ingen oppfølgingsansvarlig."
+    },
+    "confirm": {
+      "notFlown": "Oppdraget «{{title}}» settes til Avbrutt.",
+      "flown": "Oppdraget «{{title}}» settes til Fullført. Deretter kan du laste opp flyloggen.",
+      "finishMission": "Oppdraget «{{title}}» settes til Fullført.",
+      "endFlight": "Flygingen avsluttes og fjernes fra live-oversikten.",
+      "takeResponsibility": "Du settes som oppfølgingsansvarlig for «{{title}}»."
+    },
+    "confirmNotify": "Avsender av påminnelsen ({{name}}) får svar i tråden, og påminnelsen markeres som ferdig.",
+    "confirmButton": "Bekreft",
+    "commentPlaceholder": "Kommentar (valgfritt)",
+    "commentLabel": "Kommentar",
+    "replyBody": "Handling utført: {{action}} – «{{title}}». Utført av {{who}}, {{when}}.",
+    "toast": "Utført: {{action}}",
+    "toastNotified": "Utført: {{action}}. {{name}} er varslet.",
+    "failed": "Kunne ikke utføre handlingen",
+    "open": "Åpne",
+    "flightDialogTitle": "Påminnelse om flyging",
+    "flightDialogHint": "Bare piloten som startet flygingen kan avslutte den herfra."
   }
 }
