@@ -10,10 +10,11 @@ Fanen «Internrevisjon» lagrer revisjoner, punkter, funn og tiltak i databasen 
 - `audit_reviews`: `audited_company_id` (FK companies, backfill = company_id, deretter NOT NULL) og `template_key` ('open'|'specific'|'luc', standard 'specific').
 - `audit_checklist_items`: `item_key`, `reference`.
 - Policyer: DROP POLICY IF EXISTS på alle eksisterende policyer på de fem tabellene, og nye policyer nøyaktig som beskrevet (lesing via synlige selskap og revidert enhet; skriving for admin/administrator/superadmin i eierselskapet; UPDATE har samme vilkår i USING og WITH CHECK; ansvarlig person kan oppdatere egne funn og tiltak).
-- Hjelpefunksjon `is_audit_owner_admin(review_id)` (SECURITY DEFINER, search_path=public, REVOKE fra PUBLIC/anon, GRANT kun til authenticated fordi RLS bruker den).
+- Hjelpefunksjon `is_audit_owner_admin(review_id, company_id)` (SECURITY DEFINER, search_path=public, REVOKE fra PUBLIC/anon, GRANT kun til authenticated fordi RLS bruker den). Når review_id er satt: admin i selskapet som eier revisjonen. Når review_id er NULL (compliance-funn fra `useCreateAuditFinding` med source_scanner_code): admin/administrator/superadmin og funnets egen company_id i `get_user_visible_company_ids(auth.uid())`.
+- Funn uten revisjon: policyene for audit_findings bruker samme regler basert på funnets egen company_id (lesing via synlige selskap; INSERT/DELETE for admin; UPDATE for admin eller ansvarlig). Tiltak arver reglene fra funnet sitt, også når funnet ikke har revisjon.
 - Triggere (SECURITY DEFINER, search_path=public, REVOKE EXECUTE fra PUBLIC/anon/authenticated):
   - created_by = auth.uid() ved INSERT; company_id, review_id, finding_id og created_by er låst ved UPDATE.
-  - Funn og tiltak: company_id hentes alltid fra revisjonens revidert enhet.
+  - Funn: company_id hentes fra revisjonens revidert enhet bare når review_id er satt; uten revisjon beholdes funnets company_id (kontrollert av policyen). Tiltak: company_id hentes alltid fra funnet sitt.
   - Tiltak: closed_by/closed_at settes ved 'closed' og nullstilles ved gjenåpning.
   - Funn: ikke-admin kan bare veksle mellom open/in_progress; verified/closed krever eier-admin; verified_by/verified_at settes av serveren; admin kan ikke verifisere når vedkommende selv er ansvarlig for funnet eller et tiltak (norsk feilmelding).
   - Revisjon: lukking avvises ved åpne kritiske funn, med mindre override_reason har minst 10 tegn; closed_at = now().
@@ -30,10 +31,12 @@ Fanen «Internrevisjon» lagrer revisjoner, punkter, funn og tiltak i databasen 
 - `AuditDetailDialog` skrives om til databasemodellen: resultatvalg per punkt (Bestått/Avvik/Ikke bestått/Ikke relevant) + kommentar; beregnet seksjonsstatus; «Lag funn» fra punkt (kategori = seksjon, referanse, alvorlighet forhåndsvalgt warning og kan endres til critical); funn/tiltak med personvelger, frist og status; «Verifiser» bare for admin; ved blokkert lukking vises varsel og felt for overstyringsbegrunnelse.
 - Avdelingsbrukere ser bare lesbar visning, men kan oppdatere og lukke egne tiltak.
 - Layout: `max-h-[90vh] max-h-[90dvh]`, én scroller med `[touch-action:pan-y]`, header og knapper utenfor, `.dialog-max-h` for tastatur.
+- «Venter på verifisering»: validatoren `FindingAwaitingVerification` og `fetchFindingsAwaitingVerification` (queries/index.ts) endres til bare å telle funn med status 'in_progress' som har minst ett tiltak der alle tiltakene er 'closed'. Ingen andre deler av compliance-motoren endres.
 - Alle nye tekster legges i både no.json og en.json.
 
 ## Steg 4: Test
-- SQL-verifisering etter migrasjonen (i transaksjon med rollback, med simulert JWT): pilot kan ikke INSERT/DELETE i audit_reviews; admin kan ikke flytte company_id; klientens verified_by overskrives.
+- SQL-verifisering etter migrasjonen (i transaksjon med rollback, med simulert JWT): pilot kan ikke INSERT/DELETE i audit_reviews; admin kan ikke flytte company_id; klientens verified_by overskrives; funn uten revisjon kan opprettes av admin i eget selskap, men ikke av pilot eller for et selskap utenfor synlige selskap.
+- Enhetstest for ny «venter på verifisering»-regel: in_progress uten tiltak og med åpent tiltak telles ikke; med bare lukkede tiltak telles.
 - Enhetstest `tests/auditTemplates.test.ts`: unike punkt-nøkler per mal, og luc inneholder alle seksjonene i specific.
 - Typesjekk og eksisterende audit-tester skal fortsatt bestå. AGENTS.md får én regel om at malene kopieres ved opprettelse og at serveren setter eierskaps- og verifiseringsfelt.
 
