@@ -252,6 +252,8 @@ export interface OperationsData {
   issues: OperationsIssue[];
   /** Evaluated missions per company id (department filter). */
   missionsByCompany?: Record<string, number>;
+  /** Completed missions eligible for the flight-log check, per company id. */
+  logCoverageBase?: Record<string, number>;
   total: number;
   unplanned: {
     total: number;
