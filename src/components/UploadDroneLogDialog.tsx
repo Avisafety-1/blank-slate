@@ -277,7 +277,7 @@ const isApiLimitError = (error: any): boolean => {
 
 // ── Component ──
 
-export const UploadDroneLogDialog = ({ open, onOpenChange }: UploadDroneLogDialogProps) => {
+export const UploadDroneLogDialog = ({ open, onOpenChange, defaultMissionId }: UploadDroneLogDialogProps) => {
   const { t } = useTranslation();
   const { user, companyId, companyName } = useAuth();
   const { hasAddon } = usePlanGating();

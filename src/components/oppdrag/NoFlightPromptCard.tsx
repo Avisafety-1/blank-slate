@@ -124,7 +124,7 @@ export const NoFlightPromptCard = ({ missionId, messageId, onDone }: Props) => {
           recipient_id: reminder.sender_id,
           subject: `Re: ${reminder.subject}`,
           body,
-          deep_link: `/oppdrag?id=${missionId}`,
+          deep_link: `/oppdrag?mission=${missionId}`,
           parent_id: reminder.id,
           thread_root_id: reminder.thread_root_id ?? reminder.id,
           severity: "info",
@@ -197,7 +197,7 @@ export const NoFlightPromptCard = ({ missionId, messageId, onDone }: Props) => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <UploadDroneLogDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+      <UploadDroneLogDialog open={uploadOpen} onOpenChange={setUploadOpen} defaultMissionId={missionId} />
     </>
   );
 };
