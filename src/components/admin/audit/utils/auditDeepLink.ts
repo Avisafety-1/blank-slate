@@ -25,9 +25,10 @@ export function auditDeepLink(entityType: string, entityId: string): DeepLink {
     case "incident":
     case "action":
       return { path: `/hendelser?id=${entityId}` };
+    // Opens AuditTaskDialog anywhere in the app; for actions, pass the finding id.
     case "audit_finding":
     case "audit_action":
-      return { path: `/admin?tab=audit&finding=${entityId}` };
+      return { path: `/?auditFinding=${entityId}` };
     default:
       return { path: `/admin?tab=audit` };
   }
