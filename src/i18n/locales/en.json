@@ -8598,7 +8598,7 @@
       "statusPlanned": "Planned",
       "statusInProgress": "In progress",
       "statusClosed": "Closed",
-      "closeBlocked": "Cannot close: open critical findings. Enter an override reason (at least 10 characters) to close anyway.",
+      "closeBlocked": "The audit has open Level 1 findings. Enter an override reason (at least 10 characters) to close anyway.",
       "overrideReason": "Override reason",
       "newTitle": "Annual internal audit {{year}}",
       "department": "Department",
@@ -8666,7 +8666,7 @@
       "verifiedAt": "Verified {{date}}",
       "result": {
         "pass": "Passed",
-        "warn": "Deviation",
+        "warn": "Partial / remark",
         "fail": "Failed",
         "na": "Not applicable"
       },
@@ -8686,6 +8686,50 @@
         "warning": "Deviation",
         "danger": "Failed",
         "info": "Not assessed"
+      },
+      "autoSave": "Changes are saved automatically",
+      "saving": "Saving…",
+      "savedAt": "Saved at {{time}}",
+      "saveFailed": "Could not save – try again",
+      "tabChecklist": "Checklist",
+      "tabFindings": "Findings ({{count}})",
+      "tabSummary": "Summary",
+      "reasonRequired": "Justification (required)",
+      "findingExists": "Finding created",
+      "goToFinding": "Go to finding",
+      "level": "Level",
+      "levelLabel": {
+        "critical": "Level 1 (critical)",
+        "warning": "Level 2",
+        "info": "Observation"
+      },
+      "responsibleRequired": "Responsible (required)",
+      "responsibleHelp": "The person who owns the audited area, e.g. technical manager or department head.",
+      "auditorOwnsFinding": "The auditor should not own their own findings. If you verify it yourself, you must justify it.",
+      "findingCreated": "Finding created",
+      "show": "Show",
+      "displayStatus": {
+        "open": "Open",
+        "in_progress": "Actions in progress",
+        "ready": "Ready for verification",
+        "verified": "Closed (verified)"
+      },
+      "selfVerified": "Self-verified",
+      "closureComment": "Closure justification",
+      "closeObservation": "Close observation",
+      "verifyAndClose": "Verify and close",
+      "verifyHelp": "Confirm that the actions have been completed and have worked.",
+      "selfVerifyWarning": "You are responsible yourself – give a reason for self-verification.",
+      "closureCommentRequired": "Comment (required, at least 10 characters)",
+      "closureCommentOptional": "Comment (optional)",
+      "assessedPerSection": "Assessed items per section",
+      "findingsPerLevel": "Findings per level",
+      "blockersHeader": "What prevents closing",
+      "noBlockers": "Nothing blocking – the audit can be closed.",
+      "blocker": {
+        "unassessed": "Not assessed",
+        "missingReason": "Deviation without justification",
+        "openCritical": "Open Level 1 finding"
       }
     },
     "package": {

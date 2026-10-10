@@ -29,3 +29,48 @@ describe("auditTemplates", () => {
     expect(isAwaitingVerification("open", ["closed"])).toBe(false);
   });
 });
+
+import { suggestDeadline, findingDisplayStatus, closeBlockers, onlyCriticalBlocks, defaultSeverityForResult } from "../src/components/admin/audit/lib/auditTemplates";
+
+describe("audit round A rules", () => {
+  const today = new Date(2026, 9, 10);
+  test("deadline suggestion per level", () => {
+    expect(suggestDeadline("critical", today)).toBe("2026-10-17");
+    expect(suggestDeadline("warning", today)).toBe("2026-12-09");
+    expect(suggestDeadline("info", today)).toBeNull();
+  });
+  test("default level from result", () => {
+    expect(defaultSeverityForResult("fail")).toBe("warning");
+    expect(defaultSeverityForResult("warn")).toBe("info");
+  });
+  test("ready for verification is derived", () => {
+    expect(findingDisplayStatus("in_progress", [])).toBe("in_progress");
+    expect(findingDisplayStatus("in_progress", ["closed", "open"])).toBe("in_progress");
+    expect(findingDisplayStatus("in_progress", ["closed", "closed"])).toBe("ready");
+    expect(findingDisplayStatus("closed", [])).toBe("verified");
+    expect(findingDisplayStatus("open", [])).toBe("open");
+  });
+  test("close blockers", () => {
+    const b = closeBlockers(
+      [
+        { id: "a", result: "unknown", comment: null },
+        { id: "b", result: "fail", comment: " " },
+        { id: "c", result: "warn", comment: "ok grunn" },
+        { id: "d", result: "pass", comment: null },
+      ],
+      [
+        { id: "f1", severity: "critical", status: "open" },
+        { id: "f2", severity: "critical", status: "verified" },
+        { id: "f3", severity: "warning", status: "open" },
+      ],
+    );
+    expect(b).toEqual([
+      { kind: "unassessed", itemId: "a" },
+      { kind: "missingReason", itemId: "b" },
+      { kind: "openCritical", findingId: "f1" },
+    ]);
+    expect(onlyCriticalBlocks(b)).toBe(false);
+    expect(onlyCriticalBlocks([{ kind: "openCritical", findingId: "f1" }])).toBe(true);
+    expect(onlyCriticalBlocks([])).toBe(false);
+  });
+});

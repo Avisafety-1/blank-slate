@@ -8600,7 +8600,7 @@
       "statusPlanned": "Planlagt",
       "statusInProgress": "Pågår",
       "statusClosed": "Lukket",
-      "closeBlocked": "Kan ikke lukkes: åpne kritiske funn. Oppgi en overstyringsbegrunnelse (minst 10 tegn) for å lukke likevel.",
+      "closeBlocked": "Revisjonen har åpne Nivå 1-funn. Oppgi en overstyringsbegrunnelse (minst 10 tegn) for å lukke likevel.",
       "overrideReason": "Begrunnelse for overstyring",
       "newTitle": "Årlig internrevisjon {{year}}",
       "department": "Avdeling",
@@ -8668,7 +8668,7 @@
       "verifiedAt": "Verifisert {{date}}",
       "result": {
         "pass": "Bestått",
-        "warn": "Avvik",
+        "warn": "Delvis / merknad",
         "fail": "Ikke bestått",
         "na": "Ikke relevant"
       },
@@ -8688,6 +8688,50 @@
         "warning": "Avvik",
         "danger": "Ikke bestått",
         "info": "Ikke vurdert"
+      },
+      "autoSave": "Endringer lagres automatisk",
+      "saving": "Lagrer…",
+      "savedAt": "Lagret kl. {{time}}",
+      "saveFailed": "Kunne ikke lagre – prøv igjen",
+      "tabChecklist": "Sjekkliste",
+      "tabFindings": "Funn ({{count}})",
+      "tabSummary": "Oppsummering",
+      "reasonRequired": "Begrunnelse (påkrevd)",
+      "findingExists": "Funn opprettet",
+      "goToFinding": "Gå til funn",
+      "level": "Nivå",
+      "levelLabel": {
+        "critical": "Nivå 1 (kritisk)",
+        "warning": "Nivå 2",
+        "info": "Observasjon"
+      },
+      "responsibleRequired": "Ansvarlig (påkrevd)",
+      "responsibleHelp": "Den som eier området som er revidert, f.eks. teknisk ansvarlig eller avdelingsleder.",
+      "auditorOwnsFinding": "Revisor bør ikke eie egne funn. Hvis du verifiserer selv, må du begrunne det.",
+      "findingCreated": "Funn opprettet",
+      "show": "Vis",
+      "displayStatus": {
+        "open": "Åpen",
+        "in_progress": "Tiltak pågår",
+        "ready": "Klar for verifisering",
+        "verified": "Lukket (verifisert)"
+      },
+      "selfVerified": "Egenverifisert",
+      "closureComment": "Lukkebegrunnelse",
+      "closeObservation": "Lukk observasjon",
+      "verifyAndClose": "Verifiser og lukk",
+      "verifyHelp": "Bekreft at tiltakene er gjennomført og har virket.",
+      "selfVerifyWarning": "Du er selv ansvarlig – oppgi begrunnelse for egenverifisering.",
+      "closureCommentRequired": "Kommentar (påkrevd, minst 10 tegn)",
+      "closureCommentOptional": "Kommentar (valgfri)",
+      "assessedPerSection": "Vurderte punkter per seksjon",
+      "findingsPerLevel": "Funn per nivå",
+      "blockersHeader": "Dette hindrer lukking",
+      "noBlockers": "Ingen hindringer – revisjonen kan lukkes.",
+      "blocker": {
+        "unassessed": "Ikke vurdert",
+        "missingReason": "Avvik uten begrunnelse",
+        "openCritical": "Åpent Nivå 1-funn"
       }
     },
     "package": {
