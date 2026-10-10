@@ -11,13 +11,13 @@ import { useAuditPersons, type ReviewRow } from "../hooks/useInternalAudits";
 import { AuditDetailDialog } from "../components/AuditDetailDialog";
 import { NewInternalAuditDialog } from "../components/NewInternalAuditDialog";
 
-export const InternalAuditsTab = () => {
+export const InternalAuditsTab = ({ initialOpenId = null }: { initialOpenId?: string | null } = {}) => {
   const { t, i18n } = useTranslation();
   const { companyId, isAdmin } = useAuth();
   const reviews = useAuditReviews();
   const persons = useAuditPersons();
   const departments = useAuditDepartments();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const [creating, setCreating] = useState(false);
 
   const rows = (reviews.data ?? []) as unknown as ReviewRow[];

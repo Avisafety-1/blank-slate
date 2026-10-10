@@ -61,7 +61,9 @@ export const AuditSection = () => {
     row.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [tab]);
 
-  const goto = (value: AuditTabValue) => {
+  const [openAuditId, setOpenAuditId] = useState<{ id: string; n: number } | null>(null);
+  const goto = (value: AuditTabValue, opts?: { auditId?: string }) => {
+    if (opts?.auditId) setOpenAuditId({ id: opts.auditId, n: Date.now() });
     setTab(value);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
@@ -149,7 +151,7 @@ export const AuditSection = () => {
         <TabsContent value="competency" className="mt-4 sm:mt-6"><TabFrame tabKey="competency" categories={["competence"]}><CompetencyTab /></TabFrame></TabsContent>
         <TabsContent value="documentation" className="mt-4 sm:mt-6"><TabFrame tabKey="documentation" categories={["documentation"]}><DocumentationTab /></TabFrame></TabsContent>
         <TabsContent value="safety" className="mt-4 sm:mt-6"><TabFrame tabKey="incidents" categories={["safety"]} stats={<SafetyTab part="stats" />}><SafetyTab /></TabFrame></TabsContent>
-        <TabsContent value="internal" className="mt-4 sm:mt-6"><InternalAuditsTab /></TabsContent>
+        <TabsContent value="internal" className="mt-4 sm:mt-6"><InternalAuditsTab key={openAuditId?.n ?? 0} initialOpenId={openAuditId?.id ?? null} /></TabsContent>
         <TabsContent value="package" className="mt-4 sm:mt-6"><InspectionPackageTab /></TabsContent>
       </Tabs>
     </div>

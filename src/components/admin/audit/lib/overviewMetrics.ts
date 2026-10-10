@@ -4,6 +4,9 @@ export type MetricTone = "danger" | "warning" | "neutral";
 export const DAY_MS = 86_400_000;
 
 export interface ReviewLike {
+  id: string;
+  title: string;
+  template_key: string;
   review_type: string;
   audited_company_id: string;
   status: string;
@@ -11,33 +14,57 @@ export interface ReviewLike {
   review_date: string | null;
 }
 
-export interface NextAuditResult {
-  /** null = no closed internal audit yet. */
-  due: Date | null;
-  daysLeft: number | null;
-  planned: Date | null;
-  tone: MetricTone;
+export interface Unit { id: string; name: string }
+
+export interface ProgrammeReview {
+  id: string; title: string; unitId: string; unitName: string; templateKey: string;
+  date: Date | null; status: "planned" | "in_progress"; overdue: boolean;
 }
+export interface CoverageWarning { unitId: string; unitName: string; tone: "danger" | "warning" }
+export interface AuditProgramme { upcoming: ProgrammeReview[]; coverage: CoverageWarning[] }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const addMonths = (d: Date, m: number) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
 
-/** Next internal audit = 12 months after the latest closed one for the unit. Red when overdue or none, yellow within 30 days. */
-export function nextInternalAudit(reviews: ReviewLike[], unitId: string | null, now: Date = new Date()): NextAuditResult {
-  const own = reviews.filter((r) => r.review_type === "internal" && (!unitId || r.audited_company_id === unitId));
+/**
+ * Upcoming internal audits (planned/in progress) for the given units, sorted by date (in progress first on ties),
+ * plus coverage warnings: red = no closed audit in 12 months and nothing upcoming; yellow = last closed 11–12 months ago and nothing upcoming.
+ */
+export function auditProgramme(reviews: ReviewLike[], units: Unit[], now: Date = new Date()): AuditProgramme {
   const today = startOfDay(now);
-  const planned = own
-    .filter((r) => !r.closed_at && r.status !== "closed" && r.review_date)
-    .map((r) => startOfDay(new Date(r.review_date!)))
-    .filter((d) => !isNaN(d.getTime()) && d >= today)
-    .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
-  const lastClosed = own
-    .map((r) => (r.closed_at ? new Date(r.closed_at) : null))
-    .filter((d): d is Date => !!d && !isNaN(d.getTime()))
-    .sort((a, b) => b.getTime() - a.getTime())[0];
-  if (!lastClosed) return { due: null, daysLeft: null, planned, tone: "danger" };
-  const due = startOfDay(new Date(lastClosed.getFullYear(), lastClosed.getMonth() + 12, lastClosed.getDate()));
-  const daysLeft = Math.round((due.getTime() - today.getTime()) / DAY_MS);
-  return { due, daysLeft, planned, tone: daysLeft < 0 ? "danger" : daysLeft <= 30 ? "warning" : "neutral" };
+  const unitName = new Map(units.map((u) => [u.id, u.name]));
+  const internal = reviews.filter((r) => r.review_type === "internal" && unitName.has(r.audited_company_id));
+  const upcoming: ProgrammeReview[] = internal
+    .filter((r) => r.status === "planned" || r.status === "in_progress")
+    .map((r) => {
+      const d = r.review_date ? startOfDay(new Date(r.review_date)) : null;
+      const date = d && !isNaN(d.getTime()) ? d : null;
+      return {
+        id: r.id, title: r.title, unitId: r.audited_company_id, unitName: unitName.get(r.audited_company_id)!,
+        templateKey: r.template_key, date, status: r.status as ProgrammeReview["status"],
+        overdue: r.status === "planned" && !!date && date < today,
+      };
+    })
+    .sort((a, b) => {
+      const da = a.date?.getTime() ?? Infinity, db = b.date?.getTime() ?? Infinity;
+      if (da !== db) return da - db;
+      return (a.status === "in_progress" ? 0 : 1) - (b.status === "in_progress" ? 0 : 1);
+    });
+  const hasUpcoming = new Set(upcoming.map((u) => u.unitId));
+  const yearAgo = addMonths(today, -12);
+  const elevenAgo = addMonths(today, -11);
+  const coverage: CoverageWarning[] = [];
+  for (const u of units) {
+    if (hasUpcoming.has(u.id)) continue;
+    const last = internal
+      .filter((r) => r.audited_company_id === u.id && r.closed_at)
+      .map((r) => new Date(r.closed_at!))
+      .filter((d) => !isNaN(d.getTime()))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    if (!last || last < yearAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "danger" });
+    else if (last <= elevenAgo) coverage.push({ unitId: u.id, unitName: u.name, tone: "warning" });
+  }
+  return { upcoming, coverage };
 }
 
 export interface ShareResult { ok: number; total: number; pct: number | null; tone: MetricTone }

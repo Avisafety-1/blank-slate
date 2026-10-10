@@ -8249,18 +8249,6 @@
       "metrics": {
         "title": "Nøkkeltall",
         "of": "av",
-        "nextAudit": {
-          "label": "Neste internrevisjon",
-          "none": "Ingen gjennomført",
-          "daysLeft_one": "{{count}} dag igjen · {{date}}",
-          "daysLeft_other": "{{count}} dager igjen · {{date}}",
-          "overdue_one": "Forfalt for {{count}} dag siden",
-          "overdue_other": "Forfalt for {{count}} dager siden",
-          "planned": "Planlagt {{date}}",
-          "what": "12 måneder etter siste lukkede internrevisjon for valgt enhet.",
-          "threshold": "Rød når forfalt eller ingen er gjennomført, gul innen 30 dager.",
-          "fix": "Klikk for å åpne Internrevisjon."
-        },
         "airworthy": {
           "label": "Luftdyktig flåte",
           "what": "Andel aktive droner med grønn status, samme statuslogikk som Flåte-fanen.",
@@ -8272,6 +8260,17 @@
           "what": "Andel fullførte oppdrag siste 12 måneder (avsluttet for over 48 timer siden) som har minst én flylogg.",
           "threshold": "Rød under 80 %, gul under 95 %.",
           "fix": "Klikk for å åpne Drift."
+        },
+        "programme": {
+          "label": "Revisjonsprogram",
+          "overdue": "Forfalt",
+          "noAudit": "{{unit}}: ingen revisjon siste 12 mnd",
+          "dueSoon": "{{unit}}: revisjon forfaller innen 30 dager",
+          "showAll": "Vis alle ({{count}})",
+          "empty": "Ingen kommende revisjoner – alle enheter er revidert siste 12 mnd",
+          "what": "Planlagte og påbegynte internrevisjoner for valgt utvalg, sortert etter dato. Under listen vises enheter uten revisjon siste 12 måneder og uten planlagt revisjon.",
+          "threshold": "Rødt: planlagt revisjon med passert dato, eller ingen lukket revisjon siste 12 mnd. Gult: siste revisjon for 11–12 mnd siden og ingen planlagt.",
+          "fix": "Klikk en revisjon for å åpne den i Internrevisjon."
         }
       }
     },

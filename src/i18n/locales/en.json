@@ -8247,18 +8247,6 @@
       "metrics": {
         "title": "Key figures",
         "of": "of",
-        "nextAudit": {
-          "label": "Next internal audit",
-          "none": "None completed",
-          "daysLeft_one": "{{count}} day left · {{date}}",
-          "daysLeft_other": "{{count}} days left · {{date}}",
-          "overdue_one": "Overdue by {{count}} day",
-          "overdue_other": "Overdue by {{count}} days",
-          "planned": "Planned {{date}}",
-          "what": "12 months after the latest closed internal audit for the selected unit.",
-          "threshold": "Red when overdue or none completed, yellow within 30 days.",
-          "fix": "Click to open Internal audit."
-        },
         "airworthy": {
           "label": "Airworthy fleet",
           "what": "Share of active drones with green status, same status logic as the Fleet tab.",
@@ -8270,6 +8258,17 @@
           "what": "Share of completed missions in the last 12 months (ended over 48 hours ago) with at least one flight log.",
           "threshold": "Red below 80 %, yellow below 95 %.",
           "fix": "Click to open Operations."
+        },
+        "programme": {
+          "label": "Audit programme",
+          "overdue": "Overdue",
+          "noAudit": "{{unit}}: no audit in the last 12 months",
+          "dueSoon": "{{unit}}: audit due within 30 days",
+          "showAll": "Show all ({{count}})",
+          "empty": "No upcoming audits – all units audited in the last 12 months",
+          "what": "Planned and started internal audits for the selected scope, sorted by date. Units without an audit in the last 12 months and nothing planned are listed below.",
+          "threshold": "Red: planned audit past its date, or no closed audit in 12 months. Yellow: last audit 11–12 months ago and nothing planned.",
+          "fix": "Click an audit to open it in Internal audit."
         }
       }
     },
