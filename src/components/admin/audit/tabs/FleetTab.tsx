@@ -9,9 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronRight, Plane, AlertOctagon, ArrowRight, Search } from "lucide-react";
 import { StatusPill } from "../components/StatusPill";
 import { useAuditFleet } from "../hooks/useAuditData";
-import { checkToPill, checkLabelKey } from "../utils/statusMapping";
 import { auditDeepLink } from "../utils/auditDeepLink";
 import { cn } from "@/lib/utils";
+import { SendReminderDialog } from "../SendReminderDialog";
+import { BellRing } from "lucide-react";
+import type { FleetRow, ScannerFinding } from "../types";
+
+const droneFinding = (d: FleetRow): ScannerFinding => {
+  const red = d.status === "Rød";
+  const params = { drone: d.droneName, reasons: d.reasons.map((r) => r.text).join("; ") || "—", department: d.departmentName ?? "" };
+  return {
+    code: red ? "DroneStatusRed" : "DroneStatusYellow",
+    severity: red ? "critical" : "warning",
+    categoryKey: "fleet",
+    titleKey: red ? "audit.scanner.droneStatusRed.title" : "audit.scanner.droneStatusYellow.title",
+    bodyKey: red ? "audit.scanner.droneStatusRed.body" : "audit.scanner.droneStatusYellow.body",
+    titleParams: params,
+    bodyParams: params,
+    entityType: "drone",
+    entityId: d.id,
+    deepLink: auditDeepLink("drone", d.id),
+  };
+};
 
 export const FleetTab = () => {
   const { t, i18n } = useTranslation();
@@ -19,6 +38,9 @@ export const FleetTab = () => {
   const { data, isLoading, isError, error } = useAuditFleet();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
+  const [reminder, setReminder] = useState<ScannerFinding | null>(null);
+  const red = useMemo(() => (data ?? []).filter((d) => d.status === "Rød"), [data]);
+  const yellow = useMemo(() => (data ?? []).filter((d) => d.status === "Gul"), [data]);
 
   const rows = useMemo(() => {
     const list = data ?? [];
@@ -28,12 +50,8 @@ export const FleetTab = () => {
           [f.droneName, f.registration ?? ""].some((v) => v.toLowerCase().includes(q)),
         )
       : list;
-    // Sort: overdue service first, then drones with open deviations, then the rest.
-    return [...filtered].sort((a, b) => {
-      const aBad = a.service === "expired" ? 2 : a.openDeviations > 0 ? 1 : 0;
-      const bBad = b.service === "expired" ? 2 : b.openDeviations > 0 ? 1 : 0;
-      return bBad - aBad;
-    });
+    const rank = (f: FleetRow) => (f.status === "Rød" ? 2 : f.status === "Gul" ? 1 : 0);
+    return [...filtered].sort((a, b) => rank(b) - rank(a));
   }, [data, search]);
 
   if (isLoading) return <Skeleton className="h-40" />;
@@ -43,6 +61,53 @@ export const FleetTab = () => {
 
   return (
     <div className="space-y-4">
+      {[{ list: red, tone: "red" as const, title: t("audit.fleet.redTitle") }, { list: yellow, tone: "yellow" as const, title: t("audit.fleet.yellowTitle") }]
+        .filter((g) => g.list.length > 0)
+        .map((g) => (
+          <Card key={g.tone} className={cn("border-l-4", g.tone === "red" ? "border-l-status-red/70" : "border-l-status-yellow/70")}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertOctagon className={cn("w-4 h-4", g.tone === "red" ? "text-status-red" : "text-status-yellow")} />
+                {g.title}
+                <Badge variant="outline" className="ml-1">{g.list.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="divide-y divide-border">
+                {g.list.map((d) => (
+                  <li key={d.id} className="py-2 flex flex-col sm:flex-row sm:items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">
+                        {d.droneName}
+                        {d.registration && <span className="ml-2 text-xs text-muted-foreground">{d.registration}</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {d.departmentName ?? "—"} · {t("audit.fleet.technicalResponsible")}: {d.technicalResponsibleName ?? t("audit.fleet.noTechnicalResponsible")}
+                      </div>
+                      {d.reasons.length > 0 && (
+                        <ul className="mt-1 text-xs list-disc pl-4">
+                          {d.reasons.map((r, k) => (
+                            <li key={k} className={r.status === "Rød" ? "text-status-red" : "text-status-yellow"}>{r.text}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => setReminder(droneFinding(d))}>
+                        <BellRing className="w-3.5 h-3.5 mr-1.5" /> {t("audit.fleet.sendReminder")}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => navigate(auditDeepLink("drone", d.id).path)}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+      <SendReminderDialog finding={reminder} open={!!reminder} onOpenChange={(v) => !v && setReminder(null)} />
+
       <div className="relative max-w-sm">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -59,9 +124,8 @@ export const FleetTab = () => {
         <div className="space-y-2">
           {rows.map((f) => {
             const open = !!expanded[f.id];
-            const hasIssues = f.openDeviations > 0 || f.service === "expired";
             return (
-              <Card key={f.id} className={cn(hasIssues && "border-l-4 border-status-yellow/60", f.service === "expired" && "border-status-red/60")}>
+              <Card key={f.id} className={cn(f.status === "Gul" && "border-l-4 border-status-yellow/60", f.status === "Rød" && "border-l-4 border-status-red/60")}>
                 <CardHeader className="pb-2 flex flex-row items-center gap-2 space-y-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggle(f.id)}>
                     {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -72,13 +136,10 @@ export const FleetTab = () => {
                     {f.registration && <span className="ml-2 text-xs text-muted-foreground">{f.registration}</span>}
                   </CardTitle>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <StatusPill status={checkToPill[f.service]} labelOverride={t(checkLabelKey[f.service])} />
-                    {f.openDeviations > 0 && (
-                      <Badge variant="outline" className="gap-1 bg-status-yellow/20 text-black border-status-yellow/50">
-                        <AlertOctagon className="w-3 h-3" />
-                        {f.openDeviations} {t("audit.fleet.openDeviations")}
-                      </Badge>
-                    )}
+                    <StatusPill
+                      status={f.status === "Rød" ? "danger" : f.status === "Gul" ? "warning" : "ok"}
+                      labelOverride={t(`audit.fleet.status.${f.status === "Rød" ? "red" : f.status === "Gul" ? "yellow" : "green"}`)}
+                    />
                   </div>
                 </CardHeader>
                 {open && (
@@ -94,7 +155,7 @@ export const FleetTab = () => {
                       </div>
                     </div>
                     <div>
-                      <div className="text-muted-foreground text-xs mb-1">{t("audit.fleet.deviationsList")}</div>
+                      <div className="text-muted-foreground text-xs mb-1">{t("audit.fleet.logEntries")}</div>
                       {f.deviations.length === 0 ? (
                         <div className="text-xs text-muted-foreground">{t("audit.fleet.noDeviations")}</div>
                       ) : (
