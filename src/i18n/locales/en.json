@@ -8212,7 +8212,18 @@
       "lastInspection": "Last inspection",
       "openDrone": "Open drone",
       "noDeviations": "No log issues",
-      "deviationsList": "Log issues"
+      "deviationsList": "Log issues",
+      "redTitle": "Drones with red status",
+      "yellowTitle": "Drones with yellow status",
+      "technicalResponsible": "Technical responsible",
+      "noTechnicalResponsible": "not set",
+      "sendReminder": "Send reminder",
+      "logEntries": "Log entries",
+      "status": {
+        "red": "Red",
+        "yellow": "Yellow",
+        "green": "Green"
+      }
     },
     "operations": {
       "header": "Operations",
@@ -8271,7 +8282,12 @@
         "caution": "Caution",
         "no-go": "NO-GO",
         "not-assessed": "Not assessed"
-      }
+      },
+      "approvedNoGo": {
+        "title": "Flown with NO-GO – approved",
+        "approvedBy": "Approved by {{name}}, {{date}}"
+      },
+      "approvedBeforeNoGo": "Approved by {{name}} {{date}} – the approval was given before the NO-GO assessment."
     },
     "safety": {
       "reported": "Reported",
@@ -8386,11 +8402,24 @@
       },
       "flownWithNoGo": {
         "title": "{{mission}}: flown with NO-GO",
-        "body": "The mission was completed although the latest risk assessment was NO-GO."
+        "body": "The mission was completed although the latest risk assessment was NO-GO.",
+        "bodyApprovedBefore": "The mission was completed with NO-GO. Approved by {{approvedBy}} {{approvedAt}}, but the approval was given before the NO-GO assessment."
       },
-      "unplannedFlightsHigh": {
-        "title": "Many unplanned flights",
-        "body": "{{count}} of {{total}} imported flights in the last 90 days ({{pct}} %) were not planned in advance."
+      "droneStatusRed": {
+        "title": "{{drone}}: red status",
+        "body": "Reasons: {{reasons}}"
+      },
+      "droneStatusYellow": {
+        "title": "{{drone}}: yellow status",
+        "body": "Reasons: {{reasons}}"
+      },
+      "incidentOpenTooLong": {
+        "title": "Incident open for {{days}} days: {{title}}",
+        "body": "The incident has not been closed for more than 30 days."
+      },
+      "incidentNoResponsible": {
+        "title": "Incident without follow-up owner: {{title}}",
+        "body": "Assign a follow-up owner to the incident."
       }
     },
     "insight": {

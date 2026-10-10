@@ -8214,7 +8214,18 @@
       "lastInspection": "Siste inspeksjon",
       "openDrone": "Åpne drone",
       "noDeviations": "Ingen loggavvik",
-      "deviationsList": "Loggavvik"
+      "deviationsList": "Loggavvik",
+      "redTitle": "Droner med rød status",
+      "yellowTitle": "Droner med gul status",
+      "technicalResponsible": "Teknisk ansvarlig",
+      "noTechnicalResponsible": "ikke satt",
+      "sendReminder": "Send purring",
+      "logEntries": "Loggføringer",
+      "status": {
+        "red": "Rød",
+        "yellow": "Gul",
+        "green": "Grønn"
+      }
     },
     "operations": {
       "header": "Operasjoner",
@@ -8273,7 +8284,12 @@
         "caution": "Caution",
         "no-go": "NO-GO",
         "not-assessed": "Ikke vurdert"
-      }
+      },
+      "approvedNoGo": {
+        "title": "Fløyet med NO-GO – godkjent",
+        "approvedBy": "Godkjent av {{name}}, {{date}}"
+      },
+      "approvedBeforeNoGo": "Godkjent av {{name}} {{date}} – godkjenningen ble gitt før NO-GO-vurderingen."
     },
     "safety": {
       "reported": "Rapporterte",
@@ -8388,11 +8404,24 @@
       },
       "flownWithNoGo": {
         "title": "{{mission}}: fløyet med NO-GO",
-        "body": "Oppdraget er fullført selv om siste risikovurdering ga NO-GO."
+        "body": "Oppdraget er fullført selv om siste risikovurdering ga NO-GO.",
+        "bodyApprovedBefore": "Oppdraget er fullført med NO-GO. Godkjent av {{approvedBy}} {{approvedAt}}, men godkjenningen ble gitt før NO-GO-vurderingen."
       },
-      "unplannedFlightsHigh": {
-        "title": "Mange uplanlagte flyturer",
-        "body": "{{count}} av {{total}} importerte flyturer siste 90 dager ({{pct}} %) var ikke planlagt på forhånd."
+      "droneStatusRed": {
+        "title": "{{drone}}: rød status",
+        "body": "Årsaker: {{reasons}}"
+      },
+      "droneStatusYellow": {
+        "title": "{{drone}}: gul status",
+        "body": "Årsaker: {{reasons}}"
+      },
+      "incidentOpenTooLong": {
+        "title": "Hendelse åpen i {{days}} dager: {{title}}",
+        "body": "Hendelsen har ikke vært lukket på over 30 dager."
+      },
+      "incidentNoResponsible": {
+        "title": "Hendelse uten oppfølgingsansvarlig: {{title}}",
+        "body": "Sett en oppfølgingsansvarlig for hendelsen."
       }
     },
     "insight": {
