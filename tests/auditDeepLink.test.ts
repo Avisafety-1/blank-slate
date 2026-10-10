@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { auditDeepLink, noFlightDeepLink } from "../src/components/admin/audit/utils/auditDeepLink";
 
 describe("audit reminder links", () => {
