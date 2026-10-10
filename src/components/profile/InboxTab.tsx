@@ -48,6 +48,9 @@ import {
   MAX_ATTACHMENT_SIZE,
 } from "./hooks/useMessageAttachments";
 import { ComposeMessageDialog } from "./ComposeMessageDialog";
+import { ReminderActionCard } from "@/components/reminders/ReminderActionCard";
+import { hasQuickActions, parseFindingKeys } from "@/components/reminders/reminderActions";
+import { auditDeepLink } from "@/components/admin/audit/utils/auditDeepLink";
 import { AttachmentLightbox } from "./AttachmentLightbox";
 
 const sevIcon = (s: InboxMessage["severity"]) => {
@@ -387,6 +390,22 @@ export const InboxTab = () => {
                     {participants.map((p) => partyLabel(p)).join(", ")}
                   </p>
                 )}
+                {selected.finding_key && selected.recipient_id === user?.id && filter !== "sent" && (() => {
+                  const keys = parseFindingKeys(selected.finding_key).filter((k) => hasQuickActions(k.code));
+                  return keys.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      {keys.map((k) => (
+                        <ReminderActionCard
+                          key={`${k.code}:${k.entityId}`}
+                          findingKey={k}
+                          messageId={selected.id}
+                          openPath={keys.length > 1 ? auditDeepLink(k.entityType, k.entityId).path : null}
+                          onDone={() => { if (keys.length === 1) setSelected(null); }}
+                        />
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {selected.deep_link && (
                     <Button

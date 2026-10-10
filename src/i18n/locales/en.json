@@ -9846,5 +9846,41 @@
       "confirmBlocked": "All drones must be linked to the register and suggestions accepted before the profile can be confirmed.",
       "done": "Done"
     }
+  },
+  "reminders": {
+    "actions": {
+      "notFlown": "Not flown",
+      "flown": "Was flown",
+      "changeDate": "Change date",
+      "finishMission": "Complete mission",
+      "endFlight": "End flight",
+      "uploadLog": "Upload / link flight log",
+      "takeResponsibility": "I'll take responsibility"
+    },
+    "prompt": {
+      "MissionPlannedPastDue": "“{{title}}” has passed but is still planned. What happened?",
+      "MissionInProgressStale": "“{{title}}” is still in progress.",
+      "ActiveFlightStale": "A flight on “{{title}}” was never ended.",
+      "MissionWithoutFlightLog": "“{{title}}” has no flight log. Was it flown?",
+      "IncidentNoResponsible": "The incident “{{title}}” has no follow-up owner."
+    },
+    "confirm": {
+      "notFlown": "The mission “{{title}}” will be set to Cancelled.",
+      "flown": "The mission “{{title}}” will be set to Completed. You can then upload the flight log.",
+      "finishMission": "The mission “{{title}}” will be set to Completed.",
+      "endFlight": "The flight will be ended and removed from the live view.",
+      "takeResponsibility": "You will be set as follow-up owner for “{{title}}”."
+    },
+    "confirmNotify": "The reminder sender ({{name}}) gets a reply in the thread, and the reminder is marked done.",
+    "confirmButton": "Confirm",
+    "commentPlaceholder": "Comment (optional)",
+    "commentLabel": "Comment",
+    "replyBody": "Action taken: {{action}} – “{{title}}”. Done by {{who}}, {{when}}.",
+    "toast": "Done: {{action}}",
+    "toastNotified": "Done: {{action}}. {{name}} has been notified.",
+    "failed": "Could not perform the action",
+    "open": "Open",
+    "flightDialogTitle": "Flight reminder",
+    "flightDialogHint": "Only the pilot who started the flight can end it here."
   }
 }

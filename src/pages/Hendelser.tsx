@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AddIncidentDialog } from "@/components/dashboard/AddIncidentDialog";
 import { IncidentDetailDialog } from "@/components/dashboard/IncidentDetailDialog";
+import { ReminderActionCard } from "@/components/reminders/ReminderActionCard";
+import { normalizeActionParam, type ParsedFindingKey } from "@/components/reminders/reminderActions";
 import { MissionDetailDialog } from "@/components/dashboard/MissionDetailDialog";
 import { EccairsMappingDialog } from "@/components/eccairs/EccairsMappingDialog";
 import { EccairsAttachmentUpload } from "@/components/eccairs/EccairsAttachmentUpload";
@@ -219,12 +221,18 @@ const Hendelser = () => {
     searchParams.get("tab") === "deviations" ? "deviations" : "incidents"
   );
   const focusDeviationId = searchParams.get("deviation");
+  const [incidentReminder, setIncidentReminder] = useState<{ key: ParsedFindingKey; messageId: string | null } | null>(null);
 
   useEffect(() => {
     const id = searchParams.get("id");
     if (!id || incidents.length === 0) return;
     const inc = incidents.find((i) => i.id === id);
     if (inc) {
+      // ?action=takeResponsibility&msg=<id> shows the reminder card; the link itself never acts.
+      const action = normalizeActionParam(searchParams.get("action"));
+      setIncidentReminder(action === "takeResponsibility"
+        ? { key: { code: "IncidentNoResponsible", entityType: "incident", entityId: id }, messageId: searchParams.get("msg") }
+        : null);
       setSelectedIncident(inc);
       setDetailDialogOpen(true);
       setSearchParams({}, { replace: true });
@@ -1412,9 +1420,17 @@ const Hendelser = () => {
 
       <IncidentDetailDialog 
         open={detailDialogOpen} 
-        onOpenChange={setDetailDialogOpen} 
+        onOpenChange={(o) => { setDetailDialogOpen(o); if (!o) setIncidentReminder(null); }}
         incident={selectedIncident} 
         onEditRequest={handleEditRequest}
+        topSlot={incidentReminder && selectedIncident?.id === incidentReminder.key.entityId ? (
+          <ReminderActionCard
+            findingKey={incidentReminder.key}
+            messageId={incidentReminder.messageId}
+            preselect="takeResponsibility"
+            onDone={() => { setIncidentReminder(null); setDetailDialogOpen(false); }}
+          />
+        ) : null}
       />
 
       <MissionDetailDialog
