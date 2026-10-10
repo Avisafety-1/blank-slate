@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "./AuditEntityDialogHost";
-import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, Bell, FileQuestion, Loader2, Send } from "lucide-react";
@@ -34,7 +33,6 @@ const toFinding = (i: OperationsIssue): ScannerFinding => {
 
 export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[] }) => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: statuses } = useReminderStatuses();
   const [finding, setFinding] = useState<ScannerFinding | null>(null);

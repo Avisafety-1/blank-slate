@@ -9006,6 +9006,14 @@
         "why": "Utdaterte dokumenter gir feil grunnlag.",
         "fix": "Revider og oppdater dokumentet."
       }
+    },
+    "openEntity": {
+      "notFound": "Fant ikke objektet – det kan være slettet eller du mangler tilgang.",
+      "fullPage": "Åpne på full side",
+      "inMissions": "Åpne i Oppdrag",
+      "inIncidents": "Åpne i Hendelser",
+      "inDocuments": "Åpne i Dokumenter",
+      "inResources": "Åpne i Ressurser"
     }
   },
   "inbox": {

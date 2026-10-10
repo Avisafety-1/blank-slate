@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "../components/AuditEntityDialogHost";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -36,7 +35,6 @@ const droneFinding = (d: FleetRow): ScannerFinding => {
 
 export const FleetTab = () => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useAuditFleet();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");

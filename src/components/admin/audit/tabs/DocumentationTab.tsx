@@ -10,8 +10,6 @@ import { FileText } from "lucide-react";
 import { StatusPill } from "../components/StatusPill";
 import { useAuditDocuments } from "../hooks/useAuditData";
 import { checkToPill, checkLabelKey } from "../utils/statusMapping";
-import { useNavigate } from "react-router-dom";
-import { auditDeepLink } from "../utils/auditDeepLink";
 import type { CheckResult } from "../types";
 
 type StatusTab = "expired" | "expiring" | "valid" | "noExpiry";
@@ -27,7 +25,6 @@ function statusToTab(s: CheckResult): StatusTab {
 
 export const DocumentationTab = () => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useAuditDocuments();
   const [tab, setTab] = useState<StatusTab>("expired");
 

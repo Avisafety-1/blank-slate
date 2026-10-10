@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "./AuditEntityDialogHost";
-import { useNavigate } from "react-router-dom";
 import {
   ArrowDown, ArrowRight, ArrowUp, CheckCircle2, Clock, Hourglass, MailX, MoreHorizontal, Send, ShieldCheck,
 } from "lucide-react";
@@ -68,7 +67,6 @@ export const ActionList = ({
   initialLimit = 10, titleKey = "audit.action.title", helpKey = "audit.help.actionList", emptyKey = "audit.action.empty",
 }: Props) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [reminderFor, setReminderFor] = useState<ScannerFinding | null>(null);

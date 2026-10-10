@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "../components/AuditEntityDialogHost";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { Search, ChevronDown, ChevronRight, User, ArrowRight, CheckCircle2 } fro
 import { StatusPill } from "../components/StatusPill";
 import { useAuditCompetencies } from "../hooks/useAuditData";
 import { checkToPill, checkLabelKey, resolveCheckBucket } from "../utils/statusMapping";
-import { auditDeepLink } from "../utils/auditDeepLink";
 import type { CompetencyRow } from "../types";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +23,6 @@ interface Grouped {
 
 export const CompetencyTab = () => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useAuditCompetencies();
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});

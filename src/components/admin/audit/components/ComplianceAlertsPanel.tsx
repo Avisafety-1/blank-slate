@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OpenEntityButton } from "./AuditEntityDialogHost";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ const sevBadgeClass = (sev: FindingSeverity) =>
 
 export const ComplianceAlertsPanel = ({ findings, initialPerGroup = 5 }: Props) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const dispose = useUpsertDisposition();
   const { data: reminderMap = {} } = useReminderStatuses();
   const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);

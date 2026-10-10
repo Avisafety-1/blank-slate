@@ -11,7 +11,6 @@ import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuditOperations } from "../hooks/useAuditData";
-import { auditDeepLink } from "../utils/auditDeepLink";
 import type { OperationsIssue } from "../types";
 import { cn } from "@/lib/utils";
 import { InfoTip } from "../components/InfoTip";
