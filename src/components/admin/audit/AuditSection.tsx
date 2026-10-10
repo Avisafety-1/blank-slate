@@ -18,7 +18,6 @@ import { InspectionPackageTab } from "./tabs/InspectionPackageTab";
 import { useAuditDepartments } from "./hooks/useAuditData";
 import { useAuditDepartment } from "./hooks/useAuditDepartment";
 import { ALL_DEPARTMENTS } from "./lib/complianceView";
-import { InfoTip } from "./components/InfoTip";
 import { TabFrame } from "./components/TabFrame";
 
 const tabDefs = [
