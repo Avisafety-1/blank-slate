@@ -21,7 +21,7 @@ export interface ViewInputs {
   missionsByCompany?: Record<string, number>;
   safety: SafetyAggregate | null;
   overdueAuditActions: { id: string; description: string; deadline: string | null; companyId?: string | null }[];
-  findingsAwaitingVerification: { id: string; description: string }[];
+  findingsAwaitingVerification: { id: string; description: string; status?: string; actionStatuses?: string[] }[];
 }
 
 /** Keep only rows belonging to one department. `null`/"all" returns the inputs unchanged. */

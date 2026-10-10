@@ -8598,7 +8598,7 @@
       "statusPlanned": "Planned",
       "statusInProgress": "In progress",
       "statusClosed": "Closed",
-      "closeBlocked": "Cannot close: open critical findings.",
+      "closeBlocked": "Cannot close: open critical findings. Enter an override reason (at least 10 characters) to close anyway.",
       "overrideReason": "Override reason",
       "newTitle": "Annual internal audit {{year}}",
       "department": "Department",
@@ -8636,7 +8636,57 @@
       "cancel": "Cancel",
       "save": "Save",
       "openFindings": "Open findings",
-      "nextReview": "Date"
+      "nextReview": "Date",
+      "template": "Template",
+      "auditedUnit": "Audited unit",
+      "create": "Create",
+      "selectPerson": "Select person",
+      "searchPerson": "Search person...",
+      "noPersons": "No persons found.",
+      "none": "None",
+      "saveError": "Could not save",
+      "loading": "Loading audits...",
+      "empty": "No internal audits yet.",
+      "readOnly": "Read only",
+      "start": "Start audit",
+      "comment": "Comment",
+      "makeFinding": "Create finding",
+      "generalCategory": "General",
+      "newFinding": "New finding",
+      "newAction": "New action",
+      "actionComment": "Comment",
+      "verify": "Verify",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this planned audit?",
+      "closeDialog": "Close",
+      "closeReview": "Close audit",
+      "reopen": "Reopen",
+      "reopenReason": "Reason for reopening (at least 10 characters)",
+      "closedAt": "Closed {{date}}",
+      "verifiedAt": "Verified {{date}}",
+      "result": {
+        "pass": "Passed",
+        "warn": "Deviation",
+        "fail": "Failed",
+        "na": "Not applicable"
+      },
+      "findingStatus": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "verified": "Verified",
+        "closed": "Closed"
+      },
+      "reviewStatus": {
+        "planned": "Planned",
+        "in_progress": "In progress",
+        "closed": "Closed"
+      },
+      "sectionStatus": {
+        "ok": "OK",
+        "warning": "Deviation",
+        "danger": "Failed",
+        "info": "Not assessed"
+      }
     },
     "package": {
       "header": "Inspection package",
@@ -9012,6 +9062,58 @@
       "inIncidents": "Open in Incidents",
       "inDocuments": "Open in Documents",
       "inResources": "Open in Resources"
+    },
+    "tpl": {
+      "template": {
+        "open": "Open category / general",
+        "specific": "Specific category – SORA/OSO",
+        "luc": "LUC"
+      },
+      "section": {
+        "organization": "Organisation",
+        "competency": "Competency",
+        "technical": "Technical",
+        "operations": "Operations",
+        "incidents": "Occurrences",
+        "permit": "Authorisation",
+        "documentation": "Documentation",
+        "luc_sms": "Organisation and SMS"
+      },
+      "item": {
+        "open_operator_registered": "Operator registered and operator ID marked on all drones",
+        "open_insurance_valid": "Liability insurance valid",
+        "open_pilot_competency": "All pilots hold valid competency for the subcategory",
+        "open_class_marking": "Class marking/legacy status recorded per drone",
+        "open_remote_id": "Remote ID active where required",
+        "open_maintenance_firmware": "Maintenance and firmware per manufacturer",
+        "open_max_height_vlos": "Max 120 m and VLOS complied with",
+        "open_distance_uninvolved": "Distance to uninvolved persons per subcategory",
+        "open_geozones_checked": "Geographical zones checked before flight",
+        "open_incidents_reported": "Occurrences reported",
+        "open_incident_actions_closed": "Actions from occurrences closed",
+        "spec_authorisation_valid": "Operational authorisation valid",
+        "spec_within_authorisation": "Operations within the authorisation limits",
+        "spec_manual_updated": "Operations manual/ConOps updated and matches practice",
+        "spec_changes_notified": "Changes notified to the CAA when required",
+        "spec_training_recurrent": "Training and recurrent training per the authorisation",
+        "spec_crew_fit": "Crew fit for duty",
+        "spec_operator_competent": "Operator competent",
+        "spec_maintenance_programme": "Maintenance programme followed and logged",
+        "spec_c2_link_checked": "Command link and equipment checked",
+        "spec_procedures_followed": "Procedures followed, incl. checklists",
+        "spec_risk_assessment_each": "Risk assessment for every mission",
+        "spec_volumes_respected": "Flight geography, contingency volume and ground risk buffer respected",
+        "spec_erp_exercised": "Emergency procedures (ERP) exercised",
+        "spec_incidents_reported": "Occurrences reported",
+        "spec_actions_closed_deadline": "Actions closed within deadline",
+        "spec_flight_logs_archived": "Flight logs archived",
+        "luc_accountable_manager": "Accountable manager and safety manager appointed",
+        "luc_sms": "SMS with safety policy, risk management and internal reporting",
+        "luc_manual_updated": "LUC manual updated",
+        "luc_terms_complied": "LUC terms of approval complied with",
+        "luc_self_approved_documented": "Self-approved operations documented with risk assessment",
+        "luc_changes_handled": "Changes handled per UAS.LUC.070"
+      }
     }
   },
   "inbox": {

@@ -1,4 +1,5 @@
 import { auditDeepLink } from "../utils/auditDeepLink";
+import { isAwaitingVerification } from "../lib/auditTemplates";
 import type {
   CompetencyRow,
   DocumentRow,
@@ -20,7 +21,7 @@ export interface ValidatorContext {
     description: string;
     deadline: string | null;
   }[];
-  findingsAwaitingVerification: { id: string; description: string }[];
+  findingsAwaitingVerification: { id: string; description: string; status?: string; actionStatuses?: string[] }[];
   requireSoraOnMissions: boolean;
 }
 
@@ -214,6 +215,7 @@ const safetyValidator: Validator = ({ overdueAuditActions, findingsAwaitingVerif
     });
   }
   for (const f of findingsAwaitingVerification) {
+    if (!isAwaitingVerification(f.status ?? null, f.actionStatuses ?? [])) continue;
     findings.push({
       code: "FindingAwaitingVerification",
       severity: "info",

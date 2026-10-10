@@ -5,132 +5,98 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
-import { mockInternalAudits } from "../data/mockAuditData";
-import type { InternalAudit } from "../types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAuditReviews, useAuditDepartments } from "../hooks/useAuditData";
+import { useAuditPersons, type ReviewRow } from "../hooks/useInternalAudits";
 import { AuditDetailDialog } from "../components/AuditDetailDialog";
+import { NewInternalAuditDialog } from "../components/NewInternalAuditDialog";
 
 export const InternalAuditsTab = () => {
   const { t, i18n } = useTranslation();
-  const [audits, setAudits] = useState<InternalAudit[]>(mockInternalAudits);
+  const { companyId, isAdmin } = useAuth();
+  const reviews = useAuditReviews();
+  const persons = useAuditPersons();
+  const departments = useAuditDepartments();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const statusLabel = useMemo<Record<InternalAudit["status"], string>>(
-    () => ({
-      planned: t("audit.internal.statusPlanned"),
-      in_progress: t("audit.internal.statusInProgress"),
-      closed: t("audit.internal.statusClosed"),
-    }),
-    [t, i18n.language],
-  );
-
-  const active = audits.find((a) => a.id === openId) ?? null;
-  const sorted = useMemo(
-    () =>
-      [...audits].sort((a, b) => {
-        // Planned first, then in_progress, then closed. Within group by date asc.
-        const order = { planned: 0, in_progress: 1, closed: 2 } as const;
-        if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-        return new Date(a.date).getTime() - new Date(b.date).getTime();
-      }),
-    [audits],
-  );
-
-  const createNew = () => {
-    const nw: InternalAudit = {
-      id: `ia-${Date.now()}`,
-      title: t("audit.internal.newTitle", { year: new Date().getFullYear() }),
-      date: new Date().toISOString().slice(0, 10),
-      responsible: "",
-      status: "planned",
-      findings: [],
-      sections: {
-        organization: { checked: [false, false, false], comment: "", status: "info" },
-        documentation: { checked: [false, false, false], comment: "", status: "info" },
-        competency: { checked: [false, false], comment: "", status: "info" },
-        operations: { checked: [false, false, false], comment: "", status: "info" },
-        technical: { checked: [false, false], comment: "", status: "info" },
-        safety: { checked: [false, false], comment: "", status: "info" },
-      },
-    };
-    setAudits((prev) => [nw, ...prev]);
-    setOpenId(nw.id);
+  const rows = (reviews.data ?? []) as unknown as ReviewRow[];
+  const personName = (id: string | null) => persons.data?.find((p) => p.id === id)?.full_name ?? "—";
+  const statusLabel: Record<ReviewRow["status"], string> = {
+    planned: t("audit.internal.statusPlanned"),
+    in_progress: t("audit.internal.statusInProgress"),
+    closed: t("audit.internal.statusClosed"),
   };
-
-  const save = (updated: InternalAudit) => {
-    setAudits((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-  };
+  const sorted = useMemo(() => {
+    const order = { planned: 0, in_progress: 1, closed: 2 } as const;
+    return [...rows].sort((a, b) => order[a.status] - order[b.status] || a.review_date.localeCompare(b.review_date));
+  }, [rows]);
+  const active = rows.find((r) => r.id === openId) ?? null;
+  const openCount = (r: ReviewRow) => (r.audit_findings ?? []).filter((f) => f.status !== "closed" && f.status !== "verified").length;
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={createNew}>
-          <Plus className="w-4 h-4 mr-2" /> {t("audit.internal.new")}
-        </Button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-end">
+          <Button onClick={() => setCreating(true)}><Plus className="w-4 h-4 mr-2" /> {t("audit.internal.new")}</Button>
+        </div>
+      )}
+      {reviews.isLoading && <p className="text-sm text-muted-foreground">{t("audit.internal.loading")}</p>}
+      {!reviews.isLoading && rows.length === 0 && <p className="text-sm text-muted-foreground">{t("audit.internal.empty")}</p>}
       <div className="md:hidden space-y-2">
-        {sorted.map((a) => {
-          const openFindings = a.findings.filter((f) => f.status !== "closed").length;
-          return (
-            <Card key={a.id} role="button" tabIndex={0} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(a.id)}>
-              <CardContent className="p-3 space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <span className="flex-1 min-w-0 font-medium text-sm">{a.title}</span>
-                  <Badge variant="outline">{statusLabel[a.status]}</Badge>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t("audit.internal.nextReview")}: {new Date(a.date).toLocaleDateString(i18n.language)} · {t("audit.internal.responsible")}: {a.responsible || "—"}
-                </div>
-                <div className="text-xs">{t("audit.internal.openFindings")}: <span className={openFindings > 0 ? "font-semibold text-status-yellow" : "text-muted-foreground"}>{openFindings}</span></div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {sorted.map((a) => (
+          <Card key={a.id} role="button" tabIndex={0} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(a.id)}>
+            <CardContent className="p-3 space-y-1.5">
+              <div className="flex items-start gap-2">
+                <span className="flex-1 min-w-0 font-medium text-sm">{a.title}</span>
+                <Badge variant="outline">{statusLabel[a.status]}</Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(a.review_date).toLocaleDateString(i18n.language)} · {personName(a.responsible_user_id)}
+              </div>
+              <div className="text-xs">{t("audit.internal.openFindings")}: <span className={openCount(a) > 0 ? "font-semibold text-status-yellow" : "text-muted-foreground"}>{openCount(a)}</span></div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-      <Card className="hidden md:block">
-        <CardContent className="p-0 overflow-x-auto">
-          <Table className="hidden md:table">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("audit.internal.title")}</TableHead>
-                <TableHead>{t("audit.internal.nextReview")}</TableHead>
-                <TableHead>{t("audit.internal.responsible")}</TableHead>
-                <TableHead>{t("audit.internal.status")}</TableHead>
-                <TableHead className="text-right">{t("audit.internal.openFindings")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((a) => {
-                const openFindings = a.findings.filter((f) => f.status !== "closed").length;
-                return (
+      {rows.length > 0 && (
+        <Card className="hidden md:block">
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("audit.internal.title")}</TableHead>
+                  <TableHead>{t("audit.internal.date")}</TableHead>
+                  <TableHead>{t("audit.internal.template")}</TableHead>
+                  <TableHead>{t("audit.internal.responsible")}</TableHead>
+                  <TableHead>{t("audit.internal.status")}</TableHead>
+                  <TableHead className="text-right">{t("audit.internal.openFindings")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((a) => (
                   <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenId(a.id)}>
                     <TableCell className="font-medium">{a.title}</TableCell>
-                    <TableCell>{new Date(a.date).toLocaleDateString(i18n.language)}</TableCell>
-                    <TableCell>{a.responsible || "—"}</TableCell>
+                    <TableCell>{new Date(a.review_date).toLocaleDateString(i18n.language)}</TableCell>
+                    <TableCell>{t(`audit.tpl.template.${a.template_key}`)}</TableCell>
+                    <TableCell>{personName(a.responsible_user_id)}</TableCell>
                     <TableCell><Badge variant="outline">{statusLabel[a.status]}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      {openFindings > 0 ? (
-                        <Badge variant="outline" className="bg-status-yellow/70 text-black border-status-yellow/60">
-                          {openFindings}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">0</span>
-                      )}
-                    </TableCell>
+                    <TableCell className="text-right">{openCount(a)}</TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+      {creating && (
+        <NewInternalAuditDialog open={creating} onOpenChange={setCreating} persons={persons.data ?? []}
+          departments={departments.data ?? []} onCreated={setOpenId} />
+      )}
       {active && (
-        <AuditDetailDialog
-          key={active.id}
-          audit={active}
-          open={!!openId}
-          onOpenChange={(o) => !o && setOpenId(null)}
-          onSave={save}
-        />
+        <AuditDetailDialog key={active.id} review={active} open onOpenChange={(o) => !o && setOpenId(null)}
+          canEdit={isAdmin && active.company_id === companyId} persons={persons.data ?? []}
+          unitName={departments.data?.find((d) => d.id === active.audited_company_id)?.name ?? null} />
       )}
     </div>
   );

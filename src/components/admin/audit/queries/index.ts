@@ -27,6 +27,7 @@ import {
   reminderRowsFromMessages,
 } from "../lib/operationsAnalysis";
 import { matchPossibleLogs, type UnlinkedLog } from "../lib/missingFlightLogs";
+import { isAwaitingVerification } from "../lib/auditTemplates";
 import type {
   AuditKpis,
   CompetencyRow,
@@ -746,13 +747,26 @@ export async function fetchAuditDocuments(userId: string, companyId: string): Pr
 // ============================================================
 export async function fetchAuditReviews(userId: string, companyId: string) {
   const ids = await visibleCompanyIds(userId, companyId);
+  const list = ids.join(",");
   const { data, error } = await supabase
     .from("audit_reviews")
-    .select("*, audit_findings(*, audit_actions(*))")
-    .in("company_id", ids)
+    .select("*, audit_sections(*, audit_checklist_items(*)), audit_findings(*, audit_actions(*))")
+    .or(`company_id.in.(${list}),audited_company_id.in.(${list})`)
     .order("review_date", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function fetchAuditPersons(userId: string, companyId: string): Promise<{ id: string; full_name: string | null; company_id: string | null }[]> {
+  const ids = await visibleCompanyIds(userId, companyId);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, company_id")
+    .in("company_id", ids)
+    .eq("approved", true)
+    .order("full_name");
+  if (error) throw error;
+  return (data ?? []) as any[];
 }
 
 export async function fetchDispositions(userId: string, companyId: string) {
@@ -782,11 +796,18 @@ export async function fetchFindingsAwaitingVerification(userId: string, companyI
   const ids = await visibleCompanyIds(userId, companyId);
   const { data, error } = await supabase
     .from("audit_findings")
-    .select("id, description, status")
+    .select("id, description, status, audit_actions(status)")
     .in("company_id", ids)
     .eq("status", "in_progress");
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ id: r.id, description: r.description }));
+  return (data ?? [])
+    .map((r: any) => ({
+      id: r.id,
+      description: r.description,
+      status: r.status as string,
+      actionStatuses: ((r.audit_actions ?? []) as { status: string }[]).map((a) => a.status),
+    }))
+    .filter((r) => isAwaitingVerification(r.status, r.actionStatuses));
 }
 
 // ============================================================

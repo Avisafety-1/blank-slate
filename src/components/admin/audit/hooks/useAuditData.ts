@@ -231,6 +231,7 @@ export function useCreateAuditReview() {
         .from("audit_reviews")
         .insert({
           company_id: companyId!,
+          audited_company_id: companyId!,
           title: input.title,
           review_type: input.review_type ?? "internal",
           review_date: input.review_date ?? new Date().toISOString().slice(0, 10),
