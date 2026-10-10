@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { suggestDeadline, type FindingSeverity } from "../lib/auditTemplates";
+import { auditErrorMessage } from "../lib/auditErrors";
 import { useInternalAuditMutations, type ReviewRow } from "../hooks/useInternalAudits";
 
 export interface NewFindingPreset {
@@ -56,7 +57,7 @@ export const NewFindingDialog = ({ open, onOpenChange, review, preset, persons, 
         action: { label: t("audit.internal.show"), onClick: () => onShow(id) },
       });
     } catch (e: any) {
-      toast.error(e?.message ?? t("audit.internal.saveError"));
+      toast.error(auditErrorMessage(e, t));
     }
   };
 

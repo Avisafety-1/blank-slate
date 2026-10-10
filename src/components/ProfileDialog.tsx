@@ -34,6 +34,7 @@ import { SignaturePad } from "./SignaturePad";
 import { TakeCourseDialog } from "./training/TakeCourseDialog";
 import { InboxTab } from "./profile/InboxTab";
 import { useUnreadMessagesCount } from "./profile/hooks/useUnreadMessagesCount";
+import { useMyAuditTasks } from "./admin/audit/hooks/useInternalAudits";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -146,7 +147,9 @@ export const ProfileDialog = () => {
   const [approvingMissionId, setApprovingMissionId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
-  const unreadInbox = useUnreadMessagesCount();
+  const unreadThreads = useUnreadMessagesCount();
+  const { data: myAuditTasks = [] } = useMyAuditTasks();
+  const unreadInbox = unreadThreads + myAuditTasks.length;
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [commentingMissionId, setCommentingMissionId] = useState<string | null>(null);
   const [missionComment, setMissionComment] = useState("");

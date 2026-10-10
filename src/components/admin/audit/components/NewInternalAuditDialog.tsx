@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchablePersonSelect } from "@/components/SearchablePersonSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { AUDIT_TEMPLATE_KEYS, buildTemplatePayload, type AuditTemplateKey } from "../lib/auditTemplates";
+import { auditErrorMessage } from "../lib/auditErrors";
 import { useInternalAuditMutations } from "../hooks/useInternalAudits";
 
 interface Props {
@@ -39,7 +40,7 @@ export const NewInternalAuditDialog = ({ open, onOpenChange, persons, department
       onOpenChange(false);
       onCreated(id as string);
     } catch (e: any) {
-      toast.error(e?.message ?? t("audit.internal.saveError"));
+      toast.error(auditErrorMessage(e, t));
     }
   };
 

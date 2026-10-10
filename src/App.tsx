@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect } from "react";
+import { AuditTaskHost } from "@/components/admin/audit/components/AuditTaskHost";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -243,6 +244,7 @@ const App = () => {
               <Toaster />
               <Sonner />
               <KeyboardDismissButton />
+              <AuditTaskHost />
                 <Routes>
                   {/* Public routes - login domain */}
                   <Route path="/auth" element={<DomainGuard requireAuth={false}><Auth /></DomainGuard>} />
