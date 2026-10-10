@@ -1,6 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
 import { expiryStatus, daysUntil, monthsAgo } from "../utils/dates";
 import { resolveCheckBucket } from "../utils/statusMapping";
+import { summarizeUnplanned, type UnplannedFlightLog } from "@/lib/unplannedFlights";
+import { buildFlownMissionRiskDistribution } from "@/lib/statusRiskDistribution";
+import {
+  ACTIVE_FLIGHT_STALE_HOURS,
+  COMPLETED_STATUS,
+  IN_PROGRESS_STATUS,
+  PLANNED_STATUS,
+  UNPLANNED_WINDOW_DAYS,
+  normalizeSail,
+  readSoraProfile,
+  soraEnvelopeIssue,
+  staleActiveFlightIssue,
+  staleMissionIssue,
+  type ActiveFlightLike,
+  type MissionLike,
+} from "../lib/operationsAnalysis";
 import type {
   AuditKpis,
   CompetencyRow,
@@ -8,6 +24,7 @@ import type {
   DocumentComplianceClass,
   DocumentComplianceRelevance,
   FleetRow,
+  OperationsData,
   OperationsIssue,
   SafetyAggregate,
 } from "../types";
@@ -243,49 +260,169 @@ export async function fetchFleet(userId: string, companyId: string): Promise<Fle
 // ============================================================
 // Operations
 // ============================================================
-export async function fetchOperations(
-  userId: string,
-  companyId: string,
-): Promise<{ issues: OperationsIssue[]; total: number }> {
+const PAGE = 1000;
+
+/** Paginate with .range() — Supabase stops at 1000 rows per request. */
+async function fetchAllPages<T>(build: (from: number, to: number) => any): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+  const r: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) r.push(arr.slice(i, i + size));
+  return r;
+};
+
+const monthKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+export async function fetchOperations(userId: string, companyId: string): Promise<OperationsData> {
   const ids = await visibleCompanyIds(userId, companyId);
   const since = iso12moAgo();
-  const [missionsRes, soraRes] = await Promise.all([
-    supabase
-      .from("missions")
-      .select("id, tittel, tidspunkt, checklist_ids, checklist_completed_ids, approval_status, status, company_id")
-      .in("company_id", ids)
-      .gte("tidspunkt", since),
-    supabase.from("mission_sora").select("mission_id").in("company_id", ids),
-  ]);
-  const soraSet = new Set((soraRes.data ?? []).map((r: any) => r.mission_id));
+  const now = new Date();
+  const activeCutoff = new Date(now.getTime() - ACTIVE_FLIGHT_STALE_HOURS * 3_600_000).toISOString();
+  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status";
 
-  const missions = (missionsRes.data ?? []) as any[];
-  const nowIso = new Date().toISOString();
-  const CLOSED_STATUSES = new Set([
-    "Fullført", "Fullfoert", "Avbrutt",
-    "Completed", "Aborted", "completed", "aborted",
+  const [windowMissions, openMissions, activeFlights, logs, soraRows] = await Promise.all([
+    fetchAllPages<MissionLike>((a, b) =>
+      supabase.from("missions").select(missionCols).in("company_id", ids).gte("tidspunkt", since).order("id").range(a, b),
+    ),
+    // All open missions regardless of age
+    fetchAllPages<MissionLike>((a, b) =>
+      supabase.from("missions").select(missionCols).in("company_id", ids)
+        .in("status", [PLANNED_STATUS, IN_PROGRESS_STATUS]).order("id").range(a, b),
+    ),
+    fetchAllPages<ActiveFlightLike>((a, b) =>
+      supabase.from("active_flights").select("id, mission_id, start_time, pilot_name")
+        .in("company_id", ids).lt("start_time", activeCutoff).order("id").range(a, b),
+    ),
+    fetchAllPages<UnplannedFlightLog>((a, b) =>
+      (supabase as any).from("flight_logs")
+        .select("id, flight_date, start_time_utc, source, mission_id, missions(opprettet_dato)")
+        .in("company_id", ids).gte("flight_date", since).order("id").range(a, b),
+    ),
+    fetchAllPages<{ mission_id: string }>((a, b) =>
+      supabase.from("mission_sora").select("mission_id").in("company_id", ids).order("mission_id").range(a, b),
+    ),
   ]);
-  const issues: OperationsIssue[] = [];
-  for (const m of missions) {
-    const title = m.tittel ?? "—";
-    const date = m.tidspunkt ?? null;
-    if (!soraSet.has(m.id)) {
-      issues.push({ id: `${m.id}-ra`, missionId: m.id, missionTitle: title, missionDate: date, code: "missingRiskAssessment" });
-    }
-    const req = Array.isArray(m.checklist_ids) ? m.checklist_ids : [];
-    const done = Array.isArray(m.checklist_completed_ids) ? m.checklist_completed_ids : [];
-    if (req.length > 0 && done.length < req.length) {
-      issues.push({ id: `${m.id}-chk`, missionId: m.id, missionTitle: title, missionDate: date, code: "missingChecklist" });
-    }
-    // A mission is "not closed" when its scheduled time has passed and the
-    // status is still Planlagt/Pågående (never marked Fullført/Avbrutt).
-    const isPast = date && date < nowIso;
-    const status = (m.status ?? "").toString();
-    if (isPast && status && !CLOSED_STATUSES.has(status)) {
-      issues.push({ id: `${m.id}-open`, missionId: m.id, missionTitle: title, missionDate: date, code: "flightNotClosed" });
+
+  const windowIds = new Set(windowMissions.map((m) => m.id));
+  const missionById = new Map<string, MissionLike>();
+  for (const m of [...windowMissions, ...openMissions]) missionById.set(m.id, m);
+  const missions = [...missionById.values()];
+
+  // Flown missions (have a flight log) + month of first flight
+  const flownMonth = new Map<string, string>();
+  for (const l of logs) {
+    if (!l.mission_id) continue;
+    const raw = l.start_time_utc || l.flight_date;
+    const d = raw ? new Date(raw) : null;
+    if (!d || isNaN(d.getTime())) continue;
+    const k = monthKeyOf(d);
+    const prev = flownMonth.get(l.mission_id);
+    if (!prev || k < prev) flownMonth.set(l.mission_id, k);
+  }
+  for (const m of windowMissions) {
+    if (m.status === COMPLETED_STATUS && !flownMonth.has(m.id) && m.tidspunkt) {
+      flownMonth.set(m.id, monthKeyOf(new Date(m.tidspunkt)));
     }
   }
-  return { issues, total: missions.length };
+
+  // Latest risk assessment per mission (missions in scope + flown)
+  const assessIds = [...new Set([...missionById.keys(), ...flownMonth.keys()])];
+  type AssessRow = {
+    mission_id: string; overall_score: number | null; recommendation: string | null; created_at: string;
+    soSail: unknown; soProfile: unknown; aiProfile: unknown; aiSystem: unknown;
+  };
+  const assessments: AssessRow[] = [];
+  for (const part of chunk(assessIds, 200)) {
+    const rows = await fetchAllPages<AssessRow>((a, b) =>
+      (supabase as any).from("mission_risk_assessments")
+        .select("mission_id, overall_score, recommendation, created_at, soSail:sora_output->sail, soProfile:sora_output->soraProfile, aiProfile:ai_analysis->soraProfile, aiSystem:ai_analysis->systemDecisions")
+        .in("mission_id", part).order("created_at", { ascending: false }).range(a, b),
+    );
+    assessments.push(...rows);
+  }
+  const latest = new Map<string, AssessRow>();
+  for (const a of assessments) if (!latest.has(a.mission_id)) latest.set(a.mission_id, a);
+
+  const soraSet = new Set(soraRows.map((r) => r.mission_id));
+  const issues: OperationsIssue[] = [];
+
+  for (const m of missions) {
+    const stale = staleMissionIssue(m, now);
+    if (stale) issues.push(stale);
+  }
+  for (const f of activeFlights) {
+    const title = f.mission_id ? missionById.get(f.mission_id)?.tittel ?? null : null;
+    const i = staleActiveFlightIssue(f, title, now);
+    if (i) issues.push(i);
+  }
+
+  const sora = { assessed: 0, within: 0, deviating: 0, bySail: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 } as Record<string, number> };
+  for (const m of missions) {
+    const a = latest.get(m.id);
+    if (!a) {
+      if (windowIds.has(m.id) && !soraSet.has(m.id)) {
+        issues.push({ id: `${m.id}-ra`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null, code: "missingRiskAssessment", severity: "warning" });
+      }
+      continue;
+    }
+    const profile = readSoraProfile(a.soProfile, a.aiProfile);
+    const sail = normalizeSail(a.soSail) ?? normalizeSail(a.aiSystem);
+    if (profile?.used) {
+      sora.assessed++;
+      if (profile.deviations.length > 0) sora.deviating++;
+      else sora.within++;
+      if (sail) sora.bySail[sail] = (sora.bySail[sail] ?? 0) + 1;
+    }
+    const env = soraEnvelopeIssue(m, profile, sail, flownMonth.has(m.id));
+    if (env) issues.push(env);
+    if (m.status === COMPLETED_STATUS && a.recommendation?.toLowerCase() === "no-go") {
+      issues.push({ id: `${m.id}-nogo`, missionId: m.id, missionTitle: m.tittel ?? "—", missionDate: m.tidspunkt ?? null, code: "flownWithNoGo", severity: "critical" });
+    }
+  }
+
+  // Unplanned imported flights (shared definition with Status page)
+  const monthOrder: string[] = [];
+  for (let i = 11; i >= 0; i--) {
+    monthOrder.push(monthKeyOf(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+  }
+  const unplanned = summarizeUnplanned(logs, monthKeyOf, monthOrder);
+  const recentCutoff = now.getTime() - UNPLANNED_WINDOW_DAYS * 86_400_000;
+  const recentLogs = logs.filter((l) => {
+    const raw = l.start_time_utc || l.flight_date;
+    return raw ? new Date(raw).getTime() >= recentCutoff : false;
+  });
+  const recent = summarizeUnplanned(recentLogs);
+
+  // Risk distribution on flown missions (shared helper with Status page)
+  const assessList = [...latest.values()];
+  const labels = { go: { name: "go", scoreRange: "" }, caution: { name: "caution", scoreRange: "" }, "no-go": { name: "no-go", scoreRange: "" }, "not-assessed": { name: "not-assessed", scoreRange: "" } };
+  const flownIds = [...flownMonth.keys()];
+  const distribution = buildFlownMissionRiskDistribution(flownIds, assessList, labels).map((d) => ({ key: d.key, value: d.value }));
+  const byMonth = monthOrder.map((month) => {
+    const idsInMonth = flownIds.filter((id) => flownMonth.get(id) === month);
+    const d = buildFlownMissionRiskDistribution(idsInMonth, assessList, labels);
+    const v = (k: string) => d.find((x) => x.key === k)?.value ?? 0;
+    return { month, go: v("go"), caution: v("caution"), noGo: v("no-go"), notAssessed: v("not-assessed") };
+  });
+
+  return {
+    issues,
+    total: missions.length,
+    unplanned,
+    unplannedRecent: { total: recent.total, unplanned: recent.unplanned, pct: recent.pct },
+    sora,
+    risk: { distribution, byMonth },
+  };
 }
 
 // ============================================================

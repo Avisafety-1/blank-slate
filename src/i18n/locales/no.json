@@ -8224,11 +8224,13 @@
       "total": "Analyserte oppdrag",
       "codes": {
         "missingRiskAssessment": "Mangler risikovurdering",
-        "missingChecklist": "Mangler sjekkliste",
-        "missingApproval": "Mangler godkjenning",
-        "flightNotClosed": "Flygning ikke lukket"
+        "missionInProgressStale": "Pågående oppdrag ikke avsluttet",
+        "activeFlightStale": "Aktiv flygning ikke avsluttet",
+        "soraEnvelopeExceeded": "Utenfor SORA-rammene",
+        "flownWithNoGo": "Fløyet med NO-GO",
+        "missionPlannedPastDue": "Planlagt oppdrag passert"
       },
-      "noIssues": "Ingen operative avvik siste 12 måneder",
+      "noIssues": "Ingen operative avvik",
       "evaluatedFootnote": "{{issues}} avvik funnet i {{total}} evaluerte oppdrag",
       "expandGroup": "Vis {{count}}",
       "collapseGroup": "Skjul",
@@ -8240,7 +8242,37 @@
         "complianceRate": "Compliance-grad",
         "chartTitle": "Compliance på fullførte oppdrag",
         "compliantSlice": "I compliance",
-        "nonCompliantSlice": "Ikke i compliance"
+        "nonCompliantSlice": "Ikke i compliance",
+        "evaluated": "Evaluerte oppdrag",
+        "critical": "Kritiske avvik",
+        "hanging": "Oppdrag/flygninger som henger",
+        "unplannedShort": "Uplanlagte flyturer"
+      },
+      "daysOverdue_one": "{{count}} dag over tiden",
+      "daysOverdue_other": "{{count}} dager over tiden",
+      "hoursActive_one": "aktiv i {{count}} time",
+      "hoursActive_other": "aktiv i {{count}} timer",
+      "systemSail": "Systemberegnet SAIL {{sail}}",
+      "unplanned": {
+        "kpi": "Uplanlagte flyturer: {{count}} av {{total}} importerte ({{pct}} %)",
+        "open": "Vis flyturer",
+        "planned": "Planlagt",
+        "unplanned": "Uplanlagt"
+      },
+      "sora": {
+        "title": "SORA-profil mot systemberegning",
+        "assessed": "Vurdert mot profil",
+        "within": "Innenfor",
+        "deviating": "Med avvik",
+        "bySail": "Fordeling per systemberegnet SAIL",
+        "missions": "Oppdrag"
+      },
+      "risk": {
+        "title": "Risikonivå på fløyne oppdrag (12 mnd)",
+        "go": "GO",
+        "caution": "Caution",
+        "no-go": "NO-GO",
+        "not-assessed": "Ikke vurdert"
       }
     },
     "safety": {
@@ -8330,18 +8362,6 @@
         "title": "{{mission}} mangler risikovurdering",
         "body": "Ingen SORA/risikovurdering registrert."
       },
-      "missingChecklist": {
-        "title": "{{mission}}: sjekkliste ikke fullført",
-        "body": "En eller flere obligatoriske sjekklister er ikke fullført."
-      },
-      "missingApproval": {
-        "title": "{{mission}} mangler godkjenning",
-        "body": "Oppdraget krever godkjenning."
-      },
-      "flightNotClosed": {
-        "title": "{{mission}}: flygning ikke avsluttet",
-        "body": "En flygning har ingen sluttidspunkt."
-      },
       "overdueAction": {
         "title": "Tiltak er forfalt",
         "body": "{{desc}} — frist: {{deadline}}"
@@ -8349,6 +8369,30 @@
       "awaitingVerification": {
         "title": "Funn venter på verifisering",
         "body": "{{desc}}"
+      },
+      "missionPlannedPastDue": {
+        "title": "{{mission}}: planlagt oppdrag er passert",
+        "body": "Oppdraget står fortsatt som planlagt {{days}} dager etter sluttidspunktet."
+      },
+      "missionInProgressStale": {
+        "title": "{{mission}}: pågående i {{days}} dager",
+        "body": "Oppdraget står som pågående {{days}} dager etter sluttidspunktet og er ikke avsluttet."
+      },
+      "activeFlightStale": {
+        "title": "{{mission}}: aktiv flygning i {{hours}} timer",
+        "body": "En flygning har vært aktiv i over 12 timer og er ikke avsluttet."
+      },
+      "soraEnvelopeExceeded": {
+        "title": "{{mission}}: utenfor SORA-rammene",
+        "body": "Avvik: {{deviations}}. Systemberegnet SAIL {{sail}}."
+      },
+      "flownWithNoGo": {
+        "title": "{{mission}}: fløyet med NO-GO",
+        "body": "Oppdraget er fullført selv om siste risikovurdering ga NO-GO."
+      },
+      "unplannedFlightsHigh": {
+        "title": "Mange uplanlagte flyturer",
+        "body": "{{count}} av {{total}} importerte flyturer siste 90 dager ({{pct}} %) var ikke planlagt på forhånd."
       }
     },
     "insight": {

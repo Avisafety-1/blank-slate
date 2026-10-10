@@ -182,12 +182,51 @@ export interface FleetRow {
   lastInspectionAt: string | null;
 }
 
+export type OperationsIssueCode =
+  | "missionInProgressStale"
+  | "activeFlightStale"
+  | "soraEnvelopeExceeded"
+  | "flownWithNoGo"
+  | "missionPlannedPastDue"
+  | "missingRiskAssessment";
+
 export interface OperationsIssue {
   id: string;
-  missionId: string;
+  missionId: string | null;
+  flightId?: string;
   missionTitle: string;
   missionDate: string | null;
-  code: "missingRiskAssessment" | "missingChecklist" | "missingApproval" | "flightNotClosed";
+  code: OperationsIssueCode;
+  severity?: FindingSeverity;
+  days?: number;
+  hours?: number;
+  details?: string[];
+  sail?: string | null;
+}
+
+export interface OperationsRiskMonth {
+  month: string; // YYYY-MM
+  go: number;
+  caution: number;
+  noGo: number;
+  notAssessed: number;
+}
+
+export interface OperationsData {
+  issues: OperationsIssue[];
+  total: number;
+  unplanned: {
+    total: number;
+    unplanned: number;
+    pct: number;
+    byMonth: { month: string; planned: number; unplanned: number }[];
+  };
+  unplannedRecent: { total: number; unplanned: number; pct: number };
+  sora: { assessed: number; within: number; deviating: number; bySail: Record<string, number> };
+  risk: {
+    distribution: { key: "go" | "caution" | "no-go" | "not-assessed"; value: number }[];
+    byMonth: OperationsRiskMonth[];
+  };
 }
 
 export interface SafetySeverityBucket {

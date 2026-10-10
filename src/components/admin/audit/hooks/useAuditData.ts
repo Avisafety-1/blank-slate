@@ -133,6 +133,7 @@ export function useAuditOverview() {
             overdueAuditActions: (overdue.data as any[]) ?? [],
             findingsAwaitingVerification: (awaiting.data as any[]) ?? [],
             requireSoraOnMissions: !!(settings as any)?.require_sora_on_missions,
+            unplannedRecent: operations.data?.unplannedRecent ?? null,
           },
           (dispositions.data as any[]) ?? [],
         )
@@ -148,6 +149,7 @@ export function useAuditOverview() {
         safety: safety.data ?? null,
         openAuditActions: kpis.data?.openActions ?? 0,
         overdueAuditActions: ((overdue.data as any[]) ?? []).length,
+        requireSoraOnMissions: !!(settings as any)?.require_sora_on_missions,
       })
     : null;
 
