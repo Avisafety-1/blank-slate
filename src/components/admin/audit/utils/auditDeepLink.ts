@@ -32,3 +32,6 @@ export function auditDeepLink(entityType: string, entityId: string): DeepLink {
       return { path: `/admin?tab=audit` };
   }
 }
+
+/** Reminder link for a completed mission without flight log; opens the "was it flown?" card. */
+export const noFlightDeepLink = (missionId: string) => `/oppdrag?id=${missionId}&action=noFlight`;

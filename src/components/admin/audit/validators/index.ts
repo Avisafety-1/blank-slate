@@ -133,6 +133,7 @@ const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
   soraEnvelopeExceeded: "SoraEnvelopeExceeded",
   flownWithNoGo: "FlownWithNoGo",
   missingRiskAssessment: "MissingRiskAssessment",
+  missionWithoutFlightLog: "MissionWithoutFlightLog",
 };
 
 const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
@@ -148,10 +149,15 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       deviations: (issue.details ?? []).join("; "),
       approvedBy: issue.approvedBefore?.by ?? "—",
       approvedAt: issue.approvedBefore?.at ? issue.approvedBefore.at.slice(0, 10) : "",
+      logDate: issue.possibleLog?.date ? issue.possibleLog.date.slice(0, 10) : "",
+      logDrone: issue.possibleLog?.drone ?? "—",
+      logMinutes: issue.possibleLog?.minutes ?? "—",
     };
     const bodyKey = issue.code === "flownWithNoGo" && issue.approvedBefore
       ? "audit.scanner.flownWithNoGo.bodyApprovedBefore"
-      : `audit.scanner.${issue.code}.body`;
+      : issue.code === "missionWithoutFlightLog" && issue.possibleLog
+        ? "audit.scanner.missionWithoutFlightLog.bodyPossibleLog"
+        : `audit.scanner.${issue.code}.body`;
     const entityIsMission = !!issue.missionId;
     findings.push({
       code: OPS_FINDING_CODE[issue.code],
@@ -163,7 +169,11 @@ const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) =
       bodyParams: params,
       entityType: entityIsMission ? "mission" : "active_flight",
       entityId: issue.missionId ?? issue.flightId ?? issue.id,
-      evidence: issue.details ? { deviations: issue.details, sail: issue.sail ?? null } : undefined,
+      evidence: issue.details
+        ? { deviations: issue.details, sail: issue.sail ?? null }
+        : issue.code === "missionWithoutFlightLog"
+          ? { recipientIds: issue.recipientIds ?? [], possibleLog: issue.possibleLog ?? null, missionDate: issue.missionDate }
+          : undefined,
       deepLink: entityIsMission ? auditDeepLink("mission", issue.missionId!) : auditDeepLink("audit", ""),
     });
   }

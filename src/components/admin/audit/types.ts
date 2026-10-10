@@ -195,7 +195,15 @@ export type OperationsIssueCode =
   | "soraEnvelopeExceeded"
   | "flownWithNoGo"
   | "missionPlannedPastDue"
-  | "missingRiskAssessment";
+  | "missingRiskAssessment"
+  | "missionWithoutFlightLog";
+
+export interface PossibleFlightLog {
+  id: string;
+  date: string | null;
+  drone: string | null;
+  minutes: number | null;
+}
 
 export interface OperationsIssue {
   id: string;
@@ -211,6 +219,12 @@ export interface OperationsIssue {
   sail?: string | null;
   /** Approval given before the NO-GO assessment (FlownWithNoGo only). */
   approvedBefore?: { by: string | null; at: string | null } | null;
+  /** MissionWithoutFlightLog only. */
+  departmentName?: string | null;
+  pilots?: { id: string; name: string }[];
+  /** Reminder recipients: mission personnel, fallback creator. */
+  recipientIds?: string[];
+  possibleLog?: PossibleFlightLog | null;
 }
 
 export interface ApprovedNoGoMission {

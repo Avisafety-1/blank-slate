@@ -65,6 +65,15 @@ export async function resolveRecipients(
         const { data: m } = await supabase.from("missions").select("user_id").eq("id", data.mission_id).maybeSingle();
         suggestions = await profilesByIds([m?.user_id], "owner");
       }
+    } else if (finding.code === "MissionWithoutFlightLog") {
+      // Mission personnel; fallback the mission creator.
+      const [{ data: m }, { data: personnel }] = await Promise.all([
+        supabase.from("missions").select("id, user_id, company_id").eq("id", finding.entityId).maybeSingle(),
+        supabase.from("mission_personnel").select("profile_id").eq("mission_id", finding.entityId),
+      ]);
+      if (m?.company_id) entityCompanyId = m.company_id;
+      suggestions = await profilesByIds((personnel ?? []).map((p) => p.profile_id), "personnel");
+      if (!suggestions.length) suggestions = await profilesByIds([m?.user_id], "owner");
     } else if (finding.entityType === "mission") {
       const [{ data: m }, { data: personnel }] = await Promise.all([
         supabase.from("missions").select("id, user_id, company_id").eq("id", finding.entityId).maybeSingle(),

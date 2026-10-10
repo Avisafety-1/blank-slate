@@ -22,7 +22,9 @@ import {
   staleMissionIssue,
   type ActiveFlightLike,
   type MissionLike,
+  missionWithoutFlightLogIssue,
 } from "../lib/operationsAnalysis";
+import { matchPossibleLogs, type UnlinkedLog } from "../lib/missingFlightLogs";
 import type {
   AuditKpis,
   CompetencyRow,
@@ -32,6 +34,7 @@ import type {
   FleetRow,
   OperationsData,
   OperationsIssue,
+  PossibleFlightLog,
   SafetyAggregate,
 } from "../types";
 
@@ -334,12 +337,88 @@ const chunk = <T,>(arr: T[], size: number): T[][] => {
 
 const monthKeyOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
+type MissingLogMission = MissionLike & { user_id?: string | null; companies?: { navn?: string | null } | null };
+
+/** Fullført missions (12 mo, ended >48h) with no linked flight log, plus a possible unlinked log. */
+async function missingFlightLogIssues(missions: MissingLogMission[], ids: string[], now: Date): Promise<OperationsIssue[]> {
+  const candidates = missions.filter((m) => missionWithoutFlightLogIssue(m, false, now));
+  if (!candidates.length) return [];
+  const candIds = candidates.map((m) => m.id);
+
+  const withLog = new Set<string>();
+  const personnel: { mission_id: string; profile_id: string | null }[] = [];
+  const missionDrones: { mission_id: string; drone_id: string | null }[] = [];
+  for (const part of chunk(candIds, 200)) {
+    const [logRows, pRows, dRows] = await Promise.all([
+      fetchAllPages<{ mission_id: string }>((a, b) =>
+        supabase.from("flight_logs").select("mission_id").in("mission_id", part).order("id").range(a, b)),
+      fetchAllPages<{ mission_id: string; profile_id: string | null }>((a, b) =>
+        supabase.from("mission_personnel").select("mission_id, profile_id").in("mission_id", part).order("id").range(a, b)),
+      fetchAllPages<{ mission_id: string; drone_id: string | null }>((a, b) =>
+        supabase.from("mission_drones").select("mission_id, drone_id").in("mission_id", part).order("id").range(a, b)),
+    ]);
+    for (const r of logRows) withLog.add(r.mission_id);
+    personnel.push(...pRows);
+    missionDrones.push(...dRows);
+  }
+  const missing = candidates.filter((m) => !withLog.has(m.id));
+  if (!missing.length) return [];
+
+  const pilotsOf = new Map<string, string[]>();
+  for (const p of personnel) if (p.profile_id) pilotsOf.set(p.mission_id, [...(pilotsOf.get(p.mission_id) ?? []), p.profile_id]);
+  const dronesOf = new Map<string, string[]>();
+  for (const d of missionDrones) if (d.drone_id) dronesOf.set(d.mission_id, [...(dronesOf.get(d.mission_id) ?? []), d.drone_id]);
+
+  // Unlinked logs on the same days (any company visible to the user)
+  const days = [...new Set(missing.map((m) => (m.tidspunkt ? new Date(m.tidspunkt) : null))
+    .filter((d): d is Date => !!d && !isNaN(d.getTime())).map((d) => d.toISOString().slice(0, 10)))];
+  let possible = new Map<string, PossibleFlightLog>();
+  if (days.length) {
+    const minDay = new Date(new Date(days.sort()[0]).getTime() - 86_400_000).toISOString().slice(0, 10);
+    const maxDay = new Date(new Date(days[days.length - 1]).getTime() + 86_400_000).toISOString().slice(0, 10);
+    const logs = await fetchAllPages<any>((a, b) =>
+      (supabase as any).from("flight_logs")
+        .select("id, flight_date, start_time_utc, drone_id, user_id, flight_duration_minutes, drones(modell), flight_log_personnel(profile_id)")
+        .in("company_id", ids).is("mission_id", null).gte("flight_date", minDay).lte("flight_date", `${maxDay}T23:59:59`)
+        .order("id").range(a, b));
+    const unlinked: UnlinkedLog[] = logs.map((l) => ({
+      id: l.id, flight_date: l.flight_date, start_time_utc: l.start_time_utc, drone_id: l.drone_id, user_id: l.user_id,
+      flight_duration_minutes: l.flight_duration_minutes, droneName: l.drones?.modell ?? null,
+      pilotIds: (l.flight_log_personnel ?? []).map((p: any) => p.profile_id).filter(Boolean),
+    }));
+    possible = matchPossibleLogs(
+      missing.filter((m) => m.tidspunkt).map((m) => ({ id: m.id, tidspunkt: m.tidspunkt!, droneIds: dronesOf.get(m.id) ?? [], pilotIds: pilotsOf.get(m.id) ?? [] })),
+      unlinked,
+    );
+  }
+
+  const profileIds = [...new Set(missing.flatMap((m) => [...(pilotsOf.get(m.id) ?? []), ...(m.user_id ? [m.user_id] : [])]))];
+  const names = new Map<string, string>();
+  for (const part of chunk(profileIds, 200)) {
+    const { data } = await supabase.from("profiles").select("id, full_name").in("id", part);
+    for (const p of (data ?? []) as any[]) names.set(p.id, p.full_name ?? "—");
+  }
+
+  return missing.map((m) => {
+    const issue = missionWithoutFlightLogIssue(m, false, now)!;
+    const pilotIds = [...new Set(pilotsOf.get(m.id) ?? [])];
+    const recipientIds = pilotIds.length ? pilotIds : m.user_id ? [m.user_id] : [];
+    return {
+      ...issue,
+      departmentName: m.companies?.navn ?? null,
+      pilots: pilotIds.map((id) => ({ id, name: names.get(id) ?? "—" })),
+      recipientIds,
+      possibleLog: possible.get(m.id) ?? null,
+    };
+  });
+}
+
 export async function fetchOperations(userId: string, companyId: string): Promise<OperationsData> {
   const ids = await visibleCompanyIds(userId, companyId);
   const since = iso12moAgo();
   const now = new Date();
   const activeCutoff = new Date(now.getTime() - ACTIVE_FLIGHT_STALE_HOURS * 3_600_000).toISOString();
-  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status, approval_status, approved_at, approved_by, approval_comment";
+  const missionCols = "id, tittel, tidspunkt, slutt_tidspunkt, status, approval_status, approved_at, approved_by, approval_comment, user_id, companies(navn)";
 
   const [windowMissions, openMissions, activeFlights, logs, soraRows] = await Promise.all([
     fetchAllPages<MissionLike>((a, b) =>
@@ -417,6 +496,7 @@ export async function fetchOperations(userId: string, companyId: string): Promis
     const i = staleActiveFlightIssue(f, title, now);
     if (i) issues.push(i);
   }
+  issues.push(...(await missingFlightLogIssues(windowMissions as MissingLogMission[], ids, now)));
 
   const noGo: { m: MissionRow; state: ReturnType<typeof noGoApprovalState> }[] = [];
   const sora = { assessed: 0, within: 0, deviating: 0, bySail: { I: 0, II: 0, III: 0, IV: 0, V: 0, VI: 0 } as Record<string, number> };

@@ -149,24 +149,78 @@ export function isScoredIssue(i: OperationsIssue, requireSora: boolean): boolean
   }
 }
 
-/** One result per evaluated mission; a mission with several scored issues fails once. */
+/**
+ * One result per evaluated mission; a mission with several scored issues fails once.
+ * Missions without a flight log count as warn (unless they already fail).
+ */
 export function operationsCheckResults(
   issues: OperationsIssue[],
   total: number,
   requireSora: boolean,
 ): CheckResult[] {
   const failingMissions = new Set<string>();
+  const warnMissions = new Set<string>();
   let orphanFails = 0;
   for (const i of issues) {
+    if (i.code === "missionWithoutFlightLog" && i.missionId) {
+      warnMissions.add(i.missionId);
+      continue;
+    }
     if (!isScoredIssue(i, requireSora)) continue;
     if (i.missionId) failingMissions.add(i.missionId);
     else orphanFails++;
   }
+  for (const id of failingMissions) warnMissions.delete(id);
   const results: CheckResult[] = [];
   const fails = Math.min(failingMissions.size, total);
-  for (let k = 0; k < total; k++) results.push(k < fails ? "fail" : "pass");
+  const warns = Math.min(warnMissions.size, Math.max(0, total - fails));
+  for (let k = 0; k < total; k++) results.push(k < fails ? "fail" : k < fails + warns ? "warn" : "pass");
   for (let k = 0; k < orphanFails; k++) results.push("fail");
   return results;
+}
+
+// ---------- Completed missions without a flight log ----------
+export const MISSING_LOG_HOURS = 48;
+export const MISSING_LOG_CODE = "MissionWithoutFlightLog";
+
+/** Fullført, ended >48h ago, and no flight_logs linked. Avbrutt/Pågående never qualify. */
+export function missionWithoutFlightLogIssue(
+  m: MissionLike,
+  hasFlightLog: boolean,
+  now: Date = new Date(),
+): OperationsIssue | null {
+  if (m.status !== COMPLETED_STATUS || hasFlightLog) return null;
+  const end = missionEnd(m);
+  if (!end) return null;
+  const ageMs = now.getTime() - end.getTime();
+  if (ageMs <= MISSING_LOG_HOURS * HOUR) return null;
+  return {
+    id: `${m.id}-nolog`,
+    missionId: m.id,
+    missionTitle: m.tittel ?? "—",
+    missionDate: m.slutt_tidspunkt || m.tidspunkt || null,
+    code: "missionWithoutFlightLog",
+    severity: "warning",
+    days: Math.floor(ageMs / (24 * HOUR)),
+  };
+}
+
+/** Reminder finding_key may hold several keys separated by commas (bulk reminders). */
+export const splitFindingKeys = (key: string | null | undefined): string[] =>
+  (key ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+export const missingLogFindingKey = (missionId: string) => `${MISSING_LOG_CODE}:mission:${missionId}`;
+
+/** Group missing-log missions by recipient; each pilot gets one message listing all their missions. */
+export function groupMissingLogsByRecipient<T extends { missionId: string | null; recipientIds?: string[] }>(
+  issues: T[],
+): Map<string, T[]> {
+  const out = new Map<string, T[]>();
+  for (const i of issues) {
+    if (!i.missionId) continue;
+    for (const r of new Set(i.recipientIds ?? [])) out.set(r, [...(out.get(r) ?? []), i]);
+  }
+  return out;
 }
 
 /**
