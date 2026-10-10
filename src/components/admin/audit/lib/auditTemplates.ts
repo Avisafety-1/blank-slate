@@ -114,3 +114,56 @@ export function computeSectionStatus(results: ChecklistResult[]): SectionStatus 
 export function isAwaitingVerification(status: string | null | undefined, actionStatuses: string[]): boolean {
   return status === "in_progress" && actionStatuses.length > 0 && actionStatuses.every((s) => s === "closed");
 }
+
+export type FindingSeverity = "critical" | "warning" | "info";
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const localIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/** Suggested deadline per level: Level 1 = +7 days, Level 2 = +60 days, Observation = none. */
+export function suggestDeadline(severity: FindingSeverity, today: Date = new Date()): string | null {
+  const days = severity === "critical" ? 7 : severity === "warning" ? 60 : null;
+  if (days === null) return null;
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days);
+  return localIso(d);
+}
+
+/** Default level when a finding is created from a checklist item. */
+export function defaultSeverityForResult(result: ChecklistResult): FindingSeverity {
+  return result === "warn" ? "info" : "warning";
+}
+
+export type FindingDisplayStatus = "open" | "in_progress" | "ready" | "verified";
+
+/** Display status: legacy 'closed' counts as verified; 'ready' is derived (≥1 action, all closed). */
+export function findingDisplayStatus(status: string, actionStatuses: string[]): FindingDisplayStatus {
+  if (status === "verified" || status === "closed") return "verified";
+  if (isAwaitingVerification(status, actionStatuses)) return "ready";
+  return status === "in_progress" ? "in_progress" : "open";
+}
+
+export type CloseBlocker =
+  | { kind: "unassessed"; itemId: string }
+  | { kind: "missingReason"; itemId: string }
+  | { kind: "openCritical"; findingId: string };
+
+/** Mirrors the server rules in audit_reviews_guard; the server decides. */
+export function closeBlockers(
+  items: { id: string; result: ChecklistResult; comment: string | null }[],
+  findings: { id: string; severity: string; status: string }[],
+): CloseBlocker[] {
+  const out: CloseBlocker[] = [];
+  for (const i of items) {
+    if (i.result === "unknown") out.push({ kind: "unassessed", itemId: i.id });
+    else if ((i.result === "warn" || i.result === "fail") && !(i.comment ?? "").trim()) out.push({ kind: "missingReason", itemId: i.id });
+  }
+  for (const f of findings) {
+    if (f.severity === "critical" && f.status !== "verified" && f.status !== "closed") out.push({ kind: "openCritical", findingId: f.id });
+  }
+  return out;
+}
+
+/** Override reason may only lift the open-critical rule. */
+export function onlyCriticalBlocks(blockers: CloseBlocker[]): boolean {
+  return blockers.length > 0 && blockers.every((b) => b.kind === "openCritical");
+}
