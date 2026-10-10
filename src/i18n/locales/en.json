@@ -9004,6 +9004,14 @@
         "why": "Outdated documents give wrong guidance.",
         "fix": "Review and update the document."
       }
+    },
+    "openEntity": {
+      "notFound": "Item not found – it may have been deleted or you lack access.",
+      "fullPage": "Open full page",
+      "inMissions": "Open in Missions",
+      "inIncidents": "Open in Incidents",
+      "inDocuments": "Open in Documents",
+      "inResources": "Open in Resources"
     }
   },
   "inbox": {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { OpenEntityButton } from "./AuditEntityDialogHost";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, Bell, FileQuestion, Loader2, Send } from "lucide-react";
@@ -33,7 +33,6 @@ const toFinding = (i: OperationsIssue): ScannerFinding => {
 
 export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[] }) => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: statuses } = useReminderStatuses();
   const [finding, setFinding] = useState<ScannerFinding | null>(null);
@@ -65,7 +64,7 @@ export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[]
             recipient_ids: [recipientId],
             subject: t("audit.operations.missingLogs.bulkSubject", { count: list.length }),
             body: `${t("audit.operations.missingLogs.bulkIntro", { count: list.length })}\n\n${lines.join("\n")}`,
-            deep_link: list.length === 1 ? noFlightDeepLink(list[0].missionId!) : `/oppdrag?id=${list[0].missionId}`,
+            deep_link: list.length === 1 ? noFlightDeepLink(list[0].missionId!) : `/oppdrag?mission=${list[0].missionId}`,
             // One key per mission so status is tracked per mission.
             finding_key: list.map((i) => missingLogFindingKey(i.missionId!)).join(","),
             severity: "warning",
@@ -141,9 +140,7 @@ export const MissingFlightLogsSection = ({ issues }: { issues: OperationsIssue[]
                     <Bell className="w-3.5 h-3.5 mr-1.5" />
                     {t("audit.operations.missingLogs.request")}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => navigate(auditDeepLink("mission", i.missionId!).path)}>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Button>
+                  <OpenEntityButton entityType="mission" entityId={i.missionId!} variant="ghost" />
                 </div>
               </li>
             );

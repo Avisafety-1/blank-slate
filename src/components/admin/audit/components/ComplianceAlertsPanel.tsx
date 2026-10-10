@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { OpenEntityButton } from "./AuditEntityDialogHost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,6 @@ const sevBadgeClass = (sev: FindingSeverity) =>
 
 export const ComplianceAlertsPanel = ({ findings, initialPerGroup = 5 }: Props) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const dispose = useUpsertDisposition();
   const { data: reminderMap = {} } = useReminderStatuses();
   const [reminderFinding, setReminderFinding] = useState<ScannerFinding | null>(null);
@@ -125,11 +124,7 @@ export const ComplianceAlertsPanel = ({ findings, initialPerGroup = 5 }: Props) 
           <Send className="w-3.5 h-3.5 mr-1.5" />
           {t("audit.alerts.sendReminder")}
         </Button>
-        {f.deepLink?.path && (
-          <Button size="sm" variant="outline" className="text-xs sm:text-sm" onClick={() => navigate(f.deepLink!.path)}>
-            {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-          </Button>
-        )}
+        <OpenEntityButton entityType={f.entityType} entityId={f.entityId} />
         <Button
           size="sm"
           variant="ghost"

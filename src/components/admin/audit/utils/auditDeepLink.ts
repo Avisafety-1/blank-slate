@@ -17,7 +17,7 @@ export function auditDeepLink(entityType: string, entityId: string): DeepLink {
     case "competency":
       return { path: `/ressurser?tab=personnel&id=${entityId}` };
     case "mission":
-      return { path: `/oppdrag?id=${entityId}` };
+      return { path: `/oppdrag?mission=${entityId}` };
     case "flight":
       return { path: `/oppdrag?flight=${entityId}` };
     case "document":
@@ -34,4 +34,4 @@ export function auditDeepLink(entityType: string, entityId: string): DeepLink {
 }
 
 /** Reminder link for a completed mission without flight log; opens the "was it flown?" card. */
-export const noFlightDeepLink = (missionId: string) => `/oppdrag?id=${missionId}&action=noFlight`;
+export const noFlightDeepLink = (missionId: string) => `/oppdrag?mission=${missionId}&action=noFlight`;

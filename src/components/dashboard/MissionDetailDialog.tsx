@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { MapPin, Calendar, AlertTriangle, Pencil, ShieldCheck, Brain, Clock, CheckCircle2, Maximize2, Route, BarChart3, Radio, Download } from "lucide-react";
 import { downloadGpx, downloadKmz } from "@/lib/flightTrackExport";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -59,9 +59,11 @@ interface MissionDetailDialogProps {
   mission: Mission | null;
   onMissionUpdated?: () => void;
   onEditRoute?: (mission: any) => void;
+  /** Optional content rendered at the top of the card body (e.g. a follow-up prompt). */
+  topSlot?: ReactNode;
 }
 
-export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute }: MissionDetailDialogProps) => {
+export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpdated, onEditRoute, topSlot }: MissionDetailDialogProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { companyId } = useAuth();
@@ -229,6 +231,7 @@ export const MissionDetailDialog = ({ open, onOpenChange, mission, onMissionUpda
           </DialogHeader>
         
         <div className="space-y-4">
+          {topSlot}
           <AirspaceConflictWarning
             missionId={currentMission.id}
             tidspunkt={currentMission.tidspunkt}

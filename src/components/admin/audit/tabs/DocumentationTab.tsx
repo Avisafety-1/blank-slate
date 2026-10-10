@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "../components/AuditEntityDialogHost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,8 +10,6 @@ import { FileText } from "lucide-react";
 import { StatusPill } from "../components/StatusPill";
 import { useAuditDocuments } from "../hooks/useAuditData";
 import { checkToPill, checkLabelKey } from "../utils/statusMapping";
-import { useNavigate } from "react-router-dom";
-import { auditDeepLink } from "../utils/auditDeepLink";
 import type { CheckResult } from "../types";
 
 type StatusTab = "expired" | "expiring" | "valid" | "noExpiry";
@@ -26,7 +25,6 @@ function statusToTab(s: CheckResult): StatusTab {
 
 export const DocumentationTab = () => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useAuditDocuments();
   const [tab, setTab] = useState<StatusTab>("expired");
 
@@ -90,9 +88,7 @@ export const DocumentationTab = () => {
                 <div className="text-muted-foreground text-xs mt-2">{t("audit.documents.nextReview")}</div>
                 <div>{d.nextReview ? new Date(d.nextReview).toLocaleDateString(i18n.language) : "—"}</div>
                 <div className="pt-2 flex justify-end">
-                  <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("document", d.id).path)}>
-                    {t("audit.documents.open")}
-                  </Button>
+                  <OpenEntityButton entityType="document" entityId={d.id} label={t("audit.documents.open")} />
                 </div>
               </CardContent>
             </Card>

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { OpenEntityButton } from "../components/AuditEntityDialogHost";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +11,6 @@ import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
 import { useAuditOperations } from "../hooks/useAuditData";
-import { auditDeepLink } from "../utils/auditDeepLink";
 import type { OperationsIssue } from "../types";
 import { cn } from "@/lib/utils";
 import { InfoTip } from "../components/InfoTip";
@@ -187,9 +187,7 @@ export const OperationsTab = () => {
                     </div>
                     {m.approvalComment && <div className="text-xs mt-0.5 italic">«{m.approvalComment}»</div>}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("mission", m.missionId).path)}>
-                    {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                  </Button>
+                  <OpenEntityButton entityType="mission" entityId={m.missionId} />
                 </li>
               ))}
             </ul>
@@ -254,9 +252,7 @@ export const OperationsTab = () => {
                           )}
                         </div>
                         {i.missionId && (
-                          <Button size="sm" variant="outline" onClick={() => navigate(auditDeepLink("mission", i.missionId!).path)}>
-                            {t("audit.alerts.open")} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                          </Button>
+                          <OpenEntityButton entityType="mission" entityId={i.missionId!} />
                         )}
                       </li>
                     ))}
