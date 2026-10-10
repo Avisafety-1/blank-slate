@@ -8851,6 +8851,93 @@
       "IncidentNoResponsible": "Uten ansvarlig blir hendelsen ikke fulgt opp.",
       "OpenActionsTooLong": "Revisjonstiltaket har passert fristen.",
       "FindingAwaitingVerification": "Tiltaket er gjennomført og venter på verifisering."
+    },
+    "frame": {
+      "stats": "Statistikk og trender",
+      "kpi": {
+        "critical": {
+          "label": "Kritiske avvik",
+          "what": "Antall kritiske avvik i dette området.",
+          "threshold": "Alle kritiske avvik telles; målet er 0.",
+          "why": "Kritiske avvik kan stoppe drift eller gi pålegg ved tilsyn.",
+          "fix": "Åpne avviket, rett årsaken eller send purring til ansvarlig."
+        },
+        "warnings": {
+          "label": "Advarsler",
+          "what": "Antall advarsler i dette området.",
+          "threshold": "Alle åpne advarsler telles.",
+          "why": "Advarsler blir ofte kritiske hvis de ikke følges opp.",
+          "fix": "Planlegg retting eller aksepter med begrunnelse."
+        },
+        "untreated": {
+          "label": "Ubehandlede",
+          "what": "Avvik der ingen handling er tatt ennå.",
+          "threshold": "Handling = purring siste 14 dager, utsatt/akseptert med begrunnelse eller registrert som revisjonsfunn.",
+          "why": "Viser hva ingen har tatt tak i.",
+          "fix": "Send purring, utsett/aksepter eller registrer som revisjonsfunn."
+        },
+        "noResponse": {
+          "label": "Purret uten respons",
+          "what": "Purringer sendt for over 7 dager siden uten at de er markert ferdig.",
+          "threshold": "Mer enn 7 dager uten respons.",
+          "why": "Viser saker som har stoppet opp.",
+          "fix": "Ta direkte kontakt med mottakeren eller velg en annen ansvarlig."
+        }
+      },
+      "tabs": {
+        "operations": {
+          "help": {
+            "what": "Oppdrag som henger, fløyet med NO-GO, manglende flylogger og SORA-avvik.",
+            "threshold": "Kritiske først, deretter advarsler.",
+            "why": "Det er dette tilsynet ser etter først.",
+            "fix": "Åpne, send purring eller utsett/aksepter med begrunnelse."
+          },
+          "empty": "Ingen avvik i drift – bra!",
+          "statsHelp": {
+            "what": "Uplanlagte flyturer, risikofordeling, oppdrag uten flylogg og NO-GO-oversikt.",
+            "why": "Gir bakgrunn og trender, ikke egne avvik."
+          }
+        },
+        "fleet": {
+          "help": {
+            "what": "Droner med rød eller gul status etter vedlikehold, inspeksjon og avvik.",
+            "threshold": "Kritiske først, deretter advarsler.",
+            "why": "Det er dette tilsynet ser etter først.",
+            "fix": "Åpne, send purring eller utsett/aksepter med begrunnelse."
+          },
+          "empty": "Alle droner er grønne – bra!",
+          "statsHelp": {
+            "what": "Hele flåten med status, inspeksjoner og loggføringer.",
+            "why": "Gir bakgrunn og trender, ikke egne avvik."
+          }
+        },
+        "people": {
+          "help": {
+            "what": "Utløpt eller manglende kompetanse og dokumenter som må fornyes.",
+            "threshold": "Kritiske først, deretter advarsler.",
+            "why": "Det er dette tilsynet ser etter først.",
+            "fix": "Åpne, send purring eller utsett/aksepter med begrunnelse."
+          },
+          "empty": "Kompetanse og dokumenter er i orden – bra!",
+          "statsHelp": {
+            "what": "Kompetanse per person og dokumentoversikt.",
+            "why": "Gir bakgrunn og trender, ikke egne avvik."
+          }
+        },
+        "incidents": {
+          "help": {
+            "what": "Hendelser som har vært åpne for lenge eller mangler oppfølgingsansvarlig.",
+            "threshold": "Kritiske først, deretter advarsler.",
+            "why": "Det er dette tilsynet ser etter først.",
+            "fix": "Åpne, send purring eller utsett/aksepter med begrunnelse."
+          },
+          "empty": "Ingen hendelser trenger oppfølging – bra!",
+          "statsHelp": {
+            "what": "Hendelser over tid og forfalte revisjonstiltak.",
+            "why": "Gir bakgrunn og trender, ikke egne avvik."
+          }
+        }
+      }
     }
   },
   "inbox": {

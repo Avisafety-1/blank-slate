@@ -18,6 +18,7 @@ import { InspectionPackageTab } from "./tabs/InspectionPackageTab";
 import { useAuditDepartments } from "./hooks/useAuditData";
 import { useAuditDepartment } from "./hooks/useAuditDepartment";
 import { ALL_DEPARTMENTS } from "./lib/complianceView";
+import { TabFrame } from "./components/TabFrame";
 
 const tabDefs = [
   { value: "overview", key: "overview", icon: LayoutDashboard },
@@ -132,19 +133,23 @@ export const AuditSection = () => {
           </TabsList>
         </div>
         <TabsContent value="overview" className="mt-4 sm:mt-6"><OverviewTab onNavigate={goto} /></TabsContent>
-        <TabsContent value="operations" className="mt-4 sm:mt-6"><OperationsTab /></TabsContent>
-        <TabsContent value="fleet" className="mt-4 sm:mt-6"><FleetTab /></TabsContent>
-        <TabsContent value="people" className="mt-4 sm:mt-6 space-y-8">
-          <section className="space-y-3">
-            <h3 className="text-lg font-semibold">{t("audit.tabs.competency")}</h3>
-            <CompetencyTab />
-          </section>
-          <section className="space-y-3">
-            <h3 className="text-lg font-semibold">{t("audit.tabs.documentation")}</h3>
-            <DocumentationTab />
-          </section>
+        <TabsContent value="operations" className="mt-4 sm:mt-6"><TabFrame tabKey="operations" categories={["operations"]}><OperationsTab /></TabFrame></TabsContent>
+        <TabsContent value="fleet" className="mt-4 sm:mt-6"><TabFrame tabKey="fleet" categories={["fleet"]}><FleetTab /></TabFrame></TabsContent>
+        <TabsContent value="people" className="mt-4 sm:mt-6">
+          <TabFrame tabKey="people" categories={["competence", "documentation"]}>
+            <div className="space-y-8">
+              <section className="space-y-3">
+                <h3 className="text-lg font-semibold">{t("audit.tabs.competency")}</h3>
+                <CompetencyTab />
+              </section>
+              <section className="space-y-3">
+                <h3 className="text-lg font-semibold">{t("audit.tabs.documentation")}</h3>
+                <DocumentationTab />
+              </section>
+            </div>
+          </TabFrame>
         </TabsContent>
-        <TabsContent value="safety" className="mt-4 sm:mt-6"><SafetyTab /></TabsContent>
+        <TabsContent value="safety" className="mt-4 sm:mt-6"><TabFrame tabKey="incidents" categories={["safety"]}><SafetyTab /></TabFrame></TabsContent>
         <TabsContent value="internal" className="mt-4 sm:mt-6"><InternalAuditsTab /></TabsContent>
         <TabsContent value="package" className="mt-4 sm:mt-6"><InspectionPackageTab /></TabsContent>
       </Tabs>
