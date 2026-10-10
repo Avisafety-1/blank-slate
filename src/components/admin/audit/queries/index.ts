@@ -23,6 +23,7 @@ import {
   type ActiveFlightLike,
   type MissionLike,
   missionWithoutFlightLogIssue,
+  requiresRiskAssessment,
 } from "../lib/operationsAnalysis";
 import { matchPossibleLogs, type UnlinkedLog } from "../lib/missingFlightLogs";
 import type {
