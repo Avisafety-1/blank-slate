@@ -174,3 +174,15 @@ describe("stale active flight reminder target", () => {
     expect(f.entityId).toBe("f1");
   });
 });
+
+import { reminderRowsFromMessages } from "../src/components/admin/audit/lib/operationsAnalysis";
+
+describe("reminder delivery status", () => {
+  test("message without recipient row is left out", () => {
+    expect(reminderRowsFromMessages([{ finding_key: "k", status: "done", created_at: "2026-10-01", internal_message_recipients: [] }])).toEqual([]);
+  });
+  test("recipient row with status done counts as done", () => {
+    const r = reminderRowsFromMessages([{ finding_key: "k", status: "unread", created_at: "2026-10-01", internal_message_recipients: [{ status: "done" }] }]);
+    expect(r).toEqual([{ finding_key: "k", status: "done", created_at: "2026-10-01" }]);
+  });
+});

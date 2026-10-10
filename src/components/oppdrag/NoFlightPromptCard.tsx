@@ -133,7 +133,7 @@ export const NoFlightPromptCard = ({ missionId, messageId, onDone }: Props) => {
         else if (reply) {
           // The inbox reads from internal_message_recipients.
           const { error: recErr } = await supabase.from("internal_message_recipients")
-            .insert({ message_id: reply.id, recipient_id: reminder.sender_id });
+            .upsert({ message_id: reply.id, recipient_id: reminder.sender_id }, { onConflict: "message_id,recipient_id", ignoreDuplicates: true });
           if (recErr) console.warn("[NoFlightPromptCard] reply recipient failed", recErr);
         }
       }

@@ -119,11 +119,13 @@ serve(async (req) => {
       // The inbox reads from internal_message_recipients — without this row the reminder is invisible.
       const { error: recErr } = await admin
         .from("internal_message_recipients")
-        .insert({ message_id: msg.id, recipient_id: r.id });
+        .upsert({ message_id: msg.id, recipient_id: r.id }, { onConflict: "message_id,recipient_id", ignoreDuplicates: true });
       if (recErr) console.error("[send-reminder] recipient insert failed", recErr);
 
       const receipts: Array<{ message_id: string; channel: string; status: string; error?: string; provider_id?: string }> = [
-        { message_id: msg.id, channel: "inbox", status: "sent" },
+        recErr
+          ? { message_id: msg.id, channel: "inbox", status: "failed", error: recErr.message }
+          : { message_id: msg.id, channel: "inbox", status: "sent" },
       ];
 
       const deepLinkRel = payload.deep_link

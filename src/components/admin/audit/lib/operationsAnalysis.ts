@@ -281,3 +281,14 @@ export const droneStatusCheck = (status: string): CheckResult =>
 /** A missing risk assessment is only a finding once the mission is flying or flown. */
 export const requiresRiskAssessment = (status: string | null | undefined) =>
   status === "Fullført" || status === "Pågående";
+
+/** Messages without a recipient row were never delivered: they are left out (finding stays "not sent"). */
+export function reminderRowsFromMessages(rows: any[]): { finding_key: string | null; status: string; created_at: string }[] {
+  const out: { finding_key: string | null; status: string; created_at: string }[] = [];
+  for (const r of rows) {
+    for (const rec of (r.internal_message_recipients ?? []) as { status: string }[]) {
+      out.push({ finding_key: r.finding_key, status: rec.status, created_at: r.created_at });
+    }
+  }
+  return out;
+}
