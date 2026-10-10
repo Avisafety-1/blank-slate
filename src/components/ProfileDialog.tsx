@@ -2111,7 +2111,7 @@ export const ProfileDialog = () => {
                         <Switch
                           checked={notificationPrefs?.email_audit_tasks ?? true}
                           onCheckedChange={(checked) =>
-                            updateNotificationPref('email_audit_tasks' as never, checked)
+                            updateNotificationPref('email_audit_tasks', checked)
                           }
                         />
                       </div>

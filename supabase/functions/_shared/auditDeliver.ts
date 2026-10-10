@@ -33,7 +33,7 @@ export async function loadAuditState(admin: SupabaseClient, findingId: string): 
   let ownerAdminIds: string[] = [];
   if (ids.length) {
     const { data: roles } = await admin.from("user_roles").select("user_id").in("user_id", ids).in("role", ["admin", "administrator"]);
-    ownerAdminIds = [...new Set((roles ?? []).map((r: { user_id: string }) => r.user_id))];
+    ownerAdminIds = [...new Set<string>((roles ?? []).map((r: { user_id: string }) => r.user_id))];
   }
   return {
     finding: {
