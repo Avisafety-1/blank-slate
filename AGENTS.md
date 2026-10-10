@@ -12,3 +12,4 @@ Norwegian protected-area map classification comes from dronesoner.no's prohibiti
 - Code shared between edge functions lives in `supabase/functions/_shared/` (re-exported where needed), because each edge bundle includes only its own folder plus `_shared`.
 - The mitigation preview reuses `_shared/soraProfileEvaluation.ts` through a frontend re-export, so profile credits shown before assessment follow the same deterministic conditions as the edge function.
 - SORA profile dialog help and fields share the editor's single flex-child scroller; keep the header and action footer outside it so expanded help cannot hide the form or buttons.
+- Compliance department filter and follow-up rate are presentation-only: rows carry companyId and are filtered/enriched in `audit/lib/complianceView.ts` before the scanner and score run, so validators and weights stay the single source of truth.
