@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { resolveRecipients, type RecipientSuggestion } from "./services/ReminderRecipientResolver";
 import { useSendReminder } from "./hooks/useSendReminder";
 import type { ScannerFinding } from "./types";
+import { MISSING_LOG_CODE } from "./lib/operationsAnalysis";
+import { noFlightDeepLink } from "./utils/auditDeepLink";
 
 interface Props {
   finding: ScannerFinding | null;
@@ -34,9 +36,14 @@ export const SendReminderDialog = ({ finding, open, onOpenChange }: Props) => {
     const title = String(t(finding.titleKey, (finding.titleParams ?? {}) as never) ?? "");
     const detail = finding.bodyKey ? String(t(finding.bodyKey, (finding.bodyParams ?? {}) as never) ?? "") : "";
     setSubject(t("audit.reminder.subjectPrefix") + " " + title);
-    setBody(
-      t("audit.reminder.bodyTemplate", { title, detail: detail || t("audit.reminder.noDetail") }) as string,
-    );
+    if (finding.code === MISSING_LOG_CODE) {
+      const p = finding.titleParams ?? {};
+      setBody(t("audit.reminder.missingLogBody", { title: p.mission ?? "—", date: p.date ?? "" }) as string);
+    } else {
+      setBody(
+        t("audit.reminder.bodyTemplate", { title, detail: detail || t("audit.reminder.noDetail") }) as string,
+      );
+    }
     resolveRecipients(finding, companyId).then(setRecipients);
   }, [open, finding, companyId, t]);
 
@@ -49,7 +56,10 @@ export const SendReminderDialog = ({ finding, open, onOpenChange }: Props) => {
       recipient_ids: recipients.map((r) => r.id),
       subject,
       body,
-      deep_link: finding.deepLink?.path ?? null,
+      // send-reminder appends &msg=<message_id>
+      deep_link: finding.code === MISSING_LOG_CODE
+        ? noFlightDeepLink(finding.entityId)
+        : finding.deepLink?.path ?? null,
       finding_key: `${finding.code}:${finding.entityType}:${finding.entityId}`,
       severity: finding.severity,
       channels,
