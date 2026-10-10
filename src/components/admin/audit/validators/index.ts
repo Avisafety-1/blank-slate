@@ -1,5 +1,6 @@
 import { auditDeepLink } from "../utils/auditDeepLink";
 import { daysUntil } from "../utils/dates";
+import { UNPLANNED_THRESHOLD_PCT } from "../lib/operationsAnalysis";
 import type {
   CompetencyRow,
   DocumentRow,
@@ -23,6 +24,7 @@ export interface ValidatorContext {
   }[];
   findingsAwaitingVerification: { id: string; description: string }[];
   requireSoraOnMissions: boolean;
+  unplannedRecent?: { total: number; unplanned: number; pct: number } | null;
 }
 
 export type Validator = (ctx: ValidatorContext) => ScannerFinding[];
@@ -131,28 +133,56 @@ const fleetValidator: Validator = ({ fleet }) => {
 };
 
 // ---------- Operations ----------
-const operationsValidator: Validator = ({ operations, requireSoraOnMissions }) => {
+const OPS_FINDING_CODE: Record<OperationsIssue["code"], string> = {
+  missionPlannedPastDue: "MissionPlannedPastDue",
+  missionInProgressStale: "MissionInProgressStale",
+  activeFlightStale: "ActiveFlightStale",
+  soraEnvelopeExceeded: "SoraEnvelopeExceeded",
+  flownWithNoGo: "FlownWithNoGo",
+  missingRiskAssessment: "MissingRiskAssessment",
+};
+
+const operationsValidator: Validator = ({ operations, requireSoraOnMissions, unplannedRecent }) => {
   const findings: ScannerFinding[] = [];
   for (const issue of operations) {
     if (issue.code === "missingRiskAssessment" && !requireSoraOnMissions) continue;
+    const params = {
+      mission: issue.missionTitle,
+      date: issue.missionDate ? issue.missionDate.slice(0, 10) : "",
+      days: issue.days ?? 0,
+      hours: issue.hours ?? 0,
+      sail: issue.sail ?? "—",
+      deviations: (issue.details ?? []).join("; "),
+    };
+    const entityIsMission = !!issue.missionId;
     findings.push({
-      code:
-        issue.code === "missingRiskAssessment"
-          ? "MissingRiskAssessment"
-          : issue.code === "missingChecklist"
-            ? "NoChecklist"
-            : issue.code === "flightNotClosed"
-              ? "FlightNotClosed"
-              : "MissingApproval",
-      severity: issue.code === "flightNotClosed" ? "critical" : "warning",
+      code: OPS_FINDING_CODE[issue.code],
+      severity: issue.severity ?? "warning",
       categoryKey: "operations",
       titleKey: `audit.scanner.${issue.code}.title`,
       bodyKey: `audit.scanner.${issue.code}.body`,
-      titleParams: { mission: issue.missionTitle },
-      bodyParams: { mission: issue.missionTitle, date: issue.missionDate ?? "" },
-      entityType: "mission",
-      entityId: issue.missionId,
-      deepLink: auditDeepLink("mission", issue.missionId),
+      titleParams: params,
+      bodyParams: params,
+      entityType: entityIsMission ? "mission" : "active_flight",
+      entityId: issue.missionId ?? issue.flightId ?? issue.id,
+      evidence: issue.details ? { deviations: issue.details, sail: issue.sail ?? null } : undefined,
+      deepLink: entityIsMission ? auditDeepLink("mission", issue.missionId!) : auditDeepLink("audit", ""),
+    });
+  }
+  if (unplannedRecent && unplannedRecent.total > 0 && unplannedRecent.pct > UNPLANNED_THRESHOLD_PCT) {
+    const p = { count: unplannedRecent.unplanned, total: unplannedRecent.total, pct: Math.round(unplannedRecent.pct) };
+    findings.push({
+      code: "UnplannedFlightsHigh",
+      severity: "warning",
+      categoryKey: "operations",
+      titleKey: "audit.scanner.unplannedFlightsHigh.title",
+      bodyKey: "audit.scanner.unplannedFlightsHigh.body",
+      titleParams: p,
+      bodyParams: p,
+      entityType: "flight",
+      entityId: "unplanned-90d",
+      evidence: p,
+      deepLink: { path: "/oppdrag?tab=logs&unplanned=1" },
     });
   }
   return findings;
