@@ -9,3 +9,10 @@ describe("audit reminder links", () => {
     expect(noFlightDeepLink("abc")).toBe("/oppdrag?mission=abc&action=noFlight");
   });
 });
+
+describe("audit task links", () => {
+  it("findings and actions open AuditTaskDialog via ?auditFinding=", () => {
+    expect(auditDeepLink("audit_finding", "f1").path).toBe("/?auditFinding=f1");
+    expect(auditDeepLink("audit_action", "f1").path).toBe("/?auditFinding=f1");
+  });
+});
